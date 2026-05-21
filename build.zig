@@ -77,10 +77,98 @@ pub fn build(b: *std.Build) void {
     });
     const run_event_store_tests = b.addRunArtifact(event_store_tests);
 
+    const graph_mod = b.createModule(.{
+        .root_source_file = b.path("src/definition/graph.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const definition_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/definition_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "graph", .module = graph_mod },
+            },
+        }),
+    });
+    const run_definition_tests = b.addRunArtifact(definition_tests);
+
+    const graph_node_attributes_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/graph_node_attributes_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "graph", .module = graph_mod },
+            },
+        }),
+    });
+    const run_graph_node_attributes_tests = b.addRunArtifact(graph_node_attributes_tests);
+
+    const graph_edge_conditions_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/graph_edge_conditions_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "graph", .module = graph_mod },
+            },
+        }),
+    });
+    const run_graph_edge_conditions_tests = b.addRunArtifact(graph_edge_conditions_tests);
+
+    // PD-07 definition retrieval handler tests (pure input-validation paths).
+    // src/main.zig is used as the named-module root so that definitions.zig
+    // can resolve its relative @import("../../definition/store.zig") within
+    // the src/ tree — Zig 0.16 forbids @imports that escape the module root.
+    const bpm_main_mod = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .imports = vendor_imports,
+    });
+    const definition_retrieval_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/definition_retrieval_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_definition_retrieval_tests = b.addRunArtifact(definition_retrieval_tests);
+
+    const snapshot_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_snapshot.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_snapshot_tests = b.addRunArtifact(snapshot_tests);
+
+    const export_import_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_export_import.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_export_import_unit_tests = b.addRunArtifact(export_import_unit_tests);
+
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_db_tests.step);
     test_step.dependOn(&run_event_store_tests.step);
+    test_step.dependOn(&run_definition_tests.step);
+    test_step.dependOn(&run_graph_node_attributes_tests.step);
+    test_step.dependOn(&run_graph_edge_conditions_tests.step);
+    test_step.dependOn(&run_definition_retrieval_tests.step);
+    test_step.dependOn(&run_snapshot_tests.step);
+    test_step.dependOn(&run_export_import_unit_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-engine` — engine unit tests only

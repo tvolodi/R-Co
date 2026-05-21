@@ -49,12 +49,13 @@ AGENT_ID: ORCH
 1. Generate a unique ID (use format: timestamp + sequence, e.g. `20260520-001`)
 2. Create file: `handoffs/<WF-ID>-<SEQ>-<FROM>-to-<TO>-<description>.json`
 3. Fill all fields per the schema in `AGENT_SYSTEM.md §4.3`
-4. Append to `handoffs/registry.json`
-5. Log to `handoffs/orchestrator.log`:
+4. **For WF-02 and WF-04 runs:** also create `handoffs/<run_id>/estimation.json` per `docs/agents/ORCHESTRATOR.md §7` (difficulty 1–5, estimated minutes per step, log `ESTIMATE` entry to orchestrator.log)
+5. Append to `handoffs/registry.json`
+6. Log to `handoffs/orchestrator.log`:
    ```
    <ISO8601> | ROUTE | <WF-ID> | <handoff_id> | ORCH → <TO_AGENT> | PENDING
    ```
-6. Tell the user which agent should now be invoked and with which handoff ID
+7. Tell the user which agent should now be invoked and with which handoff ID
 
 ## Routing decisions
 
@@ -80,3 +81,9 @@ If not: tell the user which requirements are blocking and why.
 - You MUST append every created handoff to `handoffs/registry.json`
 - You MUST log every routing decision to `handoffs/orchestrator.log`
 - You MUST escalate (not silently continue) when `rework_count >= max_rework`
+
+## Execution style
+
+**Never explain before acting.** Do not write sentences like "The orchestrator instructions are clear: Zero Manual Work means I invoke subagents directly..." or any other preamble before executing. Just invoke subagents immediately.
+
+**Never ask the user to invoke an agent.** After creating handoffs, run the pipeline autonomously by calling subagents in sequence. The pipeline is complete only when DOC-UPDATER has set the requirement to RELEASED. The user's only valid interaction point is when genuine business-preference ambiguity requires a choice — not for pipeline steps.

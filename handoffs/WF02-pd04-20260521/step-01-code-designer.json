@@ -1,0 +1,41 @@
+{
+  "handoff_id": "44100001-2605-4000-8004-202605210300",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-pd04-20260521",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-21T23:50:00Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definition",
+    "requirement_ids": ["PD-04"],
+    "related_handoff_ids": [
+      "33100001-2605-4000-8003-202605210200",
+      "33100002-2605-4000-8003-202605210201"
+    ],
+    "artifacts_in": [
+      "docs/requirements/PD-04.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/design/definition.md",
+      "src/definition/store.zig",
+      "migrations/004_definitions.sql"
+    ]
+  },
+  "task": {
+    "description": "Extend the design artefact at `src/design/definition.md` to cover PD-04 (Definition lifecycle).\n\nPD-04 enforces the full definition status machine:\n  DRAFT → ACTIVE → DEPRECATED → ARCHIVED\nReverse transitions are forbidden. ARCHIVED is a terminal state. DEPRECATED definitions may still be referenced by running instances but must not accept new instance starts.\n\nThe existing design already covers:\n- `DefinitionStatus` enum (DRAFT / ACTIVE / DEPRECATED / ARCHIVED)\n- `InvalidStatusTransition` error variant\n- `Store.activate()` (DRAFT → ACTIVE, implemented by PD-03)\n\nThe design extension MUST add a new PD-04 section to `src/design/definition.md` covering:\n\n1. **Two new public function signatures:**\n   - `Store.deprecate(self: *Store, allocator: std.mem.Allocator, id: Uuid) DefinitionError!Definition`\n     Transitions ACTIVE → DEPRECATED. Rejects any other current status with `InvalidStatusTransition` (HTTP 409).\n   - `Store.archive(self: *Store, allocator: std.mem.Allocator, id: Uuid) DefinitionError!Definition`\n     Transitions DEPRECATED → ARCHIVED. Sets `archived_at = NOW()`. Rejects any other current status with `InvalidStatusTransition` (HTTP 409). ARCHIVED is a terminal state — no further transitions are possible after this.\n\n2. **Updated DefinitionError set entries** to confirm the existing `InvalidStatusTransition` variant covers all invalid transition attempts (DRAFT→ARCHIVED, ACTIVE→ARCHIVED, ACTIVE→DRAFT, DEPRECATED→DRAFT, ARCHIVED→anything). HTTP 409 for all.\n\n3. **Updated state transition diagram/table** showing the full lifecycle:\n   - Permitted: DRAFT→ACTIVE, ACTIVE→DEPRECATED, DEPRECATED→ARCHIVED\n   - Forbidden (all others): rejected with HTTP 409 / `InvalidStatusTransition`\n   - Terminal: ARCHIVED (archive() on an ARCHIVED definition also returns `InvalidStatusTransition`)\n\n4. **Instance-start guard note** (informational — implemented by EE-01, but referenced here for traceability):\n   - New instances may only be started from ACTIVE definitions; DEPRECATED and ARCHIVED return HTTP 409.\n   - Running instances referencing a DEPRECATED definition MUST continue to completion; the platform MUST NOT terminate them.\n\n5. **Traceability table** mapping each PD-04 acceptance criterion to the design element that satisfies it.\n\n6. **HTTP API routing additions** — document two new route entries to add to the definitions router:\n   - `POST /definitions/{id}/deprecate` → calls `Store.deprecate()`\n   - `POST /definitions/{id}/archive` → calls `Store.archive()`\n   Both require PROCESS_DESIGNER or PLATFORM_ADMIN role (consistent with activate, per PD-01 RBAC rules).\n\nDo NOT rewrite or remove the existing PD-01, PD-02, PD-03 sections — only append a new PD-04 section.",
+    "acceptance_criteria": [
+      "src/design/definition.md has been extended (not replaced) with a PD-04 section",
+      "Store.deprecate and Store.archive function signatures are documented with full error sets",
+      "Full state transition table covers all permitted and forbidden transitions",
+      "HTTP API routes for /deprecate and /archive are documented",
+      "All PD-04 acceptance criteria are traceable to design elements"
+    ],
+    "functions_to_call": ["fn:validate-completeness", "fn:register-inner-report", "fn:complete-handoff"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": null
+}

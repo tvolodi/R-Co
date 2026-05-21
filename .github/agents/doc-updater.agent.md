@@ -25,7 +25,7 @@ You operate at the tail of **WF-01 Step 3** (set status VALIDATED) and after **W
 1. Find your handoff:
    - `to_agent = "DOC-UPDATER"` and `status = "PENDING"` in `handoffs/`
 2. Read the handoff `task.description` — it states exactly which IDs to update and to which status
-3. Set handoff status to `IN_PROGRESS`
+3. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
 ## Tasks
 
@@ -49,6 +49,25 @@ DRAFT → VALIDATED → IN_PROGRESS → TESTED → RELEASED
 ```
 
 Do not set a requirement to `RELEASED` unless there is a corresponding approved release decision in `docs/status/`.
+
+## Retrospective (WF-02 and WF-04 runs only)
+
+After updating the changelog and requirement status, check whether this run has an estimation file:
+
+```python
+import os
+run_id = "<current-run-id>"   # from your handoff's run_id field
+has_estimation = os.path.exists(f"handoffs/{run_id}/estimation.json")
+```
+
+If `has_estimation` is `True`, execute the full retrospective procedure from `docs/agents/metrics.md §6`:
+
+1. Read `handoffs/<run_id>/estimation.json`
+2. For each step handoff in `handoffs/<run_id>/`, compute actual work time from `started_at` and `completed_at`
+3. Compare estimated vs actual per step; compute `variance_pct`
+4. If `|variance_pct| > 25%` for a step across ≥ 2 consecutive runs at the same difficulty, adjust `docs/metrics/estimation_rules.json`
+5. Write `docs/metrics/retrospectives/<run_id>.json`
+6. Include `docs/metrics/retrospectives/<run_id>.json` in `artifacts_out`
 
 ## Complete the handoff
 

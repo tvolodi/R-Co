@@ -1,0 +1,229 @@
+{
+  "run_id": "WF02-pd05-20260521-run-01",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-22T00:12:00Z",
+  "requirement_ids": ["PD-05"],
+  "handoff_id": "55100004-2605-4000-8005-202605210403",
+  "summary": {
+    "total": 19,
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "integration_skipped": 7,
+    "verdict": "PASS"
+  },
+  "layers": {
+    "unit": {
+      "command": "zig build test",
+      "exit_code": 0,
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "total": 19,
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    },
+    "integration": {
+      "command": "zig build test-integration",
+      "exit_code": null,
+      "file": "tests/integration/pd05_node_types_test.zig",
+      "total": 7,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 7,
+      "skip_reason": "BPM_TEST_DB_URL environment variable is not set; integration test layer not executed"
+    }
+  },
+  "test_cases": [
+    {
+      "test_id": "TC-PD-05-01",
+      "name": "HUMAN_TASK with role present and non-empty -> valid",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null,
+      "integration_status": "SKIP",
+      "integration_skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-PD-05-02",
+      "name": "HUMAN_TASK with role attribute absent -> HUMAN_TASK_MISSING_ROLE",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null,
+      "integration_status": "SKIP",
+      "integration_skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-PD-05-03",
+      "name": "HUMAN_TASK with role = empty string -> HUMAN_TASK_MISSING_ROLE",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-04",
+      "name": "SERVICE_TASK with valid endpoint and timeout_ms -> valid",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null,
+      "integration_status": "SKIP",
+      "integration_skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-PD-05-05",
+      "name": "SERVICE_TASK with endpoint absent -> SERVICE_TASK_MISSING_ENDPOINT",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null,
+      "integration_status": "SKIP",
+      "integration_skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-PD-05-06",
+      "name": "SERVICE_TASK with timeout_ms absent -> SERVICE_TASK_MISSING_TIMEOUT",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-07",
+      "name": "SERVICE_TASK with timeout_ms = 0 -> SERVICE_TASK_INVALID_TIMEOUT",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-08",
+      "name": "SERVICE_TASK with timeout_ms = 300001 -> SERVICE_TASK_INVALID_TIMEOUT",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-09",
+      "name": "SERVICE_TASK with timeout_ms = 300000 -> valid (boundary: max permitted)",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-10",
+      "name": "TIMER with valid duration_iso8601 = PT5M -> valid",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null,
+      "integration_status": "SKIP",
+      "integration_skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-PD-05-11",
+      "name": "TIMER with duration_iso8601 = P0D -> valid (zero duration permitted)",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-12",
+      "name": "TIMER with duration_iso8601 absent -> TIMER_MISSING_DURATION",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null,
+      "integration_status": "SKIP",
+      "integration_skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-PD-05-13",
+      "name": "TIMER with duration_iso8601 = 'invalid' (no P prefix) -> TIMER_INVALID_DURATION",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-14",
+      "name": "TIMER with duration_iso8601 = 'P' (P but no designator) -> TIMER_INVALID_DURATION",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-15",
+      "name": "EXCLUSIVE_GATEWAY with no attributes -> valid",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-16",
+      "name": "PARALLEL_GATEWAY with no attributes -> valid",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-17",
+      "name": "START node with no attributes -> valid",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-18",
+      "name": "END node with no attributes -> valid",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-05-19",
+      "name": "HUMAN_TASK missing role AND SERVICE_TASK missing endpoint -> both violations collected (no early exit)",
+      "requirement_id": "PD-05",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_node_attributes_test.zig",
+      "failure_message": null,
+      "integration_status": "SKIP",
+      "integration_skip_reason": "BPM_TEST_DB_URL not set"
+    }
+  ],
+  "failures": [],
+  "coverage": {
+    "note": "Coverage not measured in this run. Unit layer covers all 19 TC-PD-05 test cases; integration layer skipped."
+  },
+  "nfr_results": [],
+  "integration_skip_note": "7 integration-layer test cases (TC-PD-05-01, TC-PD-05-02, TC-PD-05-04, TC-PD-05-05, TC-PD-05-10, TC-PD-05-12, TC-PD-05-19) were not executed because BPM_TEST_DB_URL is not set in this environment. All corresponding unit-layer assertions for the same test cases passed. Integration-layer execution is required before PD-05 can advance to RELEASED status."
+}

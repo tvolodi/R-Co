@@ -1,0 +1,41 @@
+{
+  "handoff_id": "44100003-2605-4000-8004-202605210302",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-pd04-20260521",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-21T23:50:00Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definition",
+    "requirement_ids": ["PD-04"],
+    "related_handoff_ids": [
+      "44100002-2605-4000-8004-202605210301",
+      "33100003-2605-4000-8003-202605210202"
+    ],
+    "artifacts_in": [
+      "docs/requirements/PD-04.md",
+      "docs/guides/test_developer_guide.md",
+      "src/definition/store.zig",
+      "tests/specs/PD-03.md",
+      "tests/integration/"
+    ]
+  },
+  "task": {
+    "description": "Write the test specification and integration test code for PD-04 (Definition lifecycle).\n\n**1. Create test specification at `tests/specs/PD-04.md`**\n\nModel it after `tests/specs/PD-03.md`. Include one test case per PD-04 acceptance criterion:\n\n- TC-PD-04-01: DRAFT → ACTIVE via activate() — success (already covered by PD-03 tests; reference only; do not duplicate the test)\n- TC-PD-04-02: ACTIVE → DEPRECATED via deprecate() — success\n- TC-PD-04-03: DEPRECATED → ARCHIVED via archive() — success; archived_at is set\n- TC-PD-04-04: Forbidden transition DRAFT → DEPRECATED (deprecate a DRAFT) → InvalidStatusTransition\n- TC-PD-04-05: Forbidden transition DRAFT → ARCHIVED (archive a DRAFT) → InvalidStatusTransition\n- TC-PD-04-06: Forbidden transition ACTIVE → ARCHIVED (archive an ACTIVE) → InvalidStatusTransition\n- TC-PD-04-07: ARCHIVED terminal state — deprecate() on ARCHIVED → InvalidStatusTransition\n- TC-PD-04-08: ARCHIVED terminal state — archive() on ARCHIVED → InvalidStatusTransition\n- TC-PD-04-09: ARCHIVED terminal state — activate() on ARCHIVED → NotDraft (HTTP 409; already covered by activate() returning NotDraft for non-DRAFT — include here for completeness)\n- TC-PD-04-10: deprecate() on a non-existent id → DefinitionNotFound\n- TC-PD-04-11: archive() on a non-existent id → DefinitionNotFound\n- TC-PD-04-12: New instance start blocked for DEPRECATED definition (informational — may require EE-01 context; mark as out-of-scope for this test run if EE-01 is not yet implemented; note the dependency)\n\n**2. Create integration test file at `tests/integration/pd04_lifecycle_test.zig`**\n\nModel after the existing integration test files in `tests/integration/`. Use `TestHarness.init()` / `TestHarness.deinit()` and the `cleanupByName()` helper pattern seen in PD-03 tests.\n\nEach test case MUST:\n- Set up its own test data (create definitions with the required status by chaining activate/deprecate)\n- Clean up via `cleanupByName()` in a defer block\n- Assert the exact error type on failure paths\n- Assert the returned Definition has the correct status on success paths\n- Assert that `archived_at` is non-null after archive()\n\nDo NOT test TC-PD-04-12 in this file (it depends on EE-01 which is not yet implemented).",
+    "acceptance_criteria": [
+      "tests/specs/PD-04.md exists with test cases for all PD-04 acceptance criteria",
+      "tests/integration/pd04_lifecycle_test.zig exists and compiles (zig build test exits 0)",
+      "Tests cover all permitted and forbidden transitions",
+      "Tests verify archived_at is set after archive()",
+      "Tests use TestHarness and cleanupByName() per the test guide"
+    ],
+    "functions_to_call": ["fn:validate-completeness", "fn:register-inner-report", "fn:complete-handoff"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": null
+}

@@ -1,0 +1,51 @@
+{
+  "handoff_id": "22100003-2605-4000-8002-202605210102",
+  "run_id": "WF02-pd01-20260521",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-21T15:05:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definition",
+    "requirement_ids": ["PD-01", "PD-02"],
+    "related_handoff_ids": ["22100002-2605-4000-8002-202605210101"],
+    "artifacts_in": [
+      "src/definition/graph.zig",
+      "src/definition/store.zig",
+      "tests/unit/definition_test.zig",
+      "docs/requirements/PD-01.md",
+      "docs/requirements/PD-02.md",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Write a test specification and integration tests for PD-01 (Create definition) and PD-02 (Graph validation).\n\n1. Write test spec at `tests/specs/PD-01-02.md` covering all acceptance criteria from both requirements.\n2. Write integration test file at `tests/integration/definition_test.zig` that tests against a real PostgreSQL database using the TestHarness pattern from src/db/helpers.zig. Tests MUST NOT use SkipZigTest.\n\nRequired test cases:\n- TC-PD-01-01: Create valid definition → HTTP 201, UUID assigned, status=DRAFT\n- TC-PD-01-02: Create with same name+version → HTTP 409 (Conflict)\n- TC-PD-01-03: Create with invalid graph (no START node) → rejected by graph validation\n- TC-PD-01-04: Create with description omitted → allowed\n- TC-PD-02-01: Valid graph (one START, one END, all edges valid) → passes\n- TC-PD-02-02: Zero START nodes → HTTP 422 with violation identifying START issue\n- TC-PD-02-03: Two START nodes → HTTP 422\n- TC-PD-02-04: No END nodes → HTTP 422\n- TC-PD-02-05: Dangling edge (references non-existent node) → HTTP 422\n- TC-PD-02-06: Isolated node → HTTP 422\n- TC-PD-02-07: Duplicate node ID → HTTP 422\n- TC-PD-02-08: Non-gateway cycle → HTTP 422 with cycle path\n- TC-PD-02-09: Cycle through EXCLUSIVE_GATEWAY → passes (allowed)\n- TC-PD-02-10: node count > 500 → HTTP 422\n- TC-PD-02-11: Multiple violations listed (not just first)\n\nExisting unit tests in tests/unit/definition_test.zig already cover CHK-01..CHK-08 at unit level. The integration tests should verify the store.create() path end-to-end.\n\nValidation: `zig build test` MUST exit 0.",
+    "acceptance_criteria": [
+      "tests/specs/PD-01-02.md exists with all listed test cases",
+      "tests/integration/definition_test.zig exists with no SkipZigTest",
+      "zig build test exits 0"
+    ],
+    "functions_to_call": ["fn:validate-completeness", "fn:register-inner-report", "fn:complete-handoff"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created tests/specs/PD-01-02.md with all 11 test cases (TC-PD-01-01..04, TC-PD-02-01..11). Created tests/integration/definition_test.zig with 11 integration tests using TestHarness pattern and no SkipZigTest. Updated src/bpm.zig to export definition module and tests/integration/main_test.zig to include the new file. Fixed pre-existing Zig 0.16 compile error in src/definition/store.zig (std.json.stringify → std.json.Stringify.valueAlloc). zig build test exits 0.",
+    "artifacts_out": [
+      "tests/specs/PD-01-02.md",
+      "tests/integration/definition_test.zig",
+      "docs/issue-reports/WF02-pd01-20260521-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Pre-existing compile error in src/definition/store.zig: std.json.stringify removed in Zig 0.16. Fixed by replacing with std.json.Stringify.valueAlloc."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4) — run zig build test-integration with BPM_TEST_DB_URL set"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-21T16:00:00Z"
+}

@@ -28,7 +28,7 @@ Calling `fn:complete-handoff` without first calling `fn:register-inner-report` i
 2. Read `docs/guides/frontend_developer_guide.md` (full)
 3. Read `docs/guides/frontend_design_system.md` (full)
 4. Read the design artefact listed in `context.artifacts_in`
-5. Set handoff status to `IN_PROGRESS`
+5. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
 If no PENDING handoff exists: report to user and wait.
 

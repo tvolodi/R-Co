@@ -139,6 +139,47 @@ pub const Conn = struct {
         result.rows[0] = &.{}; // prevent deinit from freeing the returned row
         return row;
     }
+
+    // -----------------------------------------------------------------------
+    // Transaction helpers
+    // -----------------------------------------------------------------------
+
+    /// Begin a database transaction.
+    pub fn begin(self: *Conn) PoolError!void {
+        if (!self._is_valid) return PoolError.StaleConnection;
+        self._pg.begin() catch |err| {
+            if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
+                self._is_valid = false;
+                return PoolError.StaleConnection;
+            }
+            return PoolError.QueryFailed;
+        };
+    }
+
+    /// Commit the current transaction.
+    pub fn commit(self: *Conn) PoolError!void {
+        if (!self._is_valid) return PoolError.StaleConnection;
+        self._pg.commit() catch |err| {
+            if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
+                self._is_valid = false;
+                return PoolError.StaleConnection;
+            }
+            return PoolError.QueryFailed;
+        };
+    }
+
+    /// Roll back the current transaction.  Best-effort: errors are non-fatal
+    /// because rollback is often called in error-cleanup paths.
+    pub fn rollback(self: *Conn) PoolError!void {
+        if (!self._is_valid) return PoolError.StaleConnection;
+        self._pg.rollback() catch |err| {
+            if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
+                self._is_valid = false;
+                return PoolError.StaleConnection;
+            }
+            return PoolError.QueryFailed;
+        };
+    }
 };
 
 // ---------------------------------------------------------------------------

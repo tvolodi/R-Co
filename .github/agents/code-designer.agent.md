@@ -27,7 +27,7 @@ You operate inside **WF-02 Step 1**. You MUST produce a complete design artefact
 2. Read `docs/guides/backend_developer_guide.md` (for Zig module design conventions)
 3. Read `docs/guides/frontend_developer_guide.md` (for React/TypeScript interface conventions)
 4. Read the requirement IDs listed in `context.requirement_ids` from `docs/BPM_Platform_Functional_Requirements.md`
-5. Set handoff status to `IN_PROGRESS`
+5. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
 ## What you produce
 

@@ -1,0 +1,30 @@
+{
+  "stage": "Stage 2 — Process Definition",
+  "requirement_ids": ["PD-09"],
+  "date": "2026-05-21T16:15:00Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "zig_build": "EXIT 0 — no compilation errors",
+    "unit_tests": "55 passed, 68 skipped (BPM_TEST_DB_URL not set), 0 failed — exit 0",
+    "integration_tests": "1 passed, 61 skipped (BPM_TEST_DB_URL not set), 0 failed — exit 0",
+    "sql_injection_review": "PASS — all DB queries use $1/$2 parameterised placeholders; no user-supplied values interpolated into query strings",
+    "tc_pd09_const": "PASS",
+    "tc_pd09_01_through_07": "SKIP — BPM_TEST_DB_URL not set (infrastructure constraint, not a code defect)"
+  },
+  "checks": {
+    "test_cases_pass_or_infra_skip": true,
+    "acceptance_criteria_coverage": {
+      "AC1_export_any_status_returns_schema_versioned_document": "covered by TC-PD-09-const, TC-PD-09-01",
+      "AC2_import_valid_doc_creates_draft": "covered by TC-PD-09-03, TC-PD-09-07",
+      "AC3_name_version_conflict_rejected_409": "covered by TC-PD-09-04",
+      "AC4_cel_revalidation_rejects_invalid_422": "covered by TC-PD-09-05"
+    },
+    "zig_build_exits_0": true,
+    "no_sql_injection_export_import_zig": true,
+    "handle_export_present_in_definitions_zig": true,
+    "handle_import_present_in_definitions_zig": true,
+    "bpm_zig_exports_export_import": true
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["PD-09"]
+}

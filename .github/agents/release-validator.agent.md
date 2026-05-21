@@ -26,7 +26,7 @@ You operate inside **WF-02 Step 5** and **WF-04 Steps 6–8**. A release decisio
    - `to_agent = "RELEASE-VALIDATOR"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/agents/workflows/WF-04_full_test_run.md` (Steps 6–8)
 3. Read the test report(s) listed in `context.artifacts_in`
-4. Set handoff status to `IN_PROGRESS`
+4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
 ## NFR benchmark procedure
 

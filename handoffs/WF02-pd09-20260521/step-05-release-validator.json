@@ -1,0 +1,50 @@
+{
+  "handoff_id": "99100005-2605-4000-8009-202605210804",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-pd09-20260521",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-05-21T16:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 \u2014 Process Definition",
+    "requirement_ids": [
+      "PD-09"
+    ],
+    "related_handoff_ids": [
+      "99100004-2605-4000-8009-202605210803"
+    ],
+    "artifacts_in": [
+      "tests/reports/WF02-pd09-20260521-run-01.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/requirement_status.json",
+      "src/definition/export_import.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate that PD-09 is ready for release.\n\nCheck:\n1. All TC-PD-09-01 through TC-PD-09-07 passed (or were skipped due to BPM_TEST_DB_URL not being set) in the test report at `tests/reports/WF02-pd09-20260521-run-01.md`.\n2. All 4 PD-09 acceptance criteria from `docs/BPM_Platform_Functional_Requirements.md` \u00a7PD-09 are covered by at least one test case.\n3. `zig build` exits 0 \u2014 run it yourself to verify.\n4. No OWASP Top 10 violations (especially SQL injection) in `src/definition/export_import.zig`. Check that all SQL queries use parameterised placeholders ($1, $2) and no user-supplied values are interpolated into query strings.\n5. `src/api/routes/definitions.zig` contains `handleExport` and `handleImport` handlers.\n6. `src/bpm.zig` exports `pub const export_import`.\n\nApply the same BPM_TEST_DB_URL skip precedent as PD-08: if integration tests are skipped due to infrastructure only (no code defects), this is an acceptable PASS.\n\nIf all checks pass: set result.status = PASS and result.next_action = \"Route to DOC-UPDATER\".\nIf any check fails: set result.status = FAIL and list all issues.",
+    "acceptance_criteria": [
+      "All PD-09 test cases pass or are skipped (BPM_TEST_DB_URL infrastructure only)",
+      "All 4 PD-09 acceptance criteria are covered by test cases",
+      "zig build exits 0",
+      "No SQL injection vulnerabilities in export_import.zig",
+      "handleExport and handleImport present in definitions.zig",
+      "src/bpm.zig exports pub const export_import"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for PD-09 (Definition import/export). All 6 acceptance checks passed: zig build exits 0; TC-PD-09-const PASS; TC-PD-09-01 through TC-PD-09-07 skip (BPM_TEST_DB_URL not set, infrastructure constraint, acceptable per PD-08 precedent); all 4 PD-09 acceptance criteria covered by test cases; no SQL injection vulnerabilities in export_import.zig (all queries use parameterised placeholders); handleExport and handleImport present in definitions.zig (lines 384, 420); src/bpm.zig exports pub const export_import.",
+    "artifacts_out": [
+      "docs/status/release-pd09-2026-05-21.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to set PD-09 status RELEASED"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-21T16:10:00Z",
+  "completed_at": "2026-05-21T09:16:51.275308Z"
+}

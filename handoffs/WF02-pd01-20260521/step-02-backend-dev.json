@@ -1,0 +1,49 @@
+{
+  "handoff_id": "22100002-2605-4000-8002-202605210101",
+  "run_id": "WF02-pd01-20260521",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-21T14:05:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definition",
+    "requirement_ids": ["PD-01", "PD-02"],
+    "related_handoff_ids": ["22100001-2605-4000-8002-202605210100"],
+    "artifacts_in": [
+      "src/design/definition.md",
+      "docs/requirements/PD-01.md",
+      "docs/requirements/PD-02.md",
+      "migrations/004_definitions.sql",
+      "src/db/pool.zig",
+      "docs/guides/backend_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Implement the process definition module for PD-01 (Create definition) and PD-02 (Graph validation) per the design artefact at src/design/definition.md.\n\nFiles to create:\n- `src/definition/graph.zig` — pure graph validation (zero I/O, zero allocations except in the validation result buffer). Implements all 8 named checks from the design: CHK-01 (one START), CHK-02 (≥1 END), CHK-03 (no dangling edges), CHK-04 (no isolated nodes), CHK-05 (no duplicate node IDs), CHK-06 (no non-gateway cycles via DFS), CHK-07 (node count ≤500), CHK-08 (edge count ≤2000).\n- `src/definition/store.zig` — database CRUD using src/db/pool.zig. Implements: `create()` (inserts row + calls graph.validateGraph() before insert), `getById()`, `list()`. Use parameterised queries only ($1, $2, etc.) — no SQL string interpolation. Handle the unique(name, version) constraint violation as HTTP 409 (DefinitionError.Conflict).\n\nExpose the module via `src/definition.zig` (or `src/definition/mod.zig` per your file structure).\n\nSecurity rules:\n- NO SQL string interpolation. All user-supplied values go through positional parameters.\n- No secrets in source.\n\nValidation after implementation:\n1. `zig build` MUST exit 0\n2. `zig build test` MUST exit 0\n\nNote on file naming: the design uses store.zig + graph.zig; if the backend guide uses different names, prefer the design names (store.zig, graph.zig) — the guide was written before this module was scoped.",
+    "acceptance_criteria": [
+      "src/definition/graph.zig exists with validateGraph() implementing all 8 CHK-* checks",
+      "src/definition/store.zig exists with create(), getById(), list()",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "No SQL string interpolation anywhere in the new files"
+    ],
+    "functions_to_call": ["fn:check-zig-build", "fn:validate-completeness", "fn:register-inner-report", "fn:complete-handoff"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented process definition module: graph.zig (8 CHK checks: CHK-01 through CHK-08, including DFS cycle detection with gateway bypass) and store.zig (create/getById/list with parameterised SQL only). Module exposed via src/definition.zig. Tests added to build.zig as definition_tests. All acceptance criteria met.",
+    "artifacts_out": [
+      "src/definition/graph.zig",
+      "src/definition/store.zig",
+      "src/definition.zig",
+      "tests/unit/definition_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-21T15:30:00Z"
+}

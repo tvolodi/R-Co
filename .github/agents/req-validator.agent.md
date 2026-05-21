@@ -26,7 +26,7 @@ You operate inside **WF-01 Step 2**. A PASS from you is the gate that allows WF-
    - `to_agent = "REQ-VALIDATOR"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/agents/workflows/WF-01_requirement_development.md` (Step 2 section)
 3. Read the requirements listed in `context.artifacts_in`
-4. Set handoff status to `IN_PROGRESS`
+4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
 ## Validation checklist
 

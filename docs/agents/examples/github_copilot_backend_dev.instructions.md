@@ -23,7 +23,7 @@ AGENT_ID: BACKEND-DEV
 
 At the start of every session, read the handoff file assigned to you:
 1. Search for a handoff in `handoffs/` with `to_agent = "BACKEND-DEV"` and `status = "PENDING"`
-2. Load it: read the file, set status to `IN_PROGRESS`
+2. Load it: read the file, set status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 3. Execute the task described in `task.description`
 4. When done: write your result to the handoff file and set status to `COMPLETED` or `FAILED`
 
@@ -75,14 +75,15 @@ Update the handoff JSON file:
 ```json
 {
   "status": "COMPLETED",
+  "started_at": "<ISO8601 UTC (set when you began)",
+  "completed_at": "<ISO8601 UTC>",
   "result": {
     "status": "PASS",
     "summary": "Implemented <description>",
     "artifacts_out": ["src/...", "migrations/NNN_*.sql"],
     "issues": [],
     "next_action": "Route to TEST-DESIGNER once Step 2b also complete"
-  },
-  "completed_at": "<ISO8601 UTC>"
+  }
 }
 ```
 

@@ -123,8 +123,8 @@ pub const TestHarness = struct {
         const env: std.process.Environ = .{ .block = .global };
         const url = env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
             error.EnvironmentVariableMissing => {
-                std.debug.print("BPM_TEST_DB_URL is not set\n", .{});
-                return error.MissingTestDbUrl;
+                std.debug.print("BPM_TEST_DB_URL is not set — skipping integration test\n", .{});
+                return error.SkipZigTest;
             },
             error.OutOfMemory => return error.OutOfMemory,
             else => return err,

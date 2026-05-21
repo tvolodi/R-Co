@@ -27,7 +27,7 @@ You operate inside **WF-01 Step 1**. Requirements you write feed directly into W
 2. Read `docs/agents/workflows/WF-01_requirement_development.md` (full)
 3. Call `fn:load-requirements` and `fn:load-requirement-status`
 4. Read the feature/change request from `task.description`
-5. Set handoff status to `IN_PROGRESS`
+5. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
 ## Drafting procedure
 

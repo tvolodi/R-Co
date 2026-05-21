@@ -1,0 +1,61 @@
+{
+  "handoff_id": "99100002-2605-4000-8009-202605210801",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-pd09-20260521",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-21T16:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 \u2014 Process Definition",
+    "requirement_ids": [
+      "PD-09"
+    ],
+    "related_handoff_ids": [
+      "99100001-2605-4000-8009-202605210800"
+    ],
+    "artifacts_in": [
+      "src/design/definition.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/definition/store.zig",
+      "src/definition/graph.zig",
+      "src/definition/snapshot.zig",
+      "src/api/routes/definitions.zig",
+      "src/bpm.zig",
+      "migrations/004_definitions.sql"
+    ]
+  },
+  "task": {
+    "description": "Implement PD-09 (Definition import/export) per the design in `src/design/definition.md` \u00a7PD-09.\n\nRead the design section first. Then read `src/definition/store.zig`, `src/definition/graph.zig`, `src/definition/snapshot.zig`, `src/api/routes/definitions.zig`, and `src/bpm.zig` to understand existing patterns before writing any code.\n\n---\n\n### What to implement\n\n**File: `src/definition/export_import.zig`** (new file)\n\nImplement the `ExportImportStore` module as specified in the design. Key requirements:\n\n1. **`EXPORT_SCHEMA_VERSION` constant**: `pub const EXPORT_SCHEMA_VERSION: []const u8 = \"bpm/definition/v1\";`\n\n2. **`ExportDocument` struct** with 7 fields:\n   - `bpm_export_schema_version: []const u8`\n   - `id: graph_mod.Uuid`\n   - `name: []const u8`\n   - `version: []const u8`\n   - `description: []const u8`\n   - `graph: graph_mod.DefinitionGraph`\n   - `exported_at: []const u8` (ISO8601 timestamp as string)\n\n3. **`ExportImportError` error set** with 6 values:\n   `DefinitionNotFound`, `NameVersionConflict`, `UnknownSchemaVersion`, `InvalidGraph`, `PoolExhausted`, `DatabaseError`.\n\n4. **`ExportImportStore` struct** with `pool: *db.Pool` field and two methods:\n\n   **`exportDefinition(allocator, definition_id) ExportImportError!ExportDocument`**\n   - Acquires a pool connection\n   - SELECTs all fields from `process_definitions` WHERE `id = $1`\n   - Returns `DefinitionNotFound` if no row\n   - Deserialises `graph` JSONB into `DefinitionGraph` (same pattern as `snapshot.zig`)\n   - Returns `ExportDocument` with `bpm_export_schema_version = EXPORT_SCHEMA_VERSION` and `exported_at` set to current UTC time as ISO8601 string\n   - Works for definitions in ANY status (DRAFT, ACTIVE, DEPRECATED, ARCHIVED)\n   - SECURITY: `definition_id` bound as `$1` \u2014 NO SQL string interpolation\n\n   **`importDefinition(allocator, doc) ExportImportError!store_mod.Definition`**\n   - Step 1: Validate `doc.bpm_export_schema_version == EXPORT_SCHEMA_VERSION`. Return `UnknownSchemaVersion` if mismatch.\n   - Step 2: Check name+version uniqueness: `SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = $2`. Return `NameVersionConflict` if count > 0.\n   - Step 3: Re-validate graph: call `graph_mod.validateGraph(allocator, doc.graph)`, `graph_mod.validateNodeAttributes(allocator, doc.graph)`, `graph_mod.validateEdgeConditions(allocator, doc.graph)` in sequence. Return `InvalidGraph` if any call returns violations (result.violations.len > 0) or an error.\n   - Step 4: Create the definition: call `Store.create(allocator, CreateParams{ .name = doc.name, .version = doc.version, .description = doc.description, .graph = doc.graph })` using the existing store. The store always creates with `status = DRAFT`. The target platform generates a new UUID; the `doc.id` field is informational only and NOT passed to `Store.create()`.\n   - Return the created `Definition` from step 4.\n   - SECURITY: All values bound as pg parameters; NO SQL string interpolation anywhere.\n\n5. Use `pg.zig` parameterised queries. Follow the exact same patterns as `src/definition/store.zig` and `src/definition/snapshot.zig` for:\n   - Pool connection acquisition and release\n   - JSONB serialisation/deserialisation of `DefinitionGraph`\n   - UUID parsing\n   - Allocator usage and memory ownership\n\n6. All allocating functions take `std.mem.Allocator` as first parameter.\n\n**File: `src/api/routes/definitions.zig`** (modify existing)\n\nAdd two new handler functions at the end of the file:\n\n```zig\n/// GET /api/v1/definitions/:id/export\n///\n/// Exports the definition as a self-contained JSON document.\n/// Success: HTTP 200 + JSON ExportDocument.\n/// Not found: HTTP 404 + JSON error body.\n/// Invalid id: HTTP 422 + JSON error body.\n/// Pool exhausted: HTTP 503 + JSON error body.\n/// Server error: HTTP 500 + JSON error body.\npub fn handleExport(\n    allocator: std.mem.Allocator,\n    store: *export_import.ExportImportStore,\n    definition_id_str: []const u8,\n) !HandlerResult;\n\n/// POST /api/v1/definitions/import\n///\n/// Imports a definition from a previously exported JSON document.\n/// Success: HTTP 201 + JSON Definition body (same format as PD-01 create response).\n/// Unknown schema version: HTTP 422 + {\"error\": \"unknown_schema_version\"}.\n/// Name+version conflict: HTTP 409 + {\"error\": \"name_version_conflict\"}.\n/// Invalid graph (including CEL): HTTP 422 + {\"error\": \"invalid_graph\", \"detail\": <violations>}.\n/// Pool exhausted: HTTP 503 + JSON error body.\n/// Server error: HTTP 500 + JSON error body.\npub fn handleImport(\n    allocator: std.mem.Allocator,\n    store: *export_import.ExportImportStore,\n    body: []const u8,\n) !HandlerResult;\n```\n\nAdd the import at the top of the file:\n```zig\nconst export_import = @import(\"../../definition/export_import.zig\");\n```\n\n**File: `src/bpm.zig`** (modify existing)\n\nAdd:\n```zig\npub const export_import = @import(\"definition/export_import.zig\"); // PD-09\n```\n\n---\n\n### Implementation notes\n\n- For the `Store.create()` call in `importDefinition()`, read `store.zig` carefully to understand the exact `CreateParams` type and how to call it. Pass `allocator` as the first argument.\n- For `exported_at` in `ExportDocument`, generate a UTC ISO8601 string. Use `std.time.timestamp()` and format it as `\"YYYY-MM-DDTHH:MM:SSZ\"`. If that is complex, a static `\"2026-05-21T00:00:00Z\"` placeholder is acceptable for now \u2014 mark with a `// TODO: real timestamp` comment.\n- The `importDefinition` Step 2 uniqueness check must use parameterised SQL. The query is: `SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = $2`\n- Memory management: free `ValidationResult.violations` after checking them in step 3 (see `validateGraph` memory contract in `graph.zig`).\n\n---\n\n### Validation\n\nRun:\n```\nzig build\nzig build test\n```\nBoth must exit 0. Fix any compile errors before completing.\n\n---\n\n### Security self-review\n\n- [ ] No SQL string interpolation of user data (all values via `$1`, `$2`, etc.)\n- [ ] `definition_id`, `name`, `version` are treated as opaque bytes \u2014 no format-string use\n- [ ] No secrets in source\n- [ ] `bpm_export_schema_version` is compared with `std.mem.eql` \u2014 not interpolated into SQL",
+    "acceptance_criteria": [
+      "src/definition/export_import.zig exists and compiles",
+      "ExportImportStore.exportDefinition() reads all definition fields and returns ExportDocument with bpm_export_schema_version",
+      "ExportImportStore.importDefinition() enforces 4-step algorithm: schema check, name+version uniqueness check, graph re-validation (including CEL), Store.create()",
+      "importDefinition() returns NameVersionConflict when name+version already exists",
+      "importDefinition() returns InvalidGraph when validateEdgeConditions() finds violations",
+      "importDefinition() returns UnknownSchemaVersion when bpm_export_schema_version does not match",
+      "handleExport and handleImport added to src/api/routes/definitions.zig",
+      "src/bpm.zig exports pub const export_import",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "No SQL string interpolation of user data anywhere in export_import.zig"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented PD-09 Definition import/export: created src/definition/export_import.zig with ExportImportStore (exportDefinition + importDefinition), added handleExport and handleImport to src/api/routes/definitions.zig, and added pub const export_import to src/bpm.zig.",
+    "artifacts_out": [
+      "src/definition/export_import.zig",
+      "src/api/routes/definitions.zig",
+      "src/bpm.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-21T08:59:45.890111Z",
+  "completed_at": "2026-05-21T09:02:18.513534Z"
+}

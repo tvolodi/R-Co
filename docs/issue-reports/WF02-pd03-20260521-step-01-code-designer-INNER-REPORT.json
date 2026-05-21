@@ -1,0 +1,23 @@
+{
+  "report_id": "WF02-pd03-20260521-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-pd03-20260521",
+  "step": "01",
+  "created_at": "2026-05-21T23:30:00Z",
+  "summary": "Extended src/design/definition.md with a PD-03 section covering version management (Store.activate). The extension adds: (1) the full Store.activate public function signature with parameter types, return type, and all error variants; (2) the extended DefinitionError set with two new variants (AlreadyActive, NotDraft) plus their HTTP mappings; (3) a four-step SQL transaction outline with SELECT…FOR UPDATE locking on both the target row and the prior ACTIVE row, with ordering rationale for the DEPRECATED-before-ACTIVE swap; (4) an updated state transition diagram and summary table showing the DRAFT→ACTIVE side-effect of prior ACTIVE→DEPRECATED; (5) a concurrency safety analysis covering both same-id and same-name concurrent activation races; and (6) a traceability table mapping all seven PD-03 acceptance criteria to specific design elements. The existing PD-01/PD-02 content was not modified. No implementation code was written.",
+  "files_created": [
+    "docs/issue-reports/WF02-pd03-20260521-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "src/design/definition.md",
+    "handoffs/WF02-pd03-20260521/step-01-code-designer.json"
+  ],
+  "tests_run": [],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) to implement Store.activate in src/definition/store.zig per the PD-03 section of the design artefact.",
+    "BACKEND-DEV must also add AlreadyActive and NotDraft to the DefinitionError union in store.zig.",
+    "A separate CODE-DESIGNER handoff is still needed for PD-04 (full lifecycle transition rule table) before BACKEND-DEV can implement the remaining status transitions."
+  ],
+  "blockers": []
+}

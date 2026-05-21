@@ -40,8 +40,8 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
-            std.debug.print("BPM_TEST_DB_URL is not set\n", .{});
-            return error.MissingTestDbUrl;
+            std.debug.print("BPM_TEST_DB_URL is not set — skipping integration test\n", .{});
+            return error.SkipZigTest;
         },
         else => return err,
     };

@@ -1,0 +1,80 @@
+{
+  "release_id": "pd03-2026-05-21",
+  "run_id": "WF02-pd03-20260521",
+  "stage": 2,
+  "stage_name": "Stage 2 — Process Definition",
+  "decided_at": "2026-05-21T23:45:00Z",
+  "overall_status": "PASS",
+  "verdict": "APPROVED",
+  "requirements_released": ["PD-03"],
+  "build_checks": {
+    "zig_build": {
+      "command": "zig build",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    "zig_build_test": {
+      "command": "zig build test",
+      "exit_code": 0,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 38,
+      "result": "PASS",
+      "note": "38 skipped tests are integration stubs in db_test.zig (13) and event_store_test.zig (25) that require BPM_TEST_DB_URL at stub-skip time — pre-existing, not regressions."
+    },
+    "zig_build_test_integration": {
+      "command": "zig build test-integration (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test)",
+      "exit_code": 0,
+      "passed": 41,
+      "failed": 0,
+      "skipped": 0,
+      "result": "PASS",
+      "note": "41/41 pass: 7 new PD-03 tests + 34 prior regression tests (Stage 1 DB/ES + PD-01/PD-02 definition tests)."
+    }
+  },
+  "test_coverage": {
+    "PD-03": {
+      "status": "PASS",
+      "priority": "MUST",
+      "passing_tests": [
+        "TC-PD-03-01",
+        "TC-PD-03-02",
+        "TC-PD-03-03",
+        "TC-PD-03-04",
+        "TC-PD-03-05",
+        "TC-PD-03-06",
+        "TC-PD-03-06b"
+      ],
+      "criteria_verified": [
+        "Activating V2 when V1 is ACTIVE sets V1 to DEPRECATED atomically (TC-PD-03-01)",
+        "list(status=ACTIVE) returns exactly one version per name after V2 activation (TC-PD-03-02)",
+        "First activation of a name succeeds with status ACTIVE and no side-effects (TC-PD-03-03)",
+        "list filtered by status=ACTIVE returns at most one version per name (TC-PD-03-04)",
+        "Activating an already-ACTIVE definition is a no-op that returns success (TC-PD-03-05)",
+        "Activating a DEPRECATED definition returns NotDraft (TC-PD-03-06)",
+        "Activating an ARCHIVED definition returns NotDraft (TC-PD-03-06b)"
+      ],
+      "source": "tests/reports/WF02-pd03-20260521-run-01.md §4.1"
+    }
+  },
+  "gate_checks": {
+    "tc_pd_03_01_through_06_passed": {
+      "result": "PASS",
+      "detail": "All 7 PD-03 integration tests passed (TC-PD-03-01 through TC-PD-03-06b, covering all 6 required test cases plus edge case TC-PD-03-06b)"
+    },
+    "pd03_status_validated": {
+      "result": "PASS",
+      "detail": "PD-03 status in requirement_status.json is VALIDATED — pre-condition met"
+    },
+    "zig_build_exit_0": {
+      "result": "PASS",
+      "detail": "zig build exits 0 — verified by direct execution at 2026-05-21T23:45:00Z"
+    }
+  },
+  "nfr_benchmarks": {
+    "note": "NFR-01/02/04 benchmarks deferred: zig build bench not yet implemented. Not blocking for Stage 2 PD-03 release gate.",
+    "blocking": false
+  },
+  "blocking_issues": [],
+  "next_action": "Route to DOC-UPDATER to set PD-03 status to RELEASED in requirement_status.json"
+}

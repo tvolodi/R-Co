@@ -133,7 +133,68 @@ When the Orchestrator creates a handoff, it MUST follow this sequence:
 
 ---
 
-## 7. Stage Gate Enforcement
+## 7. Workflow Estimation
+
+When the Orchestrator creates the **first handoff of a WF-02 or WF-04 run**, it MUST also create a `handoffs/<run_id>/estimation.json` file using the rules at `docs/metrics/estimation_rules.json`.
+
+### 7.1 Estimation procedure
+
+```python
+import json, datetime, os
+
+run_id          = "<RUN-ID>"
+requirement_ids = ["<REQ-ID>", "..."]
+difficulty      = 3   # choose 1–5 per docs/agents/metrics.md §2
+rationale       = "<one sentence explaining the difficulty choice>"
+steps           = ["code-designer", "backend-dev", "test-designer",
+                   "test-runner", "release-validator", "doc-updater"]
+
+with open("docs/metrics/estimation_rules.json") as f:
+    rules = json.load(f)
+
+idx = difficulty - 1
+step_mins = rules["step_estimates_minutes"]
+estimated = {s: step_mins[s][idx] for s in steps if s in step_mins}
+estimated["total"] = sum(v for k, v in estimated.items() if k != "total")
+
+estimation = {
+    "run_id": run_id,
+    "created_at": datetime.datetime.utcnow().isoformat() + "Z",
+    "rules_version": rules["version"],
+    "requirement_ids": requirement_ids,
+    "difficulty": difficulty,
+    "difficulty_rationale": rationale,
+    "steps": steps,
+    "estimated_minutes": estimated
+}
+
+os.makedirs(f"handoffs/{run_id}", exist_ok=True)
+with open(f"handoffs/{run_id}/estimation.json", "w") as f:
+    json.dump(estimation, f, indent=2)
+```
+
+### 7.2 Difficulty selection guidelines
+
+| Level | Choose when |
+|---|---|
+| 1 | Config/doc change, single field, no schema change |
+| 2 | Single endpoint or function, no schema change |
+| 3 | New feature: schema + API + tests (most PD-xx, DB-xx) |
+| 4 | Multiple modules, complex logic, cross-module integration deps |
+| 5 | Cross-cutting, breaking changes, novel algorithms |
+
+If a run covers multiple requirements, sum the estimates — assign one difficulty to the bundle (the maximum of individual difficulties).
+
+### 7.3 Log the estimation
+
+Append to `handoffs/orchestrator.log`:
+```
+<ISO8601> | ESTIMATE | <RUN-ID> | D<difficulty> | ~<total>min | <REQ-IDs>
+```
+
+---
+
+## 8. Stage Gate Enforcement
 
 Before the Orchestrator routes any WF-02 implementation handoffs for Stage N+1, it MUST verify:
 
@@ -145,7 +206,7 @@ If any check fails, the Orchestrator blocks the Stage N+1 launch and reports the
 
 ---
 
-## 8. Orchestrator Log
+## 9. Orchestrator Log
 
 The Orchestrator appends a one-line entry to `handoffs/orchestrator.log` for every action taken:
 

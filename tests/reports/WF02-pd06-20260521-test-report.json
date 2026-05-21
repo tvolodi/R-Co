@@ -1,0 +1,206 @@
+{
+  "run_id": "WF02-pd06-20260521-run-01",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-22T00:30:00Z",
+  "requirement_ids": ["PD-06"],
+  "handoff_id": "66100004-2605-4000-8006-202605210503",
+  "zig_build_exit_code": 0,
+  "zig_build_test_exit_code": 0,
+  "summary": {
+    "total": 19,
+    "passed": 19,
+    "failed": 0,
+    "skipped": 0,
+    "verdict": "PASS"
+  },
+  "layers": {
+    "unit": {
+      "command": "zig build test",
+      "exit_code": 0,
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "total": 19,
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "test_cases": [
+    {
+      "test_id": "TC-PD-06-01",
+      "name": "EXCLUSIVE_GATEWAY with valid CEL conditions on all outgoing edges -> valid",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-02",
+      "name": "EXCLUSIVE_GATEWAY with one default and one conditioned edge -> valid",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-03",
+      "name": "edge from START with condition -> EDGE_CONDITION_NOT_ALLOWED",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-04",
+      "name": "edge from HUMAN_TASK with condition -> EDGE_CONDITION_NOT_ALLOWED",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-05",
+      "name": "edge from START with is_default=true -> EDGE_DEFAULT_NOT_ALLOWED",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-06",
+      "name": "edge from SERVICE_TASK with is_default=true -> EDGE_DEFAULT_NOT_ALLOWED",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-07",
+      "name": "non-default edge from EXCLUSIVE_GATEWAY with null condition -> EDGE_MISSING_CONDITION",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-08",
+      "name": "non-default edge from EXCLUSIVE_GATEWAY with empty string condition -> EDGE_MISSING_CONDITION",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-09",
+      "name": "default edge with non-empty condition -> EDGE_DEFAULT_HAS_CONDITION",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-10",
+      "name": "two default edges from same EXCLUSIVE_GATEWAY -> EDGE_MULTIPLE_DEFAULTS",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-11",
+      "name": "CEL expression with unbalanced parens -> EDGE_INVALID_CEL",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-12",
+      "name": "CEL expression with unbalanced brackets -> EDGE_INVALID_CEL",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-13",
+      "name": "CEL expression with unmatched double-quote -> EDGE_INVALID_CEL",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-14",
+      "name": "CEL expression with unmatched single-quote -> EDGE_INVALID_CEL",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-15",
+      "name": "CEL with balanced parens and quoted strings -> valid",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-16",
+      "name": "graph with multiple PD-06 violations -> all violations collected",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-17",
+      "name": "edge with dangling source and condition -> EDGE_CONDITION_NOT_ALLOWED",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-18",
+      "name": "EG non-default edge with whitespace-only condition -> EDGE_INVALID_CEL",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    },
+    {
+      "test_id": "TC-PD-06-19",
+      "name": "graph with no EXCLUSIVE_GATEWAY and no conditions -> valid",
+      "requirement_id": "PD-06",
+      "layer": "unit",
+      "status": "PASS",
+      "file": "tests/unit/graph_edge_conditions_test.zig",
+      "failure_message": null
+    }
+  ],
+  "regressions": {
+    "graph_test.zig": "PASS — zig build test exit 0; no regressions detected",
+    "graph_node_attributes_test.zig": "PASS — zig build test exit 0; no regressions detected"
+  },
+  "failed_tests": [],
+  "issues": []
+}

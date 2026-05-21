@@ -1,0 +1,60 @@
+{
+  "handoff_id": "99100003-2605-4000-8009-202605210802",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-pd09-20260521",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-21T16:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 \u2014 Process Definition",
+    "requirement_ids": [
+      "PD-09"
+    ],
+    "related_handoff_ids": [
+      "99100001-2605-4000-8009-202605210800",
+      "99100002-2605-4000-8009-202605210801"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/design/definition.md",
+      "src/definition/export_import.zig",
+      "src/definition/graph.zig",
+      "tests/specs/PD-08.md",
+      "tests/unit/test_snapshot.zig",
+      "tests/integration/test_snapshot_integration.zig"
+    ]
+  },
+  "task": {
+    "description": "Write a test specification for PD-09 (Definition import/export) at `tests/specs/PD-09.md`.\n\nRead `docs/BPM_Platform_Functional_Requirements.md` \u00a7PD-09, `src/design/definition.md` \u00a7PD-09, and `src/definition/export_import.zig` before writing. Also read `tests/specs/PD-08.md` and `tests/unit/test_snapshot.zig` to understand the spec format and test patterns used for recent PD-xx requirements.\n\nAlso write unit tests in `tests/unit/test_export_import.zig` and integration tests in `tests/integration/test_export_import_integration.zig`.\n\n---\n\n### Test cases MUST cover all PD-09 acceptance criteria:\n\n**TC-PD-09-01**: Export happy path \u2014 any status\n- GIVEN a definition exists with status ACTIVE (and separately: DRAFT, DEPRECATED)\n- WHEN `ExportImportStore.exportDefinition(definition_id)` is called\n- THEN the returned `ExportDocument` has `bpm_export_schema_version = \"bpm/definition/v1\"`\n- AND all fields (name, version, description, graph) match the stored definition\n- AND the graph includes all nodes, edges, conditions, and is_default flags\n\n**TC-PD-09-02**: Export unknown id returns DefinitionNotFound\n- GIVEN a UUID that does not exist in process_definitions\n- WHEN `exportDefinition(unknown_id)` is called\n- THEN `ExportImportError.DefinitionNotFound` is returned\n\n**TC-PD-09-03**: Import happy path \u2014 creates with DRAFT status\n- GIVEN a valid ExportDocument with a name+version not present on the target\n- WHEN `ExportImportStore.importDefinition(doc)` is called\n- THEN the returned `Definition` has `status = DRAFT`\n- AND name, version, description, and graph match the document\n- AND a new UUID is assigned (different from doc.id)\n- AND the row is present in `process_definitions`\n\n**TC-PD-09-04**: Import with name+version conflict returns NameVersionConflict\n- GIVEN a definition with the same name+version already exists on the target\n- WHEN `importDefinition(doc)` is called with that name+version\n- THEN `ExportImportError.NameVersionConflict` is returned\n- AND no new row is inserted\n\n**TC-PD-09-05**: Import with invalid CEL returns InvalidGraph\n- GIVEN an ExportDocument whose graph contains an edge with a syntactically invalid CEL condition (e.g. \"((unclosed\")\n- WHEN `importDefinition(doc)` is called\n- THEN `ExportImportError.InvalidGraph` is returned\n- AND no new row is inserted\n\n**TC-PD-09-06**: Import with unknown schema version returns UnknownSchemaVersion\n- GIVEN an ExportDocument with `bpm_export_schema_version = \"bpm/definition/v99\"`\n- WHEN `importDefinition(doc)` is called\n- THEN `ExportImportError.UnknownSchemaVersion` is returned\n\n**TC-PD-09-07**: Export-import round-trip preserves full graph\n- GIVEN a definition with nodes of various types (START, END, HUMAN_TASK, EXCLUSIVE_GATEWAY) and edges with CEL conditions and is_default flags\n- WHEN the definition is exported and then imported to the same target\n- (For this test: export first, then import with a different name to avoid conflict)\n- THEN the imported definition's graph has identical node types, attributes, edge conditions, and is_default values as the original\n\n---\n\n### Unit tests (`tests/unit/test_export_import.zig`)\n\nFor the unit test file, test pure functions that do not require a DB:\n- Test that `EXPORT_SCHEMA_VERSION` equals `\"bpm/definition/v1\"`\n- Test `importDefinition` step 1 (schema version check) in isolation if the function is testable without a pool (use a mock or test that the check logic is correct)\n- Test any pure helper functions in `export_import.zig`\n\nIf all logic requires a real DB, add `error.SkipZigTest` with a comment explaining the infrastructure dependency (same pattern as `test_snapshot.zig`).\n\n### Integration tests (`tests/integration/test_export_import_integration.zig`)\n\nWrite full integration tests covering all 7 test cases. Register them in `tests/integration/main_test.zig` following the existing pattern. Each test must:\n- Set up: create a test definition in `process_definitions` (or use the test helpers from existing integration tests)\n- Exercise: call `ExportImportStore.exportDefinition()` or `importDefinition()`\n- Assert: check the returned value and/or query the DB directly\n- Tear down: clean up inserted rows\n\nAll integration tests must skip gracefully when `BPM_TEST_DB_URL` is not set (use `error.SkipZigTest` pattern from existing integration tests).\n\n---\n\n### Spec format\n\nUse the same Markdown structure as `tests/specs/PD-08.md`: sections for Purpose, Scope, Test Cases (table + detail blocks), Coverage Matrix, and Edge Cases.\n\nEnsure `zig build test` exits 0 after adding the new test files.",
+    "acceptance_criteria": [
+      "tests/specs/PD-09.md exists with all 7 test cases specified",
+      "tests/unit/test_export_import.zig exists",
+      "tests/integration/test_export_import_integration.zig exists covering TC-PD-09-01 through TC-PD-09-07",
+      "tests/integration/main_test.zig updated to include export_import integration tests",
+      "Coverage matrix maps each PD-09 AC to at least one test case",
+      "Spec format matches PD-08.md style",
+      "zig build test exits 0"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test spec and test files for PD-09 (Definition import/export): created tests/specs/PD-09.md with all 7 test cases (TC-PD-09-const plus TC-PD-09-01 through TC-PD-09-07), unit test stubs in tests/unit/test_export_import.zig (includes one live pure-const test for EXPORT_SCHEMA_VERSION), and full integration tests in tests/integration/test_export_import_integration.zig covering all 7 acceptance criteria. Updated src/main.zig, build.zig, and tests/integration/main_test.zig. zig build test exits 0.",
+    "artifacts_out": [
+      "tests/specs/PD-09.md",
+      "tests/unit/test_export_import.zig",
+      "tests/integration/test_export_import_integration.zig",
+      "tests/integration/main_test.zig",
+      "src/main.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-21T09:08:42.196042Z",
+  "completed_at": "2026-05-21T09:12:32.361292Z"
+}

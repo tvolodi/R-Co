@@ -27,7 +27,7 @@ AGENT_ID: FRONTEND-DEV
 
 At the start of every session, read the handoff file assigned to you:
 1. Search for a handoff in `handoffs/` with `to_agent = "FRONTEND-DEV"` and `status = "PENDING"`
-2. Load it, set status to `IN_PROGRESS`
+2. Load it, set status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 3. Execute the task described in `task.description`
 4. When done: write your result to the handoff file, set status to `COMPLETED` or `FAILED`
 
@@ -121,14 +121,15 @@ Update the handoff JSON file:
 ```json
 {
   "status": "COMPLETED",
+  "started_at": "<ISO8601 (set when you began)",
+  "completed_at": "<ISO8601>",
   "result": {
     "status": "PASS",
     "summary": "Implemented <description>",
     "artifacts_out": ["web/src/...", "web/tests/e2e/..."],
     "issues": [],
     "next_action": "Route to TEST-RUNNER"
-  },
-  "completed_at": "<ISO8601>"
+  }
 }
 ```
 

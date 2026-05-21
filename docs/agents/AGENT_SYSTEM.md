@@ -93,6 +93,7 @@ handoffs/WF03-EE05-fix/step-02-test-runner.json
   "from_agent": "<AGENT_ID>",
   "to_agent": "<AGENT_ID>",
   "created_at": "<ISO8601-UTC>",
+  "started_at": "<ISO8601-UTC or null>",
   "status": "<PENDING|IN_PROGRESS|COMPLETED|FAILED|ESCALATED>",
   "priority": "<HIGH|NORMAL|LOW>",
   "context": {
@@ -124,6 +125,11 @@ handoffs/WF03-EE05-fix/step-02-test-runner.json
   "max_rework": 3,
   "completed_at": "<ISO8601-UTC or null>"
 }
+```
+
+**`started_at` convention:** The receiving agent MUST set `started_at` to the current UTC timestamp when it transitions the handoff to `IN_PROGRESS`. This enables the metrics system to separate queue time (`started_at − created_at`) from work time (`completed_at − started_at`).
+
+```
 ```
 
 ### 4.4 Rework policy
@@ -213,6 +219,9 @@ DRAFT → DESIGNED → IMPLEMENTED → TESTED → RELEASED
 | Requirement status | `docs/status/` | `DOC-UPDATER`, `RELEASE-VALIDATOR` |
 | Agent workflows | `docs/agents/workflows/` | `ORCH` reads only |
 | Agent function index | `docs/agents/FUNCTIONS.md` | All agents read |
+| Estimation rules (living) | `docs/metrics/estimation_rules.json` | `ORCH` (read), `DOC-UPDATER` (update) |
+| Per-run estimation | `handoffs/<run_id>/estimation.json` | `ORCH` |
+| Per-run retrospectives | `docs/metrics/retrospectives/` | `DOC-UPDATER` |
 | Individual function specs | `docs/agents/functions/fn-*.md` | Agents load per-function |
 
 ---

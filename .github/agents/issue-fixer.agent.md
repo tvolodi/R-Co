@@ -25,7 +25,7 @@ You operate inside **WF-03 Steps 1–2**. You MUST NOT skip the diagnosis step a
 1. Find your handoff:
    - `to_agent = "ISSUE-FIXER"` and `status = "PENDING"` in `handoffs/`
 2. Read the failure report at the path in `context.artifacts_in`
-3. Set handoff status to `IN_PROGRESS`
+3. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
 ## Step 1 — Diagnose (WF-03 Step 1)
 

@@ -1,0 +1,110 @@
+{
+  "release_id": "pd01-2026-05-21",
+  "run_id": "WF02-pd01-20260521",
+  "stage": 2,
+  "stage_name": "Stage 2 — Process Definition",
+  "decided_at": "2026-05-21T22:10:00Z",
+  "overall_status": "PASS",
+  "verdict": "APPROVED",
+  "requirements_released": ["PD-01", "PD-02"],
+  "build_checks": {
+    "zig_build_test": {
+      "command": "zig build test",
+      "exit_code": 0,
+      "passed": 12,
+      "failed": 0,
+      "skipped": 38,
+      "result": "PASS",
+      "note": "38 skipped tests are integration stubs in db_test.zig (13) and event_store_test.zig (25) that require BPM_TEST_DB_URL at stub-skip time — pre-existing, not regressions."
+    },
+    "zig_build_test_integration": {
+      "command": "zig build test-integration (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test)",
+      "exit_code": 0,
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "result": "PASS",
+      "note": "34/34 pass: 15 new PD tests + 19 Stage 1 regression tests (DB-01..DB-04, ES-01..ES-08)."
+    }
+  },
+  "test_coverage": {
+    "PD-01": {
+      "status": "PASS",
+      "priority": "MUST",
+      "passing_tests": ["TC-PD-01-01", "TC-PD-01-02", "TC-PD-01-03", "TC-PD-01-04"],
+      "criteria_verified": [
+        "UUID assigned on creation, status = DRAFT (TC-PD-01-01)",
+        "Duplicate name+version rejected (TC-PD-01-02)",
+        "Invalid graph (no START node) rejected with GraphValidationFailed + MISSING_START_NODE (TC-PD-01-03)",
+        "description field is optional (TC-PD-01-04)"
+      ],
+      "source": "tests/reports/WF02-pd01-20260521-run-01.md §4.1"
+    },
+    "PD-02": {
+      "status": "PASS",
+      "priority": "MUST",
+      "passing_tests": [
+        "TC-PD-02-01", "TC-PD-02-02", "TC-PD-02-03", "TC-PD-02-04",
+        "TC-PD-02-05", "TC-PD-02-06", "TC-PD-02-07", "TC-PD-02-08",
+        "TC-PD-02-09", "TC-PD-02-10", "TC-PD-02-11"
+      ],
+      "criteria_verified": [
+        "Valid graph passes validation (TC-PD-02-01)",
+        "Zero START nodes → MISSING_START_NODE (TC-PD-02-02)",
+        "Multiple START nodes → MULTIPLE_START_NODES (TC-PD-02-03)",
+        "No END nodes → MISSING_END_NODE (TC-PD-02-04)",
+        "Dangling edge → DANGLING_EDGE (TC-PD-02-05)",
+        "Isolated node → ISOLATED_NODE (TC-PD-02-06)",
+        "Duplicate node ID → DUPLICATE_NODE_ID (TC-PD-02-07)",
+        "Non-gateway cycle → CYCLE_WITHOUT_GATEWAY (TC-PD-02-08)",
+        "Cycle through EXCLUSIVE_GATEWAY is permitted (TC-PD-02-09)",
+        "501 nodes → NODE_LIMIT_EXCEEDED (TC-PD-02-10)",
+        "Multiple simultaneous violations all reported, not just first (TC-PD-02-11)"
+      ],
+      "source": "tests/reports/WF02-pd01-20260521-run-01.md §4.2"
+    }
+  },
+  "nfr_checks": {
+    "NFR-01": {
+      "description": "API response latency p99 ≤ 200ms (read), ≤ 500ms (write)",
+      "result": "DEFERRED",
+      "note": "zig build bench reports 'Benchmark suite — not yet implemented' (exit 0). API layer (Stage 4) not yet implemented; latency benchmarks are not measurable at Stage 2. No blocking issue — NFR-01 will be validated at Stage 4 release gate."
+    },
+    "NFR-02": {
+      "description": "Event append throughput ≥ 1,000/sec sustained",
+      "result": "DEFERRED",
+      "note": "Benchmark suite not yet implemented (exit 0). NFR-02 pertains to event_store (Stage 1) and will be validated at Stage 4 release gate. No new throughput-sensitive code introduced in PD-01/PD-02."
+    },
+    "NFR-04": {
+      "description": "10,000-event replay ≤ 5 seconds",
+      "result": "DEFERRED",
+      "note": "Benchmark suite not yet implemented (exit 0). NFR-04 pertains to EE-11 (Stage 3). Not applicable to Stage 2 process definition scope."
+    },
+    "NFR-07": {
+      "description": "Crash safety — every write fully committed or fully rolled back",
+      "result": "PASS",
+      "evidence": "definition/store.zig createDefinition uses a single parameterized INSERT...RETURNING inside a pool-acquired connection. ON CONFLICT DO NOTHING ensures atomicity on duplicate detection. Consistent with DB-03 (transactional integrity) verified at Stage 1."
+    }
+  },
+  "security_checks": {
+    "sql_parameter_safety": {
+      "result": "PASS",
+      "files_checked": ["src/definition/store.zig"],
+      "evidence": "INSERT uses $1=name, $2=version, $3=description, $4=graph, $5=created_by. SELECT queries use $1=id and $1=name/$2=version. No user data appears in any SQL string literal. Comment at store.zig:171 explicitly documents the security invariant."
+    }
+  },
+  "regression_check": {
+    "stage1_tests": {
+      "result": "PASS",
+      "note": "All 19 Stage 1 integration tests (DB-01..DB-04, ES-01..ES-08) continued to pass. No regressions introduced by Stage 2 implementation."
+    }
+  },
+  "blockers": [],
+  "issues": [
+    {
+      "severity": "INFO",
+      "description": "NFR benchmarks (NFR-01, NFR-02, NFR-04) are deferred: zig build bench reports 'not yet implemented'. These NFRs are scoped to API layer (Stage 4) and execution engine (Stage 3) — not to Stage 2 process definition. Benchmark implementation required before Stage 4 release gate.",
+      "blocking": false
+    }
+  ]
+}

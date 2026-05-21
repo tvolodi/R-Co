@@ -27,7 +27,7 @@ Calling `fn:complete-handoff` without first calling `fn:register-inner-report` i
    - `to_agent = "TEST-DESIGNER"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/guides/test_developer_guide.md` (full)
 3. Read the design artefact and requirement IDs listed in `context.artifacts_in`
-4. Set handoff status to `IN_PROGRESS`
+4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
 If no PENDING handoff exists: report to user and wait.
 

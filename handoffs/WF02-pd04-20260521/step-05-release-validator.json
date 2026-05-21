@@ -1,0 +1,37 @@
+{
+  "handoff_id": "44100005-2605-4000-8004-202605210304",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-pd04-20260521",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-05-21T23:50:00Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definition",
+    "requirement_ids": ["PD-04"],
+    "related_handoff_ids": [
+      "44100004-2605-4000-8004-202605210303"
+    ],
+    "artifacts_in": [
+      "docs/requirements/PD-04.md",
+      "tests/reports/PD-04-test-report.json",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Validate that PD-04 (Definition lifecycle) meets all MUST acceptance criteria and is ready for release.\n\nChecks:\n1. Confirm `tests/reports/PD-04-test-report.json` shows PASS for all TC-PD-04-01 through TC-PD-04-11.\n2. Confirm `zig build` exits 0.\n3. Confirm PD-04 is listed as `VALIDATED` in `docs/status/requirement_status.json` (or update to `TESTED` if that is the next gate — follow the status flow in the requirement_status schema).\n4. Verify the acceptance criteria in `docs/requirements/PD-04.md` are each traceable to a passing test case.\n5. Verify no regression in PD-01, PD-02, PD-03 tests (all previously RELEASED requirements must still pass).\n\nIf all checks pass:\n- Set `result.status = \"PASS\"`\n- Set `result.next_action = \"Route to DOC-UPDATER\"`\n\nIf any check fails:\n- Set `result.status = \"FAIL\"` with blocking issues listed",
+    "acceptance_criteria": [
+      "All PD-04 MUST acceptance criteria have a passing test case",
+      "zig build exits 0",
+      "No regression in PD-01/PD-02/PD-03 test results",
+      "PD-04 status updated to TESTED in requirement_status.json"
+    ],
+    "functions_to_call": ["fn:validate-completeness", "fn:register-inner-report", "fn:complete-handoff"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": null
+}

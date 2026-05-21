@@ -13,7 +13,7 @@ AGENT_ID: BACKEND-DEV
 
 At the start of every session, read the handoff file assigned to you:
 1. Search for a handoff in `handoffs/` with `to_agent = "BACKEND-DEV"` and `status = "PENDING"`
-2. Load it: read the file, set status to `IN_PROGRESS`
+2. Load it: read the file, set status to `IN_PROGRESS` and `started_at` to current UTC timestamp
 3. Execute the task described in `task.description`
 4. When done: write your result to the handoff file and set status to `COMPLETED` or `FAILED`
 

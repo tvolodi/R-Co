@@ -171,6 +171,7 @@ handoff = {
     "result": None,
     "rework_count": 0,
     "max_rework": 3,
+    "started_at": None,
     "completed_at": None
 }
 
@@ -193,6 +194,43 @@ with open("handoffs/orchestrator.log", "a") as f:
     f.write(f"{handoff['created_at']} | ROUTE | {run_id} | {handoff_id[:8]} | ORCH → {to_agent} | PENDING\n")
 
 print(f"Handoff created: {filename}\nID: {handoff_id}")
+```
+
+**Create the estimation file** (for WF-02 and WF-04 runs — do this once per run_id, alongside the first handoff):
+```python
+import json, datetime, os
+
+# Set these based on the requirements being implemented
+difficulty = 3   # 1=Trivial 2=Simple 3=Standard 4=Complex 5=VeryComplex
+rationale  = "<one sentence: why this difficulty level>"
+steps      = ["code-designer", "backend-dev", "test-designer",
+              "test-runner", "release-validator", "doc-updater"]
+
+with open("docs/metrics/estimation_rules.json") as f:
+    rules = json.load(f)
+
+idx = difficulty - 1
+step_mins = rules["step_estimates_minutes"]
+estimated = {s: step_mins[s][idx] for s in steps if s in step_mins}
+estimated["total"] = sum(v for k, v in estimated.items() if k != "total")
+
+estimation = {
+    "run_id": run_id,
+    "created_at": datetime.datetime.utcnow().isoformat() + "Z",
+    "rules_version": rules["version"],
+    "requirement_ids": [],   # fill with requirement IDs for this run
+    "difficulty": difficulty,
+    "difficulty_rationale": rationale,
+    "steps": steps,
+    "estimated_minutes": estimated
+}
+with open(f"handoffs/{run_id}/estimation.json", "w") as f:
+    json.dump(estimation, f, indent=2)
+
+with open("handoffs/orchestrator.log", "a") as f:
+    ts = datetime.datetime.utcnow().isoformat() + "Z"
+    req_str = ", ".join(estimation["requirement_ids"]) or "(none)"
+    f.write(f"{ts} | ESTIMATE | {run_id} | D{difficulty} | ~{estimated['total']}min | {req_str}\n")
 ```
 
 **Rework routing** (when a handoff comes back FAILED and `rework_count < max_rework`):
@@ -546,3 +584,20 @@ AGENT_ID: DOC-UPDATER
 ```
 
 Find your handoff. Update `CHANGELOG.md` and requirement status in `docs/status/requirement_status.json` per `task.description`. Use `fn:update-changelog` and `fn:update-requirement-status` as described in `docs/agents/FUNCTIONS.md`.
+
+### Retrospective (WF-02 and WF-04 runs only)
+
+After updating the changelog and requirement status, check whether this run has an `estimation.json`:
+```python
+import os
+run_id = "<current-run-id>"
+has_estimation = os.path.exists(f"handoffs/{run_id}/estimation.json")
+```
+
+If `has_estimation` is `True`, run the full retrospective procedure defined in `docs/agents/metrics.md §6`. In summary:
+1. Read `handoffs/<run_id>/estimation.json`
+2. Compute actual work time per step from `started_at` / `completed_at` fields in each step handoff
+3. Compare estimated vs actual, compute `variance_pct` per step and overall
+4. If `|variance_pct| > 25%` for a step across ≥2 consecutive runs at the same difficulty, adjust `docs/metrics/estimation_rules.json`
+5. Write `docs/metrics/retrospectives/<run_id>.json`
+6. Add `docs/metrics/retrospectives/<run_id>.json` to `artifacts_out` in this handoff's result

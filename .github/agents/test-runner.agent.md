@@ -27,7 +27,7 @@ You MUST NOT skip layers or mark a step PASS before running all required command
    - `to_agent = "TEST-RUNNER"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/guides/test_developer_guide.md` (full)
 3. Read `task.functions_to_call` in the handoff — these are the commands to run
-4. Set handoff status to `IN_PROGRESS`
+4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
 ## Test commands by layer
 
