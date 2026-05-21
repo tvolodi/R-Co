@@ -1,0 +1,52 @@
+{
+  "handoff_id": "a1b2c3d4-0001-4000-8000-202605200001",
+  "run_id": "WF01-full-req-20260520",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-ANALYST",
+  "created_at": "2026-05-20T00:00:00Z",
+  "status": "CANCELLED",
+  "cancelled_reason": "Strategy change: batch processing replaced by per-requirement pipeline. Each requirement now has its own WF01-<REQ-ID>-20260520 run.",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "All stages (1–6)",
+    "requirement_ids": [
+      "ES-01","ES-02","ES-03","ES-04","ES-05","ES-06","ES-07","ES-08",
+      "DB-01","DB-02","DB-03","DB-04",
+      "PD-01","PD-02","PD-03","PD-04","PD-05","PD-06","PD-07","PD-08","PD-09","PD-10",
+      "EE-01","EE-02","EE-03","EE-04","EE-05","EE-06","EE-07","EE-08","EE-09","EE-10","EE-11","EE-12",
+      "API-01","API-02","API-03","API-04","API-05","API-06","API-07","API-08","API-09","API-10","API-11","API-12",
+      "SCH-01","SCH-02","SCH-03","SCH-04","SCH-05","SCH-06","SCH-07",
+      "IDN-01","IDN-02","IDN-03","IDN-04",
+      "OBS-01","OBS-02","OBS-03","OBS-04","OBS-05","OBS-06",
+      "EXT-01","EXT-02","EXT-03","EXT-04","EXT-05"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "The requirements in docs/BPM_Platform_Functional_Requirements.md are in an incomplete DRAFT state. Each requirement has an ID, priority, and description, but NONE have explicit acceptance criteria. Your task is to develop every requirement into a full-fledged specification by adding:\n\n1. **Acceptance criteria** — at least one concrete, verifiable, testable statement per requirement. Use bullet form: `- GIVEN ... WHEN ... THEN ...` or `- The system SHALL return X when Y` style.\n2. **Cross-references** — add `See:` references to related requirement IDs where meaningful (especially for requirements that depend on or constrain each other).\n3. **Edge cases / constraints** — call out any boundary conditions implied by the description that a developer or tester could miss.\n\nWork through each stage in order (Stage 1 → Stage 6). For each requirement:\n- Keep the existing ID, priority, and description text unchanged (they are authoritative).\n- Add an `**Acceptance Criteria:**` subsection directly below the description.\n- Add a `**See:**` line for cross-references where applicable.\n\nUpdate docs/BPM_Platform_Functional_Requirements.md in place.\n\nPriority: start with all MUST requirements across all stages, then SHOULD, then COULD.\n\nDo NOT change any requirement IDs, priorities, or description prose. Only ADD content.",
+    "acceptance_criteria": [
+      "Every requirement in the document has at least one acceptance criterion",
+      "Acceptance criteria are concrete and verifiable (no vague words: reasonably, appropriately, as needed)",
+      "No new requirement IDs are introduced (only the 70 existing IDs are present)",
+      "No existing description text is altered",
+      "Cross-references use only IDs that exist in the document",
+      "fn:validate-completeness passes for all 70 requirement IDs",
+      "fn:register-inner-report is called before fn:complete-handoff"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:load-requirement-status",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": null
+}

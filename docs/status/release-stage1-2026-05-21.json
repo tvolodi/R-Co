@@ -1,0 +1,63 @@
+{
+  "release_id": "stage1-2026-05-21",
+  "stage": 1,
+  "decided_at": "2026-05-21T11:00:00Z",
+  "verdict": "PASS",
+  "requirements_reviewed": [
+    "DB-01", "DB-02", "DB-03", "DB-04",
+    "ES-01", "ES-02", "ES-03", "ES-04", "ES-05", "ES-06", "ES-08"
+  ],
+  "test_coverage": {
+    "DB-01": { "status": "PASS", "passing_tests": ["TC-DB-01-01", "TC-DB-01-02"], "source": "WF03-provider-20260521-verify-01.md" },
+    "DB-02": { "status": "WARN", "passing_tests": ["TC-DB-02-01 (unit)", "TC-DB-02-02 (unit)", "TC-DB-01-05 (unit)"], "note": "No dedicated integration test for pool exhaustion. NFR-06 (pool_size range) and NFR-08 (PG >= 15) validated by unit tests. Pool exercised implicitly by all 17 integration tests." },
+    "DB-03": { "status": "PASS", "passing_tests": ["TC-DB-03-01", "TC-DB-03-02"], "source": "WF03-provider-20260521-verify-01.md" },
+    "DB-04": { "status": "PASS", "passing_tests": ["TC-DB-04-01"], "source": "WF03-provider-20260521-verify-01.md" },
+    "ES-01": { "status": "PASS", "passing_tests": ["TC-ES-01-01"], "source": "WF03-provider-20260521-verify-01.md" },
+    "ES-02": { "status": "PASS", "passing_tests": ["TC-ES-02-01", "TC-ES-02-02"], "source": "WF03-provider-20260521-verify-01.md" },
+    "ES-03": { "status": "PASS", "passing_tests": ["TC-ES-03-01"], "source": "WF03-provider-20260521-verify-01.md" },
+    "ES-04": { "status": "PASS", "passing_tests": ["TC-ES-04-01", "TC-ES-04-02"], "source": "WF03-provider-20260521-verify-01.md" },
+    "ES-05": { "status": "PASS", "passing_tests": ["TC-ES-05-01"], "source": "WF03-provider-20260521-verify-01.md" },
+    "ES-06": { "status": "PASS", "passing_tests": ["TC-ES-06-01", "TC-ES-06-02"], "source": "WF03-provider-20260521-verify-01.md" },
+    "ES-08": { "status": "PASS", "passing_tests": ["TC-ES-08-04"], "source": "WF03-provider-20260521-verify-01.md", "note": "Priority discrepancy: test reports label MUST; authoritative docs/requirements/ES-08.md defines SHOULD. Non-blocking; test passes regardless." }
+  },
+  "build_checks": {
+    "zig_build": { "exit_code": 0, "result": "PASS", "source": "WF03-provider-20260521-verify-01.md §1" },
+    "zig_build_test": { "exit_code": 0, "passed": 38, "failed": 0, "skipped": 0, "result": "PASS" },
+    "zig_build_test_integration": { "exit_code": 0, "passed": 17, "failed": 0, "skipped": 0, "result": "PASS" }
+  },
+  "nfr_checks": {
+    "NFR-06": {
+      "description": "pool_size range 2..200 enforced at startup",
+      "result": "PASS",
+      "evidence": "src/db/pool.zig line 194: `if (config.pool_size < 2 or config.pool_size > 200) return PoolError.InvalidPoolSize`. Confirmed by unit tests TC-DB-02-01 (lower bound) and TC-DB-02-02 (upper bound)."
+    },
+    "NFR-08": {
+      "description": "PostgreSQL >= 15 enforced at startup",
+      "result": "PASS",
+      "evidence": "src/db/pool.zig: `Returns UnsupportedPgVersion if server_version_num < 150000` — checks pg_version < 150000 after first connection. Confirmed by unit test TC-DB-01-05."
+    }
+  },
+  "security_checks": {
+    "sql_parameter_safety": {
+      "result": "PASS",
+      "files_checked": ["src/event_store/store.zig", "src/db/pool.zig"],
+      "evidence": "store.zig: all queries use positional parameters ($1, $2, ...$7), no string interpolation or fmt concatenation found. pool.zig: health check uses hardcoded constant `SELECT 1` with no user data."
+    }
+  },
+  "issues": [
+    {
+      "severity": "WARN",
+      "requirement": "DB-02",
+      "description": "No dedicated integration test for pool exhaustion behavior (PoolExhausted error path). Pool is exercised implicitly by all 17 integration tests. NFR-06 and NFR-08 bounds validated by unit tests TC-DB-02-01, TC-DB-02-02, TC-DB-01-05. Recommended follow-up: TEST-DESIGNER adds TC-DB-02-03 (pool exhaustion returns PoolExhausted).",
+      "blocking": false
+    },
+    {
+      "severity": "INFO",
+      "requirement": "ES-08",
+      "description": "Priority metadata discrepancy: test reports WF02-stage1-integration-20260520-run-01 and WF03-provider-20260521-verify-01 label ES-08 as MUST; docs/requirements/ES-08.md and docs/BPM_Platform_Functional_Requirements.md define it as SHOULD. requirement_status.json correctly records SHOULD. No functional impact; test TC-ES-08-04 passes. Recommend aligning test report labels in next test cycle.",
+      "blocking": false
+    }
+  ],
+  "next_action": "Route to DOC-UPDATER (step-02-doc-updater) to promote DB-01..04, ES-01..08 to RELEASED in requirement_status.json",
+  "approved_by": "RELEASE-VALIDATOR"
+}

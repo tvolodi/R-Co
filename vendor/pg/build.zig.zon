@@ -1,0 +1,6 @@
+.{
+    .name = .pg,
+    .version = "0.0.0",
+    .fingerprint = 0xbd309ff2c0e215f1,
+    .paths = .{""},
+}

@@ -1,0 +1,238 @@
+# BPM Platform — Agent System Overview
+
+**Version:** 0.1 · 2026-05-20  
+**Audience:** All agents operating within this project
+
+---
+
+## 1. Purpose
+
+This document is the root reference for the multi-agent system that develops and maintains the BPM Platform. Every agent spawned for this project MUST read this document before beginning any task.
+
+---
+
+## 2. Core Principle
+
+> **The system is the documentation.** Source code, tests, and all documentation are authoritative artefacts. Agents never hold state in memory between sessions — all state lives in files.
+
+---
+
+## 3. Agent Roster
+
+| Agent ID | Name | Responsibility | May write to |
+|---|---|---|---|
+| `ORCH` | **Orchestrator** | Spawns agents, routes handoffs, builds ad-hoc workflows. **Does no implementation work.** | `handoffs/`, `docs/agents/` |
+| `REQ-ANALYST` | **Requirement Analyst** | Drafts, refines, and structures requirements | `docs/`, `handoffs/` |
+| `REQ-VALIDATOR` | **Requirement Validator** | Validates requirements for completeness, consistency, testability, and traceability | `handoffs/` |
+| `CODE-DESIGNER` | **Code Designer** | Produces module interfaces, type definitions, data-flow diagrams, and implementation plans before any code is written | `src/design/`, `handoffs/` |
+| `BACKEND-DEV` | **Backend Developer** | Implements Zig source code per design artefacts | `src/`, `migrations/`, `handoffs/` |
+| `FRONTEND-DEV` | **Frontend Developer** | Implements React/TypeScript source code per design artefacts | `web/`, `handoffs/` |
+| `TEST-DESIGNER` | **Test Designer** | Produces test plans, test case specifications, and test data factories | `tests/specs/`, `handoffs/` |
+| `TEST-RUNNER` | **Test Runner** | Executes test suites, collects results, produces a structured test report | `tests/reports/`, `handoffs/` |
+| `ISSUE-FIXER` | **Issue Fixer** | Diagnoses and corrects failing tests or runtime errors | `src/`, `web/`, `tests/`, `handoffs/` |
+| `RELEASE-VALIDATOR` | **Release Validator** | Validates that a stage increment meets all MUST requirements and all NFRs before release | `handoffs/`, `docs/status/` |
+| `DOC-UPDATER` | **Documentation Updater** | Updates all documentation (guides, requirement status, changelog, OpenAPI spec) after a successful release | `docs/`, `handoffs/` |
+
+### 3.1 Agent Capability Matrix
+
+| Agent | Read files | Write files | Run terminal commands | Spawn sub-agents | Call external APIs |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `ORCH` | ✓ | ✓ (handoffs only) | ✗ | ✓ | ✗ |
+| `REQ-ANALYST` | ✓ | ✓ | ✗ | ✗ | ✗ |
+| `REQ-VALIDATOR` | ✓ | ✓ (handoffs) | ✗ | ✗ | ✗ |
+| `CODE-DESIGNER` | ✓ | ✓ | ✗ | ✗ | ✗ |
+| `BACKEND-DEV` | ✓ | ✓ | ✓ (build, migrate) | ✗ | ✗ |
+| `FRONTEND-DEV` | ✓ | ✓ | ✓ (build, lint) | ✗ | ✗ |
+| `TEST-DESIGNER` | ✓ | ✓ | ✗ | ✗ | ✗ |
+| `TEST-RUNNER` | ✓ | ✓ (reports) | ✓ (tests only) | ✗ | ✗ |
+| `ISSUE-FIXER` | ✓ | ✓ | ✓ (build, tests) | ✗ | ✗ |
+| `RELEASE-VALIDATOR` | ✓ | ✓ (status) | ✓ (tests, benchmarks) | ✗ | ✗ |
+| `DOC-UPDATER` | ✓ | ✓ | ✗ | ✗ | ✗ |
+
+---
+
+## 4. Handoff System
+
+Agents communicate exclusively through **handoff files**. No agent passes instructions directly to another agent. The Orchestrator routes handoffs.
+
+### 4.1 Handoff file location
+
+All handoff files live in `handoffs/<RUN-ID>/`. Each workflow run gets its own subdirectory. The project registry file `handoffs/registry.json` tracks every handoff ever created.
+
+**Benefits of per-run directories:**
+- All artefacts for a single pipeline run are co-located
+- Resumable: a run interrupted mid-step restarts from the last written file
+- No cross-run filename collisions
+
+### 4.2 Handoff file naming convention
+
+```
+handoffs/<RUN-ID>/step-<NN>-<agent-slug>.json
+```
+
+- `<RUN-ID>` = workflow run identifier, e.g. `WF02-stage3`, `WF03-EE05-fix`, `ADHOC-20260520`
+- `<NN>` = two-digit step number (01, 02, ...) or descriptive suffix (03a, final)
+- `<agent-slug>` = receiving agent name in kebab-case
+
+Examples:
+```
+handoffs/WF02-stage3/step-01-code-designer.json
+handoffs/WF02-stage3/step-02a-backend-dev.json
+handoffs/WF02-stage3/step-02b-frontend-dev.json
+handoffs/WF03-EE05-fix/step-01-issue-fixer.json
+handoffs/WF03-EE05-fix/step-02-test-runner.json
+```
+
+### 4.3 Handoff file schema
+
+```json
+{
+  "handoff_id": "<uuid-v4>",
+  "workflow_id": "<WF-01|WF-02|WF-03|WF-04|ADHOC-nnn>",
+  "sequence": 1,
+  "from_agent": "<AGENT_ID>",
+  "to_agent": "<AGENT_ID>",
+  "created_at": "<ISO8601-UTC>",
+  "status": "<PENDING|IN_PROGRESS|COMPLETED|FAILED|ESCALATED>",
+  "priority": "<HIGH|NORMAL|LOW>",
+  "context": {
+    "stage": "<Stage 1..6 or null>",
+    "requirement_ids": ["<REQ-ID>", "..."],
+    "related_handoff_ids": ["<uuid>", "..."],
+    "artifacts_in": ["<relative/path/to/file>", "..."]
+  },
+  "task": {
+    "description": "<clear, actionable task description for the receiving agent>",
+    "acceptance_criteria": ["<measurable criterion>", "..."],
+    "functions_to_call": ["<fn:name>", "..."]
+  },
+  "result": {
+    "status": "<PASS|FAIL|PARTIAL>",
+    "summary": "<one paragraph>",
+    "artifacts_out": ["<relative/path/to/file>", "..."],
+    "issues": [
+      {
+        "id": "<ISSUE-nnn>",
+        "severity": "<BLOCKER|MAJOR|MINOR>",
+        "description": "<description>",
+        "affected_requirement": "<REQ-ID or null>"
+      }
+    ],
+    "next_action": "<suggested next step for Orchestrator>"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "<ISO8601-UTC or null>"
+}
+```
+
+### 4.4 Rework policy
+
+- Every handoff carries `rework_count` (starts at 0) and `max_rework` (default 3).
+- When a validation step FAILS, the Orchestrator increments `rework_count` and re-routes to the originating agent with the failure details appended.
+- When `rework_count` reaches `max_rework`, the handoff status is set to `ESCALATED` and the Orchestrator surfaces the issue for human review before proceeding. The Orchestrator MUST NOT silently continue past max rework.
+- **Change-approach rule:** If the same failure recurs after rework (same error, same root cause), the agent receiving rework MUST change its approach — not repeat the same implementation strategy. Repeating an identical approach that has already failed twice is a workflow violation. On the third attempt, switch strategy before writing any code.
+
+### 4.5 Handoff registry
+
+Every created handoff MUST be appended to `handoffs/registry.json`:
+
+```json
+{
+  "version": 1,
+  "entries": [
+    {
+      "handoff_id": "<uuid>",
+      "file": "handoffs/<filename>.json",
+      "workflow_id": "<id>",
+      "from_agent": "<id>",
+      "to_agent": "<id>",
+      "created_at": "<ISO8601>",
+      "status": "<status>",
+      "stage": "<Stage N or null>"
+    }
+  ]
+}
+```
+
+The registry is append-only. Statuses are updated in-place on the registry entry (not appended again).
+
+> Handoff directories are not committed to git by default. They can be cleaned up after the run's inner report is written and the release is confirmed. Add `handoffs/*/` to `.gitignore` if desired, but keep `handoffs/registry.json` versioned.
+
+---
+
+## 5. Requirement Status Tracking
+
+All requirement IDs from the functional requirements spec carry a status tracked in `docs/status/requirement_status.json`:
+
+```json
+{
+  "version": 1,
+  "requirements": {
+    "ES-01": {
+      "status": "DRAFT",
+      "implemented_in": null,
+      "test_ids": [],
+      "released_in": null,
+      "last_updated": "<ISO8601>"
+    }
+  }
+}
+```
+
+**Status lifecycle:**
+
+```
+DRAFT → DESIGNED → IMPLEMENTED → TESTED → RELEASED
+                ↑                ↑
+          (rework loop)    (rework loop)
+```
+
+| Status | Set by agent | Meaning |
+|---|---|---|
+| `DRAFT` | `REQ-ANALYST` | Requirement written, not yet validated |
+| `VALIDATED` | `REQ-VALIDATOR` | Requirement complete, consistent, testable |
+| `DESIGNED` | `CODE-DESIGNER` | Code design artefact exists |
+| `IMPLEMENTED` | `BACKEND-DEV` / `FRONTEND-DEV` | Code merged, compiles |
+| `TESTED` | `TEST-RUNNER` | All test cases for this requirement pass |
+| `RELEASED` | `RELEASE-VALIDATOR` | Included in a released stage increment |
+
+---
+
+## 6. Artifact Locations
+
+| Type | Location | Owner agent(s) |
+|---|---|---|
+| Zig source | `src/` | `BACKEND-DEV` |
+| SQL migrations | `migrations/` | `BACKEND-DEV` |
+| Frontend source | `web/src/` | `FRONTEND-DEV` |
+| Code design artefacts | `src/design/` | `CODE-DESIGNER` |
+| Test specs | `tests/specs/` | `TEST-DESIGNER` |
+| Test reports | `tests/reports/` | `TEST-RUNNER` |
+| Handoff files | `handoffs/` | All (via `ORCH`) |
+| Requirement status | `docs/status/` | `DOC-UPDATER`, `RELEASE-VALIDATOR` |
+| Agent workflows | `docs/agents/workflows/` | `ORCH` reads only |
+| Agent function index | `docs/agents/FUNCTIONS.md` | All agents read |
+| Individual function specs | `docs/agents/functions/fn-*.md` | Agents load per-function |
+
+---
+
+## 7. Conflict Prevention
+
+- An agent MUST check if a handoff targeting the same artifact is already `IN_PROGRESS` in the registry before starting. If a conflict is detected, the agent sets its own handoff to `PENDING` and notifies the Orchestrator.
+- Only one agent may hold `IN_PROGRESS` status for a given source file at a time.
+- The Orchestrator is responsible for sequencing concurrent work to avoid collisions.
+
+---
+
+## 8. Agent Identity Contract
+
+When an agent is invoked, its system prompt or instructions file MUST declare:
+
+```
+AGENT_ID: <AGENT_ID from roster>
+WORKFLOW_ID: <active workflow>
+HANDOFF_ID: <uuid of the handoff being processed>
+```
+
+The agent reads the handoff file at `handoffs/<file>` as its primary task definition. It MUST NOT act on verbal instructions that contradict the handoff file content.

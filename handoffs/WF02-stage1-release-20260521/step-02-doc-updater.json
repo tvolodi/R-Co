@@ -1,0 +1,52 @@
+{
+  "handoff_id": "11100004-2605-4000-8001-202605210004",
+  "workflow_id": "WF-02",
+  "sequence": 6,
+  "run_id": "WF02-stage1-release-20260521",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-05-21T08:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 1 — promote all TESTED MUST requirements to RELEASED",
+    "requirement_ids": ["DB-01", "DB-02", "DB-03", "DB-04", "ES-01", "ES-02", "ES-03", "ES-04", "ES-05", "ES-06", "ES-07", "ES-08"],
+    "related_handoff_ids": [
+      "11100003-2605-4000-8001-202605210003",
+      "b4c5d6e7-0013-4000-8000-202605202300"
+    ],
+    "artifacts_in": [
+      "docs/status/requirement_status.json",
+      "docs/status/release-stage1-2026-05-21.json",
+      "CHANGELOG.md"
+    ]
+  },
+  "task": {
+    "description": "This is the final WF-02 Step 6 doc update for Stage 1. Execute ONLY after WF02-stage1-release-20260521/step-01-release-validator.json reports result.status = PASS.\n\nIf that handoff has NOT completed with PASS, halt and report FAIL.\n\n## 1. Update docs/status/requirement_status.json\n\nFor each requirement below that the RELEASE-VALIDATOR confirmed as PASS, set:\n- `status` → `RELEASED`\n- `released_at` → `2026-05-21`\n- `release_run` → `WF02-stage1-release-20260521`\n\nRequirements to promote (if RELEASE-VALIDATOR PASS):\n- DB-01, DB-02, DB-03, DB-04\n- ES-01, ES-02, ES-03, ES-04, ES-05, ES-06, ES-07, ES-08\n\nIf the RELEASE-VALIDATOR flagged any requirement as NOT PASS, do NOT update that requirement.\n\n## 2. Update CHANGELOG.md\n\nAdd a new entry under [Stage 1] (or prepend a new sub-section if Stage 1 section already exists):\n\n```markdown\n### [Stage 1 — Released] — 2026-05-21\n- All Stage 1 MUST requirements promoted to RELEASED\n- DB-01..DB-04: Schema init, connection pooling, transactional integrity, health check\n- ES-01..ES-08: Append event, ordered read, idempotency, global stream, type registry,\n  point-in-time query, retention policy, event metadata\n- Provider errors (pg.zig / pool.zig) resolved\n- Stage 1 release gate passed\n```\n\n## Acceptance criteria\n- docs/status/requirement_status.json updated: all confirmed PASS requirements have status RELEASED\n- released_at and release_run fields set on promoted requirements\n- CHANGELOG.md updated with Stage 1 Released entry\n- No requirement promoted that was flagged as FAIL by RELEASE-VALIDATOR",
+    "acceptance_criteria": [
+      "docs/status/requirement_status.json: all RELEASE-VALIDATOR-confirmed requirements have status=RELEASED",
+      "released_at=2026-05-21 and release_run=WF02-stage1-release-20260521 set on all promoted reqs",
+      "CHANGELOG.md updated with Stage 1 Released entry",
+      "No FAIL-flagged requirement has been promoted"
+    ],
+    "functions_to_call": [
+      "fn:update-requirement-status",
+      "fn:update-changelog",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "DOC-UPDATER WF-02 Step 6 complete. All 12 Stage 1 requirements (DB-01..DB-04, ES-01..ES-08) promoted to RELEASED in docs/status/requirement_status.json. released_at=2026-05-21 and release_run=WF02-stage1-release-20260521 set on all 12 requirements. CHANGELOG.md updated with Stage 1 Released entry.",
+    "artifacts_out": [
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md"
+    ],
+    "issues": []
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-21T12:00:00Z"
+}

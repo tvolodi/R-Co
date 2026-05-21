@@ -1,0 +1,64 @@
+{
+  "handoff_id": "e1f2a3b4-0010-4000-8000-202605202000",
+  "workflow_id": "WF-02",
+  "sequence": 1,
+  "run_id": "WF02-stage1-integration-20260520",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-20T20:00:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 1 \u2014 real PostgreSQL integration (unblocks real tests)",
+    "requirement_ids": [
+      "DB-01",
+      "DB-02",
+      "DB-03",
+      "DB-04"
+    ],
+    "related_handoff_ids": [
+      "f6a7b8c9-0006-4000-8000-202605201600"
+    ],
+    "artifacts_in": [
+      "vendor/pg/pg.zig",
+      "vendor/pg/build.zig",
+      "vendor/pg/build.zig.zon",
+      "src/db/pool.zig",
+      "src/db/migrations.zig",
+      "build.zig",
+      "build.zig.zon",
+      "docs/guides/backend_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Replace the empty vendor/pg stub with a real PostgreSQL client so that pool.zig and migrations.zig can execute SQL against a live database. Then add a TestHarness for integration tests.\n\n## Context\n\nCurrently `vendor/pg/pg.zig` is a single-line comment. `src/db/pool.zig` imports it but all Conn.exec() and Conn.query() calls return `PoolError.QueryFailed` \u2014 no real SQL is executed. This blocks all integration tests.\n\n## Step 1 \u2014 Integrate a real PostgreSQL client library\n\nThe recommended approach is to use `karlseguin/pg.zig`, the de-facto standard Zig PostgreSQL client. Use `zig fetch` to add it as a proper package dependency:\n\n```bash\nzig fetch --save git+https://github.com/karlseguin/pg.zig#master\n```\n\nThis will update `build.zig.zon` with the correct URL + hash. Then update `build.zig` to use the fetched dependency instead of the local vendor/pg path dependency.\n\nIf `karlseguin/pg.zig` is unavailable or incompatible with the current Zig version, implement an alternative approach: write a minimal direct libpq wrapper using `@cImport` on the system libpq-dev headers. In that case document the approach and any system package requirement in `.env.example`.\n\n## Step 2 \u2014 Update src/db/pool.zig\n\nRewrite `Conn.exec()` and `Conn.query()` to delegate to the real pg client connection rather than returning `QueryFailed`. The public API (function signatures, error set) MUST NOT change \u2014 `store.zig`, `migrations.zig`, and the test harness all call these methods.\n\nRequirements:\n- `Pool.init()` opens `pool_size` real connections to the URL in `PoolConfig.url`\n- `Pool.acquire()` returns a live connection\n- `Pool.release()` returns it to the pool\n- `Pool.healthCheck()` runs `SELECT 1` and returns latency_ms (DB-04)\n- `Conn.exec(sql, params)` executes a parameterised DML/DDL statement \u2014 all user-supplied data via `$1 $2 ...` placeholders, never interpolated into the SQL string\n- `Conn.query(sql, params)` returns `QueryResult` rows\n- `Pool.beginTx(conn)` / `Conn.commit()` / `Conn.rollback()` for DB-03 transactional wrapping\n\n## Step 3 \u2014 Implement tests/integration/helpers.zig\n\nCreate `tests/integration/helpers.zig` with a `TestHarness` struct per the test developer guide \u00a75.1:\n\n```zig\n// tests/integration/helpers.zig\nconst std = @import(\"std\");\nconst db = @import(\"../../src/db/pool.zig\");\n\npub const TestHarness = struct {\n    pool: db.Pool,\n    conn: *db.Conn,\n\n    /// Reads BPM_TEST_DB_URL, opens a pool of 1, acquires a connection,\n    /// begins a transaction. Runs all migrations before first use.\n    pub fn init(allocator: std.mem.Allocator) !TestHarness;\n\n    /// Rolls back the open transaction and releases the connection.\n    /// Never commits \u2014 test isolation is guaranteed.\n    pub fn deinit(self: *TestHarness) void;\n};\n```\n\nThe harness MUST:\n- Read `BPM_TEST_DB_URL` from the environment (error if missing)\n- Run all migrations against the test DB on first call (idempotent via `schema_migrations` table)\n- Wrap each test in a transaction that is rolled back on `deinit()` \u2014 this guarantees test isolation without manual cleanup\n\n## Step 4 \u2014 Update tests/integration/main_test.zig\n\nAdd a comptime import of `helpers.zig` so the harness is included in the integration build.\n\n## Step 5 \u2014 Validate\n\n1. `zig build` exits 0\n2. `zig build test` exits 0\n3. Set `BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test` (docker compose db_test service)\n   Start the test DB: `docker compose up -d db_test`\n4. `zig build migrate` with `BPM_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test` \u2014 migrations apply cleanly\n5. Compile check: `zig build test-integration` \u2014 must compile and the harness must connect to the DB\n\n## Security constraint\nNo user-supplied data may ever be interpolated into a SQL string. All bind parameters use `$1`, `$2`, ... placeholders. This is a hard rule.\n\n## Acceptance criteria\n- vendor/pg is replaced by or wraps a real PostgreSQL client (not a stub)\n- Pool.init() opens real connections; Conn.exec/query execute real SQL\n- tests/integration/helpers.zig exists with TestHarness providing rollback-on-deinit semantics\n- zig build exits 0\n- zig build test exits 0\n- zig build migrate applies migrations against bpm_test without error\n- zig build test-integration compiles and TestHarness.init() connects successfully",
+    "acceptance_criteria": [
+      "vendor/pg replaced by real client \u2014 Conn.exec() and Conn.query() execute real SQL",
+      "tests/integration/helpers.zig implements TestHarness with transaction-rollback isolation",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build migrate applies migrations to bpm_test without error",
+      "zig build test-integration compiles and TestHarness.init() connects to DB_TEST"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed all three integration blockers: (1) vendor/pg/pg.zig connect() now uses net.HostName.connect for DNS hostname resolution instead of net.IpAddress.resolve (which only handles IPv6 scope IDs); (2) pg.Conn.simpleQuery made public and used for multi-statement migration SQL (Extended Query Protocol rejects multiple statements); (3) src/db/pool.zig Pool struct and Pool.init updated to carry std.Io and pass it to pg.Conn.connectUrl; (4) tests/integration/helpers.zig rewritten to use std.Io.Dir-based filesystem APIs and std.testing.io; (5) src/tools/migrate.zig memory leak fixed (HashMap keys now freed before deinit). All four validation steps exit 0.",
+    "artifacts_out": [
+      "vendor/pg/pg.zig",
+      "src/db/pool.zig",
+      "src/tools/migrate.zig",
+      "tests/integration/helpers.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-20T17:12:23.718957Z"
+}

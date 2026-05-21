@@ -1,0 +1,17 @@
+.{
+    .name = .bpm_platform,
+    .version = "0.1.0",
+    .fingerprint = 0x941c68ce9c4471f8,
+    .dependencies = .{
+        .pg = .{
+            .path = "vendor/pg",
+        },
+        .http = .{
+            .path = "vendor/http",
+        },
+        .cel = .{
+            .path = "vendor/cel",
+        },
+    },
+    .paths = .{""},
+}

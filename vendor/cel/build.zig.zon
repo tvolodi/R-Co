@@ -1,0 +1,6 @@
+.{
+    .name = .cel,
+    .version = "0.0.0",
+    .fingerprint = 0xe95e1efa6f426931,
+    .paths = .{""},
+}

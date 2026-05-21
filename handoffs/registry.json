@@ -1,0 +1,226 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-05-20T00:00:00Z",
+  "entries": [
+    {
+      "handoff_id": "a1b2c3d4-0001-4000-8000-202605200001",
+      "file": "handoffs/WF01-full-req-20260520/step-01-req-analyst.json",
+      "run_id": "WF01-full-req-20260520",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "REQ-ANALYST",
+      "created_at": "2026-05-20T00:00:00Z",
+      "status": "CANCELLED",
+      "stage": "All stages (1\u20136)",
+      "cancelled_reason": "Strategy change: replaced by per-requirement pipeline"
+    },
+    {
+      "handoff_id": "b2c3d4e5-0002-4000-8000-202605200002",
+      "file": "handoffs/WF01-ES01-20260520/step-01-req-analyst.json",
+      "run_id": "WF01-ES01-20260520",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "REQ-ANALYST",
+      "created_at": "2026-05-20T00:01:00Z",
+      "status": "CANCELLED",
+      "stage": "Stage 1",
+      "requirement_ids": [
+        "ES-01"
+      ],
+      "cancelled_reason": "ES-01 already VALIDATED via parallel path"
+    },
+    {
+      "handoff_id": "c3d4e5f6-0003-4000-8000-202605200003",
+      "file": "handoffs/ADHOC-infra-20260520/step-01-backend-dev.json",
+      "run_id": "ADHOC-infra-20260520",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-20T12:30:00Z",
+      "status": "COMPLETED",
+      "stage": "Infrastructure (pre-Stage 1)"
+    },
+    {
+      "handoff_id": "d4e5f6a7-0004-4000-8000-202605201400",
+      "file": "handoffs/ADHOC-verify-build-20260520/step-01-backend-dev.json",
+      "run_id": "ADHOC-verify-build-20260520",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-20T14:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Infrastructure verification (post-bootstrap)"
+    },
+    {
+      "handoff_id": "e5f6a7b8-0005-4000-8000-202605201500",
+      "file": "handoffs/WF02-stage1-20260520/step-01-code-designer.json",
+      "run_id": "WF02-stage1-20260520",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-05-20T15:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 Foundation"
+    },
+    {
+      "handoff_id": "f6a7b8c9-0006-4000-8000-202605201600",
+      "file": "handoffs/WF02-stage1-20260520/step-02-backend-dev.json",
+      "run_id": "WF02-stage1-20260520",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-20T16:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 Foundation"
+    },
+    {
+      "handoff_id": "a7b8c9d0-0007-4000-8000-202605201700",
+      "file": "handoffs/WF02-stage1-20260520/step-03-test-designer.json",
+      "run_id": "WF02-stage1-20260520",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-05-20T17:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 Foundation"
+    },
+    {
+      "handoff_id": "b8c9d0e1-0008-4000-8000-202605201800",
+      "file": "handoffs/WF02-stage1-20260520/step-04-test-runner.json",
+      "run_id": "WF02-stage1-20260520",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-20T18:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 Foundation"
+    },
+    {
+      "handoff_id": "c9d0e1f2-0009-4000-8000-202605201900",
+      "file": "handoffs/WF02-stage1-20260520/step-05-doc-updater.json",
+      "run_id": "WF02-stage1-20260520",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-05-20T19:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 Foundation"
+    },
+    {
+      "handoff_id": "e1f2a3b4-0010-4000-8000-202605202000",
+      "file": "handoffs/WF02-stage1-integration-20260520/step-01-backend-dev.json",
+      "run_id": "WF02-stage1-integration-20260520",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-20T20:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 real PostgreSQL integration"
+    },
+    {
+      "handoff_id": "f2a3b4c5-0011-4000-8000-202605202100",
+      "file": "handoffs/WF02-stage1-integration-20260520/step-02-test-designer.json",
+      "run_id": "WF02-stage1-integration-20260520",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-05-20T21:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 real integration tests"
+    },
+    {
+      "handoff_id": "a3b4c5d6-0012-4000-8000-202605202200",
+      "file": "handoffs/WF02-stage1-integration-20260520/step-03-test-runner.json",
+      "run_id": "WF02-stage1-integration-20260520",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-20T22:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 integration test run"
+    },
+    {
+      "handoff_id": "b4c5d6e7-0013-4000-8000-202605202300",
+      "file": "handoffs/WF02-stage1-integration-20260520/step-04-doc-updater.json",
+      "run_id": "WF02-stage1-integration-20260520",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-05-20T23:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 promote to TESTED",
+      "completed_at": "2026-05-21T00:00:00Z"
+    },
+    {
+      "handoff_id": "11100001-2605-4000-8001-202605210001",
+      "file": "handoffs/WF03-provider-20260521/step-01-issue-fixer.json",
+      "run_id": "WF03-provider-20260521",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-05-21T08:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 fix provider errors (pg.zig / pool.zig)",
+      "completed_at": "2026-05-21T09:15:00Z"
+    },
+    {
+      "handoff_id": "11100002-2605-4000-8001-202605210002",
+      "file": "handoffs/WF03-provider-20260521/step-02-test-runner.json",
+      "run_id": "WF03-provider-20260521",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-21T08:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 verify provider fix",
+      "completed_at": "2026-05-21T10:00:00Z"
+    },
+    {
+      "handoff_id": "11100003-2605-4000-8001-202605210003",
+      "file": "handoffs/WF02-stage1-release-20260521/step-01-release-validator.json",
+      "run_id": "WF02-stage1-release-20260521",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-05-21T08:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 release gate",
+      "completed_at": "2026-05-21T11:00:00Z"
+    },
+    {
+      "handoff_id": "11100004-2605-4000-8001-202605210004",
+      "file": "handoffs/WF02-stage1-release-20260521/step-02-doc-updater.json",
+      "run_id": "WF02-stage1-release-20260521",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-05-21T08:00:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 promote to RELEASED",
+      "completed_at": "2026-05-21T12:00:00Z"
+    },
+    {
+      "handoff_id": "11200001-2605-4000-8001-202605210010",
+      "file": "handoffs/ADHOC-db02-tests-20260521/step-01-test-designer.json",
+      "run_id": "ADHOC-db02-tests-20260521",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-05-21T12:30:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 DB-02 coverage gap: add TC-DB-02-03 + TC-DB-02-04"
+    },
+    {
+      "handoff_id": "11200002-2605-4000-8001-202605210011",
+      "file": "handoffs/ADHOC-db02-tests-20260521/step-02-test-runner.json",
+      "run_id": "ADHOC-db02-tests-20260521",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-21T12:30:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage 1 \u2014 DB-02 coverage verification",
+      "completed_at": "2026-05-21T20:15:38Z"
+    }
+  ]
+}

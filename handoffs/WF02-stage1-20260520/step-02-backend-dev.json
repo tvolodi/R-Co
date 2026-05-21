@@ -1,0 +1,65 @@
+{
+  "handoff_id": "f6a7b8c9-0006-4000-8000-202605201600",
+  "workflow_id": "WF-02",
+  "sequence": 2,
+  "run_id": "WF02-stage1-20260520",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-20T16:00:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 1 — Foundation (event store + database)",
+    "requirement_ids": [
+      "DB-01", "DB-02", "DB-03", "DB-04",
+      "ES-01", "ES-02", "ES-03", "ES-04",
+      "ES-05", "ES-06", "ES-07", "ES-08"
+    ],
+    "related_handoff_ids": [
+      "e5f6a7b8-0005-4000-8000-202605201500"
+    ],
+    "artifacts_in": [
+      "src/design/db.md",
+      "src/design/event_store.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "migrations/001_event_store.sql",
+      "migrations/002_event_type_registry.sql",
+      "migrations/003_event_archive.sql",
+      "migrations/012_event_retention.sql"
+    ]
+  },
+  "task": {
+    "description": "Implement all Stage 1 requirements (DB-01..DB-04, ES-01..ES-08) using the design artefacts in src/design/db.md and src/design/event_store.md as the authoritative specification. Do not invent interfaces — implement exactly what the design specifies.\n\n## Files to produce\n\n### DB module (DB-01..DB-04)\n- `src/db/pool.zig` — implement `Pool`, `Conn`, `PoolConfig` per `src/design/db.md`; use pg.zig under the hood\n- `src/db/migrations.zig` — implement `Migrations.run()` per `src/design/db.md`; discovers and applies numbered .sql files from the `migrations/` directory; creates `schema_migrations` tracking table on first run\n\n### Event store module (ES-01..ES-08)\n- `src/event_store/store.zig` — implement `Store`, `AppendResult`, `EventRecord`, `AppendParams`, `ReadOpts`, `GlobalReadOpts`, `StoreError` per `src/design/event_store.md`\n- `src/event_store/registry.zig` — implement `Registry`, `EventTypeRecord`, `RegisterParams`, `ValidationFailure`, `RegistryError` per `src/design/event_store.md`\n\n### Migration amendments\nAdd a new migration file (next available number after 012) that adds:\n- UNIQUE index on `events_archive(idempotency_key)` — required by Invariant #5 in event_store.md (idempotency durability across archival)\n\n## Implementation constraints (from backend guide)\n1. **No SQL string interpolation of user data.** Every SQL parameter must use `$1`, `$2`, ... placeholders via pg.zig. This is a hard security constraint.\n2. **All allocating functions accept `std.mem.Allocator`** as the first parameter.\n3. **`src/engine/transition.zig` MUST have zero I/O** — but that file is not being modified in this stage.\n4. **Error types defined in per-module error sets** — use `StoreError`, `RegistryError` etc. as defined in the design. No `anyerror` in public function return types.\n5. **No `catch unreachable` on realistic failure paths.** DB errors and network errors are realistic.\n\n## Validation\nAfter implementing:\n1. Run `zig build` — must exit 0\n2. Run `zig build test` — must exit 0 (the engine_test.zig placeholder must still pass)\n3. Run `zig build migrate` — if BPM_DB_URL is available, apply migrations; otherwise confirm the build step compiles.\n\nIf `zig build` fails due to unresolved symbols (e.g. pg.zig API mismatch), read the vendor/pg/pg.zig stub and adjust accordingly. The vendor pg module is a stub — use the API it exposes.\n\n## Notes from CODE-DESIGNER (Open Question #1 resolved)\nInvariant #5 in event_store.md resolves the idempotency-across-archival question: BACKEND-DEV MUST:\n- Add UNIQUE index on `events_archive(idempotency_key)` in a migration\n- After `INSERT … ON CONFLICT DO NOTHING RETURNING *` yields no rows on `events`, check `events_archive(idempotency_key)` to distinguish a new conflict vs a post-archival duplicate. If found in archive, return `AppendResult{.is_duplicate = true}` with the archived record fields.\n\n## Self-review checklist\n- [ ] No SQL string interpolation (all params use $1, $2...)\n- [ ] All allocating functions accept std.mem.Allocator\n- [ ] StoreError and RegistryError cover every realistic failure path\n- [ ] No anyerror in any public function signature\n- [ ] No catch unreachable on DB/network error paths\n- [ ] zig build exits 0\n- [ ] zig build test exits 0",
+    "acceptance_criteria": [
+      "src/db/pool.zig implements Pool, Conn, PoolConfig per design with correct error set",
+      "src/db/migrations.zig implements Migrations.run() with schema_migrations tracking",
+      "src/event_store/store.zig implements all Store functions per design with StoreError",
+      "src/event_store/registry.zig implements all Registry functions per design with RegistryError",
+      "Migration file added for events_archive(idempotency_key) UNIQUE index",
+      "No SQL string interpolation anywhere — all query parameters use placeholders",
+      "zig build exits 0",
+      "zig build test exits 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented Stage 1 DB and event store modules (DB-01..DB-04, ES-01..ES-08). Created src/db/pool.zig (Pool, Conn, PoolConfig, HealthResult, QueryResult with full error set), src/db/migrations.zig (Migrations.run() with schema_migrations tracking, out-of-order detection, per-migration transactions), src/event_store/registry.zig (Registry with registerType, validatePayload, getType, lastValidationFailures), src/event_store/store.zig (Store with append, read, readGlobal, pointInTime, archive — all parameterised SQL, full StoreError/RegistryError sets, Invariant #5 two-phase idempotency across archival). Added migrations/013_event_archive_idempotency.sql (UNIQUE index on events_archive(idempotency_key)). Updated src/main.zig to import all new modules so zig build validates them. All SQL uses $1/$2/... placeholders — zero string interpolation of user data. No catch unreachable on realistic paths. No anyerror in public signatures. zig build exits 0; zig build test exits 0.",
+    "artifacts_out": [
+      "src/db/pool.zig",
+      "src/db/migrations.zig",
+      "src/event_store/store.zig",
+      "src/event_store/registry.zig",
+      "migrations/013_event_archive_idempotency.sql",
+      "src/main.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "completed_at": "2026-05-20T17:30:00Z"
+}
