@@ -17,7 +17,8 @@ INPUT: handoff_id, result (status, summary, artifacts_out, issues, next_action)
    Use the exact string printed by the command as completed_at.
 5. Set completed_at to that value
 6. Write the updated handoff file
-7. Update status in handoffs/registry.json for this handoff_id
+7. Update the active registry entry in `handoffs/registry.json` for this `handoff_id`
+8. If the handoff is terminal, archive the final snapshot to `handoffs/<run_id>/registry.json`
 ```
 
 > ⛔ **NEVER write a timestamp from memory or by guessing.** LLM agents cannot access a clock. Any invented timestamp will be wrong and breaks the retrospective metrics. Step 4 is mandatory — run the command, read the output, use that string.

@@ -57,12 +57,14 @@ Agents communicate exclusively through **handoff files**. No agent passes instru
 
 ### 4.1 Handoff file location
 
-All handoff files live in `handoffs/<RUN-ID>/`. Each workflow run gets its own subdirectory. The project registry file `handoffs/registry.json` tracks every handoff ever created.
+All handoff files live in `handoffs/<RUN-ID>/`. Each workflow run gets its own subdirectory. The registry is split into an active index and a per-run archive: `handoffs/registry.json` tracks open handoffs, while `handoffs/<run_id>/registry.json` tracks terminal handoffs for that run.
 
 **Benefits of per-run directories:**
 - All artefacts for a single pipeline run are co-located
 - Resumable: a run interrupted mid-step restarts from the last written file
 - No cross-run filename collisions
+
+ORCH owns both registry layers. Specialist agents read the run-local handoff file assigned to them and never treat the active registry as the only source of truth.
 
 ### 4.2 Handoff file naming convention
 
@@ -88,13 +90,16 @@ handoffs/WF03-EE05-fix/step-02-test-runner.json
 ```json
 {
   "handoff_id": "<uuid-v4>",
-  "workflow_id": "<WF-01|WF-02|WF-03|WF-04|ADHOC-nnn>",
-  "sequence": 1,
+  "run_id": "<run-id>",
+  "workflow_id": "<WF-01|WF-02|WF-03|WF-04|ADHOC-nnn or null>",
+  "step": "01",
   "from_agent": "<AGENT_ID>",
   "to_agent": "<AGENT_ID>",
+  "file": "handoffs/<run_id>/step-01-agent.json",
   "created_at": "<ISO8601-UTC>",
   "started_at": "<ISO8601-UTC or null>",
-  "status": "<PENDING|IN_PROGRESS|COMPLETED|FAILED|ESCALATED>",
+  "completed_at": "<ISO8601-UTC or null>",
+  "status": "<PENDING|IN_PROGRESS|COMPLETED|FAILED|ESCALATED|CANCELLED>",
   "priority": "<HIGH|NORMAL|LOW>",
   "context": {
     "stage": "<Stage 1..6 or null>",
@@ -122,8 +127,7 @@ handoffs/WF03-EE05-fix/step-02-test-runner.json
     "next_action": "<suggested next step for Orchestrator>"
   },
   "rework_count": 0,
-  "max_rework": 3,
-  "completed_at": "<ISO8601-UTC or null>"
+  "max_rework": 3
 }
 ```
 
@@ -147,19 +151,25 @@ This applies to `created_at`, `started_at`, and `completed_at` in every handoff 
 
 ### 4.5 Handoff registry
 
-Every created handoff MUST be appended to `handoffs/registry.json`:
+Every created handoff MUST be recorded in the active registry and, once terminal, archived in the per-run registry:
 
 ```json
 {
-  "version": 1,
+  "schema_version": 1,
+  "created_at": "<ISO8601-UTC>",
+  "last_updated": "<ISO8601-UTC>",
   "entries": [
     {
       "handoff_id": "<uuid>",
+      "run_id": "<run-id>",
+      "workflow_id": "<workflow-id or null>",
+      "step": "01",
       "file": "handoffs/<filename>.json",
-      "workflow_id": "<id>",
       "from_agent": "<id>",
       "to_agent": "<id>",
       "created_at": "<ISO8601>",
+      "started_at": "<ISO8601 or null>",
+      "completed_at": "<ISO8601 or null>",
       "status": "<status>",
       "stage": "<Stage N or null>"
     }
@@ -167,9 +177,16 @@ Every created handoff MUST be appended to `handoffs/registry.json`:
 }
 ```
 
-The registry is append-only. Statuses are updated in-place on the registry entry (not appended again).
+`handoffs/registry.json` is the active registry for open work. ORCH updates entries in place while the handoff is open and removes terminal entries from the active registry after archiving the final snapshot to `handoffs/<run_id>/registry.json`.
 
-> Handoff directories are not committed to git by default. They can be cleaned up after the run's inner report is written and the release is confirmed. Add `handoffs/*/` to `.gitignore` if desired, but keep `handoffs/registry.json` versioned.
+> Handoff directories are not committed to git by default. They can be cleaned up after the run's inner report is written and the release is confirmed. Add `handoffs/*/` to `.gitignore` if desired, but keep `handoffs/registry.json` versioned as the active index and retain per-run registries for history.
+
+### 4.6 Registry recovery and compatibility
+
+- If `handoffs/registry.json` is missing or stale, ORCH rebuilds the active registry from the run-local handoff files whose status is not terminal.
+- If `handoffs/<run_id>/registry.json` is missing for a completed run, ORCH reconstructs it from the run-local handoff files and `handoffs/orchestrator.log`.
+- During migration, compatibility readers should prefer the active registry for live routing and fall back to the run-local handoff file plus per-run registry for history.
+- If the registry and handoff file disagree, the handoff file is the task-level source of truth and the mismatch is flagged for recovery.
 
 ---
 

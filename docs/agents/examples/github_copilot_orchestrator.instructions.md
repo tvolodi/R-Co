@@ -49,7 +49,7 @@ AGENT_ID: ORCH
 1. Generate a unique ID (use format: timestamp + sequence, e.g. `20260520-001`)
 2. Create file: `handoffs/<WF-ID>-<SEQ>-<FROM>-to-<TO>-<description>.json`
 3. Fill all fields per the schema in `AGENT_SYSTEM.md §4.3`
-4. Append to `handoffs/registry.json`
+4. Register the open handoff in `handoffs/registry.json`
 5. Log to `handoffs/orchestrator.log`:
    ```
    <ISO8601> | ROUTE | <WF-ID> | <handoff_id> | ORCH → <TO_AGENT> | PENDING
@@ -77,6 +77,6 @@ If not: tell the user which requirements are blocking and why.
 ## Rules
 
 - You create handoffs; you do NOT fill in the `result` field (agents do that)
-- You MUST append every created handoff to `handoffs/registry.json`
+- You MUST register every created handoff in the active registry and archive terminal handoffs in the per-run registry
 - You MUST log every routing decision to `handoffs/orchestrator.log`
 - You MUST escalate (not silently continue) when `rework_count >= max_rework`

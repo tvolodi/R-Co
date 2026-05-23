@@ -1,0 +1,47 @@
+{
+  "handoff_id": "a0900001-2605-4000-8009-202605230001",
+  "workflow_id": "WF02-api09-20260523",
+  "sequence": 1,
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-23T11:00:27Z",
+  "started_at": "2026-05-23T11:01:31Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4 — API Layer",
+    "requirement_ids": ["API-09"],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "src/api/api_mod.zig",
+      "src/api/errors.zig",
+      "src/api/response.zig",
+      "src/api/middleware/auth.zig",
+      "src/api/middleware/content_type.zig",
+      "src/api/middleware/validate.zig",
+      "src/main.zig"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact for API-09 (Request tracing) at src/design/api-tracing.md.\n\nAPI-09 requires:\n- Every request assigned a UUID v4 trace_id at request start\n- If caller provides X-Trace-Id request header, that value is used (propagation)\n- X-Trace-Id header included in every response\n- trace_id appears in every log entry during that request\n- trace_id appears in the trace_id field of any error response body\n- Trace ID still assigned/returned even if auth fails (HTTP 401)\n- Incoming X-Trace-Id that is not a valid UUID must be accepted as-is (no validation)\n\nDesign the module interface, types, and integration points:\n1. A trace middleware that runs FIRST in the middleware chain (before auth)\n2. How trace_id flows through request context to logging and error responses\n3. UUID v4 generation strategy (std.crypto.random or similar)\n4. How existing error response structure (src/api/errors.zig) gets trace_id field added\n5. How structured logging (OBS-01) carries trace_id in each log entry\n\nPer the backend developer guide §6 format: include Module name, Zig source files, Public types, Public functions, Error types, and Integration notes.",
+    "acceptance_criteria": [
+      "Design artefact src/design/api-tracing.md is created",
+      "Covers all acceptance criteria from API-09 requirement",
+      "Specifies trace middleware position in chain (first, before auth)",
+      "Defines how trace_id propagates to logging and error responses",
+      "References existing src/api/errors.zig, src/api/api_mod.zig, src/api/middleware/auth.zig",
+      "Addresses edge cases: caller-supplied X-Trace-Id, non-UUID X-Trace-Id, auth failures"
+    ],
+    "functions_to_call": ["fn:read-backend-conventions"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for api-tracing (API-09): trace middleware, trace_context thread-local, ProblemDetails extension, OBS-01 logger integration, and X-Trace-Id header injection strategy.",
+    "artifacts_out": ["src/design/api-tracing.md"],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  },
+  "completed_at": "2026-05-23T11:05:10Z"
+}

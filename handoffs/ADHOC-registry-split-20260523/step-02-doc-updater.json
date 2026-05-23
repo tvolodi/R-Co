@@ -1,0 +1,60 @@
+{
+  "handoff_id": "b1000002-2605-4000-9001-202605231432",
+  "run_id": "ADHOC-registry-split-20260523",
+  "step": "02",
+  "from_agent": "CODE-DESIGNER",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-05-23T14:31:29Z",
+  "started_at": "2026-05-23T14:31:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Ad-hoc orchestration infrastructure",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "b1000001-2605-4000-9001-202605231431"
+    ],
+    "artifacts_in": [
+      "src/design/registry-layout.md",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log",
+      "docs/agents/AGENT_SYSTEM.md",
+      "docs/agents/ORCHESTRATOR.md",
+      "docs/agents/functions/fn-register-handoff.md",
+      "docs/agents/functions/fn-create-handoff.md",
+      "docs/agents/functions/fn-load-handoff.md"
+    ]
+  },
+  "task": {
+    "description": "Update the orchestration documentation and function references so the new registry layout becomes the documented contract.\n\nRequired updates:\n- docs/agents/AGENT_SYSTEM.md\n- docs/agents/ORCHESTRATOR.md\n- docs/agents/functions/fn-register-handoff.md\n- docs/agents/functions/fn-create-handoff.md\n- docs/agents/functions/fn-load-handoff.md\n- Any other docs/agents files that still describe the registry as a single append-only file\n\nUse src/design/registry-layout.md as the source of truth. The docs should clearly describe:\n- active registry vs per-run registries\n- ORCH ownership of the active registry and run-registry creation
+- how agents resolve handoffs from run-local files
+- backward compatibility during migration
+- failure/recovery behavior when a registry file is missing or stale\n\nDo not change source code in this step; keep it documentation-only.",
+    "acceptance_criteria": [
+      "Docs mention the new registry split and no longer describe a single-file-only contract",
+      "ORCH create/load/complete procedures are updated consistently",
+      "Per-run registry behavior is documented",
+      "Backward compatibility and recovery behavior are documented",
+      "No source code changes are introduced"
+    ],
+    "functions_to_call": ["fn:update-changelog"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated the orchestration documentation and function references to describe the active registry plus per-run archive model.",
+    "artifacts_out": [
+      "docs/agents/AGENT_SYSTEM.md",
+      "docs/agents/ORCHESTRATOR.md",
+      "docs/agents/functions/fn-register-handoff.md",
+      "docs/agents/functions/fn-create-handoff.md",
+      "docs/agents/functions/fn-load-handoff.md",
+      "docs/agents/functions/fn-complete-handoff.md",
+      "handoffs/registry.json"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete for this stage / cycle"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-23T14:51:45Z"
+}

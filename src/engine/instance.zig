@@ -13,6 +13,7 @@ const PoolError = db.PoolError;
 const snapshot_mod = @import("../definition/snapshot.zig");
 const task_mod = @import("../tasks/store.zig");
 const transition_mod = @import("transition.zig");
+const scheduler_store_mod = @import("../scheduler/store.zig");
 const json_schema = @import("../tools/json_schema.zig");
 
 // ---------------------------------------------------------------------------
@@ -317,6 +318,32 @@ pub const MergeVariablesResult = struct {
     overwritten_events: []VariableOverwrittenPayload,
 };
 
+fn freeOwnedTransitionState(
+    allocator: std.mem.Allocator,
+    state: transition_mod.InstanceState,
+) void {
+    for (state.tokens) |tok| {
+        allocator.free(tok.node_id);
+        allocator.free(tok.branch_id);
+    }
+    allocator.free(state.tokens);
+
+    var vars = state.variables;
+    vars.deinit(allocator);
+
+    for (state.pending_task_nodes) |node_id| {
+        allocator.free(node_id);
+    }
+    allocator.free(state.pending_task_nodes);
+
+    if (state.error_detail) |detail| {
+        allocator.free(detail);
+    }
+
+    allocator.free(state.pending_events);
+    allocator.free(state.cancelled_branch_ids);
+}
+
 // ---------------------------------------------------------------------------
 // InstanceStore
 // ---------------------------------------------------------------------------
@@ -426,25 +453,45 @@ pub const InstanceStore = struct {
 
         // ── Step d: Capture the definition snapshot (PD-08) ────────────────
         // SnapshotStore.create() opens its own DB transaction internally.
-        // Use a temporary arena so the returned Snapshot is freed on exit.
-        // SnapshotAlreadyExists means an idempotent retry; continue to step e.
-        {
-            var snap_arena = std.heap.ArenaAllocator.init(allocator);
-            defer snap_arena.deinit();
+        // SnapshotAlreadyExists triggers a read-back of the existing snapshot
+        // (idempotent retry). The snapshot graph is needed for the initial
+        // transition in step e, so the arena must outlive this function.
+        var snap_arena = std.heap.ArenaAllocator.init(allocator);
+        defer snap_arena.deinit();
 
-            if (self.snapshot_store.create(snap_arena.allocator(), uuid_bytes, definition_id)) |_| {
-                // Snapshot created successfully; snap_arena.deinit() frees it.
+        const snapshot: snapshot_mod.Snapshot = blk: {
+            if (self.snapshot_store.create(snap_arena.allocator(), uuid_bytes, definition_id)) |snap| {
+                break :blk snap;
             } else |err| {
                 switch (err) {
                     error.DefinitionNotFound => return InstanceError.DefinitionNotFound,
-                    error.SnapshotAlreadyExists => {}, // idempotent retry; continue to step e
+                    error.SnapshotAlreadyExists => {
+                        // Idempotent retry: fetch the already-existing snapshot.
+                        break :blk self.snapshot_store.getByInstanceId(
+                            snap_arena.allocator(),
+                            uuid_bytes,
+                        ) catch return InstanceError.TransactionFailed;
+                    },
                     error.PoolExhausted => return InstanceError.PoolExhausted,
                     error.TransactionFailed => return InstanceError.TransactionFailed,
                 }
             }
-        }
+        };
 
-        // ── Step e: Insert the instance_projections row ────────────────────
+        // Locate the START node in the definition graph.
+        var start_node_id: ?[]const u8 = null;
+        for (snapshot.graph.nodes) |node| {
+            if (node.node_type == .START) {
+                start_node_id = node.id;
+                break;
+            }
+        }
+        if (start_node_id == null) return InstanceError.InvalidInput;
+
+        // ── Step e: Insert instance + trigger initial transition ───────────
+        // All writes happen in a single DB transaction so that the instance row,
+        // the first event, and any initial HUMAN_TASK rows are atomically visible.
+        //
         // NULLIF($3, '') converts the empty-string sentinel for a null Zig
         // correlation_key into SQL NULL so that:
         //   - NULL correlation_key does not trigger the partial unique index
@@ -456,8 +503,8 @@ pub const InstanceStore = struct {
         //   matches the uq_instance_correlation partial index; 0 RETURNING rows
         //   means the conflict fired → DuplicateCorrelationKey.
         //
-        // Security: $1=instance_id, $2=definition_id, $3=correlation_key,
-        //           $4=initial_variables — all bound via pg parameters.
+        // Security: all values bound as $N parameters — no SQL string
+        // interpolation of user-supplied data anywhere in this function.
         const ck_param = correlation_key orelse "";
 
         const conn2 = self.pool.acquire() catch |err| switch (err) {
@@ -466,6 +513,11 @@ pub const InstanceStore = struct {
         };
         defer self.pool.release(conn2);
 
+        // BEGIN TRANSACTION
+        conn2.begin() catch return InstanceError.TransactionFailed;
+        errdefer conn2.rollback() catch {};
+
+        // INSERT instance_projections
         const ins_rows = conn2.query(
             allocator,
             \\INSERT INTO instance_projections
@@ -495,6 +547,176 @@ pub const InstanceStore = struct {
         // 0 RETURNING rows: ON CONFLICT fired for a duplicate non-null
         // correlation_key → DuplicateCorrelationKey (HTTP 409).
         if (ins_rows.rows.len == 0) return InstanceError.DuplicateCorrelationKey;
+
+        // ── Build initial InstanceState for the transition ─────────────────
+        // Parse initial_variables into an ObjectMap for the pure transition function.
+        var var_arena = std.heap.ArenaAllocator.init(allocator);
+        defer var_arena.deinit();
+
+        const parsed_vars = std.json.parseFromSlice(
+            std.json.Value,
+            var_arena.allocator(),
+            initial_variables,
+            .{ .allocate = .alloc_always },
+        ) catch return InstanceError.InvalidInput;
+        defer parsed_vars.deinit();
+
+        var initial_obj_map = switch (parsed_vars.value) {
+            .object => |obj| obj.clone(allocator) catch return InstanceError.TransactionFailed,
+            else => return InstanceError.InvalidInput,
+        };
+        defer initial_obj_map.deinit(allocator);
+
+        var empty_vars = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+            return InstanceError.TransactionFailed;
+        defer empty_vars.deinit(allocator);
+        const initial_state = transition_mod.InstanceState{
+            .instance_id = uuid_bytes,
+            .status = .ACTIVE,
+            .tokens = &.{},
+            .variables = empty_vars,
+            .pending_task_nodes = &.{},
+            .error_detail = null,
+            .pending_events = &.{},
+            .cancelled_branch_ids = &.{},
+        };
+
+        // Call transition() — pure function, zero I/O, outside any DB transaction.
+        const start_event = transition_mod.TransitionEvent{
+            .instance_started = .{
+                .initial_variables = initial_obj_map,
+                .start_node_id = start_node_id.?,
+            },
+        };
+
+        const new_state = transition_mod.transition(
+            allocator,
+            snapshot.graph,
+            initial_state,
+            start_event,
+        ) catch return InstanceError.TransactionFailed;
+        defer freeOwnedTransitionState(allocator, new_state);
+
+        // ── Persist the transition result ──────────────────────────────────
+        // Serialize tokens to JSON array: [{"node_id":"...","branch_id":"..."}]
+        var tokens_buf = std.ArrayList(u8).empty;
+        tokens_buf.append(a, '[') catch return InstanceError.TransactionFailed;
+        for (new_state.tokens, 0..) |tok, i| {
+            if (i > 0) tokens_buf.append(a, ',') catch return InstanceError.TransactionFailed;
+            const entry = std.fmt.allocPrint(
+                a,
+                "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                .{ tok.node_id, tok.branch_id },
+            ) catch return InstanceError.TransactionFailed;
+            tokens_buf.appendSlice(a, entry) catch return InstanceError.TransactionFailed;
+        }
+        tokens_buf.append(a, ']') catch return InstanceError.TransactionFailed;
+        const tokens_json = tokens_buf.items;
+
+        // Serialize variables ObjectMap to JSON object string.
+        const vars_value = std.json.Value{ .object = new_state.variables };
+        const vars_json = std.json.Stringify.valueAlloc(a, vars_value, .{}) catch
+            return InstanceError.TransactionFailed;
+
+        const status_str = instanceStatusToString(new_state.status);
+
+        // Generate idempotency key for the event row.
+        var idem_bytes: Uuid = undefined;
+        fillRandom(&idem_bytes);
+        idem_bytes[6] = (idem_bytes[6] & 0x0f) | 0x40;
+        idem_bytes[8] = (idem_bytes[8] & 0x3f) | 0x80;
+        const idem_key_hex = uuidToHex(a, idem_bytes) catch return InstanceError.TransactionFailed;
+
+        // INSERT event row (instance_started).
+        conn2.exec(
+            \\WITH seq AS (
+            \\    INSERT INTO instance_sequence (instance_id, next_seq)
+            \\    VALUES ($1::uuid, 2)
+            \\    ON CONFLICT (instance_id) DO UPDATE
+            \\        SET next_seq = instance_sequence.next_seq + 1
+            \\    RETURNING next_seq - 1 AS val
+            \\)
+            \\INSERT INTO events
+            \\    (instance_id, event_type, payload, actor_id,
+            \\     sequence_number, idempotency_key)
+            \\SELECT $1::uuid, $2, $3::jsonb, $1::uuid, seq.val, $4
+            \\FROM seq
+        ,
+            &.{ inst_id_hex, "instance_started", vars_json, idem_key_hex },
+        ) catch return InstanceError.TransactionFailed;
+
+        // UPDATE instance_projections with the post-transition state.
+        conn2.exec(
+            \\UPDATE instance_projections
+            \\SET
+            \\    status        = $2,
+            \\    current_nodes = $3::jsonb,
+            \\    variables     = $4::jsonb,
+            \\    last_event_seq = 1,
+            \\    updated_at    = NOW()
+            \\WHERE instance_id = $1::uuid
+        ,
+            &.{ inst_id_hex, status_str, tokens_json, vars_json },
+        ) catch return InstanceError.TransactionFailed;
+
+        persistTimersFromPendingEventsInTx(
+            allocator,
+            conn2,
+            uuid_bytes,
+            new_state.pending_events,
+        ) catch return InstanceError.TransactionFailed;
+
+        // INSERT tasks for newly activated HUMAN_TASK nodes.
+        // Each task requires a token row in the tokens table (FK constraint).
+        for (new_state.pending_task_nodes) |task_node_id| {
+            var node_name: []const u8 = task_node_id;
+            var assignee_type: ?[]const u8 = null;
+            var assignee_ref: ?[]const u8 = null;
+
+            for (snapshot.graph.nodes) |node| {
+                if (!std.mem.eql(u8, node.id, task_node_id)) continue;
+                if (node.label) |lbl| node_name = lbl;
+                if (node.attributes) |attrs| {
+                    parseAssigneeFields(a, attrs, &assignee_type, &assignee_ref);
+                }
+                break;
+            }
+
+            // Generate a fresh UUID v4 for the token row.
+            var token_bytes: Uuid = undefined;
+            fillRandom(&token_bytes);
+            token_bytes[6] = (token_bytes[6] & 0x0f) | 0x40;
+            token_bytes[8] = (token_bytes[8] & 0x3f) | 0x80;
+            const tok_id_hex = uuidToHex(a, token_bytes) catch return InstanceError.TransactionFailed;
+
+            // INSERT token row (required by tasks.token_id FK).
+            conn2.exec(
+                \\INSERT INTO tokens
+                \\    (id, instance_id, current_node, status)
+                \\VALUES
+                \\    ($1::uuid, $2::uuid, $3, 'active')
+            ,
+                &.{ tok_id_hex, inst_id_hex, task_node_id },
+            ) catch return InstanceError.TransactionFailed;
+
+            const at_param: []const u8 = assignee_type orelse "";
+            const ar_param: []const u8 = assignee_ref orelse "";
+
+            // Security: all six values bound as $N params — no SQL string interpolation.
+            conn2.exec(
+                \\INSERT INTO tasks
+                \\    (instance_id, token_id, node_id, node_name, status,
+                \\     assignee_type, assignee_ref)
+                \\VALUES
+                \\    ($1::uuid, $2::uuid, $3, $4, 'PENDING',
+                \\     NULLIF($5, ''), NULLIF($6, ''))
+            ,
+                &.{ inst_id_hex, tok_id_hex, task_node_id, node_name, at_param, ar_param },
+            ) catch return InstanceError.TransactionFailed;
+        }
+
+        // COMMIT — all writes are now visible atomically.
+        conn2.commit() catch return InstanceError.TransactionFailed;
 
         // ── Step f: Build and return Instance ──────────────────────────────
         return rowToInstance(allocator, ins_rows.rows[0], initial_variables) catch
@@ -651,6 +873,18 @@ pub const InstanceStore = struct {
             &.{ inst_id_hex, status_str, tokens_json, vars_json },
         ) catch return ApplyError.PersistenceFailed;
 
+        persistTimersFromPendingEventsInTx(
+            allocator,
+            conn,
+            instance_id,
+            new_state.pending_events,
+        ) catch |err| switch (err) {
+            error.InstanceCancelled => return ApplyError.PersistenceFailed,
+            error.InvalidTimerNodeConfig => return ApplyError.TransitionFailed,
+            error.OutOfMemory => return ApplyError.OutOfMemory,
+            error.PersistenceFailed => return ApplyError.PersistenceFailed,
+        };
+
         // ── Step f: INSERT Task records for newly activated HUMAN_TASK nodes ─
         for (new_task_nodes.items) |task_node_id| {
             // Look up node in snapshot to get display name and assignee fields.
@@ -799,7 +1033,13 @@ pub const InstanceStore = struct {
 
         // Parse current_nodes JSON array → []Token (node_id/branch_id in allocator).
         var tokens = std.ArrayList(transition_mod.Token).empty;
-        defer tokens.deinit(allocator);
+        defer {
+            for (tokens.items) |tok| {
+                allocator.free(tok.node_id);
+                allocator.free(tok.branch_id);
+            }
+            tokens.deinit(allocator);
+        }
         token_parse: {
             const tok_parsed = std.json.parseFromSlice(
                 std.json.Value,
@@ -846,11 +1086,17 @@ pub const InstanceStore = struct {
             snapshot_mod.SnapshotError.PoolExhausted => CompleteTaskError.PoolExhausted,
             else => CompleteTaskError.PersistenceFailed,
         };
+        defer snapshot_mod.freeSnapshot(allocator, snapshot_obj);
         const snapshot = snapshot_obj.graph;
 
         // Compute pending_task_nodes: tokens whose node is a HUMAN_TASK type.
         var pending_task_nodes = std.ArrayList([]const u8).empty;
-        defer pending_task_nodes.deinit(allocator);
+        defer {
+            for (pending_task_nodes.items) |node_id| {
+                allocator.free(node_id);
+            }
+            pending_task_nodes.deinit(allocator);
+        }
         for (tokens.items) |tok| {
             for (snapshot.nodes) |node| {
                 if (std.mem.eql(u8, node.id, tok.node_id) and node.node_type == .HUMAN_TASK) {
@@ -941,7 +1187,7 @@ pub const InstanceStore = struct {
         // mergeVariables issues one SELECT (variable_schemas) then returns; all DB
         // writes for events occur after this call, still in the same transaction.
         var violation_detail: ?SchemaViolationDetail = null;
-        const merge_result = self.mergeVariables(
+        var merge_result = self.mergeVariables(
             allocator,
             conn,
             def_id,
@@ -958,10 +1204,15 @@ pub const InstanceStore = struct {
                 conn.rollback() catch {};
                 tx_committed = true; // Suppress the errdefer rollback (already done).
 
+                const has_violation_detail = violation_detail != null;
                 const vd = violation_detail orelse SchemaViolationDetail{
                     .affected_field = "",
                     .reason = "schema validation failed",
                     .variable_state = "{}",
+                };
+                defer if (has_violation_detail) {
+                    allocator.free(vd.affected_field);
+                    allocator.free(vd.variable_state);
                 };
 
                 // Serialise current variable state for the EXECUTION_ERROR payload.
@@ -997,6 +1248,7 @@ pub const InstanceStore = struct {
             if (merge_result.overwritten_events.len > 0)
                 allocator.free(merge_result.overwritten_events);
         }
+        defer merge_result.merged.deinit(allocator);
 
         // ── Step g: Build InstanceState with merged variables ─────────────────
         // Pass merge_result.merged as the variables so that CEL conditions in
@@ -1021,7 +1273,7 @@ pub const InstanceStore = struct {
             },
         };
 
-        const new_state = transition_mod.transition(allocator, snapshot, merged_state, event) catch |tr_err| switch (tr_err) {
+        const new_state = transition_mod.transition(a, snapshot, merged_state, event) catch |tr_err| switch (tr_err) {
             transition_mod.TransitionError.NoMatchingEdge => {
                 // EE-10 / EE-05 no-match path: rollback the completeTask tx first,
                 // then call setInstanceError which opens its own transaction.
@@ -1036,18 +1288,22 @@ pub const InstanceStore = struct {
                 ) catch return CompleteTaskError.OutOfMemory;
                 defer allocator.free(vars_json_for_error);
 
-                // Determine the gateway node where the token was parked.
-                // The token on the task's node drove us into this gateway.
-                // Find the first token that is on an EXCLUSIVE_GATEWAY node in the snapshot.
+                // Determine the gateway node: follow the outgoing edge from the
+                // completed task node to find the EXCLUSIVE_GATEWAY that caused
+                // the NoMatchingEdge. The token never reaches the gateway
+                // because transition() fails, so we look at the graph structure.
                 var gateway_node_id: ?[]const u8 = null;
-                for (merged_state.tokens) |tok| {
-                    for (snapshot.nodes) |node| {
-                        if (std.mem.eql(u8, node.id, tok.node_id) and node.node_type == .EXCLUSIVE_GATEWAY) {
-                            gateway_node_id = tok.node_id;
-                            break;
+                for (snapshot.edges) |edge| {
+                    if (std.mem.eql(u8, edge.source, task.node_id)) {
+                        // Check if the target is an EXCLUSIVE_GATEWAY.
+                        for (snapshot.nodes) |node| {
+                            if (std.mem.eql(u8, node.id, edge.target) and node.node_type == .EXCLUSIVE_GATEWAY) {
+                                gateway_node_id = edge.target;
+                                break;
+                            }
                         }
+                        if (gateway_node_id != null) break;
                     }
-                    if (gateway_node_id != null) break;
                 }
 
                 self.setInstanceError(allocator, SetInstanceErrorArgs{
@@ -1096,8 +1352,13 @@ pub const InstanceStore = struct {
 
         // ── Step i: UPDATE tasks SET status='COMPLETED' ───────────────────────
         // Security: task_id and output_variables_json bound as $N in completeInTx.
-        _ = task_store.completeInTx(allocator, conn, task_id, output_variables_json) catch
-            return CompleteTaskError.PersistenceFailed;
+        const completed_task = task_store.completeInTx(
+            allocator,
+            conn,
+            task_id,
+            output_variables_json,
+        ) catch return CompleteTaskError.PersistenceFailed;
+        defer task_mod.freeTask(allocator, completed_task);
 
         // ── Step j: INSERT TASK_COMPLETED event row ───────────────────────────
         // CTE atomically bumps instance_sequence and inserts into events.
@@ -1165,6 +1426,18 @@ pub const InstanceStore = struct {
         ,
             &.{ inst_id_hex, new_status_str, new_tokens_json, new_vars_json },
         ) catch return CompleteTaskError.PersistenceFailed;
+
+        persistTimersFromPendingEventsInTx(
+            allocator,
+            conn,
+            task.instance_id,
+            new_state.pending_events,
+        ) catch |err| switch (err) {
+            error.InstanceCancelled => return CompleteTaskError.TaskAlreadyTerminated,
+            error.InvalidTimerNodeConfig => return CompleteTaskError.TransitionFailed,
+            error.OutOfMemory => return CompleteTaskError.OutOfMemory,
+            error.PersistenceFailed => return CompleteTaskError.PersistenceFailed,
+        };
 
         // ── Step m: Create tasks for newly activated HUMAN_TASK nodes ─────────
         // Set difference: new_state.pending_task_nodes minus current_state.pending_task_nodes.
@@ -2221,6 +2494,51 @@ fn buildOverwrittenPayload(
             "{{\"event_type\":\"VARIABLE_OVERWRITTEN\",\"instance_id\":\"{s}\",\"task_id\":null,\"key\":{s},\"old_value\":{s},\"new_value\":{s}}}",
             .{ instance_id_hex, key_json, ev.old_value, ev.new_value },
         );
+    }
+}
+
+const PersistTimerEffectsError = error{
+    InvalidTimerNodeConfig,
+    InstanceCancelled,
+    PersistenceFailed,
+    OutOfMemory,
+};
+
+fn persistTimersFromPendingEventsInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    instance_id: Uuid,
+    pending_events: []const transition_mod.PendingEvent,
+) PersistTimerEffectsError!void {
+    for (pending_events) |ev| {
+        switch (ev) {
+            .timer_created => |timer_ev| {
+                var timer_id: Uuid = undefined;
+                fillRandom(&timer_id);
+                timer_id[6] = (timer_id[6] & 0x0f) | 0x40;
+                timer_id[8] = (timer_id[8] & 0x3f) | 0x80;
+
+                scheduler_store_mod.insertPendingTimerInTx(
+                    allocator,
+                    conn,
+                    .{
+                        .timer_id = timer_id,
+                        .instance_id = instance_id,
+                        .step_name = timer_ev.timer_node_id,
+                        .duration_iso8601 = timer_ev.duration_iso8601,
+                        .payload_json = timer_ev.payload_json,
+                    },
+                ) catch |err| switch (err) {
+                    scheduler_store_mod.TimerStoreError.InvalidInput => return PersistTimerEffectsError.InvalidTimerNodeConfig,
+                    scheduler_store_mod.TimerStoreError.InstanceCancelled => return PersistTimerEffectsError.InstanceCancelled,
+                    scheduler_store_mod.TimerStoreError.InstanceNotFound => return PersistTimerEffectsError.PersistenceFailed,
+                    scheduler_store_mod.TimerStoreError.DuplicateTimerId => return PersistTimerEffectsError.PersistenceFailed,
+                    scheduler_store_mod.TimerStoreError.QueryFailed => return PersistTimerEffectsError.PersistenceFailed,
+                    scheduler_store_mod.TimerStoreError.OutOfMemory => return PersistTimerEffectsError.OutOfMemory,
+                };
+            },
+            else => {},
+        }
     }
 }
 

@@ -53,7 +53,7 @@ export default function DlqPage() {
           {(data?.items ?? []).map((e: DlqEntry) => (
             <tr key={e.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
               <td style={{ padding: '.5rem .8rem', fontFamily: 'monospace', fontSize: '.8rem' }}>{e.entry_type}</td>
-              <td style={{ padding: '.5rem .8rem', fontFamily: 'monospace', fontSize: '.75rem', color: '#64748b' }}>{e.instance_id.slice(0, 8)}…</td>
+              <td style={{ padding: '.5rem .8rem', fontFamily: 'monospace', fontSize: '.75rem', color: '#64748b' }}>{e.instance_id?.slice(0, 8)}…</td>
               <td style={{ padding: '.5rem .8rem', fontSize: '.8rem', color: '#64748b', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.reason}</td>
               <td style={{ padding: '.5rem .8rem', textAlign: 'center' }}>{e.retry_count}/{e.max_retries}</td>
               <td style={{ padding: '.5rem .8rem' }}>

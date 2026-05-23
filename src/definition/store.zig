@@ -99,12 +99,12 @@ pub const ListOpts = struct {
 /// Null fields mean "do not change". For PUT, the handler fills all fields.
 /// For PATCH, the handler fills only the fields present in the request body.
 pub const UpdateParams = struct {
-    name:        ?[]const u8,
-    version:     ?[]const u8,
+    name: ?[]const u8,
+    version: ?[]const u8,
     description: ?[]const u8,
     /// When non-null, the full graph validation pipeline is re-run.
-    graph:       ?DefinitionGraph,
-    stage:       ?[]const u8,
+    graph: ?DefinitionGraph,
+    stage: ?[]const u8,
 };
 
 /// Input to Store.search() (PD-10).
@@ -511,19 +511,12 @@ pub const Store = struct {
 
         const current_status = parseDefinitionStatus(col.get(row, 4)) catch .DRAFT;
 
-        // [B] Already ACTIVE → idempotent no-op; rollback (nothing changed) and
-        //     return the current definition.
+        // [B] Already ACTIVE → return AlreadyActive error (HTTP 200 via handler).
+        //     The handler layer fetches the current definition and returns it with
+        //     status 200 — the store signals idempotency via this error variant.
         if (current_status == .ACTIVE) {
             conn.rollback() catch {};
-            const stub = CreateParams{
-                .name = "",
-                .version = "",
-                .description = null,
-                .graph = DefinitionGraph{ .nodes = &.{}, .edges = &.{} },
-                .created_by = std.mem.zeroes(Uuid),
-            };
-            return rowToDefinition(allocator, row, stub) catch
-                DefinitionError.TransactionFailed;
+            return DefinitionError.AlreadyActive;
         }
 
         // [C] DEPRECATED or ARCHIVED → reject with NotDraft (HTTP 409).

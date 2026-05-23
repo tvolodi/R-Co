@@ -184,6 +184,7 @@ export interface ApiToken {
   name: string
   last_used_at?: string
   expires_at?: string
+  revoked_at?: string
   created_at: string
 }
 
@@ -200,6 +201,7 @@ export interface DlqEntry {
   error_detail?: Record<string, unknown>
   retry_count: number
   max_retries: number
+  next_retry_at?: string
   status: DlqStatus
   created_at: string
 }
@@ -234,9 +236,15 @@ export interface AuditEntry {
 
 // ── Health ────────────────────────────────────────────────────────────────────
 
+export interface ComponentStatus {
+  status: string
+  latency_ms?: number
+}
+
 export interface HealthStatus {
   status: 'ok' | 'degraded' | 'down'
   db_latency_ms: number
   uptime_seconds: number
   version: string
+  components: Record<string, ComponentStatus>
 }

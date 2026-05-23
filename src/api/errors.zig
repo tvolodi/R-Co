@@ -7,6 +7,7 @@
 //!   return .{ .status_code = pd.status, .body = body };
 
 const std = @import("std");
+const trace_context = @import("trace_context.zig");
 
 const BASE = "https://bpm.example.com/problems/";
 
@@ -26,6 +27,14 @@ pub const ProblemDetails = struct {
     status: u16,
     /// Specific message describing this occurrence.
     detail: []const u8,
+    /// Trace ID for this request.  Defaults to "" for backward compatibility.
+    /// serialise() resolves the effective value automatically:
+    ///   1. If trace_id is non-empty: use trace_id.
+    ///   2. Else: use trace_context.get() (the thread-local for this request).
+    ///   3. If both are empty: emit trace_id as "".
+    /// Callers SHOULD leave this at the default; setting it explicitly
+    /// overrides the thread-local (useful in tests).
+    trace_id: []const u8 = "",
 };
 
 // ── Serialiser ────────────────────────────────────────────────────────────────
@@ -35,13 +44,18 @@ pub const ProblemDetails = struct {
 /// Returns error.OutOfMemory if the allocator fails.
 ///
 /// Output format:
-///   {"type":"https://bpm.example.com/problems/<slug>",
-///    "title":"<title>","status":<N>,"detail":"<detail>"}
+///   {"type":"...","title":"...","status":N,"detail":"...","trace_id":"..."}
+///
+/// The trace_id field is resolved as:
+///   1. If p.trace_id is non-empty: use p.trace_id.
+///   2. Else: use trace_context.get() (the thread-local for this request).
+///   3. If both are empty: emit trace_id as "".
 pub fn serialise(allocator: std.mem.Allocator, p: ProblemDetails) error{OutOfMemory}![]const u8 {
+    const effective_trace_id = if (p.trace_id.len > 0) p.trace_id else trace_context.get();
     return std.fmt.allocPrint(
         allocator,
-        "{{\"type\":\"{s}\",\"title\":\"{s}\",\"status\":{d},\"detail\":\"{s}\"}}",
-        .{ p.type, p.title, p.status, p.detail },
+        "{{\"type\":\"{s}\",\"title\":\"{s}\",\"status\":{d},\"detail\":\"{s}\",\"trace_id\":\"{s}\"}}",
+        .{ p.type, p.title, p.status, p.detail, effective_trace_id },
     );
 }
 
@@ -127,6 +141,18 @@ pub fn problemForbidden(detail: []const u8) ProblemDetails {
         .type = BASE ++ "forbidden",
         .title = "Forbidden",
         .status = 403,
+        .detail = detail,
+    };
+}
+
+/// HTTP 429 — Too Many Requests.
+/// The caller MUST set the Retry-After response header separately;
+/// this constructor only produces the RFC 9457 Problem Details body.
+pub fn problemRateLimited(detail: []const u8) ProblemDetails {
+    return .{
+        .type = BASE ++ "rate-limited",
+        .title = "Too Many Requests",
+        .status = 429,
         .detail = detail,
     };
 }

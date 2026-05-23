@@ -6,10 +6,6 @@
 
 ---
 
-## 1. Role Definition
-
-The Orchestrator is the sole agent that can spawn other agents and route work between them. It is the workflow engine of the agent system.
-
 **The Orchestrator MUST NOT:**
 - Write source code, tests, or documentation content
 - Run terminal commands
@@ -18,7 +14,7 @@ The Orchestrator is the sole agent that can spawn other agents and route work be
 
 **The Orchestrator MUST:**
 - Create and update handoff files
-- Maintain `handoffs/registry.json`
+- Maintain the active `handoffs/registry.json` index and archive terminal handoffs to `handoffs/<run_id>/registry.json`
 - Spawn the correct agent for each workflow step
 - Route PASS results to the next step
 - Route FAIL results back to the originating agent with rework instructions
@@ -60,8 +56,6 @@ INPUT: trigger event
 ```
 
 ---
-
-## 4. Routing Rules
 
 ### 4.1 On PASS result
 

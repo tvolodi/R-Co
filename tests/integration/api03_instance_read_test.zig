@@ -54,6 +54,8 @@ const Instance = bpm.engine.Instance;
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 /// UUID guaranteed absent from any real test run.
 const nonexistent_uuid_str = "ffffffff-ffff-ffff-ffff-ffffffffffff";
+/// Valid UUID used as actor_id for cancelInstance (must be valid UUID for events.actor_id column).
+const cancel_actor_uuid = "00000000-0000-0000-0000-000000000001";
 
 // ---------------------------------------------------------------------------
 // Minimal valid graph: START → HUMAN_TASK → END
@@ -370,7 +372,7 @@ test "TC-API-03-05: getById returns CANCELLED instance with cancelled_at non-nul
     freeInstance(alloc, inst);
 
     // Cancel via the EE-08 path.
-    try instance_store.cancelInstance(alloc, &task_store, inst_id, "test-actor");
+    try instance_store.cancelInstance(alloc, &task_store, inst_id, cancel_actor_uuid);
 
     const data = try instance_store.getById(alloc, inst_id);
     defer {
@@ -582,7 +584,7 @@ test "TC-API-03-15: listInstances with status=ACTIVE returns only ACTIVE instanc
 
     const inst_c = try instance_store.create(alloc, def_id, null, "{}");
     const id_c = inst_c.instance_id; freeInstance(alloc, inst_c);
-    try instance_store.cancelInstance(alloc, &task_store, id_c, "test-actor");
+    try instance_store.cancelInstance(alloc, &task_store, id_c, cancel_actor_uuid);
 
     const hex_a = try uuidToHexStr(alloc, id_a); defer alloc.free(hex_a);
     const hex_b = try uuidToHexStr(alloc, id_b); defer alloc.free(hex_b);
@@ -816,7 +818,7 @@ test "TC-API-03-18: listInstances with combined status=ACTIVE and definition_id 
     // Instance B: def X, gets CANCELLED.
     const inst_b = try instance_store.create(alloc, def_id_x, null, "{}");
     const id_b = inst_b.instance_id; freeInstance(alloc, inst_b);
-    try instance_store.cancelInstance(alloc, &task_store, id_b, "test-actor");
+    try instance_store.cancelInstance(alloc, &task_store, id_b, cancel_actor_uuid);
 
     // Instance C: def Y, ACTIVE (must NOT appear in results filtered by def X).
     const inst_c = try instance_store.create(alloc, def_id_y, null, "{}");

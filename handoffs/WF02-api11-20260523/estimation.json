@@ -1,0 +1,17 @@
+{
+  "run_id": "WF02-api11-20260523",
+  "created_at": "2026-05-23T12:21:18Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["API-11"],
+  "difficulty": 2,
+  "difficulty_rationale": "Single new endpoint and code-driven spec generation without schema changes, similar scope to other API SHOULD work items.",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 5,
+    "backend-dev": 10,
+    "test-designer": 16,
+    "test-runner": 6,
+    "doc-updater": 2,
+    "total": 39
+  }
+}

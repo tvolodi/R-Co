@@ -1,0 +1,64 @@
+{
+  "stage": "Stage 4 — API Layer",
+  "requirement_ids": ["API-09"],
+  "date": "2026-05-23T11:32:55Z",
+  "decision": "APPROVED",
+  "build": {
+    "command": "zig build",
+    "exit_code": 0
+  },
+  "nfr_results": {
+    "unit_tests_passed": "10/10",
+    "unit_tests_failed": "0",
+    "integration_tests_deferred": "6/6",
+    "integration_deferral_reason": "HTTP server entry point not yet implemented (src/main.zig stub); BPM_TEST_URL unavailable"
+  },
+  "acceptance_criteria_coverage": [
+    {
+      "criterion": "Response includes X-Trace-Id header containing UUID v4 assigned at request start",
+      "covered_by": ["TC-API-09-01", "TC-API-09-05"],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Caller-supplied X-Trace-Id request header is propagated unchanged",
+      "covered_by": ["TC-API-09-02"],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Non-UUID X-Trace-Id accepted and propagated as-is",
+      "covered_by": ["TC-API-09-03"],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Empty/missing X-Trace-Id generates new UUID v4",
+      "covered_by": ["TC-API-09-01", "TC-API-09-04"],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Trace ID stored in thread-local context and retrievable per-request",
+      "covered_by": ["TC-API-09-06", "TC-API-09-07"],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Trace ID appears in trace_id field of error response body",
+      "covered_by": ["TC-API-09-08", "TC-API-09-09"],
+      "result": "PASS"
+    },
+    {
+      "criterion": "generateUuidV4() produces unique values",
+      "covered_by": ["TC-API-09-10"],
+      "result": "PASS"
+    }
+  ],
+  "blocking_issues": [],
+  "deferred_items": [
+    {
+      "id": "TC-API-09-INT-01 through TC-API-09-INT-06",
+      "description": "Integration tests for live HTTP endpoint behaviour deferred pending HTTP server implementation",
+      "severity": "INFO",
+      "blocks_release": false
+    }
+  ],
+  "approved_requirements": ["API-09"],
+  "release_notes": "API-09 (Request tracing) implementation verified via 10 unit tests — all passing. Core tracing logic (UUID generation, header propagation, thread-local context, error body injection) is fully implemented in src/api/middleware/trace.zig, src/api/trace_context.zig, and src/api/errors.zig. Integration tests are written and compiled; they will execute against a live server once the HTTP entry point is implemented."
+}

@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "zig-build-check",
+			"type": "shell",
+			"command": "zig build",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}

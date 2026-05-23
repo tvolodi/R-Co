@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "last_updated": "2026-05-23T15:35:07Z",
+  "next_issue_id": 2,
+  "issues": [
+    {
+      "id": "ISS-0001",
+      "title": "WF04 rerun regression: API-03 integration leak and frontend no-tests failure",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "run_id": "WF04-full-rerun-20260523",
+      "handoff_id": "c2726dcc-cda5-4bc1-8114-9cc6512bfe73",
+      "affected_areas": [
+        "src/engine/instance.zig",
+        "src/definition/snapshot.zig",
+        "tests/integration/api03_instance_read_test.zig",
+        "web/package.json"
+      ],
+      "created_at": "2026-05-23T15:35:07Z",
+      "resolved_at": "2026-05-23T15:35:07Z"
+    }
+  ]
+}

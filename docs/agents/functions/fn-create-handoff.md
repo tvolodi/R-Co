@@ -15,3 +15,5 @@ INPUT: run_id, step, to_agent, context, task, priority
      <ISO8601> | ROUTE | <run_id> | <handoff_id[:8]> | ORCH → <to_agent> | PENDING
 7. Return handoff_id and filename
 ```
+
+`fn:create-handoff` only prepares the open handoff and registers it in the active registry. When the handoff reaches a terminal state, ORCH archives the final snapshot to `handoffs/<run_id>/registry.json` through the completion path.

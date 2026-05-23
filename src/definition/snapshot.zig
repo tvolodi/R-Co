@@ -56,12 +56,41 @@ pub const Snapshot = struct {
     snapshotted_at: i64,
 };
 
+pub fn freeSnapshot(allocator: std.mem.Allocator, snapshot: Snapshot) void {
+    allocator.free(snapshot.definition_name);
+    allocator.free(snapshot.definition_ver);
+
+    for (snapshot.graph.nodes) |node| {
+        allocator.free(node.id);
+        if (node.label) |label| allocator.free(label);
+        if (node.attributes) |attributes| allocator.free(attributes);
+    }
+    if (snapshot.graph.nodes.len > 0) {
+        allocator.free(snapshot.graph.nodes);
+    }
+
+    for (snapshot.graph.edges) |edge| {
+        allocator.free(edge.id);
+        allocator.free(edge.source);
+        allocator.free(edge.target);
+        if (edge.condition) |condition| allocator.free(condition);
+    }
+    if (snapshot.graph.edges.len > 0) {
+        allocator.free(snapshot.graph.edges);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // SnapshotStore
 // ---------------------------------------------------------------------------
 
 pub const SnapshotStore = struct {
     pool: *Pool,
+
+    /// Create a new SnapshotStore backed by the given connection pool.
+    pub fn init(pool: *Pool) SnapshotStore {
+        return SnapshotStore{ .pool = pool };
+    }
 
     // -----------------------------------------------------------------------
     // create  (PD-08)

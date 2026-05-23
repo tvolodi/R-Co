@@ -3,6 +3,11 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const package_manifest = @import("build.zig.zon");
+
+    const build_options = b.addOptions();
+    build_options.addOption([]const u8, "platform_version", package_manifest.version);
+    const build_options_mod = build_options.createModule();
 
     // ---------------------------------------------------------------------------
     // Vendor dependencies
@@ -26,6 +31,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "http", .module = http_mod },
         .{ .name = "cel", .module = cel_mod },
         .{ .name = "transition", .module = transition_mod },
+        .{ .name = "build_options", .module = build_options_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -397,6 +403,20 @@ pub fn build(b: *std.Build) void {
     });
     const run_api08_auth_tests = b.addRunArtifact(api08_auth_tests);
 
+    // API-09: Request tracing middleware unit tests (pure functions — no DB, no network)
+    // Uses the api_mod shim (src/api/api_mod.zig) to import trace.zig and trace_context.zig.
+    const api09_tracing_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_api09_tracing.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "api", .module = api_mod },
+            },
+        }),
+    });
+    const run_api09_tracing_tests = b.addRunArtifact(api09_tracing_tests);
+
     // ---------------------------------------------------------------------------
     // `zig build test-engine` — engine unit tests only
     // ---------------------------------------------------------------------------
@@ -440,6 +460,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_api06_pagination_tests.step);
     test_step.dependOn(&run_api07_validation_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
+    test_step.dependOn(&run_api09_tracing_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
@@ -463,7 +484,14 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_integration_tests = b.addRunArtifact(integration_tests);
+
+    // Pre-cleanup: delete all rows from test DB tables before running tests.
+    const clean_test_db = b.addSystemCommand(&.{ "python3", "tools/clean_test_db.py" });
+    const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
+    clean_test_db_step.dependOn(&clean_test_db.step);
+
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_step.dependOn(&clean_test_db.step);
     test_integration_step.dependOn(&run_integration_tests.step);
 
     // ---------------------------------------------------------------------------
@@ -492,7 +520,14 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("tests/bench/bench.zig"),
             .target = target,
             .optimize = .ReleaseFast,
-            .imports = vendor_imports,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "http", .module = http_mod },
+                .{ .name = "cel", .module = cel_mod },
+                .{ .name = "transition", .module = transition_mod },
+                .{ .name = "build_options", .module = build_options_mod },
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
         }),
     });
     const run_bench = b.addRunArtifact(bench_exe);
@@ -508,7 +543,21 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/tools/openapi_gen.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = vendor_imports,
+            .imports = &.{
+                .{ .name = "openapi", .module = b.createModule(.{
+                    .root_source_file = b.path("src/api/openapi/mod.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                    .imports = &.{
+                        .{ .name = "build_options", .module = build_options_mod },
+                    },
+                }) },
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "http", .module = http_mod },
+                .{ .name = "cel", .module = cel_mod },
+                .{ .name = "transition", .module = transition_mod },
+                .{ .name = "build_options", .module = build_options_mod },
+            },
         }),
     });
     const run_openapi = b.addRunArtifact(openapi_exe);

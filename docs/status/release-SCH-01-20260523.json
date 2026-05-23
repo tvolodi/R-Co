@@ -1,0 +1,49 @@
+{
+  "stage": "Stage 5 — Scheduler + Identity",
+  "date": "2026-05-23T16:55:50Z",
+  "decision": "APPROVED",
+  "requirement_ids": ["SCH-01"],
+  "nfr_results": {
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.31,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.567,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 1517.712,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 43.705,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "bench_exit_code": 0,
+    "bench_run_id": "bench-1779555194907"
+  },
+  "test_evidence": {
+    "test_runner_report": "tests/reports/WF02-sch01-20260523-test-report.json",
+    "integration_rerun": {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration --summary all",
+      "result": "PASS",
+      "passed": 151,
+      "failed": 0,
+      "skipped": 6,
+      "notes": "6 HTTP integration tests skipped because BPM_TEST_URL is not set. SCH-01 integration evidence remains valid and unchanged."
+    }
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["SCH-01"],
+  "recommendation": "APPROVE release progression for SCH-01 and route to DOC-UPDATER to set requirement status RELEASED."
+}

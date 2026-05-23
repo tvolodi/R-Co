@@ -179,4 +179,4 @@ with open(path, "w") as f:
 print("Handoff completed.")
 ```
 
-Also update `handoffs/registry.json` — find the entry by `handoff_id` and update its `status` field.
+Also update the active entry in `handoffs/registry.json` — find the entry by `handoff_id` and update its `status` field. Terminal history is archived separately by ORCH.

@@ -1,0 +1,64 @@
+{
+  "run_id": "WF02-api10-20260523",
+  "requirement_ids": [
+    "API-10"
+  ],
+  "difficulty": 2,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 38,
+  "actual_minutes_total": 29.66,
+  "variance_pct": -21.9,
+  "by_step": {
+    "code-designer": {
+      "estimated": 7,
+      "actual": 3.8,
+      "variance_pct": -45.7
+    },
+    "backend-dev": {
+      "estimated": 10,
+      "actual": 11.55,
+      "variance_pct": 15.5
+    },
+    "test-designer": {
+      "estimated": 16,
+      "actual": 2.7,
+      "variance_pct": -83.1
+    },
+    "test-runner": {
+      "estimated": 2,
+      "actual": 10.43,
+      "variance_pct": 421.5
+    },
+    "doc-updater": {
+      "estimated": 3,
+      "actual": 1.18,
+      "variance_pct": -60.7
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "code-designer",
+      "difficulty": 2,
+      "old_estimate": 7,
+      "new_estimate": 5,
+      "reason": "Observed 2 consecutive runs at D2 with >25% variance (WF02-api08: -45.7%, WF02-api10: -45.7%)"
+    },
+    {
+      "step": "test-runner",
+      "difficulty": 2,
+      "old_estimate": 2,
+      "new_estimate": 6,
+      "reason": "Observed 2 consecutive runs at D2 with >25% variance (WF02-api08: +120.0%, WF02-api10: +421.5%)"
+    },
+    {
+      "step": "doc-updater",
+      "difficulty": 2,
+      "old_estimate": 3,
+      "new_estimate": 2,
+      "reason": "Observed 2 consecutive runs at D2 with >25% variance (WF02-api08: -72.0%, WF02-api10: -60.7%)"
+    }
+  ],
+  "notes": "backend-dev (+15.5%): below threshold, no adjustment. test-designer (-83.1%): extreme underrun but api08 was +117.0% (opposite direction), no consecutive same-direction chain. test-runner (+421.5%): TC-API-10-08 required Windows-specific kernel32 env-var binding adding significant implementation time not anticipated in D2 estimate; consecutive overrun with api08 (+120.0%) triggers upward adjustment. code-designer (-45.7%): second consecutive D2 underrun matching api08 (-45.7%) triggers downward adjustment. doc-updater (-60.7%): third consecutive D2 underrun (api07 -72.0%, api08 -72.0%, api10 -60.7%) triggers further downward adjustment from 3 to 2.",
+  "completed_at": "2026-05-23T12:21:18Z"
+}

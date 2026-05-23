@@ -1,0 +1,50 @@
+{
+  "run_id": "WF02-api11-20260523",
+  "requirement_ids": [
+    "API-11"
+  ],
+  "difficulty": 2,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 39,
+  "actual_minutes_total": 93.2,
+  "variance_pct": 139.0,
+  "by_step": {
+    "code-designer": {
+      "estimated": 5,
+      "actual": 66.13,
+      "variance_pct": 1222.6
+    },
+    "backend-dev": {
+      "estimated": 10,
+      "actual": 11.42,
+      "variance_pct": 14.2
+    },
+    "test-designer": {
+      "estimated": 16,
+      "actual": 4.35,
+      "variance_pct": -72.8
+    },
+    "test-runner": {
+      "estimated": 6,
+      "actual": 2.32,
+      "variance_pct": -61.3
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 8.98,
+      "variance_pct": 349.0
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "test-designer",
+      "difficulty": 2,
+      "old_estimate": 16,
+      "new_estimate": 10,
+      "reason": "Observed 2 consecutive runs at D2 with >25% underrun (WF02-api10-20260523: -83.1%, WF02-api11-20260523: -72.8%)"
+    }
+  ],
+  "notes": "code-designer (+1222.6%): large overrun, but prior D2 run (WF02-api10-20260523) was -45.7%, so no consecutive same-direction chain. backend-dev (+14.2%): below threshold. test-runner (-61.3%): prior D2 run was +421.5% (opposite direction), so no chain. doc-updater (+349.0%): prior D2 run was -60.7% (opposite direction), so no chain.",
+  "completed_at": "2026-05-23T13:54:35Z"
+}

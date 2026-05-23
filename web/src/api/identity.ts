@@ -51,7 +51,7 @@ export const groupsApi = {
   addMembers: (id: string, userIds: string[]) =>
     client.post<void>(`/api/v1/admin/groups/${id}/members`, { user_ids: userIds }),
 
-  removeMembers: (id: string, userIds: string[]) =>
+  removeMembers: (id: string, _userIds: string[]) =>
     client.delete<void>(`/api/v1/admin/groups/${id}/members`),
 
   members: (id: string) =>

@@ -198,9 +198,9 @@ test "TC-EE-01-01: start instance with initial_variables returns ACTIVE instance
 
     // Defers (LIFO): freeInstance → cleanupInstance → alloc.free(inst_hex) → cleanupByName.
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
-    defer alloc.free(inst_hex);           // runs 3rd (after cleanupInstance uses it)
+    defer alloc.free(inst_hex); // runs 3rd (after cleanupInstance uses it)
     defer cleanupInstance(&pool, inst_hex); // runs 2nd
-    defer freeInstance(alloc, inst);       // runs 1st
+    defer freeInstance(alloc, inst); // runs 1st
 
     try std.testing.expectEqual(InstanceStatus.ACTIVE, inst.status);
 

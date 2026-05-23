@@ -28,6 +28,15 @@ pub const json_schema_mod = @import("tools/json_schema.zig"); // EE-09 schema va
 pub const api_errors = @import("api/errors.zig"); // API-01 RFC 9457 Problem Details
 pub const api_response = @import("api/response.zig"); // API-01 response builder
 pub const api_content_type = @import("api/middleware/content_type.zig"); // API-01 Content-Type enforcement
+pub const api_trace_context = @import("api/trace_context.zig"); // API-09 trace context
+pub const api_trace = @import("api/middleware/trace.zig"); // API-09 trace middleware
+pub const api_rate_limit = @import("api/middleware/rate_limit.zig"); // API-10 rate limiting
+pub const api_openapi = @import("api/openapi/mod.zig"); // API-11 OpenAPI builder/serializer
+pub const openapi_routes = @import("api/routes/openapi.zig"); // API-11 public /openapi.json route handler
+pub const health_routes = @import("api/routes/health.zig"); // API-12 public /health/live and /health/ready handlers
+pub const api_health_readiness = @import("api/health/readiness.zig"); // API-12 readiness evaluation
+pub const api_health_subsystems = @import("api/health/subsystems.zig"); // API-12 critical subsystem checks
+pub const obs_logger = @import("obs/logger.zig"); // OBS-01 structured logger
 
 pub fn main() !void {
     std.debug.print("BPM Platform — not yet implemented\n", .{});

@@ -39,15 +39,24 @@ pub const ParallelJoinPayload = struct {
 /// EE-07: emitted when all parallel branches are cancelled before any token
 /// reaches the join, cascading the instance to CANCELLED status.
 pub const InstanceCancelledPayload = struct {
-    reason: []const u8,           // "ALL_BRANCHES_CANCELLED" or "OPERATOR"
-    join_node_id: ?[]const u8,    // set when reason == "ALL_BRANCHES_CANCELLED"
+    reason: []const u8, // "ALL_BRANCHES_CANCELLED" or "OPERATOR"
+    join_node_id: ?[]const u8, // set when reason == "ALL_BRANCHES_CANCELLED"
     branch_ids_cancelled: [][]const u8,
+};
+
+/// SCH-01: emitted when execution enters a TIMER node.
+pub const TimerCreatedPayload = struct {
+    timer_node_id: []const u8,
+    duration_iso8601: []const u8,
+    token_branch_id: []const u8,
+    payload_json: []const u8,
 };
 
 pub const PendingEvent = union(enum) {
     parallel_split: ParallelSplitPayload,
-    parallel_join: ParallelJoinPayload,         // EE-07
+    parallel_join: ParallelJoinPayload, // EE-07
     instance_cancelled: InstanceCancelledPayload, // EE-07
+    timer_created: TimerCreatedPayload, // SCH-01
 };
 
 // ---------------------------------------------------------------------------
@@ -175,9 +184,9 @@ pub fn transition(
             if (!found) return TransitionError.InvalidState;
             // Root branch_id is instance_id as hex string
             const branch_id = try std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
-                state.instance_id[0], state.instance_id[1], state.instance_id[2], state.instance_id[3],
-                state.instance_id[4], state.instance_id[5], state.instance_id[6], state.instance_id[7],
-                state.instance_id[8], state.instance_id[9], state.instance_id[10], state.instance_id[11],
+                state.instance_id[0],  state.instance_id[1],  state.instance_id[2],  state.instance_id[3],
+                state.instance_id[4],  state.instance_id[5],  state.instance_id[6],  state.instance_id[7],
+                state.instance_id[8],  state.instance_id[9],  state.instance_id[10], state.instance_id[11],
                 state.instance_id[12], state.instance_id[13], state.instance_id[14], state.instance_id[15],
             });
             // Place token
@@ -244,9 +253,11 @@ fn processNodeEntry(
 ) TransitionError!InstanceState {
     // Find node type
     var node_type: ?graph_mod.NodeType = null;
+    var node_attrs: ?[]const u8 = null;
     for (snapshot.nodes) |node| {
         if (std.mem.eql(u8, node.id, node_id)) {
             node_type = node.node_type;
+            node_attrs = node.attributes;
             break;
         }
     }
@@ -299,6 +310,41 @@ fn processNodeEntry(
             }
             return state;
         },
+        .TIMER => {
+            // Emit a scheduler intent and keep the token parked on the TIMER node.
+            // The durable timer row is persisted by the caller in the DB transaction.
+            const duration = parseTimerDuration(allocator, node_attrs) catch |err| switch (err) {
+                error.InvalidTimerConfig => return TransitionError.InvalidState,
+                error.OutOfMemory => return TransitionError.OutOfMemory,
+            };
+
+            var token_branch_id: ?[]const u8 = null;
+            for (state.tokens) |tok| {
+                if (std.mem.eql(u8, tok.node_id, node_id)) {
+                    token_branch_id = tok.branch_id;
+                    break;
+                }
+            }
+            if (token_branch_id == null) return TransitionError.InvalidState;
+
+            const payload_json = try buildTimerPayloadJson(allocator, node_id, duration, token_branch_id.?);
+
+            var new_pending_events = std.ArrayList(PendingEvent).empty;
+            defer new_pending_events.deinit(allocator);
+            for (state.pending_events) |ev| try new_pending_events.append(allocator, ev);
+            try new_pending_events.append(allocator, PendingEvent{
+                .timer_created = .{
+                    .timer_node_id = try allocator.dupe(u8, node_id),
+                    .duration_iso8601 = duration,
+                    .token_branch_id = try allocator.dupe(u8, token_branch_id.?),
+                    .payload_json = payload_json,
+                },
+            });
+
+            var new_state = state;
+            new_state.pending_events = try new_pending_events.toOwnedSlice(allocator);
+            return new_state;
+        },
         .EXCLUSIVE_GATEWAY => {
             // Partition outgoing edges
             var non_default = std.ArrayList(graph_mod.GraphEdge).empty;
@@ -307,8 +353,7 @@ fn processNodeEntry(
             defer defaults.deinit(allocator);
             for (snapshot.edges) |edge| {
                 if (std.mem.eql(u8, edge.source, node_id)) {
-                    if (edge.is_default) try defaults.append(allocator, edge)
-                    else try non_default.append(allocator, edge);
+                    if (edge.is_default) try defaults.append(allocator, edge) else try non_default.append(allocator, edge);
                 }
             }
             var chosen: ?graph_mod.GraphEdge = null;
@@ -369,10 +414,10 @@ fn processNodeEntry(
                             "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}" ++
                                 "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}/{s}/{d}",
                             .{
-                                id[0],  id[1],  id[2],  id[3],
-                                id[4],  id[5],  id[6],  id[7],
-                                id[8],  id[9],  id[10], id[11],
-                                id[12], id[13], id[14], id[15],
+                                id[0],   id[1],  id[2],  id[3],
+                                id[4],   id[5],  id[6],  id[7],
+                                id[8],   id[9],  id[10], id[11],
+                                id[12],  id[13], id[14], id[15],
                                 node_id, i,
                             },
                         );
@@ -563,6 +608,59 @@ fn processNodeEntry(
     }
 }
 
+fn parseTimerDuration(
+    allocator: std.mem.Allocator,
+    node_attrs: ?[]const u8,
+) error{ InvalidTimerConfig, OutOfMemory }![]const u8 {
+    const raw = node_attrs orelse return error.InvalidTimerConfig;
+    if (raw.len == 0) return error.InvalidTimerConfig;
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, raw, .{ .allocate = .alloc_always }) catch {
+        return error.InvalidTimerConfig;
+    };
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return error.InvalidTimerConfig;
+    const duration_val = parsed.value.object.get("duration_iso8601") orelse return error.InvalidTimerConfig;
+    if (duration_val != .string) return error.InvalidTimerConfig;
+    if (duration_val.string.len == 0) return error.InvalidTimerConfig;
+    return allocator.dupe(u8, duration_val.string);
+}
+
+fn buildTimerPayloadJson(
+    allocator: std.mem.Allocator,
+    timer_node_id: []const u8,
+    duration_iso8601: []const u8,
+    token_branch_id: []const u8,
+) TransitionError![]const u8 {
+    const node_json = std.json.Stringify.valueAlloc(
+        allocator,
+        std.json.Value{ .string = timer_node_id },
+        .{},
+    ) catch return TransitionError.OutOfMemory;
+    defer allocator.free(node_json);
+
+    const duration_json = std.json.Stringify.valueAlloc(
+        allocator,
+        std.json.Value{ .string = duration_iso8601 },
+        .{},
+    ) catch return TransitionError.OutOfMemory;
+    defer allocator.free(duration_json);
+
+    const branch_json = std.json.Stringify.valueAlloc(
+        allocator,
+        std.json.Value{ .string = token_branch_id },
+        .{},
+    ) catch return TransitionError.OutOfMemory;
+    defer allocator.free(branch_json);
+
+    return std.fmt.allocPrint(
+        allocator,
+        "{{\"node_id\":{s},\"timer_kind\":\"duration\",\"duration_iso8601\":{s},\"token_branch_id\":{s}}}",
+        .{ node_json, duration_json, branch_json },
+    ) catch TransitionError.OutOfMemory;
+}
+
 // ---------------------------------------------------------------------------
 // Helper: extract the Nth '/'-delimited segment from a branch_id string.
 //
@@ -618,7 +716,7 @@ test "TC-EE-02-01: instance_started event places token on first non-START node" 
     const event = TransitionEvent{ .instance_started = .{
         .initial_variables = initial_vars,
         .start_node_id = "start",
-    }};
+    } };
     const result = transition(allocator, graph, state, event) catch unreachable;
     // Should have one token on HUMAN_TASK
     try std.testing.expect(result.tokens.len == 1);
@@ -654,7 +752,7 @@ test "TC-EE-02-02: task_completed on HUMAN_TASK advances to next node" {
     const event = TransitionEvent{ .task_completed = .{
         .task_node_id = "task1",
         .output_variables = output_vars,
-    }};
+    } };
     const result = transition(allocator, graph, state, event) catch unreachable;
     // Should have token on END
     try std.testing.expect(result.tokens.len == 1);
@@ -689,6 +787,47 @@ test "TC-EE-02-03: token reaches END → status becomes COMPLETED" {
     // Directly test processNodeEntry for END
     const result = processNodeEntry(allocator, graph, state, "end") catch unreachable;
     try std.testing.expect(result.status == .COMPLETED);
+}
+
+test "TC-SCH-01-01: entering TIMER emits timer_created pending effect" {
+    const allocator = std.testing.allocator;
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{
+            .id = "timer1",
+            .node_type = .TIMER,
+            .label = null,
+            .attributes = "{\"duration_iso8601\":\"PT0S\"}",
+        },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "timer1", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var initial_vars = std.json.ObjectMap.init(allocator);
+    defer initial_vars.deinit();
+
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const event = TransitionEvent{ .instance_started = .{
+        .initial_variables = initial_vars,
+        .start_node_id = "start",
+    } };
+
+    const result = transition(allocator, graph, state, event) catch unreachable;
+    try std.testing.expect(result.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "timer1"));
+    try std.testing.expect(result.pending_events.len == 1);
+    const timer_event = result.pending_events[0].timer_created;
+    try std.testing.expect(std.mem.eql(u8, timer_event.timer_node_id, "timer1"));
+    try std.testing.expect(std.mem.eql(u8, timer_event.duration_iso8601, "PT0S"));
 }
 
 test "TC-EE-02-04: EXCLUSIVE_GATEWAY follows first true CEL condition" {
@@ -852,7 +991,7 @@ test "TC-EE-02-08: PARALLEL_GATEWAY join waits until all tokens arrive, then mer
     const state2 = InstanceState{
         .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
-        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b1" }, .{ .node_id = "gw", .branch_id = "b2" }},
+        .tokens = &[_]Token{ .{ .node_id = "gw", .branch_id = "b1" }, .{ .node_id = "gw", .branch_id = "b2" } },
         .variables = std.json.ObjectMap.init(allocator),
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
@@ -909,7 +1048,7 @@ test "TC-EE-02-10: token on missing node → TokenOnMissingNode error" {
     const event = TransitionEvent{ .instance_started = .{
         .initial_variables = std.json.ObjectMap.init(allocator),
         .start_node_id = "start",
-    }};
+    } };
     const result = transition(allocator, graph, state, event);
     try std.testing.expectError(TransitionError.TokenOnMissingNode, result);
 }
@@ -941,7 +1080,7 @@ test "TC-EE-02-11: same inputs called twice → identical output (determinism)" 
     const event = TransitionEvent{ .instance_started = .{
         .initial_variables = initial_vars,
         .start_node_id = "start",
-    }};
+    } };
     const result1 = transition(allocator, graph, state, event) catch unreachable;
     const result2 = transition(allocator, graph, state, event) catch unreachable;
     // Should be identical
@@ -1104,7 +1243,10 @@ test "TC-EE-06-05: PARALLEL_SPLIT event records correct source_node_id and edge_
     for (result.tokens) |t| {
         var found = false;
         for (payload.token_ids) |tid| {
-            if (std.mem.eql(u8, tid, t.branch_id)) { found = true; break; }
+            if (std.mem.eql(u8, tid, t.branch_id)) {
+                found = true;
+                break;
+            }
         }
         try std.testing.expect(found);
     }

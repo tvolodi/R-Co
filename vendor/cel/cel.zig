@@ -65,7 +65,10 @@ fn tokenize(alloc: std.mem.Allocator, expr: []const u8) CelError!std.ArrayList(T
     while (i < expr.len) {
         // Skip whitespace
         switch (expr[i]) {
-            ' ', '\t', '\n', '\r' => { i += 1; continue; },
+            ' ', '\t', '\n', '\r' => {
+                i += 1;
+                continue;
+            },
             else => {},
         }
         // String literal
@@ -82,21 +85,69 @@ fn tokenize(alloc: std.mem.Allocator, expr: []const u8) CelError!std.ArrayList(T
         // Two-character operators (must check before single-char)
         if (i + 1 < expr.len) {
             const two = expr[i .. i + 2];
-            if (std.mem.eql(u8, two, "==")) { try toks.append(alloc, .{ .kind = .op_eq }); i += 2; continue; }
-            if (std.mem.eql(u8, two, "!=")) { try toks.append(alloc, .{ .kind = .op_neq }); i += 2; continue; }
-            if (std.mem.eql(u8, two, "<=")) { try toks.append(alloc, .{ .kind = .op_leq }); i += 2; continue; }
-            if (std.mem.eql(u8, two, ">=")) { try toks.append(alloc, .{ .kind = .op_geq }); i += 2; continue; }
-            if (std.mem.eql(u8, two, "&&")) { try toks.append(alloc, .{ .kind = .op_and }); i += 2; continue; }
-            if (std.mem.eql(u8, two, "||")) { try toks.append(alloc, .{ .kind = .op_or }); i += 2; continue; }
+            if (std.mem.eql(u8, two, "==")) {
+                try toks.append(alloc, .{ .kind = .op_eq });
+                i += 2;
+                continue;
+            }
+            if (std.mem.eql(u8, two, "!=")) {
+                try toks.append(alloc, .{ .kind = .op_neq });
+                i += 2;
+                continue;
+            }
+            if (std.mem.eql(u8, two, "<=")) {
+                try toks.append(alloc, .{ .kind = .op_leq });
+                i += 2;
+                continue;
+            }
+            if (std.mem.eql(u8, two, ">=")) {
+                try toks.append(alloc, .{ .kind = .op_geq });
+                i += 2;
+                continue;
+            }
+            if (std.mem.eql(u8, two, "&&")) {
+                try toks.append(alloc, .{ .kind = .op_and });
+                i += 2;
+                continue;
+            }
+            if (std.mem.eql(u8, two, "||")) {
+                try toks.append(alloc, .{ .kind = .op_or });
+                i += 2;
+                continue;
+            }
         }
         // Single-character operators and delimiters
         switch (expr[i]) {
-            '<' => { try toks.append(alloc, .{ .kind = .op_lt }); i += 1; continue; },
-            '>' => { try toks.append(alloc, .{ .kind = .op_gt }); i += 1; continue; },
-            '!' => { try toks.append(alloc, .{ .kind = .op_not }); i += 1; continue; },
-            '(' => { try toks.append(alloc, .{ .kind = .lparen }); i += 1; continue; },
-            ')' => { try toks.append(alloc, .{ .kind = .rparen }); i += 1; continue; },
-            '.' => { try toks.append(alloc, .{ .kind = .dot }); i += 1; continue; },
+            '<' => {
+                try toks.append(alloc, .{ .kind = .op_lt });
+                i += 1;
+                continue;
+            },
+            '>' => {
+                try toks.append(alloc, .{ .kind = .op_gt });
+                i += 1;
+                continue;
+            },
+            '!' => {
+                try toks.append(alloc, .{ .kind = .op_not });
+                i += 1;
+                continue;
+            },
+            '(' => {
+                try toks.append(alloc, .{ .kind = .lparen });
+                i += 1;
+                continue;
+            },
+            ')' => {
+                try toks.append(alloc, .{ .kind = .rparen });
+                i += 1;
+                continue;
+            },
+            '.' => {
+                try toks.append(alloc, .{ .kind = .dot });
+                i += 1;
+                continue;
+            },
             else => {},
         }
         // Numeric literal (possibly negative: '-' followed immediately by a digit)
@@ -167,8 +218,14 @@ const Parser = struct {
         while (self.peek().kind == .op_or) {
             _ = self.consume();
             const right = try self.parseAndExpr();
-            const lb = switch (left) { .boolean => |b| b, else => return CelError.EvalError };
-            const rb = switch (right) { .boolean => |b| b, else => return CelError.EvalError };
+            const lb = switch (left) {
+                .boolean => |b| b,
+                else => return CelError.EvalError,
+            };
+            const rb = switch (right) {
+                .boolean => |b| b,
+                else => return CelError.EvalError,
+            };
             left = Value{ .boolean = lb or rb };
         }
         return left;
@@ -180,8 +237,14 @@ const Parser = struct {
         while (self.peek().kind == .op_and) {
             _ = self.consume();
             const right = try self.parseNotExpr();
-            const lb = switch (left) { .boolean => |b| b, else => return CelError.EvalError };
-            const rb = switch (right) { .boolean => |b| b, else => return CelError.EvalError };
+            const lb = switch (left) {
+                .boolean => |b| b,
+                else => return CelError.EvalError,
+            };
+            const rb = switch (right) {
+                .boolean => |b| b,
+                else => return CelError.EvalError,
+            };
             left = Value{ .boolean = lb and rb };
         }
         return left;
@@ -192,7 +255,10 @@ const Parser = struct {
         if (self.peek().kind == .op_not) {
             _ = self.consume();
             const val = try self.parseNotExpr();
-            const b = switch (val) { .boolean => |bv| bv, else => return CelError.EvalError };
+            const b = switch (val) {
+                .boolean => |bv| bv,
+                else => return CelError.EvalError,
+            };
             return Value{ .boolean = !b };
         }
         return self.parseCmpExpr();
@@ -216,10 +282,22 @@ const Parser = struct {
     fn parsePrimary(self: *Parser) CelError!Value {
         const t = self.peek();
         switch (t.kind) {
-            .kw_true => { _ = self.consume(); return Value{ .boolean = true }; },
-            .kw_false => { _ = self.consume(); return Value{ .boolean = false }; },
-            .integer => { _ = self.consume(); return Value{ .numeric = t.num }; },
-            .string => { _ = self.consume(); return Value{ .str = t.text }; },
+            .kw_true => {
+                _ = self.consume();
+                return Value{ .boolean = true };
+            },
+            .kw_false => {
+                _ = self.consume();
+                return Value{ .boolean = false };
+            },
+            .integer => {
+                _ = self.consume();
+                return Value{ .numeric = t.num };
+            },
+            .string => {
+                _ = self.consume();
+                return Value{ .str = t.text };
+            },
             .kw_variables => {
                 _ = self.consume();
                 _ = try self.expect(.dot);
@@ -257,8 +335,14 @@ fn applyCmp(left: Value, op: TokKind, right: Value) CelError!Value {
         .op_eq => return Value{ .boolean = try valEq(left, right) },
         .op_neq => return Value{ .boolean = !(try valEq(left, right)) },
         .op_lt, .op_gt, .op_leq, .op_geq => {
-            const ln = switch (left) { .numeric => |n| n, else => return CelError.EvalError };
-            const rn = switch (right) { .numeric => |n| n, else => return CelError.EvalError };
+            const ln = switch (left) {
+                .numeric => |n| n,
+                else => return CelError.EvalError,
+            };
+            const rn = switch (right) {
+                .numeric => |n| n,
+                else => return CelError.EvalError,
+            };
             const result = switch (op) {
                 .op_lt => ln < rn,
                 .op_gt => ln > rn,
@@ -274,9 +358,18 @@ fn applyCmp(left: Value, op: TokKind, right: Value) CelError!Value {
 
 fn valEq(a: Value, b: Value) CelError!bool {
     return switch (a) {
-        .boolean => |av| switch (b) { .boolean => |bv| av == bv, else => CelError.EvalError },
-        .numeric => |an| switch (b) { .numeric => |bn| an == bn, else => CelError.EvalError },
-        .str => |as_| switch (b) { .str => |bs| std.mem.eql(u8, as_, bs), else => CelError.EvalError },
+        .boolean => |av| switch (b) {
+            .boolean => |bv| av == bv,
+            else => CelError.EvalError,
+        },
+        .numeric => |an| switch (b) {
+            .numeric => |bn| an == bn,
+            else => CelError.EvalError,
+        },
+        .str => |as_| switch (b) {
+            .str => |bs| std.mem.eql(u8, as_, bs),
+            else => CelError.EvalError,
+        },
     };
 }
 
@@ -310,4 +403,3 @@ pub fn evaluate(
         else => CelError.EvalError,
     };
 }
-

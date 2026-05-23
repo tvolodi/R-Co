@@ -1,0 +1,55 @@
+{
+  "run_id": "WF02-sch01-20260523",
+  "requirement_ids": [
+    "SCH-01"
+  ],
+  "difficulty": 4,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 54,
+  "actual_minutes_total": 44.0,
+  "variance_pct": -18.5,
+  "by_step": {
+    "code-designer": {
+      "estimated": 10,
+      "actual": 17.1,
+      "variance_pct": 71.0
+    },
+    "backend-dev": {
+      "estimated": 17,
+      "actual": 3.8,
+      "variance_pct": -77.6
+    },
+    "test-designer": {
+      "estimated": 11,
+      "actual": 9.0,
+      "variance_pct": -18.2
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 7.8,
+      "variance_pct": 11.4
+    },
+    "release-validator": {
+      "estimated": 2,
+      "actual": 4.3,
+      "variance_pct": 115.0
+    },
+    "doc-updater": {
+      "estimated": 7,
+      "actual": 2.0,
+      "variance_pct": -71.4
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "doc-updater",
+      "difficulty": 4,
+      "old_estimate": 7,
+      "new_estimate": 5,
+      "reason": "Observed 2 consecutive runs at D4 with >25% underrun"
+    }
+  ],
+  "notes": "code-designer (+71.0%): threshold exceeded, but no qualifying consecutive same-direction chain; backend-dev (-77.6%): threshold exceeded, but no qualifying consecutive same-direction chain; release-validator (+115.0%): threshold exceeded, but no qualifying consecutive same-direction chain; doc-updater (-71.4%): adjusted after 2 consecutive D4 underrun runs",
+  "completed_at": "2026-05-23T16:58:12Z"
+}

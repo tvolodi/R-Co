@@ -1,0 +1,39 @@
+{
+  "handoff_id": "a1000003-2605-4000-8010-202605231144",
+  "run_id": "WF02-api10-20260523",
+  "step": "03",
+  "from_agent": "BACKEND-DEV",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-23T11:44:21Z",
+  "started_at": "2026-05-23T12:03:26Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4 — API Layer",
+    "requirement_ids": ["API-10"],
+    "related_handoff_ids": ["a1000001-2605-4000-8010-202605231144", "a1000002-2605-4000-8010-202605231144"],
+    "artifacts_in": [
+      "docs/requirements/API-10.md",
+      "src/design/api-rate-limit.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a test specification for API-10 (Rate limiting) at tests/specs/API-10.md.\n\nRequired test cases:\n1. Token within limit: 1,000 requests in a window all return non-429\n2. Token exceeds limit: request N+1 returns HTTP 429 with Retry-After header\n3. Retry-After value: is a positive integer (seconds until window resets); equals 0 if window just reset\n4. No state change on 429: the route handler is not invoked (verify via a side effect or mock)\n5. Per-token override: a token with a custom limit (e.g. 10/min) is limited at 10, not 1000\n6. Default fallback: a token with no configured limit uses the global default (1000)\n7. Window reset: after the 1-minute window expires, the counter resets and requests succeed again\n8. Rate limit is per-token (not per-IP): two different tokens do not share counters",
+    "acceptance_criteria": [
+      "tests/specs/API-10.md is created with all 8 test cases",
+      "Each test case has: ID, name, preconditions, steps, expected result",
+      "Test cases cover the Retry-After edge case (value 0)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created tests/specs/API-10.md with 9 unit test cases (7 mapped to existing inline tests in rate_limit.zig, 2 flagged as new) and 6 integration test cases for tests/integration/rate_limit_test.zig. Covers all 8 required scenarios. Identified 2 unit test gaps (TC-API-10-08: per-token env var override; TC-API-10-09: explicit limitForToken default assertion) and 6 integration test gaps (HTTP-level verification of 429, Retry-After header, no-handler-invocation, window reset, and per-token isolation).",
+    "artifacts_out": ["tests/specs/API-10.md"],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-23T12:06:08Z"
+}

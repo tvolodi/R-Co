@@ -1,0 +1,73 @@
+{
+  "run_id": "WF02-sch01-20260523",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-23T16:23:53Z",
+  "requirement_ids": ["SCH-01"],
+  "summary": {
+    "total": 525,
+    "passed": 417,
+    "failed": 0,
+    "skipped": 108,
+    "status": "PASS"
+  },
+  "layers": {
+    "unit": {
+      "command": "zig build test --summary all",
+      "exit_code": 0,
+      "total": 368,
+      "passed": 266,
+      "failed": 0,
+      "skipped": 102,
+      "notes": "Companion unit suite executed for regression coverage; skipped tests are pre-existing DB-gated tests."
+    },
+    "integration": {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration --summary all",
+      "exit_code": 0,
+      "total": 157,
+      "passed": 151,
+      "failed": 0,
+      "skipped": 6,
+      "notes": "SCH-01 integration tests are included in this suite. 6 skips are HTTP integration tests gated by BPM_TEST_URL and are non-blocking for SCH-01."
+    }
+  },
+  "sch01_ac_coverage": [
+    {
+      "acceptance_criterion": "AC-1: durable timer persisted in transition transaction with required fields",
+      "test_cases": ["TC-SCH-01-01", "TC-SCH-01-02"],
+      "status": "PASS",
+      "layer": "integration",
+      "evidence_file": "tests/integration/sch01_timer_creation_test.zig"
+    },
+    {
+      "acceptance_criterion": "AC-2: fire_at absolute UTC derived at token arrival",
+      "test_cases": ["TC-SCH-01-01"],
+      "status": "PASS",
+      "layer": "integration",
+      "evidence_file": "tests/integration/sch01_timer_creation_test.zig"
+    },
+    {
+      "acceptance_criterion": "AC-3: pending timers survive restart",
+      "test_cases": ["TC-SCH-01-03"],
+      "status": "PASS",
+      "layer": "integration",
+      "evidence_file": "tests/integration/sch01_timer_creation_test.zig"
+    },
+    {
+      "acceptance_criterion": "AC-4: fire_at <= NOW treated as due immediately",
+      "test_cases": ["TC-SCH-01-04"],
+      "status": "PASS",
+      "layer": "integration",
+      "evidence_file": "tests/integration/sch01_timer_creation_test.zig"
+    },
+    {
+      "acceptance_criterion": "AC-5: cancelled instance rejects timer creation",
+      "test_cases": ["TC-SCH-01-05"],
+      "status": "PASS",
+      "layer": "integration",
+      "evidence_file": "tests/integration/sch01_timer_creation_test.zig"
+    }
+  ],
+  "issues": [],
+  "verdict": "PASS",
+  "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)."
+}

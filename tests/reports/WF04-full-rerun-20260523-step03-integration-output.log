@@ -1,0 +1,12 @@
+Cleaning test database...
+Test database cleaned.
+test-integration
++- run test w
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+failed command: ".\\.zig-cache\\o\\6ce3dff7d55d66c8829f9a8234c16b79\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xb616aff9 --listen=-
+

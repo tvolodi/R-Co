@@ -31,7 +31,7 @@ export default function AuditLogPage() {
               <td style={{ padding: '.5rem .8rem', color: '#64748b', fontFamily: 'monospace', fontSize: '.8rem', whiteSpace: 'nowrap' }}>
                 {new Date(e.occurred_at).toLocaleString()}
               </td>
-              <td style={{ padding: '.5rem .8rem', fontSize: '.8rem' }}>{e.actor_email ?? e.actor_id.slice(0, 8)}</td>
+              <td style={{ padding: '.5rem .8rem', fontSize: '.8rem' }}>{e.actor_email ?? e.actor_id?.slice(0, 8)}</td>
               <td style={{ padding: '.5rem .8rem', fontFamily: 'monospace', fontSize: '.8rem', fontWeight: 600 }}>{e.action}</td>
               <td style={{ padding: '.5rem .8rem', fontSize: '.8rem', color: '#64748b' }}>
                 {e.entity_type}{e.entity_name ? ` / ${e.entity_name}` : ''}

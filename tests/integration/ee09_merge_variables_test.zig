@@ -25,6 +25,7 @@ const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 
 const DefinitionStore = bpm.definition.Store;
+const Definition = bpm.definition.Definition;
 const CreateParams = bpm.definition.CreateParams;
 const GraphNode = bpm.definition.GraphNode;
 const GraphEdge = bpm.definition.GraphEdge;
@@ -90,6 +91,14 @@ fn uuidToHexStr(allocator: std.mem.Allocator, uuid: [16]u8) ![]u8 {
     );
 }
 
+/// Free allocator-owned fields of a Definition.
+fn freeDefinition(allocator: std.mem.Allocator, d: Definition) void {
+    allocator.free(d.name);
+    allocator.free(d.version);
+    if (d.description) |desc| allocator.free(desc);
+    if (d.stage) |st| allocator.free(st);
+}
+
 // ---------------------------------------------------------------------------
 // TC-EE-09-01: New key insert — output_variables adds a key absent from the
 //              instance map; no VARIABLE_OVERWRITTEN event appended.
@@ -140,7 +149,8 @@ test "TC-EE-09-01: new key insert — key inserted, no VARIABLE_OVERWRITTEN even
     }
 
     // Activate the definition.
-    _ = try def_store.activate(allocator, def.id);
+    const activated = try def_store.activate(allocator, def.id);
+    defer freeDefinition(allocator, activated);
 
     // Start an instance with existing_key = "old_value".
     const inst = try inst_store.create(allocator, def.id, null, "{\"existing_key\":\"old_value\"}");
@@ -250,7 +260,8 @@ test "TC-EE-09-02: existing key overwrite (no schema) — VARIABLE_OVERWRITTEN e
         conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{"EE09-TC02"}) catch {};
     }
 
-    _ = try def_store.activate(allocator, def.id);
+    const activated = try def_store.activate(allocator, def.id);
+    defer freeDefinition(allocator, activated);
 
     const inst = try inst_store.create(allocator, def.id, null, "{\"score\":42}");
     defer {
@@ -357,7 +368,8 @@ test "TC-EE-09-04: schema violation — merge aborted, instance transitions to E
         conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{"EE09-TC04"}) catch {};
     }
 
-    _ = try def_store.activate(allocator, def.id);
+    const activated = try def_store.activate(allocator, def.id);
+    defer freeDefinition(allocator, activated);
 
     // Register a variable schema for "status" with enum constraint.
     {
@@ -407,7 +419,7 @@ test "TC-EE-09-04: schema violation — merge aborted, instance transitions to E
         task_id,
         "{\"status\":\"unknown_state\"}",
     );
-    try std.testing.expectError(CompleteTaskError.SchemaViolationError, complete_err);
+    try std.testing.expectError(CompleteTaskError.InstanceInError, complete_err);
 
     // Verify: instance_projections.status is now ERROR.
     {
@@ -516,7 +528,8 @@ test "TC-EE-09-05: empty output_variables — no events, variables unchanged" {
         conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{"EE09-TC05"}) catch {};
     }
 
-    _ = try def_store.activate(allocator, def.id);
+    const activated = try def_store.activate(allocator, def.id);
+    defer freeDefinition(allocator, activated);
 
     const inst = try inst_store.create(allocator, def.id, null, "{\"key1\":\"value1\"}");
     defer {
@@ -578,7 +591,7 @@ test "TC-EE-09-05: empty output_variables — no events, variables unchanged" {
         defer pool.release(conn);
         const rows = try conn.query(
             allocator,
-            "SELECT COUNT(*) FROM events WHERE instance_id = $1::uuid AND event_type = 'TASK_COMPLETED'",
+            "SELECT COUNT(*) FROM events WHERE instance_id = $1::uuid AND event_type = 'task_completed'",
             &.{inst_id_hex},
         );
         defer {

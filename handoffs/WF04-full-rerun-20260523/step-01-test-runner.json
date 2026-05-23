@@ -1,0 +1,76 @@
+{
+  "handoff_id": "41252f51-b7cf-4840-8e7b-6a8600724d16",
+  "run_id": "WF04-full-rerun-20260523",
+  "workflow_id": "WF-04",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF04-full-rerun-20260523/step-01-test-runner.json",
+  "created_at": "2026-05-23T15:10:19Z",
+  "started_at": "2026-05-23T15:11:18Z",
+  "completed_at": "2026-05-23T15:16:33Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "All stages (1-4)",
+    "requirement_ids": ["all-Stage1-thru-Stage4"],
+    "related_handoff_ids": [
+      "wf040003-2605-4000-8003-202605230003",
+      "wf030002-2605-4000-8002-202605230002",
+      "wf040006-2605-4000-8006-202605230006"
+    ],
+    "artifacts_in": [
+      "tests/reports/WF04-full-20260523-step03-integration.md",
+      "handoffs/WF03-integration-fix-20260523/step-02-backend-dev.json"
+    ]
+  },
+  "task": {
+    "description": "Run full regression tests after recent integration fixes. Execute:\n1. zig build\n2. zig build test\n3. zig build test-integration\n4. cd web && npm run type-check\n5. cd web && npm run build\n6. cd web && npm run test\n\nWrite report to tests/reports/WF04-full-rerun-20260523-step01-full-regression.md.\n\nClassify issues:\n- BLOCKER for MUST requirement failures\n- MAJOR for SHOULD requirement failures\n- MINOR for non-requirement or optional failures\n\nIf any BLOCKER/MAJOR failures remain, return FAIL with detailed issue list including affected files and requirement IDs where known.",
+    "acceptance_criteria": [
+      "All listed test/build commands executed",
+      "Regression report written to tests/reports/WF04-full-rerun-20260523-step01-full-regression.md",
+      "status PASS only if no BLOCKER/MAJOR test failures"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:check-frontend-types",
+      "fn:check-frontend-build",
+      "fn:run-frontend-unit-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Executed 6 required commands. PASS: zig build, zig build test, cd web && npm run type-check, cd web && npm run build. FAIL: zig build test-integration (145 pass, 6 skip, 1 fail; 919 leaks) and cd web && npm run test (No test files found, 0 discovered). Failing commands: 2/6.",
+    "artifacts_out": [
+      "tests/reports/WF04-full-rerun-20260523-step01-full-regression.md",
+      "tests/reports/WF04-full-rerun-20260523-step01-integration-output.log"
+    ],
+    "issues": [
+      {
+        "id": "WF04-RERUN-STEP01-001",
+        "severity": "MAJOR",
+        "description": "Integration regression failure in TC-API-03-20 with allocator leaks; command zig build test-integration exited 1 with summary 145 pass, 6 skip, 1 fail and 919 leaks.",
+        "requirement_id": "API-03",
+        "affected_files": [
+          "tests/integration/api03_instance_read_test.zig",
+          "src/engine/instance.zig",
+          "src/engine/transition.zig"
+        ]
+      },
+      {
+        "id": "WF04-RERUN-STEP01-002",
+        "severity": "MINOR",
+        "description": "Frontend unit test command failed because no test files were found (vitest exit 1, 0 files discovered).",
+        "requirement_id": null,
+        "affected_files": [
+          "web"
+        ]
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03) to resolve MAJOR API-03 integration failure and to TEST-DESIGNER/FRONTEND-DEV to ensure frontend unit tests are present or test command is aligned."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

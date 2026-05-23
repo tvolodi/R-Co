@@ -1,0 +1,55 @@
+{
+  "run_id": "WF02-api09-20260523",
+  "requirement_ids": [
+    "API-09"
+  ],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 31,
+  "actual_minutes_total": 28.18,
+  "variance_pct": -9.1,
+  "by_step": {
+    "code-designer": {
+      "estimated": 5,
+      "actual": 3.65,
+      "variance_pct": -27.0
+    },
+    "backend-dev": {
+      "estimated": 7,
+      "actual": 8.65,
+      "variance_pct": 23.6
+    },
+    "test-designer": {
+      "estimated": 9,
+      "actual": 2.23,
+      "variance_pct": -75.2
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 10.60,
+      "variance_pct": 51.4
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 1.32,
+      "variance_pct": 32.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 1.73,
+      "variance_pct": -13.5
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "test-designer",
+      "difficulty": 3,
+      "old_estimate": 9,
+      "new_estimate": 4,
+      "reason": "Two consecutive D3 runs with >25% underrun: WF02-api04-20260523 (-58.9%), WF02-api09-20260523 (-75.2%); average actual ~3.0 min, new estimate 4 min with buffer"
+    }
+  ],
+  "notes": "code-designer (-27.0%): first D3 run with >25% variance in this direction (api04 was -9.6%), no chain. backend-dev (+23.6%): below threshold. test-runner (+51.4%): api04 was -82.9% (opposite direction), api06 timestamps corrupted — no valid consecutive same-direction chain. release-validator (+32.0%): api04 was -5.0% (opposite direction), no chain. doc-updater (-13.5%): below threshold.",
+  "completed_at": "2026-05-23T11:35:56Z"
+}

@@ -80,10 +80,10 @@ export default function WebhooksPage() {
           </tr>
         </thead>
         <tbody>
-          {(data?.items ?? []).map((w: WebhookSubscription) => (
+          {(data ?? []).map((w: WebhookSubscription) => (
             <tr key={w.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
               <td style={{ padding: '.6rem .8rem', fontFamily: 'monospace', fontSize: '.8rem', maxWidth: '320px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.url}</td>
-              <td style={{ padding: '.6rem .8rem', fontSize: '.8rem', color: '#64748b' }}>{w.event_types.join(', ')}</td>
+              <td style={{ padding: '.6rem .8rem', fontSize: '.8rem', color: '#64748b' }}>{w.event_types?.join(', ') ?? '—'}</td>
               <td style={{ padding: '.6rem .8rem' }}>
                 <span style={{ color: w.is_active ? '#16a34a' : '#9ca3af', fontWeight: 600, fontSize: '.8rem' }}>{w.is_active ? 'Yes' : 'No'}</span>
               </td>

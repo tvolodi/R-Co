@@ -1,0 +1,18 @@
+{
+  "run_id": "WF02-api09-20260523",
+  "created_at": "2026-05-23T11:00:27Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["API-09"],
+  "difficulty": 3,
+  "difficulty_rationale": "Cross-cutting middleware addition: trace ID generation, header injection, log propagation, and error response field — standard new feature with schema-adjacent concerns but no DB migration needed.",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 5,
+    "backend-dev": 7,
+    "test-designer": 9,
+    "test-runner": 7,
+    "release-validator": 1,
+    "doc-updater": 2,
+    "total": 31
+  }
+}

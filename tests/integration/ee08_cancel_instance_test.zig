@@ -447,13 +447,17 @@ test "TC-EE-08-04: cancel instance with no open tasks still appends INSTANCE_CAN
     var def_store = DefinitionStore.init(alloc, &pool);
     defer def_store.deinit();
 
-    // Use a graph with no HUMAN_TASK — just START → END so there are no tasks.
+    // Use a graph with no HUMAN_TASK — START → SERVICE_TASK → END.
+    // SERVICE_TASK keeps the token parked (not yet implemented in transition),
+    // so the instance stays ACTIVE with no tasks created.
     const taskless_nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
+        .{ .id = "X", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"endpoint\":\"http://localhost\",\"timeout_ms\":5000}" },
         .{ .id = "E", .node_type = .END, .label = null, .attributes = null },
     };
     const taskless_edges = [_]GraphEdge{
-        .{ .id = "e1", .source = "S", .target = "E", .condition = null, .is_default = false },
+        .{ .id = "e1", .source = "S", .target = "X", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "X", .target = "E", .condition = null, .is_default = false },
     };
     const taskless_graph = DefinitionGraph{
         .nodes = &taskless_nodes,

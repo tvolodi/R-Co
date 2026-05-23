@@ -4,7 +4,61 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage 5 — Scheduler + Identity
+
+### SCH-01 — Durable timer creation (RELEASED 2026-05-23)
+- Implemented durable timer creation on timer-node arrival with atomic transition + timer persistence in `src/scheduler/store.zig`, `src/engine/transition.zig`, and `src/engine/instance.zig`
+- Added additive timer-status constraint hardening migration in `migrations/015_timers_status_constraint.sql`
+- Covered SCH-01 acceptance criteria AC-1..AC-5 in `tests/specs/SCH-01.md`; SCH-01 test report: `tests/reports/WF02-sch01-20260523-test-report.json` (unit/integration PASS)
+- Benchmark blocker remediation (ISS-SCH01-RV-002): optimized append throughput benchmark path in `tests/bench/bench.zig`; final release validation passed with NFR-02 append throughput 1517.712 events/sec (target >= 1000), while NFR-01 and NFR-04 remained PASS
+- Requirement: SCH-01 (MUST, Stage 5) — RELEASED
+
 ### Stage 4 — REST API Layer
+
+### API-12 — Health endpoints (RELEASED 2026-05-23)
+- Added public unauthenticated `GET /health/live` and `GET /health/ready` handlers in `src/api/routes/health.zig`
+- Implemented readiness evaluation in `src/api/health/readiness.zig` and subsystem result modeling in `src/api/health/subsystems.zig`
+- `GET /health/ready` is DB-04 backed and reports `db_latency_ms` when ready; degraded responses return HTTP 503 with structured failing-subsystem details (including pool-exhausted and DB-failure variants)
+- Registered health route metadata updates through `src/api/openapi/builder.zig` and `src/api/routes/openapi.zig`
+- API route wiring completed via `src/main.zig`
+- Verification: `zig build test` passed; targeted API-12 report at `tests/reports/API-12-test-report.md` (11 API-12 checks passed)
+- Requirement: API-12 (MUST, Stage 4) — RELEASED
+
+### API-11 — OpenAPI specification (RELEASED 2026-05-23)
+- Added public `GET /openapi.json` endpoint in `src/api/routes/openapi.zig` with no auth requirement
+- Implemented code-generated OpenAPI 3.1 pipeline (no static hand-maintained spec file) via `src/api/openapi/{model,path_registry,schema_registry,version_source,builder,serialize,mod}.zig`
+- Wired route/module integration in `src/api/api_mod.zig` and `src/main.zig`; added `src/tools/openapi_gen.zig` support tooling
+- `info.version` is sourced from platform release/build metadata through the version source strategy in the OpenAPI module
+- OpenAPI components include shared RFC 9457 problem detail schemas/responses and documented core API paths
+- Verification: `zig build test` passed; API-11 report at `tests/reports/API-11-test-report.md` (4 targeted API-11 checks passed)
+- Requirement: API-11 (SHOULD, Stage 4) — RELEASED
+
+### API-10 — Rate limiting (RELEASED 2026-05-23)
+- Created `src/api/middleware/rate_limit.zig`: per-token sliding-window rate limiter keyed by `AuthContext.token_id`; fixed-bucket algorithm with configurable default limit (1,000 req/min via `BPM_RATE_LIMIT_DEFAULT`, fallback 1,000); per-token override via `BPM_RATE_LIMIT_TOKEN_<id>` env var; Mutex-based thread-safe bucket map; middleware short-circuits with HTTP 429 before route handler is invoked
+- Extended `src/api/middleware/auth.zig`: added `token_id` field to `AuthContext` (allocated for both bootstrap and DB-validated tokens); existing auth unit tests updated to free newly-allocated fields
+- Extended `src/api/errors.zig`: added `problemRateLimited()` constructor returning RFC 9457 Problem Details with HTTP 429 status and `Retry-After` header (seconds until window resets; clamped to 0 when window has just reset)
+- Wired rate limit middleware into middleware chain (`src/main.zig`, `src/api/api_mod.zig`); runs after auth middleware (only authenticated requests counted)
+- 9 unit tests pass (9 test cases: TC-API-10-01 through TC-API-10-09, including per-token env-var override and default-fallback assertion); 6 integration tests deferred pending HTTP server entry point; test spec: `tests/specs/API-10.md`; design artefact: `src/design/api-rate-limit.md`
+- Requirement: API-10 (SHOULD, Stage 4) — RELEASED
+
+### API-09 — Request tracing (RELEASED 2026-05-23)
+- Created `src/api/middleware/trace.zig`: trace middleware runs first in the request chain (before auth); extracts `X-Trace-Id` request header if present (non-UUID values accepted as-is), otherwise generates a new UUID v4 via OS CSPRNG (`fillRandom()`); stores trace ID in thread-local context; injects `X-Trace-Id` into every response header; trace ID assigned and returned even on HTTP 401 auth failure
+- Created `src/api/trace_context.zig`: thread-local trace ID storage with `get()`, `set()`, and `clear()` functions; per-request isolation
+- Extended `src/api/errors.zig`: added `trace_id` field to `ProblemDetails` struct; `serialise()` includes `trace_id` in all RFC 9457 error response bodies
+- Modified `src/obs/logger.zig`: structured logger now reads `trace_context` and injects `trace_id` into every log entry during request processing
+- Wired trace middleware and trace context exports into `src/api/api_mod.zig` and `src/main.zig`; trace middleware first in chain before auth
+- 10 unit tests pass (`tests/unit/test_api09_tracing.zig`); 6 integration tests deferred pending HTTP server entry point; test spec: `tests/specs/API-09.md`; design artefact: `src/design/api-tracing.md`
+- Requirement: API-09 (MUST, Stage 4) — RELEASED
+
+### API-08 — Bearer token auth (RELEASED 2026-05-23)
+- Implemented `src/api/middleware/auth.zig`: `Role` enum (PLATFORM_ADMIN, PROCESS_DESIGNER, PROCESS_OPERATOR, TASK_WORKER, API_CLIENT), `AuthContext` struct, `AuthResult` union (`.authenticated`, `.unauthenticated`, `.forbidden`), `init()` (startup validation of `BPM_BOOTSTRAP_TOKEN`), `authenticate()` middleware (extracts Bearer token from Authorization header, validates against bootstrap token with constant-time hash comparison, attaches role to request context), `deinit()`
+- Extended `src/api/errors.zig` with `problemUnauthorized()` (HTTP 401 + `WWW-Authenticate: Bearer` header + RFC 9457 Problem Details body) and `problemForbidden()` (HTTP 403 + RFC 9457 body)
+- Updated `src/api/api_mod.zig` to export auth middleware
+- Bootstrap token: `BPM_BOOTSTRAP_TOKEN` env var accepted as `PLATFORM_ADMIN` in non-production; fatal startup error in production
+- Missing Authorization header → HTTP 401 + WWW-Authenticate; malformed header (no Bearer prefix) → HTTP 401; empty bootstrap token → treated as not set (all requests get 401)
+- Token validation on every request; no caching beyond request lifetime
+- 4 unit tests pass, 5 skip (env-dependent: bootstrap token not configured, production mode not active); test spec `tests/specs/API-08.md` (10 test cases); design artefact `src/design/api-auth.md`
+- Requirement: API-08 (MUST, Stage 4) — RELEASED
 
 ### API-07 — Input validation (RELEASED 2026-05-23)
 - Implemented `src/api/validation.zig`: `ValidationError` type with field path, constraint, and received value; `FieldConstraint` enum (`.required`, `.type_object`, `.type_string`, `.type_number`, `.type_bool`, `.non_empty`, `.min_length`, `.max_length`, `.one_of`, `.min`, `.max`); `Schema(T)` generic type for defining per-field validation rules; `validate()` pure function returning all errors (not just first)

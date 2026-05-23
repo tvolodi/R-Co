@@ -375,10 +375,10 @@ test "TC-PD-03-04: list filtered by status=ACTIVE returns at most one version pe
 }
 
 // ---------------------------------------------------------------------------
-// TC-PD-03-05: Activating the already-ACTIVE version is a no-op
+// TC-PD-03-05: Activating the already-ACTIVE version returns AlreadyActive
 // ---------------------------------------------------------------------------
 
-test "TC-PD-03-05: activating an already-ACTIVE definition is a no-op that returns success" {
+test "TC-PD-03-05: activating an already-ACTIVE definition returns AlreadyActive" {
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -412,10 +412,10 @@ test "TC-PD-03-05: activating an already-ACTIVE definition is a no-op that retur
     defer freeDefinition(alloc, v1_active);
     try std.testing.expectEqual(DefinitionStatus.ACTIVE, v1_active.status);
 
-    // Activate again — must succeed (no error) and return ACTIVE.
-    const v1_idempotent = try def_store.activate(alloc, v1.id);
-    defer freeDefinition(alloc, v1_idempotent);
-    try std.testing.expectEqual(DefinitionStatus.ACTIVE, v1_idempotent.status);
+    // Activate again — must return AlreadyActive (HTTP 200 via handler layer).
+    _ = def_store.activate(alloc, v1.id) catch |err| {
+        try std.testing.expectEqual(DefinitionError.AlreadyActive, err);
+    };
 
     // Invariant still holds: exactly one ACTIVE version.
     const active_defs = try def_store.list(alloc, ListOpts{

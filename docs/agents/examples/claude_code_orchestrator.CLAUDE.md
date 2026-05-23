@@ -103,7 +103,7 @@ handoff = {
 with open(filename, "w") as f:
     json.dump(handoff, f, indent=2)
 
-# Register in registry
+# Register in active registry
 with open("handoffs/registry.json") as f:
     registry = json.load(f)
 
@@ -153,7 +153,7 @@ h["task"]["description"] += "\n".join(f"- [{i['severity']}] {i['description']}" 
 with open(filename, "w") as f:
     json.dump(h, f, indent=2)
 
-# Update registry status
+# Update active registry status
 with open("handoffs/registry.json") as f:
     reg = json.load(f)
 for entry in reg["entries"]:

@@ -1,0 +1,48 @@
+{
+  "handoff_id": "20260523-005d",
+  "run_id": "WF02-sch01-20260523",
+  "workflow_id": "WF-02",
+  "step": "05d",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-sch01-20260523/step-05d-release-validator.json",
+  "created_at": "2026-05-23T16:51:30Z",
+  "started_at": "2026-05-23T16:51:31Z",
+  "completed_at": "2026-05-23T16:55:50Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": ["SCH-01"],
+    "related_handoff_ids": ["20260523-005c", "20260523-005b", "20260523-005"],
+    "artifacts_in": [
+      "handoffs/WF02-sch01-20260523/step-05c-backend-dev.json",
+      "tests/bench/bench.zig",
+      "tests/reports/WF02-sch01-20260523-test-report.json",
+      "docs/requirements/SCH-01.md"
+    ]
+  },
+  "task": {
+    "description": "Final release-validation rerun for SCH-01 after throughput blocker remediation.\n\nValidation scope:\n- Re-run NFR benchmark gate and integration verification.\n- Confirm SCH-01 remains functionally valid with all acceptance criteria satisfied.\n- Produce definitive PASS/FAIL release decision for SCH-01.\n\nIf PASS:\n- next_action must route to DOC-UPDATER.\nIf FAIL:\n- include blocker severity and routing target.",
+    "acceptance_criteria": [
+      "Release decision is final for current remediation cycle",
+      "Decision references latest benchmark evidence"
+    ],
+    "functions_to_call": [
+      "fn:run-nfr-benchmarks",
+      "fn:run-integration-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Final remediation-cycle release validation for SCH-01 passed. NFR benchmark gate and integration verification both passed, and SCH-01 acceptance coverage remains satisfied.",
+    "artifacts_out": [
+      "docs/status/release-SCH-01-20260523.json",
+      "docs/issue-reports/WF02-sch01-20260523-step-05d-release-validator-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

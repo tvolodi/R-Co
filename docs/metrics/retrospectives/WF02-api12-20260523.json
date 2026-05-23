@@ -1,0 +1,50 @@
+{
+  "run_id": "WF02-api12-20260523",
+  "requirement_ids": [
+    "API-12"
+  ],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 25,
+  "actual_minutes_total": 11.4,
+  "variance_pct": -54.4,
+  "by_step": {
+    "code-designer": {
+      "estimated": 5,
+      "actual": 6.4,
+      "variance_pct": 28.0
+    },
+    "backend-dev": {
+      "estimated": 7,
+      "actual": 0.0,
+      "variance_pct": -100.0
+    },
+    "test-designer": {
+      "estimated": 4,
+      "actual": 1.9,
+      "variance_pct": -52.5
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 0.2,
+      "variance_pct": -97.1
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 2.9,
+      "variance_pct": 45.0
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "test-designer",
+      "difficulty": 3,
+      "old_estimate": 4,
+      "new_estimate": 3,
+      "reason": "Observed 4 consecutive runs at D3 with >25% underrun (WF02-api04-20260523, WF02-api06-20260523, WF02-api09-20260523, WF02-api12-20260523)"
+    }
+  ],
+  "notes": "code-designer (+28.0%): over threshold but prior D3 run was opposite direction. backend-dev (-100.0%): prior D3 run below threshold in opposite direction, no consecutive chain. test-runner (-97.1%): prior D3 run opposite direction. doc-updater (+45.0%): prior D3 run below threshold in opposite direction.",
+  "completed_at": "2026-05-23T14:31:26.428021Z"
+}

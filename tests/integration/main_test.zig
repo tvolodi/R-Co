@@ -32,10 +32,14 @@ const ee09_merge_variables_integration = @import("ee09_merge_variables_test.zig"
 const ee10_instance_error_integration = @import("instance_error_test.zig");
 // Stage 3 — Concurrent instance safety (EE-12)
 const ee12_concurrent = @import("concurrent_instances_test.zig");
+// Stage 5 — Durable timer creation (SCH-01)
+const sch01_timer_creation_integration = @import("sch01_timer_creation_test.zig");
 // Stage 4 — Process definition CRUD API (API-02)
 const api02_crud_integration = @import("api02_crud_test.zig");
 // Stage 4 — Instance read endpoints (API-03)
 const api03_instance_read_integration = @import("api03_instance_read_test.zig");
+// Stage 4 — Request tracing (API-09)
+const api09_trace_integration = @import("trace_test.zig");
 
 comptime {
     _ = std;
@@ -54,8 +58,10 @@ comptime {
     _ = ee09_merge_variables_integration;
     _ = ee10_instance_error_integration;
     _ = ee12_concurrent;
+    _ = sch01_timer_creation_integration;
     _ = api02_crud_integration;
     _ = api03_instance_read_integration;
+    _ = api09_trace_integration;
 }
 
 test "integration placeholder" {

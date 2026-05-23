@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-22T22:19:57Z",
+  "last_updated": "2026-05-23T16:58:12Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -573,40 +573,110 @@
       "last_updated": "2026-05-23T04:52:25Z"
     },
     "API-08": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 4,
       "priority": "MUST",
-      "title": "Bearer token auth"
+      "title": "Bearer token auth",
+      "implemented_in": ["src/api/middleware/auth.zig", "src/api/errors.zig"],
+      "test_spec": "tests/specs/API-08.md",
+      "test_run": "tests/reports/API-08-test-report.md",
+      "released_at": "2026-05-23",
+      "release_run": "WF02-api08-20260523",
+      "last_updated": "2026-05-23T05:55:36Z"
     },
     "API-09": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 4,
       "priority": "MUST",
-      "title": "Request tracing"
+      "title": "Request tracing",
+      "implemented_in": ["src/api/middleware/trace.zig", "src/api/trace_context.zig", "src/obs/logger.zig", "src/api/errors.zig"],
+      "test_spec": "tests/specs/API-09.md",
+      "test_run": "tests/reports/API-09-test-report.md",
+      "released_at": "2026-05-23",
+      "release_run": "WF02-api09-20260523",
+      "last_updated": "2026-05-23T11:35:56Z"
     },
     "API-10": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 4,
       "priority": "SHOULD",
-      "title": "Rate limiting"
+      "title": "Rate limiting",
+      "implemented_in": [
+        "src/api/middleware/rate_limit.zig",
+        "src/api/middleware/auth.zig",
+        "src/api/errors.zig",
+        "src/main.zig",
+        "src/api/api_mod.zig"
+      ],
+      "test_spec": "tests/specs/API-10.md",
+      "test_run": "tests/reports/API-10-test-report.md",
+      "tested_at": "2026-05-23",
+      "released_at": "2026-05-23T12:21:18Z",
+      "release_run": "WF02-api10-20260523",
+      "last_updated": "2026-05-23T12:21:18Z"
     },
     "API-11": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 4,
       "priority": "SHOULD",
-      "title": "OpenAPI specification"
+      "title": "OpenAPI specification",
+      "implemented_in": [
+        "src/api/openapi/mod.zig",
+        "src/api/openapi/model.zig",
+        "src/api/openapi/path_registry.zig",
+        "src/api/openapi/schema_registry.zig",
+        "src/api/openapi/version_source.zig",
+        "src/api/openapi/builder.zig",
+        "src/api/openapi/serialize.zig",
+        "src/api/routes/openapi.zig",
+        "src/api/api_mod.zig",
+        "src/main.zig",
+        "src/tools/openapi_gen.zig",
+        "build.zig"
+      ],
+      "test_spec": "tests/specs/API-11.md",
+      "test_run": "tests/reports/API-11-test-report.md",
+      "released_at": "2026-05-23T13:54:35Z",
+      "release_run": "WF02-api11-20260523",
+      "last_updated": "2026-05-23T13:54:35Z"
     },
     "API-12": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 4,
       "priority": "MUST",
-      "title": "Health endpoints"
+      "title": "Health endpoints",
+      "implemented_in": [
+        "src/api/routes/health.zig",
+        "src/api/health/readiness.zig",
+        "src/api/health/subsystems.zig",
+        "src/api/openapi/builder.zig",
+        "src/api/routes/openapi.zig",
+        "src/main.zig"
+      ],
+      "test_spec": "tests/specs/API-12.md",
+      "test_run": "tests/reports/API-12-test-report.md",
+      "released_at": "2026-05-23T14:31:26.428021Z",
+      "release_run": "WF02-api12-20260523",
+      "last_updated": "2026-05-23T14:31:26.428021Z"
     },
     "SCH-01": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "MUST",
-      "title": "Durable timer creation"
+      "title": "Durable timer creation",
+      "implemented_in": [
+        "src/scheduler/store.zig",
+        "src/engine/transition.zig",
+        "src/engine/instance.zig",
+        "migrations/015_timers_status_constraint.sql",
+        "tests/bench/bench.zig"
+      ],
+      "test_spec": "tests/specs/SCH-01.md",
+      "test_run": "tests/reports/WF02-sch01-20260523-test-report.json",
+      "tested_at": "2026-05-23",
+      "released_at": "2026-05-23T16:55:50Z",
+      "release_run": "WF02-sch01-20260523",
+      "last_updated": "2026-05-23T16:58:12Z"
     },
     "SCH-02": {
       "status": "VALIDATED",
