@@ -1,0 +1,27 @@
+{
+  "run_id": "WF02-ee02-20260522",
+  "requirement_ids": ["EE-02"],
+  "difficulty": 5,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 250,
+  "actual_minutes_total": 340,
+  "variance_pct": 36.0,
+  "by_step": {
+    "code-designer":   { "estimated": 40, "actual": 60, "variance_pct": 50.0 },
+    "backend-dev":     { "estimated": 100, "actual": 140, "variance_pct": 40.0 },
+    "test-designer":   { "estimated": 40, "actual": 50, "variance_pct": 25.0 },
+    "test-runner":     { "estimated": 25, "actual": 30, "variance_pct": 20.0 },
+    "release-validator":{ "estimated": 25, "actual": 30, "variance_pct": 20.0 },
+    "doc-updater":     { "estimated": 20, "actual": 30, "variance_pct": 50.0 }
+  },
+  "rework_steps": [
+    { "step": "backend-dev", "rework_count": 2, "surcharge_pct": 50 }
+  ],
+  "rule_adjustments": [
+    { "step": "code-designer", "action": "observe", "note": "Variance >25% but only one run at D5 so far; monitor next run before adjusting." },
+    { "step": "backend-dev", "action": "observe", "note": "Variance >25% but only one run at D5 so far; monitor next run before adjusting." },
+    { "step": "doc-updater", "action": "observe", "note": "Variance >25% but only one run at D5 so far; monitor next run before adjusting." }
+  ],
+  "notes": "Actuals computed from handoff started_at/completed_at fields. Backend-dev required two rework cycles due to test visibility and implementation issues. No rule adjustments yet: this is the first D5 run. Next D5 run with >25% variance will trigger a rule change.",
+  "completed_at": "2026-05-22T10:00:00Z"
+}

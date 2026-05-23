@@ -6,11 +6,13 @@
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-05-21T23:50:00Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
-    "stage": "Stage 2 — Process Definition",
-    "requirement_ids": ["PD-04"],
+    "stage": "Stage 2 \u2014 Process Definition",
+    "requirement_ids": [
+      "PD-04"
+    ],
     "related_handoff_ids": [
       "44100001-2605-4000-8004-202605210300",
       "33100002-2605-4000-8003-202605210201"
@@ -25,7 +27,7 @@
     ]
   },
   "task": {
-    "description": "Implement PD-04 (Definition lifecycle) in `src/definition/store.zig` and add HTTP route handlers.\n\n**Background:**\nPD-04 enforces the full status state machine: DRAFT → ACTIVE → DEPRECATED → ARCHIVED.\nThe `activate()` function (DRAFT → ACTIVE) and the `InvalidStatusTransition` error are already implemented from PD-03. This task adds the remaining two transitions.\n\n**Implementation steps:**\n\n### 1. Add `Store.deprecate()` to `src/definition/store.zig`\n\nFunction signature:\n```zig\npub fn deprecate(\n    self: *Store,\n    allocator: std.mem.Allocator,\n    id: Uuid,\n) DefinitionError!Definition\n```\n\nBehaviour:\n- Acquire a DB connection; run a single UPDATE inside a transaction:\n  ```sql\n  UPDATE process_definitions\n  SET status = 'DEPRECATED', updated_at = NOW()\n  WHERE id = $1::uuid AND status = 'ACTIVE'\n  RETURNING id, name, version, description, status, graph, created_by,\n            (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,\n            (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,\n            (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint\n  ```\n- If 0 rows returned: SELECT the definition to determine why:\n  - Not found → `DefinitionNotFound`\n  - Found but status ≠ ACTIVE (e.g. DRAFT, DEPRECATED, ARCHIVED) → `InvalidStatusTransition`\n- If 1 row returned: return the updated `Definition`.\n- Security: `id` binds as `$1::uuid` — no SQL string interpolation.\n\n### 2. Add `Store.archive()` to `src/definition/store.zig`\n\nFunction signature:\n```zig\npub fn archive(\n    self: *Store,\n    allocator: std.mem.Allocator,\n    id: Uuid,\n) DefinitionError!Definition\n```\n\nBehaviour:\n- Acquire a DB connection; run a single UPDATE inside a transaction:\n  ```sql\n  UPDATE process_definitions\n  SET status = 'ARCHIVED', archived_at = NOW(), updated_at = NOW()\n  WHERE id = $1::uuid AND status = 'DEPRECATED'\n  RETURNING id, name, version, description, status, graph, created_by,\n            (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,\n            (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,\n            (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint\n  ```\n- If 0 rows returned: SELECT the definition to determine why:\n  - Not found → `DefinitionNotFound`\n  - Found but status ≠ DEPRECATED → `InvalidStatusTransition`\n- If 1 row returned: return the updated `Definition`.\n- Security: `id` binds as `$1::uuid` — no SQL string interpolation.\n\n### 3. Add HTTP route handlers\n\nCreate or extend the definitions route file (look for an existing definitions route file under `src/api/routes/`; create one if it does not yet exist for the new endpoints). Add:\n\n- `POST /definitions/{id}/deprecate`\n  - Parse `id` as UUID from path params\n  - RBAC: require PROCESS_DESIGNER or PLATFORM_ADMIN role\n  - Call `store.deprecate(allocator, id)`\n  - Success: HTTP 200 with definition JSON body\n  - `DefinitionNotFound` → HTTP 404\n  - `InvalidStatusTransition` → HTTP 409 with `{\"error\": \"invalid_status_transition\", \"message\": \"Only ACTIVE definitions can be deprecated\"}`\n  - `PoolExhausted` → HTTP 503\n  - Other errors → HTTP 500\n\n- `POST /definitions/{id}/archive`\n  - Parse `id` as UUID from path params\n  - RBAC: require PROCESS_DESIGNER or PLATFORM_ADMIN role\n  - Call `store.archive(allocator, id)`\n  - Success: HTTP 200 with definition JSON body\n  - `DefinitionNotFound` → HTTP 404\n  - `InvalidStatusTransition` → HTTP 409 with `{\"error\": \"invalid_status_transition\", \"message\": \"Only DEPRECATED definitions can be archived\"}`\n  - `PoolExhausted` → HTTP 503\n  - Other errors → HTTP 500\n\n### 4. No new migration required\nThe `process_definitions` table already has the `status` column with a CHECK constraint, `archived_at` column, and `updated_at` column from migration 004. No schema changes are needed.\n\n**Validation:**\n```\nzig build\nzig build test\n```\nBoth must exit 0 before completing this handoff.",
+    "description": "Implement PD-04 (Definition lifecycle) in `src/definition/store.zig` and add HTTP route handlers.\n\n**Background:**\nPD-04 enforces the full status state machine: DRAFT \u2192 ACTIVE \u2192 DEPRECATED \u2192 ARCHIVED.\nThe `activate()` function (DRAFT \u2192 ACTIVE) and the `InvalidStatusTransition` error are already implemented from PD-03. This task adds the remaining two transitions.\n\n**Implementation steps:**\n\n### 1. Add `Store.deprecate()` to `src/definition/store.zig`\n\nFunction signature:\n```zig\npub fn deprecate(\n    self: *Store,\n    allocator: std.mem.Allocator,\n    id: Uuid,\n) DefinitionError!Definition\n```\n\nBehaviour:\n- Acquire a DB connection; run a single UPDATE inside a transaction:\n  ```sql\n  UPDATE process_definitions\n  SET status = 'DEPRECATED', updated_at = NOW()\n  WHERE id = $1::uuid AND status = 'ACTIVE'\n  RETURNING id, name, version, description, status, graph, created_by,\n            (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,\n            (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,\n            (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint\n  ```\n- If 0 rows returned: SELECT the definition to determine why:\n  - Not found \u2192 `DefinitionNotFound`\n  - Found but status \u2260 ACTIVE (e.g. DRAFT, DEPRECATED, ARCHIVED) \u2192 `InvalidStatusTransition`\n- If 1 row returned: return the updated `Definition`.\n- Security: `id` binds as `$1::uuid` \u2014 no SQL string interpolation.\n\n### 2. Add `Store.archive()` to `src/definition/store.zig`\n\nFunction signature:\n```zig\npub fn archive(\n    self: *Store,\n    allocator: std.mem.Allocator,\n    id: Uuid,\n) DefinitionError!Definition\n```\n\nBehaviour:\n- Acquire a DB connection; run a single UPDATE inside a transaction:\n  ```sql\n  UPDATE process_definitions\n  SET status = 'ARCHIVED', archived_at = NOW(), updated_at = NOW()\n  WHERE id = $1::uuid AND status = 'DEPRECATED'\n  RETURNING id, name, version, description, status, graph, created_by,\n            (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,\n            (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,\n            (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint\n  ```\n- If 0 rows returned: SELECT the definition to determine why:\n  - Not found \u2192 `DefinitionNotFound`\n  - Found but status \u2260 DEPRECATED \u2192 `InvalidStatusTransition`\n- If 1 row returned: return the updated `Definition`.\n- Security: `id` binds as `$1::uuid` \u2014 no SQL string interpolation.\n\n### 3. Add HTTP route handlers\n\nCreate or extend the definitions route file (look for an existing definitions route file under `src/api/routes/`; create one if it does not yet exist for the new endpoints). Add:\n\n- `POST /definitions/{id}/deprecate`\n  - Parse `id` as UUID from path params\n  - RBAC: require PROCESS_DESIGNER or PLATFORM_ADMIN role\n  - Call `store.deprecate(allocator, id)`\n  - Success: HTTP 200 with definition JSON body\n  - `DefinitionNotFound` \u2192 HTTP 404\n  - `InvalidStatusTransition` \u2192 HTTP 409 with `{\"error\": \"invalid_status_transition\", \"message\": \"Only ACTIVE definitions can be deprecated\"}`\n  - `PoolExhausted` \u2192 HTTP 503\n  - Other errors \u2192 HTTP 500\n\n- `POST /definitions/{id}/archive`\n  - Parse `id` as UUID from path params\n  - RBAC: require PROCESS_DESIGNER or PLATFORM_ADMIN role\n  - Call `store.archive(allocator, id)`\n  - Success: HTTP 200 with definition JSON body\n  - `DefinitionNotFound` \u2192 HTTP 404\n  - `InvalidStatusTransition` \u2192 HTTP 409 with `{\"error\": \"invalid_status_transition\", \"message\": \"Only DEPRECATED definitions can be archived\"}`\n  - `PoolExhausted` \u2192 HTTP 503\n  - Other errors \u2192 HTTP 500\n\n### 4. No new migration required\nThe `process_definitions` table already has the `status` column with a CHECK constraint, `archived_at` column, and `updated_at` column from migration 004. No schema changes are needed.\n\n**Validation:**\n```\nzig build\nzig build test\n```\nBoth must exit 0 before completing this handoff.",
     "acceptance_criteria": [
       "Store.deprecate() function exists in src/definition/store.zig",
       "Store.archive() function exists in src/definition/store.zig",
@@ -36,10 +38,24 @@
       "zig build exits 0",
       "zig build test exits 0"
     ],
-    "functions_to_call": ["fn:validate-completeness", "fn:register-inner-report", "fn:complete-handoff"]
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented PD-04 definition lifecycle transitions. Added Store.deprecate() and Store.archive() to src/definition/store.zig, each running a single UPDATE inside a transaction with RETURNING, falling back to a SELECT to distinguish DefinitionNotFound from InvalidStatusTransition on 0 rows. Added handleDeprecate and handleArchive HTTP handlers to src/api/routes/definitions.zig, returning HTTP 200 on success, 404 for not found, 409 with a descriptive JSON body for invalid transitions, 503 for pool exhaustion, and 500 for other errors. Updated the file header comment to document the two new POST routes. All SQL uses \\::uuid bound parameters only \u2014 no string interpolation. zig build and zig build test both exit 0.",
+    "artifacts_out": [
+      "src/definition/store.zig",
+      "src/api/routes/definitions.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
   "rework_count": 0,
   "max_rework": 3,
-  "completed_at": null
+  "started_at": "2026-05-21T23:57:00Z",
+  "completed_at": "2026-05-21T12:01:55.753294Z"
 }

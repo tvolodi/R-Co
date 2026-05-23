@@ -1,0 +1,62 @@
+{
+  "stage": "Stage 4 — REST API (API-02)",
+  "requirement_id": "API-02",
+  "run_id": "WF02-api02-20260522",
+  "date": "2026-05-22T17:05:57Z",
+  "decision": "APPROVED",
+  "checks": {
+    "zig_build": {
+      "result": "PASS",
+      "exit_code": 0
+    },
+    "test_report": {
+      "result": "PASS",
+      "overall_result": "PASS",
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "skipped_integration": 22,
+      "skip_reason": "BPM_TEST_DB_URL not set; documented acceptable per handoff task description",
+      "blocker_issues": 0,
+      "major_issues": 0
+    },
+    "acceptance_criteria_coverage": {
+      "result": "PASS",
+      "total_acs": 7,
+      "covered": 7,
+      "mapping": {
+        "AC1_POST_definitions_HTTP_201": ["TC-API-02-01", "TC-API-02-02", "TC-API-02-03", "TC-API-02-04"],
+        "AC2_GET_definitions_paginated_filterable": ["TC-API-02-05", "TC-API-02-06", "TC-API-02-07", "TC-API-02-07b", "TC-API-02-08"],
+        "AC3_GET_definitions_id_HTTP_404": ["TC-API-02-09", "TC-API-02-10", "TC-API-02-11", "TC-API-02-11b"],
+        "AC4_PUT_definitions_id_DRAFT_only_HTTP_409": ["TC-API-02-12", "TC-API-02-13", "TC-API-02-14", "TC-API-02-15", "TC-API-02-16"],
+        "AC5_PATCH_definitions_id_DRAFT_only_HTTP_409": ["TC-API-02-17", "TC-API-02-18", "TC-API-02-19", "TC-API-02-20", "TC-API-02-21"],
+        "AC6_DELETE_hard_delete_archive": ["TC-API-02-22", "TC-API-02-23", "TC-API-02-24", "TC-API-02-25", "TC-API-02-26", "TC-API-02-27"],
+        "AC7_POST_activate_DRAFT_to_ACTIVE_graph_revalidation": ["TC-API-02-28", "TC-API-02-29", "TC-API-02-30", "TC-API-02-31", "TC-API-02-32", "TC-API-02-33", "TC-API-02-34", "TC-API-02-35"]
+      }
+    },
+    "security": {
+      "result": "PASS",
+      "sql_string_interpolation": "NONE_FOUND",
+      "hardcoded_secrets": "NONE_FOUND",
+      "note": "All DB access via store methods using prepared statements; no raw SQL in definitions.zig handler layer"
+    },
+    "nfr_benchmarks": {
+      "result": "NOT_RUN",
+      "note": "WF-02 incremental release; NFR benchmarks are scoped to WF-04 full pre-release validation. Prior stages released without per-increment benchmark runs, consistent with project policy."
+    }
+  },
+  "nfr_results": {
+    "NFR-01_p99_read_ms": "not_measured_this_run",
+    "NFR-01_p99_write_ms": "not_measured_this_run",
+    "NFR-02_event_append_per_sec": "not_measured_this_run",
+    "NFR-04_10k_event_replay_sec": "not_measured_this_run"
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["API-02"],
+  "artifacts_examined": [
+    "tests/reports/WF02-api02-20260522-test-report.json",
+    "tests/specs/API-02.md",
+    "src/api/routes/definitions.zig"
+  ],
+  "notes": "All 7 API-02 acceptance criteria are traceable to test cases in tests/specs/API-02.md. Unit tests (10/10) passed. Integration tests self-skipped due to absent BPM_TEST_DB_URL; this was pre-approved in the handoff task description. No security violations found. zig build exits 0."
+}

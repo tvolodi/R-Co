@@ -65,7 +65,7 @@ pub const Migrations = struct {
             \\  version    TEXT        PRIMARY KEY,
             \\  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             \\)
-            ,
+        ,
             &.{},
         ) catch return MigrationError.MigrationFailed;
 
@@ -75,10 +75,10 @@ pub const Migrations = struct {
         defer dir.close();
 
         // Collect *.sql filenames.
-        var names = std.ArrayList([]u8).init(allocator);
+        var names: std.ArrayList([]u8) = .empty;
         defer {
             for (names.items) |n| allocator.free(n);
-            names.deinit();
+            names.deinit(allocator);
         }
 
         var it = dir.iterate();
@@ -87,7 +87,7 @@ pub const Migrations = struct {
             if (!std.mem.endsWith(u8, entry.name, ".sql")) continue;
             const name_copy = allocator.dupe(u8, entry.name) catch
                 return MigrationError.MigrationFailed;
-            names.append(name_copy) catch {
+            names.append(allocator, name_copy) catch {
                 allocator.free(name_copy);
                 return MigrationError.MigrationFailed;
             };

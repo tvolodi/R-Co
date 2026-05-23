@@ -1,0 +1,27 @@
+{
+  "run_id": "WF02-ee07-20260522",
+  "created_at": "2026-05-22T08:45:52Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "EE-07"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "Parallel join requires token arrival tracking across concurrent branches, cancelled-branch exclusion from join count, all-cancelled \u2192 CANCELLED instance edge case, and atomic DB-03 join-fire transaction \u2014 same cross-module complexity as EE-06 split",
+  "steps": [
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 15,
+    "backend-dev": 27,
+    "test-designer": 22,
+    "test-runner": 7,
+    "release-validator": 5,
+    "doc-updater": 7,
+    "total": 83
+  }
+}

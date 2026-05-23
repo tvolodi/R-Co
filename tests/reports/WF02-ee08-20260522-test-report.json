@@ -1,0 +1,82 @@
+{
+  "run_id": "b253908b-e905-43ea-872f-3f4f38d09bb6",
+  "workflow_id": "WF-02",
+  "handoff_id": "ee080004-2605-4000-8008-202605220004",
+  "timestamp": "2026-05-22T10:23:32Z",
+  "requirement_ids": ["EE-08"],
+  "summary": {
+    "unit_total": null,
+    "unit_passed": null,
+    "unit_failed": 0,
+    "unit_skipped": 0,
+    "unit_exit_code": 0,
+    "integration_total": 100,
+    "integration_passed": 100,
+    "integration_failed": 0,
+    "integration_skipped": 0,
+    "integration_exit_code": 0
+  },
+  "ee08_test_cases": [
+    {
+      "test_id": "TC-EE-08-01",
+      "name": "cancel ACTIVE instance sets status CANCELLED and cancels open tasks",
+      "layer": "integration",
+      "file": "tests/integration/ee08_cancel_instance_test.zig",
+      "status": "PASS",
+      "requirement_id": "EE-08"
+    },
+    {
+      "test_id": "TC-EE-08-02",
+      "name": "cancel already-CANCELLED instance returns InstanceAlreadyTerminated",
+      "layer": "integration",
+      "file": "tests/integration/ee08_cancel_instance_test.zig",
+      "status": "PASS",
+      "requirement_id": "EE-08"
+    },
+    {
+      "test_id": "TC-EE-08-03",
+      "name": "cancel non-existent instance returns InstanceNotFound",
+      "layer": "integration",
+      "file": "tests/integration/ee08_cancel_instance_test.zig",
+      "status": "PASS",
+      "requirement_id": "EE-08"
+    },
+    {
+      "test_id": "TC-EE-08-04",
+      "name": "cancel instance with no open tasks still appends INSTANCE_CANCELLED event",
+      "layer": "integration",
+      "file": "tests/integration/ee08_cancel_instance_test.zig",
+      "status": "PASS",
+      "requirement_id": "EE-08"
+    },
+    {
+      "test_id": "TC-EE-08-05",
+      "name": "concurrent cancel — first writer wins, second gets InstanceAlreadyTerminated",
+      "layer": "integration",
+      "file": "tests/integration/ee08_cancel_instance_test.zig",
+      "status": "PASS",
+      "requirement_id": "EE-08"
+    }
+  ],
+  "failures": [],
+  "fixes_applied": [
+    {
+      "file": "src/engine/instance.zig",
+      "description": "Bug: cancelInstance() issued UPDATE timers SET updated_at=NOW() but the timers table has no updated_at column. Fixed to SET cancelled_at=NOW() which is the correct column name."
+    },
+    {
+      "file": "tests/integration/ee08_cancel_instance_test.zig",
+      "description": "Test fixture: HUMAN_TASK node used {\"assignee_type\":\"USER\",\"assignee_ref\":\"tester\"} but PD-05 validateNodeAttributes() requires a \"role\" field. Added role:\"tester\" to the attributes JSON."
+    },
+    {
+      "file": "tests/integration/definition_test.zig",
+      "description": "Shared minimal_nodes fixture: HUMAN_TASK had no attributes — now includes {\"role\":\"test-role\"} to satisfy PD-05 validator. TC-PD-02-09 EXCLUSIVE_GATEWAY edges now have proper conditions and is_default flag per PD-06 edge condition rules."
+    }
+  ],
+  "coverage": {
+    "backend_unit_exit_0": true,
+    "backend_integration_exit_0": true,
+    "ee08_all_5_cases_pass": true
+  },
+  "nfr_results": []
+}

@@ -1,0 +1,27 @@
+{
+  "run_id": "WF02-ee06-20260522",
+  "created_at": "2026-05-22T08:09:30Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "EE-06"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "Parallel split creates N tokens atomically in a single transaction; cross-module: transition + event store + DB-03 compliance; novel multi-token state in existing single-token model",
+  "steps": [
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 25,
+    "backend-dev": 44,
+    "test-designer": 40,
+    "test-runner": 12,
+    "release-validator": 9,
+    "doc-updater": 10,
+    "total": 140
+  }
+}

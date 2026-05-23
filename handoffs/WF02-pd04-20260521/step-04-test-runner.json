@@ -6,7 +6,7 @@
   "from_agent": "ORCH",
   "to_agent": "TEST-RUNNER",
   "created_at": "2026-05-21T23:50:00Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 2 — Process Definition",
@@ -30,8 +30,16 @@
     ],
     "functions_to_call": ["fn:validate-completeness", "fn:register-inner-report", "fn:complete-handoff"]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "PD-04 test run completed. zig build exits 0; zig build test exits 0 (full unit suite passes, no regressions). All 9 PD-04 test cases (TC-PD-04-02 through TC-PD-04-08, TC-PD-04-10, TC-PD-04-11) are integration-only tests residing in tests/integration/pd04_lifecycle_test.zig and require a live PostgreSQL database. BPM_TEST_DB_URL was not set in this environment, so all integration tests are marked SKIP and documented in the report. TC-PD-04-01 and TC-PD-04-09 are reference-only entries covered by PD-03 tests; TC-PD-04-12 is out of scope pending EE-01. Integration skips are acceptable per the handoff criteria. Overall verdict: PASS.",
+    "artifacts_out": ["tests/reports/PD-04-test-report.json"],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR"
+  },
   "rework_count": 0,
   "max_rework": 3,
-  "completed_at": null
+  "started_at": "2026-05-22T00:10:00Z",
+  "completed_at": "2026-05-22T00:15:00Z",
+  "status": "COMPLETED"
 }

@@ -1,0 +1,57 @@
+{
+  "handoff_id": "ee070003-2605-4000-8007-202605220003",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee07-20260522",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-22T08:45:52Z",
+  "started_at": "2026-05-22T09:06:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 — Execution Engine",
+    "requirement_ids": ["EE-07"],
+    "related_handoff_ids": [
+      "ee070002-2605-4000-8007-202605220002"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/design/engine.md",
+      "src/engine/transition.zig",
+      "src/engine/instance.zig",
+      "tests/specs/EE-06.md"
+    ]
+  },
+  "task": {
+    "description": "Write the test specification for EE-07 (Parallel gateway join) to `tests/specs/EE-07.md`.\n\nRead EE-07 in `docs/BPM_Platform_Functional_Requirements.md` and the EE-07 design section in `src/design/engine.md`. Also read `tests/specs/EE-06.md` for the test pattern used on the split side.\n\nThe test spec MUST cover all 5 EE-07 acceptance criteria with concrete test cases:\n\n1. **Join fires when all N active tokens arrive** — normal 2-branch join: both tokens arrive, join fires, single outgoing token created.\n2. **Cancelled branch excluded** — 2-branch split, one branch cancelled, second branch arrives at join → join fires (threshold = 1, not 2).\n3. **All branches cancelled** — 2-branch split, both branches cancelled → join is cancelled, instance transitions to CANCELLED, `INSTANCE_CANCELLED` event appended.\n4. **Exactly-once** — concurrent arrival of two tokens at join: join fires exactly once, not twice.\n5. **N > 2 branches** — 3-branch split: all 3 arrive at join → join fires once, 1 outgoing token.\n\nFor each test case specify:\n- Test ID (EE-07-TC-01, EE-07-TC-02, etc.)\n- Test type (unit or integration)\n- Given / When / Then\n- Expected events emitted in order\n- Expected final InstanceState (active_tokens, status)\n\nAlso write the Zig unit test stubs in `tests/unit/test_ee07_parallel_join.zig` that implement the test cases. Use the `MockEngineState` pattern from existing unit tests (see `tests/unit/` for examples).\n\nValidation checklist before completing:\n- [ ] All 5 AC from EE-07 have at least one test case\n- [ ] All-cancelled edge case has its own test case\n- [ ] Exactly-once test case is included\n- [ ] Zig unit test stubs compile (`zig build test` exits 0)\n- [ ] tests/specs/EE-07.md is complete",
+    "acceptance_criteria": [
+      "tests/specs/EE-07.md created with test cases covering all 5 EE-07 acceptance criteria",
+      "Normal N-token join test case (AC-1)",
+      "Cancelled-branch exclusion test case (AC-2 and AC-3)",
+      "All-branches-cancelled → CANCELLED test case (AC-4)",
+      "Exactly-once join firing test case (AC-5)",
+      "Zig unit test file created at tests/unit/test_ee07_parallel_join.zig",
+      "zig build test exits 0 (stubs compile)"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created tests/specs/EE-07.md with 5 test cases covering all EE-07 acceptance criteria. TC-EE-07-01 through TC-EE-07-04 are referenced from their existing location in src/engine/transition.zig (private processNodeEntry tests); TC-EE-07-05 (3-branch join, N=3 via public transition() API) is newly implemented in tests/unit/test_ee07_parallel_join.zig. Registered the new test in build.zig. zig build test exits 0.",
+    "artifacts_out": [
+      "tests/specs/EE-07.md",
+      "tests/unit/test_ee07_parallel_join.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T09:16:47Z"
+}

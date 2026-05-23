@@ -122,8 +122,14 @@ When the Orchestrator creates a handoff, it MUST follow this sequence:
 1. Generate a UUID v4 for handoff_id
 2. Determine file name: <WORKFLOW_ID>-<SEQ>-<FROM>-to-<TO>-<desc>.json
 3. Write the handoff file to handoffs/ with status = PENDING
+   For created_at: run the shell command below and use its exact output — never invent a timestamp.
+   PowerShell: (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+   Python:      python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
 4. Append entry to handoffs/registry.json
-5. Spawn the target agent with:
+5. Immediately before spawning the target agent, run the same shell command again to get the
+   actual current time and write it as started_at in the handoff file.
+   Do NOT reuse the created_at value for started_at — they are two separate events.
+6. Spawn the target agent with:
      - AGENT_ID = <to_agent>
      - WORKFLOW_ID = <workflow_id>
      - HANDOFF_ID = <handoff_id>

@@ -1,0 +1,55 @@
+{
+  "handoff_id": "442d6e9a-ee85-4ce7-92bd-4d243324ade9",
+  "run_id": "WF02-api03-20260522",
+  "workflow_id": "WF-02",
+  "sequence": 6,
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-05-22T17:50:12Z",
+  "started_at": "2026-05-22T17:50:34Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4",
+    "requirement_ids": [
+      "API-03"
+    ],
+    "related_handoff_ids": [
+      "2d182334-3c17-4bd1-bd28-2e819c31cb1d"
+    ],
+    "artifacts_in": [
+      "docs/status/release-api03-20260522.json",
+      "docs/status/requirement_status.json",
+      "handoffs/WF02-api03-20260522/estimation.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md and requirement_status.json for the API-03 (Instance management) release.\n\n1. Add a CHANGELOG.md entry under the appropriate section for 2026-05-22, recording API-03 as released. Include the new endpoints: GET /instances/:id and GET /instances (paginated list with cursor and filters).\n2. Verify docs/status/requirement_status.json already shows API-03 status = RELEASED (RELEASE-VALIDATOR already set this \u2014 just verify and add any missing fields like release_run, test_run, etc.).\n3. Run the WF-02 retrospective per docs/agents/metrics.md \u00a76 since handoffs/WF02-api03-20260522/estimation.json exists.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with API-03 release entry",
+      "requirement_status.json shows API-03 status = RELEASED with release_run = WF02-api03-20260522",
+      "Retrospective written to docs/metrics/retrospectives/WF02-api03-20260522.json if estimation.json exists"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-requirement-status"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md with API-03 release entry (GET /instances/:id and GET /instances endpoints). Verified requirement_status.json API-03 = RELEASED with release_run = WF02-api03-20260522. Wrote retrospective WF02-api03-20260522.json; one rule adjustment applied: test-runner D3 estimate reduced from 12 to 7 min (2 consecutive D3 runs both at ~-80%).",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.json",
+      "docs/metrics/retrospectives/WF02-api03-20260522.json",
+      "docs/metrics/estimation_rules.json",
+      "docs/issue-reports/WF02-api03-20260522-step-06-doc-updater-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete for WF02-api03-20260522. API-03 RELEASED. No further actions required for this run."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T17:53:56Z"
+}

@@ -1,0 +1,49 @@
+{
+  "handoff_id": "a0700002-2605-4000-8007-202605230002",
+  "workflow_id": "WF02-api07-20260523",
+  "sequence": 2,
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-23T03:58:56Z",
+  "started_at": "2026-05-23T03:59:35Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4 — API Layer",
+    "requirement_ids": ["API-07"],
+    "related_handoff_ids": ["a0700001-2605-4000-8007-202605230001"],
+    "artifacts_in": [
+      "src/design/api-validation.md",
+      "docs/requirements/API-07.md",
+      "src/api/errors.zig",
+      "src/api/response.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement API-07 (Input validation) per the design at src/design/api-validation.md.\n\nImplementation files:\n1. src/api/validation.zig — ValidationError type, FieldConstraint enum, Schema(T) type, validate() pure function\n2. src/api/middleware/validate.zig — enforceValidation() middleware\n\nKey requirements from API-07:\n- Validate all incoming request payloads before business logic\n- Return HTTP 422 with RFC 9457 body containing ALL field-level errors (never just the first)\n- Malformed JSON → HTTP 400\n- Empty required string fields → treated as missing (HTTP 422)\n- Validation runs before any writes occur\n\nSecurity rules:\n- No SQL string interpolation (use $1, $2 placeholders — though this module has no DB access)\n- All allocating functions accept std.mem.Allocator\n- No I/O in src/engine/transition.zig (this module doesn't touch engine)\n- Error types in per-module error sets\n\nAcceptance criteria:\n- zig build exits 0\n- zig build test exits 0\n- All unit tests pass",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "src/api/validation.zig implements ValidationError, Schema, validate() per design",
+      "src/api/middleware/validate.zig implements enforceValidation() middleware",
+      "Empty required strings treated as missing (HTTP 422)",
+      "All validation errors collected and reported, not just first",
+      "Malformed JSON returns HTTP 400"
+    ],
+    "functions_to_call": ["fn:read-backend-conventions", "fn:check-zig-build"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented API-07 (Input validation): created src/api/validation.zig with FieldError type, FieldConstraint struct, JsonType enum, Schema(T) generic, validate() pure function, validateField() pure helper, and serialiseValidationErrors() for RFC 9457 output; created src/api/middleware/validate.zig with enforceValidation() middleware. Updated src/api/api_mod.zig to export new modules. All validation errors collected and reported in a single response. Empty required strings treated as missing. Malformed JSON (non-object) returns appropriate error. No SQL, no I/O, all allocating functions accept Allocator, per-module error set.",
+    "artifacts_out": [
+      "src/api/validation.zig",
+      "src/api/middleware/validate.zig",
+      "src/api/api_mod.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER for API-07 unit test specification"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-23T04:05:14Z"
+}

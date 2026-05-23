@@ -1,0 +1,18 @@
+{
+  "run_id": "WF02-ee02-20260522",
+  "created_at": "2026-05-22T04:00:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["EE-02"],
+  "difficulty": 5,
+  "difficulty_rationale": "Novel state machine algorithm (core of the platform): pure transition function covering all node types (START, END, HUMAN_TASK, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY), parallel join logic requiring token counting, CEL condition evaluation, and must be proven I/O-free with comprehensive unit tests before any persistence integration.",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 40,
+    "backend-dev": 100,
+    "test-designer": 40,
+    "test-runner": 25,
+    "release-validator": 25,
+    "doc-updater": 20,
+    "total": 250
+  }
+}

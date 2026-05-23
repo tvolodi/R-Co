@@ -1,0 +1,29 @@
+{
+  "run_id": "WF02-ee03-20260522",
+  "requirement_ids": ["EE-03"],
+  "difficulty": 4,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 161,
+  "actual_minutes_total": 73.0,
+  "variance_pct": -46.3,
+  "by_step": {
+    "code-designer":     { "estimated": 25, "actual": null, "variance_pct": null },
+    "backend-dev":       { "estimated": 60, "actual": 32.3, "variance_pct": -46.2 },
+    "test-designer":     { "estimated": 25, "actual": 33.8, "variance_pct": 35.2 },
+    "test-runner":       { "estimated": 18, "actual": 4.1,  "variance_pct": -77.2 },
+    "release-validator": { "estimated": 18, "actual": 1.4,  "variance_pct": -92.2 },
+    "doc-updater":       { "estimated": 15, "actual": 1.4,  "variance_pct": -90.7 }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "test-designer",
+      "difficulty": 4,
+      "old_estimate": 25,
+      "new_estimate": 40,
+      "reason": "Two consecutive D4 runs both exceed +25%: EE-01 D4 was +80% (45 min actual), EE-03 D4 is +35.2% (33.8 min actual). Average observed: 39.4 min → adjusted to 40 min."
+    }
+  ],
+  "notes": "code-designer excluded: started_at (2026-05-22T09:35:00Z) equals created_at — ORCH did not stamp a real dispatch time, making the timestamp invalid (completed_at 2026-05-21T18:51:26Z predates started_at, consistent with the timestamp-anti-pattern). actual_minutes_total and overall variance_pct are computed from steps 02–06 only (actual 73.0 min vs estimated 136 min for those five steps, variance -46.3%). test-runner and release-validator ran very fast (<5 min each) because most test cases had already been covered by EE-01/EE-02 unit tests and the build was already green; this is a structural under-estimation at D4 for this class of incremental step. Single-run observations for test-runner, release-validator, and doc-updater at D4 — no rule adjustment triggered for those steps yet.",
+  "completed_at": "2026-05-21T20:10:14Z"
+}

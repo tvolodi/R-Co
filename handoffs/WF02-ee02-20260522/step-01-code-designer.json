@@ -1,0 +1,55 @@
+{
+  "handoff_id": "ee020001-2605-4000-8002-202605220001",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee02-20260522",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-22T04:00:00Z",
+  "started_at": "2026-05-22T04:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 \u2014 Execution Engine",
+    "requirement_ids": [
+      "EE-02"
+    ],
+    "related_handoff_ids": [
+      "ee010001-2605-4000-8001-202605220001"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/design/engine.md",
+      "src/definition/graph.zig",
+      "src/engine/instance.zig"
+    ]
+  },
+  "task": {
+    "description": "Add an EE-02 design section to `src/design/engine.md` for the pure transition function.\n\nEE-02 requirement summary:\n- Implement `transition(snapshot: DefinitionSnapshot, state: InstanceState, event: Event) TransitionError!InstanceState`\n- MUST have zero I/O (no DB, no network, no filesystem access)\n- MUST be deterministic: identical inputs always produce identical outputs\n- Covers all node-type transitions: START, END, HUMAN_TASK, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY\n- Covers gateway evaluation rules (EE-05 exclusive, EE-06/EE-07 parallel split/join)\n- Unknown event type \u2192 return error state, do not panic\n- Token on non-existent node ID \u2192 return error state identifying the inconsistency\n\nFirst read `src/design/engine.md` in full to understand what EE-01 already defined (InstanceStatus, Instance struct, InstanceError set, InstanceStore). Do NOT duplicate those.\n\nAlso read `src/definition/graph.zig` to understand the existing Node, Edge, NodeType, and DefinitionGraph types the function must consume.\n\nAlso read `docs/BPM_Platform_Backend_Architecture.md` section on the pure transition function to get the Zig signature hint.\n\nThe design section MUST cover:\n\n1. **`InstanceState` struct** \u2014 the in-memory projection consumed and produced by the transition function:\n   - `instance_id`: Uuid\n   - `status`: InstanceStatus (existing enum from EE-01)\n   - `tokens`: []Token \u2014 active token positions (node_ids)\n   - `variables`: std.json.ObjectMap \u2014 current variable map\n   - `pending_task_nodes`: [][]const u8 \u2014 node IDs of activated HUMAN_TASK nodes awaiting completion\n   - `error_detail`: ?[]const u8 \u2014 set when status = ERROR\n   - All slice fields allocated by caller-supplied allocator\n\n2. **`Token` struct** \u2014 represents one active execution position:\n   - `node_id`: []const u8 \u2014 the node the token currently occupies\n   - `branch_id`: []const u8 \u2014 identifier for parallel branch (for join matching); root branch = instance_id string\n\n3. **`TransitionEvent` tagged union** \u2014 the typed event input to the transition function. Cover the event types needed for EE-02 scope:\n   - `.instance_started` \u2014 payload: initial_variables (ObjectMap), start_node_id\n   - `.task_completed` \u2014 payload: task_node_id (string), output_variables (ObjectMap)\n   - `.unknown` \u2014 payload: event_type_string (catch-all for unknown types)\n\n4. **`TransitionError` error set**:\n   - `UnknownEventType` \u2014 event type not handled by the function\n   - `TokenOnMissingNode` \u2014 token references a node_id not in the snapshot\n   - `NoMatchingEdge` \u2014 EXCLUSIVE_GATEWAY: no condition true and no default edge\n   - `CelEvaluationError` \u2014 CEL runtime error (non-fatal per EE-05: treated as false)\n   - `InvalidState` \u2014 inconsistent InstanceState detected at function entry\n   - `OutOfMemory` \u2014 allocator failure\n\n5. **`transition` function signature**:\n   ```zig\n   pub fn transition(\n       allocator: std.mem.Allocator,\n       snapshot: definition.DefinitionGraph,\n       state: InstanceState,\n       event: TransitionEvent,\n   ) TransitionError!InstanceState\n   ```\n   - The function must create and return a NEW InstanceState; it must NOT mutate `state`.\n   - File: `src/engine/transition.zig`\n\n6. **Node transition logic** \u2014 for each node type, describe the exact algorithm:\n   - **START**: On `instance_started` event \u2014 place token on the node immediately following START (follow the single outgoing edge); advance token immediately (START itself is not a resting point).\n   - **END**: When a token reaches END \u2014 set `status = COMPLETED`; remove all tokens. If other tokens remain on non-END nodes (parallel branches still running), status stays ACTIVE until all tokens reach END.\n   - **HUMAN_TASK**: When a token enters a HUMAN_TASK node \u2014 add node_id to `pending_task_nodes`; token stays on this node. On `task_completed` event \u2014 remove from `pending_task_nodes`; follow single outgoing edge.\n   - **EXCLUSIVE_GATEWAY**: When a token arrives \u2014 evaluate outgoing edge conditions in declared order against `state.variables` using the CEL evaluator; follow the first true edge. If no condition matches and a default edge exists, follow it. If no condition matches and no default edge, return `TransitionError.NoMatchingEdge` (caller must set ERROR status).\n   - **PARALLEL_GATEWAY (split)**: When a token arrives with > 1 outgoing edge \u2014 create N tokens (one per outgoing edge); remove the arriving token. Assign each new token a unique `branch_id`.\n   - **PARALLEL_GATEWAY (join)**: When a token arrives and the node has > 1 incoming edge \u2014 check how many tokens have reached this join node. Only when ALL expected tokens (equal to incoming edge count) have arrived, merge and continue with a single token on the single outgoing edge; discard the waiting tokens.\n\n7. **CEL evaluation** \u2014 the transition function calls the existing `cel.Evaluator` (vendor/cel/). Document the call pattern: evaluate `edge.condition` against `variables`; a CEL runtime error returns `false` for that edge (not an error state per EE-05 AC).\n\n8. **Immutability contract** \u2014 how the function creates a new InstanceState by deep-copying the relevant parts from `state` and applying deltas (do not modify any slice from the input `state`).\n\n9. **Traceability table** mapping each EE-02 acceptance criterion to its design element.\n\nDo NOT write Zig implementation code. Design only. Append the new section to `src/design/engine.md` after the existing EE-01 sections.\n\nAfter writing the design, complete this handoff.",
+    "acceptance_criteria": [
+      "src/design/engine.md contains an EE-02 section with InstanceState, Token, TransitionEvent, TransitionError, and transition() function design",
+      "All 6 node-type transition algorithms are documented",
+      "CEL evaluation pattern documented",
+      "Traceability table included",
+      "Handoff status set to COMPLETED"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Appended EE-02 design section to src/design/engine.md covering InstanceState, Token, TransitionEvent, TransitionError, transition() signature, all 6 node-type algorithms (START, END, HUMAN_TASK, EXCLUSIVE_GATEWAY, PARALLEL split, PARALLEL join), CEL evaluation pattern, immutability contract, data flow diagram, dependency table, open questions, and EE-02 traceability table.",
+    "artifacts_out": [
+      "src/design/engine.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) to implement src/engine/transition.zig"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T04:45:00Z"
+}

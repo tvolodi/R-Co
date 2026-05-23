@@ -1,0 +1,83 @@
+{
+  "run_id": "WF02-ee08-20260522",
+  "requirement_ids": [
+    "EE-08"
+  ],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 99,
+  "actual_minutes_total": 26.4,
+  "variance_pct": -73.3,
+  "by_step": {
+    "code-designer": {
+      "estimated": 15,
+      "actual": 3.8,
+      "variance_pct": -74.7
+    },
+    "backend-dev": {
+      "estimated": 35,
+      "actual": 4.5,
+      "variance_pct": -87.1
+    },
+    "test-designer": {
+      "estimated": 15,
+      "actual": 3.8,
+      "variance_pct": -74.7
+    },
+    "test-runner": {
+      "estimated": 12,
+      "actual": 8.9,
+      "variance_pct": -25.8
+    },
+    "release-validator": {
+      "estimated": 12,
+      "actual": 4.5,
+      "variance_pct": -62.5
+    },
+    "doc-updater": {
+      "estimated": 10,
+      "actual": 0.9,
+      "variance_pct": -91.0
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "code-designer",
+      "difficulty": 3,
+      "old_estimate": 15,
+      "new_estimate": 9,
+      "reason": "2 consecutive D3 runs (EE-04: -74.0%, EE-08: -74.7%) both exceeded -25% threshold in same direction"
+    },
+    {
+      "step": "backend-dev",
+      "difficulty": 3,
+      "old_estimate": 35,
+      "new_estimate": 20,
+      "reason": "2 consecutive D3 runs (EE-04: -52.3%, EE-08: -87.1%) both exceeded -25% threshold in same direction"
+    },
+    {
+      "step": "test-designer",
+      "difficulty": 3,
+      "old_estimate": 15,
+      "new_estimate": 9,
+      "reason": "2 consecutive D3 runs (EE-04: -88.0%, EE-08: -74.7%) both exceeded -25% threshold in same direction"
+    },
+    {
+      "step": "release-validator",
+      "difficulty": 3,
+      "old_estimate": 12,
+      "new_estimate": 8,
+      "reason": "2 consecutive D3 runs (EE-04: -84.2%, EE-08: -62.5%) both exceeded -25% threshold in same direction"
+    },
+    {
+      "step": "doc-updater",
+      "difficulty": 3,
+      "old_estimate": 10,
+      "new_estimate": 5,
+      "reason": "2 consecutive D3 runs (EE-04: -74.0%, EE-08: -91.0%) both exceeded -25% threshold in same direction"
+    }
+  ],
+  "notes": "All steps ran significantly under estimate, consistent with the established pattern for incremental execution-engine requirements where infrastructure from prior steps reduces per-step effort. test-runner (-25.8%) is marginally above the 25% threshold but excluded from rule adjustment because the prior D3 run (EE-04) had positive variance (+55.0%) — direction mismatch breaks the consecutive chain. Elapsed times: code-designer 3.8 min (10:00:26→10:04:13), backend-dev 4.5 min (10:05:31→10:10:00), test-designer 3.8 min (10:11:03→10:14:49), test-runner 8.9 min (10:16:05→10:24:57), release-validator 4.5 min (10:27:56→10:32:24), doc-updater 0.9 min (10:35:17→10:36:12).",
+  "completed_at": "2026-05-22T10:36:12Z"
+}

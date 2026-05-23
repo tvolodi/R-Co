@@ -1,0 +1,18 @@
+{
+  "run_id": "WF02-ee04-20260522",
+  "created_at": "2026-05-22T01:17:17Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["EE-04"],
+  "difficulty": 3,
+  "difficulty_rationale": "Standard feature: adds TaskStore.getById + completeInTx, POST /tasks/:id/complete HTTP handler, and wires through InstanceStore.applyTransition — builds on existing EE-03 TaskStore infrastructure with no new schema changes.",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 15,
+    "backend-dev": 35,
+    "test-designer": 15,
+    "test-runner": 12,
+    "release-validator": 12,
+    "doc-updater": 10,
+    "total": 99
+  }
+}

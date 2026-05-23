@@ -1,0 +1,17 @@
+{
+  "run_id": "WF02-ee01-20260522",
+  "requirement_ids": ["EE-01"],
+  "difficulty": 4,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 85,
+  "actual_minutes_total": 120.0,
+  "variance_pct": 41.2,
+  "by_step": {
+    "backend-dev":   { "estimated": 60, "actual": 75.0, "variance_pct": 25.0 },
+    "test-designer": { "estimated": 25, "actual": 45.0, "variance_pct": 80.0 }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [],
+  "notes": "Totals computed from steps with valid timestamps only (2 of 6). Excluded steps: code-designer — invalid timestamp ordering (completed_at 2026-05-21T12:20:35Z predates started_at 2026-05-22T00:30:00Z, consistent with timestamp fabrication anti-pattern); test-runner — null started_at; release-validator — null started_at; doc-updater — null started_at (current step). No rule adjustments applied: test-designer D4 variance is +80% but this is the first retrospective at difficulty 4 — a second consecutive run at D4 with >25% variance is required before a rule change triggers.",
+  "completed_at": "2026-05-22T03:15:00Z"
+}

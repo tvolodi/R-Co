@@ -1,0 +1,299 @@
+{
+  "run_id": "WF02-api02-20260522",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-22T17:03:38Z",
+  "requirement_ids": ["API-02"],
+  "summary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0
+  },
+  "layers": {
+    "unit": {
+      "command": "zig build test",
+      "exit_code": 0,
+      "total": 10,
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0
+    },
+    "integration": {
+      "command": "zig build test-integration",
+      "skipped": true,
+      "skip_reason": "BPM_TEST_DB_URL environment variable is not set. Integration tests require a running PostgreSQL test database.",
+      "affected_test_cases": [
+        "TC-API-02-01", "TC-API-02-02", "TC-API-02-03",
+        "TC-API-02-05", "TC-API-02-09", "TC-API-02-10",
+        "TC-API-02-12", "TC-API-02-13", "TC-API-02-14", "TC-API-02-15",
+        "TC-API-02-17", "TC-API-02-18", "TC-API-02-19", "TC-API-02-21",
+        "TC-API-02-22", "TC-API-02-23", "TC-API-02-24", "TC-API-02-25",
+        "TC-API-02-26", "TC-API-02-28", "TC-API-02-29", "TC-API-02-30"
+      ],
+      "note": "Integration tests in tests/integration/api02_crud_test.zig self-skip via error.SkipZigTest when BPM_TEST_DB_URL is absent. This is documented as acceptable per handoff task description."
+    }
+  },
+  "unit_tests": [
+    {
+      "test_id": "TC-API-02-06",
+      "name": "handleList — invalid status returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    },
+    {
+      "test_id": "TC-API-02-07",
+      "name": "handleList — page_size=0 returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    },
+    {
+      "test_id": "TC-API-02-07b",
+      "name": "handleList — page_size=201 returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    },
+    {
+      "test_id": "TC-API-02-08",
+      "name": "handleList — invalid base64url cursor returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    },
+    {
+      "test_id": "TC-API-02-11",
+      "name": "handleGetById — malformed UUID returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    },
+    {
+      "test_id": "TC-API-02-11b",
+      "name": "handleGetById — UUID string too short returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    },
+    {
+      "test_id": "TC-API-02-16",
+      "name": "handlePut — malformed UUID returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    },
+    {
+      "test_id": "TC-API-02-20",
+      "name": "handlePatch — malformed UUID returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    },
+    {
+      "test_id": "TC-API-02-27",
+      "name": "handleDelete — malformed UUID returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    },
+    {
+      "test_id": "TC-API-02-33",
+      "name": "handleActivate — malformed UUID returns HTTP 422",
+      "file": "tests/unit/api02_handler_test.zig",
+      "layer": "unit",
+      "status": "PASS",
+      "requirement_id": "API-02"
+    }
+  ],
+  "integration_tests_skipped": [
+    {
+      "test_id": "TC-API-02-01",
+      "name": "Store.create with valid body returns Definition with status DRAFT",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-02",
+      "name": "Store.create with duplicate name+version returns DuplicateNameVersion",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-03",
+      "name": "Store.create with no START node returns GraphValidationFailed",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-05",
+      "name": "Store.list returns a valid (possibly empty) slice without error",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-09",
+      "name": "Store.getById returns the created definition",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-10",
+      "name": "Store.getById with unknown id returns DefinitionNotFound",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-12",
+      "name": "Store.update on DRAFT definition returns updated Definition",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-13",
+      "name": "Store.update on ACTIVE definition returns NotDraft",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-14",
+      "name": "Store.update with unknown id returns DefinitionNotFound",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-15",
+      "name": "Store.update with invalid graph on DRAFT returns GraphValidationFailed",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-17",
+      "name": "Store.update with only description set updates description only",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-18",
+      "name": "Store.update (PATCH) on ACTIVE definition returns NotDraft",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-19",
+      "name": "Store.update (PATCH) with unknown id returns DefinitionNotFound",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-21",
+      "name": "Store.update (PATCH) with invalid graph supplied returns GraphValidationFailed",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-22",
+      "name": "Store.hardDelete on never-activated DRAFT succeeds",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-23",
+      "name": "deprecate+archive on ACTIVE definition produces ARCHIVED status",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-24",
+      "name": "Store.archive on DEPRECATED definition produces ARCHIVED status",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-25",
+      "name": "Store.archive on ARCHIVED definition returns InvalidStatusTransition",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-26",
+      "name": "Store.hardDelete with unknown id returns DefinitionNotFound",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-28",
+      "name": "Store.activate on DRAFT definition returns ACTIVE Definition",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-29",
+      "name": "Store.activate on already-ACTIVE definition returns AlreadyActive",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    },
+    {
+      "test_id": "TC-API-02-30",
+      "name": "Store.activate on DEPRECATED definition returns NotDraft",
+      "file": "tests/integration/api02_crud_test.zig",
+      "layer": "integration",
+      "status": "SKIPPED",
+      "skip_reason": "BPM_TEST_DB_URL not set"
+    }
+  ],
+  "failures": [],
+  "overall_result": "PASS",
+  "notes": "All 10 API-02 unit tests (pure handler input-validation paths) passed. 22 integration tests were not executed because BPM_TEST_DB_URL is not set in this environment. The integration skip is documented as acceptable per handoff task description. The full build (zig build) also completed with exit code 0."
+}

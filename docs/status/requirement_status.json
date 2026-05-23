@@ -1,74 +1,738 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-21T04:05:00Z",
+  "last_updated": "2026-05-22T22:19:57Z",
   "requirements": {
-    "ES-01": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Append event", "implemented_in": ["src/event_store/store.zig"], "test_spec": "tests/specs/ES-01-08.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "ES-02": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Ordered read", "implemented_in": ["src/event_store/store.zig"], "test_spec": "tests/specs/ES-01-08.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "ES-03": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Event idempotency", "implemented_in": ["src/event_store/store.zig"], "test_spec": "tests/specs/ES-01-08.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "ES-04": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Global event stream", "implemented_in": ["src/event_store/store.zig"], "test_spec": "tests/specs/ES-01-08.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "ES-05": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Event type registry", "implemented_in": ["src/event_store/registry.zig"], "test_spec": "tests/specs/ES-01-08.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "ES-06": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Point-in-time query", "implemented_in": ["src/event_store/store.zig"], "test_spec": "tests/specs/ES-01-08.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "ES-07": { "status": "RELEASED", "stage": 1, "priority": "SHOULD", "title": "Retention policy", "implemented_in": ["src/event_store/store.zig"], "test_spec": "tests/specs/ES-01-08.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "ES-08": { "status": "RELEASED", "stage": 1, "priority": "SHOULD", "title": "Event metadata", "implemented_in": ["src/event_store/store.zig"], "test_spec": "tests/specs/ES-01-08.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "DB-01": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Schema initialisation", "implemented_in": ["src/db/migrations.zig"], "test_spec": "tests/specs/DB-01-04.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "DB-02": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Connection pooling", "implemented_in": ["src/db/pool.zig"], "test_spec": "tests/specs/DB-01-04.md", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "DB-03": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Transactional integrity", "implemented_in": ["src/db/pool.zig", "src/db/migrations.zig"], "test_spec": "tests/specs/DB-01-04.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "DB-04": { "status": "RELEASED", "stage": 1, "priority": "MUST", "title": "Health check query", "implemented_in": ["src/db/pool.zig"], "test_spec": "tests/specs/DB-01-04.md", "test_run": "WF02-stage1-integration-20260520-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-stage1-release-20260521" },
-    "PD-01": { "status": "RELEASED", "stage": 2, "priority": "MUST", "title": "Create definition", "implemented_in": ["src/definition/graph.zig", "src/definition/store.zig"], "test_spec": "tests/specs/PD-01-02.md", "test_run": "WF02-pd01-20260521-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-pd01-20260521", "last_updated": "2026-05-21T23:05:00Z" },
-    "PD-02": { "status": "RELEASED", "stage": 2, "priority": "MUST", "title": "Graph validation", "implemented_in": ["src/definition/graph.zig", "src/definition/store.zig"], "test_spec": "tests/specs/PD-01-02.md", "test_run": "WF02-pd01-20260521-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-pd01-20260521", "last_updated": "2026-05-21T23:05:00Z" },
-    "PD-03": { "status": "RELEASED", "stage": 2, "priority": "MUST", "title": "Version management", "implemented_in": ["src/definition/store.zig"], "test_spec": "tests/specs/PD-03.md", "test_run": "WF02-pd03-20260521-run-01.md", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-pd03-20260521", "last_updated": "2026-05-21T23:50:00Z" },
-    "PD-04": { "status": "VALIDATED", "stage": 2, "priority": "MUST", "title": "Definition lifecycle" },
-    "PD-05": { "status": "RELEASED", "stage": 2, "priority": "MUST", "title": "Node types", "implemented_in": ["src/definition/graph.zig"], "test_spec": "tests/specs/PD-05.md", "test_run": "WF02-pd05-20260521-run-01", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-pd05-20260521", "last_updated": "2026-05-21T04:05:00Z" },
-    "PD-06": { "status": "RELEASED", "stage": 2, "priority": "MUST", "title": "Edge conditions", "implemented_in": ["src/definition/graph.zig"], "test_spec": "tests/specs/PD-06.md", "test_run": "WF02-pd06-20260521-run-01", "tested_at": "2026-05-21", "released_at": "2026-05-21T23:59:00Z", "release_run": "WF02-pd06-20260521", "last_updated": "2026-05-21T23:59:00Z" },
-    "PD-07": { "status": "RELEASED", "stage": 2, "priority": "MUST", "title": "Definition retrieval", "implemented_in": ["src/definition/store.zig", "src/api/routes/definitions.zig", "migrations/014_definition_stage.sql"], "test_spec": "tests/specs/PD-07.md", "test_run": "WF02-pd07-20260521-run-01", "tested_at": "2026-05-21", "released_at": "2026-05-21T07:00:00Z", "release_run": "WF02-pd07-20260521", "last_updated": "2026-05-21T07:00:00Z" },
-    "PD-08": { "status": "RELEASED", "stage": 2, "priority": "MUST", "title": "Definition snapshot", "implemented_in": ["src/definition/snapshot.zig"], "test_spec": "tests/specs/PD-08.md", "test_run": "WF02-pd08-20260521-run-01", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-pd08-20260521", "last_updated": "2026-05-21T08:05:00Z" },
-    "PD-09": { "status": "RELEASED", "stage": 2, "priority": "SHOULD", "title": "Definition import/export", "implemented_in": ["src/definition/export_import.zig", "src/api/routes/definitions.zig"], "test_spec": "tests/specs/PD-09.md", "test_run": "WF02-pd09-20260521-run-01", "tested_at": "2026-05-21", "released_at": "2026-05-21", "release_run": "WF02-pd09-20260521", "last_updated": "2026-05-21T09:18:04Z" },
-    "PD-10": { "status": "VALIDATED", "stage": 2, "priority": "COULD", "title": "Definition search" },
-    "EE-01": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Start instance" },
-    "EE-02": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Pure transition function" },
-    "EE-03": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Task activation" },
-    "EE-04": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Complete task" },
-    "EE-05": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Exclusive gateway" },
-    "EE-06": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Parallel gateway (split)" },
-    "EE-07": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Parallel gateway (join)" },
-    "EE-08": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Instance cancellation" },
-    "EE-09": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Variable scoping" },
-    "EE-10": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Execution error handling" },
-    "EE-11": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "State reconstruction" },
-    "EE-12": { "status": "VALIDATED", "stage": 3, "priority": "MUST", "title": "Concurrent instance safety" },
-    "API-01": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "REST conventions" },
-    "API-02": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "Process definition CRUD" },
-    "API-03": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "Instance management" },
-    "API-04": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "Task operations" },
-    "API-05": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "History endpoint" },
-    "API-06": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "Pagination" },
-    "API-07": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "Input validation" },
-    "API-08": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "Bearer token auth" },
-    "API-09": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "Request tracing" },
-    "API-10": { "status": "VALIDATED", "stage": 4, "priority": "SHOULD", "title": "Rate limiting" },
-    "API-11": { "status": "VALIDATED", "stage": 4, "priority": "SHOULD", "title": "OpenAPI specification" },
-    "API-12": { "status": "VALIDATED", "stage": 4, "priority": "MUST", "title": "Health endpoints" },
-    "SCH-01": { "status": "VALIDATED", "stage": 5, "priority": "MUST", "title": "Durable timer creation" },
-    "SCH-02": { "status": "VALIDATED", "stage": 5, "priority": "MUST", "title": "Timer polling" },
-    "SCH-03": { "status": "VALIDATED", "stage": 5, "priority": "MUST", "title": "Timer cancellation" },
-    "SCH-04": { "status": "VALIDATED", "stage": 5, "priority": "MUST", "title": "Escalation timer" },
-    "SCH-05": { "status": "VALIDATED", "stage": 5, "priority": "MUST", "title": "Missed timer recovery" },
-    "SCH-06": { "status": "VALIDATED", "stage": 5, "priority": "SHOULD", "title": "Timer jitter" },
-    "SCH-07": { "status": "VALIDATED", "stage": 5, "priority": "SHOULD", "title": "Recurring timers" },
-    "IDN-01": { "status": "VALIDATED", "stage": 5, "priority": "MUST", "title": "User registry" },
-    "IDN-02": { "status": "VALIDATED", "stage": 5, "priority": "MUST", "title": "Group management" },
-    "IDN-03": { "status": "VALIDATED", "stage": 5, "priority": "MUST", "title": "Role-based access" },
-    "IDN-04": { "status": "VALIDATED", "stage": 5, "priority": "MUST", "title": "API token management" },
-    "OBS-01": { "status": "VALIDATED", "stage": 6, "priority": "MUST", "title": "Structured logging" },
-    "OBS-02": { "status": "VALIDATED", "stage": 6, "priority": "MUST", "title": "Prometheus metrics" },
-    "OBS-03": { "status": "VALIDATED", "stage": 6, "priority": "MUST", "title": "Audit log" },
-    "OBS-04": { "status": "VALIDATED", "stage": 6, "priority": "MUST", "title": "Instance timeline view" },
-    "OBS-05": { "status": "VALIDATED", "stage": 6, "priority": "MUST", "title": "Dead letter queue" },
-    "OBS-06": { "status": "VALIDATED", "stage": 6, "priority": "SHOULD", "title": "Alerting hooks" },
-    "EXT-01": { "status": "VALIDATED", "stage": 6, "priority": "MUST", "title": "Service task node type" },
-    "EXT-02": { "status": "VALIDATED", "stage": 6, "priority": "MUST", "title": "Webhook event dispatch" },
-    "EXT-03": { "status": "VALIDATED", "stage": 6, "priority": "SHOULD", "title": "Plugin interface" },
-    "EXT-04": { "status": "VALIDATED", "stage": 6, "priority": "SHOULD", "title": "Variable transformer" },
-    "EXT-05": { "status": "VALIDATED", "stage": 6, "priority": "SHOULD", "title": "Sub-process support" }
+    "ES-01": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Append event",
+      "implemented_in": [
+        "src/event_store/store.zig"
+      ],
+      "test_spec": "tests/specs/ES-01-08.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "ES-02": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Ordered read",
+      "implemented_in": [
+        "src/event_store/store.zig"
+      ],
+      "test_spec": "tests/specs/ES-01-08.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "ES-03": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Event idempotency",
+      "implemented_in": [
+        "src/event_store/store.zig"
+      ],
+      "test_spec": "tests/specs/ES-01-08.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "ES-04": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Global event stream",
+      "implemented_in": [
+        "src/event_store/store.zig"
+      ],
+      "test_spec": "tests/specs/ES-01-08.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "ES-05": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Event type registry",
+      "implemented_in": [
+        "src/event_store/registry.zig"
+      ],
+      "test_spec": "tests/specs/ES-01-08.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "ES-06": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Point-in-time query",
+      "implemented_in": [
+        "src/event_store/store.zig"
+      ],
+      "test_spec": "tests/specs/ES-01-08.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "ES-07": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "SHOULD",
+      "title": "Retention policy",
+      "implemented_in": [
+        "src/event_store/store.zig"
+      ],
+      "test_spec": "tests/specs/ES-01-08.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "ES-08": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "SHOULD",
+      "title": "Event metadata",
+      "implemented_in": [
+        "src/event_store/store.zig"
+      ],
+      "test_spec": "tests/specs/ES-01-08.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "DB-01": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Schema initialisation",
+      "implemented_in": [
+        "src/db/migrations.zig"
+      ],
+      "test_spec": "tests/specs/DB-01-04.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "DB-02": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Connection pooling",
+      "implemented_in": [
+        "src/db/pool.zig"
+      ],
+      "test_spec": "tests/specs/DB-01-04.md",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "DB-03": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Transactional integrity",
+      "implemented_in": [
+        "src/db/pool.zig",
+        "src/db/migrations.zig"
+      ],
+      "test_spec": "tests/specs/DB-01-04.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "DB-04": {
+      "status": "RELEASED",
+      "stage": 1,
+      "priority": "MUST",
+      "title": "Health check query",
+      "implemented_in": [
+        "src/db/pool.zig"
+      ],
+      "test_spec": "tests/specs/DB-01-04.md",
+      "test_run": "WF02-stage1-integration-20260520-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-stage1-release-20260521"
+    },
+    "PD-01": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "MUST",
+      "title": "Create definition",
+      "implemented_in": [
+        "src/definition/graph.zig",
+        "src/definition/store.zig"
+      ],
+      "test_spec": "tests/specs/PD-01-02.md",
+      "test_run": "WF02-pd01-20260521-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-pd01-20260521",
+      "last_updated": "2026-05-21T23:05:00Z"
+    },
+    "PD-02": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "MUST",
+      "title": "Graph validation",
+      "implemented_in": [
+        "src/definition/graph.zig",
+        "src/definition/store.zig"
+      ],
+      "test_spec": "tests/specs/PD-01-02.md",
+      "test_run": "WF02-pd01-20260521-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-pd01-20260521",
+      "last_updated": "2026-05-21T23:05:00Z"
+    },
+    "PD-03": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "MUST",
+      "title": "Version management",
+      "implemented_in": [
+        "src/definition/store.zig"
+      ],
+      "test_spec": "tests/specs/PD-03.md",
+      "test_run": "WF02-pd03-20260521-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-pd03-20260521",
+      "last_updated": "2026-05-21T23:50:00Z"
+    },
+    "PD-04": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "MUST",
+      "title": "Definition lifecycle",
+      "implemented_in": [
+        "src/definition/store.zig",
+        "src/api/routes/definitions.zig"
+      ],
+      "test_spec": "tests/specs/PD-04.md",
+      "test_run": "WF02-pd04-20260521-run-01",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22",
+      "release_run": "WF02-pd04-20260521",
+      "last_updated": "2026-05-22T00:15:00Z"
+    },
+    "PD-05": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "MUST",
+      "title": "Node types",
+      "implemented_in": [
+        "src/definition/graph.zig"
+      ],
+      "test_spec": "tests/specs/PD-05.md",
+      "test_run": "WF02-pd05-20260521-run-01",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-pd05-20260521",
+      "last_updated": "2026-05-21T04:05:00Z"
+    },
+    "PD-06": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "MUST",
+      "title": "Edge conditions",
+      "implemented_in": [
+        "src/definition/graph.zig"
+      ],
+      "test_spec": "tests/specs/PD-06.md",
+      "test_run": "WF02-pd06-20260521-run-01",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21T23:59:00Z",
+      "release_run": "WF02-pd06-20260521",
+      "last_updated": "2026-05-21T23:59:00Z"
+    },
+    "PD-07": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "MUST",
+      "title": "Definition retrieval",
+      "implemented_in": [
+        "src/definition/store.zig",
+        "src/api/routes/definitions.zig",
+        "migrations/014_definition_stage.sql"
+      ],
+      "test_spec": "tests/specs/PD-07.md",
+      "test_run": "WF02-pd07-20260521-run-01",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21T07:00:00Z",
+      "release_run": "WF02-pd07-20260521",
+      "last_updated": "2026-05-21T07:00:00Z"
+    },
+    "PD-08": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "MUST",
+      "title": "Definition snapshot",
+      "implemented_in": [
+        "src/definition/snapshot.zig"
+      ],
+      "test_spec": "tests/specs/PD-08.md",
+      "test_run": "WF02-pd08-20260521-run-01",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-pd08-20260521",
+      "last_updated": "2026-05-21T08:05:00Z"
+    },
+    "PD-09": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "SHOULD",
+      "title": "Definition import/export",
+      "implemented_in": [
+        "src/definition/export_import.zig",
+        "src/api/routes/definitions.zig"
+      ],
+      "test_spec": "tests/specs/PD-09.md",
+      "test_run": "WF02-pd09-20260521-run-01",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-pd09-20260521",
+      "last_updated": "2026-05-21T09:18:04Z"
+    },
+    "PD-10": {
+      "status": "RELEASED",
+      "stage": 2,
+      "priority": "COULD",
+      "title": "Definition search",
+      "implemented_in": [
+        "src/definition/store.zig",
+        "src/api/routes/definitions.zig"
+      ],
+      "test_spec": "tests/specs/PD-10.md",
+      "test_run": "WF02-pd10-20260521-run-01.md",
+      "tested_at": "2026-05-21",
+      "released_at": "2026-05-21",
+      "release_run": "WF02-pd10-20260521",
+      "last_updated": "2026-05-21T18:28:00Z"
+    },
+    "EE-01": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Start instance",
+      "released_at": "2026-05-22",
+      "release_run": "WF02-ee01-20260522"
+    },
+    "EE-02": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Pure transition function"
+    },
+    "EE-03": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Task activation",
+      "released_at": "2026-05-22",
+      "release_run": "WF02-ee03-20260522"
+    },
+    "EE-04": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Complete task",
+      "released_at": "2026-05-22T02:08:26Z",
+      "release_run": "WF02-ee04-20260522",
+      "implemented_in": [
+        "src/tasks/store.zig",
+        "src/engine/instance.zig",
+        "src/api/routes/tasks.zig"
+      ],
+      "test_spec": "tests/specs/EE-04.md",
+      "test_run": "WF02-ee04-20260522-run-01.md",
+      "tested_at": "2026-05-22"
+    },
+    "EE-05": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Exclusive gateway",
+      "released_at": "2026-05-22T05:58:50Z",
+      "release_run": "WF02-ee05-20260522",
+      "implemented_in": [
+        "src/engine/transition.zig",
+        "vendor/cel/cel.zig"
+      ],
+      "test_spec": "tests/specs/EE-05.md",
+      "test_run": "WF02-ee05-20260522-run-01.md",
+      "tested_at": "2026-05-22"
+    },
+    "EE-06": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Parallel gateway (split)",
+      "implemented_in": [
+        "src/engine/transition.zig"
+      ],
+      "test_spec": "tests/specs/EE-06.md",
+      "test_run": "WF02-ee06-20260522-test-run.json",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22T08:37:11Z",
+      "release_run": "WF02-ee06-20260522"
+    },
+    "EE-07": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Parallel gateway (join)",
+      "implemented_in": [
+        "src/engine/transition.zig"
+      ],
+      "test_spec": "tests/specs/EE-07.md",
+      "test_run": "WF02-ee07-20260522-test-run.json",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22T09:29:30Z",
+      "release_run": "WF02-ee07-20260522",
+      "last_updated": "2026-05-22T09:29:30Z"
+    },
+    "EE-08": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Instance cancellation",
+      "implemented_in": [
+        "src/engine/instance.zig"
+      ],
+      "test_spec": "tests/specs/EE-08.md",
+      "test_run": "tests/reports/WF02-ee08-20260522-test-report.json",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22T10:31:41Z",
+      "release_run": "WF02-ee08-20260522"
+    },
+    "EE-09": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Variable scoping",
+      "released_at": "2026-05-22T11:44:54Z",
+      "release_run": "WF02-ee09-20260522"
+    },
+    "EE-10": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Execution error handling",
+      "implemented_in": [
+        "src/engine/instance.zig"
+      ],
+      "test_spec": "tests/specs/EE-10.md",
+      "test_run": "tests/reports/EE-10-test-run.json",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22T12:30:36Z",
+      "release_run": "WF02-ee10-20260522",
+      "last_updated": "2026-05-22T12:30:36Z"
+    },
+    "EE-11": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "State reconstruction",
+      "released_at": "2026-05-22T13:24:54Z",
+      "release_run": "WF02-ee11-20260522",
+      "last_updated": "2026-05-22T13:24:54Z"
+    },
+    "EE-12": {
+      "status": "RELEASED",
+      "stage": 3,
+      "priority": "MUST",
+      "title": "Concurrent instance safety",
+      "implemented_in": [
+        "src/engine/instance.zig",
+        "src/api/routes/tasks.zig"
+      ],
+      "test_spec": "tests/specs/EE-12.md",
+      "test_run": "EE-12-run-01.md",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22",
+      "release_run": "WF02-ee12-20260522"
+    },
+    "API-01": {
+      "status": "RELEASED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "REST conventions",
+      "implemented_in": [
+        "src/api/errors.zig",
+        "src/api/middleware/content_type.zig",
+        "src/api/response.zig"
+      ],
+      "test_spec": "tests/specs/API-01.md",
+      "test_run": "tests/reports/WF02-api01-20260522-test-report.json",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22T15:29:24Z",
+      "release_run": "WF02-api01-20260522"
+    },
+    "API-02": {
+      "status": "RELEASED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "Process definition CRUD",
+      "implemented_in": [
+        "src/api/routes/definitions.zig"
+      ],
+      "test_spec": "tests/specs/API-02.md",
+      "test_run": "tests/reports/WF02-api02-20260522-test-report.json",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22T17:05:57Z",
+      "release_run": "WF02-api02-20260522",
+      "last_updated": "2026-05-22T17:09:05Z"
+    },
+    "API-03": {
+      "status": "RELEASED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "Instance management",
+      "implemented_in": [
+        "src/api/routes/instances.zig",
+        "src/instance/store.zig"
+      ],
+      "test_spec": "tests/specs/API-03.md",
+      "test_run": "tests/reports/WF02-api03-20260522-test-report.json",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22T17:49:00Z",
+      "release_run": "WF02-api03-20260522",
+      "last_updated": "2026-05-22T17:49:00Z"
+    },
+    "API-04": {
+      "status": "RELEASED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "Task operations",
+      "released_at": "2026-05-22T20:54:25Z",
+      "release_run": "WF02-api04-20260523",
+      "implemented_in": [
+        "src/api/routes/tasks.zig"
+      ]
+    },
+    "API-05": {
+      "status": "RELEASED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "History endpoint",
+      "implemented_in": [
+        "src/api/routes/instances.zig",
+        "src/event_store/store.zig"
+      ],
+      "test_spec": "tests/specs/API-05.md",
+      "test_run": "tests/reports/API-05-test-report.md",
+      "tested_at": "2026-05-22",
+      "released_at": "2026-05-22T21:43:26Z",
+      "release_run": "WF02-api05-20260523"
+    },
+    "API-06": {
+      "status": "RELEASED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "Pagination",
+      "implemented_in": [
+        "src/api/pagination.zig"
+      ],
+      "test_spec": "tests/specs/API-06.md",
+      "test_run": "tests/reports/API-06-test-report.md",
+      "tested_at": "2026-05-23",
+      "released_at": "2026-05-22T22:19:57Z",
+      "release_run": "WF02-api06-20260523",
+      "last_updated": "2026-05-22T22:24:55Z"
+    },
+    "API-07": {
+      "status": "RELEASED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "Input validation",
+      "implemented_in": [
+        "src/api/validation.zig",
+        "src/api/middleware/validate.zig"
+      ],
+      "test_spec": "tests/specs/API-07.md",
+      "test_run": "tests/reports/API-07-test-report.md",
+      "released_at": "2026-05-23",
+      "release_run": "WF02-api07-20260523",
+      "last_updated": "2026-05-23T04:52:25Z"
+    },
+    "API-08": {
+      "status": "VALIDATED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "Bearer token auth"
+    },
+    "API-09": {
+      "status": "VALIDATED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "Request tracing"
+    },
+    "API-10": {
+      "status": "VALIDATED",
+      "stage": 4,
+      "priority": "SHOULD",
+      "title": "Rate limiting"
+    },
+    "API-11": {
+      "status": "VALIDATED",
+      "stage": 4,
+      "priority": "SHOULD",
+      "title": "OpenAPI specification"
+    },
+    "API-12": {
+      "status": "VALIDATED",
+      "stage": 4,
+      "priority": "MUST",
+      "title": "Health endpoints"
+    },
+    "SCH-01": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "MUST",
+      "title": "Durable timer creation"
+    },
+    "SCH-02": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "MUST",
+      "title": "Timer polling"
+    },
+    "SCH-03": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "MUST",
+      "title": "Timer cancellation"
+    },
+    "SCH-04": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "MUST",
+      "title": "Escalation timer"
+    },
+    "SCH-05": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "MUST",
+      "title": "Missed timer recovery"
+    },
+    "SCH-06": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "SHOULD",
+      "title": "Timer jitter"
+    },
+    "SCH-07": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "SHOULD",
+      "title": "Recurring timers"
+    },
+    "IDN-01": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "MUST",
+      "title": "User registry"
+    },
+    "IDN-02": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "MUST",
+      "title": "Group management"
+    },
+    "IDN-03": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "MUST",
+      "title": "Role-based access"
+    },
+    "IDN-04": {
+      "status": "VALIDATED",
+      "stage": 5,
+      "priority": "MUST",
+      "title": "API token management"
+    },
+    "OBS-01": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "MUST",
+      "title": "Structured logging"
+    },
+    "OBS-02": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "MUST",
+      "title": "Prometheus metrics"
+    },
+    "OBS-03": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "MUST",
+      "title": "Audit log"
+    },
+    "OBS-04": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "MUST",
+      "title": "Instance timeline view"
+    },
+    "OBS-05": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "MUST",
+      "title": "Dead letter queue"
+    },
+    "OBS-06": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "SHOULD",
+      "title": "Alerting hooks"
+    },
+    "EXT-01": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "MUST",
+      "title": "Service task node type"
+    },
+    "EXT-02": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "MUST",
+      "title": "Webhook event dispatch"
+    },
+    "EXT-03": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "SHOULD",
+      "title": "Plugin interface"
+    },
+    "EXT-04": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "SHOULD",
+      "title": "Variable transformer"
+    },
+    "EXT-05": {
+      "status": "VALIDATED",
+      "stage": 6,
+      "priority": "SHOULD",
+      "title": "Sub-process support"
+    }
   }
 }

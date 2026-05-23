@@ -196,6 +196,16 @@ with open("handoffs/orchestrator.log", "a") as f:
 print(f"Handoff created: {filename}\nID: {handoff_id}")
 ```
 
+**Stamp `started_at` at dispatch** — run this immediately before invoking the subagent. This records the actual wall-clock start time; do NOT let the agent invent it:
+```python
+import json, datetime
+with open(filename) as f:
+    h = json.load(f)
+h["started_at"] = datetime.datetime.utcnow().isoformat() + "Z"
+with open(filename, "w") as f:
+    json.dump(h, f, indent=2)
+```
+
 **Create the estimation file** (for WF-02 and WF-04 runs — do this once per run_id, alongside the first handoff):
 ```python
 import json, datetime, os
@@ -309,6 +319,9 @@ for b in blocking: print(f"  {b}")
 git push / git reset --hard / git rebase / rm -rf
 Writing Zig, TypeScript, SQL, or test code
 Filling in handoff result fields (only agents do that)
+Writing any timestamp (created_at, started_at) without first running:
+  (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+  and using the exact printed output — never the session context date
 ```
 
 ---
@@ -353,8 +366,16 @@ All three must exit 0 before completing.
 - [ ] `zig build` exits 0
 
 **5. Complete the handoff:**
+
+First, get the real current UTC time by running a shell command:
+```bash
+python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
+```
+Use the exact printed string as `completed_at`. Never invent or guess a timestamp.
+
+Then update the handoff file:
 ```python
-import json, datetime
+import json, subprocess
 with open("handoffs/<your-handoff>.json") as f:
     h = json.load(f)
 h["status"] = "COMPLETED"
@@ -365,11 +386,14 @@ h["result"] = {
     "issues": [],
     "next_action": "Route to TEST-DESIGNER"
 }
-h["completed_at"] = datetime.datetime.utcnow().isoformat() + "Z"
+# completed_at must come from the shell command above, not from Python datetime in the LLM
+h["completed_at"] = "<exact output of the shell command>"
 with open("handoffs/<your-handoff>.json", "w") as f:
     json.dump(h, f, indent=2)
 ```
 Also update the `status` field in `handoffs/registry.json` for this handoff.
+
+> **Note:** Do NOT set `started_at` — ORCH stamps it before dispatching you. Do NOT write `completed_at` from memory — always run the shell command above first.
 
 ### Security rules (hard constraints)
 

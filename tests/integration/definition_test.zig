@@ -97,7 +97,7 @@ const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 const minimal_nodes = [_]GraphNode{
     .{ .id = "S", .node_type = .START, .label = null },
-    .{ .id = "T", .node_type = .HUMAN_TASK, .label = null },
+    .{ .id = "T", .node_type = .HUMAN_TASK, .label = null, .attributes = "{\"role\":\"test-role\"}" },
     .{ .id = "E", .node_type = .END, .label = null },
 };
 
@@ -655,14 +655,14 @@ test "TC-PD-02-09: cycle through EXCLUSIVE_GATEWAY is permitted" {
     const nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null },
         .{ .id = "GW", .node_type = .EXCLUSIVE_GATEWAY, .label = null },
-        .{ .id = "T", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "T", .node_type = .HUMAN_TASK, .label = null, .attributes = "{\"role\":\"test-role\"}" },
         .{ .id = "E", .node_type = .END, .label = null },
     };
     const edges = [_]GraphEdge{
         .{ .id = "e1", .source = "S", .target = "GW", .condition = null },
-        .{ .id = "e2", .source = "GW", .target = "T", .condition = null },
+        .{ .id = "e2", .source = "GW", .target = "T", .condition = "repeat == true" },
         .{ .id = "e3", .source = "T", .target = "GW", .condition = null }, // back to gateway
-        .{ .id = "e4", .source = "GW", .target = "E", .condition = null },
+        .{ .id = "e4", .source = "GW", .target = "E", .is_default = true, .condition = null },
     };
 
     const def = try def_store.create(alloc, CreateParams{

@@ -1,0 +1,49 @@
+{
+  "run_id": "WF02-ee06-20260522",
+  "timestamp": "2026-05-22T08:35:21Z",
+  "command": "zig build test",
+  "exit_code": 0,
+  "tests_run": 183,
+  "tests_passed": 183,
+  "tests_failed": 0,
+  "failed_tests": [],
+  "ee06_test_cases": [
+    {
+      "id": "TC-EE-06-01",
+      "name": "PARALLEL_GATEWAY split with 2 edges creates 2 tokens and 1 PARALLEL_SPLIT event",
+      "status": "PASS",
+      "layer": "unit",
+      "acceptance_criteria": ["AC1", "AC3"]
+    },
+    {
+      "id": "TC-EE-06-02",
+      "name": "PARALLEL_GATEWAY split with 3 edges creates 3 tokens with unique branch_ids",
+      "status": "PASS",
+      "layer": "unit",
+      "acceptance_criteria": ["AC1", "token_uniqueness"]
+    },
+    {
+      "id": "TC-EE-06-03",
+      "name": "original arriving token removed after parallel split",
+      "status": "PASS",
+      "layer": "unit",
+      "acceptance_criteria": ["AC1"]
+    },
+    {
+      "id": "TC-EE-06-04",
+      "name": "each new token targets correct next node per definition edges",
+      "status": "PASS",
+      "layer": "unit",
+      "acceptance_criteria": ["AC1"]
+    },
+    {
+      "id": "TC-EE-06-05",
+      "name": "PARALLEL_SPLIT event records correct source_node_id and edge_count",
+      "status": "PASS",
+      "layer": "unit",
+      "acceptance_criteria": ["AC3"]
+    }
+  ],
+  "issues": [],
+  "notes": "All 183 unit tests passed. TC-EE-06-01 through TC-EE-06-05 confirmed in src/engine/transition.zig (lines 798-970). TC-EE-06-06, TC-EE-06-07 (degenerate/recursive split) and TC-EE-06-08 (integration) are not part of this run's acceptance criteria scope and not required for WF-02 step 4."
+}

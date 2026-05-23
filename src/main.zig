@@ -11,7 +11,25 @@ pub const definition_store = @import("definition/store.zig");
 pub const definition_snapshot = @import("definition/snapshot.zig");
 pub const definition_export_import = @import("definition/export_import.zig"); // PD-09
 pub const definition_routes = @import("api/routes/definitions.zig");
+pub const engine_instance = @import("engine/instance.zig");
+pub const engine_reconstruction = @import("engine/reconstruction.zig"); // EE-11
+pub const instance_routes = @import("api/routes/instances.zig");
+// API-03 new handlers exported for router registration:
+//   GET /api/v1/instances         → instance_routes.handleList
+//   GET /api/v1/instances/:id     → instance_routes.handleGetById
+// Register GET /instances (list) BEFORE GET /instances/:id so that the literal
+// path segment "instances" is not consumed as a UUID path parameter.
+// API-05 history endpoint:
+//   GET /api/v1/instances/:id/history → instance_routes.handleHistory
+// Register this BEFORE the generic /:id route so "history" is not parsed as UUID.
+pub const task_store = @import("tasks/store.zig");
+pub const task_routes = @import("api/routes/tasks.zig");
+pub const json_schema_mod = @import("tools/json_schema.zig"); // EE-09 schema validator (pure)
+pub const api_errors = @import("api/errors.zig"); // API-01 RFC 9457 Problem Details
+pub const api_response = @import("api/response.zig"); // API-01 response builder
+pub const api_content_type = @import("api/middleware/content_type.zig"); // API-01 Content-Type enforcement
 
 pub fn main() !void {
     std.debug.print("BPM Platform — not yet implemented\n", .{});
 }
+pub const engine_transition = @import("engine/transition.zig");

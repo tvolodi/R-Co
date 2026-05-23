@@ -104,6 +104,19 @@ pub const GlobalReadOpts = struct {
     limit: u32,
 };
 
+pub const HistoryReadOpts = struct {
+    /// Optional: filter to a specific event_type name. Null = all types.
+    event_type: ?[]const u8,
+    /// Optional: inclusive lower bound on created_at (UTC µs). Null = no lower bound.
+    from: ?i64,
+    /// Optional: inclusive upper bound on created_at (UTC µs). Null = no upper bound.
+    to: ?i64,
+    /// Cursor: only return events with sequence_number > this value. Null = from start.
+    after_sequence: ?i64,
+    /// Maximum number of events to return. 1..200.
+    limit: u16,
+};
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -533,6 +546,145 @@ pub const Store = struct {
             var mr = rows;
             mr.deinit();
         }
+        return rowsToEventRecords(allocator, rows.rows);
+    }
+
+    // -----------------------------------------------------------------------
+    // readHistory (API-05, ES-07)
+    // -----------------------------------------------------------------------
+
+    /// Read history for an instance, spanning both `events` and `events_archive`.
+    /// Returns events in ascending sequence_number order.
+    ///
+    /// Covers: API-05 (history endpoint), ES-07 (archived event inclusion).
+    ///
+    /// Returns InstanceNotFound if instance_id does not exist in instance_projections.
+    /// Returns empty list if instance exists but has no events matching the filters.
+    /// All SQL uses $N placeholders — no string interpolation. (security)
+    pub fn readHistory(
+        self: *Store,
+        allocator: std.mem.Allocator,
+        instance_id: Uuid,
+        opts: HistoryReadOpts,
+    ) StoreError![]EventRecord {
+        var param_arena = std.heap.ArenaAllocator.init(allocator);
+        defer param_arena.deinit();
+        const param_alloc = param_arena.allocator();
+
+        const conn = self.pool.acquire() catch |err| switch (err) {
+            PoolError.ExhaustedPool => return StoreError.PoolExhausted,
+            else => return StoreError.TransactionFailed,
+        };
+        defer self.pool.release(conn);
+
+        // Verify instance exists (API-05: 404 if not found).
+        const check = conn.query(
+            allocator,
+            "SELECT 1 FROM instance_projections WHERE instance_id = $1",
+            &.{uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed},
+        ) catch return StoreError.TransactionFailed;
+        defer {
+            var mr = check;
+            mr.deinit();
+        }
+        if (check.rows.len == 0) return StoreError.InstanceNotFound;
+
+        // Build the UNION ALL query dynamically based on which filters are present.
+        // Inner SELECT from events:
+        //   SELECT event_id, instance_id, event_type, payload, actor_id,
+        //          created_at, sequence_number, idempotency_key, metadata, global_seq
+        //   FROM events WHERE instance_id = $1 [AND filters...]
+        // UNION ALL
+        //   SELECT event_id, instance_id, event_type, payload, actor_id,
+        //          created_at, sequence_number, idempotency_key, metadata, global_seq
+        //   FROM events_archive WHERE instance_id = $1 [AND filters...]
+        // Outer SELECT converts created_at → created_at_us via EXTRACT(EPOCH).
+        // Additional WHERE on sequence_number for cursor, ORDER BY sequence_number ASC, LIMIT.
+
+        const instance_hex = uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed;
+
+        // Build filter conditions and parameter values.
+        // We'll append to params list and build WHERE clauses.
+
+        var params_list: std.ArrayList([]const u8) = .empty;
+        defer params_list.deinit(allocator);
+
+        // $1 = instance_id (for events table)
+        params_list.append(allocator, instance_hex) catch return StoreError.TransactionFailed;
+
+        // event_type filter ($2 for events, reused for archive)
+        if (opts.event_type) |et| {
+            params_list.append(allocator, et) catch return StoreError.TransactionFailed;
+        } else {
+            params_list.append(allocator, "") catch return StoreError.TransactionFailed;
+        }
+
+        // from filter ($3 for events, reused for archive)
+        if (opts.from) |f| {
+            params_list.append(allocator, intToStr(param_alloc, f) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
+        } else {
+            params_list.append(allocator, "") catch return StoreError.TransactionFailed;
+        }
+
+        // to filter ($4 for events, reused for archive)
+        if (opts.to) |t| {
+            params_list.append(allocator, intToStr(param_alloc, t) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
+        } else {
+            params_list.append(allocator, "") catch return StoreError.TransactionFailed;
+        }
+
+        // after_sequence cursor ($5)
+        if (opts.after_sequence) |as| {
+            params_list.append(allocator, intToStr(param_alloc, as) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
+        } else {
+            params_list.append(allocator, "") catch return StoreError.TransactionFailed;
+        }
+
+        // limit ($6) — fetch page_size + 1 to detect next page
+        const fetch_limit: u16 = if (opts.limit < 200) opts.limit + 1 else opts.limit;
+        params_list.append(allocator, intToStr(param_alloc, @as(i64, fetch_limit)) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
+
+        // Build the dynamic SQL.  We use the PostgreSQL extended query protocol,
+        // so parameter count must match the number of $N references.
+        // Strategy: always use $N references, and when a filter is absent we use
+        // a condition that is always true (e.g. $2::text = '' meaning no filter).
+
+        const sql =
+            \\SELECT event_id, instance_id, event_type, payload, actor_id,
+            \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
+            \\       sequence_number, idempotency_key, metadata, global_seq
+            \\FROM (
+            \\    SELECT event_id, instance_id, event_type, payload, actor_id,
+            \\           created_at, sequence_number, idempotency_key, metadata, global_seq
+            \\    FROM events
+            \\    WHERE instance_id = $1
+            \\      AND ($2::text = '' OR event_type = $2)
+            \\      AND ($3::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $3::bigint)
+            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $4::bigint)
+            \\    UNION ALL
+            \\    SELECT event_id, instance_id, event_type, payload, actor_id,
+            \\           created_at, sequence_number, idempotency_key, metadata, global_seq
+            \\    FROM events_archive
+            \\    WHERE instance_id = $1
+            \\      AND ($2::text = '' OR event_type = $2)
+            \\      AND ($3::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $3::bigint)
+            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $4::bigint)
+            \\) AS combined
+            \\WHERE ($5::text = '' OR sequence_number > $5::bigint)
+            \\ORDER BY sequence_number ASC
+            \\LIMIT $6
+        ;
+
+        const rows = conn.query(
+            allocator,
+            sql,
+            params_list.items,
+        ) catch return StoreError.TransactionFailed;
+        defer {
+            var mr = rows;
+            mr.deinit();
+        }
+
         return rowsToEventRecords(allocator, rows.rows);
     }
 

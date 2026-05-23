@@ -70,14 +70,14 @@ Each handoff in `handoffs/<run_id>/step-NN-<agent>.json` now carries three times
 | Field | Set by | Meaning |
 |---|---|---|
 | `created_at` | ORCH | When the handoff was created (agent is queued) |
-| `started_at` | Receiving agent | When the agent began executing the task |
+| `started_at` | ORCH (at dispatch) | When ORCH invoked the subagent (real wall-clock time) |
 | `completed_at` | Receiving agent | When the agent finished (COMPLETED or FAILED) |
 
 **Derived metrics:**
 - **Queue time** = `started_at − created_at` (scheduling delay)
 - **Work time** = `completed_at − started_at` (actual effort)
 
-Agents MUST set `started_at` when they transition the handoff to `IN_PROGRESS`.
+ORCH MUST stamp `started_at` with real system time immediately before calling the subagent. Agents MUST NOT set `started_at` — they set only `completed_at`.
 
 ---
 

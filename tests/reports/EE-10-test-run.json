@@ -1,0 +1,245 @@
+{
+  "run_id": "c5d9dbd4-c952-4ecf-8d73-9a2a7712a5af",
+  "workflow_id": "WF-02",
+  "handoff_id": "ee100004-2605-4000-8010-202605220004",
+  "requirement_ids": ["EE-10"],
+  "timestamp": "2026-05-22T12:27:09Z",
+  "summary": {
+    "total": 15,
+    "passed": 15,
+    "failed": 0,
+    "skipped": 0
+  },
+  "layers": {
+    "build": {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    "unit": {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS",
+      "total": 189,
+      "passed": 100,
+      "failed": 0,
+      "skipped": 89,
+      "note": "89 skipped tests are integration tests that skip without BPM_TEST_DB_URL; all non-integration tests pass"
+    },
+    "unit_engine": {
+      "command": "zig build test-engine",
+      "exit_code": 0,
+      "status": "PASS",
+      "total": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    },
+    "integration": {
+      "command": "zig build test-integration",
+      "exit_code": 0,
+      "status": "SKIP",
+      "reason": "BPM_TEST_DB_URL not set in this environment",
+      "total": 110,
+      "passed": 4,
+      "failed": 0,
+      "skipped": 106,
+      "ee10_tests_skipped": ["TC-EE-10-01", "TC-EE-10-02", "TC-EE-10-03", "TC-EE-10-04", "TC-EE-10-05", "TC-EE-10-06"]
+    }
+  },
+  "unit_test_results": [
+    {
+      "test_id": "handleCancel-uuid",
+      "name": "handleCancel: invalid UUID returns 422",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-08"
+    },
+    {
+      "test_id": "CancelInstanceError",
+      "name": "CancelInstanceError: error set contains expected variants",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-08"
+    },
+    {
+      "test_id": "TaskStore-cancelInTx",
+      "name": "TaskStore.cancelInTx: TaskError contains expected variants",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-08"
+    },
+    {
+      "test_id": "TC-EE-10-unit-01",
+      "name": "SetInstanceErrorError: error set contains all required variants",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-02",
+      "name": "CompleteTaskError: InstanceInError variant exists and maps to HTTP 409",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-03",
+      "name": "CompleteTaskError: SchemaViolationError variant still exists",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-04",
+      "name": "ErrorType: NO_MATCHING_EDGE and SCHEMA_VIOLATION variants exist",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-05",
+      "name": "SetInstanceErrorArgs: struct fields have expected layout",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-06",
+      "name": "SetInstanceErrorArgs: SCHEMA_VIOLATION layout check",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-07",
+      "name": "EvaluatedCondition: struct fields exist",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-08",
+      "name": "mapSetErrorToCompleteError: AlreadyTerminal maps to InstanceInError",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-09",
+      "name": "mapSetErrorToCompleteError: PoolExhausted maps to PoolExhausted",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-10",
+      "name": "mapSetErrorToCompleteError: OutOfMemory maps to OutOfMemory",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-11",
+      "name": "mapSetErrorToCompleteError: PersistenceFailed maps to PersistenceFailed",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-unit-12",
+      "name": "mapSetErrorToCompleteError: InstanceNotFound maps to PersistenceFailed",
+      "layer": "unit",
+      "file": "tests/unit/engine_test.zig",
+      "status": "pass",
+      "requirement_id": "EE-10"
+    }
+  ],
+  "failures": [],
+  "integration_tests_pending": [
+    {
+      "test_id": "TC-EE-10-01",
+      "name": "gateway no-match triggers ERROR; EXECUTION_ERROR event appended",
+      "layer": "integration",
+      "file": "tests/integration/instance_error_test.zig",
+      "status": "skip",
+      "reason": "BPM_TEST_DB_URL not available",
+      "severity": "MAJOR",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-02",
+      "name": "schema violation triggers ERROR; merge not applied",
+      "layer": "integration",
+      "file": "tests/integration/instance_error_test.zig",
+      "status": "skip",
+      "reason": "BPM_TEST_DB_URL not available",
+      "severity": "MAJOR",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-03",
+      "name": "ERROR instance rejects task completion with InstanceInError",
+      "layer": "integration",
+      "file": "tests/integration/instance_error_test.zig",
+      "status": "skip",
+      "reason": "BPM_TEST_DB_URL not available",
+      "severity": "MAJOR",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-04",
+      "name": "ERROR transition is atomic — both event and projection visible together",
+      "layer": "integration",
+      "file": "tests/integration/instance_error_test.zig",
+      "status": "skip",
+      "reason": "BPM_TEST_DB_URL not available",
+      "severity": "MAJOR",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-05",
+      "name": "concurrent ERROR race — exactly one EXECUTION_ERROR event",
+      "layer": "integration",
+      "file": "tests/integration/instance_error_test.zig",
+      "status": "skip",
+      "reason": "BPM_TEST_DB_URL not available",
+      "severity": "MAJOR",
+      "requirement_id": "EE-10"
+    },
+    {
+      "test_id": "TC-EE-10-06",
+      "name": "EXECUTION_ERROR payload contains all required fields",
+      "layer": "integration",
+      "file": "tests/integration/instance_error_test.zig",
+      "status": "skip",
+      "reason": "BPM_TEST_DB_URL not available",
+      "severity": "MAJOR",
+      "requirement_id": "EE-10"
+    }
+  ],
+  "coverage": {
+    "backend_unit_line": "N/A - no coverage instrumentation active",
+    "note": "All 15 engine unit tests pass; 12 EE-10-specific unit tests cover type/struct/error-mapping correctness. Integration tests (TC-EE-10-01 through TC-EE-10-06) require BPM_TEST_DB_URL and are pending DB environment."
+  },
+  "infrastructure_issues": [
+    {
+      "severity": "BLOCKER",
+      "description": "engine_test.zig used relative @import paths (../../src/engine/instance.zig) that escape the module root, causing test-engine step compilation failure. Fixed by: (1) updating engine_test.zig to use @import(\"bpm\") with bpm_src_mod, (2) adding bpm_src_mod declaration before engine_tests in build.zig, (3) removing duplicate bpm_src_mod declaration from integration tests section, (4) adding engine_tests to the main test step."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "requirement_id": "EE-02",
+  "decision": "RELEASED",
+  "run_id": "WF02-ee02-20260522",
+  "timestamp": "2026-05-21T23:59:00Z",
+  "evidence": {
+    "test_report": "tests/reports/EE-02-test-run.json",
+    "test_pass": true,
+    "build_exit_0": true,
+    "io_free": true
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "run_id": "WF02-ee08-20260522",
+  "created_at": "2026-05-22T09:59:51Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "EE-08"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "Instance cancellation requires atomic multi-table update (tasks + timers + event + instance status), new API endpoint, and in-flight HTTP abort handling \u2014 standard new-feature scope",
+  "steps": [
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 15,
+    "backend-dev": 35,
+    "test-designer": 15,
+    "test-runner": 12,
+    "release-validator": 12,
+    "doc-updater": 10,
+    "total": 99
+  }
+}

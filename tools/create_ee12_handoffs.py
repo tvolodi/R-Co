@@ -1,0 +1,138 @@
+import json
+import os
+
+run_id = 'WF02-ee12-20260522'
+created_at = '2026-05-22T13:32:18Z'
+
+os.makedirs(f'handoffs/{run_id}', exist_ok=True)
+
+# ---- step-01-code-designer.json ----
+handoff = {
+    'handoff_id': 'ee120001-2605-4000-8012-202605220001',
+    'workflow_id': 'WF-02',
+    'run_id': run_id,
+    'step': '01',
+    'from_agent': 'ORCH',
+    'to_agent': 'CODE-DESIGNER',
+    'created_at': created_at,
+    'started_at': None,
+    'status': 'PENDING',
+    'priority': 'NORMAL',
+    'context': {
+        'stage': 'Stage 3 - Execution Engine',
+        'requirement_ids': ['EE-12'],
+        'related_handoff_ids': [
+            'ee020001-2605-4000-8002-202605220001',
+            'ee100001-2605-4000-8010-202605220001'
+        ],
+        'artifacts_in': [
+            'docs/requirements/EE-12.md',
+            'docs/BPM_Platform_Functional_Requirements.md',
+            'docs/guides/backend_developer_guide.md',
+            'src/design/engine.md',
+            'src/engine/instance.zig',
+            'src/engine/transition.zig',
+            'src/db/instance.zig',
+            'src/tasks/handler.zig',
+            'migrations/005_instances.sql',
+            'migrations/006_tasks.sql'
+        ]
+    },
+    'task': {
+        'description': (
+            'Produce a design artefact for EE-12 (Concurrent instance safety). '
+            'Append a dedicated EE-12 section to src/design/engine.md, after the existing EE-11 section. '
+            'The design MUST cover ALL of the following:\n\n'
+            '1. Concurrency model: describe the instance-level isolation guarantee. Each instance operation '
+            'MUST hold a row-level lock on the instance row (SELECT ... FOR UPDATE on the instances table) '
+            'for the duration of the operation. Cross-instance operations MUST NOT hold a shared or global '
+            'lock - only the specific instance row is locked.\n\n'
+            '2. Row-level locking strategy: specify the exact SQL pattern for acquiring a row-level lock on '
+            'a specific instance (SELECT id, status, ... FROM instances WHERE id = $1 FOR UPDATE). Describe '
+            'how this integrates with the existing transaction pattern in DB-03. Identify which existing '
+            'functions in src/db/instance.zig or src/engine/instance.zig need to acquire this lock and in '
+            'what order.\n\n'
+            '3. Same-instance concurrent task completion - HTTP 409: when two concurrent requests attempt '
+            'to complete a task on the SAME instance simultaneously, the row-level lock ensures only one '
+            'proceeds. Describe how the second request detects the conflict: either (a) it waits for the '
+            'lock and then sees the instance/task in a state that rejects the completion (task already '
+            'COMPLETED -> HTTP 409), or (b) it uses NOWAIT and immediately gets a lock-failure -> HTTP 409. '
+            'Design which approach to use and why.\n\n'
+            '4. Cross-instance independence: show that 100 instances of the same definition run concurrently '
+            'without interference. Each instance locks only its own row. No shared lock or global mutex is '
+            'needed. Describe why the current schema (instance rows isolated by id, event rows isolated by '
+            'instance_id, task rows isolated by instance_id) already provides data isolation.\n\n'
+            '5. Load test design (100 concurrent distinct instances): design the load test that verifies 100 '
+            'concurrent task completions across 100 distinct instances all succeed. Specify: test setup (create '
+            '100 instances, advance each to a USER_TASK node), concurrent execution approach, assertions (all '
+            '100 HTTP 200 responses, no deadlock, no data corruption verified by querying final state of each '
+            'instance).\n\n'
+            '6. Load test design (same-instance contention): design the test that verifies two concurrent task '
+            'completions on the SAME instance: one succeeds (HTTP 200), the other receives HTTP 409. Specify '
+            'how to make this test reliable (both requests sent before either processes).\n\n'
+            '7. Error handling: specify what HTTP status codes are returned for each failure mode: instance not '
+            'found (404), instance in ERROR or COMPLETED status (409), task not found or already completed (409), '
+            'lock contention / NOWAIT failure (409).\n\n'
+            '8. Migration assessment: determine whether any schema change is required. If the instances table '
+            'already has the correct row structure for row-level locking (which it should), state that no '
+            'migration is needed and explain why.\n\n'
+            '9. Edge cases:\n'
+            '   a. 100 concurrent completions on same instance: only first succeeds, remaining 99 all get HTTP 409.\n'
+            '   b. Deadlock scenario: two instances A and B each waiting for each others lock - show that this '
+            'cannot happen if each transaction locks only one instance row.\n'
+            '   c. Instance in COMPLETED or ERROR status: task completion returns HTTP 409, lock is released '
+            'immediately.\n\n'
+            '10. Traceability table: map each EE-12 acceptance criterion to the design element that satisfies it.\n\n'
+            '11. Implementation notes for BACKEND-DEV: list which source files are created or modified '
+            '(db/instance.zig, engine/instance.zig, tasks/handler.zig), which SQL patterns are added (FOR UPDATE), '
+            'what new test files are created (tests/unit/ or tests/integration/), whether any migration is needed.\n\n'
+            'Follow the same structure and formatting conventions as the EE-11 section in engine.md. '
+            'Do NOT modify any existing sections.'
+        ),
+        'acceptance_criteria': [
+            'src/design/engine.md has a dedicated EE-12 section with: concurrency model, row-level locking strategy with exact SQL, same-instance contention HTTP 409 design, cross-instance independence explanation, load test design for 100 distinct instances, load test design for same-instance contention, error handling table, migration assessment, edge cases, traceability table, and BACKEND-DEV implementation notes',
+            'Design covers all EE-12 acceptance criteria from docs/requirements/EE-12.md',
+            'Design is consistent with DB-03 (transactional writes) and ES-01 (per instance_id isolation)',
+            'Design clearly states whether a migration is needed (and if not, why the existing schema is sufficient)',
+            'Load test specifications are concrete enough for TEST-DESIGNER to implement without ambiguity'
+        ],
+        'functions_to_call': [
+            'fn:read-backend-conventions',
+            'fn:check-design-format'
+        ]
+    },
+    'result': None,
+    'rework_count': 0,
+    'max_rework': 3,
+    'completed_at': None
+}
+
+with open(f'handoffs/{run_id}/step-01-code-designer.json', 'w') as f:
+    json.dump(handoff, f, indent=2)
+print('step-01-code-designer.json written')
+
+# ---- Add to registry ----
+with open('handoffs/registry.json') as f:
+    registry = json.load(f)
+
+registry['entries'].append({
+    'handoff_id': 'ee120001-2605-4000-8012-202605220001',
+    'file': f'handoffs/{run_id}/step-01-code-designer.json',
+    'run_id': run_id,
+    'step': '01',
+    'from_agent': 'ORCH',
+    'to_agent': 'CODE-DESIGNER',
+    'created_at': created_at,
+    'status': 'PENDING',
+    'stage': 'Stage 3 - Execution Engine'
+})
+
+with open('handoffs/registry.json', 'w') as f:
+    json.dump(registry, f, indent=2)
+print('registry.json updated')
+
+# ---- Append to orchestrator.log ----
+with open('handoffs/orchestrator.log', 'a') as f:
+    f.write(f"{created_at} | ROUTE | {run_id} | ee120001 | ORCH -> CODE-DESIGNER | PENDING\n")
+    f.write(f"{created_at} | ESTIMATE | {run_id} | D3 | ~57min | EE-12\n")
+print('orchestrator.log appended')

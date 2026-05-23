@@ -1,0 +1,73 @@
+{
+  "run_id": "WF02-ee07-20260522",
+  "requirement_id": "EE-07",
+  "timestamp": "2026-05-22T09:23:31Z",
+  "command": "zig build test",
+  "exit_code": 0,
+  "test_cases": [
+    {
+      "test_id": "EE-07-TC-01",
+      "status": "PASS",
+      "error_message": null,
+      "zig_test_name": "TC-EE-07-04: PARALLEL_JOIN event records branch_id with edge_index 0 as outgoing_token_id",
+      "source_file": "src/engine/transition.zig",
+      "acceptance_criteria": ["AC1", "AC5"],
+      "description": "Normal 2-branch join: both tokens arrive → join fires, 1 outgoing token; merged branch_id is deterministic"
+    },
+    {
+      "test_id": "EE-07-TC-02",
+      "status": "PASS",
+      "error_message": null,
+      "zig_test_name": "TC-EE-07-01: join waits when one branch cancelled, fires when remaining active branch arrives",
+      "source_file": "src/engine/transition.zig",
+      "acceptance_criteria": ["AC2", "AC3"],
+      "description": "Cancelled-branch exclusion: 1 of 2 branches cancelled, remaining arrives → join fires (threshold = 1)"
+    },
+    {
+      "test_id": "EE-07-TC-03",
+      "status": "PASS",
+      "error_message": null,
+      "zig_test_name": "TC-EE-07-03: all-branches-cancelled path → INSTANCE_CANCELLED event, status CANCELLED",
+      "source_file": "src/engine/transition.zig",
+      "acceptance_criteria": ["AC4"],
+      "description": "All branches cancelled → INSTANCE_CANCELLED event, instance CANCELLED status"
+    },
+    {
+      "test_id": "EE-07-TC-04",
+      "status": "PASS",
+      "error_message": null,
+      "zig_test_name": "TC-EE-07-04: PARALLEL_JOIN event records branch_id with edge_index 0 as outgoing_token_id",
+      "source_file": "src/engine/transition.zig",
+      "acceptance_criteria": ["AC5"],
+      "description": "Exactly-once: both tokens present with reversed arrival order → 1 merge, 1 PARALLEL_JOIN event"
+    },
+    {
+      "test_id": "EE-07-TC-05",
+      "status": "PASS",
+      "error_message": null,
+      "zig_test_name": "TC-EE-07-05: 3-branch join — all 3 active branches arrive via task_completed → join fires, 1 outgoing token",
+      "source_file": "tests/unit/test_ee07_parallel_join.zig",
+      "acceptance_criteria": ["AC1"],
+      "description": "3-branch join: all 3 active branches arrive via task_completed events → join fires once, 1 outgoing token"
+    }
+  ],
+  "additional_coverage": [
+    {
+      "test_id": "EE-07-TC-06",
+      "status": "PASS",
+      "error_message": null,
+      "zig_test_name": "TC-EE-07-02: join still waits when only 1 of 2 active branches has arrived",
+      "source_file": "src/engine/transition.zig",
+      "description": "Wait path: only 1 of 2 active branches arrived → join waits, no event emitted"
+    }
+  ],
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0
+  },
+  "result": {
+    "status": "PASS",
+    "issues": []
+  }
+}

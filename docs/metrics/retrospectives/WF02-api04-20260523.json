@@ -1,0 +1,53 @@
+{
+  "run_id": "WF02-api04-20260523",
+  "requirement_ids": [
+    "API-04"
+  ],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 31,
+  "actual_minutes_total": 40.92,
+  "variance_pct": 32.0,
+  "by_step": {
+    "code-designer": {
+      "estimated": 5,
+      "actual": 4.52,
+      "variance_pct": -9.6
+    },
+    "backend-dev": {
+      "estimated": 7,
+      "actual": 26.82,
+      "variance_pct": 283.1
+    },
+    "test-designer": {
+      "estimated": 9,
+      "actual": 3.7,
+      "variance_pct": -58.9
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 1.2,
+      "variance_pct": -82.9
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 0.95,
+      "variance_pct": -5.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 3.73,
+      "variance_pct": 86.5
+    }
+  },
+  "rework_steps": [
+    {
+      "step": "04a",
+      "agent": "BACKEND-DEV",
+      "reason": "step-04 TEST-RUNNER FAILED; missing test cases added in step-04a before re-run in step-04b"
+    }
+  ],
+  "rule_adjustments": [],
+  "notes": "backend-dev (+283.1%): most recent prior D3 run (ee12) had -74.5% (opposite direction) \u2014 no chain, no adjustment; high actual time driven by step-04a rework pass adding missing tests. test-designer (-58.9%): prior D3 run (ee12) had +293.3% (opposite direction) \u2014 no chain. test-runner (-82.9%): prior D3 run (ee12) had +86.9% (opposite direction) \u2014 no chain. doc-updater (+86.5%): prior D3 run (ee12) no same-direction chain. No rule adjustments applied this run.",
+  "completed_at": "2026-05-22T20:54:25Z"
+}

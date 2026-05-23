@@ -1,0 +1,71 @@
+{
+  "run_id": "WF02-api03-20260522",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-22T17:45:50Z",
+  "requirement_ids": ["API-03"],
+  "layers_executed": ["build", "unit"],
+  "layers_skipped": ["integration"],
+  "skip_reason": "BPM_TEST_DB_URL environment variable is not set; integration tests require a live PostgreSQL test database",
+  "summary": {
+    "total": 236,
+    "passed": 147,
+    "failed": 0,
+    "skipped": 89,
+    "api03_unit_total": 11,
+    "api03_unit_passed": 11,
+    "api03_unit_failed": 0,
+    "api03_unit_skipped": 0
+  },
+  "build_result": {
+    "step": "zig build",
+    "status": "PASS",
+    "exit_code": 0
+  },
+  "unit_test_result": {
+    "step": "zig build test",
+    "status": "PASS",
+    "exit_code": 0,
+    "summary_line": "Build Summary: 43/43 steps succeeded; 147/236 tests passed (89 skipped)",
+    "note": "89 skipped tests are integration tests across multiple test files (db_test.zig, event_store_test.zig, definition_retrieval_test.zig, etc.) that use SkipZigTest when BPM_TEST_DB_URL is absent. This is the expected behaviour for unit-only runs."
+  },
+  "api03_unit_tests": {
+    "file": "tests/unit/api03_handler_test.zig",
+    "runner_summary": "11 pass (11 total)",
+    "cases": [
+      { "id": "TC-API-03-03",  "name": "handleGetById with non-UUID string returns HTTP 422 INVALID_INSTANCE_ID",           "status": "PASS" },
+      { "id": "TC-API-03-03b", "name": "handleGetById with short string returns HTTP 422 INVALID_INSTANCE_ID",              "status": "PASS" },
+      { "id": "TC-API-03-09",  "name": "handleList with status=UNKNOWN_STATUS returns HTTP 422 INVALID_STATUS",              "status": "PASS" },
+      { "id": "TC-API-03-09b", "name": "handleList with status=active (lowercase) returns HTTP 422 INVALID_STATUS",          "status": "PASS" },
+      { "id": "TC-API-03-10",  "name": "handleList with page_size=0 returns HTTP 422 INVALID_PAGE_SIZE",                    "status": "PASS" },
+      { "id": "TC-API-03-11",  "name": "handleList with page_size=201 returns HTTP 422 INVALID_PAGE_SIZE",                  "status": "PASS" },
+      { "id": "TC-API-03-12",  "name": "handleList with invalid definition_id returns HTTP 422 INVALID_DEFINITION_ID",       "status": "PASS" },
+      { "id": "TC-API-03-13",  "name": "handleList with malformed cursor returns HTTP 422 INVALID_CURSOR",                  "status": "PASS" },
+      { "id": "TC-API-03-14",  "name": "handleList with cursor created >24h ago returns HTTP 410 CURSOR_EXPIRED",           "status": "PASS" },
+      { "id": "TC-API-03-21",  "name": "handleList with cursor missing third segment returns HTTP 422 INVALID_CURSOR",       "status": "PASS" },
+      { "id": "DOC-INVARIANT",  "name": "handleList with valid ACTIVE status passes validation (boundary documentation)",   "status": "PASS" }
+    ]
+  },
+  "integration_test_result": {
+    "step": "zig build test-integration",
+    "status": "SKIPPED",
+    "reason": "BPM_TEST_DB_URL not set",
+    "test_cases_pending": [
+      "TC-API-03-01", "TC-API-03-02", "TC-API-03-04", "TC-API-03-05",
+      "TC-API-03-06", "TC-API-03-07", "TC-API-03-08", "TC-API-03-15",
+      "TC-API-03-16", "TC-API-03-17", "TC-API-03-18", "TC-API-03-20"
+    ]
+  },
+  "failures": [],
+  "coverage": {
+    "backend_unit_line": "not_measured",
+    "note": "Zig built-in test runner does not emit coverage metrics. All pure-validation branches in handleGetById and handleList are exercised by the 11 passing unit tests."
+  },
+  "nfr_results": [],
+  "overall_status": "PASS",
+  "notes": [
+    "Unit layer (pure input-validation paths): PASS — 11/11 tests passed.",
+    "Integration layer: NOT RUN — BPM_TEST_DB_URL is absent from this environment. Integration tests are in tests/integration/api03_instance_read_test.zig and cover TC-API-03-01/02/04/05/06/07/08/15/16/17/18/20 against a real PostgreSQL DB.",
+    "Per the handoff task description, integration tests are conditional on BPM_TEST_DB_URL availability. The unit test criterion (zig build test exits 0) is satisfied.",
+    "Requirement API-03 is PARTIALLY TESTED: handler input-validation paths are proven; InstanceStore.getById() and InstanceStore.listInstances() DB paths require integration run to reach TESTED status."
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "stage": "Stage 3 - Execution Engine",
+  "requirement_ids": [
+    "EE-09"
+  ],
+  "run_id": "WF02-ee09-20260522",
+  "date": "2026-05-22T11:44:54Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01": "NOT_MEASURED - bench suite stub (not yet implemented); not a WF-02 gate",
+    "NFR-02": "NOT_MEASURED - bench suite stub (not yet implemented); not a WF-02 gate",
+    "NFR-04": "NOT_MEASURED - bench suite stub (not yet implemented); not a WF-02 gate",
+    "bench_exit_code": 0,
+    "zig_build": "EXIT 0 - no compilation errors",
+    "zig_build_test": "EXIT 0 - 10/10 EE-09 unit tests PASS"
+  },
+  "must_criteria_coverage": {
+    "AC1_new_key_inserted": {
+      "status": "DEFERRED",
+      "covered_by": [
+        "TC-EE-09-01 (integration - SKIP, no BPM_TEST_DB_URL)"
+      ],
+      "note": "DB-dependent: key insertion committed to instance_projections.variables. Integration test compiles cleanly. Runtime deferred to WF-04. Matches EE-04 release precedent."
+    },
+    "AC2_existing_key_overwrite_with_event": {
+      "status": "DEFERRED",
+      "covered_by": [
+        "TC-EE-09-02 (integration - SKIP)",
+        "TC-EE-09-03 (integration - SKIP)"
+      ],
+      "note": "DB-dependent: VARIABLE_OVERWRITTEN event append requires live PostgreSQL. Integration tests compile cleanly. Runtime deferred to WF-04."
+    },
+    "AC3_schema_violation_blocks_merge": {
+      "status": "PASS",
+      "covered_by": [
+        "TC-EE-09-U02 - json_schema rejects wrong type",
+        "TC-EE-09-U03 - json_schema rejects enum violation",
+        "TC-EE-09-U04 - json_schema rejects disallowed enum value",
+        "TC-EE-09-U06 - json_schema rejects below-minimum value",
+        "TC-EE-09-U07 - json_schema rejects above-maximum value",
+        "TC-EE-09-U08 - json_schema rejects over-maxLength string",
+        "TC-EE-09-U10 - MergeVariablesError contains SchemaViolation, PersistenceFailed, OutOfMemory"
+      ]
+    },
+    "AC4_variables_accessible_to_cel": {
+      "status": "DEFERRED",
+      "covered_by": [
+        "TC-EE-09-05 (integration - SKIP, no BPM_TEST_DB_URL)"
+      ],
+      "note": "DB-dependent end-to-end test. Pure-function contract verified by EE-05 unit tests (transition.zig reads instance variables map directly). Deferred to WF-04."
+    }
+  },
+  "coverage_gaps": [
+    {
+      "tc_id": "TC-EE-09-01",
+      "description": "New key insertion end-to-end - deferred to integration run",
+      "severity": "LOW",
+      "blocking": false
+    },
+    {
+      "tc_id": "TC-EE-09-02/TC-EE-09-03",
+      "description": "VARIABLE_OVERWRITTEN event emission - deferred to integration run",
+      "severity": "LOW",
+      "blocking": false
+    },
+    {
+      "tc_id": "TC-EE-09-05",
+      "description": "Post-merge CEL accessibility - deferred to integration run",
+      "severity": "LOW",
+      "blocking": false
+    }
+  ],
+  "blocking_issues": [],
+  "approved_requirements": [
+    "EE-09"
+  ],
+  "regression_check": {
+    "EE-01": "RELEASED - no regressions",
+    "EE-02": "RELEASED - no regressions",
+    "EE-03": "RELEASED - no regressions",
+    "EE-04": "RELEASED - no regressions",
+    "EE-05": "RELEASED - no regressions",
+    "EE-06": "RELEASED - no regressions",
+    "EE-07": "RELEASED - no regressions",
+    "EE-08": "RELEASED - no regressions"
+  },
+  "test_summary": {
+    "unit_tests_passed": 10,
+    "unit_tests_failed": 0,
+    "integration_tests_skipped": 4,
+    "build_exit_code": 0,
+    "unit_test_exit_code": 0
+  },
+  "test_report": "tests/reports/EE-09-test-report.md",
+  "notes": "NFR benchmarks stub exits 0; full measurement deferred to WF-04. AC3 fully covered by 10 unit tests. AC1/AC2/AC4 DB-dependent, deferred to WF-04 - consistent with EE-04 and EE-07 WF-02 release precedents."
+}

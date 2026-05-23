@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-21T00:00:00Z",
-  "updated_by": null,
-  "update_count": 0,
+  "updated_at": "2026-05-23T04:52:25Z",
+  "updated_by": "DOC-UPDATER (WF02-api07-20260523)",
+  "update_count": 15,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
     "2": "Single function or endpoint, no schema change, < 50 LOC",
@@ -11,19 +11,61 @@
     "5": "Cross-cutting changes, breaking changes, novel algorithms, new workflow type"
   },
   "step_estimates_minutes": {
-    "code-designer":     [5, 10, 15, 25, 40],
-    "backend-dev":       [10, 20, 35, 60, 100],
-    "frontend-dev":      [10, 20, 35, 60, 100],
-    "test-designer":     [5, 10, 15, 25, 40],
-    "test-runner":       [5,  8, 12, 18, 25],
-    "release-validator": [5,  8, 12, 18, 25],
-    "doc-updater":       [5,  8, 10, 15, 20]
+    "code-designer": [
+      5,
+      7,
+      5,
+      10,
+      40
+    ],
+    "backend-dev": [
+      10,
+      13,
+      7,
+      17,
+      100
+    ],
+    "frontend-dev": [
+      10,
+      20,
+      35,
+      60,
+      100
+    ],
+    "test-designer": [
+      5,
+      10,
+      9,
+      11,
+      40
+    ],
+    "test-runner": [
+      5,
+      2,
+      7,
+      7,
+      25
+    ],
+    "release-validator": [
+      5,
+      1,
+      1,
+      2,
+      25
+    ],
+    "doc-updater": [
+      5,
+      5,
+      2,
+      7,
+      20
+    ]
   },
   "rework_surcharge_pct": 50,
   "notes": [
-    "Estimates are indexed by (difficulty - 1), so difficulty=3 → index 2",
+    "Estimates are indexed by (difficulty - 1), so difficulty=3 \u2192 index 2",
     "Each rework iteration adds rework_surcharge_pct% to the affected step's base estimate",
     "ISSUE-FIXER steps in WF-03 use backend-dev estimates",
-    "For multi-requirement runs, sum individual estimates (no compression discount yet — calibrate after 5+ retrospectives)"
+    "For multi-requirement runs, sum individual estimates (no compression discount yet \u2014 calibrate after 5+ retrospectives)"
   ]
 }

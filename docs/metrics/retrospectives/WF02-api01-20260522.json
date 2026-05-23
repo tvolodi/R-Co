@@ -1,0 +1,69 @@
+{
+  "run_id": "WF02-api01-20260522",
+  "requirement_ids": [
+    "API-01"
+  ],
+  "difficulty": 2,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 64,
+  "actual_minutes_total": 17.77,
+  "variance_pct": -72.2,
+  "by_step": {
+    "code-designer": {
+      "estimated": 10,
+      "actual": 1.88,
+      "variance_pct": -81.2
+    },
+    "backend-dev": {
+      "estimated": 20,
+      "actual": 5.23,
+      "variance_pct": -73.8
+    },
+    "test-designer": {
+      "estimated": 10,
+      "actual": 7.13,
+      "variance_pct": -28.7
+    },
+    "test-runner": {
+      "estimated": 8,
+      "actual": 0.83,
+      "variance_pct": -89.6
+    },
+    "release-validator": {
+      "estimated": 8,
+      "actual": 0.92,
+      "variance_pct": -88.5
+    },
+    "doc-updater": {
+      "estimated": 8,
+      "actual": 1.78,
+      "variance_pct": -77.8
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "backend-dev",
+      "difficulty": 2,
+      "old_estimate": 20,
+      "new_estimate": 13,
+      "reason": "2 consecutive D2 runs with negative variance >25%: pd10 (-40.0%) and api01 (-73.8%). Adjusted by half-variance factor."
+    },
+    {
+      "step": "test-runner",
+      "difficulty": 2,
+      "old_estimate": 8,
+      "new_estimate": 4,
+      "reason": "2 consecutive D2 runs with negative variance >25%: pd10 (-50.0%) and api01 (-89.6%). Adjusted by half-variance factor."
+    },
+    {
+      "step": "release-validator",
+      "difficulty": 2,
+      "old_estimate": 8,
+      "new_estimate": 4,
+      "reason": "2 consecutive D2 runs with negative variance >25%: pd10 (-37.5%) and api01 (-88.5%). Adjusted by half-variance factor."
+    }
+  ],
+  "notes": "All 6 steps completed with valid timestamps. All steps ran significantly under estimate, consistent with AI-assisted implementation where build and test infrastructure is already in place. code-designer (-81.2%): prior D2 run (pd10) had opposite-direction variance (+50%) \u2014 chain broken, no adjustment. test-designer (-28.7%): prior D2 run (pd10) had opposite-direction variance (+120%) \u2014 chain broken, no adjustment. doc-updater (-77.8%): prior D2 run (pd10) had 0% variance (not >25%) \u2014 only 1 qualifying observation, no adjustment. backend-dev, test-runner, and release-validator had negative >25% variance in both consecutive D2 runs; D2 rules adjusted.",
+  "completed_at": "2026-05-22T15:29:24Z"
+}

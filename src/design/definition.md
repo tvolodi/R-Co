@@ -1,6 +1,6 @@
 # Module: definition
 
-**Covers:** PD-01, PD-02
+**Covers:** PD-01, PD-02, PD-04
 **Files:** `src/definition/store.zig`, `src/definition/graph.zig`
 
 ---
@@ -498,6 +498,157 @@ covered in a separate CODE-DESIGNER handoff.*
 | PD-02 edge: cycle through gateway permitted                                                   | CHK-06 algorithm: gateway nodes exempt from cycle check |
 | PD-02 edge: isolated node (no edges, non-START) rejected                                      | CHK-04 → `ISOLATED_NODE`                             |
 | PD-02 edge: self-loop rejected                                                                | CHK-06: self-loop is cycle without gateway → rejected  |
+
+---
+
+## PD-04 — Definition lifecycle: deprecate and archive
+
+### Corrections to pre-PD-04 placeholder content
+
+Two items written as placeholders in earlier sections are superseded by this PD-04 design:
+
+1. **State transition diagram** ("State transitions" section above): The placeholder incorrectly listed `DRAFT→ARCHIVED` and `ACTIVE→ARCHIVED` as permitted transitions. The authoritative PD-04 rule is: **only DRAFT→ACTIVE, ACTIVE→DEPRECATED, and DEPRECATED→ARCHIVED are permitted**. All other transitions are rejected with `InvalidStatusTransition` (HTTP 409). The authoritative table is in § "Authoritative state transition table" below.
+
+2. **Error taxonomy** (above, `InvalidStatusTransition` row): The HTTP status was recorded as 422. Per PD-04, the correct status is **HTTP 409** (conflict with the resource's current state, not a request-body validation error).
+
+---
+
+### New function signatures (Store extensions for PD-04)
+
+The following two methods are added to `pub const Store` in `src/definition/store.zig`:
+
+```zig
+/// Transition this definition from ACTIVE to DEPRECATED.
+///
+/// Precondition:  definition with the given `id` exists and has status = ACTIVE.
+/// Postcondition: status = DEPRECATED, updated_at = NOW().
+///
+/// Errors:
+///   DefinitionNotFound         — id not in process_definitions        → HTTP 404
+///   InvalidStatusTransition    — current status ≠ ACTIVE               → HTTP 409
+///   PoolExhausted              — pool.acquire() failed                 → HTTP 503
+///   TransactionFailed          — DB commit failed (transient)           → HTTP 500
+pub fn deprecate(
+    self:      *Store,
+    allocator: std.mem.Allocator,
+    id:        Uuid,
+) DefinitionError!Definition;
+
+/// Transition this definition from DEPRECATED to ARCHIVED.
+///
+/// Precondition:  definition with the given `id` exists and has status = DEPRECATED.
+/// Postcondition: status = ARCHIVED, archived_at = NOW(), updated_at = NOW().
+///               ARCHIVED is terminal — no further transitions are possible.
+///
+/// Errors:
+///   DefinitionNotFound         — id not in process_definitions        → HTTP 404
+///   InvalidStatusTransition    — current status ≠ DEPRECATED           → HTTP 409
+///                                (covers ACTIVE→ARCHIVED shortcut and ARCHIVED→ARCHIVED)
+///   PoolExhausted              — pool.acquire() failed                 → HTTP 503
+///   TransactionFailed          — DB commit failed (transient)           → HTTP 500
+pub fn archive(
+    self:      *Store,
+    allocator: std.mem.Allocator,
+    id:        Uuid,
+) DefinitionError!Definition;
+```
+
+---
+
+### Authoritative state transition table (PD-04)
+
+| From \ To      | DRAFT       | ACTIVE          | DEPRECATED      | ARCHIVED        |
+|----------------|-------------|-----------------|-----------------|------------------|
+| **DRAFT**      | —           | `activate()` ✓  | ✗ HTTP 409      | ✗ HTTP 409       |
+| **ACTIVE**     | ✗ HTTP 409  | —               | `deprecate()` ✓ | ✗ HTTP 409       |
+| **DEPRECATED** | ✗ HTTP 409  | ✗ HTTP 409      | —               | `archive()` ✓    |
+| **ARCHIVED**   | ✗ HTTP 409  | ✗ HTTP 409      | ✗ HTTP 409      | — (terminal)     |
+
+- `✓` = permitted; implemented by the function shown.
+- `✗ HTTP 409` = rejected; `store.zig` returns `InvalidStatusTransition` which the route handler maps to HTTP 409.
+- `—` = not applicable (no self-transition defined).
+- **ARCHIVED is terminal.** Calling `archive()` on an already-ARCHIVED definition returns `InvalidStatusTransition` (HTTP 409) because the WHERE clause (`status = 'DEPRECATED'`) matches zero rows.
+
+#### SQL implementation pattern for `deprecate()`
+
+```sql
+UPDATE process_definitions
+SET    status     = 'DEPRECATED',
+       updated_at = NOW()
+WHERE  id = $1
+  AND  status = 'ACTIVE'
+RETURNING *
+```
+
+Zero-row resolution: re-fetch by `$1`; if row exists → current status ≠ ACTIVE → return `InvalidStatusTransition`; if row absent → return `DefinitionNotFound`.
+
+#### SQL implementation pattern for `archive()`
+
+```sql
+UPDATE process_definitions
+SET    status      = 'ARCHIVED',
+       archived_at = NOW(),
+       updated_at  = NOW()
+WHERE  id = $1
+  AND  status = 'DEPRECATED'
+RETURNING *
+```
+
+Zero-row resolution: identical pattern — re-fetch; if found → `InvalidStatusTransition`; if absent → `DefinitionNotFound`.
+
+Both UPDATE statements use `$1` (parameterised). No user-supplied string is interpolated into SQL.
+
+---
+
+### HTTP API routes (PD-04)
+
+Two new route entries are added to `src/api/routes/definitions.zig`:
+
+| Method | Path                                | Handler             | Required role                       |
+|--------|-------------------------------------|---------------------|--------------------------------------|
+| `POST` | `/definitions/{id}/deprecate`       | `Store.deprecate()` | PROCESS_DESIGNER or PLATFORM_ADMIN  |
+| `POST` | `/definitions/{id}/archive`         | `Store.archive()`   | PROCESS_DESIGNER or PLATFORM_ADMIN  |
+
+Request body: none. The operation is fully identified by the URL path parameter `{id}`.
+
+Successful response: HTTP 200 with the updated `Definition` serialised as JSON (same shape as `GET /definitions/{id}`).
+
+Error response mapping:
+
+| `DefinitionError`         | HTTP status | Response body field `"error"`                          |
+|---------------------------|-------------|--------------------------------------------------------|
+| `DefinitionNotFound`      | 404         | `"definition_not_found"`                               |
+| `InvalidStatusTransition` | 409         | `"invalid_status_transition"` + `"current_status"` field |
+| `PoolExhausted`           | 503         | `"service_unavailable"`                                |
+| `TransactionFailed`       | 500         | `"internal_error"`                                     |
+
+RBAC enforcement is identical to `POST /definitions/{id}/activate` (PD-03): the RBAC middleware rejects callers whose role is neither PROCESS_DESIGNER nor PLATFORM_ADMIN with HTTP 403 before the handler is invoked.
+
+---
+
+### Instance-start guard (informational — enforced by EE-01)
+
+> Enforcement lives in the engine layer (EE-01), not in `store.zig`. This note exists for cross-requirement traceability.
+
+- **Only ACTIVE definitions may be used to start a new process instance.** The engine's instance-start path reads the definition's current `status` from `process_definitions` and returns HTTP 409 if `status ≠ ACTIVE`.
+- **DEPRECATED definitions and running instances:** existing process instances that were started while the definition was ACTIVE hold an immutable snapshot in `instance_definition_snapshots` (PD-08). These instances MUST continue to completion; the platform MUST NOT terminate them due to the deprecation of their source definition. The snapshot mechanism fully isolates running instances from subsequent definition status changes.
+- **ARCHIVED definitions:** treated identically to DEPRECATED at the instance-start boundary — HTTP 409. No new instances may start from an ARCHIVED definition.
+
+---
+
+### PD-04 acceptance criteria traceability
+
+| PD-04 Acceptance Criterion | Design element |
+|---|---|
+| DRAFT → ACTIVE on activate request | `Store.activate()` (PD-03 scope); included in authoritative transition table above |
+| ACTIVE → DEPRECATED on deprecate request | `Store.deprecate()` signature; SQL `WHERE status = 'ACTIVE'`; returns `InvalidStatusTransition` (HTTP 409) for any other current status |
+| DEPRECATED → ARCHIVED on archive request | `Store.archive()` signature; SQL `WHERE status = 'DEPRECATED'`; sets `archived_at = NOW()`; returns `InvalidStatusTransition` (HTTP 409) for any other current status |
+| Any other transition attempt → HTTP 409 | `InvalidStatusTransition` error variant; HTTP 409 mapping in route handler; every forbidden cell in the state transition table above |
+| ARCHIVED → HTTP 409 for any modification (update, re-activate, re-deprecate, re-archive) | `deprecate()` WHERE clause rejects ARCHIVED; `archive()` WHERE clause rejects ARCHIVED; terminal-state row in transition table |
+| Existing instances on DEPRECATED definition continue to completion | Instance-start guard note; `instance_definition_snapshots` snapshot mechanism (PD-08) isolates running instances from status changes |
+| New instances only from ACTIVE definitions | Instance-start guard note; enforced in engine by EE-01; DEPRECATED and ARCHIVED both yield HTTP 409 at the engine layer |
+| Edge case: ACTIVE → ARCHIVED directly (skip DEPRECATED) → HTTP 409 | `Store.archive()` `WHERE status = 'DEPRECATED'` fails for ACTIVE → `InvalidStatusTransition` → HTTP 409 |
+| Edge case: DRAFT → ARCHIVED → HTTP 409 | `Store.archive()` `WHERE status = 'DEPRECATED'` fails for DRAFT → `InvalidStatusTransition` → HTTP 409 |
 
 ---
 
@@ -2534,3 +2685,505 @@ for downstream agents:
   via `Store.create()` which uses the same table. No additional schema change is required
   for PD-09.
 
+
+
+## PD-10 — Definition search
+
+**Covers:** PD-10
+**Extends:** PD-01/PD-02/PD-03/PD-04/PD-05/PD-06/PD-07/PD-08/PD-09 sections above; read those first.
+
+---
+
+### Module purpose (PD-10 extension)
+
+This section extends the definition module with a full-text search endpoint over definition
+names and descriptions. Search lives inside the existing `store.zig` (a new `Store.search()`
+method) and `src/api/routes/definitions.zig` (a new `handleSearch` handler). No new Zig
+source file or SQL migration is required.
+
+---
+
+### Endpoint
+
+```
+GET /api/v1/definitions/search?q={query}&limit={n}&offset={n}
+```
+
+**Rationale for placement in `src/api/routes/definitions.zig`:** All definition read
+endpoints (`handleGetById`, `handleList`, `handleGetActiveByName`) already live in this
+file and share the `definition_store.Store` dependency. Adding `handleSearch` here follows
+the same pattern, avoids creating a new route file, and keeps all definition HTTP surface in
+one place for easy maintenance.
+
+---
+
+### `SearchOptions` struct
+
+```zig
+/// Input to Store.search() (PD-10).
+pub const SearchOptions = struct {
+    /// The search query string.
+    /// MUST be non-empty (QueryEmpty → HTTP 422) and ≤ 512 characters (QueryTooLong → HTTP 422).
+    /// Validated by the HTTP handler before Store.search() is called;
+    /// also validated inside Store.search() as belt-and-suspenders.
+    query: []const u8,
+    /// Pagination: maximum number of results to return.
+    /// Corresponds to API-06 `limit`; default 20, max 100.
+    limit: u32,
+    /// Pagination: number of results to skip.
+    /// Corresponds to API-06 `offset`; default 0.
+    offset: u32,
+};
+```
+
+**Validation rules:**
+
+| Field | Constraint | Error on violation |
+|---|---|---|
+| `query` | Non-empty (length > 0) | `QueryEmpty` → HTTP 422 |
+| `query` | Length ≤ 512 characters | `QueryTooLong` → HTTP 422 |
+| `limit` | 1–100 inclusive; absent/0 → default 20 | HTTP 422 if > 100 (handler-level) |
+| `offset` | ≥ 0; absent → default 0 | n/a |
+
+---
+
+### `SearchResult` struct
+
+```zig
+/// A single result item returned by Store.search() (PD-10).
+pub const SearchResult = struct {
+    /// The matching definition (all fields identical to Definition).
+    definition: Definition,
+    /// Relevance rank: higher means more relevant. Computed by PostgreSQL CASE expression.
+    /// Possible values: 3.0 (exact name match), 2.0 (partial name match), 1.0 (description-only match).
+    rank: f32,
+};
+```
+
+---
+
+### `DefinitionError` additions (PD-10)
+
+Two new variants are appended to the `DefinitionError` error set declared in the
+PD-01/PD-02 section above. They share the same error set to preserve the single-error-union
+convention used throughout `store.zig`.
+
+```zig
+pub const DefinitionError = error{
+    // ── existing entries (PD-01 … PD-09) ──────────────────────────────────
+    PoolExhausted,
+    DuplicateNameVersion,
+    DefinitionNotFound,
+    InvalidStatusTransition,
+    InitialStatusNotDraft,
+    NameInvalid,
+    VersionEmpty,
+    GraphStructureInvalid,
+    GraphValidationFailed,
+    TransactionFailed,
+    AlreadyActive,
+    NotDraft,
+
+    // ── PD-10 additions ───────────────────────────────────────────────────
+
+    /// Search query is empty or whitespace-only → HTTP 422.
+    /// Validated by both the HTTP handler (step 1) and Store.search() (belt-and-suspenders).
+    QueryEmpty,
+
+    /// Search query exceeds 512 characters → HTTP 422.
+    /// Validated by both the HTTP handler (step 2) and Store.search() (belt-and-suspenders).
+    QueryTooLong,
+};
+```
+
+**HTTP status mappings for PD-10 errors:**
+
+| Error | HTTP status | Response body |
+|---|---|---|
+| `QueryEmpty` | 422 | `{"error": "query_empty"}` |
+| `QueryTooLong` | 422 | `{"error": "query_too_long"}` |
+
+---
+
+### `Store.search()` function signature
+
+```zig
+/// Search definitions by name or description (PD-10).
+///
+/// Algorithm:
+///   1. Validate opts.query: if len == 0 → QueryEmpty (HTTP 422).
+///      If len > 512 → QueryTooLong (HTTP 422).
+///   2. Build two pg bind parameters:
+///      $1 = opts.query                (exact match pattern, e.g. "invoice")
+///      $2 = "%" ++ opts.query ++ "%"  (partial match pattern, e.g. "%invoice%")
+///      Both are bound as pg parameters — NO SQL string interpolation.
+///   3. Execute the ILIKE SELECT (see SQL section below) with $1, $2, $3=$limit, $4=$offset.
+///   4. Map result rows to []SearchResult, ordered by rank DESC, created_at DESC
+///      (ORDER BY is in SQL; caller receives rows in that order).
+///
+/// Returns an empty slice (not an error) when no rows match.
+/// An empty result satisfies PD-10 AC: "no-match → HTTP 200 with empty array."
+///
+/// Security: query bound as pg parameters; the '%' wildcard characters are placed
+/// in the SQL text as literals ($2 pattern), NOT appended in Zig to user input before
+/// binding. This prevents any SQL injection through wildcard escaping or quoting attacks.
+/// SQL-special characters in opts.query (' % _ \) are escaped by the pg driver.
+///
+/// Covers: PD-10 (full-text search over definitions, ranked results, pagination).
+pub fn search(
+    self:      *Store,
+    allocator: std.mem.Allocator,
+    opts:      SearchOptions,
+) DefinitionError![]SearchResult;
+```
+
+---
+
+### SQL implementation
+
+```sql
+SELECT
+    id,
+    name,
+    version,
+    description,
+    status,
+    stage,
+    graph,
+    created_by,
+    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
+    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint AS updated_at_us,
+    (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint AS archived_at_us,
+    CASE
+        WHEN name ILIKE $1 THEN 3.0
+        WHEN name ILIKE $2 THEN 2.0
+        ELSE 1.0
+    END AS rank
+FROM process_definitions
+WHERE name ILIKE $2
+   OR description ILIKE $2
+ORDER BY rank DESC, created_at DESC
+LIMIT $3 OFFSET $4
+```
+
+**Parameter bindings:**
+
+| Placeholder | Bound value | Example (query = `"invoice"`) | Notes |
+|---|---|---|---|
+| `$1` | `opts.query` (exact) | `"invoice"` | Scores 3.0: exact name match |
+| `$2` | `"%" ++ opts.query ++ "%"` | `"%invoice%"` | Scores 2.0 (name) or 1.0 (description); also drives WHERE clause |
+| `$3` | `opts.limit` | `20` | LIMIT for pagination |
+| `$4` | `opts.offset` | `0` | OFFSET for pagination |
+
+**Important:** The `%` wildcard characters in `$2` are in the SQL string as literals, not
+appended to `opts.query` in Zig before binding. The binding sequence in Zig is:
+
+```zig
+// Correct: compose the pattern string, then bind it as one parameter value.
+const pattern = try std.fmt.allocPrint(allocator, "%{s}%", .{opts.query});
+defer allocator.free(pattern);
+// pg.zig bind call:  query.bindText(2, pattern)
+// This passes the entire "%invoice%" string as a single parameter value to the pg driver.
+// The driver escapes the value; the SQL engine interprets % as a wildcard only
+// within the ILIKE operator — not as SQL syntax.
+```
+
+**Why ILIKE instead of `tsvector`/`to_tsquery`:**
+
+- `tsvector` full-text search requires a language dictionary configuration (e.g.
+  `pg_catalog.english`). Dictionary selection is environment-specific and can fail on
+  custom database clusters.
+- `ILIKE` is a built-in PostgreSQL operator with no external configuration, no stemming
+  ambiguity, and no need for a GIN index to function correctly.
+- PD-10 is a `COULD` priority requirement; the simpler ILIKE approach meets all
+  acceptance criteria without adding operational risk.
+- Partial word matching (the `SHOULD` criterion) is satisfied by the `'%query%'` pattern.
+- If full-text search performance becomes a concern at scale, a GIN index can be added
+  as a follow-up migration without any API change.
+
+**Ranking semantics:**
+
+| CASE branch | Score | Description |
+|---|---|---|
+| `name ILIKE $1` (exact) | 3.0 | The definition name is exactly the query string (case-insensitive) |
+| `name ILIKE $2` (partial) | 2.0 | The definition name contains the query string |
+| Otherwise (description match only) | 1.0 | The description contains the query string but the name does not |
+
+Results with equal rank are sub-sorted by `created_at DESC` (newest first) for
+deterministic ordering.
+
+---
+
+### HTTP handler `handleSearch`
+
+```zig
+/// GET /api/v1/definitions/search?q={query}&limit={n}&offset={n}
+///
+/// Handler logic (9 steps):
+///   1. Parse `q` from query string; if absent or empty → HTTP 422 + {"error":"query_empty"}.
+///   2. If len(q) > 512 → HTTP 422 + {"error":"query_too_long"}.
+///   3. Parse `limit` from query string; absent/0 → default 20; > 100 → HTTP 422 + {"error":"limit_out_of_range"}.
+///   4. Parse `offset` from query string; absent → default 0.
+///   5. Build SearchOptions{.query=q, .limit=limit, .offset=offset}.
+///   6. Call Store.search(allocator, opts).
+///   7–9. Map Store.search() result to HTTP response (see status code table below).
+///
+/// Route registration (wire in router.zig / main.zig):
+///   GET /api/v1/definitions/search → handleSearch
+///   NOTE: this route MUST be registered BEFORE /api/v1/definitions/:id in the router,
+///   otherwise "search" may be interpreted as a :id path parameter by some routers.
+pub fn handleSearch(
+    store:     *definition_store.Store,
+    allocator: std.mem.Allocator,
+    params:    SearchQueryParams,
+) HandlerResult;
+```
+
+**`SearchQueryParams` struct (handler input type):**
+
+```zig
+/// Query parameters accepted by GET /api/v1/definitions/search.
+pub const SearchQueryParams = struct {
+    /// The search query string; null if `q=` is absent from the URL.
+    q: ?[]const u8,
+    /// Page size limit; null or 0 → default 20.
+    limit: ?u32,
+    /// Page offset; null → default 0.
+    offset: ?u32,
+};
+```
+
+**9-step handler logic:**
+
+| Step | Condition | Action |
+|---|---|---|
+| 1 | `q` absent or `q` is empty string | HTTP 422 + `{"error": "query_empty"}` |
+| 2 | `len(q) > 512` | HTTP 422 + `{"error": "query_too_long"}` |
+| 3 | `limit > 100` | HTTP 422 + `{"error": "limit_out_of_range"}` |
+| 4 | `offset` absent | Use default 0 |
+| 5 | Build `SearchOptions` | `.query=q`, `.limit=effective_limit`, `.offset=effective_offset` |
+| 6 | Call `Store.search(allocator, opts)` | — |
+| 7 | `error.QueryEmpty` returned | HTTP 422 + `{"error": "query_empty"}` (belt-and-suspenders) |
+| 8 | `error.QueryTooLong` returned | HTTP 422 + `{"error": "query_too_long"}` (belt-and-suspenders) |
+| 9 | `[]SearchResult` returned (may be empty) | HTTP 200 + JSON array |
+
+**Status code mapping table:**
+
+| Store.search() result | HTTP status | Response body |
+|---|---|---|
+| `QueryEmpty` | 422 | `{"error": "query_empty"}` |
+| `QueryTooLong` | 422 | `{"error": "query_too_long"}` |
+| `PoolExhausted` | 503 | `{"error": "service_unavailable"}` |
+| `TransactionFailed` / `DatabaseError` | 500 | `{"error": "internal_error"}` |
+| `[]SearchResult` (empty) | 200 | `[]` |
+| `[]SearchResult` (non-empty) | 200 | JSON array of `{"definition": {...}, "rank": 2.0}` objects |
+
+**JSON response shape (HTTP 200):**
+
+```json
+[
+  {
+    "definition": {
+      "id": "...",
+      "name": "Invoice Approval",
+      "version": "1.0",
+      "description": "Approves vendor invoices",
+      "status": "ACTIVE",
+      "stage": null,
+      "graph": { "nodes": [...], "edges": [...] },
+      "created_by": "...",
+      "created_at": 1716220800000000,
+      "updated_at": 1716220800000000,
+      "archived_at": null
+    },
+    "rank": 2.0
+  }
+]
+```
+
+The `definition` object uses the same JSON structure as `GET /definitions` (PD-07).
+
+---
+
+### No new migration required
+
+A new SQL migration is NOT needed for PD-10.
+
+**Rationale:**
+- `ILIKE` queries work directly against the existing `name TEXT NOT NULL` and
+  `description TEXT` columns in `process_definitions` (created by `migrations/004_definitions.sql`).
+- Correctness does not require a GIN index. PostgreSQL performs a sequential scan through
+  the table for ILIKE queries without an index, which is acceptable at the current scale.
+- A GIN index on `(name, description)` would improve search performance at larger table
+  sizes but is a performance optimisation, not a correctness requirement.
+- PD-10 is a `COULD` priority requirement. Deferring the GIN index reduces migration risk
+  and operational complexity for the initial implementation.
+- The index can be introduced as a standalone migration in a future sprint if search
+  latency becomes a concern, without any change to the API contract or Zig code.
+
+---
+
+### Security note — SQL injection prevention
+
+The search handler and `Store.search()` are designed so that **no user-supplied value is
+ever interpolated into a SQL string**. The security mechanism works as follows:
+
+1. `opts.query` is passed to `Store.search()` as a `[]const u8` slice (a plain Zig string).
+2. Inside `Store.search()`, the pattern string `"%{query}%"` is built with
+   `std.fmt.allocPrint(allocator, "%{s}%", .{opts.query})` — this is a Zig string
+   concatenation that produces a normal string value.
+3. That pattern string is then bound as parameter `$2` to the pg query using
+   `pg.zig`'s parameter-binding API (e.g. `query.bindText(2, pattern)`).
+4. The PostgreSQL driver transmits `$2`'s value through the **binary or extended query
+   protocol** as a data value, never as SQL syntax. The `%` characters in the pattern
+   are interpreted by the ILIKE operator as wildcard metacharacters inside the pattern
+   value — they are not SQL syntax characters.
+5. SQL-special characters in `opts.query` — including single quote (`'`), percent (`%`),
+   underscore (`_`), and backslash (`\`) — are transmitted as literal data values by the
+   pg driver's escaping layer. They cannot escape the parameter boundary to inject SQL
+   syntax.
+
+**Why this is safe:** The `%` wildcards are placed in the SQL query text as literals
+(i.e., the SQL contains `ILIKE $2` and the value of `$2` contains `%`). They are never
+built into the SQL string itself by appending user input to SQL source. An attacker who
+supplies `q='; DROP TABLE process_definitions; --` would have the entire string
+(including the single quote and semicolon) bound as the value of `$2` — the pg driver
+will transmit it as a parameter value and PostgreSQL will interpret it as a literal search
+pattern, not SQL commands.
+
+**Edge case — query containing `%` or `_`:** If the user queries `q=50%`, the `%` is
+part of the value passed to the pg driver. PostgreSQL's ILIKE will treat this `%` as a
+wildcard (matching any sequence of characters), which may produce broader results than
+expected. This is a UX concern, not a security concern. If literal `%` and `_` matching
+is required in a future iteration, the implementation can escape them in the Zig pattern
+builder (`%` → `\%`, `_` → `\_`) and append `ESCAPE '\'` to the SQL — both changes are
+safe and do not affect the security model.
+
+---
+
+### Data flow diagram (PD-10)
+
+```
+GET /api/v1/definitions/search?q=invoice&limit=20&offset=0
+         │
+         ▼
+  handleSearch(store, allocator, params)
+         │  1. q absent/empty           → HTTP 422 {"error":"query_empty"}
+         │  2. len(q) > 512             → HTTP 422 {"error":"query_too_long"}
+         │  3. limit > 100              → HTTP 422 {"error":"limit_out_of_range"}
+         │  4. Build SearchOptions
+         │
+         ▼
+  store.search(allocator, opts)
+         │
+         ├─ [A] Validate opts.query (belt-and-suspenders)
+         │      len == 0 → QueryEmpty
+         │      len > 512 → QueryTooLong
+         │
+         ├─ [B] Build pattern: "%" ++ query ++ "%"  (Zig string alloc)
+         │
+         ├─ [C] pool.acquire()  → PoolExhausted (HTTP 503) on failure
+         │
+         ├─ [D] Execute ILIKE SELECT
+         │      $1 = query  (exact), $2 = pattern (partial)
+         │      $3 = limit, $4 = offset
+         │      ORDER BY rank DESC, created_at DESC
+         │      → TransactionFailed (HTTP 500) on DB error
+         │
+         ├─ [E] pool.release()
+         │
+         └─ return []SearchResult (may be empty)
+                   │
+                   ▼
+         handleSearch maps to HTTP 200 + JSON array
+         (empty array when []SearchResult has len == 0)
+```
+
+---
+
+### Dependencies (PD-10 additions)
+
+No new module dependencies. PD-10 reuses the existing:
+
+| Dependency | Direction | Notes |
+|---|---|---|
+| `src/db/pool.zig` | `store.zig` → `db.Pool` | Same pool used by all other Store methods |
+| `src/definition/graph.zig` | `store.zig` → `graph_mod.Definition` | `SearchResult.definition` field type |
+| `src/api/routes/definitions.zig` | Adds `handleSearch` | Same file as PD-07 handlers; no new file |
+| `migrations/004_definitions.sql` | Schema | `name` and `description` columns already present |
+
+**Must NOT depend on:**
+- `src/engine/transition.zig`
+- `src/event_store/`
+- `src/scheduler/`
+- Any external HTTP service or search index.
+
+---
+
+### Extended error taxonomy (PD-10)
+
+| Error | Source check | HTTP status | PD ref |
+|---|---|---|---|
+| `QueryEmpty` | `query.len == 0` | 422 | PD-10 |
+| `QueryTooLong` | `query.len > 512` | 422 | PD-10 |
+| `PoolExhausted` | `pool.acquire()` | 503 | DB-02 |
+| `TransactionFailed` | DB execute | 500 | DB-03 |
+
+All other `DefinitionError` variants are not reachable from `Store.search()`.
+
+---
+
+### Edge case — SQL-special characters in query
+
+When `opts.query` contains characters that have special meaning in SQL or in ILIKE pattern
+syntax (`'`, `%`, `_`, `\`):
+
+- **Single quote (`'`):** Bound as a parameter value by the pg driver. The driver escapes
+  it (doubling or using the extended protocol) before transmitting to PostgreSQL. It cannot
+  terminate a string literal in the SQL text because it is never embedded in the SQL text.
+- **Percent (`%`):** Transmitted as part of the `$2` pattern value. PostgreSQL's ILIKE
+  operator interprets `%` as a wildcard within the pattern. This means a query of
+  `q=50%off` will match any string containing `50` followed by any characters followed by
+  `off`. This is a usability consideration; it is not a security vulnerability.
+- **Underscore (`_`):** Similarly transmitted as the `$2` value. ILIKE interprets `_` as
+  a single-character wildcard. A query of `q=v_1` matches `v11`, `v21`, `vA1`, etc.
+- **Backslash (`\`):** Transmitted as the value. ILIKE's default escape character in
+  PostgreSQL depends on the `standard_conforming_strings` setting. Because the value is
+  bound through the extended query protocol (not embedded in SQL text), backslash
+  handling is handled entirely by the pg driver — no SQL injection vector exists.
+
+**Conclusion:** All SQL-special characters are handled safely because the query is bound
+as a parameter value, never interpolated into SQL text. No additional escaping is required
+for security correctness in the initial implementation.
+
+---
+
+### PD-10 acceptance criteria traceability
+
+| AC | Design element |
+|---|---|
+| `GET /definitions/search?q={query}` → HTTP 200 + ranked list | `handleSearch` → `Store.search()` → SQL `ORDER BY rank DESC, created_at DESC` |
+| Results MUST be ordered by relevance (highest-scoring first) | SQL `CASE WHEN name ILIKE $1 THEN 3.0 WHEN name ILIKE $2 THEN 2.0 ELSE 1.0 END AS rank` + `ORDER BY rank DESC` |
+| Empty query (`q=`) → HTTP 422 | `handleSearch` step 1 (absent/empty `q`) + `QueryEmpty` error in `Store.search()` belt-and-suspenders |
+| Query > 512 chars → HTTP 422 | `handleSearch` step 2 + `QueryTooLong` error in `Store.search()` belt-and-suspenders |
+| Pagination MUST be supported per API-06 | `SearchOptions.limit` and `SearchOptions.offset`; `handleSearch` parses `?limit=` (default 20, max 100) and `?offset=` (default 0) |
+| Search MUST be case-insensitive | `ILIKE` in PostgreSQL is case-insensitive by definition |
+| Partial word matching (SHOULD) | `$2` pattern is `"%{query}%"` — matches any name or description containing the query string as a substring |
+| No-match → HTTP 200 + empty array | `Store.search()` returns `[]SearchResult{}` (empty slice, not an error); `handleSearch` responds HTTP 200 with `[]` |
+| SQL injection safe | `$1` (exact query) and `$2` (pattern) are pg-bound parameters; no string interpolation; pg driver escapes all values |
+| SQL-special chars handled safely | Bound parameter value — pg driver transmits through extended query protocol; no SQL injection vector |
+
+---
+
+### Open questions
+
+None — PD-10 is fully validated (`status: VALIDATED` in `docs/requirements/PD-10.md`).
+All design decisions are resolved above. No REQ-ANALYST clarification is required.
+
+**Downstream agent notes:**
+- **BACKEND-DEV:** Implement `SearchOptions`, `SearchResult`, `QueryEmpty`, `QueryTooLong`
+  in `src/definition/store.zig`; implement `Store.search()` with the ILIKE SQL query;
+  implement `handleSearch` in `src/api/routes/definitions.zig`; register route before
+  `GET /api/v1/definitions/:id` in the router.
+- **No migration needed** (ILIKE works on existing columns; GIN index deferred).
+- **FRONTEND-DEV:** Add search API call and UI once BACKEND-DEV delivers the endpoint.

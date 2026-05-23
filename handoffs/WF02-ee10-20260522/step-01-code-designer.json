@@ -1,0 +1,56 @@
+{
+  "handoff_id": "ee100001-2605-4000-8010-202605220001",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee10-20260522",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-22T11:59:10Z",
+  "started_at": "2026-05-22T12:00:03Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 \u2014 Execution Engine",
+    "requirement_ids": [
+      "EE-10"
+    ],
+    "related_handoff_ids": [
+      "ee050001-2605-4000-8005-202605220001",
+      "ee090001-2605-4000-8009-202605220001"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/design/engine.md",
+      "src/engine/instance.zig",
+      "src/engine/transition.zig",
+      "src/bpm.zig"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact for EE-10 (Execution error handling). Add a dedicated EE-10 section to src/design/engine.md. The design MUST cover ALL of the following:\n1. Unified ERROR entry-point: define a single persistence-layer function (e.g. setInstanceError) that atomically: (a) inserts an EXECUTION_ERROR event into event_store, (b) updates instance_projections.status = ERROR and sets error_detail JSONB, (c) all in one transaction. Callers (gateway no-match, schema-violation, and any future trigger) call this ONE function.\n2. EXECUTION_ERROR event payload schema: event_type, instance_id, error_type (enum: NO_MATCHING_EDGE | SCHEMA_VIOLATION), affected_node (node ID for NO_MATCHING_EDGE) or affected_field (variable key for SCHEMA_VIOLATION), reason (human-readable string), variable_state (snapshot of instance variables at time of error), evaluated_conditions (for NO_MATCHING_EDGE: list of {edge_id, condition, result}).\n3. error_detail JSONB column on instance_projections: same payload as EXECUTION_ERROR event payload (already specified in schema at line 39 of engine.md).\n4. HTTP 409 guard: WHEN a task completion, gateway evaluation, or any state-transition is attempted on an instance already in ERROR status, the handler MUST detect this BEFORE any DB write and return HTTP 409 immediately. Specify exactly where this check occurs in completeTask and any other handler.\n5. Atomic transaction layout (BEGIN/COMMIT) for the ERROR path: SELECT FOR UPDATE on instance_projections, INSERT EXECUTION_ERROR event, UPDATE projection status=ERROR + error_detail, COMMIT.\n6. Concurrent ERROR race: two concurrent operations both trigger EE-10 on the same instance. The first commits; the second sees status=ERROR from the SELECT FOR UPDATE and must return HTTP 409 without inserting a second EXECUTION_ERROR event.\n7. Operator retry/discard hooks: document that EE-10 only SETS the ERROR status \u2014 the operator retry and discard paths are OBS-05 (dead letter API). Reference the relevant design section or note it is Stage 4.\n8. Traceability table: map each EE-10 acceptance criterion to the design element that satisfies it.\n9. Implementation notes for BACKEND-DEV: list which source files are modified (instance.zig, transition.zig only for setInstanceError integration), which existing functions are extended, what new error types are added, and which test file to write.\n\nengine.md already has EE-10 referenced at lines 39, 609, 804, 2260, 2436, 2607, and 4272 but has NO dedicated EE-10 design section. Append the new section after the EE-09 section (currently ending at line 4567). Follow the same structure and formatting conventions as the EE-05, EE-08, and EE-09 sections in engine.md.",
+    "acceptance_criteria": [
+      "src/design/engine.md has a dedicated EE-10 section with: setInstanceError function signature, EXECUTION_ERROR event payload schema, HTTP 409 guard design, atomic transaction layout, concurrent ERROR race design, traceability table",
+      "Design covers all EE-10 acceptance criteria from BPM_Platform_Functional_Requirements.md",
+      "Design is consistent with existing engine.md EE-09 section conventions and references setInstanceError as the unified ERROR entry-point",
+      "No new migration required (error_detail JSONB column already exists in migrations/001_event_store.sql per engine.md line 39)",
+      "Design clearly states where the HTTP 409 guard is placed in completeTask and gateway handler"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-design-format"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for EE-10 (Execution error handling) appended to src/design/engine.md. Section covers: setInstanceError unified entry-point with full function signature and algorithm; EXECUTION_ERROR event payload schema with NO_MATCHING_EDGE and SCHEMA_VIOLATION variants; error_detail JSONB column usage; HTTP 409 guard placement in completeTask; atomic transaction layout; concurrent ERROR race via SELECT FOR UPDATE; operator retry/discard deferred to OBS-05 (Stage 4); traceability table mapping all EE-10 acceptance criteria; implementation notes for BACKEND-DEV.",
+    "artifacts_out": [
+      "src/design/engine.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T12:04:41Z"
+}

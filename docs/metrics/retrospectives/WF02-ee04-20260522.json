@@ -1,0 +1,28 @@
+{
+  "run_id": "WF02-ee04-20260522",
+  "requirement_ids": ["EE-04"],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 99,
+  "actual_minutes_total": 45.5,
+  "variance_pct": -54.0,
+  "by_step": {
+    "code-designer":     { "estimated": 15, "actual": 3.9,  "variance_pct": -74.0 },
+    "backend-dev":       { "estimated": 35, "actual": 16.7, "variance_pct": -52.3 },
+    "test-designer":     { "estimated": 15, "actual": 1.8,  "variance_pct": -88.0 },
+    "test-runner":       { "estimated": 12, "actual": 18.6, "variance_pct":  55.0 },
+    "release-validator": { "estimated": 12, "actual": 1.9,  "variance_pct": -84.2 },
+    "doc-updater":       { "estimated": 10, "actual": 2.6,  "variance_pct": -74.0 }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    { "step": "code-designer",     "action": "observe", "note": "First D3 run: variance -74.0%. No adjustment — requires ≥2 consecutive D3 runs with |variance| >25%." },
+    { "step": "backend-dev",       "action": "observe", "note": "First D3 run: variance -52.3%. No adjustment — requires ≥2 consecutive D3 runs with |variance| >25%." },
+    { "step": "test-designer",     "action": "observe", "note": "First D3 run: variance -88.0%. No adjustment — requires ≥2 consecutive D3 runs with |variance| >25%." },
+    { "step": "test-runner",       "action": "observe", "note": "First D3 run: variance +55.0%. No adjustment — requires ≥2 consecutive D3 runs with |variance| >25%." },
+    { "step": "release-validator", "action": "observe", "note": "First D3 run: variance -84.2%. No adjustment — requires ≥2 consecutive D3 runs with |variance| >25%." },
+    { "step": "doc-updater",       "action": "observe", "note": "First D3 run: variance -74.0%. No adjustment — requires ≥2 consecutive D3 runs with |variance| >25%." }
+  ],
+  "notes": "All steps ran under estimate except test-runner (+55%), which exceeded due to Zig 0.16 API compatibility fixes applied in src/engine/instance.zig (std.ArrayList.init API, std.crypto.random removal). All |variance_pct| >25% entries are first D3 run observations; no rule adjustments triggered. Elapsed times derived from handoff started_at/completed_at: code-designer 3.9 min (01:19:46→01:23:38), backend-dev 16.7 min (01:24:15→01:40:55), test-designer 1.8 min (01:41:39→01:43:27), test-runner 18.6 min (01:44:03→02:02:38), release-validator 1.9 min (02:04:47→02:06:41), doc-updater 2.6 min (02:07:23→02:10:00).",
+  "completed_at": "2026-05-22T02:10:00Z"
+}

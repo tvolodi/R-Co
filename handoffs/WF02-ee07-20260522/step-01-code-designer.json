@@ -1,0 +1,55 @@
+{
+  "handoff_id": "ee070001-2605-4000-8007-202605220001",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee07-20260522",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-22T08:45:52Z",
+  "started_at": "2026-05-22T08:49:24Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 — Execution Engine",
+    "requirement_ids": ["EE-07"],
+    "related_handoff_ids": [
+      "ee060001-2605-4000-8006-202605220001"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/design/engine.md",
+      "src/engine/transition.zig",
+      "src/engine/instance.zig"
+    ]
+  },
+  "task": {
+    "description": "Append an EE-07 design section to `src/design/engine.md` for Parallel Gateway (join).\n\nEE-07 requirement summary:\n- A PARALLEL_GATEWAY acting as join SHALL wait until all **active** incoming tokens have arrived before activating the single outgoing edge.\n- An incoming branch that was cancelled (via EE-08) contributes no token and is excluded from the join count.\n- If all branches of a parallel split are cancelled before any reaches the join, the join node is also cancelled and the instance transitions to CANCELLED status.\n- The join fires exactly once regardless of the arrival order of concurrent tokens.\n\nAcceptance Criteria (from the requirements doc):\n1. GIVEN N active tokens approaching a PARALLEL_GATEWAY join, WHEN all N active tokens have arrived, THEN the join fires and a single outgoing token is created.\n2. 'Active' excludes tokens on branches cancelled via EE-08.\n3. GIVEN one branch is cancelled and all remaining active branches arrive at the join, WHEN the last active token arrives, THEN the join fires normally (cancelled branch excluded from count).\n4. GIVEN all branches of a split are cancelled before any reaches the join, WHEN the last cancellation occurs, THEN the join node is also cancelled and the instance transitions to CANCELLED status.\n5. The join fires exactly once regardless of the arrival order of concurrent tokens.\n\nBefore writing, read `src/design/engine.md` in full — it already contains EE-01 through EE-06 sections. Pay particular attention to:\n- §6.6 PARALLEL_GATEWAY — join (the sketch already in the EE-02 section)\n- Section EE-06 (the split side already implemented)\n- The OQ-4 open question in the design which calls out the need for a 'cancelled branches set' on InstanceState\n- The `branch_id` field on Token (assigned at split time) — this is how join identifies which branches have arrived\n\nAlso read `src/engine/transition.zig` and `src/engine/instance.zig` to understand the current InstanceState, Token struct, and how the active_tokens map works.\n\nThe new EE-07 design section MUST cover:\n\n1. **InstanceState additions for join tracking** — describe what new fields (if any) are needed on InstanceState (or an auxiliary DB table) to track:\n   a. The set of `branch_id` values expected at each join gateway (derived at split time from EE-06).\n   b. The set of `branch_id` values that have been cancelled (so they are excluded from the join threshold).\n   c. Whether a join has already fired (to guarantee exactly-once).\n   Evaluate whether these can be computed from existing state (e.g. from active_tokens and the event log) or require explicit fields.\n\n2. **Join algorithm in `processNodeEntry`** — step-by-step:\n   a. When a token arrives at a PARALLEL_GATEWAY node, determine split vs join by incoming edge count.\n   b. Record the arriving token's `branch_id` in the arrived-set.\n   c. Compute `expected_count` = (total branches from the split) - (cancelled branches count).\n   d. If `arrived_count < expected_count`: do nothing (wait for remaining tokens). No event is emitted yet.\n   e. If `arrived_count == expected_count`: fire the join — remove all arriving tokens from active_tokens, create one new token on the single outgoing edge, append a `PARALLEL_JOIN` event, then call `processNodeEntry` recursively on the target node.\n   f. If all branches are cancelled (expected_count == 0): do NOT fire; instead mark the join as cancelled and transition the instance to CANCELLED (append `INSTANCE_CANCELLED` event). This is the only non-pure side-effect path; describe how it integrates with EE-08.\n\n3. **Exactly-once guarantee** — describe the mechanism that prevents the join from firing more than once even under concurrent token arrivals (rely on DB-03 row-level locking; the join-fire logic runs inside the single transaction opened by the caller).\n\n4. **`PARALLEL_JOIN` event schema**:\n   ```json\n   {\n     \"type\": \"PARALLEL_JOIN\",\n     \"join_node_id\": \"<gateway-node-id>\",\n     \"branch_ids_arrived\": [\"<b1>\", \"<b2>\", ...],\n     \"branch_ids_cancelled\": [\"<bc1>\", ...],\n     \"outgoing_token_id\": \"<new-tok-id>\"\n   }\n   ```\n\n5. **Traceability table** — map each EE-07 acceptance criterion to its design element:\n   | AC | Design element |\n   |---|---|\n   | N active tokens arrive → join fires, 1 outgoing token created | Join algorithm steps b-e above |\n   | Cancelled branches excluded from count | expected_count = total - cancelled; branch_ids_cancelled tracked |\n   | One branch cancelled, rest arrive → fires normally | expected_count decremented when branch cancelled |\n   | All branches cancelled → join cancelled, CANCELLED status | Step f: all-cancelled path |\n   | Join fires exactly once | DB-03 row-level lock inside caller's transaction |\n\n6. **Resolution of OQ-4** — explicitly state how this design resolves the open question from §8 about the 'cancelled branches set'.\n\nAppend the new section as `## Section EE-07: Parallel Gateway — Join` immediately after the `## Section EE-06` section in `src/design/engine.md`.\n\nDo NOT write any Zig implementation code — design only.\nDo NOT modify existing EE-01 through EE-06 sections.\n\nBefore completing, verify all 6 design elements are present and the traceability table covers all 5 EE-07 acceptance criteria.",
+    "acceptance_criteria": [
+      "src/design/engine.md contains a new '## Section EE-07: Parallel Gateway — Join' section",
+      "InstanceState additions for join tracking are described (expected branches, arrived set, cancelled set)",
+      "Join algorithm is fully specified step-by-step (steps a-f) including the all-cancelled edge case",
+      "PARALLEL_JOIN event schema is specified with all required fields",
+      "Exactly-once guarantee via DB-03 row-level locking is described",
+      "Traceability table maps all 5 EE-07 acceptance criteria to design elements",
+      "OQ-4 from §8 is explicitly resolved",
+      "No Zig implementation code in the design file",
+      "Existing EE-01 through EE-06 sections are not modified"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Appended Section EE-07: Parallel Gateway — Join to src/design/engine.md. Covers: (1) InstanceState additions (new cancelled_branch_ids field); (2) join algorithm steps a-f including all-cancelled path; (3) exactly-once guarantee via DB-03 row-level locking; (4) PARALLEL_JOIN event schema with ParallelJoinPayload and InstanceCancelledPayload; (5) traceability table mapping all 5 EE-07 acceptance criteria; (6) explicit resolution of OQ-4.",
+    "artifacts_out": ["src/design/engine.md"],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T08:57:36Z"
+}

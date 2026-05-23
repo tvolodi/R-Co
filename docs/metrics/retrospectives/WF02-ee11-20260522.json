@@ -1,0 +1,69 @@
+{
+  "run_id": "WF02-ee11-20260522",
+  "requirement_ids": [
+    "EE-11"
+  ],
+  "difficulty": 4,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 62,
+  "actual_minutes_total": 34.42,
+  "variance_pct": -44.5,
+  "by_step": {
+    "code-designer": {
+      "estimated": 12,
+      "actual": 7.77,
+      "variance_pct": -35.2
+    },
+    "backend-dev": {
+      "estimated": 17,
+      "actual": 15.33,
+      "variance_pct": -9.8
+    },
+    "test-designer": {
+      "estimated": 16,
+      "actual": 5.6,
+      "variance_pct": -65.0
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 2.1,
+      "variance_pct": -70.0
+    },
+    "release-validator": {
+      "estimated": 3,
+      "actual": 0.7,
+      "variance_pct": -76.7
+    },
+    "doc-updater": {
+      "estimated": 7,
+      "actual": 2.92,
+      "variance_pct": -58.3
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "code-designer",
+      "difficulty": 4,
+      "old_estimate": 12,
+      "new_estimate": 10,
+      "reason": "2 consecutive D4 runs (EE-07 and EE-11) both exceeding -25% threshold; reducing toward observed actuals"
+    },
+    {
+      "step": "test-designer",
+      "difficulty": 4,
+      "old_estimate": 16,
+      "new_estimate": 11,
+      "reason": "2 consecutive D4 runs (EE-07 and EE-11) both exceeding -25% threshold; reducing toward observed actuals"
+    },
+    {
+      "step": "release-validator",
+      "difficulty": 4,
+      "old_estimate": 3,
+      "new_estimate": 2,
+      "reason": "2 consecutive D4 runs (EE-07 and EE-11) both exceeding -25% threshold; reducing toward observed actuals"
+    }
+  ],
+  "notes": "backend-dev (-9.8%) within bounds \u2014 no adjustment needed. test-runner (-70.0%) exceeds threshold but EE-07 D4 run was within bounds (-10.0%), breaking the consecutive chain \u2014 no adjustment. doc-updater (-58.3%) exceeds threshold but EE-07 D4 run was within bounds (-22.9%), breaking the consecutive chain \u2014 no adjustment. code-designer, test-designer, and release-validator all show >25% variance across 2 consecutive D4 runs (EE-07 and EE-11), triggering downward adjustments.",
+  "completed_at": "2026-05-22T13:24:54Z"
+}

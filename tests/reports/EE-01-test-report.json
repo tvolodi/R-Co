@@ -1,0 +1,16 @@
+{
+  "run_id": "WF02-ee01-20260522",
+  "requirement_id": "EE-01",
+  "test_file": "tests/integration/ee01_start_instance_test.zig",
+  "executed_at": "2026-05-22T02:00:00Z",
+  "zig_build_test_exit_code": 0,
+  "db_available": false,
+  "integration_tests_status": "SKIP",
+  "unit_tests": {
+    "status": "PASS",
+    "count": 58,
+    "skipped": 68
+  },
+  "overall_result": "PASS",
+  "notes": "BPM_TEST_DB_URL not set; integration tests skipped. All unit tests pass. zig build test --summary all: 58 pass, 68 skip across all test runners, exit code 0. No failures."
+}

@@ -1,0 +1,26 @@
+{
+  "run_id": "WF02-ee02-20260522",
+  "timestamp": "2026-05-21T23:59:00Z",
+  "command": "zig build test",
+  "exit_code": 0,
+  "summary": {
+    "total": 11,
+    "passed": 11,
+    "skipped": 0,
+    "failed": 0
+  },
+  "test_cases": [
+    { "id": "TC-EE-02-01", "status": "PASS" },
+    { "id": "TC-EE-02-02", "status": "PASS" },
+    { "id": "TC-EE-02-03", "status": "PASS" },
+    { "id": "TC-EE-02-04", "status": "PASS" },
+    { "id": "TC-EE-02-05", "status": "PASS" },
+    { "id": "TC-EE-02-06", "status": "PASS" },
+    { "id": "TC-EE-02-07", "status": "PASS" },
+    { "id": "TC-EE-02-08", "status": "PASS" },
+    { "id": "TC-EE-02-09", "status": "PASS" },
+    { "id": "TC-EE-02-10", "status": "PASS" },
+    { "id": "TC-EE-02-11", "status": "PASS" }
+  ],
+  "issues": []
+}

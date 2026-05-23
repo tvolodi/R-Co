@@ -127,7 +127,13 @@ handoffs/WF03-EE05-fix/step-02-test-runner.json
 }
 ```
 
-**`started_at` convention:** The receiving agent MUST set `started_at` to the current UTC timestamp when it transitions the handoff to `IN_PROGRESS`. This enables the metrics system to separate queue time (`started_at − created_at`) from work time (`completed_at − started_at`).
+**`started_at` convention:** The **Orchestrator** MUST stamp `started_at` with the actual current UTC time immediately before invoking the subagent. Agents MUST NOT set `started_at` — LLM agents cannot reliably report wall-clock time and will fabricate values. Agents set only `completed_at`. This guarantees accurate metrics: queue time = `started_at − created_at`, work time = `completed_at − started_at`.
+
+**Timestamp rule — applies to ALL agents and ORCH:** Never write a timestamp value from memory or inference. Always obtain the real system time by running a shell command and using its exact output:
+- PowerShell: `(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")`
+- Python/bash: `python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"`
+
+This applies to `created_at`, `started_at`, and `completed_at` in every handoff file. Invented timestamps break retrospective metrics and must be treated as a data corruption defect.
 
 ```
 ```

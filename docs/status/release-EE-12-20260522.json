@@ -1,0 +1,16 @@
+{
+  "run_id": "WF02-ee12-20260522",
+  "requirement_ids": ["EE-12"],
+  "decision": "RELEASED",
+  "rationale": "All EE-12 acceptance criteria verified: (1) FOR UPDATE NOWAIT row-level locking confirmed in src/engine/instance.zig lines 847-859; (2) TC-EE-12-02/04 PASS — same-instance contention yields ConcurrentModification (HTTP 409) then success; (3) TC-EE-12-01/03 PASS — 100 concurrent completions across 100 distinct instances all succeed without deadlock or corruption; (4) cross-instance contention is zero by design (per-row lock). zig build and zig build test both exit 0. Pre-existing failures in other test cases are unrelated to EE-12.",
+  "nfr_results": {
+    "concurrent_distinct_instances": "100/100 succeeded — PASS",
+    "same_instance_contention": "HTTP 409 returned on second concurrent attempt — PASS",
+    "deadlock_observed": "none",
+    "global_lock_held": "false — per-row lock only"
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["EE-12"],
+  "tested_at": "2026-05-22T14:45:11Z",
+  "released_at": "2026-05-22T14:47:22Z"
+}

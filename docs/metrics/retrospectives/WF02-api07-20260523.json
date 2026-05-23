@@ -1,0 +1,88 @@
+{
+  "run_id": "WF02-api07-20260523",
+  "requirement_ids": [
+    "API-07"
+  ],
+  "difficulty": 2,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 55,
+  "actual_minutes_total": 43.6,
+  "variance_pct": -20.7,
+  "by_step": {
+    "code-designer": {
+      "estimated": 10,
+      "actual": 3.8,
+      "variance_pct": -62.0
+    },
+    "backend-dev": {
+      "estimated": 15,
+      "actual": 13.9,
+      "variance_pct": -7.3
+    },
+    "test-designer": {
+      "estimated": 10,
+      "actual": 19.1,
+      "variance_pct": 91.0
+    },
+    "test-runner": {
+      "estimated": 10,
+      "actual": 4.1,
+      "variance_pct": -59.0
+    },
+    "release-validator": {
+      "estimated": 5,
+      "actual": 1.3,
+      "variance_pct": -74.0
+    },
+    "doc-updater": {
+      "estimated": 5,
+      "actual": 1.4,
+      "variance_pct": -72.0
+    }
+  },
+  "rework_steps": [
+    {
+      "step": "step-02a-backend-dev",
+      "reason": "Memory leaks in validation module (arena allocator not freed in parseFromValue paths)",
+      "work_minutes": 8.2,
+      "severity": "BLOCKER"
+    },
+    {
+      "step": "step-04b-test-runner",
+      "reason": "Re-run tests after memory leak fix to verify 0 leaks",
+      "work_minutes": 2.7,
+      "severity": "BLOCKER"
+    }
+  ],
+  "rule_adjustments": [
+    {
+      "step": "code-designer",
+      "difficulty": 2,
+      "old_estimate": 10,
+      "new_estimate": 7,
+      "reason": "Observed 2 consecutive runs at D2 with >25% variance (WF02-api01: -81.2%, WF02-api07: -62.0%)"
+    },
+    {
+      "step": "test-runner",
+      "difficulty": 2,
+      "old_estimate": 3,
+      "new_estimate": 2,
+      "reason": "Observed 2 consecutive runs at D2 with >25% variance (WF02-api01: -89.6%, WF02-api07: -59.0%)"
+    },
+    {
+      "step": "release-validator",
+      "difficulty": 2,
+      "old_estimate": 2,
+      "new_estimate": 1,
+      "reason": "Observed 2 consecutive runs at D2 with >25% variance (WF02-api01: -88.5%, WF02-api07: -74.0%)"
+    },
+    {
+      "step": "doc-updater",
+      "difficulty": 2,
+      "old_estimate": 8,
+      "new_estimate": 5,
+      "reason": "Observed 2 consecutive runs at D2 with >25% variance (WF02-api01: -77.8%, WF02-api07: -72.0%)"
+    }
+  ],
+  "completed_at": "2026-05-23T04:52:25Z"
+}

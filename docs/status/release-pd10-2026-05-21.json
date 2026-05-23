@@ -1,0 +1,32 @@
+{
+  "stage": "Stage 2 — Process Definition",
+  "requirement_ids": ["PD-10"],
+  "date": "2026-05-21T18:20:00Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "zig_build": "EXIT 0 — no compilation errors",
+    "unit_tests": "58 passed, 68 skipped (BPM_TEST_DB_URL not set), 0 failed — exit 0",
+    "integration_tests": "4 passed, 70 skipped (BPM_TEST_DB_URL not set), 0 failed — exit 0",
+    "sql_injection_review": "PASS — Store.search() binds opts.query as $1 (exact) and pattern as $2 (ILIKE wildcard). The '%' wildcards are appended in Zig before pg parameter binding; no user-supplied value is interpolated into the SQL string literal. No SQL injection vector.",
+    "tc_pd10_unit": "PASS — TC-PD-10-05 (empty query → 422), TC-PD-10-06 (query > 512 chars → 422), TC-PD-10-11 (absent q → 422) all PASS",
+    "tc_pd10_integration_db": "SKIP — TC-PD-10-01 through TC-PD-10-04, TC-PD-10-07 through TC-PD-10-10, TC-PD-10-12 skipped: BPM_TEST_DB_URL not set (infrastructure constraint, not a code defect — matches established pattern for all PD-series releases)"
+  },
+  "checks": {
+    "zig_build_exits_0": true,
+    "zig_build_test_exits_0": true,
+    "pd10_unit_tests_pass": true,
+    "no_regressions_pd01_to_pd09": true,
+    "no_sql_injection_store_search": true,
+    "acceptance_criteria_coverage": {
+      "AC_empty_query_rejected_422": "covered by TC-PD-10-05, TC-PD-10-11 (PASS)",
+      "AC_query_too_long_rejected_422": "covered by TC-PD-10-06 (PASS)",
+      "AC_ranked_results_http_200": "covered by TC-PD-10-01, TC-PD-10-02, TC-PD-10-03 (SKIP — infra)",
+      "AC_case_insensitive_partial_match": "covered by TC-PD-10-07 (SKIP — infra)",
+      "AC_pagination": "covered by TC-PD-10-09 (SKIP — infra)",
+      "AC_empty_result_http_200": "covered by TC-PD-10-04 (SKIP — infra)",
+      "AC_sql_special_chars_safe": "covered by TC-PD-10-10 (SKIP — infra); verified by code review"
+    }
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["PD-10"]
+}

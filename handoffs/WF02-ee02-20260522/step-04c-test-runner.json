@@ -1,0 +1,41 @@
+{
+  "handoff_id": "ee020004c-2605-4000-8002-202605220004",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee02-20260522",
+  "step": "04c",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-05-22T08:30:00Z",
+  "started_at": "2026-05-22T08:30:00Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 3 — Execution Engine",
+    "requirement_ids": ["EE-02"],
+    "related_handoff_ids": ["ee020002b-2605-4000-8002-202605220002"],
+    "artifacts_in": [
+      "src/engine/transition.zig",
+      "src/main.zig",
+      "tests/specs/EE-02.md"
+    ]
+  },
+  "task": {
+    "description": "Final test run verification for EE-02.\n\nIMPORTANT: Do NOT infer test results from reading source code comments. You MUST actually run the commands and report the real exit codes.\n\n1. Run `zig build` — capture exit code. If non-zero, report FAIL.\n2. Run `zig build test` — capture exit code. If non-zero, report FAIL with the error output.\n3. Count the test names starting with 'TC-EE-02-' in src/engine/transition.zig to confirm they exist.\n4. Verify that src/main.zig contains an import of 'engine/transition.zig' — this wires the tests into the build.\n5. Check the last line of tests/specs/EE-02.md for the test case list.\n6. Update tests/reports/EE-02-test-run.json:\n   - Set exit_code to the actual exit code of `zig build test`\n   - If exit code is 0: mark TC-EE-02-01 through TC-EE-02-11 as PASS\n   - If exit code is non-zero: mark as FAIL with the error details\n7. Complete the handoff with result.status = PASS if both commands exit 0, FAIL otherwise.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "tests/reports/EE-02-test-run.json updated with PASS status"
+    ],
+    "functions_to_call": ["fn:check-zig-build", "fn:complete-handoff"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "zig build and zig build test both exited 0. All test cases TC-EE-02-01 through TC-EE-02-11 marked as PASS.",
+    "artifacts_out": ["tests/reports/EE-02-test-run.json"],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-21T23:59:59Z"
+}

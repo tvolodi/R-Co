@@ -1,0 +1,55 @@
+{
+  "handoff_id": "ee090003-2605-4000-8009-202605220003",
+  "run_id": "WF02-ee09-20260522",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-22T11:15:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 \u2014 Execution Engine",
+    "requirement_ids": [
+      "EE-09"
+    ],
+    "related_handoff_ids": [
+      "ee090001-2605-4000-8009-202605220001",
+      "ee090002-2605-4000-8009-202605220002"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/design/engine.md",
+      "src/engine/instance.zig",
+      "src/tools/json_schema.zig",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Design test cases for EE-09 (Variable scoping and merge). Write a test specification to tests/specs/EE-09.md covering: (1) TC-EE-09-01: New key insert \u2014 task completes with output_variables containing key not in instance map \u2192 key inserted, no VARIABLE_OVERWRITTEN event; (2) TC-EE-09-02: Existing key overwrite (no schema) \u2014 key present in instance map, new value, no schema registered \u2192 key overwritten, VARIABLE_OVERWRITTEN event appended with old/new values; (3) TC-EE-09-03: Existing key overwrite with schema-compatible value \u2192 same as TC-EE-09-02 but schema exists and new value passes validation; (4) TC-EE-09-04: Schema violation \u2014 existing key, schema rejects new value \u2192 merge NOT applied, instance transitions to ERROR, EXECUTION_ERROR event appended (type=SCHEMA_VIOLATION), task completion returns HTTP 422; (5) TC-EE-09-05: Empty output_variables \u2014 task completes with {} \u2192 no events emitted, instance variable map unchanged; (6) TC-EE-09-06: Multiple keys in one completion \u2014 mix of new keys and existing keys (some overwritten, no violations) \u2192 all keys correctly handled, one VARIABLE_OVERWRITTEN event per overwritten key; (7) TC-EE-09-07: Merged variables immediately available to CEL \u2014 after merge, an EXCLUSIVE_GATEWAY uses the newly merged variable in a condition and routes correctly (EE-05 integration); (8) TC-EE-09-08: Task completion attempt on instance in ERROR status \u2192 HTTP 409. Also add unit test cases for the mergeVariables function and the json_schema validator in tests/unit/.",
+    "acceptance_criteria": [
+      "tests/specs/EE-09.md created with TC-EE-09-01 through TC-EE-09-08",
+      "Each test case has: preconditions, steps, expected outcome, and which acceptance criterion it covers",
+      "Unit test cases specified for mergeVariables three-path logic",
+      "Test cases follow conventions in test_developer_guide.md"
+    ],
+    "functions_to_call": [
+      "fn:read-test-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test spec and test code for EE-09 (Variable scoping and merge). Created tests/specs/EE-09.md with TC-EE-09-01 through TC-EE-09-08 (integration layer) plus TC-EE-09-U01 through TC-EE-09-U10 (unit layer). Created tests/unit/test_ee09_merge_variables.zig covering json_schema validator constraints (type, enum, minimum, maximum, maxLength) and mergeVariables empty-output fast path (no DB call). Created tests/integration/ee09_merge_variables_test.zig with TC-EE-09-01, TC-EE-09-02, TC-EE-09-04, TC-EE-09-05. Registered engine_ee09_tests step in build.zig. Added json_schema_mod export to src/main.zig. zig build test exits 0.",
+    "artifacts_out": [
+      "tests/specs/EE-09.md",
+      "tests/unit/test_ee09_merge_variables.zig",
+      "tests/integration/ee09_merge_variables_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-22T11:16:07Z",
+  "completed_at": "2026-05-22T11:25:36Z"
+}

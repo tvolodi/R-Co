@@ -1,0 +1,59 @@
+{
+  "handoff_id": "ee040001-2605-4000-8004-202605220001",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee04-20260522",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-22T01:17:17Z",
+  "started_at": "2026-05-22T01:19:46Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 \u2014 Execution Engine",
+    "requirement_ids": [
+      "EE-04"
+    ],
+    "related_handoff_ids": [
+      "ee010001-2605-4000-8001-202605220001",
+      "ee020001-2605-4000-8002-202605220001",
+      "ee030001-2605-4000-8003-202605220001"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/design/engine.md",
+      "src/engine/transition.zig",
+      "src/engine/instance.zig",
+      "src/tasks/store.zig",
+      "src/api/routes/tasks.zig",
+      "migrations/006_tasks.sql"
+    ]
+  },
+  "task": {
+    "description": "Add an EE-04 design section to `src/design/engine.md` for Complete Task.\n\nEE-04 requirement summary:\n- An authorised caller SHALL complete an active task by submitting an output variables map.\n- The engine evaluates outgoing edge conditions, activates the next node(s), and records a TASK_COMPLETED event.\n- `POST /tasks/:id/complete` with `{ \"output_variables\": {...} }` (must be JSON object, not null).\n- HTTP 200 on success, 404 if task not found, 409 if task status \u2260 PENDING, 422 if output_variables is null, 403 if TASK_WORKER completing task assigned to different user.\n- Task status change, variable merge, state transition, and TASK_COMPLETED event MUST all commit in a single transaction.\n- `output_variables` may be empty `{}`; this is valid.\n\nFirst read `src/design/engine.md` in full (contains EE-01, EE-02, EE-03 sections \u2014 do NOT duplicate or modify them).\nAlso read `src/tasks/store.zig` to understand the existing TaskStore interface (createInTx, list).\nAlso read `src/engine/transition.zig` to understand the `task_completed` TransitionEvent variant and how it merges variables and advances the token.\nAlso read `src/engine/instance.zig` to understand `InstanceStore.applyTransition` (EE-03).\nAlso read `src/api/routes/tasks.zig` to understand the existing `handleList` handler structure.\nAlso read `migrations/006_tasks.sql` to understand the tasks table schema.\n\nThe new EE-04 design section MUST cover:\n\n1. **New `TaskStore` methods** (`src/tasks/store.zig`):\n\n   a. `getById(allocator, task_id) TaskError!Task`\n      - Acquires its own connection from `pool`.\n      - SELECT by `id = $1::uuid`.\n      - Returns `TaskError.NotFound` if no row matched.\n      - All values bound as $N parameters \u2014 no SQL string interpolation.\n\n   b. `completeInTx(allocator, conn, task_id, output_variables_json) TaskError!Task`\n      - Uses an already-open DB connection `conn`; the caller owns the transaction.\n      - Validates task exists and status = PENDING; returns `TaskError.NotFound` (404) or `TaskError.AlreadyTerminated` (409) as appropriate.\n      - Issues `UPDATE tasks SET status = 'COMPLETED', updated_at = NOW() WHERE id = $1::uuid AND status = 'PENDING' RETURNING ...`.\n      - Returns the updated Task.\n      - Note: `AlreadyTerminated` must be added to `TaskError`.\n\n2. **Updated `TaskError` error set** \u2014 add `AlreadyTerminated`:\n   - `AlreadyTerminated` \u2014 task status \u2260 PENDING (already COMPLETED or CANCELLED). HTTP 409.\n\n3. **`InstanceStore.completeTask` method** (`src/engine/instance.zig`):\n   ```\n   pub fn completeTask(\n       self: *InstanceStore,\n       allocator: std.mem.Allocator,\n       task_store: *task_mod.TaskStore,\n       task_id: task_mod.Uuid,\n       output_variables_json: []const u8,\n   ) CompleteTaskError!transition_mod.InstanceState\n   ```\n   Algorithm (all within one DB transaction):\n   a. Call `task_store.getById(allocator, task_id)` \u2014 returns 404 if not found.\n   b. Verify task.status == PENDING \u2014 return 409 if not.\n   c. Load the instance's current state from `instance_projections` (SELECT instance_id, status, current_nodes, variables, last_event_seq).\n   d. Load the definition snapshot from `definition_snapshots` via `snapshot_store`.\n   e. Parse `output_variables_json` as a JSON object; return 422 if null or not an object.\n   f. Build `TransitionEvent{ .task_completed = { .task_node_id = task.node_id, .output_variables = parsed_map } }`.\n   g. Call `transition(allocator, snapshot, current_state, event)` \u2192 `new_state`. Pure function; no I/O.\n   h. BEGIN TRANSACTION on a pool connection.\n   i. Call `task_store.completeInTx(allocator, conn, task_id, output_variables_json)` \u2014 sets task status = COMPLETED.\n   j. INSERT event row into `events` table (event_store) with event_type = 'TASK_COMPLETED'.\n   k. UPDATE `instance_projections` \u2014 set `status`, `current_nodes`, `variables`, `last_event_seq`, `updated_at`.\n   l. For each new HUMAN_TASK node activated in `new_state.pending_task_nodes` (set difference from current_state):\n      - Call `task_store.createInTx(allocator, conn, ...)` to create the new task record.\n   m. COMMIT.\n   n. Return `new_state`.\n\n   `CompleteTaskError` error set:\n   - `TaskNotFound` \u2014 task_id not found. HTTP 404.\n   - `TaskAlreadyTerminated` \u2014 task status \u2260 PENDING. HTTP 409.\n   - `InvalidInput` \u2014 output_variables is null or not a JSON object. HTTP 422.\n   - `TransitionFailed` \u2014 pure transition function returned an error. HTTP 500.\n   - `PersistenceFailed` \u2014 DB write failed after BEGIN. HTTP 500.\n   - `PoolExhausted` \u2014 pool.acquire() failed. HTTP 503.\n   - `OutOfMemory`.\n\n4. **`POST /tasks/:id/complete` HTTP handler** (`src/api/routes/tasks.zig`):\n   - Function: `handleComplete(store, instance_store, allocator, task_id_str, body) HandlerResult`\n   - Parse `task_id_str` as UUID \u2014 HTTP 422 if malformed.\n   - Parse body as JSON object with key `output_variables` \u2014 HTTP 422 if `output_variables` is null or not an object.\n   - Call `instance_store.completeTask(allocator, task_store, task_id, output_variables_json)`.\n   - Success: HTTP 200 with `{ \"status\": \"ok\", \"task_id\": \"<UUID>\" }`.\n   - Error mapping:\n     | Error | HTTP status | JSON body |\n     |---|---|---|\n     | TaskNotFound | 404 | `{ \"error\": \"TASK_NOT_FOUND\" }` |\n     | TaskAlreadyTerminated | 409 | `{ \"error\": \"TASK_ALREADY_TERMINATED\" }` |\n     | InvalidInput | 422 | `{ \"error\": \"INVALID_INPUT\" }` |\n     | TransitionFailed | 500 | `{ \"error\": \"TRANSITION_FAILED\" }` |\n     | PersistenceFailed | 500 | `{ \"error\": \"PERSISTENCE_FAILED\" }` |\n     | PoolExhausted | 503 | `{ \"error\": \"SERVICE_UNAVAILABLE\" }` |\n   - Authorization stub: For now, no caller identity is available (IDN-03 is not yet released). The handler MUST include a comment: `// TODO IDN-03: verify caller has rights to complete task.assignee_ref before calling completeTask`. Do NOT implement the 403 logic yet \u2014 it is blocked on IDN-03.\n\n5. **Traceability table** \u2014 map each EE-04 acceptance criterion to the design element:\n   | AC | Design element |\n   |---|---|\n   | POST /tasks/:id/complete with output_variables accepted | `handleComplete` handler |\n   | Task status PENDING check \u2192 409 if not | `InstanceStore.completeTask` step b; `completeInTx` WHERE status='PENDING' |\n   | Task not found \u2192 404 | `TaskStore.getById` returns NotFound; `completeTask` maps to TaskNotFound |\n   | output_variables null \u2192 422 | `completeTask` step e; `handleComplete` body validation |\n   | Variable merge, transition, TASK_COMPLETED event, status change \u2014 one transaction | `completeTask` steps h\u2013m |\n\nAppend the new section to `src/design/engine.md` after the existing EE-03 section. Do NOT write any Zig implementation code \u2014 design only. Do NOT modify existing sections.\n\nBefore completing this handoff, verify all 5 design elements above are present and the traceability table covers all 5 EE-04 acceptance criteria, then complete the handoff.",
+    "acceptance_criteria": [
+      "src/design/engine.md contains an EE-04 section covering all 5 design elements listed above",
+      "Traceability table maps all 5 EE-04 acceptance criteria to design elements",
+      "No Zig implementation code in the design file",
+      "Existing EE-01, EE-02, and EE-03 sections are not modified"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for EE-04 (Complete Task): appended Section EE-04 to src/design/engine.md covering all 5 design elements (TaskStore.getById, TaskStore.completeInTx, updated TaskError set with AlreadyTerminated, InstanceStore.completeTask with CompleteTaskError, POST /tasks/:id/complete handler with TODO IDN-03 stub) and traceability table mapping all 5 EE-04 acceptance criteria.",
+    "artifacts_out": [
+      "src/design/engine.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T01:23:38Z"
+}

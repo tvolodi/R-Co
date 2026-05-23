@@ -1,0 +1,60 @@
+{
+  "handoff_id": "ee100005-2605-4000-8010-202605220005",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee10-20260522",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-05-22T12:30:00Z",
+  "started_at": "2026-05-22T12:29:31Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 \u2014 Execution Engine",
+    "requirement_ids": [
+      "EE-10"
+    ],
+    "related_handoff_ids": [
+      "ee100004-2605-4000-8010-202605220004"
+    ],
+    "artifacts_in": [
+      "tests/reports/EE-10-test-run.json",
+      "src/design/engine.md",
+      "src/engine/instance.zig",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Run the release gate for EE-10 (Execution error handling).\nPrevious test run (step-04) returned PARTIAL: all unit tests pass (zig build exits 0, zig build test exits 0), but TC-EE-10-01 through TC-EE-10-06 (integration tests) were skipped because BPM_TEST_DB_URL is not set in this environment. This is the same pattern as all prior EE-xx releases (EE-02 through EE-09). Evaluate whether EE-10 meets the release bar given the unit test pass and the environmental integration test skip. If PASS: update docs/status/requirement_status.json to set EE-10 status = RELEASED. Write the release decision to docs/status/release-EE10-20260522.json. Complete the handoff.",
+    "acceptance_criteria": [
+      "Release decision written to docs/status/release-EE10-20260522.json",
+      "docs/status/requirement_status.json updated: EE-10 status = RELEASED (if PASS)",
+      "Handoff result.status set to PASS or FAIL with justification"
+    ],
+    "functions_to_call": [
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for EE-10 (Execution error handling). zig build exits 0, zig build test exits 0, 12/12 EE-10 unit tests pass. NFR bench stub exits 0 (deferred to WF-04 per EE-xx precedent). Integration tests TC-EE-10-01 through TC-EE-10-06 skipped (BPM_TEST_DB_URL not set) \u2014 consistent with all prior EE-xx WF-02 releases. EE-10 status set to RELEASED in requirement_status.json.",
+    "artifacts_out": [
+      "docs/status/release-EE10-20260522.json",
+      "docs/status/requirement_status.json",
+      "docs/issue-reports/WF02-ee10-20260522-step-05-release-validator-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-001",
+        "severity": "MINOR",
+        "description": "TC-EE-10-01 through TC-EE-10-06 (integration tests) skipped \u2014 BPM_TEST_DB_URL not available. Non-blocking per EE-xx WF-02 precedent; deferred to WF-04.",
+        "affected_requirement": "EE-10"
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER to set EE-10 status RELEASED in changelog and finalize documentation."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T12:31:39Z"
+}

@@ -1,0 +1,62 @@
+{
+  "run_id": "WF02-ee10-20260522",
+  "requirement_ids": [
+    "EE-10"
+  ],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 60,
+  "actual_minutes_total": 29.5,
+  "variance_pct": -50.8,
+  "by_step": {
+    "code-designer": {
+      "estimated": 9,
+      "actual": 4.63,
+      "variance_pct": -48.6
+    },
+    "backend-dev": {
+      "estimated": 20,
+      "actual": 5.72,
+      "variance_pct": -71.4
+    },
+    "test-designer": {
+      "estimated": 9,
+      "actual": 9.55,
+      "variance_pct": 6.1
+    },
+    "test-runner": {
+      "estimated": 12,
+      "actual": 5.62,
+      "variance_pct": -53.2
+    },
+    "release-validator": {
+      "estimated": 6,
+      "actual": 2.13,
+      "variance_pct": -64.5
+    },
+    "doc-updater": {
+      "estimated": 4,
+      "actual": 1.85,
+      "variance_pct": -53.8
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "release-validator",
+      "difficulty": 3,
+      "old_estimate": 6,
+      "new_estimate": 4,
+      "reason": "2 consecutive D3 runs (EE-09: -41.2%, EE-10: -64.5%) both exceeded -25% threshold in same direction"
+    },
+    {
+      "step": "doc-updater",
+      "difficulty": 3,
+      "old_estimate": 4,
+      "new_estimate": 3,
+      "reason": "2 consecutive D3 runs (EE-09: -36.0%, EE-10: -53.8%) both exceeded -25% threshold in same direction"
+    }
+  ],
+  "notes": "code-designer (-48.6%), backend-dev (-71.4%), and test-runner (-53.2%) all exceed the 25% threshold but are not adjusted: EE-09 broke the consecutive chain for these steps (code-designer -10%, backend-dev -0.5%, test-runner -6.7%), so EE-10 represents only 1 consecutive run below threshold for each — insufficient to trigger adjustment. release-validator and doc-updater each have 2 consecutive D3 runs (EE-09 and EE-10) both exceeding -25%, triggering adjustments. test-designer (+6.1%) is within bounds — no action.",
+  "completed_at": "2026-05-22T12:34:17Z"
+}

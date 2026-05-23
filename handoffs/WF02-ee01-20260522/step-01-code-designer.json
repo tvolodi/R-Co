@@ -1,0 +1,55 @@
+{
+  "handoff_id": "ee010001-2605-4000-8001-202605220001",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-ee01-20260522",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-22T00:30:00Z",
+  "started_at": "2026-05-22T00:30:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 3 \u2014 Execution Engine",
+    "requirement_ids": [
+      "EE-01"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/definition/snapshot.zig",
+      "src/definition/store.zig",
+      "migrations/005_instances.sql",
+      "src/engine/"
+    ]
+  },
+  "task": {
+    "description": "Produce a design artefact at `src/design/engine.md` for EE-01 (Start instance).\n\nEE-01 summary:\n- Caller submits: definition_id (or name+version), optional correlation_key (unique per definition), initial_variables (JSON object)\n- Platform returns: instance_id (UUID), status=ACTIVE, created_at\n- Only ACTIVE definitions can be started (HTTP 409 otherwise)\n- Correlation key must be unique per definition if supplied (HTTP 409 on duplicate)\n- A snapshot of the definition graph is stored atomically with the instance creation event (PD-08)\n- Execution token is placed on the START node; the first non-START node transition fires immediately (ties to EE-02 and EE-03, which will be implemented in subsequent runs)\n\nThe design MUST document:\n\n1. **New `process_instances` table** (check if `migrations/005_instances.sql` already exists; read it first):\n   - Fields: instance_id (UUID PK), definition_id (FK \u2192 process_definitions), definition_snapshot (JSONB \u2014 the snapshot from PD-08), correlation_key (TEXT, nullable), status (ENUM: ACTIVE/COMPLETED/CANCELLED/ERROR), initial_variables (JSONB), created_at (TIMESTAMPTZ), updated_at (TIMESTAMPTZ)\n   - Unique constraint: (definition_id, correlation_key) WHERE correlation_key IS NOT NULL\n\n2. **`InstanceStore` module** (`src/engine/instance.zig`):\n   - `InstanceStore.create(allocator, definition_id, correlation_key, initial_variables) InstanceError!Instance`\n   - Error variants: `DefinitionNotFound`, `DefinitionNotActive`, `DuplicateCorrelationKey`, `InvalidInput`, `PoolExhausted`\n   - The function must:\n     a. Load the definition via `definition.Store.getById()` \u2192 check status = ACTIVE\n     b. Capture snapshot via `definition.Snapshot.capture()` (PD-08)\n     c. Insert into `process_instances` atomically\n     d. Return the created `Instance` struct\n\n3. **`Instance` struct**:\n   - Fields: instance_id (Uuid), definition_id (Uuid), status (InstanceStatus enum), correlation_key (?[]const u8), initial_variables (std.json.Value), created_at (i64 microseconds UTC), updated_at (i64)\n\n4. **`InstanceStatus` enum**: ACTIVE, COMPLETED, CANCELLED, ERROR\n\n5. **HTTP API route** (to be added to the definitions/instances router):\n   - `POST /instances` \u2014 body: `{definition_id, correlation_key?, initial_variables}`\n   - Response 201: `{instance_id, status, created_at}`\n   - Errors: 404 (definition not found), 409 (definition not ACTIVE or duplicate correlation key), 422 (invalid initial_variables)\n\n6. **Traceability table** mapping each EE-01 acceptance criterion to its design element.\n\nCreate `src/design/engine.md` with all sections above. Do NOT write any Zig code \u2014 design only.\n\nAfter creating the design file, complete this handoff.",
+    "acceptance_criteria": [
+      "src/design/engine.md exists with EE-01 design section",
+      "process_instances table schema documented (or confirmed from existing migration)",
+      "InstanceStore.create() signature and behaviour fully documented",
+      "Instance struct fields documented",
+      "HTTP route POST /instances documented with all error codes",
+      "All EE-01 acceptance criteria are traceable to design elements"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created src/design/engine.md covering EE-01 Start Instance. Documents instance_projections schema (existing, migration 001), instance_definition_snapshots (existing, migration 004), InstanceStatus enum, Instance struct, InstanceError set, InstanceStore.create() algorithm with two-phase snapshot+insert, POST /api/v1/instances HTTP route with full error mapping, and a traceability table mapping all EE-01 acceptance criteria to design elements.",
+    "artifacts_out": [
+      "src/design/engine.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-21T12:20:35Z"
+}

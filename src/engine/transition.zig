@@ -1,0 +1,1313 @@
+//! Pure transition function — EE-02
+//!
+//! Implements the deterministic, zero-I/O process state transition logic.
+//! All state is passed in; all output is returned. No DB, no network, no clock.
+//!
+//! Design artefact: src/design/engine.md §EE-02
+const std = @import("std");
+const graph_mod = @import("../definition/graph.zig");
+const cel = @import("cel");
+const Uuid = graph_mod.Uuid;
+
+// ---------------------------------------------------------------------------
+// Token struct
+// ---------------------------------------------------------------------------
+pub const Token = struct {
+    node_id: []const u8,
+    branch_id: []const u8,
+};
+
+// ---------------------------------------------------------------------------
+// PendingEvent tagged union (EE-06, EE-07)
+// ---------------------------------------------------------------------------
+pub const ParallelSplitPayload = struct {
+    source_node_id: []const u8,
+    token_ids: [][]const u8,
+    target_node_ids: [][]const u8,
+    edge_count: usize,
+    variables_snapshot: std.json.ObjectMap,
+};
+
+/// EE-07: emitted when a parallel join gateway fires.
+pub const ParallelJoinPayload = struct {
+    join_node_id: []const u8,
+    branch_ids_arrived: [][]const u8,
+    branch_ids_cancelled: [][]const u8,
+    outgoing_token_id: []const u8,
+};
+
+/// EE-07: emitted when all parallel branches are cancelled before any token
+/// reaches the join, cascading the instance to CANCELLED status.
+pub const InstanceCancelledPayload = struct {
+    reason: []const u8,           // "ALL_BRANCHES_CANCELLED" or "OPERATOR"
+    join_node_id: ?[]const u8,    // set when reason == "ALL_BRANCHES_CANCELLED"
+    branch_ids_cancelled: [][]const u8,
+};
+
+pub const PendingEvent = union(enum) {
+    parallel_split: ParallelSplitPayload,
+    parallel_join: ParallelJoinPayload,         // EE-07
+    instance_cancelled: InstanceCancelledPayload, // EE-07
+};
+
+// ---------------------------------------------------------------------------
+// InstanceState struct
+// ---------------------------------------------------------------------------
+pub const InstanceState = struct {
+    instance_id: Uuid,
+    status: InstanceStatus,
+    tokens: []Token,
+    variables: std.json.ObjectMap,
+    pending_task_nodes: [][]const u8,
+    error_detail: ?[]const u8,
+    pending_events: []PendingEvent,
+    /// EE-07/EE-08: flat slice of branch_id strings for cancelled parallel branches.
+    /// Format: "<instance_id_hex>/<split_gateway_node_id>/<edge_index>".
+    /// Initialised to empty at instance creation; grows as branches are cancelled.
+    /// Never shrinks. Default allows existing literals to omit the field.
+    cancelled_branch_ids: [][]const u8 = &[_][]const u8{},
+};
+
+pub const InstanceStatus = enum {
+    ACTIVE,
+    COMPLETED,
+    CANCELLED,
+    ERROR,
+};
+
+// ---------------------------------------------------------------------------
+// TransitionEvent tagged union
+// ---------------------------------------------------------------------------
+pub const TransitionEvent = union(enum) {
+    instance_started: struct {
+        initial_variables: std.json.ObjectMap,
+        start_node_id: []const u8,
+    },
+    task_completed: struct {
+        task_node_id: []const u8,
+        output_variables: std.json.ObjectMap,
+    },
+    unknown: struct {
+        event_type: []const u8,
+    },
+};
+
+// ---------------------------------------------------------------------------
+// TransitionError error set
+// ---------------------------------------------------------------------------
+pub const TransitionError = error{
+    UnknownEventType,
+    TokenOnMissingNode,
+    NoMatchingEdge,
+    CelEvaluationError,
+    InvalidState,
+    OutOfMemory,
+};
+
+// ---------------------------------------------------------------------------
+// transition() function
+// ---------------------------------------------------------------------------
+pub fn transition(
+    allocator: std.mem.Allocator,
+    snapshot: graph_mod.DefinitionGraph,
+    state: InstanceState,
+    event: TransitionEvent,
+) TransitionError!InstanceState {
+    // Precondition checks
+    // 1. All tokens must reference valid node_ids
+    for (state.tokens) |token| {
+        var found = false;
+        for (snapshot.nodes) |node| {
+            if (std.mem.eql(u8, node.id, token.node_id)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) return TransitionError.TokenOnMissingNode;
+    }
+    // 2. If status is COMPLETED or CANCELLED, tokens must be empty
+    if ((state.status == .COMPLETED or state.status == .CANCELLED) and state.tokens.len > 0)
+        return TransitionError.InvalidState;
+    // 3. Unknown event
+    if (event == .unknown) return TransitionError.UnknownEventType;
+
+    var new_state = InstanceState{
+        .instance_id = state.instance_id,
+        .status = state.status,
+        .tokens = try allocator.alloc(Token, state.tokens.len),
+        .variables = try state.variables.clone(allocator),
+        .pending_task_nodes = try allocator.alloc([]const u8, state.pending_task_nodes.len),
+        .error_detail = null,
+        .pending_events = try allocator.dupe(PendingEvent, state.pending_events),
+        .cancelled_branch_ids = try allocator.dupe([]const u8, state.cancelled_branch_ids),
+    };
+    for (state.tokens, 0..) |t, i| {
+        new_state.tokens[i] = Token{
+            .node_id = try allocator.dupe(u8, t.node_id),
+            .branch_id = try allocator.dupe(u8, t.branch_id),
+        };
+    }
+    for (state.pending_task_nodes, 0..) |n, i| {
+        new_state.pending_task_nodes[i] = try allocator.dupe(u8, n);
+    }
+
+    switch (event) {
+        .instance_started => |payload| {
+            // Seed variables from initial_variables
+            new_state.variables = try payload.initial_variables.clone(allocator);
+            // Place token on first node after START
+            const start_node = blk: {
+                for (snapshot.nodes) |node| {
+                    if (std.mem.eql(u8, node.id, payload.start_node_id)) break :blk node;
+                }
+                return TransitionError.InvalidState;
+            };
+            // Find outgoing edge from START
+            var found = false;
+            var next_node_id: []const u8 = undefined;
+            for (snapshot.edges) |edge| {
+                if (std.mem.eql(u8, edge.source, start_node.id)) {
+                    next_node_id = edge.target;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return TransitionError.InvalidState;
+            // Root branch_id is instance_id as hex string
+            const branch_id = try std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+                state.instance_id[0], state.instance_id[1], state.instance_id[2], state.instance_id[3],
+                state.instance_id[4], state.instance_id[5], state.instance_id[6], state.instance_id[7],
+                state.instance_id[8], state.instance_id[9], state.instance_id[10], state.instance_id[11],
+                state.instance_id[12], state.instance_id[13], state.instance_id[14], state.instance_id[15],
+            });
+            // Place token
+            new_state.tokens = try allocator.alloc(Token, 1);
+            new_state.tokens[0] = Token{
+                .node_id = try allocator.dupe(u8, next_node_id),
+                .branch_id = branch_id,
+            };
+            // Process node entry
+            return try processNodeEntry(allocator, snapshot, new_state, next_node_id);
+        },
+        .task_completed => |payload| {
+            // Find token on task_node_id
+            var token_idx: ?usize = null;
+            for (new_state.tokens, 0..) |t, i| {
+                if (std.mem.eql(u8, t.node_id, payload.task_node_id)) {
+                    token_idx = i;
+                    break;
+                }
+            }
+            if (token_idx == null) return TransitionError.InvalidState;
+            // Merge output_variables into variables
+            {
+                var it = payload.output_variables.iterator();
+                while (it.next()) |entry| {
+                    try new_state.variables.put(allocator, entry.key_ptr.*, entry.value_ptr.*);
+                }
+            }
+            // Remove from pending_task_nodes
+            var new_pending = std.ArrayList([]const u8).empty;
+            defer new_pending.deinit(allocator);
+            for (new_state.pending_task_nodes) |n| {
+                if (!std.mem.eql(u8, n, payload.task_node_id))
+                    try new_pending.append(allocator, n);
+            }
+            new_state.pending_task_nodes = try new_pending.toOwnedSlice(allocator);
+            // Advance token
+            var outgoing_found = false;
+            var next_node_id: []const u8 = undefined;
+            for (snapshot.edges) |edge| {
+                if (std.mem.eql(u8, edge.source, payload.task_node_id)) {
+                    next_node_id = edge.target;
+                    outgoing_found = true;
+                    break;
+                }
+            }
+            if (!outgoing_found) return TransitionError.InvalidState;
+            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+            // Process node entry
+            return try processNodeEntry(allocator, snapshot, new_state, next_node_id);
+        },
+        else => return TransitionError.UnknownEventType,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// processNodeEntry() internal helper
+// ---------------------------------------------------------------------------
+fn processNodeEntry(
+    allocator: std.mem.Allocator,
+    snapshot: graph_mod.DefinitionGraph,
+    state: InstanceState,
+    node_id: []const u8,
+) TransitionError!InstanceState {
+    // Find node type
+    var node_type: ?graph_mod.NodeType = null;
+    for (snapshot.nodes) |node| {
+        if (std.mem.eql(u8, node.id, node_id)) {
+            node_type = node.node_type;
+            break;
+        }
+    }
+    if (node_type == null) return TransitionError.InvalidState;
+
+    switch (node_type.?) {
+        .END => {
+            // Remove arriving token
+            var new_tokens = std.ArrayList(Token).empty;
+            defer new_tokens.deinit(allocator);
+            for (state.tokens) |t| {
+                if (!std.mem.eql(u8, t.node_id, node_id))
+                    try new_tokens.append(allocator, t);
+            }
+            // If no remaining non-END tokens, status = COMPLETED
+            var active = false;
+            for (new_tokens.items) |t| {
+                for (snapshot.nodes) |n| {
+                    if (std.mem.eql(u8, n.id, t.node_id) and n.node_type != .END) {
+                        active = true;
+                        break;
+                    }
+                }
+            }
+            var new_state = state;
+            new_state.tokens = try new_tokens.toOwnedSlice(allocator);
+            if (!active) {
+                new_state.status = .COMPLETED;
+                new_state.tokens = &[_]Token{};
+            }
+            return new_state;
+        },
+        .HUMAN_TASK => {
+            // Token stays, append to pending_task_nodes if not present
+            var already = false;
+            for (state.pending_task_nodes) |n| {
+                if (std.mem.eql(u8, n, node_id)) {
+                    already = true;
+                    break;
+                }
+            }
+            if (!already) {
+                var new_pending = std.ArrayList([]const u8).empty;
+                defer new_pending.deinit(allocator);
+                for (state.pending_task_nodes) |n| try new_pending.append(allocator, n);
+                try new_pending.append(allocator, try allocator.dupe(u8, node_id));
+                var new_state = state;
+                new_state.pending_task_nodes = try new_pending.toOwnedSlice(allocator);
+                return new_state;
+            }
+            return state;
+        },
+        .EXCLUSIVE_GATEWAY => {
+            // Partition outgoing edges
+            var non_default = std.ArrayList(graph_mod.GraphEdge).empty;
+            var defaults = std.ArrayList(graph_mod.GraphEdge).empty;
+            defer non_default.deinit(allocator);
+            defer defaults.deinit(allocator);
+            for (snapshot.edges) |edge| {
+                if (std.mem.eql(u8, edge.source, node_id)) {
+                    if (edge.is_default) try defaults.append(allocator, edge)
+                    else try non_default.append(allocator, edge);
+                }
+            }
+            var chosen: ?graph_mod.GraphEdge = null;
+            for (non_default.items) |edge| {
+                if (edge.condition) |cond| {
+                    const match = cel.evaluate(allocator, cond, state.variables) catch false;
+                    if (match) {
+                        chosen = edge;
+                        break;
+                    }
+                }
+            }
+            if (chosen == null and defaults.items.len > 0) chosen = defaults.items[0];
+            if (chosen == null) return TransitionError.NoMatchingEdge;
+            // Advance token
+            var token_idx: ?usize = null;
+            for (state.tokens, 0..) |t, i| {
+                if (std.mem.eql(u8, t.node_id, node_id)) {
+                    token_idx = i;
+                    break;
+                }
+            }
+            if (token_idx == null) return TransitionError.InvalidState;
+            var new_state = state;
+            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, chosen.?.target);
+            return try processNodeEntry(allocator, snapshot, new_state, chosen.?.target);
+        },
+        .PARALLEL_GATEWAY => {
+            // Determine split or join
+            var outgoing_count: usize = 0;
+            var incoming_count: usize = 0;
+            for (snapshot.edges) |edge| {
+                if (std.mem.eql(u8, edge.source, node_id)) outgoing_count += 1;
+                if (std.mem.eql(u8, edge.target, node_id)) incoming_count += 1;
+            }
+            if (outgoing_count > 1 and incoming_count <= 1) {
+                // Split: remove arriving token, create N tokens
+                var new_tokens = std.ArrayList(Token).empty;
+                defer new_tokens.deinit(allocator);
+                for (state.tokens) |t| {
+                    if (!std.mem.eql(u8, t.node_id, node_id))
+                        try new_tokens.append(allocator, t);
+                }
+                // Track branch_ids and target node_ids for the PARALLEL_SPLIT event
+                var split_token_ids = std.ArrayList([]const u8).empty;
+                defer split_token_ids.deinit(allocator);
+                var split_target_ids = std.ArrayList([]const u8).empty;
+                defer split_target_ids.deinit(allocator);
+                var i: usize = 0;
+                for (snapshot.edges) |edge| {
+                    if (std.mem.eql(u8, edge.source, node_id)) {
+                        // branch_id = "<instance_id_hex>/<gateway_node_id>/<edge_index>"
+                        // This deterministic scheme matches the design (OQ-1) and is
+                        // stable across replays.
+                        const id = &state.instance_id;
+                        const branch_id = try std.fmt.allocPrint(
+                            allocator,
+                            "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}" ++
+                                "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}/{s}/{d}",
+                            .{
+                                id[0],  id[1],  id[2],  id[3],
+                                id[4],  id[5],  id[6],  id[7],
+                                id[8],  id[9],  id[10], id[11],
+                                id[12], id[13], id[14], id[15],
+                                node_id, i,
+                            },
+                        );
+                        const target = try allocator.dupe(u8, edge.target);
+                        try new_tokens.append(allocator, Token{
+                            .node_id = target,
+                            .branch_id = branch_id,
+                        });
+                        try split_token_ids.append(allocator, branch_id);
+                        try split_target_ids.append(allocator, target);
+                        i += 1;
+                    }
+                }
+                // Build PARALLEL_SPLIT event and accumulate with existing pending_events
+                const split_event = PendingEvent{
+                    .parallel_split = ParallelSplitPayload{
+                        .source_node_id = try allocator.dupe(u8, node_id),
+                        .token_ids = try split_token_ids.toOwnedSlice(allocator),
+                        .target_node_ids = try split_target_ids.toOwnedSlice(allocator),
+                        .edge_count = i,
+                        .variables_snapshot = try state.variables.clone(allocator),
+                    },
+                };
+                var new_pending_events = std.ArrayList(PendingEvent).empty;
+                defer new_pending_events.deinit(allocator);
+                for (state.pending_events) |ev| try new_pending_events.append(allocator, ev);
+                try new_pending_events.append(allocator, split_event);
+                var new_state = state;
+                new_state.tokens = try new_tokens.toOwnedSlice(allocator);
+                new_state.pending_events = try new_pending_events.toOwnedSlice(allocator);
+                // Recursively process each new token
+                for (new_state.tokens) |t| {
+                    if (std.mem.eql(u8, t.node_id, node_id)) continue;
+                    new_state = try processNodeEntry(allocator, snapshot, new_state, t.node_id);
+                }
+                return new_state;
+            } else if (incoming_count > 1) {
+                // EE-07 Join path: wait for all active (non-cancelled) branches.
+
+                // Collect all tokens parked on this join node.
+                var tokens_on_join = std.ArrayList(Token).empty;
+                defer tokens_on_join.deinit(allocator);
+                for (state.tokens) |t| {
+                    if (std.mem.eql(u8, t.node_id, node_id))
+                        try tokens_on_join.append(allocator, t);
+                }
+                const arrived_count = tokens_on_join.items.len;
+
+                // Extract split_gateway_node_id from the arriving token's branch_id
+                // (second '/'-delimited segment). Falls back to "" for old-style tokens.
+                const split_gw_id: []const u8 = if (tokens_on_join.items.len > 0)
+                    extractBranchSegment(tokens_on_join.items[0].branch_id, 1)
+                else
+                    "";
+
+                // Count cancelled branches belonging to this split.
+                var cancelled_count: usize = 0;
+                for (state.cancelled_branch_ids) |bid| {
+                    if (split_gw_id.len > 0 and
+                        std.mem.eql(u8, extractBranchSegment(bid, 1), split_gw_id))
+                        cancelled_count += 1;
+                }
+
+                const total_branches = incoming_count;
+                const expected_count = total_branches - cancelled_count;
+
+                if (expected_count > 0 and arrived_count < expected_count) {
+                    // STEP d: not all active branches have arrived — park and wait.
+                    return state;
+                }
+
+                if (expected_count == 0) {
+                    // STEP f: all branches cancelled — cascade INSTANCE_CANCELLED.
+                    var new_tokens_f = std.ArrayList(Token).empty;
+                    defer new_tokens_f.deinit(allocator);
+                    for (state.tokens) |t| {
+                        if (!std.mem.eql(u8, t.node_id, node_id))
+                            try new_tokens_f.append(allocator, t);
+                    }
+
+                    var cancelled_for_split_f = std.ArrayList([]const u8).empty;
+                    defer cancelled_for_split_f.deinit(allocator);
+                    for (state.cancelled_branch_ids) |bid| {
+                        if (split_gw_id.len > 0 and
+                            std.mem.eql(u8, extractBranchSegment(bid, 1), split_gw_id))
+                            try cancelled_for_split_f.append(allocator, bid);
+                    }
+
+                    const cancel_event = PendingEvent{
+                        .instance_cancelled = InstanceCancelledPayload{
+                            .reason = "ALL_BRANCHES_CANCELLED",
+                            .join_node_id = try allocator.dupe(u8, node_id),
+                            .branch_ids_cancelled = try cancelled_for_split_f.toOwnedSlice(allocator),
+                        },
+                    };
+                    var new_pending_f = std.ArrayList(PendingEvent).empty;
+                    defer new_pending_f.deinit(allocator);
+                    for (state.pending_events) |ev| try new_pending_f.append(allocator, ev);
+                    try new_pending_f.append(allocator, cancel_event);
+
+                    var new_state_f = state;
+                    new_state_f.status = .CANCELLED;
+                    new_state_f.tokens = &[_]Token{};
+                    new_state_f.pending_events = try new_pending_f.toOwnedSlice(allocator);
+                    return new_state_f;
+                }
+
+                // STEP e: fire — arrived_count >= expected_count > 0.
+
+                // Remove all tokens on the join node.
+                var new_tokens = std.ArrayList(Token).empty;
+                defer new_tokens.deinit(allocator);
+                for (state.tokens) |t| {
+                    if (!std.mem.eql(u8, t.node_id, node_id))
+                        try new_tokens.append(allocator, t);
+                }
+
+                // Select merged_branch_id: prefer branch with edge_index segment "0".
+                var merged_branch_id: []const u8 = "";
+                for (tokens_on_join.items) |t| {
+                    if (std.mem.eql(u8, extractBranchSegment(t.branch_id, 2), "0")) {
+                        merged_branch_id = t.branch_id;
+                        break;
+                    }
+                }
+                // Fallback: lexicographically smallest (handles old-style branch_ids).
+                if (merged_branch_id.len == 0) {
+                    merged_branch_id = tokens_on_join.items[0].branch_id;
+                    for (tokens_on_join.items[1..]) |t| {
+                        if (std.mem.order(u8, t.branch_id, merged_branch_id) == .lt)
+                            merged_branch_id = t.branch_id;
+                    }
+                }
+
+                // Find single outgoing edge (PD-02 guarantees exactly one).
+                var next_node_id: []const u8 = "";
+                for (snapshot.edges) |edge| {
+                    if (std.mem.eql(u8, edge.source, node_id)) {
+                        next_node_id = edge.target;
+                        break;
+                    }
+                }
+                if (next_node_id.len == 0) return TransitionError.InvalidState;
+
+                // Create merged token on the outgoing edge.
+                const merged_token = Token{
+                    .node_id = try allocator.dupe(u8, next_node_id),
+                    .branch_id = try allocator.dupe(u8, merged_branch_id),
+                };
+                try new_tokens.append(allocator, merged_token);
+
+                // Collect arrived branch_ids for the PARALLEL_JOIN event.
+                var arrived_ids = std.ArrayList([]const u8).empty;
+                defer arrived_ids.deinit(allocator);
+                for (tokens_on_join.items) |t| try arrived_ids.append(allocator, t.branch_id);
+
+                // Collect cancelled branch_ids for this split for the event.
+                var cancelled_for_split = std.ArrayList([]const u8).empty;
+                defer cancelled_for_split.deinit(allocator);
+                for (state.cancelled_branch_ids) |bid| {
+                    if (split_gw_id.len > 0 and
+                        std.mem.eql(u8, extractBranchSegment(bid, 1), split_gw_id))
+                        try cancelled_for_split.append(allocator, bid);
+                }
+
+                const join_event = PendingEvent{
+                    .parallel_join = ParallelJoinPayload{
+                        .join_node_id = try allocator.dupe(u8, node_id),
+                        .branch_ids_arrived = try arrived_ids.toOwnedSlice(allocator),
+                        .branch_ids_cancelled = try cancelled_for_split.toOwnedSlice(allocator),
+                        .outgoing_token_id = try allocator.dupe(u8, merged_branch_id),
+                    },
+                };
+                var new_pending_events = std.ArrayList(PendingEvent).empty;
+                defer new_pending_events.deinit(allocator);
+                for (state.pending_events) |ev| try new_pending_events.append(allocator, ev);
+                try new_pending_events.append(allocator, join_event);
+
+                var new_state = state;
+                new_state.tokens = try new_tokens.toOwnedSlice(allocator);
+                new_state.pending_events = try new_pending_events.toOwnedSlice(allocator);
+                return try processNodeEntry(allocator, snapshot, new_state, next_node_id);
+            } else {
+                return state;
+            }
+        },
+        else => return state,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: extract the Nth '/'-delimited segment from a branch_id string.
+//
+// branch_id format: "<instance_id_hex>/<split_gateway_node_id>/<edge_index>"
+//   seg_idx 0 → instance_id_hex
+//   seg_idx 1 → split_gateway_node_id
+//   seg_idx 2 → edge_index
+//
+// Returns empty string if the segment index does not exist (safe fallback for
+// old-style branch_ids that do not follow the structured format).
+// ---------------------------------------------------------------------------
+fn extractBranchSegment(branch_id: []const u8, seg_idx: usize) []const u8 {
+    var idx: usize = 0;
+    var start: usize = 0;
+    for (branch_id, 0..) |c, i| {
+        if (c == '/') {
+            if (idx == seg_idx) return branch_id[start..i];
+            idx += 1;
+            start = i + 1;
+        }
+    }
+    if (idx == seg_idx) return branch_id[start..];
+    return "";
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests (TC-EE-02-01 through TC-EE-02-11)
+// ---------------------------------------------------------------------------
+test "TC-EE-02-01: instance_started event places token on first non-START node" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Minimal graph: START -> HUMAN_TASK
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "task1", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "task1", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    var initial_vars = std.json.ObjectMap.init(allocator);
+    defer initial_vars.deinit();
+    const event = TransitionEvent{ .instance_started = .{
+        .initial_variables = initial_vars,
+        .start_node_id = "start",
+    }};
+    const result = transition(allocator, graph, state, event) catch unreachable;
+    // Should have one token on HUMAN_TASK
+    try std.testing.expect(result.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "task1"));
+}
+
+test "TC-EE-02-02: task_completed on HUMAN_TASK advances to next node" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Graph: START -> HUMAN_TASK -> END
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "task1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "task1", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "task1", .target = "end", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "task1", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{"task1"},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    var output_vars = std.json.ObjectMap.init(allocator);
+    defer output_vars.deinit();
+    const event = TransitionEvent{ .task_completed = .{
+        .task_node_id = "task1",
+        .output_variables = output_vars,
+    }};
+    const result = transition(allocator, graph, state, event) catch unreachable;
+    // Should have token on END
+    try std.testing.expect(result.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "end"));
+}
+
+test "TC-EE-02-03: token reaches END → status becomes COMPLETED" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Graph: START -> HUMAN_TASK -> END
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "task1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "task1", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "task1", .target = "end", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "end", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    // event is unused in this test
+    // Directly test processNodeEntry for END
+    const result = processNodeEntry(allocator, graph, state, "end") catch unreachable;
+    try std.testing.expect(result.status == .COMPLETED);
+}
+
+test "TC-EE-02-04: EXCLUSIVE_GATEWAY follows first true CEL condition" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Graph: START -> GW -> T1, T2; GW is EXCLUSIVE_GATEWAY
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "gw", .node_type = .EXCLUSIVE_GATEWAY, .label = null },
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "gw", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "gw", .target = "t1", .condition = "true", .is_default = false },
+        .{ .id = "e3", .source = "gw", .target = "t2", .condition = "false", .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result = processNodeEntry(allocator, graph, state, "gw") catch unreachable;
+    // Should follow first true (t1)
+    try std.testing.expect(result.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "t1"));
+}
+
+test "TC-EE-02-05: EXCLUSIVE_GATEWAY with no true condition and no default → NoMatchingEdge error" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Graph: GW with two false conditions, no default
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "gw", .node_type = .EXCLUSIVE_GATEWAY, .label = null },
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e2", .source = "gw", .target = "t1", .condition = "false", .is_default = false },
+        .{ .id = "e3", .source = "gw", .target = "t2", .condition = "false", .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result = processNodeEntry(allocator, graph, state, "gw");
+    try std.testing.expectError(TransitionError.NoMatchingEdge, result);
+}
+
+test "TC-EE-02-06: EXCLUSIVE_GATEWAY default edge fallback" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Graph: GW with two false, one default
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "gw", .node_type = .EXCLUSIVE_GATEWAY, .label = null },
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t3", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e2", .source = "gw", .target = "t1", .condition = "false", .is_default = false },
+        .{ .id = "e3", .source = "gw", .target = "t2", .condition = "false", .is_default = false },
+        .{ .id = "e4", .source = "gw", .target = "t3", .condition = null, .is_default = true },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result = processNodeEntry(allocator, graph, state, "gw") catch unreachable;
+    try std.testing.expect(result.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "t3"));
+}
+
+test "TC-EE-02-07: PARALLEL_GATEWAY split creates N tokens" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Graph: GW (split) -> t1, t2
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "gw", .target = "t1", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result = processNodeEntry(allocator, graph, state, "gw") catch unreachable;
+    // Should have two tokens, one on t1, one on t2
+    try std.testing.expect(result.tokens.len == 2);
+    var found1 = false;
+    var found2 = false;
+    for (result.tokens) |t| {
+        if (std.mem.eql(u8, t.node_id, "t1")) found1 = true;
+        if (std.mem.eql(u8, t.node_id, "t2")) found2 = true;
+    }
+    try std.testing.expect(found1 and found2);
+}
+
+test "TC-EE-02-08: PARALLEL_GATEWAY join waits until all tokens arrive, then merges" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Graph: t1, t2 -> GW (join) -> t3
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t3", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "t1", .target = "gw", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "t2", .target = "gw", .condition = null, .is_default = false },
+        .{ .id = "e3", .source = "gw", .target = "t3", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    // Only one token has arrived
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b1" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    // Not all arrived, should park
+    const result1 = processNodeEntry(allocator, graph, state, "gw") catch unreachable;
+    try std.testing.expect(result1.tokens.len == 1);
+    // Now both tokens arrive
+    const state2 = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b1" }, .{ .node_id = "gw", .branch_id = "b2" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result2 = processNodeEntry(allocator, graph, state2, "gw") catch unreachable;
+    // Should merge to one token on t3
+    try std.testing.expect(result2.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result2.tokens[0].node_id, "t3"));
+}
+
+test "TC-EE-02-09: unknown event type → UnknownEventType error" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{};
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const event = TransitionEvent{ .unknown = .{ .event_type = "foo" } };
+    const result = transition(allocator, graph, state, event);
+    try std.testing.expectError(TransitionError.UnknownEventType, result);
+}
+
+test "TC-EE-02-10: token on missing node → TokenOnMissingNode error" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Graph: only node is "start"
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{};
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "missing", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const event = TransitionEvent{ .instance_started = .{
+        .initial_variables = std.json.ObjectMap.init(allocator),
+        .start_node_id = "start",
+    }};
+    const result = transition(allocator, graph, state, event);
+    try std.testing.expectError(TransitionError.TokenOnMissingNode, result);
+}
+
+test "TC-EE-02-11: same inputs called twice → identical output (determinism)" {
+    // ...existing code...
+    // ...existing code...
+    const allocator = std.testing.allocator;
+    // Minimal graph: START -> HUMAN_TASK
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "task1", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "task1", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    var initial_vars = std.json.ObjectMap.init(allocator);
+    defer initial_vars.deinit();
+    const event = TransitionEvent{ .instance_started = .{
+        .initial_variables = initial_vars,
+        .start_node_id = "start",
+    }};
+    const result1 = transition(allocator, graph, state, event) catch unreachable;
+    const result2 = transition(allocator, graph, state, event) catch unreachable;
+    // Should be identical
+    try std.testing.expect(result1.tokens.len == result2.tokens.len);
+    try std.testing.expect(std.mem.eql(u8, result1.tokens[0].node_id, result2.tokens[0].node_id));
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests (TC-EE-06-01 through TC-EE-06-05) — Parallel Gateway Split
+// ---------------------------------------------------------------------------
+
+test "TC-EE-06-01: PARALLEL_GATEWAY split with 2 edges creates 2 tokens and 1 PARALLEL_SPLIT event" {
+    const allocator = std.testing.allocator;
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "gw", .target = "t1", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result = processNodeEntry(allocator, graph, state, "gw") catch unreachable;
+    try std.testing.expect(result.tokens.len == 2);
+    try std.testing.expect(result.pending_events.len == 1);
+    _ = result.pending_events[0].parallel_split; // asserts active tag is .parallel_split
+}
+
+test "TC-EE-06-02: PARALLEL_GATEWAY split with 3 edges creates 3 tokens with unique branch_ids" {
+    const allocator = std.testing.allocator;
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t3", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "gw", .target = "t1", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
+        .{ .id = "e3", .source = "gw", .target = "t3", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result = processNodeEntry(allocator, graph, state, "gw") catch unreachable;
+    try std.testing.expect(result.tokens.len == 3);
+    try std.testing.expect(!std.mem.eql(u8, result.tokens[0].branch_id, result.tokens[1].branch_id));
+    try std.testing.expect(!std.mem.eql(u8, result.tokens[0].branch_id, result.tokens[2].branch_id));
+    try std.testing.expect(!std.mem.eql(u8, result.tokens[1].branch_id, result.tokens[2].branch_id));
+}
+
+test "TC-EE-06-03: original arriving token removed after parallel split" {
+    const allocator = std.testing.allocator;
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "gw", .target = "t1", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "gw", .target = "t2", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "arriving" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result = processNodeEntry(allocator, graph, state, "gw") catch unreachable;
+    // 1 arriving token → 2 split tokens (not 3)
+    try std.testing.expect(result.tokens.len == 2);
+    // No token should remain on gateway node
+    for (result.tokens) |t| {
+        try std.testing.expect(!std.mem.eql(u8, t.node_id, "gw"));
+    }
+}
+
+test "TC-EE-06-04: each new token targets correct next node per definition edges" {
+    const allocator = std.testing.allocator;
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "ta", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "tb", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "gw", .target = "ta", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "gw", .target = "tb", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result = processNodeEntry(allocator, graph, state, "gw") catch unreachable;
+    try std.testing.expect(result.tokens.len == 2);
+    var found_ta = false;
+    var found_tb = false;
+    for (result.tokens) |t| {
+        if (std.mem.eql(u8, t.node_id, "ta")) found_ta = true;
+        if (std.mem.eql(u8, t.node_id, "tb")) found_tb = true;
+    }
+    try std.testing.expect(found_ta and found_tb);
+}
+
+test "TC-EE-06-05: PARALLEL_SPLIT event records correct source_node_id and edge_count" {
+    const allocator = std.testing.allocator;
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "gw2", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "n1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "n2", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "gw2", .target = "n1", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "gw2", .target = "n2", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "gw2", .branch_id = "b" }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+    };
+    const result = processNodeEntry(allocator, graph, state, "gw2") catch unreachable;
+    try std.testing.expect(result.pending_events.len == 1);
+    const payload = result.pending_events[0].parallel_split;
+    try std.testing.expect(std.mem.eql(u8, payload.source_node_id, "gw2"));
+    try std.testing.expect(payload.edge_count == 2);
+    try std.testing.expect(payload.token_ids.len == 2);
+    try std.testing.expect(payload.target_node_ids.len == 2);
+    // Each result token's branch_id must appear in payload.token_ids
+    for (result.tokens) |t| {
+        var found = false;
+        for (payload.token_ids) |tid| {
+            if (std.mem.eql(u8, tid, t.branch_id)) { found = true; break; }
+        }
+        try std.testing.expect(found);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests (TC-EE-07-01 through TC-EE-07-04) — Parallel Gateway Join (EE-07)
+// ---------------------------------------------------------------------------
+
+test "TC-EE-07-01: join waits when one branch cancelled, fires when remaining active branch arrives" {
+    // Graph: split_gw(split) -> t1, t2 -> join_gw(join) -> t3
+    // Branch 0 (to t1) has been cancelled. Only branch 1 (to t2) is active.
+    // When branch 1 arrives at join_gw, join fires immediately (expected=1, arrived=1).
+    const allocator = std.testing.allocator;
+    const instance_id = [_]u8{0xAB} ** 16;
+    const instance_hex = "abababababababababababababababababab";
+    _ = instance_hex;
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "split_gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "join_gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t3", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "split_gw", .target = "t1", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "split_gw", .target = "t2", .condition = null, .is_default = false },
+        .{ .id = "e3", .source = "t1", .target = "join_gw", .condition = null, .is_default = false },
+        .{ .id = "e4", .source = "t2", .target = "join_gw", .condition = null, .is_default = false },
+        .{ .id = "e5", .source = "join_gw", .target = "t3", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    // branch_id format: "<instance_hex>/<split_gw_node_id>/<edge_index>"
+    const branch_0 = "abababababababababababababababababab/split_gw/0"; // cancelled
+    const branch_1 = "abababababababababababababababababab/split_gw/1"; // active, arrived
+
+    // State: branch_0 is cancelled, branch_1's token is on join_gw.
+    const state = InstanceState{
+        .instance_id = instance_id,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "join_gw", .branch_id = branch_1 }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{branch_0},
+    };
+
+    // processNodeEntry: expected_count = 2 - 1 = 1, arrived = 1 → FIRE.
+    const result = try processNodeEntry(allocator, graph, state, "join_gw");
+
+    // After firing: one merged token on t3.
+    try std.testing.expect(result.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "t3"));
+
+    // Exactly one PARALLEL_JOIN event must be emitted.
+    try std.testing.expect(result.pending_events.len == 1);
+    const join_payload = result.pending_events[0].parallel_join;
+    try std.testing.expect(std.mem.eql(u8, join_payload.join_node_id, "join_gw"));
+    try std.testing.expect(join_payload.branch_ids_arrived.len == 1);
+    try std.testing.expect(std.mem.eql(u8, join_payload.branch_ids_arrived[0], branch_1));
+    try std.testing.expect(join_payload.branch_ids_cancelled.len == 1);
+    try std.testing.expect(std.mem.eql(u8, join_payload.branch_ids_cancelled[0], branch_0));
+    try std.testing.expect(std.mem.eql(u8, join_payload.outgoing_token_id, result.tokens[0].branch_id));
+}
+
+test "TC-EE-07-02: join still waits when only 1 of 2 active branches has arrived" {
+    // Both branches are active (no cancellations). Only one has arrived.
+    const allocator = std.testing.allocator;
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "join_gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t3", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "t1", .target = "join_gw", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "t2", .target = "join_gw", .condition = null, .is_default = false },
+        .{ .id = "e3", .source = "join_gw", .target = "t3", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const branch_0 = "abababababababababababababababababab/split_gw/0";
+    const state = InstanceState{
+        .instance_id = [_]u8{0xAB} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{}, // no cancellations
+    };
+
+    // expected_count = 2, arrived = 1 → wait (park).
+    const result = try processNodeEntry(allocator, graph, state, "join_gw");
+    try std.testing.expect(result.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "join_gw"));
+    try std.testing.expect(result.pending_events.len == 0);
+}
+
+test "TC-EE-07-03: all-branches-cancelled path → INSTANCE_CANCELLED event, status CANCELLED" {
+    // Both branches cancelled, no token arrives at join. EE-08 will invoke
+    // processNodeEntry on join_gw with arrived_count=0, expected_count=0 → step f.
+    const allocator = std.testing.allocator;
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "join_gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t3", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "t1", .target = "join_gw", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "t2", .target = "join_gw", .condition = null, .is_default = false },
+        .{ .id = "e3", .source = "join_gw", .target = "t3", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const branch_0 = "abababababababababababababababababab/split_gw/0";
+    const branch_1 = "abababababababababababababababababab/split_gw/1";
+
+    // Both branches cancelled, EE-08 places a stray token on join_gw to trigger
+    // re-evaluation. Step f detects expected_count == 0 and cascades to CANCELLED.
+    const state_with_stray = InstanceState{
+        .instance_id = [_]u8{0xAB} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{ branch_0, branch_1 },
+    };
+
+    const result = try processNodeEntry(allocator, graph, state_with_stray, "join_gw");
+
+    // Status must be CANCELLED, tokens must be empty.
+    try std.testing.expect(result.status == .CANCELLED);
+    try std.testing.expect(result.tokens.len == 0);
+
+    // Exactly one INSTANCE_CANCELLED event.
+    try std.testing.expect(result.pending_events.len == 1);
+    const cancel_payload = result.pending_events[0].instance_cancelled;
+    try std.testing.expect(std.mem.eql(u8, cancel_payload.reason, "ALL_BRANCHES_CANCELLED"));
+    try std.testing.expect(cancel_payload.join_node_id != null);
+    try std.testing.expect(std.mem.eql(u8, cancel_payload.join_node_id.?, "join_gw"));
+    try std.testing.expect(cancel_payload.branch_ids_cancelled.len == 2);
+}
+
+test "TC-EE-07-04: PARALLEL_JOIN event records branch_id with edge_index 0 as outgoing_token_id" {
+    // Verifies deterministic merged_branch_id selection: the branch with
+    // edge_index segment "0" is chosen as the outgoing token id.
+    const allocator = std.testing.allocator;
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "t1", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "t2", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "join_gw", .node_type = .PARALLEL_GATEWAY, .label = null },
+        .{ .id = "t3", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "t1", .target = "join_gw", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "t2", .target = "join_gw", .condition = null, .is_default = false },
+        .{ .id = "e3", .source = "join_gw", .target = "t3", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    // branch_1 arrives first (stored first in tokens), branch_0 arrives second.
+    // The merged_branch_id should be the one with edge_index "0" (branch_0).
+    const branch_0 = "abababababababababababababababababab/split_gw/0";
+    const branch_1 = "abababababababababababababababababab/split_gw/1";
+
+    const state = InstanceState{
+        .instance_id = [_]u8{0xAB} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{
+            .{ .node_id = "join_gw", .branch_id = branch_1 }, // arrived first (stored first)
+            .{ .node_id = "join_gw", .branch_id = branch_0 }, // arrived second
+        },
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
+    };
+
+    const result = try processNodeEntry(allocator, graph, state, "join_gw");
+
+    // One merged token on t3.
+    try std.testing.expect(result.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "t3"));
+
+    // Outgoing token must use branch_0 (edge_index "0").
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].branch_id, branch_0));
+
+    // PARALLEL_JOIN event.
+    try std.testing.expect(result.pending_events.len == 1);
+    const join_payload = result.pending_events[0].parallel_join;
+    try std.testing.expect(std.mem.eql(u8, join_payload.outgoing_token_id, branch_0));
+    try std.testing.expect(join_payload.branch_ids_arrived.len == 2);
+    try std.testing.expect(join_payload.branch_ids_cancelled.len == 0);
+}

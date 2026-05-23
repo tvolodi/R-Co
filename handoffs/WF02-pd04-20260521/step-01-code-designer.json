@@ -6,7 +6,7 @@
   "from_agent": "ORCH",
   "to_agent": "CODE-DESIGNER",
   "created_at": "2026-05-21T23:50:00Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 2 — Process Definition",
@@ -34,8 +34,15 @@
     ],
     "functions_to_call": ["fn:validate-completeness", "fn:register-inner-report", "fn:complete-handoff"]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Extended src/design/definition.md with a PD-04 section covering the full definition lifecycle. Added Store.deprecate() (ACTIVE→DEPRECATED) and Store.archive() (DEPRECATED→ARCHIVED) function signatures with full error sets, corrected the authoritative state transition table (removing the erroneous DRAFT→ARCHIVED and ACTIVE→ARCHIVED placeholder transitions and fixing InvalidStatusTransition HTTP status from 422 to 409), documented POST /definitions/{id}/deprecate and POST /definitions/{id}/archive HTTP routes with RBAC requirements, added an instance-start guard note referencing EE-01 and PD-08, and provided a full traceability table mapping every PD-04 acceptance criterion to its design element. The Covers header was updated to include PD-04.",
+    "artifacts_out": ["src/design/definition.md"],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV"
+  },
   "rework_count": 0,
   "max_rework": 3,
-  "completed_at": null
+  "started_at": "2026-05-21T23:55:00Z",
+  "completed_at": "2026-05-21T23:59:00Z"
 }

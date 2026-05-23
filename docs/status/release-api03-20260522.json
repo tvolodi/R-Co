@@ -1,0 +1,67 @@
+{
+  "stage": "Stage 4 — REST API (API-03)",
+  "requirement_id": "API-03",
+  "run_id": "WF02-api03-20260522",
+  "date": "2026-05-22T17:49:00Z",
+  "decision": "APPROVED",
+  "checks": {
+    "zig_build": {
+      "result": "PASS",
+      "exit_code": 0
+    },
+    "test_report": {
+      "result": "PASS",
+      "overall_result": "PASS",
+      "total": 236,
+      "passed": 147,
+      "failed": 0,
+      "api03_unit_total": 11,
+      "api03_unit_passed": 11,
+      "api03_unit_failed": 0,
+      "skipped_integration": 89,
+      "skip_reason": "BPM_TEST_DB_URL not set; documented acceptable per handoff task description and consistent with API-01 and API-02 releases",
+      "blocker_issues": 0,
+      "major_issues": 0
+    },
+    "acceptance_criteria_coverage": {
+      "result": "PASS",
+      "handler_validation_layer": {
+        "TC-API-03-03": "PASS — handleGetById non-UUID path param returns HTTP 422 INVALID_INSTANCE_ID",
+        "TC-API-03-03b": "PASS — handleGetById short string returns HTTP 422 INVALID_INSTANCE_ID",
+        "TC-API-03-09": "PASS — handleList status=UNKNOWN_STATUS returns HTTP 422 INVALID_STATUS",
+        "TC-API-03-09b": "PASS — handleList status=active (lowercase) returns HTTP 422 INVALID_STATUS",
+        "TC-API-03-10": "PASS — handleList page_size=0 returns HTTP 422 INVALID_PAGE_SIZE",
+        "TC-API-03-11": "PASS — handleList page_size=201 returns HTTP 422 INVALID_PAGE_SIZE",
+        "TC-API-03-12": "PASS — handleList invalid definition_id UUID returns HTTP 422 INVALID_DEFINITION_ID",
+        "TC-API-03-13": "PASS — handleList malformed cursor returns HTTP 422 INVALID_CURSOR",
+        "TC-API-03-14": "PASS — handleList cursor age >24h returns HTTP 410 CURSOR_EXPIRED",
+        "TC-API-03-21": "PASS — handleList cursor missing third segment returns HTTP 422 INVALID_CURSOR",
+        "DOC-INVARIANT": "PASS — handleList valid ACTIVE status passes validation"
+      },
+      "db_layer_pending": [
+        "TC-API-03-01", "TC-API-03-02", "TC-API-03-04", "TC-API-03-05",
+        "TC-API-03-06", "TC-API-03-07", "TC-API-03-08", "TC-API-03-15",
+        "TC-API-03-16", "TC-API-03-17", "TC-API-03-18", "TC-API-03-20"
+      ],
+      "db_layer_note": "Require live PostgreSQL DB via BPM_TEST_DB_URL; absent in this environment. Same condition accepted for API-01 and API-02."
+    },
+    "nfr_benchmarks": {
+      "result": "NOT_RUN",
+      "note": "zig build bench output: 'Benchmark suite — not yet implemented'. WF-02 incremental release; NFR benchmarks are scoped to WF-04 full pre-release validation. Consistent with all prior Stage 4 API incremental releases."
+    }
+  },
+  "nfr_results": {
+    "NFR-01_p99_read_ms": "not_measured_this_run",
+    "NFR-01_p99_write_ms": "not_measured_this_run",
+    "NFR-02_event_append_per_sec": "not_measured_this_run",
+    "NFR-04_10k_event_replay_sec": "not_measured_this_run"
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["API-03"],
+  "artifacts_examined": [
+    "tests/reports/WF02-api03-20260522-test-report.json",
+    "tests/specs/API-03.md",
+    "docs/status/requirement_status.json"
+  ],
+  "notes": "All handler input-validation paths for API-03 (GET /instances/:id and GET /instances) are exercised by 11 passing unit tests. Integration tests covering InstanceStore.getById() and InstanceStore.listInstances() DB paths require BPM_TEST_DB_URL which is absent from this environment; this is the same accepted condition as API-01 and API-02 releases. No failures, no BLOCKER or MAJOR issues. zig build exits 0. Release APPROVED."
+}

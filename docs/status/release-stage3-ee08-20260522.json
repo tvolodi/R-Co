@@ -1,0 +1,29 @@
+{
+  "stage": "Stage 3 — Execution Engine",
+  "requirement_ids": ["EE-08"],
+  "date": "2026-05-22T10:31:41Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01": "NOT_MEASURED — bench suite stub (not yet implemented); not a WF-02 gate",
+    "NFR-02": "NOT_MEASURED — bench suite stub (not yet implemented); not a WF-02 gate",
+    "NFR-04": "NOT_MEASURED — bench suite stub (not yet implemented); not a WF-02 gate",
+    "bench_exit_code": 0
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["EE-08"],
+  "test_summary": {
+    "total_test_cases": 5,
+    "passed": 5,
+    "failed": 0,
+    "integration_exit_code": 0,
+    "unit_exit_code": 0
+  },
+  "test_cases": [
+    { "id": "TC-EE-08-01", "status": "PASS", "description": "cancel ACTIVE instance sets status CANCELLED and cancels open tasks" },
+    { "id": "TC-EE-08-02", "status": "PASS", "description": "cancel already-CANCELLED instance returns InstanceAlreadyTerminated" },
+    { "id": "TC-EE-08-03", "status": "PASS", "description": "cancel non-existent instance returns InstanceNotFound" },
+    { "id": "TC-EE-08-04", "status": "PASS", "description": "cancel instance with no open tasks still appends INSTANCE_CANCELLED event" },
+    { "id": "TC-EE-08-05", "status": "PASS", "description": "concurrent cancel — first writer wins, second gets InstanceAlreadyTerminated" }
+  ],
+  "notes": "NFR benchmarks (zig build bench) produce no measurements — bench.zig is a stub that exits 0. Full NFR measurement deferred to WF-04 pre-release gate. All EE-08 MUST acceptance criteria are covered by passing integration tests. Build compiles cleanly (zig build exits 0)."
+}

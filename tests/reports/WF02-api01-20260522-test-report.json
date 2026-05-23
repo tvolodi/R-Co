@@ -1,0 +1,32 @@
+{
+  "run_id": "WF02-api01-20260522",
+  "requirement_ids": ["API-01"],
+  "ran_at": "2026-05-22T15:25:37Z",
+  "command": "zig build test",
+  "overall": "PASS",
+  "tests": [
+    { "name": "TC-API-01-01: problemBadRequest produces status=400 and type URI contains bad-request", "result": "PASS", "error": null },
+    { "name": "TC-API-01-02: problemNotFound produces status=404", "result": "PASS", "error": null },
+    { "name": "TC-API-01-03: problemConflict produces status=409", "result": "PASS", "error": null },
+    { "name": "TC-API-01-04: problemUnprocessable produces status=422", "result": "PASS", "error": null },
+    { "name": "TC-API-01-05: problemUnsupportedMediaType produces status=415", "result": "PASS", "error": null },
+    { "name": "TC-API-01-06: problemInternalError produces status=500", "result": "PASS", "error": null },
+    { "name": "TC-API-01-07: problemServiceUnavailable produces status=503", "result": "PASS", "error": null },
+    { "name": "TC-API-01-08: serialise outputs valid JSON with all 4 RFC 9457 fields", "result": "PASS", "error": null },
+    { "name": "TC-API-01-09: serialise JSON contains correct numeric status value", "result": "PASS", "error": null },
+    { "name": "TC-API-01-10: POST with Content-Type application/json passes (returns null)", "result": "PASS", "error": null },
+    { "name": "TC-API-01-11: POST with Content-Type text/plain returns 415 ProblemDetails", "result": "PASS", "error": null },
+    { "name": "TC-API-01-12: POST with no Content-Type returns 415 ProblemDetails", "result": "PASS", "error": null },
+    { "name": "TC-API-01-13: PUT with Content-Type application/json and body passes (returns null)", "result": "PASS", "error": null },
+    { "name": "TC-API-01-14: PUT with no body returns 400 ProblemDetails", "result": "PASS", "error": null },
+    { "name": "TC-API-01-15: GET passes regardless of Content-Type (returns null)", "result": "PASS", "error": null },
+    { "name": "TC-API-01-16: DELETE passes regardless of Content-Type (returns null)", "result": "PASS", "error": null },
+    { "name": "TC-API-01-17: PATCH with Content-Type application/json passes (returns null)", "result": "PASS", "error": null },
+    { "name": "TC-API-01-18: PATCH with wrong Content-Type returns 415 ProblemDetails", "result": "PASS", "error": null },
+    { "name": "TC-API-01-19: ok() returns status_code 200", "result": "PASS", "error": null },
+    { "name": "TC-API-01-20: created() returns status_code 201", "result": "PASS", "error": null },
+    { "name": "TC-API-01-21: noContent() returns status_code 204 and empty body", "result": "PASS", "error": null },
+    { "name": "TC-API-01-22: problemResponse() returns status_code matching ProblemDetails status", "result": "PASS", "error": null }
+  ],
+  "issues": []
+}

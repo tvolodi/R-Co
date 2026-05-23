@@ -5,13 +5,17 @@
 //! has already validated the session before invoking these functions.
 //!
 //! Route registration (wire in router.zig / main.zig once HTTP layer is ready — Stage 4):
-//!   GET /api/v1/definitions/:id             → handleGetById
-//!   GET /api/v1/definitions                 → handleList
-//!   GET /api/v1/definitions/active/:name    → handleGetActiveByName
+//!   GET  /api/v1/definitions/:id               → handleGetById
+//!   GET  /api/v1/definitions                   → handleList
+//!   GET  /api/v1/definitions/active/:name      → handleGetActiveByName
+//!   POST /api/v1/definitions/:id/deprecate     → handleDeprecate
+//!   POST /api/v1/definitions/:id/archive       → handleArchive
 
 const std = @import("std");
 const definition_store = @import("../../definition/store.zig");
 const export_import = @import("../../definition/export_import.zig");
+const graph_mod = @import("../../definition/graph.zig");
+const pagination = @import("../pagination.zig");
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -37,6 +41,16 @@ pub const HandlerResult = struct {
     status_code: u16,
     /// JSON-encoded response body; owned by the caller allocator.
     body: []const u8,
+};
+
+/// Query parameters accepted by GET /api/v1/definitions/search (PD-10).
+pub const SearchQueryParams = struct {
+    /// The search query string; null if `q=` is absent from the URL.
+    q: ?[]const u8,
+    /// Page size limit; null or 0 → default 20.
+    limit: ?u32,
+    /// Page offset; null → default 0.
+    offset: ?u32,
 };
 
 // ---------------------------------------------------------------------------
@@ -92,19 +106,30 @@ pub fn handleList(
     };
 
     // Validate ?page_size=.
-    const effective_page_size: u8 = blk: {
-        const ps = params.page_size orelse break :blk 50;
-        if (ps == 0 or ps > 200) return errorResult(allocator, 422, "page_size must be between 1 and 200");
-        break :blk @as(u8, @intCast(ps));
+    const effective_page_size_u16 = pagination.validatePageSize(params.page_size) catch |err| switch (err) {
+        error.PageSizeTooLarge => return errorResult(allocator, 422, "page_size must be between 1 and 200"),
     };
+    const effective_page_size: u8 = @intCast(effective_page_size_u16);
 
-    // Decode ?cursor= (base64url → i64 microseconds).
+    // Decode ?cursor= (base64url → "D:{created_at_us}:{cursor_created_at_us}")
+    // expiry_ts_offset = 2 (byte index of the cursor creation timestamp after "D:" prefix).
     const after_created: ?i64 = blk: {
         const cursor_str = params.cursor orelse break :blk null;
-        const decoded = decodeCursor(allocator, cursor_str) catch
+        const cursor = pagination.decodeCursor(allocator, cursor_str, "D:", 2, pagination.CURSOR_EXPIRY_US) catch |err| switch (err) {
+            error.InvalidBase64 => return errorResult(allocator, 422, "invalid cursor"),
+            error.WrongEndpoint => return errorResult(allocator, 422, "invalid cursor"),
+            error.Expired => return errorResult(allocator, 410, "cursor expired"),
+            error.OutOfMemory => return errorResult(allocator, 500, "internal server error"),
+        };
+        defer cursor.deinit();
+
+        // Format: "D:{cursor_created_at_us}:{created_at_us}"
+        // Extract created_at_us (the second segment) for store pagination.
+        const after_prefix = cursor.inner[2..]; // skip "D:"
+        const colon = std.mem.indexOfScalar(u8, after_prefix, ':') orelse
             return errorResult(allocator, 422, "invalid cursor");
-        defer allocator.free(decoded);
-        const ts = std.fmt.parseInt(i64, decoded, 10) catch
+        const created_at_str = after_prefix[colon + 1 ..];
+        const ts = std.fmt.parseInt(i64, created_at_str, 10) catch
             return errorResult(allocator, 422, "invalid cursor");
         break :blk ts;
     };
@@ -127,10 +152,16 @@ pub fn handleList(
     }
 
     // Encode next-page cursor when the full page was returned.
-    const next_cursor: ?[]const u8 = if (defs.len == @as(usize, effective_page_size))
-        encodeCursor(allocator, defs[defs.len - 1].created_at) catch null
-    else
-        null;
+    // Format: base64url("D:{now_us}:{created_at_us}") with "D:" prefix and 24h expiry.
+    const next_cursor: ?[]const u8 = if (defs.len == @as(usize, effective_page_size)) blk: {
+        const last = defs[defs.len - 1];
+        const now_us = currentMicrosecondTimestamp();
+        const created_at_str = std.fmt.allocPrint(allocator, "{d}", .{last.created_at}) catch break :blk null;
+        defer allocator.free(created_at_str);
+        const raw = pagination.buildRawCursor(allocator, "D:", now_us, created_at_str) catch break :blk null;
+        defer allocator.free(raw);
+        break :blk pagination.encodeCursor(allocator, raw) catch null;
+    } else null;
     defer if (next_cursor) |c| allocator.free(c);
 
     const body = serializeListResponse(allocator, defs, next_cursor) catch
@@ -150,6 +181,509 @@ pub fn handleGetActiveByName(
 ) HandlerResult {
     const def = store.getActiveByName(allocator, name) catch |err| switch (err) {
         error.DefinitionNotFound => return errorResult(allocator, 404, "not found"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service unavailable"),
+        else => return errorResult(allocator, 500, "internal server error"),
+    };
+    defer freeDefinition(allocator, def);
+
+    const body = serializeDefinition(allocator, def) catch
+        return errorResult(allocator, 500, "serialization failed");
+    return .{ .status_code = 200, .body = body };
+}
+
+/// GET /api/v1/definitions/search?q={query}&limit={n}&offset={n}
+///
+/// NOTE: register this route BEFORE /api/v1/definitions/:id in the router so
+/// "search" is not consumed as a :id path parameter.
+///
+/// Success (any result count including zero): HTTP 200 + JSON array.
+/// Empty query: HTTP 422 + {"error": "query_empty"}.
+/// Query too long: HTTP 422 + {"error": "query_too_long"}.
+/// Limit out of range: HTTP 422 + {"error": "limit_out_of_range"}.
+/// Pool exhausted: HTTP 503 + {"error": "service_unavailable"}.
+/// Server error: HTTP 500 + {"error": "internal_error"}.
+pub fn handleSearch(
+    store: *definition_store.Store,
+    allocator: std.mem.Allocator,
+    params: SearchQueryParams,
+) HandlerResult {
+    // Step 1: q absent or empty → 422.
+    const q = params.q orelse return errorResult(allocator, 422, "query_empty");
+    if (q.len == 0) return errorResult(allocator, 422, "query_empty");
+
+    // Step 2: q too long → 422.
+    if (q.len > 512) return errorResult(allocator, 422, "query_too_long");
+
+    // Step 3: limit validation (default 20, max 100).
+    const effective_limit: u32 = blk: {
+        const lim = params.limit orelse break :blk 20;
+        if (lim == 0) break :blk 20;
+        if (lim > 100) return errorResult(allocator, 422, "limit_out_of_range");
+        break :blk lim;
+    };
+
+    // Step 4: offset (default 0).
+    const effective_offset: u32 = params.offset orelse 0;
+
+    // Step 5: Build SearchOptions.
+    const opts = definition_store.SearchOptions{
+        .query = q,
+        .limit = effective_limit,
+        .offset = effective_offset,
+    };
+
+    // Step 6: Call Store.search().
+    const results = store.search(allocator, opts) catch |err| switch (err) {
+        error.QueryEmpty => return errorResult(allocator, 422, "query_empty"),
+        error.QueryTooLong => return errorResult(allocator, 422, "query_too_long"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer {
+        for (results) |sr| freeDefinition(allocator, sr.definition);
+        allocator.free(results);
+    }
+
+    // Step 9: Serialize to JSON array (HTTP 200 even when empty).
+    const body = serializeSearchResults(allocator, results) catch
+        return errorResult(allocator, 500, "serialization failed");
+    return .{ .status_code = 200, .body = body };
+}
+
+// ---------------------------------------------------------------------------
+// New request body types (API-02)
+// ---------------------------------------------------------------------------
+
+/// Body for POST /api/v1/definitions  (PD-01 create).
+pub const CreateDefinitionBody = struct {
+    /// Non-empty, ≤ 255 characters (PD-01).
+    name: []const u8,
+    /// Non-empty string (PD-01).
+    version: []const u8,
+    /// Optional human-readable description.
+    description: ?[]const u8,
+    /// The definition graph; must have `nodes` and `edges` arrays (PD-02).
+    graph: definition_store.DefinitionGraph,
+    /// Optional process stage label (PD-07).
+    stage: ?[]const u8,
+};
+
+/// Body for PUT /api/v1/definitions/:id  (full replacement, DRAFT only).
+pub const PutDefinitionBody = struct {
+    name: []const u8,
+    version: []const u8,
+    description: ?[]const u8,
+    graph: definition_store.DefinitionGraph,
+    stage: ?[]const u8,
+};
+
+/// Body for PATCH /api/v1/definitions/:id  (partial update, DRAFT only).
+/// Any field omitted (null) is left unchanged in the stored record.
+pub const PatchDefinitionBody = struct {
+    name: ?[]const u8,
+    version: ?[]const u8,
+    description: ?[]const u8,
+    graph: ?definition_store.DefinitionGraph,
+    stage: ?[]const u8,
+};
+
+// ---------------------------------------------------------------------------
+// New write handlers (API-02)
+// ---------------------------------------------------------------------------
+
+/// POST /api/v1/definitions
+///
+/// Creates a new process definition with status DRAFT (PD-01).
+/// Authorisation: PROCESS_DESIGNER or PLATFORM_ADMIN (enforced upstream).
+///
+/// Success:            HTTP 201 + JSON Definition body.
+/// Name+ver conflict:  HTTP 409.
+/// Validation failure: HTTP 422 + violations array.
+/// Pool exhausted:     HTTP 503.
+/// Server error:       HTTP 500.
+pub fn handleCreate(
+    store: *definition_store.Store,
+    allocator: std.mem.Allocator,
+    body: CreateDefinitionBody,
+    actor_id: definition_store.Uuid,
+) HandlerResult {
+    const params = definition_store.CreateParams{
+        .name = body.name,
+        .version = body.version,
+        .description = body.description,
+        .graph = body.graph,
+        .created_by = actor_id,
+        .stage = body.stage,
+    };
+
+    const def = store.create(allocator, params) catch |err| switch (err) {
+        error.NameInvalid => return errorResult(allocator, 422, "name_invalid"),
+        error.VersionEmpty => return errorResult(allocator, 422, "version_empty"),
+        error.GraphStructureInvalid => return errorResult(allocator, 422, "graph_structure_invalid"),
+        error.GraphValidationFailed => {
+            const violations = store.lastViolations();
+            const body_str = serializeViolations(allocator, violations, 422) catch
+                return errorResult(allocator, 500, "serialization failed");
+            return .{ .status_code = 422, .body = body_str };
+        },
+        error.DuplicateNameVersion => return errorResult(allocator, 409, "duplicate_name_version"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer freeDefinition(allocator, def);
+
+    const resp_body = serializeDefinition(allocator, def) catch
+        return errorResult(allocator, 500, "serialization failed");
+    return .{ .status_code = 201, .body = resp_body };
+}
+
+/// PUT /api/v1/definitions/:id
+///
+/// Full replacement of a DRAFT definition (PD-03).
+/// Authorisation: PROCESS_DESIGNER or PLATFORM_ADMIN (enforced upstream).
+///
+/// Success:            HTTP 200 + JSON Definition body.
+/// Not found:          HTTP 404.
+/// Status ≠ DRAFT:     HTTP 409 + current_status field.
+/// Validation failure: HTTP 422 + violations array.
+/// Pool exhausted:     HTTP 503.
+/// Server error:       HTTP 500.
+pub fn handlePut(
+    store: *definition_store.Store,
+    allocator: std.mem.Allocator,
+    id_str: []const u8,
+    body: PutDefinitionBody,
+) HandlerResult {
+    const id = parseUuid(id_str) catch {
+        return errorResult(allocator, 422, "invalid_id_format");
+    };
+
+    const params = definition_store.UpdateParams{
+        .name = body.name,
+        .version = body.version,
+        .description = body.description,
+        .graph = body.graph,
+        .stage = body.stage,
+    };
+
+    const def = store.update(allocator, id, params) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+        error.NotDraft => {
+            // We cannot retrieve the current status from the error value alone
+            // (the Store consumed it).  Emit a static 409 response with a
+            // known_status placeholder; the integration layer can populate it.
+            const resp = std.fmt.allocPrint(
+                allocator,
+                "{{\"error\":\"not_draft\",\"current_status\":\"unknown\"}}",
+                .{},
+            ) catch "{\"error\":\"not_draft\"}";
+            return .{ .status_code = 409, .body = resp };
+        },
+        error.NameInvalid => return errorResult(allocator, 422, "name_invalid"),
+        error.VersionEmpty => return errorResult(allocator, 422, "version_empty"),
+        error.GraphValidationFailed => {
+            const violations = store.lastViolations();
+            const body_str = serializeViolations(allocator, violations, 422) catch
+                return errorResult(allocator, 500, "serialization failed");
+            return .{ .status_code = 422, .body = body_str };
+        },
+        error.DuplicateNameVersion => return errorResult(allocator, 409, "duplicate_name_version"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer freeDefinition(allocator, def);
+
+    const resp_body = serializeDefinition(allocator, def) catch
+        return errorResult(allocator, 500, "serialization failed");
+    return .{ .status_code = 200, .body = resp_body };
+}
+
+/// PATCH /api/v1/definitions/:id
+///
+/// Partial update of a DRAFT definition.  Only supplied (non-null) fields are
+/// updated (PD-03).
+/// Authorisation: PROCESS_DESIGNER or PLATFORM_ADMIN (enforced upstream).
+///
+/// Success:            HTTP 200 + JSON Definition body.
+/// Not found:          HTTP 404.
+/// Status ≠ DRAFT:     HTTP 409.
+/// Validation failure: HTTP 422 + violations array (only if graph supplied).
+/// Pool exhausted:     HTTP 503.
+/// Server error:       HTTP 500.
+pub fn handlePatch(
+    store: *definition_store.Store,
+    allocator: std.mem.Allocator,
+    id_str: []const u8,
+    body: PatchDefinitionBody,
+) HandlerResult {
+    const id = parseUuid(id_str) catch {
+        return errorResult(allocator, 422, "invalid_id_format");
+    };
+
+    const params = definition_store.UpdateParams{
+        .name = body.name,
+        .version = body.version,
+        .description = body.description,
+        .graph = body.graph,
+        .stage = body.stage,
+    };
+
+    const def = store.update(allocator, id, params) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+        error.NotDraft => {
+            const resp = std.fmt.allocPrint(
+                allocator,
+                "{{\"error\":\"not_draft\",\"current_status\":\"unknown\"}}",
+                .{},
+            ) catch "{\"error\":\"not_draft\"}";
+            return .{ .status_code = 409, .body = resp };
+        },
+        error.NameInvalid => return errorResult(allocator, 422, "name_invalid"),
+        error.VersionEmpty => return errorResult(allocator, 422, "version_empty"),
+        error.GraphValidationFailed => {
+            const violations = store.lastViolations();
+            const body_str = serializeViolations(allocator, violations, 422) catch
+                return errorResult(allocator, 500, "serialization failed");
+            return .{ .status_code = 422, .body = body_str };
+        },
+        error.DuplicateNameVersion => return errorResult(allocator, 409, "duplicate_name_version"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer freeDefinition(allocator, def);
+
+    const resp_body = serializeDefinition(allocator, def) catch
+        return errorResult(allocator, 500, "serialization failed");
+    return .{ .status_code = 200, .body = resp_body };
+}
+
+/// DELETE /api/v1/definitions/:id
+///
+/// Status-dependent delete (PD-04):
+///   DRAFT      → hard delete (HTTP 204, no body).
+///   ACTIVE     → archive via deprecate+archive path (HTTP 200 + Definition).
+///   DEPRECATED → archive (HTTP 200 + Definition).
+///   ARCHIVED   → HTTP 409 already_archived.
+///   Not found  → HTTP 404.
+///
+/// Authorisation: PLATFORM_ADMIN only (enforced upstream).
+pub fn handleDelete(
+    store: *definition_store.Store,
+    allocator: std.mem.Allocator,
+    id_str: []const u8,
+) HandlerResult {
+    const id = parseUuid(id_str) catch {
+        return errorResult(allocator, 422, "invalid_id_format");
+    };
+
+    // Read current status to dispatch to the correct Store method.
+    const current = store.getById(allocator, id) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    const current_status = current.status;
+    freeDefinition(allocator, current);
+
+    switch (current_status) {
+        .DRAFT => {
+            store.hardDelete(allocator, id) catch |err| switch (err) {
+                error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+                error.NotDraft => return errorResult(allocator, 409, "not_draft"),
+                error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+                else => return errorResult(allocator, 500, "internal_error"),
+            };
+            // HTTP 204: no body.
+            const empty = allocator.dupe(u8, "") catch "";
+            return .{ .status_code = 204, .body = empty };
+        },
+        .ACTIVE => {
+            // OQ-1 resolution: DELETE on ACTIVE = deprecate then archive in two calls.
+            // Both run in the same request; the second call receives DEPRECATED status.
+            _ = store.deprecate(allocator, id) catch |err| switch (err) {
+                error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+                error.InvalidStatusTransition => return errorResult(allocator, 409, "invalid_status_transition"),
+                error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+                else => return errorResult(allocator, 500, "internal_error"),
+            };
+            const archived_def = store.archive(allocator, id) catch |err| switch (err) {
+                error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+                error.InvalidStatusTransition => return errorResult(allocator, 409, "invalid_status_transition"),
+                error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+                else => return errorResult(allocator, 500, "internal_error"),
+            };
+            defer freeDefinition(allocator, archived_def);
+            const resp_body = serializeDefinition(allocator, archived_def) catch
+                return errorResult(allocator, 500, "serialization failed");
+            return .{ .status_code = 200, .body = resp_body };
+        },
+        .DEPRECATED => {
+            const archived_def = store.archive(allocator, id) catch |err| switch (err) {
+                error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+                error.InvalidStatusTransition => return errorResult(allocator, 409, "invalid_status_transition"),
+                error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+                else => return errorResult(allocator, 500, "internal_error"),
+            };
+            defer freeDefinition(allocator, archived_def);
+            const resp_body = serializeDefinition(allocator, archived_def) catch
+                return errorResult(allocator, 500, "serialization failed");
+            return .{ .status_code = 200, .body = resp_body };
+        },
+        .ARCHIVED => {
+            const resp = std.fmt.allocPrint(
+                allocator,
+                "{{\"error\":\"already_archived\"}}",
+                .{},
+            ) catch "{\"error\":\"already_archived\"}";
+            return .{ .status_code = 409, .body = resp };
+        },
+    }
+}
+
+/// POST /api/v1/definitions/:id/activate
+///
+/// Transitions DRAFT → ACTIVE (PD-03).
+/// Idempotent: activating an already-ACTIVE definition returns HTTP 200.
+/// Re-runs PD-02 graph validation on the current stored graph before
+/// calling Store.activate() (per API-02 AC).
+/// Authorisation: PROCESS_DESIGNER or PLATFORM_ADMIN (enforced upstream).
+///
+/// Success (DRAFT→ACTIVE or already ACTIVE): HTTP 200 + JSON Definition.
+/// Not found:          HTTP 404.
+/// Status ≠ DRAFT/ACTIVE: HTTP 409.
+/// Graph re-validation failure: HTTP 422 + violations array.
+/// Pool exhausted:     HTTP 503.
+/// Server error:       HTTP 500.
+pub fn handleActivate(
+    store: *definition_store.Store,
+    allocator: std.mem.Allocator,
+    id_str: []const u8,
+) HandlerResult {
+    const id = parseUuid(id_str) catch {
+        return errorResult(allocator, 422, "invalid_id_format");
+    };
+
+    // Fetch current definition to re-run graph validation (API-02 AC).
+    const current = store.getById(allocator, id) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer freeDefinition(allocator, current);
+
+    // Re-run graph validation on current stored graph before activating.
+    // The graph stored in the Definition struct is the in-memory stub (empty
+    // nodes/edges) because pg.zig does not yet parse JSONB rows.  When real DB
+    // rows are delivered, this will validate the actual stored graph.
+    const graph_to_validate = current.graph;
+    store.clearLastViolations();
+
+    const vresult = graph_mod.validateGraph(allocator, graph_to_validate) catch
+        return errorResult(allocator, 500, "internal_error");
+    if (!vresult.valid) {
+        store.last_violations = vresult.violations;
+        const body_str = serializeViolations(allocator, store.lastViolations(), 422) catch
+            return errorResult(allocator, 500, "serialization failed");
+        return .{ .status_code = 422, .body = body_str };
+    }
+    allocator.free(vresult.violations);
+
+    const def = store.activate(allocator, id) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
+        error.AlreadyActive => {
+            // Idempotent: return the current definition (already fetched above, but
+            // freed via defer; re-fetch to avoid use-after-free).
+            const active_def = store.getById(allocator, id) catch
+                return errorResult(allocator, 500, "internal_error");
+            defer freeDefinition(allocator, active_def);
+            const resp_body = serializeDefinition(allocator, active_def) catch
+                return errorResult(allocator, 500, "serialization failed");
+            return .{ .status_code = 200, .body = resp_body };
+        },
+        error.NotDraft => {
+            const resp = std.fmt.allocPrint(
+                allocator,
+                "{{\"error\":\"not_draft\",\"current_status\":\"unknown\"}}",
+                .{},
+            ) catch "{\"error\":\"not_draft\"}";
+            return .{ .status_code = 409, .body = resp };
+        },
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer freeDefinition(allocator, def);
+
+    const resp_body = serializeDefinition(allocator, def) catch
+        return errorResult(allocator, 500, "serialization failed");
+    return .{ .status_code = 200, .body = resp_body };
+}
+
+/// POST /api/v1/definitions/:id/deprecate
+///
+/// Transitions an ACTIVE definition to DEPRECATED (PD-04).
+/// Success:  HTTP 200 + JSON definition body.
+/// Not found: HTTP 404 + JSON error body.
+/// Invalid id: HTTP 422 + JSON error body.
+/// Invalid transition: HTTP 409 + {"error":"invalid_status_transition","message":"Only ACTIVE definitions can be deprecated"}.
+/// Pool exhausted: HTTP 503 + JSON error body.
+/// Server error: HTTP 500 + JSON error body.
+pub fn handleDeprecate(
+    store: *definition_store.Store,
+    allocator: std.mem.Allocator,
+    id_str: []const u8,
+) HandlerResult {
+    const id = parseUuid(id_str) catch {
+        return errorResult(allocator, 422, "invalid id format");
+    };
+
+    const def = store.deprecate(allocator, id) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not found"),
+        error.InvalidStatusTransition => {
+            const body = std.fmt.allocPrint(
+                allocator,
+                "{{\"error\":\"invalid_status_transition\",\"message\":\"Only ACTIVE definitions can be deprecated\"}}",
+                .{},
+            ) catch "{\"error\":\"invalid_status_transition\"}";
+            return .{ .status_code = 409, .body = body };
+        },
+        error.PoolExhausted => return errorResult(allocator, 503, "service unavailable"),
+        else => return errorResult(allocator, 500, "internal server error"),
+    };
+    defer freeDefinition(allocator, def);
+
+    const body = serializeDefinition(allocator, def) catch
+        return errorResult(allocator, 500, "serialization failed");
+    return .{ .status_code = 200, .body = body };
+}
+
+/// POST /api/v1/definitions/:id/archive
+///
+/// Transitions a DEPRECATED definition to ARCHIVED (PD-04).
+/// Success:  HTTP 200 + JSON definition body.
+/// Not found: HTTP 404 + JSON error body.
+/// Invalid id: HTTP 422 + JSON error body.
+/// Invalid transition: HTTP 409 + {"error":"invalid_status_transition","message":"Only DEPRECATED definitions can be archived"}.
+/// Pool exhausted: HTTP 503 + JSON error body.
+/// Server error: HTTP 500 + JSON error body.
+pub fn handleArchive(
+    store: *definition_store.Store,
+    allocator: std.mem.Allocator,
+    id_str: []const u8,
+) HandlerResult {
+    const id = parseUuid(id_str) catch {
+        return errorResult(allocator, 422, "invalid id format");
+    };
+
+    const def = store.archive(allocator, id) catch |err| switch (err) {
+        error.DefinitionNotFound => return errorResult(allocator, 404, "not found"),
+        error.InvalidStatusTransition => {
+            const body = std.fmt.allocPrint(
+                allocator,
+                "{{\"error\":\"invalid_status_transition\",\"message\":\"Only DEPRECATED definitions can be archived\"}}",
+                .{},
+            ) catch "{\"error\":\"invalid_status_transition\"}";
+            return .{ .status_code = 409, .body = body };
+        },
         error.PoolExhausted => return errorResult(allocator, 503, "service unavailable"),
         else => return errorResult(allocator, 500, "internal server error"),
     };
@@ -218,31 +752,26 @@ fn statusToStr(status: definition_store.DefinitionStatus) []const u8 {
 }
 
 // ---------------------------------------------------------------------------
-// Private helpers — cursor (API-06)
+// Private helpers — wall-clock time (permitted in handler layer)
 // ---------------------------------------------------------------------------
 
-/// Encode a created_at µs timestamp as a base64url-no-pad cursor string.
-/// Caller owns the returned slice.
-fn encodeCursor(allocator: std.mem.Allocator, created_at_us: i64) ![]u8 {
-    const decimal = try std.fmt.allocPrint(allocator, "{d}", .{created_at_us});
-    defer allocator.free(decimal);
-
-    const enc = std.base64.url_safe_no_pad.Encoder;
-    const encoded_len = enc.calcSize(decimal.len);
-    const buf = try allocator.alloc(u8, encoded_len);
-    _ = enc.encode(buf, decimal);
-    return buf;
-}
-
-/// Decode a base64url-no-pad cursor into the raw decimal string.
-/// Caller owns the returned slice.
-fn decodeCursor(allocator: std.mem.Allocator, cursor: []const u8) ![]u8 {
-    const dec = std.base64.url_safe_no_pad.Decoder;
-    const decoded_len = dec.calcSizeForSlice(cursor) catch return error.InvalidCursor;
-    const buf = try allocator.alloc(u8, decoded_len);
-    errdefer allocator.free(buf);
-    dec.decode(buf, cursor) catch return error.InvalidCursor;
-    return buf;
+/// Return the current wall-clock time as UTC microseconds since Unix epoch.
+/// Used only for cursor creation timestamps (not in transition.zig).
+fn currentMicrosecondTimestamp() i64 {
+    const builtin = @import("builtin");
+    if (builtin.os.tag == .windows) {
+        const windows = std.os.windows;
+        const ft: i64 = windows.ntdll.RtlGetSystemTimePrecise();
+        const unix_100ns: i64 = ft - 116_444_736_000_000_000;
+        return @divTrunc(unix_100ns, 10);
+    } else {
+        const posix = std.posix;
+        var ts: posix.timespec = undefined;
+        _ = posix.system.clock_gettime(.REALTIME, &ts);
+        const sec_us: i64 = ts.sec * 1_000_000;
+        const nsec_us: i64 = @divTrunc(ts.nsec, 1000);
+        return sec_us + nsec_us;
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -362,11 +891,65 @@ fn serializeListResponse(
     return buf.toOwnedSlice(allocator);
 }
 
+/// Serialise a []Violation slice as a JSON 422 Problem Details body.
+/// Shape: {"status":422,"errors":[{"code":"...","message":"..."},...]}
+/// Caller owns the returned slice.
+fn serializeViolations(
+    allocator: std.mem.Allocator,
+    violations: []const definition_store.Violation,
+    status_code: u16,
+) ![]u8 {
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    const hdr = try std.fmt.allocPrint(allocator, "{{\"status\":{d},\"errors\":[", .{status_code});
+    defer allocator.free(hdr);
+    try buf.appendSlice(allocator, hdr);
+
+    for (violations, 0..) |v, i| {
+        if (i > 0) try buf.append(allocator, ',');
+        try buf.appendSlice(allocator, "{\"code\":");
+        try appendJsonStr(allocator, &buf, v.code);
+        try buf.appendSlice(allocator, ",\"message\":");
+        try appendJsonStr(allocator, &buf, v.message);
+        try buf.append(allocator, '}');
+    }
+    try buf.appendSlice(allocator, "]}");
+
+    return buf.toOwnedSlice(allocator);
+}
+
 /// Build a static error response. Falls back to a literal string on allocation failure.
 fn errorResult(allocator: std.mem.Allocator, code: u16, msg: []const u8) HandlerResult {
     const body = std.fmt.allocPrint(allocator, "{{\"error\":\"{s}\"}}", .{msg}) catch
         "{\"error\":\"internal server error\"}";
     return .{ .status_code = code, .body = body };
+}
+
+/// Serialise a []SearchResult to a JSON array string (PD-10). Caller owns the result.
+/// Empty slice → "[]".
+fn serializeSearchResults(
+    allocator: std.mem.Allocator,
+    results: []const definition_store.SearchResult,
+) ![]u8 {
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    try buf.append(allocator, '[');
+    for (results, 0..) |sr, i| {
+        if (i > 0) try buf.append(allocator, ',');
+        const def_json = try serializeDefinition(allocator, sr.definition);
+        defer allocator.free(def_json);
+        try buf.appendSlice(allocator, "{\"definition\":");
+        try buf.appendSlice(allocator, def_json);
+        const rank_str = try std.fmt.allocPrint(allocator, ",\"rank\":{}", .{sr.rank});
+        defer allocator.free(rank_str);
+        try buf.appendSlice(allocator, rank_str);
+        try buf.append(allocator, '}');
+    }
+    try buf.append(allocator, ']');
+
+    return buf.toOwnedSlice(allocator);
 }
 
 // ---------------------------------------------------------------------------

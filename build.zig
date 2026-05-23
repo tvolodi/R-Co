@@ -15,10 +15,17 @@ pub fn build(b: *std.Build) void {
     const http_mod = http_dep.module("http");
     const cel_mod = cel_dep.module("cel");
 
+    const transition_mod = b.createModule(.{
+        .root_source_file = b.path("src/engine/transition.zig"),
+        .target = target,
+        .optimize = optimize,
+        // no named imports needed
+    });
     const vendor_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
         .{ .name = "cel", .module = cel_mod },
+        .{ .name = "transition", .module = transition_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -126,6 +133,17 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/main.zig"),
         .imports = vendor_imports,
     });
+
+    // bpm_src_mod: src/bpm.zig re-export shim used by engine unit tests and
+    // integration tests.  Exports .engine, .tasks, .pool, .definition, etc.
+    const bpm_src_mod = b.createModule(.{
+        .root_source_file = b.path("src/bpm.zig"),
+        .imports = &.{
+            .{ .name = "pg", .module = pg_mod },
+            .{ .name = "cel", .module = cel_mod },
+        },
+    });
+
     const definition_retrieval_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/unit/definition_retrieval_test.zig"),
@@ -159,6 +177,243 @@ pub fn build(b: *std.Build) void {
     });
     const run_export_import_unit_tests = b.addRunArtifact(export_import_unit_tests);
 
+    // PD-10 definition search handler tests (input validation — no DB required).
+    const pd10_search_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/pd10_search_unit_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_pd10_search_unit_tests = b.addRunArtifact(pd10_search_unit_tests);
+
+    // EE-03: pure transition tests (no DB) — TC-EE-03-01 through TC-EE-03-05
+    const engine_apply_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_engine_apply.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_engine_apply_tests = b.addRunArtifact(engine_apply_tests);
+
+    // EE-03: TaskStore stubs (DB tests — all SkipZigTest until test-integration)
+    const tasks_store_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_tasks_store.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_tasks_store_tests = b.addRunArtifact(tasks_store_tests);
+
+    // EE-03: GET /tasks handler — pure input-validation paths + DB stubs
+    const tasks_api_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_tasks_api.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_tasks_api_tests = b.addRunArtifact(tasks_api_tests);
+
+    // EE-05: Exclusive Gateway CEL integration tests (pure transition — no DB)
+    const engine_ee05_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_engine_ee05.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_engine_ee05_tests = b.addRunArtifact(engine_ee05_tests);
+
+    // EE-07: Parallel Gateway join tests (TC-EE-07-05 — 3-branch join via public API)
+    const engine_ee07_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_ee07_parallel_join.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_engine_ee07_tests = b.addRunArtifact(engine_ee07_tests);
+
+    // EE-09: Variable merge — pure json_schema validator and mergeVariables fast-path
+    const engine_ee09_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_ee09_merge_variables.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_engine_ee09_tests = b.addRunArtifact(engine_ee09_tests);
+
+    // EE-11: Reconstruction — compile-time structural checks (no DB required)
+    const engine_ee11_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/reconstruction_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_engine_ee11_tests = b.addRunArtifact(engine_ee11_tests);
+
+    // API-01: REST conventions unit tests (pure functions — no DB, no network)
+    // Single-module root avoids "file exists in two modules" conflicts
+    // (errors.zig is imported by relative path in both content_type.zig and response.zig).
+    //
+    // pool.zig is provided as a named import so that auth.zig (inside the api
+    // module) can reference the Pool type without escaping the module root.
+    const pool_module = b.createModule(.{
+        .root_source_file = b.path("src/db/pool.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pg", .module = pg_mod },
+        },
+    });
+    const api_mod = b.createModule(.{
+        .root_source_file = b.path("src/api/api_mod.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_module },
+        },
+    });
+    const api_conventions_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/api_conventions_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "api", .module = api_mod },
+            },
+        }),
+    });
+    const run_api_conventions_tests = b.addRunArtifact(api_conventions_tests);
+
+    // API-02: Process definition CRUD handler unit tests (pure input-validation — no DB)
+    const api02_handler_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/api02_handler_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_api02_handler_tests = b.addRunArtifact(api02_handler_tests);
+
+    // API-03: Instance management handler unit tests (pure input-validation — no DB)
+    const api03_handler_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/api03_handler_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_api03_handler_tests = b.addRunArtifact(api03_handler_tests);
+
+    // API-05: History endpoint handler unit tests (pure input-validation — no DB)
+    const api05_history_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_api05_history.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_api05_history_tests = b.addRunArtifact(api05_history_tests);
+
+    // API-06: Pagination module unit tests (pure functions — no DB)
+    // Uses the api_mod shim (src/api/api_mod.zig) to import pagination.zig
+    const api06_pagination_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_api06_pagination.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "api", .module = api_mod },
+            },
+        }),
+    });
+    const run_api06_pagination_tests = b.addRunArtifact(api06_pagination_tests);
+
+    // API-07: Input validation module unit tests (pure functions — no DB)
+    // Uses the api_mod shim (src/api/api_mod.zig) to import validation.zig
+    const api07_validation_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_api07_validation.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "api", .module = api_mod },
+            },
+        }),
+    });
+    const run_api07_validation_tests = b.addRunArtifact(api07_validation_tests);
+
+    // API-08: Bearer token auth middleware unit tests (pure early-return paths — no DB)
+    // Uses the api_mod shim (src/api/api_mod.zig) to import auth.zig.
+    // pool_module is provided so that auth.zig's @import("pool") resolves.
+    const api08_auth_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_api08_auth.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "api", .module = api_mod },
+                .{ .name = "pool", .module = pool_module },
+            },
+        }),
+    });
+    const run_api08_auth_tests = b.addRunArtifact(api08_auth_tests);
+
+    // ---------------------------------------------------------------------------
+    // `zig build test-engine` — engine unit tests only
+    // ---------------------------------------------------------------------------
+    const engine_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/engine_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_engine_tests = b.addRunArtifact(engine_tests);
+    const test_engine_step = b.step("test-engine", "Run engine unit tests");
+    test_engine_step.dependOn(&run_engine_tests.step);
+
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_db_tests.step);
@@ -169,35 +424,28 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_definition_retrieval_tests.step);
     test_step.dependOn(&run_snapshot_tests.step);
     test_step.dependOn(&run_export_import_unit_tests.step);
-
-    // ---------------------------------------------------------------------------
-    // `zig build test-engine` — engine unit tests only
-    // ---------------------------------------------------------------------------
-    const engine_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/engine_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = vendor_imports,
-        }),
-    });
-    const run_engine_tests = b.addRunArtifact(engine_tests);
-    const test_engine_step = b.step("test-engine", "Run engine unit tests");
-    test_engine_step.dependOn(&run_engine_tests.step);
+    test_step.dependOn(&run_pd10_search_unit_tests.step);
+    test_step.dependOn(&run_engine_apply_tests.step);
+    test_step.dependOn(&run_tasks_store_tests.step);
+    test_step.dependOn(&run_tasks_api_tests.step);
+    test_step.dependOn(&run_engine_ee05_tests.step);
+    test_step.dependOn(&run_engine_ee07_tests.step);
+    test_step.dependOn(&run_engine_ee09_tests.step);
+    test_step.dependOn(&run_engine_ee11_tests.step);
+    test_step.dependOn(&run_engine_tests.step);
+    test_step.dependOn(&run_api_conventions_tests.step);
+    test_step.dependOn(&run_api02_handler_tests.step);
+    test_step.dependOn(&run_api03_handler_tests.step);
+    test_step.dependOn(&run_api05_history_tests.step);
+    test_step.dependOn(&run_api06_pagination_tests.step);
+    test_step.dependOn(&run_api07_validation_tests.step);
+    test_step.dependOn(&run_api08_auth_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
     // ---------------------------------------------------------------------------
 
-    // Single module root that re-exports db/pool, event_store/store, and
-    // event_store/registry so all relative imports within those files stay
-    // within one module tree, avoiding "file exists in two modules" errors.
-    const bpm_src_mod = b.createModule(.{
-        .root_source_file = b.path("src/bpm.zig"),
-        .imports = &.{
-            .{ .name = "pg", .module = pg_mod },
-        },
-    });
+    // bpm_src_mod is declared earlier (after bpm_main_mod) and is reused here.
 
     const integration_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },

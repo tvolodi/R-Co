@@ -1,0 +1,59 @@
+{
+  "handoff_id": "api01-0002-2605-4000-a001-202605220002",
+  "run_id": "WF02-api01-20260522",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-22T15:06:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4",
+    "requirement_ids": [
+      "API-01"
+    ],
+    "related_handoff_ids": [
+      "api01-0001-2605-4000-a001-202605220001"
+    ],
+    "artifacts_in": [
+      "src/design/api_conventions.md",
+      "docs/requirements/API-01.md",
+      "docs/guides/backend_developer_guide.md",
+      "src/api/routes/definitions.zig",
+      "src/api/routes/instances.zig",
+      "src/api/routes/tasks.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement API-01 REST conventions infrastructure per the design in src/design/api_conventions.md.\n\nFiles to create:\n\n1. **src/api/errors.zig** \u2014 RFC 9457 Problem Details builder\n   - ProblemDetails struct with: type ([]const u8), title ([]const u8), status (u16), detail ([]const u8)\n   - JSON serialiser: serializeToJson(pd: ProblemDetails, allocator: std.mem.Allocator) []const u8\n   - Constructor helpers (all return ProblemDetails, no allocation):\n     - problemBadRequest(detail: []const u8) ProblemDetails\n     - problemNotFound(detail: []const u8) ProblemDetails\n     - problemConflict(detail: []const u8) ProblemDetails\n     - problemUnprocessable(detail: []const u8) ProblemDetails\n     - problemUnsupportedMediaType() ProblemDetails\n     - problemInternalError() ProblemDetails\n     - problemServiceUnavailable() ProblemDetails\n   - type URI format: \"https://bpm.example.com/problems/<slug>\" (slug = kebab-case of title)\n\n2. **src/api/middleware/content_type.zig** \u2014 Content-Type enforcement\n   - checkContentType(method: []const u8, content_type: ?[]const u8, has_body: bool) \u2014 returns ?ProblemDetails\n   - Returns null if check passes\n   - Returns HTTP 415 ProblemDetails if POST/PUT/PATCH with wrong or missing Content-Type: application/json\n   - Returns HTTP 400 ProblemDetails if PUT with no body\n\n3. **src/api/response.zig** \u2014 HTTP response helper\n   - Re-export HandlerResult type (status_code: u16, body: []const u8)\n   - ok(allocator, body: []const u8) HandlerResult \u2014 HTTP 200\n   - created(allocator, body: []const u8) HandlerResult \u2014 HTTP 201\n   - noContent() HandlerResult \u2014 HTTP 204, empty body\n   - problemResponse(allocator, pd: ProblemDetails) HandlerResult \u2014 serialises ProblemDetails to JSON body\n\nConstraints:\n- No SQL or DB changes\n- No I/O in any function\n- All functions that allocate must accept std.mem.Allocator\n- After implementing, update src/main.zig to import the new modules so they are compiled\n- Run: zig build (must exit 0)\n- Run: zig build test (must exit 0)\n- Self-review: no SQL injection risk (no SQL here), pure functions where possible",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "src/api/errors.zig exists with ProblemDetails struct and all constructor helpers",
+      "src/api/middleware/content_type.zig exists with checkContentType function",
+      "src/api/response.zig exists with HandlerResult and helper functions",
+      "All HTTP verbs for API-01 ACs are handled (415, 400, 200, 201, 204)",
+      "RFC 9457 fields present: type, title, status, detail"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented API-01 REST conventions infrastructure: src/api/errors.zig (RFC 9457 ProblemDetails + 7 constructor helpers + serialise()), src/api/middleware/content_type.zig (checkContentType pure + enforceContentType allocating), src/api/response.zig (HandlerResult canonical type + ok/created/noContent/problemResponse). Updated src/main.zig imports. zig build and zig build test both exit 0.",
+    "artifacts_out": [
+      "src/api/errors.zig",
+      "src/api/middleware/content_type.zig",
+      "src/api/response.zig",
+      "src/main.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-22T15:11:33Z",
+  "completed_at": "2026-05-22T15:16:47Z"
+}

@@ -1,0 +1,55 @@
+{
+  "run_id": "WF02-api03-20260522",
+  "requirement_ids": [
+    "API-03"
+  ],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 36,
+  "actual_minutes_total": 32.6,
+  "variance_pct": -9.4,
+  "by_step": {
+    "code-designer": {
+      "estimated": 5,
+      "actual": 4.2,
+      "variance_pct": -16.0
+    },
+    "backend-dev": {
+      "estimated": 7,
+      "actual": 4.7,
+      "variance_pct": -32.9
+    },
+    "test-designer": {
+      "estimated": 9,
+      "actual": 17.7,
+      "variance_pct": 96.7
+    },
+    "test-runner": {
+      "estimated": 12,
+      "actual": 2.3,
+      "variance_pct": -80.8
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 2.0,
+      "variance_pct": 100.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 1.7,
+      "variance_pct": -15.0
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "test-runner",
+      "difficulty": 3,
+      "old_estimate": 12,
+      "new_estimate": 7,
+      "reason": "2 consecutive D3 runs (API-02: -84.6%, API-03: -80.8%) both exceeding -25% threshold; reducing estimate by half-variance factor."
+    }
+  ],
+  "notes": "backend-dev (-32.9%): prior D3 run (API-02) was +540.4% (opposite direction) — chain broken, no adjustment. test-designer (+96.7%): prior D3 run (API-02) was -27.4% (opposite direction) — chain broken, no adjustment. test-runner (-80.8%): prior D3 run (API-02) was -84.6% (same direction, both >25%) — 2 consecutive runs trigger adjustment. release-validator (+100.0%): prior D3 run (API-02) was -66.0% (opposite direction) — chain broken, no adjustment. code-designer (-16.0%) and doc-updater (-15.0%) are within ±25% threshold, no adjustment needed.",
+  "completed_at": "2026-05-22T17:52:14Z"
+}

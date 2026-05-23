@@ -1,0 +1,53 @@
+{
+  "handoff_id": "api06003-2605-4000-8006-202605230003",
+  "run_id": "WF02-api06-20260523",
+  "workflow_id": "WF-02",
+  "sequence": 3,
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-23T10:30:00Z",
+  "started_at": "2026-05-23T10:31:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4",
+    "requirement_ids": ["API-06"],
+    "related_handoff_ids": [
+      "api06001-2605-4000-8006-202605230001",
+      "api06002-2605-4000-8006-202605230002"
+    ],
+    "artifacts_in": [
+      "src/design/api-06-pagination.md",
+      "src/api/pagination.zig",
+      "src/api/routes/tasks.zig",
+      "src/api/routes/instances.zig",
+      "src/api/routes/definitions.zig"
+    ]
+  },
+  "task": {
+    "description": "Write test specifications and unit tests for API-06 shared pagination module.\n\nAPI-06 standardizes cursor-based pagination across all list endpoints. The new src/api/pagination.zig module provides:\n- Cursor encode/decode (base64url, prefix validation, 24h expiry)\n- PageResponse(T) generic response envelope\n- validatePageSize (1-200, default 50)\n\nTest specifications (write to tests/specs/API-06.md):\n- TC-API-06-01: validatePageSize(null) returns 50 (default)\n- TC-API-06-02: validatePageSize(0) → error\n- TC-API-06-03: validatePageSize(1) → 1\n- TC-API-06-04: validatePageSize(200) → 200\n- TC-API-06-05: validatePageSize(201) → error\n- TC-API-06-06: encodeCursor / decodeCursor round-trip with valid prefix\n- TC-API-06-07: decodeCursor with invalid base64url → error\n- TC-API-06-08: decodeCursor with wrong prefix → cross-endpoint rejection\n- TC-API-06-09: decodeCursor with expired timestamp (>24h) → 410\n- TC-API-06-10: decodeCursor with malformed segments → error\n- TC-API-06-11: all list endpoints return cursor when more pages exist\n- TC-API-06-12: last page returns null cursor\n- TC-API-06-13: cursor from one endpoint rejected on another (T: prefix on I: endpoint)\n\nImplementation (write to tests/unit/test_api06_pagination.zig):\n- Unit tests for validatePageSize (all boundary conditions)\n- Unit tests for Cursor encode/decode round-trip\n- Unit tests for cursor prefix validation (cross-endpoint rejection)\n- Unit tests for cursor expiry (24h threshold)\n- Unit tests for buildRawCursor and buildRawCursorTimestampKey helpers\n- Verify existing endpoint tests still pass (cursor format changes may need updates)\n\nAcceptance criteria:\n- tests/specs/API-06.md exists\n- tests/unit/test_api06_pagination.zig exists\n- zig build test exits 0\n- All new tests pass",
+    "acceptance_criteria": [
+      "tests/specs/API-06.md exists with complete test case specifications",
+      "tests/unit/test_api06_pagination.zig exists",
+      "zig build test exits 0",
+      "Coverage for page size validation, cursor encode/decode, prefix rejection, expiry"
+    ],
+    "functions_to_call": ["fn:read-test-conventions"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specifications and unit tests for API-06 shared pagination module. Created tests/specs/API-06.md with 20 test case specifications covering page size validation, cursor encode/decode round-trips, prefix rejection, expiry, malformed inputs, and all helper functions. Created tests/unit/test_api06_pagination.zig with 36 unit tests. Added pagination to api_mod.zig exports and registered the test artifact in build.zig. All tests pass; zig build test exits 0.",
+    "artifacts_out": [
+      "tests/specs/API-06.md",
+      "tests/unit/test_api06_pagination.zig",
+      "src/api/api_mod.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-22T22:15:01Z"
+}

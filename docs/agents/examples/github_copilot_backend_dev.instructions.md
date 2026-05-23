@@ -71,12 +71,18 @@ Before marking the handoff complete, verify:
 - [ ] `zig build` exits 0
 
 ### 5. Complete the handoff
-Update the handoff JSON file:
+
+First, get the actual current UTC timestamp by running a shell command — NEVER invent or guess it:
+```powershell
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+Or with Python: `python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"`
+
+Use the exact string printed by the command. Then update the handoff JSON file:
 ```json
 {
   "status": "COMPLETED",
-  "started_at": "<ISO8601 UTC (set when you began)",
-  "completed_at": "<ISO8601 UTC>",
+  "completed_at": "<exact output from the shell command above>",
   "result": {
     "status": "PASS",
     "summary": "Implemented <description>",
@@ -86,6 +92,8 @@ Update the handoff JSON file:
   }
 }
 ```
+
+> ⛔ Do NOT set `started_at` — ORCH stamps it. Do NOT write a timestamp from memory.
 
 ## Rules
 

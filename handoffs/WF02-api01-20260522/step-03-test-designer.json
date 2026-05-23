@@ -1,0 +1,60 @@
+{
+  "handoff_id": "api01-0003-2605-4000-a001-202605220003",
+  "run_id": "WF02-api01-20260522",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-22T15:06:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 4",
+    "requirement_ids": [
+      "API-01"
+    ],
+    "related_handoff_ids": [
+      "api01-0001-2605-4000-a001-202605220001",
+      "api01-0002-2605-4000-a001-202605220002"
+    ],
+    "artifacts_in": [
+      "src/design/api_conventions.md",
+      "docs/requirements/API-01.md",
+      "src/api/errors.zig",
+      "src/api/middleware/content_type.zig",
+      "src/api/response.zig"
+    ]
+  },
+  "task": {
+    "description": "Design and write tests for API-01 REST conventions (RFC 9457 Problem Details + Content-Type enforcement).\n\nProduce:\n1. A test spec at tests/specs/API-01.md covering all acceptance criteria\n2. Unit test code at tests/unit/api_conventions_test.zig\n\nTest cases MUST cover:\n\n**ProblemDetails (errors.zig):**\n- problemBadRequest produces status=400, type URI contains 'bad-request'\n- problemNotFound produces status=404\n- problemConflict produces status=409\n- problemUnprocessable produces status=422\n- problemUnsupportedMediaType produces status=415\n- problemInternalError produces status=500\n- problemServiceUnavailable produces status=503\n- serializeToJson outputs valid JSON with all 4 RFC 9457 fields (type, title, status, detail)\n- serializeToJson JSON contains correct status numeric value\n\n**Content-Type middleware (content_type.zig):**\n- POST with Content-Type: application/json \u2192 null (pass)\n- POST with Content-Type: text/plain \u2192 415 ProblemDetails\n- POST with no Content-Type \u2192 415 ProblemDetails\n- PUT with Content-Type: application/json and body \u2192 null (pass)\n- PUT with no body \u2192 400 ProblemDetails\n- GET (no body expected) \u2192 null (pass, Content-Type not checked)\n- DELETE (no body expected) \u2192 null (pass)\n- PATCH with Content-Type: application/json \u2192 null (pass)\n- PATCH with wrong Content-Type \u2192 415 ProblemDetails\n\n**Response helpers (response.zig):**\n- ok() returns status_code=200\n- created() returns status_code=201\n- noContent() returns status_code=204 and empty body\n- problemResponse() returns correct status_code matching ProblemDetails.status\n\nNote: These are unit tests (pure functions, no DB, no HTTP server needed).\nAdd the test file to build.zig so it is compiled by `zig build test`.",
+    "acceptance_criteria": [
+      "tests/specs/API-01.md exists with all AC mapped to test cases",
+      "tests/unit/api_conventions_test.zig exists with all test cases listed above",
+      "Test file is wired into build.zig",
+      "zig build test exits 0 after adding the test file"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test spec and unit tests for API-01 (RFC 9457 Problem Details + Content-Type enforcement + response helpers). 22 test cases across 3 modules. Fixed std.mem.trimRight -> trimEnd bug in content_type.zig (Zig 0.16 API change). zig build test exits 0.",
+    "artifacts_out": [
+      "tests/specs/API-01.md",
+      "tests/unit/api_conventions_test.zig",
+      "src/api/api_mod.zig"
+    ],
+    "issues": [
+      {
+        "severity": "INFO",
+        "description": "content_type.zig used std.mem.trimRight which does not exist in Zig 0.16; fixed to std.mem.trimEnd. File was not previously compiled in any build step."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (WF02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-22T15:17:13Z",
+  "completed_at": "2026-05-22T15:24:21Z"
+}

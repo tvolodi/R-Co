@@ -1,0 +1,83 @@
+{
+  "stage": "Stage 3 — Execution Engine",
+  "run_id": "WF02-ee05-20260522",
+  "requirement_ids": ["EE-05"],
+  "date": "2026-05-22T05:56:40Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "zig_build": "EXIT 0 — no compilation errors",
+    "zig_build_test": "EXIT 0 — 74 passed, 89 skipped, 0 failed",
+    "ee05_unit_tests": "5/5 PASS (tests/unit/test_engine_ee05.zig)",
+    "integration_tests": "SKIP — BPM_TEST_DB_URL not set; EE-05 has no integration test cases defined"
+  },
+  "must_criteria_coverage": {
+    "AC1_first_match_wins": {
+      "status": "PASS",
+      "covered_by": ["TC-EE-05-01 (file)", "TC-EE-05-02 (file)", "TC-EE-05-05 (file)"]
+    },
+    "AC2_default_edge_fallback": {
+      "status": "PASS",
+      "covered_by": ["TC-EE-05-03 (file) — missing variable → false, default edge followed"],
+      "note": "Default-only gateway (spec TC-EE-05-03) and explicit non-default-all-false (spec TC-EE-05-04) covered indirectly; no dedicated tests"
+    },
+    "AC3_no_match_no_default_error": {
+      "status": "PASS",
+      "covered_by": ["TC-EE-05-04 (file) — all conditions false, no default → NoMatchingEdge"]
+    },
+    "AC4_cel_error_treated_as_false": {
+      "status": "PASS",
+      "covered_by": ["TC-EE-05-03 (file) — undefined variable → EvalError → false, default followed"]
+    },
+    "AC5_exactly_one_edge_followed": {
+      "status": "PASS",
+      "covered_by": ["TC-EE-05-05 (file) — multiple true conditions, exactly one edge followed"]
+    }
+  },
+  "coverage_gaps": [
+    {
+      "tc_id": "TC-EE-05-03 (spec)",
+      "description": "Default-only gateway — no dedicated test; covered indirectly",
+      "severity": "LOW",
+      "blocking": false
+    },
+    {
+      "tc_id": "TC-EE-05-04 (spec)",
+      "description": "Default fallback after all non-default conditions false — no dedicated test; covered indirectly by file TC-EE-05-03",
+      "severity": "LOW",
+      "blocking": false
+    },
+    {
+      "tc_id": "TC-EE-05-06 (spec)",
+      "description": "Type mismatch treated as false — no dedicated transition-level test; CEL applyCmp returns EvalError on type mismatch (code-verified)",
+      "severity": "LOW",
+      "blocking": false
+    },
+    {
+      "tc_id": "TC-EE-05-13 (spec)",
+      "description": "CEL && operator not directly tested at cel unit level",
+      "severity": "LOW",
+      "blocking": false
+    },
+    {
+      "tc_id": "TC-EE-05-14 (spec)",
+      "description": "CEL ! operator not directly tested at cel unit level",
+      "severity": "LOW",
+      "blocking": false
+    },
+    {
+      "tc_id": "TC-EE-05-16 (spec)",
+      "description": "Type mismatch in applyCmp not tested at CEL unit level",
+      "severity": "LOW",
+      "blocking": false
+    },
+    {
+      "tc_id": "TC-EE-05-17 (spec)",
+      "description": "ParseError path not tested; malformed CEL expression",
+      "severity": "LOW",
+      "blocking": false
+    }
+  ],
+  "blocking_issues": [],
+  "approved_requirements": ["EE-05"],
+  "test_report": "tests/reports/WF02-ee05-20260522-run-01.md"
+}

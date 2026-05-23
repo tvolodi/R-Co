@@ -1,0 +1,77 @@
+{
+  "report_id": "WF02-ee08-20260522-step-04-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-ee08-20260522",
+  "step": "04",
+  "created_at": "2026-05-22T10:24:26Z",
+  "summary": "Ran zig build (exit 0), zig build test (exit 0, all unit tests pass), and zig build test-integration (exit 0, 100/100 integration tests pass including all 5 EE-08 test cases). Three blockers were found and fixed before the final run: (1) cancelInstance() in instance.zig used UPDATE timers SET updated_at=NOW() but the timers table has no updated_at column — fixed to use cancelled_at=NOW(); (2) the EE-08 test fixture HUMAN_TASK node lacked the required 'role' attribute introduced by PD-05 validateNodeAttributes() — added role field; (3) definition_test.zig minimal_nodes fixture also lacked 'role', and TC-PD-02-09's EXCLUSIVE_GATEWAY edges lacked required conditions per PD-06 validateEdgeConditions() — both corrected. After fixes all 100 integration tests pass.",
+  "files_created": [
+    "tests/reports/WF02-ee08-20260522-test-report.json",
+    "docs/issue-reports/WF02-ee08-20260522-step-04-test-runner-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "src/engine/instance.zig",
+    "tests/integration/ee08_cancel_instance_test.zig",
+    "tests/integration/definition_test.zig"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build (compilation)",
+      "status": "pass",
+      "detail": "Exit code 0"
+    },
+    {
+      "name": "zig build test (unit tests)",
+      "status": "pass",
+      "detail": "Exit code 0, all unit tests passed"
+    },
+    {
+      "name": "zig build test-integration (100 tests total)",
+      "status": "pass",
+      "detail": "Exit code 0, 100/100 tests passed"
+    },
+    {
+      "name": "TC-EE-08-01: cancel ACTIVE instance sets status CANCELLED and cancels open tasks",
+      "status": "pass",
+      "detail": "PASS — instance status set to CANCELLED, open tasks cancelled, INSTANCE_CANCELLED event appended, cancelled_at set"
+    },
+    {
+      "name": "TC-EE-08-02: cancel already-CANCELLED instance returns InstanceAlreadyTerminated",
+      "status": "pass",
+      "detail": "PASS — second cancel returns CancelInstanceError.InstanceAlreadyTerminated"
+    },
+    {
+      "name": "TC-EE-08-03: cancel non-existent instance returns InstanceNotFound",
+      "status": "pass",
+      "detail": "PASS — cancel on absent UUID returns CancelInstanceError.InstanceNotFound"
+    },
+    {
+      "name": "TC-EE-08-04: cancel instance with no open tasks still appends INSTANCE_CANCELLED event",
+      "status": "pass",
+      "detail": "PASS — event appended even when no tasks exist; status set to CANCELLED"
+    },
+    {
+      "name": "TC-EE-08-05: concurrent cancel — first writer wins, second gets InstanceAlreadyTerminated",
+      "status": "pass",
+      "detail": "PASS — exactly one INSTANCE_CANCELLED event in events table; second call returns InstanceAlreadyTerminated"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "BLOCKER",
+      "description": "src/engine/instance.zig cancelInstance() step e: UPDATE timers SET updated_at=NOW() fails because the timers table has no updated_at column. Fixed: changed to cancelled_at=NOW() which is the correct column (visible in schema: cancelled_at timestamp with time zone)."
+    },
+    {
+      "severity": "BLOCKER",
+      "description": "tests/integration/ee08_cancel_instance_test.zig: HUMAN_TASK node attributes were {\"assignee_type\":\"USER\",\"assignee_ref\":\"tester\"} — missing required 'role' key. PD-05 validateNodeAttributes() introduced HUMAN_TASK_MISSING_ROLE validation. Fixed: added role:\"tester\" to attributes."
+    },
+    {
+      "severity": "BLOCKER",
+      "description": "tests/integration/definition_test.zig: shared minimal_nodes fixture had HUMAN_TASK with no attributes (null), causing TC-PD-01-01, TC-PD-01-02, TC-PD-01-04, TC-PD-02-01 to fail. Fixed: added attributes={\"role\":\"test-role\"}. TC-PD-02-09 EXCLUSIVE_GATEWAY edges had no conditions/is_default, failing PD-06 validateEdgeConditions() CHK-EC-03. Fixed: e2 gets condition=\"repeat == true\", e4 gets is_default=true."
+    }
+  ],
+  "next_steps": [
+    "Route to RELEASE-VALIDATOR (WF-02 Step 5) — all 5 EE-08 test cases pass; requirement EE-08 is ready for TESTED status update."
+  ],
+  "blockers": []
+}
