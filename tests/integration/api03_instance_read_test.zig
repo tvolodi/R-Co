@@ -577,18 +577,24 @@ test "TC-API-03-15: listInstances with status=ACTIVE returns only ACTIVE instanc
 
     // Create two ACTIVE instances and one that will be cancelled.
     const inst_a = try instance_store.create(alloc, def_id, null, "{}");
-    const id_a = inst_a.instance_id; freeInstance(alloc, inst_a);
+    const id_a = inst_a.instance_id;
+    freeInstance(alloc, inst_a);
 
     const inst_b = try instance_store.create(alloc, def_id, null, "{}");
-    const id_b = inst_b.instance_id; freeInstance(alloc, inst_b);
+    const id_b = inst_b.instance_id;
+    freeInstance(alloc, inst_b);
 
     const inst_c = try instance_store.create(alloc, def_id, null, "{}");
-    const id_c = inst_c.instance_id; freeInstance(alloc, inst_c);
+    const id_c = inst_c.instance_id;
+    freeInstance(alloc, inst_c);
     try instance_store.cancelInstance(alloc, &task_store, id_c, cancel_actor_uuid);
 
-    const hex_a = try uuidToHexStr(alloc, id_a); defer alloc.free(hex_a);
-    const hex_b = try uuidToHexStr(alloc, id_b); defer alloc.free(hex_b);
-    const hex_c = try uuidToHexStr(alloc, id_c); defer alloc.free(hex_c);
+    const hex_a = try uuidToHexStr(alloc, id_a);
+    defer alloc.free(hex_a);
+    const hex_b = try uuidToHexStr(alloc, id_b);
+    defer alloc.free(hex_b);
+    const hex_c = try uuidToHexStr(alloc, id_c);
+    defer alloc.free(hex_c);
     defer cleanupInstance(&pool, hex_a);
     defer cleanupInstance(&pool, hex_b);
     defer cleanupInstance(&pool, hex_c);
@@ -648,17 +654,23 @@ test "TC-API-03-16: listInstances with definition_id filter returns only matchin
 
     // Two instances for definition A, one for definition B.
     const inst_a1 = try instance_store.create(alloc, def_id_a, null, "{}");
-    const id_a1 = inst_a1.instance_id; freeInstance(alloc, inst_a1);
+    const id_a1 = inst_a1.instance_id;
+    freeInstance(alloc, inst_a1);
 
     const inst_a2 = try instance_store.create(alloc, def_id_a, null, "{}");
-    const id_a2 = inst_a2.instance_id; freeInstance(alloc, inst_a2);
+    const id_a2 = inst_a2.instance_id;
+    freeInstance(alloc, inst_a2);
 
     const inst_b1 = try instance_store.create(alloc, def_id_b, null, "{}");
-    const id_b1 = inst_b1.instance_id; freeInstance(alloc, inst_b1);
+    const id_b1 = inst_b1.instance_id;
+    freeInstance(alloc, inst_b1);
 
-    const hex_a1 = try uuidToHexStr(alloc, id_a1); defer alloc.free(hex_a1);
-    const hex_a2 = try uuidToHexStr(alloc, id_a2); defer alloc.free(hex_a2);
-    const hex_b1 = try uuidToHexStr(alloc, id_b1); defer alloc.free(hex_b1);
+    const hex_a1 = try uuidToHexStr(alloc, id_a1);
+    defer alloc.free(hex_a1);
+    const hex_a2 = try uuidToHexStr(alloc, id_a2);
+    defer alloc.free(hex_a2);
+    const hex_b1 = try uuidToHexStr(alloc, id_b1);
+    defer alloc.free(hex_b1);
     defer cleanupInstance(&pool, hex_a1);
     defer cleanupInstance(&pool, hex_a2);
     defer cleanupInstance(&pool, hex_b1);
@@ -813,20 +825,26 @@ test "TC-API-03-18: listInstances with combined status=ACTIVE and definition_id 
 
     // Instance A: def X, stays ACTIVE.
     const inst_a = try instance_store.create(alloc, def_id_x, null, "{}");
-    const id_a = inst_a.instance_id; freeInstance(alloc, inst_a);
+    const id_a = inst_a.instance_id;
+    freeInstance(alloc, inst_a);
 
     // Instance B: def X, gets CANCELLED.
     const inst_b = try instance_store.create(alloc, def_id_x, null, "{}");
-    const id_b = inst_b.instance_id; freeInstance(alloc, inst_b);
+    const id_b = inst_b.instance_id;
+    freeInstance(alloc, inst_b);
     try instance_store.cancelInstance(alloc, &task_store, id_b, cancel_actor_uuid);
 
     // Instance C: def Y, ACTIVE (must NOT appear in results filtered by def X).
     const inst_c = try instance_store.create(alloc, def_id_y, null, "{}");
-    const id_c = inst_c.instance_id; freeInstance(alloc, inst_c);
+    const id_c = inst_c.instance_id;
+    freeInstance(alloc, inst_c);
 
-    const hex_a = try uuidToHexStr(alloc, id_a); defer alloc.free(hex_a);
-    const hex_b = try uuidToHexStr(alloc, id_b); defer alloc.free(hex_b);
-    const hex_c = try uuidToHexStr(alloc, id_c); defer alloc.free(hex_c);
+    const hex_a = try uuidToHexStr(alloc, id_a);
+    defer alloc.free(hex_a);
+    const hex_b = try uuidToHexStr(alloc, id_b);
+    defer alloc.free(hex_b);
+    const hex_c = try uuidToHexStr(alloc, id_c);
+    defer alloc.free(hex_c);
     defer cleanupInstance(&pool, hex_a);
     defer cleanupInstance(&pool, hex_b);
     defer cleanupInstance(&pool, hex_c);

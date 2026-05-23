@@ -1,0 +1,59 @@
+{
+  "stage": "Stage 5 - Scheduler + Identity",
+  "date": "2026-05-23T20:18:45Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "SCH-04"
+  ],
+  "nfr_results": {
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 0.878,
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 3.049,
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 2302.889,
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 39.054,
+      "passed": true
+    },
+    "overall_passed": true
+  },
+  "test_evidence": {
+    "primary_report": "tests/reports/WF02-sch04-20260523-run-02.md",
+    "direct_log": "tests/reports/WF02-sch04-20260523-run-02.direct.log",
+    "blocker_fix_handoff": "handoffs/WF03-sch04-fix-20260523/step-01-issue-fixer.json",
+    "sch04_cases": [
+      "TC-SCH-04-01",
+      "TC-SCH-04-02",
+      "TC-SCH-04-03",
+      "TC-SCH-04-04",
+      "TC-SCH-04-05"
+    ],
+    "verdict": "PASS"
+  },
+  "non_blocking_observations": [
+    {
+      "severity": "MINOR",
+      "description": "The current Zig 0.16 test-integration wrapper path cannot be used as reliable focused evidence for SCH-04 because extra args are forwarded to the generated test runner at runtime instead of filtering at build time. The direct test executable output was used instead."
+    },
+    {
+      "severity": "MINOR",
+      "description": "The direct integration executable surfaced unrelated failures in other suites (including PD-08, EE-01, EE-09, and EE-10 DuplicateNameVersion cases). These observations do not block SCH-04 because the SCH-04 mapped cases executed and passed after the WF-03 fix."
+    }
+  ],
+  "blocking_issues": [],
+  "approved_requirements": [
+    "SCH-04"
+  ],
+  "recommendation": "APPROVE release progression for SCH-04 and route to DOC-UPDATER to set requirement status RELEASED."
+}

@@ -1,0 +1,46 @@
+{
+  "stage": "Stage 5 - Scheduler + Identity",
+  "date": "2026-05-23T18:58:11Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "SCH-03"
+  ],
+  "nfr_results": {
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.466,
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 3.683,
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 1769.025,
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 50.758,
+      "passed": true
+    },
+    "overall_passed": true
+  },
+  "test_evidence": {
+    "primary_report": "tests/reports/WF02-sch03-20260523-run-01.md",
+    "sch03_cases": [
+      "TC-SCH-03-01",
+      "TC-SCH-03-02",
+      "TC-SCH-03-03",
+      "TC-SCH-03-04"
+    ],
+    "verdict": "PASS"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "SCH-03"
+  ],
+  "recommendation": "APPROVE release progression for SCH-03 and route to DOC-UPDATER to set requirement status RELEASED."
+}

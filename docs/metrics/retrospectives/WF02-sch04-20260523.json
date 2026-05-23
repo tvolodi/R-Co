@@ -1,0 +1,64 @@
+{
+  "run_id": "WF02-sch04-20260523",
+  "requirement_ids": [
+    "SCH-04"
+  ],
+  "difficulty": 4,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 52,
+  "actual_minutes_total": 23.5,
+  "variance_pct": -54.8,
+  "by_step": {
+    "code-designer": {
+      "estimated": 10,
+      "actual": 3.7,
+      "variance_pct": -63.0
+    },
+    "backend-dev": {
+      "estimated": 17,
+      "actual": 7.7,
+      "variance_pct": -54.7
+    },
+    "test-designer": {
+      "estimated": 11,
+      "actual": 2.0,
+      "variance_pct": -81.8
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 6.7,
+      "variance_pct": -4.3
+    },
+    "release-validator": {
+      "estimated": 2,
+      "actual": 2.0,
+      "variance_pct": 0.0
+    },
+    "doc-updater": {
+      "estimated": 5,
+      "actual": 1.4,
+      "variance_pct": -72.0
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [
+    {
+      "step": "backend-dev",
+      "difficulty": 4,
+      "old_estimate": 17,
+      "new_estimate": 12,
+      "reason": "Observed 2 consecutive runs at D4 with >25% variance"
+    },
+    {
+      "step": "doc-updater",
+      "difficulty": 4,
+      "old_estimate": 5,
+      "new_estimate": 3,
+      "reason": "Observed 3 consecutive runs at D4 with >25% variance"
+    }
+  ],
+  "notes": "Applied estimation rule adjustments for backend-dev and doc-updater after consecutive D4 underruns greater than 25%.",
+  "completed_at": "2026-05-23T20:21:55Z"
+}

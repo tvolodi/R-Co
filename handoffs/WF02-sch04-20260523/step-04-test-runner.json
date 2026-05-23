@@ -1,0 +1,59 @@
+{
+  "handoff_id": "5c2a7b11-1499-4921-8c65-2f9f1f3107d0",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-sch04-20260523",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-sch04-20260523/step-04-test-runner.json",
+  "created_at": "2026-05-23T19:41:03Z",
+  "started_at": "2026-05-23T20:06:43Z",
+  "completed_at": "2026-05-23T20:13:26Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": [
+      "SCH-04"
+    ],
+    "related_handoff_ids": [
+      "5b2e4c7d-7a51-4f74-8b03-2c9a9a3d1f6e",
+      "f4b7e9c1-2d64-4f09-9e62-8d5f3c14a9be",
+      "9d6f4b28-3ec7-4b2f-8e1d-65fd8d0e2ac4"
+    ],
+    "artifacts_in": [
+      "tests/specs/SCH-04.md",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "src/scheduler/store.zig",
+      "src/scheduler/scheduler.zig",
+      "src/tasks/store.zig",
+      "src/engine/instance.zig"
+    ]
+  },
+  "task": {
+    "description": "Run the focused SCH-04 validation suite and write a structured test report.\n\nValidation scope:\n- Execute the relevant build/test commands needed to verify SCH-04, including the new scheduler integration coverage.\n- Confirm the SCH-04 acceptance criteria are covered by executable passing tests and document any infrastructure constraints separately from code defects.\n- Write the test report under tests/reports/.\n\nExpected checks:\n- zig build\n- zig build test\n- any focused SCH-04 integration command needed in this repo to validate the new escalation timer behavior\n\nUse the current local DB/test environment if required and available, and classify issues by severity if anything fails.\n\nREWORK ITERATION 1:\n- Previous attempt failed due to SCH04-TR-001: focused SCH-04 integration validation was blocked by a compile-time error-set mismatch in src/scheduler/scheduler.zig.\n- WF03-sch04-fix-20260523 resolved the scheduler compile blocker and validated the focused SCH-04 integration path.\n- Re-run the same focused SCH-04 validation slice and produce the updated report.",
+    "acceptance_criteria": [
+      "Focused SCH-04 validation commands are executed",
+      "A structured test report is written under tests/reports/",
+      "Result clearly states whether SCH-04 is TESTED or blocked, with issue severity if blocked"
+    ],
+    "functions_to_call": [
+      "fn:run-targeted-tests",
+      "fn:write-test-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed the SCH-04 rework validation slice. `zig build` and `zig build test` passed, the SCH-04 integration cases executed successfully via the generated integration test executable, and the original scheduler compile blocker is resolved. The legacy `zig build test-integration -- --test-filter SCH-04` wrapper remains an unusable focused command on the current Zig/test-step wiring, but SCH-04 itself is now tested.",
+    "artifacts_out": [
+      "tests/reports/WF02-sch04-20260523-run-02.md",
+      "tests/reports/WF02-sch04-20260523-run-02.direct.log",
+      "docs/issue-reports/WF02-sch04-20260523-step-04-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

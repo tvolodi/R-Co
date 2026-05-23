@@ -1,0 +1,65 @@
+{
+  "handoff_id": "d3b6f8aa-6c6e-4e8d-a5ea-2f1f4b17c0a3",
+  "workflow_id": "WF-02",
+  "run_id": "WF02-sch03-20260523",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-sch03-20260523/step-01-backend-dev.json",
+  "created_at": "2026-05-23T18:36:06Z",
+  "started_at": "2026-05-23T18:36:07Z",
+  "completed_at": "2026-05-23T18:44:33Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": [
+      "SCH-03"
+    ],
+    "related_handoff_ids": [
+      "aa3c082a-2c93-484d-8201-f39e099468fc"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/requirement_status.json",
+      "src/design/scheduler.md",
+      "src/engine/instance.zig",
+      "src/engine/transition.zig",
+      "src/scheduler/scheduler.zig",
+      "src/scheduler/store.zig",
+      "migrations/007_timers.sql"
+    ]
+  },
+  "task": {
+    "description": "Implement SCH-03 (Timer cancellation) so pending timers are cancelled atomically when an instance is cancelled (EE-08) or completed.\n\nRead SCH-03 acceptance criteria in docs/BPM_Platform_Functional_Requirements.md and follow scheduler design boundaries in src/design/scheduler.md before editing code.\n\nImplementation requirements:\n- In the same transaction that records instance cancellation/completion state and event, set all matching timers with status = PENDING to status = CANCELLED for the instance.\n- Ensure SCH-02 polling does not fire timers that were cancelled by SCH-03.\n- Preserve race behavior: if scheduler has already locked/fired a timer, first transaction to commit wins and the other rolls back.\n- Keep already FIRED timers unchanged.\n- Keep transition function purity contract (no I/O in src/engine/transition.zig).\n\nValidation requirements:\n- zig build exits 0\n- zig build test exits 0\n- zig build migrate exits 0",
+    "acceptance_criteria": [
+      "All PENDING timers are set to CANCELLED in the same transaction as instance cancellation/completion",
+      "No CANCELLED-instance timer remains PENDING after commit",
+      "Scheduler polling does not fire CANCELLED timers",
+      "Concurrent cancel-vs-fire behavior matches SCH-03 first-commit-wins rule",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build migrate exits 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:check-zig-test",
+      "fn:check-zig-migrate",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented SCH-03 terminal-state timer cancellation by cancelling all PENDING timers in the same transaction when instance transitions to COMPLETED/CANCELLED in transition persistence paths, and added integration coverage proving completion-triggered cancellation prevents scheduler firing.",
+    "artifacts_out": [
+      "src/engine/instance.zig",
+      "tests/integration/sch02_timer_polling_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

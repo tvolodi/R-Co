@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-23T16:58:12Z",
+  "last_updated": "2026-05-23T20:21:55Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -676,25 +676,58 @@
       "tested_at": "2026-05-23",
       "released_at": "2026-05-23T16:55:50Z",
       "release_run": "WF02-sch01-20260523",
-      "last_updated": "2026-05-23T16:58:12Z"
+      "last_updated": "2026-05-23T16:55:50Z"
     },
     "SCH-02": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "MUST",
-      "title": "Timer polling"
+      "title": "Timer polling",
+      "implemented_in": [
+        "src/design/scheduler.md",
+        "src/scheduler/scheduler.zig"
+      ],
+      "test_spec": "tests/specs/SCH-02.md",
+      "test_run": "tests/reports/WF03-sch02-fix-20260523-run-01.md",
+      "tested_at": "2026-05-23",
+      "released_at": "2026-05-23T18:07:01Z",
+      "release_run": "WF03-sch02-fix-20260523",
+      "last_updated": "2026-05-23T18:36:06Z"
     },
     "SCH-03": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "MUST",
-      "title": "Timer cancellation"
+      "title": "Timer cancellation",
+      "implemented_in": [
+        "src/engine/instance.zig",
+        "tests/integration/sch02_timer_polling_test.zig"
+      ],
+      "test_spec": "tests/specs/SCH-03.md",
+      "test_run": "tests/reports/WF02-sch03-20260523-run-01.md",
+      "tested_at": "2026-05-23",
+      "released_at": "2026-05-23T18:58:11Z",
+      "release_run": "WF02-sch03-20260523",
+      "last_updated": "2026-05-23T19:00:42Z"
     },
     "SCH-04": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "MUST",
-      "title": "Escalation timer"
+      "title": "Escalation timer",
+      "implemented_in": [
+        "src/scheduler/store.zig",
+        "src/tasks/store.zig",
+        "src/engine/instance.zig",
+        "src/scheduler/scheduler.zig",
+        "tests/integration/sch02_timer_polling_test.zig"
+      ],
+      "test_spec": "tests/specs/SCH-04.md",
+      "test_run": "tests/reports/WF02-sch04-20260523-run-02.md",
+      "tested_at": "2026-05-23",
+      "released_at": "2026-05-23T20:18:45Z",
+      "release_run": "WF02-sch04-20260523",
+      "last_updated": "2026-05-23T20:21:55Z"
     },
     "SCH-05": {
       "status": "VALIDATED",

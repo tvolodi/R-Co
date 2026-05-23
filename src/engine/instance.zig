@@ -668,15 +668,19 @@ pub const InstanceStore = struct {
 
         // INSERT tasks for newly activated HUMAN_TASK nodes.
         // Each task requires a token row in the tokens table (FK constraint).
+        var local_task_store = task_mod.TaskStore.init(self.pool);
+
         for (new_state.pending_task_nodes) |task_node_id| {
             var node_name: []const u8 = task_node_id;
             var assignee_type: ?[]const u8 = null;
             var assignee_ref: ?[]const u8 = null;
+            var node_attrs: ?[]const u8 = null;
 
             for (snapshot.graph.nodes) |node| {
                 if (!std.mem.eql(u8, node.id, task_node_id)) continue;
                 if (node.label) |lbl| node_name = lbl;
                 if (node.attributes) |attrs| {
+                    node_attrs = attrs;
                     parseAssigneeFields(a, attrs, &assignee_type, &assignee_ref);
                 }
                 break;
@@ -699,19 +703,23 @@ pub const InstanceStore = struct {
                 &.{ tok_id_hex, inst_id_hex, task_node_id },
             ) catch return InstanceError.TransactionFailed;
 
-            const at_param: []const u8 = assignee_type orelse "";
-            const ar_param: []const u8 = assignee_ref orelse "";
+            const created_task = local_task_store.createInTx(
+                allocator,
+                conn2,
+                uuid_bytes,
+                token_bytes,
+                task_node_id,
+                node_name,
+                assignee_type,
+                assignee_ref,
+            ) catch return InstanceError.TransactionFailed;
+            defer task_mod.freeTask(allocator, created_task);
 
-            // Security: all six values bound as $N params — no SQL string interpolation.
-            conn2.exec(
-                \\INSERT INTO tasks
-                \\    (instance_id, token_id, node_id, node_name, status,
-                \\     assignee_type, assignee_ref)
-                \\VALUES
-                \\    ($1::uuid, $2::uuid, $3, $4, 'PENDING',
-                \\     NULLIF($5, ''), NULLIF($6, ''))
-            ,
-                &.{ inst_id_hex, tok_id_hex, task_node_id, node_name, at_param, ar_param },
+            maybeInsertEscalationTimerInTx(
+                allocator,
+                conn2,
+                created_task,
+                node_attrs,
             ) catch return InstanceError.TransactionFailed;
         }
 
@@ -885,12 +893,19 @@ pub const InstanceStore = struct {
             error.PersistenceFailed => return ApplyError.PersistenceFailed,
         };
 
+        cancelPendingTimersForTerminalStatusInTx(
+            conn,
+            inst_id_hex,
+            new_state.status,
+        ) catch return ApplyError.PersistenceFailed;
+
         // ── Step f: INSERT Task records for newly activated HUMAN_TASK nodes ─
         for (new_task_nodes.items) |task_node_id| {
             // Look up node in snapshot to get display name and assignee fields.
             var node_name: []const u8 = task_node_id; // fallback: use node_id
             var assignee_type: ?[]const u8 = null;
             var assignee_ref: ?[]const u8 = null;
+            var node_attrs: ?[]const u8 = null;
 
             for (snapshot.nodes) |node| {
                 if (!std.mem.eql(u8, node.id, task_node_id)) continue;
@@ -899,6 +914,7 @@ pub const InstanceStore = struct {
                 // Security: these values are read from the definition snapshot
                 // (not HTTP input) but are still bound as $N params in the INSERT.
                 if (node.attributes) |attrs| {
+                    node_attrs = attrs;
                     parseAssigneeFields(a, attrs, &assignee_type, &assignee_ref);
                 }
                 break;
@@ -914,7 +930,7 @@ pub const InstanceStore = struct {
                 }
             }
 
-            _ = task_store.createInTx(
+            const created_task = task_store.createInTx(
                 allocator,
                 conn,
                 instance_id,
@@ -924,6 +940,17 @@ pub const InstanceStore = struct {
                 assignee_type,
                 assignee_ref,
             ) catch return ApplyError.PersistenceFailed;
+            defer task_mod.freeTask(allocator, created_task);
+
+            maybeInsertEscalationTimerInTx(
+                allocator,
+                conn,
+                created_task,
+                node_attrs,
+            ) catch |err| switch (err) {
+                error.PersistenceFailed => return ApplyError.PersistenceFailed,
+                error.OutOfMemory => return ApplyError.OutOfMemory,
+            };
         }
 
         // ── Step g: COMMIT ───────────────────────────────────────────────────
@@ -1360,6 +1387,12 @@ pub const InstanceStore = struct {
         ) catch return CompleteTaskError.PersistenceFailed;
         defer task_mod.freeTask(allocator, completed_task);
 
+        _ = scheduler_store_mod.cancelPendingEscalationTimersForTaskInTx(
+            allocator,
+            conn,
+            task_id,
+        ) catch return CompleteTaskError.PersistenceFailed;
+
         // ── Step j: INSERT TASK_COMPLETED event row ───────────────────────────
         // CTE atomically bumps instance_sequence and inserts into events.
         // Security: all values bound as $N params; no SQL string interpolation.
@@ -1439,6 +1472,12 @@ pub const InstanceStore = struct {
             error.PersistenceFailed => return CompleteTaskError.PersistenceFailed,
         };
 
+        cancelPendingTimersForTerminalStatusInTx(
+            conn,
+            inst_id_hex,
+            new_state.status,
+        ) catch return CompleteTaskError.PersistenceFailed;
+
         // ── Step m: Create tasks for newly activated HUMAN_TASK nodes ─────────
         // Set difference: new_state.pending_task_nodes minus current_state.pending_task_nodes.
         for (new_state.pending_task_nodes) |new_node| {
@@ -1455,11 +1494,13 @@ pub const InstanceStore = struct {
             var node_name: []const u8 = new_node;
             var node_assignee_type: ?[]const u8 = null;
             var node_assignee_ref: ?[]const u8 = null;
+            var node_attrs: ?[]const u8 = null;
 
             for (snapshot.nodes) |node| {
                 if (!std.mem.eql(u8, node.id, new_node)) continue;
                 if (node.label) |lbl| node_name = lbl;
                 if (node.attributes) |attrs| {
+                    node_attrs = attrs;
                     parseAssigneeFields(a, attrs, &node_assignee_type, &node_assignee_ref);
                 }
                 break;
@@ -1474,7 +1515,7 @@ pub const InstanceStore = struct {
                 }
             }
 
-            _ = task_store.createInTx(
+            const created_task = task_store.createInTx(
                 allocator,
                 conn,
                 task.instance_id,
@@ -1484,6 +1525,17 @@ pub const InstanceStore = struct {
                 node_assignee_type,
                 node_assignee_ref,
             ) catch return CompleteTaskError.PersistenceFailed;
+            defer task_mod.freeTask(allocator, created_task);
+
+            maybeInsertEscalationTimerInTx(
+                allocator,
+                conn,
+                created_task,
+                node_attrs,
+            ) catch |err| switch (err) {
+                error.PersistenceFailed => return CompleteTaskError.PersistenceFailed,
+                error.OutOfMemory => return CompleteTaskError.OutOfMemory,
+            };
         }
 
         // ── Step n: COMMIT ────────────────────────────────────────────────────
@@ -1687,7 +1739,7 @@ pub const InstanceStore = struct {
     pub fn cancelInstance(
         self: *InstanceStore,
         allocator: std.mem.Allocator,
-        task_store: *task_mod.TaskStore,
+        task_store: *const task_mod.TaskStore,
         instance_id: Uuid,
         actor_id: []const u8,
     ) CancelInstanceError!void {
@@ -2327,6 +2379,32 @@ pub fn mapSetErrorToCompleteError(err: SetInstanceErrorError) CompleteTaskError 
     };
 }
 
+fn cancelPendingTimersForTerminalStatusInTx(
+    conn: *db.Conn,
+    instance_id_hex: []const u8,
+    status: transition_mod.InstanceStatus,
+) error{PersistenceFailed}!void {
+    if (status != .COMPLETED and status != .CANCELLED) return;
+
+    const reason: []const u8 = switch (status) {
+        .COMPLETED => "INSTANCE_COMPLETED",
+        .CANCELLED => "INSTANCE_CANCELLED",
+        else => unreachable,
+    };
+
+    conn.exec(
+        \\UPDATE timers
+        \\SET
+        \\    status       = 'cancelled',
+        \\    cancelled_at = NOW(),
+        \\    cancel_reason = $2
+        \\WHERE instance_id = $1::uuid
+        \\  AND status      = 'pending'
+    ,
+        &.{ instance_id_hex, reason },
+    ) catch return error.PersistenceFailed;
+}
+
 /// Build the EXECUTION_ERROR event payload JSON string (EE-10 §4).
 ///
 /// Shape (NO_MATCHING_EDGE):
@@ -2540,6 +2618,48 @@ fn persistTimersFromPendingEventsInTx(
             else => {},
         }
     }
+}
+
+const EscalationTimerConfig = struct {
+    duration_iso8601: []const u8,
+    reassign_to: ?scheduler_store_mod.EscalationTarget,
+};
+
+fn maybeInsertEscalationTimerInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    task: task_mod.Task,
+    node_attrs: ?[]const u8,
+) error{ PersistenceFailed, OutOfMemory }!void {
+    const attrs = node_attrs orelse return;
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const config = parseEscalationTimerConfig(a, attrs) orelse return;
+
+    var timer_id: Uuid = undefined;
+    fillRandom(&timer_id);
+    timer_id[6] = (timer_id[6] & 0x0f) | 0x40;
+    timer_id[8] = (timer_id[8] & 0x3f) | 0x80;
+
+    scheduler_store_mod.insertEscalationTimerInTx(
+        a,
+        conn,
+        .{
+            .timer_id = timer_id,
+            .instance_id = task.instance_id,
+            .task_id = task.task_id,
+            .task_node_id = task.node_id,
+            .escalation_duration_iso8601 = config.duration_iso8601,
+            .task_created_at_utc = task.created_at,
+            .reassign_to = config.reassign_to,
+        },
+    ) catch |err| switch (err) {
+        scheduler_store_mod.TimerStoreError.OutOfMemory => return error.OutOfMemory,
+        else => return error.PersistenceFailed,
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -2805,4 +2925,45 @@ fn parseAssigneeFields(
             assignee_ref.* = allocator.dupe(u8, v.string) catch null;
         }
     }
+}
+
+fn parseEscalationTimerConfig(
+    allocator: std.mem.Allocator,
+    attrs: []const u8,
+) ?EscalationTimerConfig {
+    var inner_arena = std.heap.ArenaAllocator.init(allocator);
+    defer inner_arena.deinit();
+
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        inner_arena.allocator(),
+        attrs,
+        .{ .allocate = .alloc_always },
+    ) catch return null;
+    defer parsed.deinit();
+    if (parsed.value != .object) return null;
+
+    const obj = parsed.value.object;
+    const duration_val = obj.get("escalation_timer_duration") orelse return null;
+    if (duration_val != .string or duration_val.string.len == 0) return null;
+
+    var reassign_to: ?scheduler_store_mod.EscalationTarget = null;
+    if (obj.get("reassign_to")) |target_val| {
+        if (target_val == .object) {
+            const target_obj = target_val.object;
+            const type_val = target_obj.get("assignee_type");
+            const ref_val = target_obj.get("assignee_ref");
+            if (type_val != null and ref_val != null and type_val.? == .string and ref_val.? == .string) {
+                reassign_to = .{
+                    .assignee_type = allocator.dupe(u8, type_val.?.string) catch return null,
+                    .assignee_ref = allocator.dupe(u8, ref_val.?.string) catch return null,
+                };
+            }
+        }
+    }
+
+    return .{
+        .duration_iso8601 = allocator.dupe(u8, duration_val.string) catch return null,
+        .reassign_to = reassign_to,
+    };
 }

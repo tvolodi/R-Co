@@ -1,0 +1,44 @@
+{
+  "run_id": "WF02-sch03-20260523",
+  "requirement_ids": [
+    "SCH-03"
+  ],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 20,
+  "actual_minutes_total": 21.1,
+  "variance_pct": 5.5,
+  "by_step": {
+    "backend-dev": {
+      "estimated": 7,
+      "actual": 8.4,
+      "variance_pct": 20.0
+    },
+    "test-designer": {
+      "estimated": 3,
+      "actual": 3.4,
+      "variance_pct": 13.3
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 4.7,
+      "variance_pct": -32.9
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 2.2,
+      "variance_pct": 120.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 2.4,
+      "variance_pct": 20.0
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [],
+  "notes": "No estimation rule adjustments: no step exceeded +/-25% variance in the same direction across 2 consecutive D3 runs including this run.",
+  "completed_at": "2026-05-23T19:00:42Z"
+}

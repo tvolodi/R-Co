@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-05-23T17:20:06Z",
+  "last_updated": "2026-05-23T17:37:25Z",
+  "entries": [
+    {
+      "handoff_id": "aa3c082a-2c93-484d-8201-f39e099468fc",
+      "file": "handoffs/WF02-sch02-20260523/step-01-backend-dev.json",
+      "run_id": "WF02-sch02-20260523",
+      "workflow_id": "WF-02",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-23T17:20:06Z",
+      "started_at": "2026-05-23T17:21:04Z",
+      "completed_at": "2026-05-23T17:33:08Z",
+      "status": "COMPLETED",
+      "stage": "Stage 5 — Scheduler + Identity"
+    },
+    {
+      "handoff_id": "20260523-007",
+      "file": "handoffs/WF02-sch02-20260523/step-02-test-designer.json",
+      "run_id": "WF02-sch02-20260523",
+      "workflow_id": "WF-02",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-05-23T17:33:59Z",
+      "started_at": "2026-05-23T17:35:13Z",
+      "completed_at": "2026-05-23T17:36:17Z",
+      "status": "COMPLETED",
+      "stage": "Stage 5 — Scheduler + Identity"
+    }
+  ]
+}

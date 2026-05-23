@@ -23,6 +23,7 @@ pub const instance_routes = @import("api/routes/instances.zig");
 //   GET /api/v1/instances/:id/history → instance_routes.handleHistory
 // Register this BEFORE the generic /:id route so "history" is not parsed as UUID.
 pub const task_store = @import("tasks/store.zig");
+pub const scheduler_poller = @import("scheduler/scheduler.zig"); // SCH-02
 pub const task_routes = @import("api/routes/tasks.zig");
 pub const json_schema_mod = @import("tools/json_schema.zig"); // EE-09 schema validator (pure)
 pub const api_errors = @import("api/errors.zig"); // API-01 RFC 9457 Problem Details

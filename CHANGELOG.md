@@ -6,6 +6,25 @@ All notable changes to the BPM Platform are documented here.
 
 ### Stage 5 — Scheduler + Identity
 
+### SCH-04 — Escalation timer (RELEASED 2026-05-23)
+- Implemented durable escalation timers for HUMAN_TASK activation across `src/scheduler/store.zig`, `src/tasks/store.zig`, `src/engine/instance.zig`, and `src/scheduler/scheduler.zig`
+- Scheduler firing appends `ESCALATION` only while the task remains `PENDING`, and optional reassignment is committed in the same transaction as event persistence
+- Completing a task before the escalation deadline now cancels the pending escalation timer atomically, preserving first-commit-wins race semantics against scheduler fire
+- Focused SCH-04 validation is recorded in `tests/reports/WF02-sch04-20260523-run-02.md`; release approval is recorded in `docs/status/release-SCH-04-20260523.json`
+- Requirement: SCH-04 (MUST, Stage 5) — RELEASED
+
+### SCH-03 — Timer cancellation (RELEASED 2026-05-23)
+- Implemented atomic cancellation of PENDING timers when instances transition to terminal states, with completion/cancellation logic in `src/engine/instance.zig`
+- Added integration coverage in `tests/integration/sch02_timer_polling_test.zig` to verify cancelled timers are not fired after terminal state commits
+- Release validation approved in `docs/status/release-SCH-03-20260523.json` with NFR and SCH-03 test evidence (`tests/reports/WF02-sch03-20260523-run-01.md`)
+- Requirement: SCH-03 (MUST, Stage 5) — RELEASED
+
+### SCH-02 — Timer polling (RELEASED 2026-05-23)
+- Implemented scheduler polling for due timers with atomic fire semantics in `src/scheduler/scheduler.zig` and timer persistence support in `src/scheduler/store.zig`
+- Verified clustered firing behavior through the approved release path in `docs/status/release-SCH-02-20260523.json`
+- SCH-02 integration evidence is recorded in `tests/reports/WF03-sch02-fix-20260523-run-01.md` with the test spec in `tests/specs/SCH-02.md`
+- Requirement: SCH-02 (MUST, Stage 5) — RELEASED
+
 ### SCH-01 — Durable timer creation (RELEASED 2026-05-23)
 - Implemented durable timer creation on timer-node arrival with atomic transition + timer persistence in `src/scheduler/store.zig`, `src/engine/transition.zig`, and `src/engine/instance.zig`
 - Added additive timer-status constraint hardening migration in `migrations/015_timers_status_constraint.sql`

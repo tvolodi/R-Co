@@ -15,6 +15,26 @@ pub const CreateTimerArgs = struct {
     payload_json: []const u8,
 };
 
+pub const TimerKind = enum {
+    scheduled_transition,
+    human_task_escalation,
+};
+
+pub const EscalationTarget = struct {
+    assignee_type: []const u8,
+    assignee_ref: []const u8,
+};
+
+pub const CreateEscalationTimerArgs = struct {
+    timer_id: Uuid,
+    instance_id: Uuid,
+    task_id: Uuid,
+    task_node_id: []const u8,
+    escalation_duration_iso8601: []const u8,
+    task_created_at_utc: i64,
+    reassign_to: ?EscalationTarget,
+};
+
 pub const TimerStoreError = error{
     InvalidInput,
     InstanceCancelled,
@@ -101,6 +121,128 @@ pub fn insertPendingTimerInTx(
     }
 
     if (ins_rows.rows.len == 0) return TimerStoreError.DuplicateTimerId;
+}
+
+pub fn insertEscalationTimerInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    args: CreateEscalationTimerArgs,
+) TimerStoreError!void {
+    if (args.task_node_id.len == 0 or args.escalation_duration_iso8601.len == 0) {
+        return TimerStoreError.InvalidInput;
+    }
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const timer_id_hex = uuidToHex(a, args.timer_id) catch return TimerStoreError.OutOfMemory;
+    const instance_id_hex = uuidToHex(a, args.instance_id) catch return TimerStoreError.OutOfMemory;
+    const task_id_hex = uuidToHex(a, args.task_id) catch return TimerStoreError.OutOfMemory;
+    const created_at_text = std.fmt.allocPrint(a, "{}", .{args.task_created_at_utc}) catch return TimerStoreError.OutOfMemory;
+    const reassignee_type = if (args.reassign_to) |target| target.assignee_type else "";
+    const reassignee_ref = if (args.reassign_to) |target| target.assignee_ref else "";
+
+    const lock_row = conn.queryRow(
+        a,
+        \\SELECT status
+        \\FROM instance_projections
+        \\WHERE instance_id = $1::uuid
+        \\FOR UPDATE
+    ,
+        &.{instance_id_hex},
+    ) catch return TimerStoreError.QueryFailed;
+
+    if (lock_row == null) return TimerStoreError.InstanceNotFound;
+    const status = colGet(lock_row.?, 0);
+    if (std.mem.eql(u8, status, "CANCELLED")) return TimerStoreError.InstanceCancelled;
+
+    const ins_rows = conn.query(
+        a,
+        \\INSERT INTO timers
+        \\    (id, instance_id, token_id,
+        \\     timer_type, step_name,
+        \\     fires_at,
+        \\     action_type, action_config,
+        \\     status)
+        \\VALUES
+        \\    ($1::uuid, $2::uuid, NULL,
+        \\     'human_task_escalation', $3::text,
+        \\     to_timestamp($4::double precision / 1000000.0) + $5::interval,
+        \\     'append_escalation_event',
+        \\     jsonb_strip_nulls(jsonb_build_object(
+        \\         'schema_version', 1,
+        \\         'timer_kind', 'human_task_escalation',
+        \\         'source', 'EE-03',
+        \\         'instance_id', $2::text,
+        \\         'task_id', $6::text,
+        \\         'task_node_id', $3::text,
+        \\         'escalation_duration_iso8601', $9::text,
+        \\         'task_created_at_utc', $4::bigint,
+        \\         'due_at_utc', (EXTRACT(EPOCH FROM (to_timestamp($4::double precision / 1000000.0) + $5::interval)) * 1000000)::bigint,
+        \\         'reassign_to', CASE
+        \\             WHEN NULLIF($7::text, '') IS NOT NULL AND NULLIF($8::text, '') IS NOT NULL THEN jsonb_build_object(
+        \\                 'assignee_type', NULLIF($7::text, ''),
+        \\                 'assignee_ref', NULLIF($8::text, '')
+        \\             )
+        \\             ELSE NULL
+        \\         END
+        \\     )),
+        \\     'pending')
+        \\ON CONFLICT (id) DO NOTHING
+        \\RETURNING id
+    ,
+        &.{
+            timer_id_hex,
+            instance_id_hex,
+            args.task_node_id,
+            created_at_text,
+            args.escalation_duration_iso8601,
+            task_id_hex,
+            reassignee_type,
+            reassignee_ref,
+            args.escalation_duration_iso8601,
+        },
+    ) catch return TimerStoreError.QueryFailed;
+    defer {
+        var r = ins_rows;
+        r.deinit();
+    }
+
+    if (ins_rows.rows.len == 0) return TimerStoreError.DuplicateTimerId;
+}
+
+pub fn cancelPendingEscalationTimersForTaskInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    task_id: Uuid,
+) TimerStoreError!u64 {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const task_id_hex = uuidToHex(a, task_id) catch return TimerStoreError.OutOfMemory;
+
+    const rows = conn.query(
+        allocator,
+        \\UPDATE timers
+        \\SET
+        \\    status = 'cancelled',
+        \\    cancelled_at = NOW(),
+        \\    cancel_reason = 'TASK_COMPLETED'
+        \\WHERE timer_type = 'human_task_escalation'
+        \\  AND status = 'pending'
+        \\  AND action_config ->> 'task_id' = $1
+        \\RETURNING id
+    ,
+        &.{task_id_hex},
+    ) catch return TimerStoreError.QueryFailed;
+    defer {
+        var r = rows;
+        r.deinit();
+    }
+
+    return @as(u64, rows.rows.len);
 }
 
 inline fn colGet(row: []?[]u8, i: usize) []const u8 {

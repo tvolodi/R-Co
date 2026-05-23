@@ -34,6 +34,8 @@ const ee10_instance_error_integration = @import("instance_error_test.zig");
 const ee12_concurrent = @import("concurrent_instances_test.zig");
 // Stage 5 — Durable timer creation (SCH-01)
 const sch01_timer_creation_integration = @import("sch01_timer_creation_test.zig");
+// Stage 5 — Timer polling and firing (SCH-02)
+const sch02_timer_polling_integration = @import("sch02_timer_polling_test.zig");
 // Stage 4 — Process definition CRUD API (API-02)
 const api02_crud_integration = @import("api02_crud_test.zig");
 // Stage 4 — Instance read endpoints (API-03)
@@ -59,6 +61,7 @@ comptime {
     _ = ee10_instance_error_integration;
     _ = ee12_concurrent;
     _ = sch01_timer_creation_integration;
+    _ = sch02_timer_polling_integration;
     _ = api02_crud_integration;
     _ = api03_instance_read_integration;
     _ = api09_trace_integration;

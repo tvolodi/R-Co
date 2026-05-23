@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-23T16:58:12Z",
-  "updated_by": "WF02-sch01-20260523",
-  "update_count": 23,
+  "updated_at": "2026-05-23T20:21:55Z",
+  "updated_by": "WF02-sch04-20260523",
+  "update_count": 24,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
     "2": "Single function or endpoint, no schema change, < 50 LOC",
@@ -22,7 +22,7 @@
       10,
       10,
       7,
-      17,
+      12,
       100
     ],
     "frontend-dev": [
@@ -57,7 +57,7 @@
       5,
       2,
       2,
-      5,
+      3,
       20
     ]
   },

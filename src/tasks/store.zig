@@ -325,7 +325,7 @@ pub const TaskStore = struct {
     ///
     /// Security: instance_id is bound as $1::uuid — no SQL string interpolation.
     pub fn cancelInTx(
-        self: *TaskStore,
+        self: *const TaskStore,
         allocator: std.mem.Allocator,
         conn: *db.Conn,
         instance_id: Uuid,
@@ -755,6 +755,48 @@ pub const TaskStore = struct {
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
             &.{ task_id_hex, new_user_id },
+        ) catch return AssignError.PersistenceFailed;
+        defer {
+            var r = rows;
+            r.deinit();
+        }
+
+        if (rows.rows.len == 0) return AssignError.AssignmentConflict;
+        return rowToTask(allocator, rows.rows[0]) catch AssignError.OutOfMemory;
+    }
+
+    pub fn reassignInTx(
+        self: *TaskStore,
+        allocator: std.mem.Allocator,
+        conn: *db.Conn,
+        task_id: Uuid,
+        assignee_type: []const u8,
+        assignee_ref: []const u8,
+    ) AssignError!Task {
+        _ = self;
+
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        defer arena.deinit();
+        const a = arena.allocator();
+
+        const task_id_hex = uuidToHex(a, task_id) catch return AssignError.PersistenceFailed;
+
+        const rows = conn.query(
+            allocator,
+            \\UPDATE tasks
+            \\SET
+            \\    assignee_type = $2,
+            \\    assignee_ref  = $3,
+            \\    updated_at    = NOW()
+            \\WHERE id = $1::uuid
+            \\  AND status = 'PENDING'
+            \\RETURNING
+            \\    id, instance_id, token_id, node_id, node_name, status,
+            \\    assignee_type, assignee_ref,
+            \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
+            \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
+        ,
+            &.{ task_id_hex, assignee_type, assignee_ref },
         ) catch return AssignError.PersistenceFailed;
         defer {
             var r = rows;

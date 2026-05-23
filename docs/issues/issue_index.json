@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-23T15:35:07Z",
-  "next_issue_id": 2,
+  "last_updated": "2026-05-23T20:03:45Z",
+  "next_issue_id": 3,
   "issues": [
     {
       "id": "ISS-0001",
@@ -18,6 +18,20 @@
       ],
       "created_at": "2026-05-23T15:35:07Z",
       "resolved_at": "2026-05-23T15:35:07Z"
+    },
+    {
+      "id": "ISS-0002",
+      "title": "WF03 SCH-04 escalation timer blocker: scheduler error-set mismatch and escalation SQL typing defects",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-sch04-fix-20260523",
+      "handoff_id": "8a3e0c59-cf29-4c70-8c43-6b7f38d5a2bb",
+      "affected_areas": [
+        "src/scheduler/scheduler.zig",
+        "src/scheduler/store.zig"
+      ],
+      "created_at": "2026-05-23T20:03:45Z",
+      "resolved_at": "2026-05-23T20:03:45Z"
     }
   ]
 }
