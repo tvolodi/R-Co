@@ -1,0 +1,30 @@
+{
+  "report_id": "WF02-idn04-20260524-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-idn04-20260524",
+  "step": "01",
+  "created_at": "2026-05-24T08:09:02Z",
+  "summary": "Produced the IDN-04 backend design artefact for API token management, covering token lifecycle (issue/store/list/revoke/validate), hash-only persistence, token identifier and secret format, expiration and revocation guarantees, API contracts, middleware integration with API-08 and IDN-03, security constraints, and full acceptance-criterion traceability. This was a design-only step with no implementation code changes.",
+  "files_created": [
+    "src/design/idn-04-api-token-management.md",
+    "docs/issue-reports/WF02-idn04-20260524-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-idn04-20260524/step-01-code-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "fn:validate-completeness (design acceptance coverage review)",
+      "status": "pass",
+      "detail": "All IDN-04 acceptance criteria and edge-case requirements map to explicit sections in the design artefact."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) to implement token issuance, listing, revocation, and auth validation wiring.",
+    "Route to TEST-DESIGNER (Step 3) to define IDN-04 API and auth boundary test cases.",
+    "Align auth middleware role-claim shape with additive-role semantics from IDN-03/IDN-04 before release validation."
+  ],
+  "blockers": []
+}

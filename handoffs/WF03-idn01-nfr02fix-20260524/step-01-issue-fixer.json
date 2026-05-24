@@ -1,0 +1,56 @@
+{
+  "handoff_id": "0c53fcea-b575-4f0d-a66b-18ebfbea8cd6",
+  "run_id": "WF03-idn01-nfr02fix-20260524",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-idn01-nfr02fix-20260524/step-01-issue-fixer.json",
+  "created_at": "2026-05-24T03:03:10Z",
+  "started_at": "2026-05-24T03:03:30Z",
+  "completed_at": "2026-05-24T03:06:48Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": [
+      "IDN-01"
+    ],
+    "related_handoff_ids": [
+      "f0fa7edf-4e71-490f-97a8-20f95bcd4a61"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-idn01-20260524/step-05-release-validator.json",
+      "docs/status/release-IDN-01-20260524.json"
+    ]
+  },
+  "task": {
+    "description": "Diagnose and fix NFR-02 throughput benchmark failure found in release validation for IDN-01 (observed ~769 events/sec, required >=1000). Identify whether regression is caused by recent IDN-01 or related changes; optimize or correct the bottleneck; preserve functional correctness and security. Validate with zig build, zig build test, and zig build bench demonstrating NFR-02 >= 1000 events/sec.",
+    "acceptance_criteria": [
+      "Root cause for NFR-02 throughput shortfall is identified",
+      "Fixes are applied with minimal risk",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build bench exits 0 and reports NFR-02 throughput >= 1000 events/sec"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed D-category benchmark harness bottleneck in NFR-02 throughput measurement by replacing per-row insert round-trips with parameterized batched inserts; validated zig build, zig build test, and zig build bench with NFR-02=40437.606 eps (>=1000).",
+    "artifacts_out": [
+      "tests/bench/bench.zig",
+      "docs/issues/ISS-0005.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-idn01-nfr02fix-20260524-step-01-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,103 @@
+Cleaning test database...
+Test database cleaned.
+test-integration
++- run test w
+BPM_TEST_TOKEN is not set — skipping HTTP integration test
+BPM_TEST_TOKEN is not set — skipping HTTP integration test
+BPM_TEST_TOKEN is not set — skipping HTTP integration test
+BPM_TEST_TOKEN is not set — skipping HTTP integration test
+BPM_TEST_TOKEN is not set — skipping HTTP integration test
+BPM_TEST_TOKEN is not set — skipping HTTP integration test
+BPM_TEST_TOKEN is not set — skipping HTTP integration test
+error.Unexpected NTSTATUS=0xc0000236 (CONNECTION_REFUSED)
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:12121:57: 0x7ff6419c824b in netConnectIpWindows (test_zcu.obj)
+        else => |status| return windows.unexpectedStatus(status),
+                                                        ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\net.zig:340:55: 0x7ff641c7558e in connect (test_zcu.obj)
+        return .{ .socket = try io.vtable.netConnectIp(io.userdata, address, options) };
+                                                      ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\net\HostName.zig:369:35: 0x7ff641c74e8e in enqueueConnection (test_zcu.obj)
+    const result = address.connect(io, options) catch |err| switch (err) {
+                                  ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io.zig:1245:17: 0x7ff641c74c78 in start (test_zcu.obj)
+                _ = @as(Cancelable!void, @call(.auto, function, args_casted.*)) catch {};
+                ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:552:22: 0x7ff6419c2547 in start (test_zcu.obj)
+            task.func(task.contextPointer());
+                     ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:1797:29: 0x7ff6419c179f in worker (test_zcu.obj)
+            runnable.startFn(runnable, &thread, t);
+                            ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Thread.zig:422:13: 0x7ff6419c12d1 in callFn__anon_52345 (test_zcu.obj)
+            @call(.auto, f, args);
+            ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Thread.zig:536:30: 0x7ff6419c11aa in entryFn (test_zcu.obj)
+                return callFn(f, self.fn_args);
+                             ^
+???:?:?: 0x7ff85b4ce956 in ??? (KERNEL32.DLL)
+???:?:?: 0x7ff85cfe427b in ??? (ntdll.dll)
+OBS-02 integration HTTP target unavailable (error.Unexpected) — skipping test
+error.Unexpected NTSTATUS=0xc0000236 (CONNECTION_REFUSED)
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:12121:57: 0x7ff6419c824b in netConnectIpWindows (test_zcu.obj)
+        else => |status| return windows.unexpectedStatus(status),
+                                                        ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\net.zig:340:55: 0x7ff641c7558e in connect (test_zcu.obj)
+        return .{ .socket = try io.vtable.netConnectIp(io.userdata, address, options) };
+                                                      ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\net\HostName.zig:369:35: 0x7ff641c74e8e in enqueueConnection (test_zcu.obj)
+    const result = address.connect(io, options) catch |err| switch (err) {
+                                  ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io.zig:1245:17: 0x7ff641c74c78 in start (test_zcu.obj)
+                _ = @as(Cancelable!void, @call(.auto, function, args_casted.*)) catch {};
+                ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:552:22: 0x7ff6419c2547 in start (test_zcu.obj)
+            task.func(task.contextPointer());
+                     ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:1797:29: 0x7ff6419c179f in worker (test_zcu.obj)
+            runnable.startFn(runnable, &thread, t);
+                            ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Thread.zig:422:13: 0x7ff6419c12d1 in callFn__anon_52345 (test_zcu.obj)
+            @call(.auto, f, args);
+            ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Thread.zig:536:30: 0x7ff6419c11aa in entryFn (test_zcu.obj)
+                return callFn(f, self.fn_args);
+                             ^
+???:?:?: 0x7ff85b4ce956 in ??? (KERNEL32.DLL)
+???:?:?: 0x7ff85cfe427b in ??? (ntdll.dll)
+OBS-02 integration HTTP target unavailable (error.Unexpected) — skipping test
+error.Unexpected NTSTATUS=0xc0000236 (CONNECTION_REFUSED)
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:12121:57: 0x7ff6419c824b in netConnectIpWindows (test_zcu.obj)
+        else => |status| return windows.unexpectedStatus(status),
+                                                        ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\net.zig:340:55: 0x7ff641c7558e in connect (test_zcu.obj)
+        return .{ .socket = try io.vtable.netConnectIp(io.userdata, address, options) };
+                                                      ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\net\HostName.zig:369:35: 0x7ff641c74e8e in enqueueConnection (test_zcu.obj)
+    const result = address.connect(io, options) catch |err| switch (err) {
+                                  ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io.zig:1245:17: 0x7ff641c74c78 in start (test_zcu.obj)
+                _ = @as(Cancelable!void, @call(.auto, function, args_casted.*)) catch {};
+                ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:552:22: 0x7ff6419c2547 in start (test_zcu.obj)
+            task.func(task.contextPointer());
+                     ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:1797:29: 0x7ff6419c179f in worker (test_zcu.obj)
+            runnable.startFn(runnable, &thread, t);
+                            ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Thread.zig:422:13: 0x7ff6419c12d1 in callFn__anon_52345 (test_zcu.obj)
+            @call(.auto, f, args);
+            ^
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\Thread.zig:536:30: 0x7ff6419c11aa in entryFn (test_zcu.obj)
+                return callFn(f, self.fn_args);
+                             ^
+???:?:?: 0x7ff85b4ce956 in ??? (KERNEL32.DLL)
+???:?:?: 0x7ff85cfe427b in ??? (ntdll.dll)
+OBS-02 integration HTTP target unavailable (error.Unexpected) — skipping test
+failed command: ".\\.zig-cache\\o\\2cdfa60b4d880ee1289a9227f413e98d\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0x21f80175 --listen=-
+
+Build Summary: 4/4 steps succeeded; 192/202 tests passed (10 skipped)
+test-integration success
++- run python3 success 3s
++- run test 192 pass, 10 skip (202 total) 35s MaxRSS:34M
+   +- compile test Debug native cached 39ms MaxRSS:19M
+

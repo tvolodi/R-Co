@@ -1,0 +1,96 @@
+{
+  "run_id": "WF02-idn01-20260524",
+  "workflow_id": "WF-02",
+  "requirement_ids": [
+    "IDN-01"
+  ],
+  "timestamp": "2026-05-24T02:42:16Z",
+  "overall_status": "FAIL",
+  "summary": {
+    "total": 6,
+    "passed": 1,
+    "failed": 5,
+    "skipped": 0
+  },
+  "commands": [
+    {
+      "command": "docker compose up -d db_test",
+      "exit_code": 0,
+      "output_excerpt": "Container my-fab-db_test-1 Running"
+    },
+    {
+      "command": "docker compose ps db_test",
+      "exit_code": 0,
+      "output_excerpt": "my-fab-db_test-1 ... Up ... (healthy) ... 0.0.0.0:5433->5432/tcp"
+    },
+    {
+      "command": "BPM_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build migrate",
+      "exit_code": 0,
+      "output_excerpt": "17 migration(s) applied successfully. MIGRATE_EXIT=0"
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test",
+      "exit_code": 0,
+      "output_excerpt": "UNIT_EXIT=0"
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+      "exit_code": 1,
+      "output_excerpt": "Build Summary: 2/4 steps succeeded (1 failed); 168/180 tests passed (6 skipped, 6 failed). Failing test includes TC-SCH-07-05 in tests/integration/sch02_timer_polling_test.zig."
+    }
+  ],
+  "environment": {
+    "bpm_test_db_url": "postgres://bpm:bpm@localhost:5433/bpm_test",
+    "db_blocker_resolved": true,
+    "db_skip_message_present": false
+  },
+  "acceptance_criteria_verdicts": [
+    {
+      "test_case_id": "TC-IDN-01-01",
+      "verdict": "FAIL",
+      "reason": "IDN integration test file exists, but it is not imported by tests/integration/main_test.zig, so zig build test-integration does not execute this test case."
+    },
+    {
+      "test_case_id": "TC-IDN-01-02",
+      "verdict": "FAIL",
+      "reason": "IDN integration test file exists, but it is not imported by tests/integration/main_test.zig, so zig build test-integration does not execute this test case."
+    },
+    {
+      "test_case_id": "TC-IDN-01-03",
+      "verdict": "FAIL",
+      "reason": "IDN integration test file exists, but it is not imported by tests/integration/main_test.zig, so zig build test-integration does not execute this test case."
+    },
+    {
+      "test_case_id": "TC-IDN-01-04",
+      "verdict": "FAIL",
+      "reason": "IDN integration test file exists, but it is not imported by tests/integration/main_test.zig, so zig build test-integration does not execute this test case."
+    },
+    {
+      "test_case_id": "TC-IDN-01-05",
+      "verdict": "FAIL",
+      "reason": "IDN integration test file exists, but it is not imported by tests/integration/main_test.zig, so zig build test-integration does not execute this test case."
+    },
+    {
+      "test_case_id": "TC-IDN-01-06",
+      "verdict": "PASS",
+      "reason": "DB-backed inactive-user auth path executed with BPM_TEST_DB_URL set during zig build test; unit command exited 0."
+    }
+  ],
+  "issues": [
+    {
+      "id": "ISS-IDN01-INTEGRATION-WIRING-001",
+      "severity": "BLOCKER",
+      "description": "tests/integration/idn01_user_registry_test.zig is not imported in tests/integration/main_test.zig, so TC-IDN-01-01..05 are not exercised by zig build test-integration.",
+      "affected_requirement": "IDN-01",
+      "remediation": "Add idn01_user_registry_test.zig to tests/integration/main_test.zig comptime imports and rerun zig build test-integration with BPM_TEST_DB_URL set."
+    },
+    {
+      "id": "ISS-SCH07-REGRESSION-001",
+      "severity": "BLOCKER",
+      "description": "Integration suite failed with 6 SCH-07 failures (example: TC-SCH-07-05 in tests/integration/sch02_timer_polling_test.zig).",
+      "affected_requirement": "SCH-07",
+      "remediation": "Route to ISSUE-FIXER for SCH-07 integration failures, then rerun this WF02 IDN-01 test step."
+    }
+  ],
+  "next_action": "Route to ISSUE-FIXER (WF-03): fix SCH-07 integration failures and wire IDN-01 integration tests into integration entrypoint, then rerun TEST-RUNNER rework."
+}

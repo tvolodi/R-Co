@@ -1,0 +1,68 @@
+{
+  "run_id": "WF02-idn02-20260524",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-24T06:34:01Z",
+  "requirement_ids": [
+    "IDN-02"
+  ],
+  "summary": {
+    "overall_status": "FAIL",
+    "layers_executed": [
+      "backend_unit",
+      "backend_integration"
+    ],
+    "notes": [
+      "IDN-02 integration suite is included via tests/integration/main_test.zig import of tests/integration/idn02_group_management_test.zig.",
+      "Integration command was executed with BPM_TEST_DB_URL and BPM_TEST_URL set; one unrelated API-09 integration test failed.",
+      "Integration output reported 186 pass, 5 skip, 1 fail (192 total)."
+    ]
+  },
+  "commands": [
+    {
+      "name": "unit",
+      "command": "zig build test",
+      "exit_code": 0,
+      "evidence": "UNIT_EXIT_CODE=0"
+    },
+    {
+      "name": "integration",
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; zig build test-integration",
+      "exit_code": 1,
+      "evidence": "INTEGRATION_EXIT_CODE=1"
+    }
+  ],
+  "failures": [
+    {
+      "test_id": "TC-API-09-INT-05",
+      "layer": "integration",
+      "file": "tests/integration/trace_test.zig",
+      "error_message": "CONNECTION_REFUSED while executing HTTP 401 trace-id test; BPM_TEST_TOKEN not set and HTTP endpoint unavailable",
+      "severity": "BLOCKER",
+      "affected_requirement": "API-09"
+    }
+  ],
+  "issues": [
+    {
+      "id": "ISS-WF02-IDN02-TR-001",
+      "severity": "BLOCKER",
+      "description": "Integration suite failed in trace_test (TC-API-09-INT-05), so required backend integration layer did not complete cleanly.",
+      "affected_requirement": "API-09"
+    }
+  ],
+  "idn02_scope": {
+    "integration_entrypoint": "tests/integration/main_test.zig",
+    "idn02_test_file": "tests/integration/idn02_group_management_test.zig",
+    "idn02_cases_defined": [
+      "TC-IDN-02-01",
+      "TC-IDN-02-02",
+      "TC-IDN-02-03",
+      "TC-IDN-02-04",
+      "TC-IDN-02-05",
+      "TC-IDN-02-06",
+      "TC-IDN-02-07"
+    ]
+  },
+  "next_action": "Route to ORCH for WF-03 issue-fixer handoff to resolve API-09 integration dependency/failure, then re-run WF-02 Step 04 test layer."
+}

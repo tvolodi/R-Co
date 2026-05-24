@@ -1,0 +1,58 @@
+{
+  "run_id": "WF02-idn01-20260524",
+  "requirement_ids": [
+    "IDN-01"
+  ],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 25,
+  "actual_minutes_total": 176.9,
+  "variance_pct": 607.6,
+  "by_step": {
+    "code-designer": {
+      "estimated": 5,
+      "actual": 9.2,
+      "variance_pct": 84.0
+    },
+    "backend-dev": {
+      "estimated": 7,
+      "actual": 5.3,
+      "variance_pct": -24.3
+    },
+    "test-designer": {
+      "estimated": 3,
+      "actual": 7.1,
+      "variance_pct": 136.7
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 15.7,
+      "variance_pct": 124.3
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 139.6,
+      "variance_pct": 13860.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 0.0,
+      "variance_pct": -100.0
+    }
+  },
+  "rework_steps": [
+    "release-validator",
+    "test-runner"
+  ],
+  "rule_adjustments": [
+    {
+      "step": "release-validator",
+      "difficulty": 3,
+      "old_estimate": 1,
+      "new_estimate": 70,
+      "reason": "Observed 2 consecutive runs at D3 with >25% overrun"
+    }
+  ],
+  "notes": "Retrospective aggregates elapsed work time across all step rework iterations for the run.",
+  "completed_at": "2026-05-24T05:28:39Z"
+}

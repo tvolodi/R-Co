@@ -7,6 +7,43 @@
 			"command": "zig build",
 			"isBackground": false,
 			"problemMatcher": []
+		},
+		{
+			"label": "zig-build-and-test",
+			"type": "shell",
+			"command": "zig build test",
+			"group": "test"
+		},
+		{
+			"label": "zig-test-integration",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "zig-test-integration-cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& zig build test-integration && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "zig-test-integration-cmd2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& zig build test-integration && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%"
+			],
+			"isBackground": false
 		}
 	]
 }

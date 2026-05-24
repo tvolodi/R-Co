@@ -1,0 +1,69 @@
+{
+  "run_id": "WF02-idn01-20260524",
+  "workflow_id": "WF-02",
+  "requirement_ids": [
+    "IDN-01"
+  ],
+  "timestamp": "2026-05-24T02:35:24Z",
+  "overall_status": "FAIL",
+  "summary": {
+    "total": 6,
+    "passed": 0,
+    "failed": 1,
+    "skipped": 5
+  },
+  "commands": [
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "output_excerpt": "UNIT_EXIT=0"
+    },
+    {
+      "command": "zig build test-integration",
+      "exit_code": 0,
+      "output_excerpt": "BPM_TEST_DB_URL= ; repeated 'BPM_TEST_DB_URL is not set - skipping integration test' lines ; INTEGRATION_EXIT=0"
+    }
+  ],
+  "acceptance_criteria_verdicts": [
+    {
+      "test_case_id": "TC-IDN-01-01",
+      "verdict": "SKIP",
+      "reason": "DB-backed test requires BPM_TEST_DB_URL; test path skipped."
+    },
+    {
+      "test_case_id": "TC-IDN-01-02",
+      "verdict": "SKIP",
+      "reason": "DB-backed test requires BPM_TEST_DB_URL; test path skipped."
+    },
+    {
+      "test_case_id": "TC-IDN-01-03",
+      "verdict": "SKIP",
+      "reason": "DB-backed test requires BPM_TEST_DB_URL; test path skipped."
+    },
+    {
+      "test_case_id": "TC-IDN-01-04",
+      "verdict": "SKIP",
+      "reason": "DB-backed test requires BPM_TEST_DB_URL; test path skipped."
+    },
+    {
+      "test_case_id": "TC-IDN-01-05",
+      "verdict": "SKIP",
+      "reason": "DB-backed test requires BPM_TEST_DB_URL; test path skipped."
+    },
+    {
+      "test_case_id": "TC-IDN-01-06",
+      "verdict": "SKIP",
+      "reason": "Auth inactive-user check in tests/unit/test_api08_auth.zig calls testDbUrl and skips when BPM_TEST_DB_URL is unset."
+    }
+  ],
+  "issues": [
+    {
+      "id": "ISS-IDN01-TESTENV-001",
+      "severity": "BLOCKER",
+      "description": "BPM_TEST_DB_URL is unset, causing IDN-01 DB-backed acceptance tests to skip and preventing PASS/FAIL validation of required behavior.",
+      "affected_requirement": "IDN-01",
+      "remediation": "Set BPM_TEST_DB_URL to a reachable test PostgreSQL instance, run migrations, and rerun zig build test plus zig build test-integration."
+    }
+  ],
+  "next_action": "Route to ORCH/WF-03 for environment fix or rerun TEST-RUNNER after BPM_TEST_DB_URL is configured."
+}

@@ -164,11 +164,14 @@ test "TC-EE-04-08: handleComplete — malformed task_id returns HTTP 422" {
 
     var dummy_store: task_store_mod.TaskStore = undefined;
     var dummy_instance_store: instance_mod.InstanceStore = undefined;
+    var dummy_identity_registry: bpm.identity_registry.Registry = undefined;
+    var dummy_identity_service = bpm.identity_service.Service.init(&dummy_identity_registry);
 
     const actor = task_routes.Actor{ .user_id = "u1", .is_operator_or_above = false, .is_platform_admin = false };
     const result = task_routes.handleComplete(
         &dummy_store,
         &dummy_instance_store,
+        &dummy_identity_service,
         alloc,
         actor,
         "not-a-uuid",

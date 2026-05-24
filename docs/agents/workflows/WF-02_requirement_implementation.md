@@ -151,23 +151,31 @@ Step workflow chain template:
    If FAIL: fix compilation errors; retry (counts as rework)
 6. → fn:apply-migrations (test DB)
    If FAIL: fix migration SQL; retry
-7. Self-review checklist:
+7. Error-set validation (mandatory — run before self-review):
+   zig build 2>&1 | grep -i "error set"
+   If any output: the return type of a function does not cover all errors it can
+   propagate. Fix all error-set declarations before proceeding. This is the
+   single most common cause of downstream TEST-RUNNER compile failures and
+   WF-03 dispatches. Do not skip this step.
+8. Self-review checklist:
    [ ] No string interpolation of user input into SQL (prepared statements only)
    [ ] All allocations accept an allocator parameter
    [ ] No I/O inside transition.zig (if modified)
    [ ] Each error type is in the module's error set
+   [ ] If any function signature changed: verify all call sites compile
    [ ] New public functions have a doc comment (one line describing behaviour)
-8. → fn:complete-handoff (status: PASS/FAIL,
+9. → fn:complete-handoff (status: PASS/FAIL,
                            artifacts_out: ["src/...", "migrations/NNN_*.sql"],
                            next_action: "Route to TEST-DESIGNER once Step 2b also complete")
 ```
 
 ### Acceptance criteria for this step
 
-- [ ] `zig build` exits 0
+- [ ] `zig build` exits 0 with no "error set" warnings in stderr
 - [ ] All migrations apply cleanly against fresh DB (`fn:apply-migrations` PASS)
 - [ ] No SQL string interpolation of user data
 - [ ] Pure transition function has no I/O (if modified)
+- [ ] All callers of any changed function signature compile without error
 
 ---
 
@@ -255,16 +263,40 @@ Step workflow chain template:
 4. → fn:check-code-coverage
 5. → fn:write-test-report (all results combined)
 6. Read the report:
-   - If any BLOCKER failures: status = FAIL
+   - If any BLOCKER failures: status = FAIL; classify failure type (see below)
    - If coverage below threshold: status = FAIL
    - If only MINOR failures: status = PARTIAL (Orchestrator decides)
 7. → fn:complete-handoff (status: PASS/FAIL/PARTIAL,
                            artifacts_out: ["tests/reports/report-<date>-WF02.json"],
                            next_action: PASS → "Route to RELEASE-VALIDATOR"
-                                        FAIL → "Route to ISSUE-FIXER")
+                                        FAIL (compile) → "Inline fix authority granted — see below"
+                                        FAIL (logic/DB) → "Route to ISSUE-FIXER")
 ```
 
-When TEST-RUNNER returns FAIL, ORCH routes to `ISSUE-FIXER` (see WF-03), then returns to Step 4.
+### Inline fix authority for compile-only blockers
+
+When `status = FAIL` and **every** blocking failure is a compile-time error (not a logic,
+DB, or assertion failure), TEST-RUNNER MAY fix the compile error inline without a WF-03
+dispatch, provided:
+
+- The fix touches ≤ 2 source files
+- The error category is one of: error-set mismatch, mutability mismatch (`*T` vs `*const T`),
+  missing import, or unused variable
+- No logic, schema, or API contract change is required
+
+**Inline fix procedure:**
+```
+a. Edit the offending file(s) to resolve the compile error
+b. Re-run: zig build 2>&1 | head -20
+c. If zig build now exits 0: re-run the full test suite from step 1 above
+d. If zig build still fails, or if the fix scope exceeds the limits above:
+   revert inline changes, set status = FAIL, route to ISSUE-FIXER per WF-03
+```
+
+All inline fixes MUST be listed in `result.artifacts_out` and summarised in `result.summary`.
+If inline fix succeeds, `result.summary` MUST note: "Compile blocker resolved inline; no WF-03 required."
+
+When TEST-RUNNER returns FAIL for non-compile errors, ORCH routes to `ISSUE-FIXER` (see WF-03), then returns to Step 4.
 
 ---
 
@@ -272,6 +304,33 @@ When TEST-RUNNER returns FAIL, ORCH routes to `ISSUE-FIXER` (see WF-03), then re
 
 **Agent:** `RELEASE-VALIDATOR`  
 **Functions:** `fn:load-requirement-status`, `fn:run-nfr-benchmarks`, `fn:run-integration-tests`, `fn:check-doc-freshness`
+
+### ORCH pre-dispatch benchmark environment check
+
+**ORCH MUST run this check before dispatching RELEASE-VALIDATOR.** If it fails, ORCH routes
+to BACKEND-DEV to provision the environment — do NOT dispatch RELEASE-VALIDATOR into an
+environment where benchmarks will error on missing configuration.
+
+```bash
+# PowerShell
+$result = zig build bench 2>&1 | Select-Object -First 5
+if ($result -match "BPM_DB_URL|BENCHMARK_SETUP_ERROR|missing.*URL") {
+    Write-Host "BLOCKED: benchmark environment not ready — route to BACKEND-DEV first"
+    exit 1
+}
+Write-Host "CLEARED: benchmark environment ready"
+```
+
+```bash
+# bash / CI
+zig build bench 2>&1 | head -5 | grep -qiE "BPM_DB_URL|BENCHMARK_SETUP_ERROR|missing.*URL" \
+  && echo "BLOCKED: benchmark environment not ready" && exit 1 \
+  || echo "CLEARED: benchmark environment ready"
+```
+
+If BLOCKED: ORCH creates an interim BACKEND-DEV handoff to set up `BPM_DB_URL` and
+`BPM_TEST_DB_URL`, then re-runs this pre-check before dispatching RELEASE-VALIDATOR.
+Log the block with action `BENCH_ENV_BLOCK` in `handoffs/orchestrator.log`.
 
 ### Procedure
 
@@ -293,6 +352,7 @@ When TEST-RUNNER returns FAIL, ORCH routes to `ISSUE-FIXER` (see WF-03), then re
 
 On FAIL, `ORCH` inspects the blocking issue type:
 - NFR benchmark failure → `BACKEND-DEV` (performance work)
+- Benchmark environment missing → `BACKEND-DEV` (env provisioning; run pre-check again before next RV dispatch)
 - Test regression → `ISSUE-FIXER`
 - Documentation stale → `DOC-UPDATER`
 

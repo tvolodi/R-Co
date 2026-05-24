@@ -1,0 +1,67 @@
+{
+  "handoff_id": "149c8f5f-6dd8-48f9-868d-472683d6a7e4",
+  "run_id": "WF02-obs02-20260524",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-obs02-20260524/step-04b-test-runner-rework1.json",
+  "created_at": "2026-05-24T18:14:00Z",
+  "started_at": "2026-05-24T18:14:20Z",
+  "completed_at": "2026-05-24T18:27:02Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-02"
+    ],
+    "related_handoff_ids": [
+      "3f56f3e8-8b7e-44e8-a4f0-652f7f6aaf2f",
+      "14ab84e3-85ad-4e0b-b6c6-41fd2495d6ee"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-obs02-20260524/step-04-test-runner.json",
+      "handoffs/WF03-obs02-httpfix-20260524/step-01-issue-fixer.json",
+      "tests/specs/OBS-02.md",
+      "tests/integration/obs02_metrics_test.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Re-execute OBS-02 test-runner step with full executable integration evidence. Use required integration environment variables so OBS-02 HTTP tests execute instead of skip: BPM_TEST_DB_URL, BPM_TEST_URL, and BPM_TEST_TOKEN. Run OBS-02 unit + integration scopes and produce updated tests/reports artifacts for this rework step. Acceptance requires OBS-02 integration tests to execute and pass without connection-refused or missing-token skips.",
+    "acceptance_criteria": [
+      "OBS-02 unit tests execute and pass",
+      "OBS-02 integration tests execute and pass (not skipped for missing token or connection refused)",
+      "Updated test report is written under tests/reports/ for this rework step",
+      "Handoff result includes PASS/FAIL with issue details if any"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Executed OBS-02 rework unit and integration scopes with BPM_TEST_DB_URL, BPM_TEST_URL, and BPM_TEST_TOKEN set. Unit scope passed, but OBS-02 integration tests remained skipped (error.EndOfStream / connection-refused behavior), so executable non-skipped OBS-02 integration evidence was not achieved.",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-24-WF02-obs02-step04b-rework1.json",
+      "tests/reports/WF02-obs02-20260524-step04b-unit.log",
+      "tests/reports/WF02-obs02-20260524-step04b-integration-obs02.log",
+      "tests/reports/WF02-obs02-20260524-step04b-integration.log",
+      "docs/issue-reports/WF02-obs02-20260524-step-04b-test-runner-rework1-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-WF02-OBS02-TR-R1-001",
+        "severity": "BLOCKER",
+        "description": "TC-OBS-02-INT-01/02/03 did not execute as passing integration tests and were skipped under required environment setup, preventing OBS-02 acceptance completion.",
+        "affected_requirement": "OBS-02"
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03) for deterministic HTTP integration harness behavior, then rerun TEST-RUNNER step 04b."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

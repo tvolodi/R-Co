@@ -1,0 +1,54 @@
+{
+  "handoff_id": "6cf6c592-5c4f-4e8e-bf59-9e4de9976d72",
+  "run_id": "WF02-sch07-20260524",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-sch07-20260524/step-01-code-designer.json",
+  "created_at": "2026-05-24T00:00:00Z",
+  "started_at": "2026-05-24T00:00:30Z",
+  "completed_at": "2026-05-24T01:33:27Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": ["SCH-07"],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements/SCH-07.md",
+      "src/design/scheduler.md",
+      "src/design/sch05-missed-timer-recovery.md",
+      "src/design/sch06-timer-jitter.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a code design artefact at src/design/sch07-recurring-timers.md for requirement SCH-07 (Recurring timers). SCH-07 introduces ISO 8601 repeat support (e.g. R/PT1H, R3/PT1H), automatic re-arm after each fire, bounded repeat completion, and infinite repeat until instance termination. The design must define: repeat expression parsing strategy; timer payload/state model required to track occurrence counts; transactional behavior so recurring re-arm occurs in the same transaction as timer firing; integration points with SCH-01 timer creation, SCH-02 polling/fire flow, SCH-03 cancellation semantics, and SCH-05 missed timer recovery behavior; and edge-case handling when interval is shorter than polling period. No direct code changes in this step.",
+    "acceptance_criteria": [
+      "Every SCH-07 acceptance criterion maps to a concrete design element",
+      "ISO 8601 repeat expression model and parser contract are specified",
+      "Re-arm transaction boundary is defined (same transaction as fire)",
+      "Finite repeat completion and infinite repeat termination rules are explicit",
+      "Integration with SCH-01, SCH-02, SCH-03, SCH-05 is traceably documented",
+      "DB schema impact and migration needs are explicitly listed"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for sch07-recurring-timers covering repeat parsing, recurrence state model, same-transaction fire+rearm semantics, integration with SCH-01/02/03/05, and migration impact.",
+    "artifacts_out": [
+      "src/design/sch07-recurring-timers.md",
+      "docs/issue-reports/WF02-sch07-20260524-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

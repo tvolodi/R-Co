@@ -1,0 +1,55 @@
+{
+  "handoff_id": "b5c6d7e8-f9a0-4b1c-8d2e-3f4a5b6c7d8e",
+  "run_id": "WF02-sch05-20260523",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-sch05-20260523/step-02a-backend-dev.json",
+  "created_at": "2026-05-23T20:32:07Z",
+  "started_at": "2026-05-23T20:34:21Z",
+  "completed_at": "2026-05-23T20:35:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 \u2014 Scheduler + Identity",
+    "requirement_ids": [
+      "SCH-05"
+    ],
+    "related_handoff_ids": [
+      "9a4b3c2d-1e5f-4a6b-8c7d-9e0f1a2b3c4d"
+    ],
+    "artifacts_in": [
+      "src/design/sch05-missed-timer-recovery.md",
+      "src/design/scheduler.md",
+      "src/scheduler/scheduler.zig",
+      "src/scheduler/store.zig",
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "Implement SCH-05 \u2014 Missed timer recovery in src/scheduler/scheduler.zig.\n\nFollowing the design at src/design/sch05-missed-timer-recovery.md, modify the existing scheduler polling to:\n\n1. Add `is_startup_sweep: bool` field to Scheduler struct (init = true, set to false after first pollDueTimers returns).\n2. Modify the poll query SELECT to also return `fires_at`:\n   ```sql\n   SELECT id::text, instance_id::text, timer_type, action_config::text,\n          EXTRACT(EPOCH FROM fires_at)::bigint * 1000000 AS fires_at_epoch_us\n   FROM timers\n   WHERE status = 'pending'\n     AND fires_at <= NOW()\n   ORDER BY fires_at ASC, id ASC\n   FOR UPDATE SKIP LOCKED\n   LIMIT 1\n   ```\n3. Add helper function `isFiredLate(scheduled_fire_at_epoch_us: i64, actual_fire_at_epoch_us: i64, poll_interval_us: u64, is_startup_sweep: bool) bool`.\n   - Start-up sweep: `scheduled < actual` \u2192 late.\n   - Normal polls: `scheduled < actual - poll_interval` \u2192 late.\n4. Add helper function `buildTimerFiredPayload(allocator, timer_id_text, scheduled_fire_at_us, actual_fire_at_us, fired_late) ![]const u8` that builds the extended JSON:\n   ```json\n   {\n     \"timer_id\": \"<uuid>\",\n     \"fired_late\": true|false,\n     \"scheduled_fire_at\": 1234567890123456,\n     \"actual_fire_at\": 1234567891123456\n   }\n   ```\n5. Modify `appendTimerFiredEventInTx` to accept the extended payload (or create a new version).\n6. Modify `processNextDueTimer` to pass fires_at through to the payload builder.\n7. Compute `actual_fire_at` as `NOW()` epoch microseconds at fire time (same transaction).\n8. Ensure all tests still pass: `zig build` and `zig build test` exit 0.\n\nNo schema migration needed. No changes to store.zig, transition.zig, or instance.zig.\n\nAcceptance criteria:\n- Every TIMER_FIRED event includes `fired_late`, `scheduled_fire_at`, `actual_fire_at` in its payload\n- First poll after init marks all due timers as overdue (is_startup_sweep=true)\n- Subsequent polls use threshold-based detection (poll_interval as threshold)\n- No timer is skipped; all are processed exactly once\n- `zig build` exits 0\n- `zig build test` exits 0",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "Extended TIMER_FIRED payload includes fired_late, scheduled_fire_at, actual_fire_at",
+      "is_startup_sweep transitions from true to false after first poll",
+      "No schema changes (no new migrations)"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented SCH-05 \u2014 Missed timer recovery in src/scheduler/scheduler.zig",
+    "artifacts_out": [
+      "src/scheduler/scheduler.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,56 @@
+{
+  "handoff_id": "0f0cb84f-d2cf-4fab-8bb5-f34f078fe5ba",
+  "run_id": "WF02-idn02-20260524",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-idn02-20260524/step-04b-test-runner-rework1.json",
+  "created_at": "2026-05-24T06:43:20Z",
+  "started_at": "2026-05-24T06:40:45Z",
+  "completed_at": "2026-05-24T06:42:24Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": [
+      "IDN-02"
+    ],
+    "related_handoff_ids": [
+      "1a4d0b8f-5c42-4c7f-a9d5-7234e83f7079",
+      "b6a8fcb2-81fe-4b26-81b6-c41f9b4d74da"
+    ],
+    "artifacts_in": [
+      "tests/specs/IDN-02.md",
+      "tests/integration/idn02_group_management_test.zig",
+      "tests/integration/trace_test.zig",
+      "tests/reports/report-20260524T063401Z-WF02-idn02-20260524.json",
+      "handoffs/WF03-idn02-testfix-20260524/step-01-issue-fixer.json"
+    ]
+  },
+  "task": {
+    "description": "Re-run WF02 IDN-02 Step 04 after WF03 test-fix remediation. Execute the relevant backend unit/integration tests for the IDN-02 slice, confirm the prior API-09 trace blocker no longer fails the run, and produce a fresh structured report under tests/reports/. If anything still fails, include detailed severity-classified issues with affected requirement IDs.",
+    "acceptance_criteria": [
+      "IDN-02 relevant tests are re-executed after the issue-fix",
+      "A new test report is generated in tests/reports/",
+      "Previous blocker TC-API-09-INT-05 no longer fails due to the fixed precondition",
+      "Handoff result accurately reflects PASS/FAIL/PARTIAL with concrete evidence"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-ran backend unit and integration layers for IDN-02 after WF03 remediation. Unit tests passed, IDN-02-focused integration passed, and full integration passed with TC-API-09-INT-05 no longer failing (token-gated skip behavior observed as expected in the current environment).",
+    "artifacts_out": [
+      "tests/reports/report-20260524T064224Z-WF02-idn02-20260524-rework1.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 05)."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

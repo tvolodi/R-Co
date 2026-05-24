@@ -1,0 +1,8 @@
+{
+  "stage": "Stage 5 — Scheduler + Identity",
+  "date": "2026-05-23T20:45:09Z",
+  "decision": "APPROVED",
+  "nfr_results": {},
+  "blocking_issues": [],
+  "approved_requirements": ["SCH-05"]
+}

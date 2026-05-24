@@ -1,0 +1,59 @@
+{
+  "handoff_id": "68ed4dd5-5746-4637-89dc-26d7348c9e5d",
+  "run_id": "WF02-obs02-20260524",
+  "workflow_id": "WF-02",
+  "step": "04c",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-obs02-20260524/step-04c-test-runner-rework2.json",
+  "created_at": "2026-05-24T18:34:40Z",
+  "started_at": "2026-05-24T18:35:00Z",
+  "completed_at": "2026-05-24T18:42:25Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-02"
+    ],
+    "related_handoff_ids": [
+      "149c8f5f-6dd8-48f9-868d-472683d6a7e4",
+      "de8c1e6f-9970-4dce-a4be-b03d6f7612f8"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-obs02-20260524/step-04b-test-runner-rework1.json",
+      "handoffs/WF03-obs02-harnessfix2-20260524/step-01-issue-fixer.json",
+      "tests/specs/OBS-02.md",
+      "tests/integration/obs02_metrics_test.zig",
+      "src/obs/metrics.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 2: Re-run OBS-02 verification after deterministic harness fix. Execute OBS-02 unit and integration scopes and produce updated test report artifacts. Primary acceptance is executable OBS-02 integration evidence (TC-OBS-02-INT-01/02/03) passing with no connection-refused or EndOfStream skips. Include command outputs and pass/fail counts in report artifacts.",
+    "acceptance_criteria": [
+      "OBS-02 unit tests execute and pass",
+      "OBS-02 integration tests TC-OBS-02-INT-01/02/03 execute and pass without skip",
+      "Updated rework report is written under tests/reports/",
+      "Handoff result records PASS/FAIL with detailed issue data if needed"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed OBS-02 rework iteration 2 test scopes. Unit scope completed successfully, and OBS-02 integration cases TC-OBS-02-INT-01/02/03 executed directly via the integration module graph with all 3 passing and no skip.",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-24-WF02-obs02-step04c-rework2.json",
+      "tests/reports/WF02-obs02-20260524-step04c-unit.log",
+      "tests/reports/WF02-obs02-20260524-step04c-integration-obs02.log"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

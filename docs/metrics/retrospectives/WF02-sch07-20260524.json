@@ -1,0 +1,71 @@
+{
+  "run_id": "WF02-sch07-20260524",
+  "requirement_ids": [
+    "SCH-07"
+  ],
+  "difficulty": 4,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 45,
+  "actual_minutes_total": 113.3,
+  "variance_pct": 151.8,
+  "by_step": {
+    "code-designer": {
+      "estimated": 10,
+      "actual": 93.0,
+      "variance_pct": 830.0
+    },
+    "backend-dev": {
+      "estimated": 12,
+      "actual": 6.1,
+      "variance_pct": -49.2
+    },
+    "test-designer": {
+      "estimated": 11,
+      "actual": 4.0,
+      "variance_pct": -63.6
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 7.9,
+      "variance_pct": 12.9
+    },
+    "release-validator": {
+      "estimated": 2,
+      "actual": 0.8,
+      "variance_pct": -60.0
+    },
+    "doc-updater": {
+      "estimated": 3,
+      "actual": 1.5,
+      "variance_pct": -50.0
+    }
+  },
+  "rework_steps": [
+    "test-runner",
+    "release-validator"
+  ],
+  "rule_adjustments": [
+    {
+      "step": "backend-dev",
+      "difficulty": 4,
+      "old_estimate": 12,
+      "new_estimate": 9,
+      "reason": "Observed 3 consecutive runs at D4 with >25% variance"
+    },
+    {
+      "step": "test-designer",
+      "difficulty": 4,
+      "old_estimate": 11,
+      "new_estimate": 8,
+      "reason": "Observed 2 consecutive runs at D4 with >25% variance"
+    },
+    {
+      "step": "doc-updater",
+      "difficulty": 4,
+      "old_estimate": 3,
+      "new_estimate": 2,
+      "reason": "Observed 4 consecutive runs at D4 with >25% variance"
+    }
+  ],
+  "completed_at": "2026-05-24T02:07:09Z"
+}

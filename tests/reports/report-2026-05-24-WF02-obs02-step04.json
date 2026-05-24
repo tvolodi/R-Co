@@ -1,0 +1,122 @@
+{
+  "run_id": "WF02-obs02-20260524",
+  "workflow_id": "WF-02",
+  "handoff_id": "3f56f3e8-8b7e-44e8-a4f0-652f7f6aaf2f",
+  "timestamp": "2026-05-24T18:05:31.508240Z",
+  "requirement_ids": [
+    "OBS-02"
+  ],
+  "summary": {
+    "total": 389,
+    "passed": 284,
+    "failed": 0,
+    "skipped": 105
+  },
+  "commands": [
+    {
+      "command": "zig build --summary all test -- --test-filter TC-OBS-02",
+      "exit_code": 0,
+      "totals": {
+        "total": 386,
+        "passed": 284,
+        "failed": 0,
+        "skipped": 102
+      },
+      "output_artifact": "tests/reports/WF02-obs02-20260524-step04-unit.log"
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test BPM_TEST_URL=http://127.0.0.1:8080 zig build --summary all test-integration -- --test-filter TC-OBS-02-INT",
+      "exit_code": 0,
+      "totals": {
+        "total": 202,
+        "passed": 192,
+        "failed": 0,
+        "skipped": 10
+      },
+      "output_artifact": "tests/reports/WF02-obs02-20260524-step04-integration.log",
+      "notes": [
+        "OBS-02 integration checks logged repeated CONNECTION_REFUSED errors for http://127.0.0.1:8080 and skipped the OBS-02 integration assertions."
+      ]
+    },
+    {
+      "command": "BPM_TEST_URL=http://127.0.0.1:8080 zig test tests/integration/obs02_metrics_test.zig --test-filter TC-OBS-02-INT",
+      "exit_code": 0,
+      "totals": {
+        "total": 3,
+        "passed": 0,
+        "failed": 0,
+        "skipped": 3
+      },
+      "output_artifact": "tests/reports/WF02-obs02-20260524-step04-integration-obs02.log",
+      "notes": [
+        "All three OBS-02 integration tests were skipped because the HTTP target was unavailable (CONNECTION_REFUSED), so /metrics contract and non-blocking scrape behavior were not executed as required evidence."
+      ]
+    }
+  ],
+  "obs02_coverage": [
+    {
+      "test_id": "TC-OBS-02-02",
+      "layer": "unit",
+      "file": "src/obs/metrics.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-OBS-02-03",
+      "layer": "unit",
+      "file": "src/obs/metrics.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-OBS-02-05",
+      "layer": "unit",
+      "file": "src/obs/metrics.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-OBS-02-01",
+      "layer": "integration",
+      "file": "tests/integration/obs02_metrics_test.zig",
+      "status": "skipped"
+    },
+    {
+      "test_id": "TC-OBS-02-04",
+      "layer": "integration",
+      "file": "tests/integration/obs02_metrics_test.zig",
+      "status": "skipped"
+    }
+  ],
+  "failures": [
+    {
+      "test_id": "TC-OBS-02-INT-01",
+      "layer": "integration",
+      "file": "tests/integration/obs02_metrics_test.zig",
+      "error_message": "OBS-02 integration HTTP target unavailable (CONNECTION_REFUSED) while validating unauthenticated GET /metrics contract.",
+      "severity": "BLOCKER",
+      "affected_requirement": "OBS-02"
+    },
+    {
+      "test_id": "TC-OBS-02-INT-02",
+      "layer": "integration",
+      "file": "tests/integration/obs02_metrics_test.zig",
+      "error_message": "OBS-02 integration HTTP target unavailable (CONNECTION_REFUSED) while validating required metric families and labels.",
+      "severity": "BLOCKER",
+      "affected_requirement": "OBS-02"
+    },
+    {
+      "test_id": "TC-OBS-02-INT-03",
+      "layer": "integration",
+      "file": "tests/integration/obs02_metrics_test.zig",
+      "error_message": "OBS-02 integration HTTP target unavailable (CONNECTION_REFUSED) while validating non-blocking repeated scrape behavior.",
+      "severity": "BLOCKER",
+      "affected_requirement": "OBS-02"
+    }
+  ],
+  "issues": [
+    {
+      "id": "ISS-WF02-OBS02-TR-001",
+      "severity": "BLOCKER",
+      "description": "OBS-02 integration evidence could not be executed because the target HTTP server at BPM_TEST_URL was unavailable; all TC-OBS-02-INT checks were skipped.",
+      "affected_requirement": "OBS-02"
+    }
+  ]
+}

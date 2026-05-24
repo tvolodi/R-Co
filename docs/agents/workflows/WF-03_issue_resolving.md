@@ -17,6 +17,22 @@ Step workflow chain template:
 
 ---
 
+## When to launch WF-03
+
+WF-03 is launched by ORCH only when TEST-RUNNER in WF-02 Step 4 returns FAIL **and** the
+failure is NOT eligible for inline fix. If TEST-RUNNER resolved the issue inline (see
+WF-02 Step 4 inline fix authority), ORCH does NOT launch WF-03 — TEST-RUNNER resubmits
+its handoff as PASS.
+
+**Launch WF-03 when:**
+- Failure is a logic error, DB error, or assertion failure (not a pure compile error)
+- Compile failure touches > 2 files
+- Compile failure requires a logic, schema, or API contract change
+- TEST-RUNNER's inline fix attempt failed
+
+**Do not launch WF-03 when:**
+- TEST-RUNNER resolved a compile-only blocker inline and resubmitted PASS
+
 ## Overview
 
 ```

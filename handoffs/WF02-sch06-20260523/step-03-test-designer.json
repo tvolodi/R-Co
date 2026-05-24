@@ -1,0 +1,50 @@
+{
+  "handoff_id": "c9d7e5f3-0a4b-4c8d-9e2f-6a3b7c4d5e0f",
+  "run_id": "WF02-sch06-20260523",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-sch06-20260523/step-03-test-designer.json",
+  "created_at": "2026-05-23T21:23:24Z",
+  "started_at": "2026-05-23T21:23:46Z",
+  "completed_at": "2026-05-23T21:25:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 \u2014 Scheduler + Identity",
+    "requirement_ids": ["SCH-06"],
+    "related_handoff_ids": ["7a5b3c1d-8e2f-4a6b-9c3d-1e4f5a6b7c8d", "b8c6d4e2-9f3a-4b7c-8d1e-5f2a6b3c4d9e"],
+    "artifacts_in": [
+      "src/design/sch06-timer-jitter.md",
+      "docs/requirements/SCH-06.md",
+      "src/scheduler/scheduler.zig",
+      "tests/unit/sch06_timer_jitter_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Write test specs and additional test code for requirement SCH-06 (Timer jitter).\n\nSCH-06 adds configurable random jitter (\u00b1N ms) to the scheduler polling interval. BACKEND-DEV has already implemented the feature with 13 inline/dedicated unit tests.\n\nYour task:\n1. Write a test spec at tests/specs/SCH-06.md covering all acceptance criteria from the requirement\n2. The existing tests in tests/unit/sch06_timer_jitter_test.zig and inline tests in src/scheduler/scheduler.zig already cover:\n   - TC-SCH-06-01 through TC-SCH-06-13\n   - jitter_0_disabled: jitter_ms=0 \u2192 delay = base_interval\n   - jitter_nonzero_symmetric: output within [-jitter, +jitter] range\n   - jitter_clamped_to_zero: output clamped to \u22650\n   - jitter_deterministic_seed: same config + same seed \u2192 same output\n   - jitter_mean_approximation: mean ~0 over many samples\n   - computePollDelayMs boundary tests\n3. Add any missing test cases for edge cases not yet covered\n4. Validate that zig build test passes\n\nFocus on the test spec document and any missing coverage.",
+    "acceptance_criteria": [
+      "Test spec at tests/specs/SCH-06.md covers all acceptance criteria from SCH-06",
+      "All existing unit tests still pass",
+      "Any missing edge cases have test coverage added"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test spec and additional test cases for SCH-06 (Timer jitter). Created tests/specs/SCH-06.md covering all 5 acceptance criteria. Added 3 new test cases (TC-SCH-06-14 through TC-SCH-06-16) for edge cases: minimum jitter range coverage, independent PRNG seeding, and span verification. All 16 SCH-06 tests pass (9 inline + 7 dedicated).",
+    "artifacts_out": [
+      "tests/specs/SCH-06.md",
+      "tests/unit/sch06_timer_jitter_test.zig",
+      "docs/issue-reports/WF02-sch06-test-design.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,18 @@
+Cleaning test database...
+Test database cleaned.
+test-integration
++- run test w
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+failed command: ".\\.zig-cache\\o\\a7170366b9ceb7b6070dd94f2080d9b4\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xff046b4a --listen=-
+
+Build Summary: 4/4 steps succeeded; 187/193 tests passed (6 skipped)
+test-integration success
++- run python3 success 2s
++- run test 187 pass, 6 skip (193 total) 24s MaxRSS:34M
+   +- compile test Debug native cached 35ms MaxRSS:19M
+

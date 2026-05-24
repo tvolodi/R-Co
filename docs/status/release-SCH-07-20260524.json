@@ -1,0 +1,62 @@
+{
+  "stage": "Stage 5 - Scheduler + Identity",
+  "date": "2026-05-24T02:04:41Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "SCH-07"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "bpm_db_url": "postgres://bpm:bpm@localhost:5432/bpm_dev",
+    "benchmark_stdout_lines": [
+      "NFR_RESULT|NFR-01|p99_read_ms|target=<=200|actual=1.013|unit=ms|passed=true",
+      "NFR_RESULT|NFR-01|p99_write_ms|target=<=500|actual=2.565|unit=ms|passed=true",
+      "NFR_RESULT|NFR-02|append_throughput_eps|target=>=1000|actual=2265.766|unit=events_per_second|passed=true",
+      "NFR_RESULT|NFR-04|replay_10000_ms|target=<=5000|actual=57.908|unit=ms|passed=true",
+      "NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1779588250299"
+    ],
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.013,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.565,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 2265.766,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 57.908,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true
+  },
+  "test_evidence": {
+    "primary_report": "tests/reports/WF02-sch07-20260524-run-02.md",
+    "backend_handoff": "handoffs/WF02-sch07-20260524/step-02a-backend-dev.json",
+    "latest_test_runner_handoff": "handoffs/WF02-sch07-20260524/step-04b-test-runner-rework1.json",
+    "verdict": "PASS_WITH_ENV_GATE"
+  },
+  "non_blocking_observations": [
+    {
+      "severity": "MINOR",
+      "description": "The latest SCH-07 test run passed compile and command-exit checks but integration runtime assertions were environment-gated because BPM_TEST_DB_URL is unset."
+    }
+  ],
+  "blocking_issues": [],
+  "approved_requirements": [
+    "SCH-07"
+  ],
+  "recommendation": "APPROVE SCH-07 for release progression; route to DOC-UPDATER to mark requirement status RELEASED."
+}

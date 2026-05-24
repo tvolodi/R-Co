@@ -1,0 +1,77 @@
+{
+  "run_id": "WF02-idn03-20260524",
+  "workflow_id": "WF-02",
+  "handoff_id": "b1ed7dfe-f406-4a9f-a16a-fef85017e844",
+  "timestamp": "2026-05-24T07:32:18Z",
+  "requirement_ids": [
+    "IDN-03"
+  ],
+  "summary": {
+    "total": 575,
+    "passed": 467,
+    "failed": 0,
+    "skipped": 108
+  },
+  "commands": [
+    {
+      "command": "zig build test --summary all",
+      "exit_code": 0,
+      "totals": {
+        "total": 382,
+        "passed": 280,
+        "failed": 0,
+        "skipped": 102
+      },
+      "output_artifact": "tests/reports/WF02-idn03-20260524-step04-unit.log"
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration --summary all",
+      "exit_code": 0,
+      "totals": {
+        "total": 193,
+        "passed": 187,
+        "failed": 0,
+        "skipped": 6
+      },
+      "output_artifact": "tests/reports/WF02-idn03-20260524-step04-integration.log",
+      "notes": [
+        "Output contains six 'BPM_TEST_URL is not set - skipping HTTP integration test' lines for HTTP-token-gated tests outside IDN-03 scope.",
+        "Build summary reports success with 0 failed tests for the executed integration suite."
+      ]
+    }
+  ],
+  "idn03_coverage": [
+    {
+      "test_id": "TC-IDN-03-01",
+      "layer": "unit",
+      "file": "src/api/authorization.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-IDN-03-02",
+      "layer": "unit",
+      "file": "src/api/authorization.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-IDN-03-03a",
+      "layer": "unit",
+      "file": "src/api/authorization.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-IDN-03-04",
+      "layer": "unit",
+      "file": "src/api/authorization.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-IDN-03-03b",
+      "layer": "integration",
+      "file": "tests/integration/idn03_role_access_test.zig",
+      "status": "covered_by_suite_pass",
+      "focus": "TASK_WORKER own-or-group row filtering on GET /tasks"
+    }
+  ],
+  "issues": []
+}

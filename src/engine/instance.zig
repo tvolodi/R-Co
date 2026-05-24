@@ -14,6 +14,7 @@ const snapshot_mod = @import("../definition/snapshot.zig");
 const task_mod = @import("../tasks/store.zig");
 const transition_mod = @import("transition.zig");
 const scheduler_store_mod = @import("../scheduler/store.zig");
+const metrics = @import("../obs/metrics.zig");
 const json_schema = @import("../tools/json_schema.zig");
 
 // ---------------------------------------------------------------------------
@@ -32,6 +33,46 @@ fn fillRandom(buf: []u8) void {
         .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
         else => @compileError("fillRandom: unsupported OS — add a platform branch"),
     }
+}
+
+fn refreshActiveInstancesMetric(pool: *Pool, allocator: std.mem.Allocator) void {
+    const conn = pool.acquire() catch {
+        metrics.markActiveInstancesStale();
+        return;
+    };
+    defer pool.release(conn);
+
+    const row = conn.queryRow(
+        allocator,
+        "SELECT COUNT(*)::text FROM instance_projections WHERE status = 'ACTIVE'",
+        &.{},
+    ) catch {
+        metrics.markActiveInstancesStale();
+        return;
+    };
+
+    if (row) |count_row| {
+        defer {
+            for (count_row) |col| {
+                if (col) |value| allocator.free(value);
+            }
+            allocator.free(count_row);
+        }
+
+        if (count_row.len == 0 or count_row[0] == null) {
+            metrics.markActiveInstancesStale();
+            return;
+        }
+
+        const parsed = std.fmt.parseInt(u64, count_row[0].?, 10) catch {
+            metrics.markActiveInstancesStale();
+            return;
+        };
+        metrics.setActiveInstances(parsed);
+        return;
+    }
+
+    metrics.markActiveInstancesStale();
 }
 
 // ---------------------------------------------------------------------------
@@ -725,6 +766,7 @@ pub const InstanceStore = struct {
 
         // COMMIT — all writes are now visible atomically.
         conn2.commit() catch return InstanceError.TransactionFailed;
+        refreshActiveInstancesMetric(self.pool, allocator);
 
         // ── Step f: Build and return Instance ──────────────────────────────
         return rowToInstance(allocator, ins_rows.rows[0], initial_variables) catch
@@ -955,6 +997,7 @@ pub const InstanceStore = struct {
 
         // ── Step g: COMMIT ───────────────────────────────────────────────────
         conn.commit() catch return ApplyError.PersistenceFailed;
+        refreshActiveInstancesMetric(self.pool, allocator);
 
         // ── Step h: Return new_state ─────────────────────────────────────────
         return new_state;
@@ -1541,6 +1584,10 @@ pub const InstanceStore = struct {
         // ── Step n: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return CompleteTaskError.PersistenceFailed;
         tx_committed = true;
+        refreshActiveInstancesMetric(self.pool, allocator);
+
+        const definition_id_hex = uuidToHex(a, def_id) catch "_unknown";
+        metrics.recordTaskCompletion(definition_id_hex);
 
         return new_state;
     }
@@ -1924,6 +1971,7 @@ pub const InstanceStore = struct {
 
         // ── Step h: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return CancelInstanceError.PersistenceFailed;
+        refreshActiveInstancesMetric(self.pool, allocator);
     }
 
     // -----------------------------------------------------------------------
@@ -2361,6 +2409,7 @@ pub const InstanceStore = struct {
 
         // ── Step f: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return SetInstanceErrorError.PersistenceFailed;
+        refreshActiveInstancesMetric(self.pool, allocator);
     }
 };
 
@@ -2604,6 +2653,7 @@ fn persistTimersFromPendingEventsInTx(
                         .instance_id = instance_id,
                         .step_name = timer_ev.timer_node_id,
                         .duration_iso8601 = timer_ev.duration_iso8601,
+                        .repeat_expression = timer_ev.repeat_expression,
                         .payload_json = timer_ev.payload_json,
                     },
                 ) catch |err| switch (err) {

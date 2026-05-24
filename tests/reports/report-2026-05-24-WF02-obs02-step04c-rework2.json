@@ -1,0 +1,35 @@
+{
+  "run_id": "WF02-obs02-20260524",
+  "workflow_id": "WF-02",
+  "step": "04c",
+  "timestamp": "2026-05-24T18:42:13Z",
+  "summary": {
+    "unit_scope": {
+      "command": "zig build --summary all test -- --test-filter \"TC-OBS-02\"",
+      "exit_code": 0,
+      "result": "PASS",
+      "notes": "Unit scope executed successfully via build test layer."
+    },
+    "integration_scope": {
+      "command": "zig test -ODebug --dep pg --dep http --dep cel --dep bpm -Mroot=tests/integration/main_test.zig -Mpg=vendor/pg/pg.zig -Mhttp=vendor/http/http.zig -Mcel=vendor/cel/cel.zig --dep pg --dep cel -Mbpm=src/bpm.zig --test-filter TC-OBS-02-INT",
+      "exit_code": 0,
+      "result": "PASS",
+      "executed_cases": 3,
+      "passed_cases": 3,
+      "skipped_cases": 0
+    }
+  },
+  "evidence": {
+    "integration_cases": [
+      "TC-OBS-02-INT-01 ... OK",
+      "TC-OBS-02-INT-02 ... OK",
+      "TC-OBS-02-INT-03 ... OK",
+      "All 3 tests passed."
+    ],
+    "log_files": [
+      "tests/reports/WF02-obs02-20260524-step04c-unit.log",
+      "tests/reports/WF02-obs02-20260524-step04c-integration-obs02.log"
+    ]
+  },
+  "issues": []
+}

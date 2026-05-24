@@ -4,13 +4,17 @@
 //! instance event in the same transaction as the timer fire.
 const std = @import("std");
 const db = @import("../db/pool.zig");
+const logger = @import("../obs/logger.zig");
 const store_mod = @import("store.zig");
+const recurrence_mod = @import("recurrence.zig");
 const task_mod = @import("../tasks/store.zig");
 
 pub const Uuid = store_mod.Uuid;
 
 pub const SchedulerConfig = struct {
     poll_interval_ms: u64 = 5000,
+    jitter_ms: u64 = 0,
+    max_timers_per_cycle: u32 = 64,
 };
 
 pub const SchedulerError = error{
@@ -33,19 +37,71 @@ pub const EscalationFireResult = enum {
 pub const Scheduler = struct {
     pool: *db.Pool,
     config: SchedulerConfig,
+    is_startup_sweep: bool,
+    prng: std.Random.DefaultPrng,
 
     pub fn init(pool: *db.Pool, config: SchedulerConfig) Scheduler {
-        return .{ .pool = pool, .config = config };
+        // Seed PRNG from OS entropy source (replaces std.crypto.random
+        // which was removed in Zig 0.16).
+        var seed: u64 = undefined;
+        fillRandom(std.mem.asBytes(&seed));
+        return .{
+            .pool = pool,
+            .config = config,
+            .is_startup_sweep = true,
+            .prng = std.Random.DefaultPrng.init(seed),
+        };
+    }
+
+    /// Compute the actual sleep delay for the next poll cycle.
+    /// Returns the base poll_interval_ms adjusted by a uniform-random jitter
+    /// in the range [-jitter_ms, +jitter_ms].
+    ///
+    /// When jitter_ms == 0 (default), this is a trivial return of poll_interval_ms.
+    ///
+    /// The result is guaranteed non-negative (clamped to 0).
+    pub fn computePollDelayMs(self: *Scheduler) u64 {
+        const base_ms = self.config.poll_interval_ms;
+        const jitter_ms = self.config.jitter_ms;
+        if (jitter_ms == 0) return base_ms;
+
+        var rng = self.prng.random();
+
+        // Generate uniform offset in [-jitter_ms, +jitter_ms]
+        const range: u64 = 2 * jitter_ms + 1;
+        const raw = rng.int(u64) % range;
+        const offset: i64 = @as(i64, @intCast(raw)) - @as(i64, @intCast(jitter_ms));
+        const result: i64 = @as(i64, @intCast(base_ms)) + offset;
+
+        if (result < 0) return 0;
+        return @as(u64, @intCast(result));
     }
 
     /// Poll due timers once and process every available timer in sequence.
-    pub fn pollDueTimers(self: *const Scheduler, allocator: std.mem.Allocator) SchedulerError!PollSummary {
+    pub fn pollDueTimers(self: *Scheduler, allocator: std.mem.Allocator) SchedulerError!PollSummary {
         var summary: PollSummary = .{};
+        var processed: u32 = 0;
+        const poll_trace_scope = logger.beginBackgroundTrace("scheduler.poller");
+        const poll_trace = logger.TraceContext{
+            .trace_id = poll_trace_scope.trace_id[0..],
+            .source = .background,
+        };
 
-        while (true) {
+        const start_fields = [_]logger.LogField{
+            .{ .key = "poll_interval_ms", .value = .{ .integer = @intCast(self.config.poll_interval_ms) } },
+            .{ .key = "jitter_ms", .value = .{ .integer = @intCast(self.config.jitter_ms) } },
+            .{ .key = "max_timers_per_cycle", .value = .{ .integer = @intCast(self.config.max_timers_per_cycle) } },
+        };
+        logger.logWithTrace(allocator, .DEBUG, poll_trace_scope.component, poll_trace, "timer poll cycle started", &start_fields) catch {};
+
+        const max_per_cycle: u32 = if (self.config.max_timers_per_cycle == 0) 1 else self.config.max_timers_per_cycle;
+        while (processed < max_per_cycle) {
             const outcome = try self.processNextDueTimer(allocator);
             switch (outcome) {
-                .fired => summary.fired += 1,
+                .fired => {
+                    summary.fired += 1;
+                    processed += 1;
+                },
                 .skipped_locked => {
                     summary.skipped_locked += 1;
                     break;
@@ -53,6 +109,22 @@ pub const Scheduler = struct {
                 .none => break,
             }
         }
+
+        if (processed == max_per_cycle) {
+            const cap_fields = [_]logger.LogField{
+                .{ .key = "processed", .value = .{ .integer = processed } },
+                .{ .key = "max_timers_per_cycle", .value = .{ .integer = max_per_cycle } },
+            };
+            logger.logWithTrace(allocator, .WARN, poll_trace_scope.component, poll_trace, "timer poll cycle hit processing cap", &cap_fields) catch {};
+        }
+
+        self.is_startup_sweep = false;
+
+        const completion_fields = [_]logger.LogField{
+            .{ .key = "fired", .value = .{ .integer = summary.fired } },
+            .{ .key = "skipped_locked", .value = .{ .integer = summary.skipped_locked } },
+        };
+        logger.logWithTrace(allocator, .INFO, poll_trace_scope.component, poll_trace, "timer poll cycle completed", &completion_fields) catch {};
 
         return summary;
     }
@@ -73,7 +145,13 @@ pub const Scheduler = struct {
 
         const due_rows = conn.query(
             a,
-            \\SELECT id::text, instance_id::text, timer_type, action_config::text
+            \\SELECT id::text, instance_id::text, timer_type, step_name, action_type,
+            \\       action_config::text,
+            \\       (EXTRACT(EPOCH FROM fires_at)::bigint * 1000000)::text AS fires_at_epoch_us,
+            \\       COALESCE(repeat_expression, ''),
+            \\       COALESCE(repeat_total::text, ''),
+            \\       COALESCE(fired_count::text, ''),
+            \\       COALESCE(repeat_interval_us::text, '')
             \\FROM timers
             \\WHERE status = 'pending'
             \\  AND fires_at <= NOW()
@@ -96,7 +174,31 @@ pub const Scheduler = struct {
         const timer_id_text = colGet(due_rows.rows[0], 0);
         const instance_id_text = colGet(due_rows.rows[0], 1);
         const timer_type = colGet(due_rows.rows[0], 2);
-        const payload_json = colGet(due_rows.rows[0], 3);
+        const step_name = colGet(due_rows.rows[0], 3);
+        const action_type = colGet(due_rows.rows[0], 4);
+        const payload_json = colGet(due_rows.rows[0], 5);
+        const fires_at_epoch_us_text = colGet(due_rows.rows[0], 6);
+        const repeat_expression = colGet(due_rows.rows[0], 7);
+        const repeat_total_text = colGet(due_rows.rows[0], 8);
+        const fired_count_text = colGet(due_rows.rows[0], 9);
+        const repeat_interval_us_text = colGet(due_rows.rows[0], 10);
+        const fires_at_epoch_us = std.fmt.parseInt(i64, fires_at_epoch_us_text, 10) catch return SchedulerError.TransactionFailed;
+        const timer_component = if (std.mem.eql(u8, timer_type, "human_task_escalation"))
+            "scheduler.escalation"
+        else
+            "scheduler.timer";
+        const timer_trace_scope = logger.beginBackgroundTrace(timer_component);
+        const timer_trace = logger.TraceContext{
+            .trace_id = timer_trace_scope.trace_id[0..],
+            .source = .background,
+        };
+
+        const claim_fields = [_]logger.LogField{
+            .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+            .{ .key = "instance_id", .value = .{ .string = instance_id_text } },
+            .{ .key = "timer_type", .value = .{ .string = timer_type } },
+        };
+        logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "claimed due timer", &claim_fields) catch {};
 
         const lock_key = advisoryLockKeyText(timer_id_text) catch return SchedulerError.TransactionFailed;
         const lock_key_text = std.fmt.allocPrint(a, "{}", .{lock_key}) catch return SchedulerError.OutOfMemory;
@@ -113,39 +215,171 @@ pub const Scheduler = struct {
         }
 
         if (lock_rows.rows.len == 0 or lock_rows.rows[0].len == 0) {
+            const lock_fields = [_]logger.LogField{
+                .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+                .{ .key = "outcome", .value = .{ .string = "skipped_locked" } },
+            };
+            logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "timer advisory lock row missing", &lock_fields) catch {};
             conn.rollback() catch {};
             return .skipped_locked;
         }
 
         const locked = colGet(lock_rows.rows[0], 0);
         if (!std.mem.eql(u8, locked, "t") and !std.mem.eql(u8, locked, "true")) {
+            const lock_fields = [_]logger.LogField{
+                .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+                .{ .key = "outcome", .value = .{ .string = "skipped_locked" } },
+            };
+            logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "timer advisory lock not acquired", &lock_fields) catch {};
             conn.rollback() catch {};
             return .skipped_locked;
         }
 
         if (std.mem.eql(u8, timer_type, "human_task_escalation")) {
+            const now_rows = conn.query(
+                a,
+                \\SELECT (EXTRACT(EPOCH FROM NOW())::bigint * 1000000)::text
+            ,
+                &.{},
+            ) catch return SchedulerError.TransactionFailed;
+            defer {
+                var r = now_rows;
+                r.deinit();
+            }
+            if (now_rows.rows.len == 0) return SchedulerError.TransactionFailed;
+            const actual_fire_at_us = std.fmt.parseInt(i64, colGet(now_rows.rows[0], 0), 10) catch return SchedulerError.TransactionFailed;
+
+            const fired_late = isFiredLate(
+                fires_at_epoch_us,
+                actual_fire_at_us,
+                self.config.poll_interval_ms * 1000,
+                self.is_startup_sweep,
+            );
+
             const result = try self.fireEscalationTimerInTx(
                 allocator,
                 conn,
                 timer_id_text,
                 instance_id_text,
                 payload_json,
+                fires_at_epoch_us,
+                actual_fire_at_us,
+                fired_late,
             );
 
             switch (result) {
-                .fired => {},
+                .fired => {
+                    const result_fields = [_]logger.LogField{
+                        .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+                        .{ .key = "outcome", .value = .{ .string = "fired" } },
+                    };
+                    logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "escalation timer fired", &result_fields) catch {};
+                },
                 .cancelled_before_fire => {
+                    const result_fields = [_]logger.LogField{
+                        .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+                        .{ .key = "outcome", .value = .{ .string = "cancelled_before_fire" } },
+                    };
+                    logger.logWithTrace(allocator, .INFO, timer_component, timer_trace, "escalation timer cancelled before fire", &result_fields) catch {};
                     conn.commit() catch return SchedulerError.TransactionFailed;
                     return .none;
                 },
                 .skipped_locked => {
+                    const result_fields = [_]logger.LogField{
+                        .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+                        .{ .key = "outcome", .value = .{ .string = "skipped_locked" } },
+                    };
+                    logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "escalation timer lock skipped", &result_fields) catch {};
                     conn.rollback() catch {};
                     return .skipped_locked;
                 },
             }
         } else {
-            try appendTimerFiredEventInTx(allocator, conn, instance_id_text, timer_id_text);
+            const now_rows = conn.query(
+                a,
+                \\SELECT (EXTRACT(EPOCH FROM NOW())::bigint * 1000000)::text
+            ,
+                &.{},
+            ) catch return SchedulerError.TransactionFailed;
+            defer {
+                var r = now_rows;
+                r.deinit();
+            }
+            if (now_rows.rows.len == 0) return SchedulerError.TransactionFailed;
+            const actual_fire_at_us = std.fmt.parseInt(i64, colGet(now_rows.rows[0], 0), 10) catch return SchedulerError.TransactionFailed;
+
+            const fired_late = isFiredLate(
+                fires_at_epoch_us,
+                actual_fire_at_us,
+                self.config.poll_interval_ms * 1000,
+                self.is_startup_sweep,
+            );
+
+            const ext_payload = try buildTimerFiredPayload(
+                allocator,
+                timer_id_text,
+                fires_at_epoch_us,
+                actual_fire_at_us,
+                fired_late,
+            );
+
+            try appendTimerFiredEventInTx(allocator, conn, instance_id_text, timer_id_text, ext_payload);
             try markTimerFiredInTx(conn, timer_id_text);
+
+            const fired_fields = [_]logger.LogField{
+                .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+                .{ .key = "outcome", .value = .{ .string = "fired" } },
+                .{ .key = "timer_type", .value = .{ .string = timer_type } },
+            };
+            logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "timer fired", &fired_fields) catch {};
+
+            const recurrence_state = try parseRecurrenceState(
+                repeat_expression,
+                repeat_total_text,
+                fired_count_text,
+                repeat_interval_us_text,
+            );
+
+            if (recurrence_state) |state| {
+                const rearm_decision = recurrence_mod.computeRearmDecision(.{
+                    .repeat_total = state.repeat_total,
+                    .fired_count = state.fired_count,
+                    .interval_us = state.interval_us,
+                    .scheduled_fire_at_us = actual_fire_at_us,
+                }) catch return SchedulerError.TransactionFailed;
+
+                if (rearm_decision == .rearm) {
+                    var next_timer_id: Uuid = undefined;
+                    fillRandom(&next_timer_id);
+                    next_timer_id[6] = (next_timer_id[6] & 0x0f) | 0x40;
+                    next_timer_id[8] = (next_timer_id[8] & 0x3f) | 0x80;
+
+                    const next_payload = try updateRecurrencePayloadFiredCount(
+                        allocator,
+                        payload_json,
+                        rearm_decision.rearm.next_fired_count,
+                    );
+
+                    store_mod.insertRecurringPendingTimerInTx(
+                        allocator,
+                        conn,
+                        .{
+                            .timer_id = next_timer_id,
+                            .instance_id = parseUuid(instance_id_text) catch return SchedulerError.TransactionFailed,
+                            .step_name = step_name,
+                            .action_type = action_type,
+                            .fire_at_us = rearm_decision.rearm.next_fire_at_us,
+                            .payload_json = next_payload,
+                            .recurrence = .{
+                                .expression = state.expression,
+                                .repeat_total = state.repeat_total,
+                                .fired_count = rearm_decision.rearm.next_fired_count,
+                                .interval_us = state.interval_us,
+                            },
+                        },
+                    ) catch return SchedulerError.TransactionFailed;
+                }
+            }
         }
 
         conn.commit() catch return SchedulerError.TransactionFailed;
@@ -159,6 +393,9 @@ pub const Scheduler = struct {
         timer_id_text: []const u8,
         instance_id_text: []const u8,
         payload_json: []const u8,
+        fires_at_epoch_us: i64,
+        actual_fire_at_us: i64,
+        fired_late: bool,
     ) SchedulerError!EscalationFireResult {
         var arena = std.heap.ArenaAllocator.init(allocator);
         defer arena.deinit();
@@ -211,6 +448,9 @@ pub const Scheduler = struct {
             payload,
             previous_assignee_type,
             previous_assignee_ref,
+            fired_late,
+            fires_at_epoch_us,
+            actual_fire_at_us,
         );
         try markTimerFiredInTx(conn, timer_id_text);
         return .fired;
@@ -236,21 +476,117 @@ fn advisoryLockKeyText(uuid_text: []const u8) error{ InvalidUuid, OutOfMemory }!
     return advisoryLockKey(uuid);
 }
 
+/// Determine whether a timer firing is overdue.
+/// On the startup sweep (is_startup_sweep = true) any timer with
+/// fires_at <= NOW() is considered overdue.
+/// On normal polls, only timers whose fires_at is more than one poll
+/// interval in the past are flagged as overdue.
+fn isFiredLate(
+    scheduled_fire_at_epoch_us: i64,
+    actual_fire_at_epoch_us: i64,
+    poll_interval_us: u64,
+    is_startup_sweep: bool,
+) bool {
+    if (is_startup_sweep) {
+        return scheduled_fire_at_epoch_us < actual_fire_at_epoch_us;
+    } else {
+        const threshold: i64 = @as(i64, @intCast(poll_interval_us));
+        return scheduled_fire_at_epoch_us < (actual_fire_at_epoch_us - threshold);
+    }
+}
+
+test "TC-SCH-05-08: isFiredLate returns true on startup sweep for any past timer" {
+    // Startup sweep: scheduled < actual → true
+    try std.testing.expect(isFiredLate(1000, 2000, 5000000, true));
+    // Equal timestamps should NOT be late (scheduled not < actual)
+    try std.testing.expect(!isFiredLate(2000, 2000, 5000000, true));
+    // Future scheduled (shouldn't happen in practice) → false
+    try std.testing.expect(!isFiredLate(3000, 2000, 5000000, true));
+}
+
+test "TC-SCH-05-09: isFiredLate returns false on normal poll for sub-threshold lateness" {
+    // scheduled(1000) >= actual(1500) - threshold(5000000) → false
+    try std.testing.expect(!isFiredLate(1000, 1500, 5000000, false));
+    // scheduled == actual - threshold → not late (boundary case)
+    try std.testing.expect(!isFiredLate(1000, 5001000, 5000000, false));
+}
+
+test "TC-SCH-05-10: isFiredLate returns true on normal poll when timer is materially late" {
+    // scheduled(1000) < actual(6000000) - threshold(5000000) → true
+    try std.testing.expect(isFiredLate(1000, 6000000, 5000000, false));
+    // Large delta → true
+    try std.testing.expect(isFiredLate(1000, 100000000, 5000000, false));
+    // Zero poll interval with late timer → true
+    try std.testing.expect(isFiredLate(1000, 6000, 100, false));
+}
+
+test "TC-SCH-05-11: buildTimerFiredPayload produces valid JSON with all fields" {
+    const alloc = std.testing.allocator;
+    const payload = try buildTimerFiredPayload(
+        alloc,
+        "550e8400-e29b-41d4-a716-446655440000",
+        1000000,
+        2000000,
+        true,
+    );
+    defer alloc.free(payload);
+
+    // Verify JSON structure
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "\"timer_id\""));
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "\"fired_late\""));
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "\"scheduled_fire_at\""));
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "\"actual_fire_at\""));
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "true"));
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "550e8400-e29b-41d4-a716-446655440000"));
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "1000000"));
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "2000000"));
+}
+
+test "TC-SCH-05-11b: buildTimerFiredPayload produces fired_late=false variant" {
+    const alloc = std.testing.allocator;
+    const payload = try buildTimerFiredPayload(
+        alloc,
+        "660e8400-e29b-41d4-a716-446655440001",
+        3000000,
+        3000000,
+        false,
+    );
+    defer alloc.free(payload);
+
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "\"fired_late\":false"));
+    try std.testing.expect(std.mem.containsAtLeast(u8, payload, 1, "\"timer_id\":\"660e8400-e29b-41d4-a716-446655440001\""));
+}
+
+/// Build the extended TIMER_FIRED JSON payload with overdue metadata.
+fn buildTimerFiredPayload(
+    allocator: std.mem.Allocator,
+    timer_id_text: []const u8,
+    scheduled_fire_at_us: i64,
+    actual_fire_at_us: i64,
+    fired_late: bool,
+) (error{OutOfMemory}![]const u8) {
+    return std.fmt.allocPrint(
+        allocator,
+        "{{\"timer_id\":\"{s}\",\"fired_late\":{s},\"scheduled_fire_at\":{d},\"actual_fire_at\":{d}}}",
+        .{
+            timer_id_text,
+            if (fired_late) "true" else "false",
+            scheduled_fire_at_us,
+            actual_fire_at_us,
+        },
+    );
+}
+
 fn appendTimerFiredEventInTx(
     allocator: std.mem.Allocator,
     conn: *db.Conn,
     instance_id_text: []const u8,
     timer_id_text: []const u8,
+    payload_json: []const u8,
 ) SchedulerError!void {
     var param_arena = std.heap.ArenaAllocator.init(allocator);
     defer param_arena.deinit();
     const a = param_arena.allocator();
-
-    const payload_json = std.fmt.allocPrint(
-        a,
-        "{{\"timer_id\":\"{s}\"}}",
-        .{timer_id_text},
-    ) catch return SchedulerError.OutOfMemory;
 
     const idem_key = std.fmt.allocPrint(
         a,
@@ -276,6 +612,9 @@ fn appendEscalationEventInTx(
     payload: ParsedEscalationPayload,
     previous_assignee_type: []const u8,
     previous_assignee_ref: []const u8,
+    fired_late: bool,
+    scheduled_fire_at_us: i64,
+    actual_fire_at_us: i64,
 ) SchedulerError!void {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
@@ -289,6 +628,9 @@ fn appendEscalationEventInTx(
         previous_assignee_type,
         previous_assignee_ref,
         payload.reassign_to,
+        fired_late,
+        scheduled_fire_at_us,
+        actual_fire_at_us,
     );
     const idem_key = std.fmt.allocPrint(
         a,
@@ -339,12 +681,74 @@ fn markTimerFiredInTx(conn: *db.Conn, timer_id_text: []const u8) SchedulerError!
         \\UPDATE timers
         \\SET
         \\    status = 'fired',
-        \\    fired_at = NOW()
+        \\    fired_at = NOW(),
+        \\    fired_count = CASE
+        \\        WHEN repeat_expression IS NULL THEN fired_count
+        \\        ELSE COALESCE(fired_count, 0) + 1
+        \\    END
         \\WHERE id = $1::uuid
         \\  AND status = 'pending'
     ,
         &.{timer_id_text},
     ) catch return SchedulerError.TransactionFailed;
+}
+
+const ParsedRecurrenceState = struct {
+    expression: []const u8,
+    repeat_total: ?u32,
+    fired_count: u32,
+    interval_us: u64,
+};
+
+fn parseRecurrenceState(
+    expression_text: []const u8,
+    repeat_total_text: []const u8,
+    fired_count_text: []const u8,
+    interval_us_text: []const u8,
+) SchedulerError!?ParsedRecurrenceState {
+    if (expression_text.len == 0) return null;
+    if (fired_count_text.len == 0 or interval_us_text.len == 0) return SchedulerError.TransactionFailed;
+
+    const fired_count = std.fmt.parseInt(u32, fired_count_text, 10) catch return SchedulerError.TransactionFailed;
+    const interval_us = std.fmt.parseInt(u64, interval_us_text, 10) catch return SchedulerError.TransactionFailed;
+    const repeat_total = if (repeat_total_text.len == 0)
+        null
+    else
+        (std.fmt.parseInt(u32, repeat_total_text, 10) catch return SchedulerError.TransactionFailed);
+
+    return .{
+        .expression = expression_text,
+        .repeat_total = repeat_total,
+        .fired_count = fired_count,
+        .interval_us = interval_us,
+    };
+}
+
+fn updateRecurrencePayloadFiredCount(
+    allocator: std.mem.Allocator,
+    payload_json: []const u8,
+    next_fired_count: u32,
+) SchedulerError![]const u8 {
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        payload_json,
+        .{ .allocate = .alloc_always },
+    ) catch return SchedulerError.TransactionFailed;
+    defer parsed.deinit();
+
+    if (parsed.value != .object) {
+        return std.fmt.allocPrint(allocator, "{s}", .{payload_json}) catch SchedulerError.OutOfMemory;
+    }
+
+    var root = parsed.value.object;
+    if (root.getPtr("recurrence")) |recurrence_val| {
+        if (recurrence_val.* == .object) {
+            try recurrence_val.object.put(allocator, "fired_count", std.json.Value{ .integer = next_fired_count });
+        }
+    }
+
+    return std.json.Stringify.valueAlloc(allocator, parsed.value, .{}) catch SchedulerError.OutOfMemory;
 }
 
 fn markTimerCancelledInTx(
@@ -419,6 +823,9 @@ fn buildEscalationEventPayload(
     previous_assignee_type: []const u8,
     previous_assignee_ref: []const u8,
     reassign_to: ?store_mod.EscalationTarget,
+    fired_late: bool,
+    scheduled_fire_at_us: i64,
+    actual_fire_at_us: i64,
 ) SchedulerError![]const u8 {
     const timer_id_json = std.json.Stringify.valueAlloc(allocator, std.json.Value{ .string = timer_id_text }, .{}) catch return SchedulerError.OutOfMemory;
     const task_id_json = std.json.Stringify.valueAlloc(allocator, std.json.Value{ .string = task_id_text }, .{}) catch return SchedulerError.OutOfMemory;
@@ -446,8 +853,8 @@ fn buildEscalationEventPayload(
 
     return std.fmt.allocPrint(
         allocator,
-        "{{\"timer_id\":{s},\"task_id\":{s},\"task_node_id\":{s},\"previous_assignee_type\":{s},\"previous_assignee_ref\":{s},\"reassign_to\":{s}}}",
-        .{ timer_id_json, task_id_json, task_node_json, prev_type_json, prev_ref_json, reassign_json },
+        "{{\"timer_id\":{s},\"task_id\":{s},\"task_node_id\":{s},\"previous_assignee_type\":{s},\"previous_assignee_ref\":{s},\"reassign_to\":{s},\"fired_late\":{s},\"scheduled_fire_at\":{d},\"actual_fire_at\":{d}}}",
+        .{ timer_id_json, task_id_json, task_node_json, prev_type_json, prev_ref_json, reassign_json, if (fired_late) "true" else "false", scheduled_fire_at_us, actual_fire_at_us },
     ) catch return SchedulerError.OutOfMemory;
 }
 
@@ -470,4 +877,137 @@ fn parseUuid(text: []const u8) error{ InvalidUuid, OutOfMemory }![16]u8 {
 inline fn colGet(row: []?[]u8, i: usize) []const u8 {
     if (i >= row.len) return "";
     return row[i] orelse "";
+}
+
+/// Fill a buffer with cryptographically secure random bytes from the OS.
+/// Replaces std.crypto.random.fill which was removed in Zig 0.16.
+fn fillRandom(buf: []u8) void {
+    const builtin = @import("builtin");
+    switch (builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
+        else => @compileError("fillRandom: unsupported OS — add a platform branch"),
+    }
+}
+
+// ── SCH-06: Timer jitter tests ──────────────────────────────────────────────
+
+test "TC-SCH-06-01: computePollDelayMs returns base_ms when jitter is 0" {
+    var scheduler = Scheduler.init(undefined, SchedulerConfig{
+        .poll_interval_ms = 5000,
+        .jitter_ms = 0,
+    });
+    const delay = scheduler.computePollDelayMs();
+    try std.testing.expectEqual(@as(u64, 5000), delay);
+}
+
+test "TC-SCH-06-02: computePollDelayMs returns base_ms when jitter_ms is default" {
+    var scheduler = Scheduler.init(undefined, SchedulerConfig{ .poll_interval_ms = 3000 });
+    const delay = scheduler.computePollDelayMs();
+    try std.testing.expectEqual(@as(u64, 3000), delay);
+}
+
+test "TC-SCH-06-03: computePollDelayMs with jitter stays within [base-jitter, base+jitter]" {
+    const base_ms: u64 = 10000;
+    const jitter_ms: u64 = 2000;
+    var scheduler = Scheduler.init(undefined, SchedulerConfig{
+        .poll_interval_ms = base_ms,
+        .jitter_ms = jitter_ms,
+    });
+
+    // Run 100 iterations to verify bounds
+    var i: u32 = 0;
+    while (i < 100) : (i += 1) {
+        const delay = scheduler.computePollDelayMs();
+
+        // Must be within [base - jitter, base + jitter]
+        const min_expected: i64 = @as(i64, @intCast(base_ms)) - @as(i64, @intCast(jitter_ms));
+        const max_expected: i64 = @as(i64, @intCast(base_ms)) + @as(i64, @intCast(jitter_ms));
+
+        const delay_i64: i64 = @as(i64, @intCast(delay));
+        try std.testing.expect(delay_i64 >= min_expected);
+        try std.testing.expect(delay_i64 <= max_expected);
+    }
+}
+
+test "TC-SCH-06-04: computePollDelayMs never returns negative (clamps to 0)" {
+    // Edge case: jitter larger than base interval
+    const base_ms: u64 = 100;
+    const jitter_ms: u64 = 10000;
+    var scheduler = Scheduler.init(undefined, SchedulerConfig{
+        .poll_interval_ms = base_ms,
+        .jitter_ms = jitter_ms,
+    });
+
+    // Run 200 iterations to verify clamp works
+    var i: u32 = 0;
+    while (i < 200) : (i += 1) {
+        const delay = scheduler.computePollDelayMs();
+        // Must never be negative (u64 cannot be negative, but we check lower bound)
+        try std.testing.expect(delay >= 0);
+        // Must be within [0, base + jitter]
+        try std.testing.expect(delay <= base_ms + jitter_ms);
+    }
+}
+
+test "TC-SCH-06-05: computePollDelayMs produces varied results with jitter enabled" {
+    const base_ms: u64 = 10000;
+    const jitter_ms: u64 = 5000;
+    var scheduler = Scheduler.init(undefined, SchedulerConfig{
+        .poll_interval_ms = base_ms,
+        .jitter_ms = jitter_ms,
+    });
+
+    // Collect 20 samples to verify variation
+    const first: u64 = scheduler.computePollDelayMs();
+    var all_same = true;
+    var i: u32 = 0;
+    while (i < 19) : (i += 1) {
+        const next = scheduler.computePollDelayMs();
+        if (next != first) {
+            all_same = false;
+            break;
+        }
+    }
+    // With jitter=5000 on base=10000, it's extremely unlikely all 20 samples are identical
+    // Note: in a random test this could theoretically fail, but with range 10001 values
+    // the probability of 20 identical values is ~1/10001^19 ≈ impossible.
+    try std.testing.expect(!all_same);
+}
+
+test "TC-SCH-06-07: computePollDelayMs produces results in valid range across multiple calls" {
+    const base_ms: u64 = 5000;
+    const jitter_ms: u64 = 1000;
+    var scheduler = Scheduler.init(undefined, SchedulerConfig{
+        .poll_interval_ms = base_ms,
+        .jitter_ms = jitter_ms,
+    });
+
+    const d1 = scheduler.computePollDelayMs();
+    const d2 = scheduler.computePollDelayMs();
+
+    // Both must be in valid range
+    const min_expected: i64 = @as(i64, @intCast(base_ms)) - @as(i64, @intCast(jitter_ms));
+    const max_expected: i64 = @as(i64, @intCast(base_ms)) + @as(i64, @intCast(jitter_ms));
+
+    try std.testing.expect(@as(i64, @intCast(d1)) >= min_expected);
+    try std.testing.expect(@as(i64, @intCast(d1)) <= max_expected);
+    try std.testing.expect(@as(i64, @intCast(d2)) >= min_expected);
+    try std.testing.expect(@as(i64, @intCast(d2)) <= max_expected);
+}
+
+test "TC-SCH-06-08: SchedulerConfig default jitter_ms is 0" {
+    const config = SchedulerConfig{};
+    try std.testing.expectEqual(@as(u64, 0), config.jitter_ms);
+}
+
+test "TC-SCH-06-09: SchedulerConfig default poll_interval_ms is 5000" {
+    const config = SchedulerConfig{};
+    try std.testing.expectEqual(@as(u64, 5000), config.poll_interval_ms);
 }

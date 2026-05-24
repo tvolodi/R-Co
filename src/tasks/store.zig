@@ -96,6 +96,9 @@ pub const ListCursorParams = struct {
     /// If true AND assignee_id is set: add AND assignee_type = 'USER'.
     /// Always true when filtering for role-based row restriction.
     assignee_type_user_only: bool,
+    /// If true and assignee_id is set, include GROUP-assigned tasks where
+    /// the caller is a current member of the referenced group.
+    include_group_membership_for_user: bool = false,
     /// Optional status filter.
     status: ?TaskStatus,
     /// Optional instance_id filter.
@@ -553,19 +556,30 @@ pub const TaskStore = struct {
         // assignee_id filter
         if (params.assignee_id) |aid| {
             sql_params.append(a, aid) catch return TaskError.InvalidInput;
-            const cond = std.fmt.allocPrint(
-                a,
-                "assignee_ref = ${d}",
-                .{sql_params.items.len},
-            ) catch return TaskError.InvalidInput;
-            conditions.append(a, cond) catch return TaskError.InvalidInput;
+            const aid_idx = sql_params.items.len;
 
-            // For TASK_WORKER row-level restriction: also require assignee_type = 'USER'.
-            // Security: 'USER' is a fixed SQL literal, not user-supplied.
-            if (params.assignee_type_user_only) {
-                const cond2 = std.mem.Allocator.dupe(a, u8, "assignee_type = 'USER'") catch
-                    return TaskError.InvalidInput;
-                conditions.append(a, cond2) catch return TaskError.InvalidInput;
+            if (params.include_group_membership_for_user) {
+                const cond = std.fmt.allocPrint(
+                    a,
+                    "((assignee_type = 'USER' AND assignee_ref = ${d}) OR (assignee_type = 'GROUP' AND EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id::text = ${d} AND gm.group_id::text = tasks.assignee_ref)))",
+                    .{ aid_idx, aid_idx },
+                ) catch return TaskError.InvalidInput;
+                conditions.append(a, cond) catch return TaskError.InvalidInput;
+            } else {
+                const cond = std.fmt.allocPrint(
+                    a,
+                    "assignee_ref = ${d}",
+                    .{aid_idx},
+                ) catch return TaskError.InvalidInput;
+                conditions.append(a, cond) catch return TaskError.InvalidInput;
+
+                // For USER-only filters: also require assignee_type = 'USER'.
+                // Security: 'USER' is a fixed SQL literal, not user-supplied.
+                if (params.assignee_type_user_only) {
+                    const cond2 = std.mem.Allocator.dupe(a, u8, "assignee_type = 'USER'") catch
+                        return TaskError.InvalidInput;
+                    conditions.append(a, cond2) catch return TaskError.InvalidInput;
+                }
             }
         }
 

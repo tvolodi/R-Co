@@ -417,6 +417,32 @@ pub fn build(b: *std.Build) void {
     });
     const run_api09_tracing_tests = b.addRunArtifact(api09_tracing_tests);
 
+    // SCH-05: Missed timer recovery — pure function unit tests (no DB)
+    const sch05_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/sch05_missed_timer_recovery_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_sch05_unit_tests = b.addRunArtifact(sch05_unit_tests);
+
+    // SCH-06: Timer jitter — pure function unit tests (no DB)
+    const sch06_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/sch06_timer_jitter_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_sch06_unit_tests = b.addRunArtifact(sch06_unit_tests);
+
     // ---------------------------------------------------------------------------
     // `zig build test-engine` — engine unit tests only
     // ---------------------------------------------------------------------------
@@ -461,6 +487,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_api07_validation_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
     test_step.dependOn(&run_api09_tracing_tests.step);
+    test_step.dependOn(&run_sch05_unit_tests.step);
+    test_step.dependOn(&run_sch06_unit_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)

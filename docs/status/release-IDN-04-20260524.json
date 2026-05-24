@@ -1,0 +1,70 @@
+{
+  "stage": "Stage 5 - Scheduler + Identity",
+  "date": "2026-05-24T08:37:42Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "IDN-04"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_stdout_lines": [
+      "NFR_RESULT|NFR-01|p99_read_ms|target=<=200|actual=1.505|unit=ms|passed=true",
+      "NFR_RESULT|NFR-01|p99_write_ms|target=<=500|actual=3.414|unit=ms|passed=true",
+      "NFR_RESULT|NFR-02|append_throughput_eps|target=>=1000|actual=65160.014|unit=events_per_second|passed=true",
+      "NFR_RESULT|NFR-04|replay_10000_ms|target=<=5000|actual=47.555|unit=ms|passed=true",
+      "NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1779611707501"
+    ],
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.505,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 3.414,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 65160.014,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 47.555,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1779611707501"
+  },
+  "test_evidence": {
+    "test_runner_handoff": "handoffs/WF02-idn04-20260524/step-04-test-runner.json",
+    "test_report": "tests/reports/WF02-idn04-20260524-run-01.md",
+    "integration_regression_command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+    "integration_regression_exit_code": 0,
+    "overall_status": "PASS",
+    "open_functional_issues": 0,
+    "idn04_acceptance_coverage": [
+      "TC-IDN-04-01 one-time token value + hashed persistence",
+      "TC-IDN-04-02 reject past expires_at with HTTP 422",
+      "TC-IDN-04-03 revoke idempotent + immediate rejection on subsequent use",
+      "TC-IDN-04-04 revoked/expired token rejected by auth middleware with HTTP 401",
+      "TC-IDN-04-05 optional expires_at and role-claim authorization behavior",
+      "TC-IDN-04-06 token management endpoints restricted to PLATFORM_ADMIN"
+    ],
+    "notes": [
+      "Integration logs include expected HTTP integration skips when BPM_TEST_URL is unset; this is non-blocking for DB-backed IDN-04 assertions.",
+      "Step-04 report and refreshed integration regression checks both indicate PASS with no blocking regressions."
+    ]
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "IDN-04"
+  ],
+  "recommendation": "APPROVE IDN-04 for release progression; route to DOC-UPDATER to set requirement status to RELEASED and update CHANGELOG."
+}

@@ -1,0 +1,67 @@
+{
+  "handoff_id": "3fb06e5f-e8c6-4d8f-9470-6d70e5ed5db2",
+  "run_id": "WF02-obs02-20260524",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-obs02-20260524/step-02-backend-dev.json",
+  "created_at": "2026-05-24T15:18:30Z",
+  "started_at": "2026-05-24T15:18:50Z",
+  "completed_at": "2026-05-24T16:52:52.604118Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-02"
+    ],
+    "related_handoff_ids": [
+      "5d1d2468-02fa-4c10-b7e6-0f6a0a5c9a2d"
+    ],
+    "artifacts_in": [
+      "docs/requirements/OBS-02.md",
+      "src/design/obs-02-prometheus-metrics.md",
+      "src/design/obs-01-structured-logging.md",
+      "docs/BPM_Platform_Backend_Architecture.md"
+    ]
+  },
+  "task": {
+    "description": "Implement OBS-02 (Prometheus metrics) per src/design/obs-02-prometheus-metrics.md. Add GET /metrics returning Prometheus text format with content-type text/plain; version=0.0.4 and no auth requirement. Implement required metric families and labels: bpm_active_instances_total (gauge), bpm_task_completions_total{definition_id} (counter), bpm_event_append_duration_seconds (histogram), bpm_db_query_duration_seconds{query_type} (histogram), bpm_http_requests_total{method,path,status} (counter), bpm_http_errors_total{path} for 5xx (counter). Wire instrumentation across HTTP middleware/routing, DB query execution, event append path, and task completion flow. Ensure metrics scrape path is non-blocking and does not delay API request processing; during DB outage /metrics must still return 200 with available in-memory metrics and may expose stale active-instance gauge. Apply any required migration or runtime wiring changes. Validate with zig build, zig build test, and zig build test-integration before completing.",
+    "acceptance_criteria": [
+      "GET /metrics returns 200 with Prometheus text content type and no auth",
+      "All required OBS-02 metric families and labels are emitted",
+      "Histogram bucket strategy supports p50/p95/p99 analysis",
+      "Metrics collection and scrape handling are non-blocking for request processing",
+      "DB outage edge case returns 200 with in-memory metrics and stale gauge tolerance",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration exits 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:check-zig-test",
+      "fn:check-zig-test-integration",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Implemented OBS-02 runtime wiring update for active-instance gauge refresh/stale fallback in instance lifecycle commit paths. Validation status: zig build passed, zig build test passed, zig build test-integration blocked by hanging SCH-04 integration test (sch02_timer_polling_test.TC-SCH-04-02) and could not be completed to an exit code.",
+    "artifacts_out": [
+      "src/engine/instance.zig"
+    ],
+    "issues": [
+      {
+        "id": "ISS-OBS02-INT-HANG-001",
+        "severity": "BLOCKER",
+        "description": "Required validation command zig build test-integration hangs at sch02_timer_polling_test.test.TC-SCH-04-02 (scheduler fires escalation...) and does not complete, preventing required acceptance verification.",
+        "affected_requirement": "OBS-02"
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER to resolve SCH-04 integration hang, then rerun zig build test-integration and re-dispatch BACKEND-DEV for completion stamp."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

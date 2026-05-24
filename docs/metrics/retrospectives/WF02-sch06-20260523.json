@@ -1,0 +1,70 @@
+{
+  "run_id": "WF02-sch06-20260523",
+  "requirement_ids": [
+    "SCH-06"
+  ],
+  "difficulty": 2,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 32,
+  "actual_minutes_total": 12.6,
+  "variance_pct": -60.6,
+  "by_step": {
+    "code-designer": {
+      "estimated": 5,
+      "actual": 1.6,
+      "variance_pct": -68.0
+    },
+    "backend-dev": {
+      "estimated": 10,
+      "actual": 6.2,
+      "variance_pct": -38.0
+    },
+    "test-designer": {
+      "estimated": 10,
+      "actual": 1.9,
+      "variance_pct": -81.0
+    },
+    "test-runner": {
+      "estimated": 6,
+      "actual": 1.9,
+      "variance_pct": -68.3
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 1.0,
+      "variance_pct": 0.0
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "code-designer",
+      "difficulty": 2,
+      "old_estimate": 5,
+      "new_estimate": 3,
+      "reason": "Observed 2 consecutive runs at D2 with >25% variance"
+    },
+    {
+      "step": "backend-dev",
+      "difficulty": 2,
+      "old_estimate": 10,
+      "new_estimate": 8,
+      "reason": "Observed 7 consecutive runs at D2 with >25% variance"
+    },
+    {
+      "step": "test-designer",
+      "difficulty": 2,
+      "old_estimate": 10,
+      "new_estimate": 6,
+      "reason": "Observed 2 consecutive runs at D2 with >25% variance"
+    },
+    {
+      "step": "test-runner",
+      "difficulty": 2,
+      "old_estimate": 6,
+      "new_estimate": 4,
+      "reason": "Observed 4 consecutive runs at D2 with >25% variance"
+    }
+  ],
+  "completed_at": "2026-05-23T21:31:59Z"
+}

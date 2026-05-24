@@ -1,6 +1,8 @@
 const std = @import("std");
 const db_pool = @import("../../db/pool.zig");
 const errors = @import("../errors.zig");
+const logger = @import("../../obs/logger.zig");
+const metrics = @import("../../obs/metrics.zig");
 const response = @import("../response.zig");
 const readiness_mod = @import("../health/readiness.zig");
 const trace_context = @import("../trace_context.zig");
@@ -8,12 +10,21 @@ const trace_context = @import("../trace_context.zig");
 pub const HandlerResult = response.HandlerResult;
 
 pub fn handleLive(allocator: std.mem.Allocator) HandlerResult {
+    const log_fields = [_]logger.LogField{
+        .{ .key = "endpoint", .value = .{ .string = "/health/live" } },
+        .{ .key = "status_code", .value = .{ .integer = 200 } },
+    };
+    logger.log(allocator, .INFO, "api.health", "health live request completed", &log_fields) catch {};
+
     const body = std.fmt.allocPrint(allocator, "{{\"status\":\"ok\"}}", .{}) catch {
+        metrics.recordHttpRequest("GET", "/health/live", 500);
+        metrics.recordHttpError5xx("/health/live");
         return response.problemResponse(
             allocator,
             errors.problemInternalError("failed to build liveness response"),
         );
     };
+    metrics.recordHttpRequest("GET", "/health/live", 200);
     return response.ok(body);
 }
 
@@ -25,6 +36,8 @@ pub fn handleReady(
     _ = pool;
 
     const ready_result = readiness.evaluate(allocator) catch {
+        metrics.recordHttpRequest("GET", "/health/ready", 500);
+        metrics.recordHttpError5xx("/health/ready");
         return response.problemResponse(
             allocator,
             errors.problemInternalError("failed to evaluate readiness"),
@@ -33,27 +46,47 @@ pub fn handleReady(
 
     switch (ready_result) {
         .ready => |ready| {
+            const log_fields = [_]logger.LogField{
+                .{ .key = "endpoint", .value = .{ .string = "/health/ready" } },
+                .{ .key = "status_code", .value = .{ .integer = 200 } },
+                .{ .key = "db_latency_ms", .value = .{ .integer = ready.db_latency_ms } },
+            };
+            logger.log(allocator, .INFO, "api.health", "health readiness request completed", &log_fields) catch {};
+
             const body = std.fmt.allocPrint(
                 allocator,
                 "{{\"status\":\"ok\",\"db_latency_ms\":{d}}}",
                 .{ready.db_latency_ms},
             ) catch {
+                metrics.recordHttpRequest("GET", "/health/ready", 500);
+                metrics.recordHttpError5xx("/health/ready");
                 return response.problemResponse(
                     allocator,
                     errors.problemInternalError("failed to build readiness response"),
                 );
             };
+            metrics.recordHttpRequest("GET", "/health/ready", 200);
             return response.ok(body);
         },
         .not_ready => |not_ready| {
             defer allocator.free(not_ready.failing_subsystems);
 
+            const log_fields = [_]logger.LogField{
+                .{ .key = "endpoint", .value = .{ .string = "/health/ready" } },
+                .{ .key = "status_code", .value = .{ .integer = 503 } },
+                .{ .key = "failing_subsystem_count", .value = .{ .integer = @intCast(not_ready.failing_subsystems.len) } },
+            };
+            logger.log(allocator, .WARN, "api.health", "health readiness request degraded", &log_fields) catch {};
+
             const body = buildNotReadyBody(allocator, not_ready.failing_subsystems) catch {
+                metrics.recordHttpRequest("GET", "/health/ready", 500);
+                metrics.recordHttpError5xx("/health/ready");
                 return response.problemResponse(
                     allocator,
                     errors.problemInternalError("failed to build degraded readiness response"),
                 );
             };
+            metrics.recordHttpRequest("GET", "/health/ready", 503);
             return .{ .status_code = 503, .body = body };
         },
     }

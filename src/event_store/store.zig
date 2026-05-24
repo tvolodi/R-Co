@@ -12,6 +12,7 @@ const Pool = db.Pool;
 const PoolError = db.PoolError;
 const registry_mod = @import("registry.zig");
 const Registry = registry_mod.Registry;
+const metrics = @import("../obs/metrics.zig");
 
 // ---------------------------------------------------------------------------
 // Shared type
@@ -176,6 +177,13 @@ pub const Store = struct {
         allocator: std.mem.Allocator,
         params: AppendParams,
     ) StoreError!AppendResult {
+        const append_started_ms: i64 = std.Io.Clock.real.now(self.pool.io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self.pool.io).toMilliseconds() - append_started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            metrics.recordEventAppendDurationSeconds(elapsed_s);
+        }
+
         var param_arena = std.heap.ArenaAllocator.init(allocator);
         defer param_arena.deinit();
         const param_alloc = param_arena.allocator();

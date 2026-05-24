@@ -1,0 +1,53 @@
+{
+  "handoff_id": "9a4b3c2d-1e5f-4a6b-8c7d-9e0f1a2b3c4d",
+  "run_id": "WF02-sch05-20260523",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-sch05-20260523/step-01-code-designer.json",
+  "created_at": "2026-05-23T20:29:23Z",
+  "started_at": "2026-05-23T20:31:19Z",
+  "completed_at": "2026-05-23T20:32:07Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 \u2014 Scheduler + Identity",
+    "requirement_ids": [
+      "SCH-05"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/design/scheduler.md",
+      "src/scheduler/scheduler.zig",
+      "src/scheduler/store.zig"
+    ]
+  },
+  "task": {
+    "description": "Design SCH-05 \u2014 Missed timer recovery.\n\nThe scheduler must detect when a timer fires later than its scheduled `fire_at` and mark the firing as overdue in the TIMER_FIRED event.\n\nAcceptance criteria:\n- GIVEN the platform was offline when one or more timers became due, WHEN the platform restarts and SCH-02 begins polling, THEN it fires all timers with `status = PENDING` and `fire_at \u2264 NOW()` as overdue.\n- Overdue timer events MUST include a flag `fired_late: true` and the actual firing timestamp vs the scheduled `fire_at`.\n- No overdue timer MUST be skipped; all are fired exactly once.\n- The first SCH-02 poll after restart fires ALL overdue timers in sequence to avoid thundering-herd behaviour.\n\nThe existing SCH-02 poll query already selects `fire_at <= NOW()` timers. The design should:\n1. Extend the TIMER_FIRED event payload to include `fired_late: bool`, `scheduled_fire_at: i64` (epoch micros), and `actual_fire_at: i64`.\n2. Define how the scheduler determines whether a timer is overdue (comparing scheduled `fire_at` vs `NOW()` at fire time).\n3. Address the \"first poll after restart\" semantics \u2014 is a separate mechanism needed, or does the existing sequential processing of all due timers already satisfy this?\n4. Specify any changes to the scheduler poll query to also return `fires_at` for overdue comparison.\n5. Specify the updated TIMER_FIRED event payload JSON schema.\n\nWrite the design as a new section in src/design/scheduler.md (appended after the SCH-04 section) or as a standalone src/design/sch05-missed-timer-recovery.md.",
+    "acceptance_criteria": [
+      "Every SCH-05 acceptance criterion maps to a concrete design element",
+      "Updated TIMER_FIRED event payload schema is specified",
+      "Overdue detection logic (scheduled vs actual fire time) is specified",
+      "No new module dependencies introduced",
+      "Open questions listed (not silently ignored)"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for SCH-05 \u2014 Missed timer recovery. Extended TIMER_FIRED payload with fired_late flag, defined is_startup_sweep-based overdue detection, specified poll query change to return fires_at, confirmed no schema migration needed.",
+    "artifacts_out": [
+      "src/design/sch05-missed-timer-recovery.md",
+      "docs/issue-reports/sch05-design-complete.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

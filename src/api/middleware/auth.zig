@@ -43,6 +43,7 @@ pub const Role = enum {
     PLATFORM_ADMIN,
     PROCESS_DESIGNER,
     PROCESS_OPERATOR,
+    TASK_WORKER,
     VIEWER,
 
     /// Parse from the database text value.
@@ -52,6 +53,7 @@ pub const Role = enum {
             .{ "PLATFORM_ADMIN", .PLATFORM_ADMIN },
             .{ "PROCESS_DESIGNER", .PROCESS_DESIGNER },
             .{ "PROCESS_OPERATOR", .PROCESS_OPERATOR },
+            .{ "TASK_WORKER", .TASK_WORKER },
             .{ "VIEWER", .VIEWER },
         });
         return mapping.get(s);
@@ -76,6 +78,44 @@ pub const AuthContext = struct {
     /// Caller owns this string; freed with the same allocator passed to authenticate().
     token_id: []const u8,
 };
+
+fn rolePriority(role: Role) u8 {
+    return switch (role) {
+        .PLATFORM_ADMIN => 0,
+        .PROCESS_DESIGNER => 1,
+        .PROCESS_OPERATOR => 2,
+        .TASK_WORKER => 3,
+        .VIEWER => 4,
+    };
+}
+
+fn primaryRole(roles: []const Role) Role {
+    var best = roles[0];
+    var best_priority = rolePriority(best);
+    for (roles[1..]) |role| {
+        const priority = rolePriority(role);
+        if (priority < best_priority) {
+            best = role;
+            best_priority = priority;
+        }
+    }
+    return best;
+}
+
+fn parseRolesJson(allocator: std.mem.Allocator, roles_json: []const u8) ![]Role {
+    const parsed = try std.json.parseFromSlice(std.json.Value, allocator, roles_json, .{ .allocate = .alloc_always });
+    defer parsed.deinit();
+
+    if (parsed.value != .array) return error.InvalidRoleClaim;
+
+    const roles = try allocator.alloc(Role, parsed.value.array.items.len);
+    errdefer allocator.free(roles);
+    for (parsed.value.array.items, 0..) |item, idx| {
+        if (item != .string) return error.InvalidRoleClaim;
+        roles[idx] = Role.fromString(item.string) orelse return error.InvalidRoleClaim;
+    }
+    return roles;
+}
 
 /// Result of the auth middleware check.
 /// The HTTP server switches on this to either proceed or return an error response.
@@ -304,7 +344,7 @@ pub fn authenticate(
 
     const token_row = conn.queryRow(
         allocator,
-        "SELECT id, user_id, revoked_at, expires_at FROM api_tokens WHERE token_hash = $1",
+        "SELECT id::text, user_id::text, revoked_at::text, (expires_at IS NOT NULL AND NOW() >= expires_at)::text, COALESCE(roles_json::text, '[]') FROM api_tokens WHERE token_hash = $1",
         &[_][]const u8{token_hash},
     ) catch return .{ .unauthenticated = buildUnauthorized(allocator, "service unavailable") };
 
@@ -319,12 +359,19 @@ pub fn authenticate(
         if (row[1]) |v| allocator.free(v);
         if (row[2]) |v| allocator.free(v);
         if (row[3]) |v| allocator.free(v);
+        if (row[4]) |v| allocator.free(v);
         allocator.free(row);
     }
 
     // Step 7b: Check revoked (row[2] = revoked_at).
     if (row[2] != null) {
         return .{ .unauthenticated = buildUnauthorized(allocator, "token revoked") };
+    }
+
+    // Expired tokens are immediately rejected at auth boundary.
+    const is_expired_txt = row[3] orelse "f";
+    if (std.mem.eql(u8, is_expired_txt, "t") or std.mem.eql(u8, is_expired_txt, "true")) {
+        return .{ .unauthenticated = buildUnauthorized(allocator, "token expired") };
     }
 
     // row[0] = id (token_id), row[1] = user_id.
@@ -341,32 +388,84 @@ pub fn authenticate(
         return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
     };
 
-    // Step 8: Look up the user's highest-privilege role.
-    var role: Role = .VIEWER;
-    const role_row = conn.queryRow(
+    // IDN-01: reject tokens for INACTIVE users with HTTP 401.
+    const user_status_row = conn.queryRow(
         allocator,
-        \\SELECT r.name FROM roles r
-        \\JOIN user_roles ur ON ur.role_id = r.id
-        \\WHERE ur.user_id = $1
-        \\ORDER BY CASE r.name
-        \\  WHEN 'PLATFORM_ADMIN'   THEN 0
-        \\  WHEN 'PROCESS_DESIGNER' THEN 1
-        \\  WHEN 'PROCESS_OPERATOR' THEN 2
-        \\  WHEN 'VIEWER'           THEN 3
-        \\END
-        \\LIMIT 1
-    ,
+        "SELECT status, is_active::text FROM users WHERE id::text = $1",
         &[_][]const u8{user_id},
-    ) catch return .{ .unauthenticated = buildUnauthorized(allocator, "service unavailable") };
+    ) catch {
+        allocator.free(token_id);
+        allocator.free(user_id);
+        return .{ .unauthenticated = buildUnauthorized(allocator, "service unavailable") };
+    };
 
-    if (role_row) |rr| {
-        defer {
-            if (rr[0]) |v| allocator.free(v);
-            allocator.free(rr);
+    if (user_status_row == null) {
+        allocator.free(token_id);
+        allocator.free(user_id);
+        return .{ .unauthenticated = buildUnauthorized(allocator, "invalid token: user not found") };
+    }
+
+    const status_row = user_status_row.?;
+    defer {
+        if (status_row[0]) |v| allocator.free(v);
+        if (status_row[1]) |v| allocator.free(v);
+        allocator.free(status_row);
+    }
+
+    const status_txt = status_row[0] orelse "";
+    const active_txt = status_row[1] orelse "f";
+    const is_inactive = std.mem.eql(u8, status_txt, "INACTIVE") or
+        ((status_txt.len == 0) and (std.mem.eql(u8, active_txt, "f") or std.mem.eql(u8, active_txt, "false")));
+    if (is_inactive) {
+        allocator.free(token_id);
+        allocator.free(user_id);
+        return .{ .unauthenticated = buildUnauthorized(allocator, "user inactive") };
+    }
+
+    // Step 8: resolve role claims from token first; fallback to user role mapping.
+    var role: Role = .VIEWER;
+    const roles_json = row[4] orelse "[]";
+    if (roles_json.len > 2) {
+        const token_roles = parseRolesJson(allocator, roles_json) catch {
+            allocator.free(token_id);
+            allocator.free(user_id);
+            return .{ .unauthenticated = buildUnauthorized(allocator, "invalid role claim") };
+        };
+        defer allocator.free(token_roles);
+
+        if (token_roles.len == 0) {
+            allocator.free(token_id);
+            allocator.free(user_id);
+            return .{ .unauthenticated = buildUnauthorized(allocator, "invalid role claim") };
         }
-        if (rr[0]) |role_name| {
-            if (Role.fromString(role_name)) |r| {
-                role = r;
+        role = primaryRole(token_roles);
+    } else {
+        const role_row = conn.queryRow(
+            allocator,
+            \\SELECT r.name FROM roles r
+            \\JOIN user_roles ur ON ur.role_id = r.id
+            \\WHERE ur.user_id = $1
+            \\ORDER BY CASE r.name
+            \\  WHEN 'PLATFORM_ADMIN'   THEN 0
+            \\  WHEN 'PROCESS_DESIGNER' THEN 1
+            \\  WHEN 'PROCESS_OPERATOR' THEN 2
+            \\  WHEN 'TASK_WORKER'      THEN 3
+            \\  WHEN 'VIEWER'           THEN 4
+            \\END
+            \\LIMIT 1
+        ,
+            &[_][]const u8{user_id},
+        ) catch return .{ .unauthenticated = buildUnauthorized(allocator, "service unavailable") };
+
+        if (role_row) |rr| {
+            defer {
+                if (rr[0]) |v| allocator.free(v);
+                allocator.free(rr);
+            }
+            if (rr[0]) |role_name| {
+                if (Role.fromString(role_name)) |r| {
+                    role = r;
+                }
             }
         }
     }
@@ -392,6 +491,7 @@ test "Role.fromString: all known roles" {
     try std.testing.expect(Role.fromString("PLATFORM_ADMIN") == .PLATFORM_ADMIN);
     try std.testing.expect(Role.fromString("PROCESS_DESIGNER") == .PROCESS_DESIGNER);
     try std.testing.expect(Role.fromString("PROCESS_OPERATOR") == .PROCESS_OPERATOR);
+    try std.testing.expect(Role.fromString("TASK_WORKER") == .TASK_WORKER);
     try std.testing.expect(Role.fromString("VIEWER") == .VIEWER);
 }
 

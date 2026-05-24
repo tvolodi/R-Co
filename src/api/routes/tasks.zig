@@ -9,8 +9,10 @@
 //!   pub const task_routes = @import("api/routes/tasks.zig");
 const std = @import("std");
 const task_mod = @import("../../tasks/store.zig");
+const identity_service = @import("../../identity/service.zig");
 const instance_mod = @import("../../engine/instance.zig");
 const pagination = @import("../pagination.zig");
+const authorization = @import("../authorization.zig");
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -28,6 +30,9 @@ pub const HandlerResult = struct {
 pub const Actor = struct {
     /// Caller's user identifier (from token subject).
     user_id: []const u8,
+    /// Optional explicit role set from API-08 principal extraction.
+    /// When null, handlers derive a conservative fallback role set from flags.
+    roles: ?[]const authorization.Role = null,
     /// True if caller holds PROCESS_OPERATOR, PROCESS_DESIGNER, or PLATFORM_ADMIN.
     is_operator_or_above: bool,
     /// True if caller holds PLATFORM_ADMIN.
@@ -82,6 +87,16 @@ pub fn handleList(
     actor: Actor,
     params: ListTasksParams,
 ) HandlerResult {
+    var derived_roles: [3]authorization.Role = undefined;
+    const roles = resolveActorRoles(actor, &derived_roles);
+    const decision = authorization.evaluateAccess(
+        .{ .user_id = actor.user_id, .roles = roles },
+        .TasksList,
+    );
+    if (decision.kind == .Deny403) {
+        return errorResult(allocator, 403, "FORBIDDEN", "caller is not authorized to list tasks");
+    }
+
     // ── Step 1: Validate page_size ─────────────────────────────────────────
     const effective_page_size = pagination.validatePageSize(params.page_size) catch |err| switch (err) {
         error.PageSizeTooLarge => return errorResult(
@@ -121,18 +136,21 @@ pub fn handleList(
     defer if (cursor_task_id_opt) |cid| allocator.free(cid);
 
     // ── Step 3: Apply role-based row filter ─────────────────────────────────
-    // For TASK_WORKER: override assignee_id to actor.user_id (per Section 9.4).
-    const effective_assignee_id: ?[]const u8 = if (!actor.is_operator_or_above)
-        actor.user_id // TASK_WORKER sees only their own tasks
-    else
-        params.assignee_id;
+    var effective_assignee_id: ?[]const u8 = params.assignee_id;
+    var assignee_type_user_only: bool = false;
+    var include_group_membership_for_user: bool = false;
 
-    const assignee_type_user_only: bool = !actor.is_operator_or_above;
+    if (decision.kind == .AllowWithRowFilter) {
+        effective_assignee_id = actor.user_id;
+        assignee_type_user_only = false;
+        include_group_membership_for_user = true;
+    }
 
     // ── Step 4: Call TaskStore.listCursor() ─────────────────────────────────
     const store_params = task_mod.ListCursorParams{
         .assignee_id = effective_assignee_id,
         .assignee_type_user_only = assignee_type_user_only,
+        .include_group_membership_for_user = include_group_membership_for_user,
         .status = params.status,
         .instance_id = params.instance_id,
         .cursor_created_at = cursor_created_at,
@@ -317,11 +335,27 @@ pub fn handleGetById(
 pub fn handleComplete(
     store: *task_mod.TaskStore,
     instance_store: *instance_mod.InstanceStore,
+    identity: *identity_service.Service,
     allocator: std.mem.Allocator,
     actor: Actor,
     task_id_str: []const u8,
     body: []const u8,
 ) HandlerResult {
+    var derived_roles: [3]authorization.Role = undefined;
+    const roles = resolveActorRoles(actor, &derived_roles);
+    const decision = authorization.evaluateAccess(
+        .{ .user_id = actor.user_id, .roles = roles },
+        .TasksComplete,
+    );
+    if (decision.kind == .Deny403) {
+        return errorResult(
+            allocator,
+            403,
+            "FORBIDDEN",
+            "Caller is not authorized to complete tasks",
+        );
+    }
+
     // ── Step 1: Parse task_id ───────────────────────────────────────────────
     const task_id = task_mod.parseUuid(task_id_str) catch {
         return errorResult(allocator, 422, "INVALID_TASK_ID", "task_id is not a valid UUID");
@@ -351,20 +385,50 @@ pub fn handleComplete(
     defer task_mod.freeTask(allocator, task);
 
     // ── Step 3: Role/ownership check ────────────────────────────────────────
-    // TASK_WORKER may only complete tasks assigned to them as USER.
-    // TODO IDN-02: GROUP membership check is not yet implemented; TASK_WORKER
-    // is restricted to USER-assigned tasks only for now.
-    if (!actor.is_operator_or_above) {
-        const is_user_assigned = task.assignee_type != null and
-            std.mem.eql(u8, task.assignee_type.?, "USER") and
-            task.assignee_ref != null and
-            std.mem.eql(u8, task.assignee_ref.?, actor.user_id);
-        if (!is_user_assigned) {
+    if (authorization.isTaskWorkerOnly(roles)) {
+        const claim_allowed = if (task.assignee_type) |assignee_type| blk: {
+            if (std.mem.eql(u8, assignee_type, "USER")) {
+                break :blk task.assignee_ref != null and std.mem.eql(u8, task.assignee_ref.?, actor.user_id);
+            }
+            if (std.mem.eql(u8, assignee_type, "GROUP")) {
+                if (task.assignee_ref == null) break :blk false;
+                const group_claim_allowed = identity.canClaimGroupTask(allocator, task.assignee_ref.?, actor.user_id) catch |err| switch (err) {
+                    identity_service.GroupError.PoolExhausted => return errorResult(
+                        allocator,
+                        503,
+                        "SERVICE_UNAVAILABLE",
+                        "DB connection pool exhausted",
+                    ),
+                    identity_service.GroupError.PersistenceFailed => return errorResult(
+                        allocator,
+                        500,
+                        "INTERNAL_ERROR",
+                        "Group membership lookup failed",
+                    ),
+                    identity_service.GroupError.OutOfMemory => return errorResult(
+                        allocator,
+                        500,
+                        "INTERNAL_ERROR",
+                        "Out of memory",
+                    ),
+                    else => return errorResult(
+                        allocator,
+                        500,
+                        "INTERNAL_ERROR",
+                        "Group membership lookup failed",
+                    ),
+                };
+                break :blk group_claim_allowed;
+            }
+            break :blk false;
+        } else false;
+
+        if (!claim_allowed) {
             return errorResult(
                 allocator,
                 403,
                 "FORBIDDEN",
-                "Caller is not the assigned user for this task",
+                "Caller is not authorized to complete this task",
             );
         }
     }
@@ -456,7 +520,13 @@ pub fn handleAssign(
     body: []const u8,
 ) HandlerResult {
     // ── Step 1: Role check ──────────────────────────────────────────────────
-    if (!actor.is_operator_or_above) {
+    var derived_roles: [3]authorization.Role = undefined;
+    const roles = resolveActorRoles(actor, &derived_roles);
+    const decision = authorization.evaluateAccess(
+        .{ .user_id = actor.user_id, .roles = roles },
+        .TasksAssign,
+    );
+    if (decision.kind == .Deny403) {
         return errorResult(allocator, 403, "FORBIDDEN", "assign requires PROCESS_OPERATOR or above");
     }
 
@@ -558,7 +628,13 @@ pub fn handleReassign(
     body: []const u8,
 ) HandlerResult {
     // ── Step 1: Role check ──────────────────────────────────────────────────
-    if (!actor.is_operator_or_above) {
+    var derived_roles: [3]authorization.Role = undefined;
+    const roles = resolveActorRoles(actor, &derived_roles);
+    const decision = authorization.evaluateAccess(
+        .{ .user_id = actor.user_id, .roles = roles },
+        .TasksReassign,
+    );
+    if (decision.kind == .Deny403) {
         return errorResult(allocator, 403, "FORBIDDEN", "reassign requires PROCESS_OPERATOR or above");
     }
 
@@ -657,6 +733,21 @@ fn extractUserIdFromBody(allocator: std.mem.Allocator, body: []const u8) ?[]u8 {
     };
     if (s.len == 0) return null;
     return allocator.dupe(u8, s) catch null;
+}
+
+fn resolveActorRoles(actor: Actor, derived: *[3]authorization.Role) []const authorization.Role {
+    if (actor.roles) |roles| return roles;
+
+    if (actor.is_platform_admin) {
+        derived[0] = .PLATFORM_ADMIN;
+        return derived[0..1];
+    }
+    if (actor.is_operator_or_above) {
+        derived[0] = .PROCESS_OPERATOR;
+        return derived[0..1];
+    }
+    derived[0] = .TASK_WORKER;
+    return derived[0..1];
 }
 
 /// Serialize a Task into a TaskDetailResponse JSON body (HTTP 200).

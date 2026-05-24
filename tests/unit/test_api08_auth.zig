@@ -24,6 +24,7 @@ const std = @import("std");
 const testing = std.testing;
 const api = @import("api");
 const auth = api.auth;
+const pool = @import("pool");
 
 /// Test bootstrap token used for all bootstrap-auth tests.
 const TEST_BOOTSTRAP_TOKEN = "test-bootstrap-token-12345";
@@ -37,6 +38,41 @@ fn freeHandlerBody(alloc: std.mem.Allocator, body: []const u8) void {
     if (!std.mem.eql(u8, body, static_500)) {
         alloc.free(body);
     }
+}
+
+fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
+    const env: std.process.Environ = .{ .block = .global };
+    return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => return error.SkipZigTest,
+        else => return err,
+    };
+}
+
+fn hashToken(allocator: std.mem.Allocator, token: []const u8) ![]u8 {
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(token, &digest, .{});
+    return std.fmt.allocPrint(allocator, "{s}", .{std.fmt.bytesToHex(&digest, .lower)});
+}
+
+fn cleanupInactiveAuthFixtures(db_pool: *pool.Pool, username: []const u8) void {
+    const conn = db_pool.acquire() catch return;
+    defer db_pool.release(conn);
+
+    conn.exec(
+        \\DELETE FROM api_tokens
+        \\WHERE user_id IN (SELECT id FROM users WHERE username = $1)
+    ,
+        &[_][]const u8{username},
+    ) catch {};
+
+    conn.exec(
+        \\DELETE FROM user_roles
+        \\WHERE user_id IN (SELECT id FROM users WHERE username = $1)
+    ,
+        &[_][]const u8{username},
+    ) catch {};
+
+    conn.exec("DELETE FROM users WHERE username = $1", &[_][]const u8{username}) catch {};
 }
 
 // ── TC-API-08-01: Missing Authorization header → HTTP 401 ────────────────────
@@ -187,4 +223,363 @@ test "TC-API-08-401-format: 401 response contains correct RFC 9457 structure" {
     try testing.expect(std.mem.indexOf(u8, body, "\"type\":\"https://bpm.example.com/problems/unauthorized\"") != null);
     try testing.expect(std.mem.indexOf(u8, body, "\"title\":\"Unauthorized\"") != null);
     try testing.expect(std.mem.indexOf(u8, body, "\"status\":401") != null);
+}
+
+// ── TC-IDN-01-06: INACTIVE user token auth must return HTTP 401 ─────────────
+
+test "TC-IDN-01-06: token for INACTIVE user returns 401" {
+    const alloc = testing.allocator;
+
+    const url = testDbUrl(alloc) catch |err| switch (err) {
+        error.SkipZigTest => return,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
+    defer db_pool.deinit();
+
+    const username = "tc-idn-01-06-inactive";
+    cleanupInactiveAuthFixtures(&db_pool, username);
+    defer cleanupInactiveAuthFixtures(&db_pool, username);
+
+    const raw_token = "tc-idn-01-06-raw-token";
+    const token_hash = try hashToken(alloc, raw_token);
+    defer alloc.free(token_hash);
+
+    const conn = try db_pool.acquire();
+    defer db_pool.release(conn);
+
+    try conn.exec(
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, $3, $4::boolean, $5, $6)
+    ,
+        &[_][]const u8{
+            "tc-idn-01-06@example.com",
+            "TC IDN 01 06",
+            "__API_ONLY__",
+            "false",
+            username,
+            "INACTIVE",
+        },
+    );
+
+    const user_row = (try conn.queryRow(
+        alloc,
+        "SELECT id::text FROM users WHERE username = $1",
+        &[_][]const u8{username},
+    )) orelse return error.TestUnexpectedResult;
+    defer {
+        if (user_row[0]) |v| alloc.free(v);
+        alloc.free(user_row);
+    }
+    const user_id = user_row[0] orelse return error.TestUnexpectedResult;
+
+    try conn.exec(
+        "INSERT INTO api_tokens (user_id, name, token_hash) VALUES ($1, $2, $3)",
+        &[_][]const u8{ user_id, "tc-idn-01-06-token", token_hash },
+    );
+
+    try auth.init(alloc, null);
+    defer auth.deinit();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{raw_token});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, &db_pool);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "user inactive") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-IDN-04-04a: revoked token is rejected by auth middleware with 401" {
+    const alloc = testing.allocator;
+
+    const url = testDbUrl(alloc) catch |err| switch (err) {
+        error.SkipZigTest => return,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
+    defer db_pool.deinit();
+
+    const username = "tc-idn-04-04a-revoked";
+    cleanupInactiveAuthFixtures(&db_pool, username);
+    defer cleanupInactiveAuthFixtures(&db_pool, username);
+
+    const raw_token = "tc-idn-04-04a-raw-token";
+    const token_hash = try hashToken(alloc, raw_token);
+    defer alloc.free(token_hash);
+
+    const conn = try db_pool.acquire();
+    defer db_pool.release(conn);
+
+    try conn.exec(
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, $3, $4::boolean, $5, $6)
+    ,
+        &[_][]const u8{
+            "tc-idn-04-04a@example.com",
+            "TC IDN 04 04a",
+            "__API_ONLY__",
+            "true",
+            username,
+            "ACTIVE",
+        },
+    );
+
+    const user_row = (try conn.queryRow(
+        alloc,
+        "SELECT id::text FROM users WHERE username = $1",
+        &[_][]const u8{username},
+    )) orelse return error.TestUnexpectedResult;
+    defer {
+        if (user_row[0]) |v| alloc.free(v);
+        alloc.free(user_row);
+    }
+    const user_id = user_row[0] orelse return error.TestUnexpectedResult;
+
+    try conn.exec(
+        "INSERT INTO api_tokens (user_id, name, token_hash, roles_json, revoked_at) VALUES ($1, $2, $3, $4::jsonb, NOW())",
+        &[_][]const u8{ user_id, "tc-idn-04-04a-token", token_hash, "[\"TASK_WORKER\"]" },
+    );
+
+    try auth.init(alloc, null);
+    defer auth.deinit();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{raw_token});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, &db_pool);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "token revoked") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-IDN-04-04b: expired token is rejected by auth middleware with 401" {
+    const alloc = testing.allocator;
+
+    const url = testDbUrl(alloc) catch |err| switch (err) {
+        error.SkipZigTest => return,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
+    defer db_pool.deinit();
+
+    const username = "tc-idn-04-04b-expired";
+    cleanupInactiveAuthFixtures(&db_pool, username);
+    defer cleanupInactiveAuthFixtures(&db_pool, username);
+
+    const raw_token = "tc-idn-04-04b-raw-token";
+    const token_hash = try hashToken(alloc, raw_token);
+    defer alloc.free(token_hash);
+
+    const conn = try db_pool.acquire();
+    defer db_pool.release(conn);
+
+    try conn.exec(
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, $3, $4::boolean, $5, $6)
+    ,
+        &[_][]const u8{
+            "tc-idn-04-04b@example.com",
+            "TC IDN 04 04b",
+            "__API_ONLY__",
+            "true",
+            username,
+            "ACTIVE",
+        },
+    );
+
+    const user_row = (try conn.queryRow(
+        alloc,
+        "SELECT id::text FROM users WHERE username = $1",
+        &[_][]const u8{username},
+    )) orelse return error.TestUnexpectedResult;
+    defer {
+        if (user_row[0]) |v| alloc.free(v);
+        alloc.free(user_row);
+    }
+    const user_id = user_row[0] orelse return error.TestUnexpectedResult;
+
+    try conn.exec(
+        "INSERT INTO api_tokens (user_id, name, token_hash, roles_json, expires_at) VALUES ($1, $2, $3, $4::jsonb, NOW() - INTERVAL '1 minute')",
+        &[_][]const u8{ user_id, "tc-idn-04-04b-token", token_hash, "[\"TASK_WORKER\"]" },
+    );
+
+    try auth.init(alloc, null);
+    defer auth.deinit();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{raw_token});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, &db_pool);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "token expired") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-IDN-04-05a: token role claims drive resolved auth role" {
+    const alloc = testing.allocator;
+
+    const url = testDbUrl(alloc) catch |err| switch (err) {
+        error.SkipZigTest => return,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
+    defer db_pool.deinit();
+
+    const username = "tc-idn-04-05a-role-claims";
+    cleanupInactiveAuthFixtures(&db_pool, username);
+    defer cleanupInactiveAuthFixtures(&db_pool, username);
+
+    const raw_token = "tc-idn-04-05a-raw-token";
+    const token_hash = try hashToken(alloc, raw_token);
+    defer alloc.free(token_hash);
+
+    const conn = try db_pool.acquire();
+    defer db_pool.release(conn);
+
+    try conn.exec(
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, $3, $4::boolean, $5, $6)
+    ,
+        &[_][]const u8{
+            "tc-idn-04-05a@example.com",
+            "TC IDN 04 05a",
+            "__API_ONLY__",
+            "true",
+            username,
+            "ACTIVE",
+        },
+    );
+
+    const user_row = (try conn.queryRow(
+        alloc,
+        "SELECT id::text FROM users WHERE username = $1",
+        &[_][]const u8{username},
+    )) orelse return error.TestUnexpectedResult;
+    defer {
+        if (user_row[0]) |v| alloc.free(v);
+        alloc.free(user_row);
+    }
+    const user_id = user_row[0] orelse return error.TestUnexpectedResult;
+
+    try conn.exec(
+        "INSERT INTO api_tokens (user_id, name, token_hash, roles_json) VALUES ($1, $2, $3, $4::jsonb)",
+        &[_][]const u8{ user_id, "tc-idn-04-05a-token", token_hash, "[\"TASK_WORKER\",\"PROCESS_OPERATOR\"]" },
+    );
+
+    try auth.init(alloc, null);
+    defer auth.deinit();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{raw_token});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, &db_pool);
+    switch (result) {
+        .authenticated => |ctx| {
+            defer alloc.free(ctx.user_id);
+            defer alloc.free(ctx.token_id);
+            try testing.expectEqual(auth.Role.PROCESS_OPERATOR, ctx.role);
+        },
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            return error.TestUnexpectedResult;
+        },
+        .forbidden => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            return error.TestUnexpectedResult;
+        },
+    }
+}
+
+test "TC-IDN-04-05b: invalid token role claim is rejected with 401" {
+    const alloc = testing.allocator;
+
+    const url = testDbUrl(alloc) catch |err| switch (err) {
+        error.SkipZigTest => return,
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
+    defer db_pool.deinit();
+
+    const username = "tc-idn-04-05b-invalid-claim";
+    cleanupInactiveAuthFixtures(&db_pool, username);
+    defer cleanupInactiveAuthFixtures(&db_pool, username);
+
+    const raw_token = "tc-idn-04-05b-raw-token";
+    const token_hash = try hashToken(alloc, raw_token);
+    defer alloc.free(token_hash);
+
+    const conn = try db_pool.acquire();
+    defer db_pool.release(conn);
+
+    try conn.exec(
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, $3, $4::boolean, $5, $6)
+    ,
+        &[_][]const u8{
+            "tc-idn-04-05b@example.com",
+            "TC IDN 04 05b",
+            "__API_ONLY__",
+            "true",
+            username,
+            "ACTIVE",
+        },
+    );
+
+    const user_row = (try conn.queryRow(
+        alloc,
+        "SELECT id::text FROM users WHERE username = $1",
+        &[_][]const u8{username},
+    )) orelse return error.TestUnexpectedResult;
+    defer {
+        if (user_row[0]) |v| alloc.free(v);
+        alloc.free(user_row);
+    }
+    const user_id = user_row[0] orelse return error.TestUnexpectedResult;
+
+    try conn.exec(
+        "INSERT INTO api_tokens (user_id, name, token_hash, roles_json) VALUES ($1, $2, $3, $4::jsonb)",
+        &[_][]const u8{ user_id, "tc-idn-04-05b-token", token_hash, "[\"NOT_A_ROLE\"]" },
+    );
+
+    try auth.init(alloc, null);
+    defer auth.deinit();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{raw_token});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, &db_pool);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "invalid role claim") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
 }

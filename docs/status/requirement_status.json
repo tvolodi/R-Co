@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-23T20:21:55Z",
+  "last_updated": "2026-05-24T19:00:30Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -730,58 +730,164 @@
       "last_updated": "2026-05-23T20:21:55Z"
     },
     "SCH-05": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "MUST",
-      "title": "Missed timer recovery"
+      "title": "Missed timer recovery",
+      "implemented_in": [
+        "src/scheduler/scheduler.zig"
+      ],
+      "test_spec": "tests/reports/WF02-sch05-20260523-run-01.md",
+      "tested_at": "2026-05-23",
+      "released_at": "2026-05-23T20:47:08Z",
+      "release_run": "WF02-sch05-20260523",
+      "last_updated": "2026-05-23T20:47:08Z"
     },
     "SCH-06": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "SHOULD",
-      "title": "Timer jitter"
+      "title": "Timer jitter",
+      "implemented_in": [
+        "src/scheduler/scheduler.zig"
+      ],
+      "test_spec": "tests/specs/SCH-06.md",
+      "test_run": "tests/reports/WF02-sch06-20260523-run-01.md",
+      "tested_at": "2026-05-23",
+      "released_at": "2026-05-23T21:30:47Z",
+      "release_run": "WF02-sch06-20260523",
+      "last_updated": "2026-05-23T21:30:47Z"
     },
     "SCH-07": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "SHOULD",
-      "title": "Recurring timers"
+      "title": "Recurring timers",
+      "implemented_in": [
+        "src/scheduler/recurrence.zig",
+        "src/scheduler/scheduler.zig",
+        "src/scheduler/store.zig",
+        "src/engine/instance.zig",
+        "migrations/016_timer_recurrence_fields.sql"
+      ],
+      "test_spec": "tests/specs/SCH-07.md",
+      "test_run": "tests/reports/WF02-sch07-20260524-run-02.md",
+      "tested_at": "2026-05-24",
+      "released_at": "2026-05-24T02:04:41Z",
+      "release_run": "WF02-sch07-20260524",
+      "last_updated": "2026-05-24T02:07:09Z"
     },
     "IDN-01": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "MUST",
-      "title": "User registry"
+      "title": "User registry",
+      "implemented_in": [
+        "src/identity/registry.zig",
+        "src/identity/service.zig",
+        "src/api/routes/identity.zig",
+        "src/api/middleware/auth.zig",
+        "src/main.zig",
+        "migrations/017_identity_user_registry.sql"
+      ],
+      "test_spec": "tests/specs/IDN-01.md",
+      "test_run": "tests/reports/report-2026-05-24T02-59-07Z-WF02-idn01-rework2.json",
+      "tested_at": "2026-05-24",
+      "released_at": "2026-05-24T05:25:19Z",
+      "release_run": "WF02-idn01-20260524",
+      "last_updated": "2026-05-24T05:28:39Z"
     },
     "IDN-02": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "MUST",
-      "title": "Group management"
+      "title": "Group management",
+      "implemented_in": [
+        "src/identity/registry.zig",
+        "src/identity/service.zig",
+        "src/api/routes/identity.zig",
+        "src/api/routes/tasks.zig",
+        "migrations/018_identity_group_members.sql"
+      ],
+      "test_spec": "tests/specs/IDN-02.md",
+      "test_run": "tests/reports/report-20260524T064224Z-WF02-idn02-20260524-rework1.json",
+      "tested_at": "2026-05-24",
+      "released_at": "2026-05-24T06:46:41Z",
+      "release_run": "WF02-idn02-20260524",
+      "last_updated": "2026-05-24T06:49:45Z"
     },
     "IDN-03": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "MUST",
-      "title": "Role-based access"
+      "title": "Role-based access",
+      "implemented_in": [
+        "src/api/authorization.zig",
+        "src/api/routes/tasks.zig",
+        "src/tasks/store.zig"
+      ],
+      "test_spec": "tests/specs/IDN-03.md",
+      "test_run": "tests/reports/report-2026-05-24-WF02-idn03-step04.json",
+      "tested_at": "2026-05-24",
+      "released_at": "2026-05-24T07:34:50Z",
+      "release_run": "WF02-idn03-20260524",
+      "last_updated": "2026-05-24T07:37:51Z"
     },
     "IDN-04": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 5,
       "priority": "MUST",
-      "title": "API token management"
+      "title": "API token management",
+      "implemented_in": [
+        "src/identity/service.zig",
+        "src/api/routes/identity.zig",
+        "src/api/middleware/auth.zig",
+        "migrations/019_idn04_api_token_management.sql"
+      ],
+      "test_spec": "tests/specs/IDN-04.md",
+      "test_run": "tests/reports/WF02-idn04-20260524-run-01.md",
+      "tested_at": "2026-05-24",
+      "released_at": "2026-05-24T08:37:42Z",
+      "release_run": "WF02-idn04-20260524",
+      "last_updated": "2026-05-24T08:41:10Z"
     },
     "OBS-01": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "MUST",
-      "title": "Structured logging"
+      "title": "Structured logging",
+      "implemented_in": [
+        "src/obs/logger.zig",
+        "src/config.zig",
+        "src/main.zig",
+        "src/api/routes/health.zig",
+        "src/scheduler/scheduler.zig"
+      ],
+      "test_spec": "tests/specs/OBS-01.md",
+      "test_run": "tests/reports/report-20260524T145355Z-WF02-obs01-20260524-rework1.json",
+      "tested_at": "2026-05-24",
+      "released_at": "2026-05-24T15:07:10Z",
+      "release_run": "WF02-obs01-20260524",
+      "last_updated": "2026-05-24T15:10:09Z"
     },
     "OBS-02": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "MUST",
-      "title": "Prometheus metrics"
+      "title": "Prometheus metrics",
+      "implemented_in": [
+        "src/obs/metrics.zig",
+        "src/api/routes/metrics.zig",
+        "src/db/pool.zig",
+        "src/event_store/store.zig",
+        "src/engine/instance.zig"
+      ],
+      "test_spec": "tests/specs/OBS-02.md",
+      "test_run": "tests/reports/report-2026-05-24-WF02-obs02-step04c-rework2.json",
+      "tested_at": "2026-05-24",
+      "released_at": "2026-05-24T18:57:28Z",
+      "release_run": "WF02-obs02-20260524",
+      "last_updated": "2026-05-24T19:00:30Z"
     },
     "OBS-03": {
       "status": "VALIDATED",

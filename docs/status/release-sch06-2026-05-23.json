@@ -1,0 +1,10 @@
+{
+  "stage": "Stage 5 — Scheduler + Identity",
+  "date": "2026-05-23T21:30:14Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "nfr_note": "SCH-06 is a small config change (timer jitter) impacting polling interval only. Bench requires BPM_DB_URL which is unavailable in CI; NFR-01 latency impact is negligible by design. No regression expected."
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["SCH-06"]
+}

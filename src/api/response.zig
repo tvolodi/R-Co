@@ -19,6 +19,8 @@ pub const HandlerResult = struct {
     status_code: u16,
     /// JSON-encoded response body; owned by the caller allocator.
     body: []const u8,
+    /// Response content type; defaults to JSON for existing handlers.
+    content_type: []const u8 = CONTENT_TYPE_JSON,
 };
 
 /// Content-Type value for all JSON responses.

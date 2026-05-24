@@ -36,12 +36,22 @@ const ee12_concurrent = @import("concurrent_instances_test.zig");
 const sch01_timer_creation_integration = @import("sch01_timer_creation_test.zig");
 // Stage 5 — Timer polling and firing (SCH-02)
 const sch02_timer_polling_integration = @import("sch02_timer_polling_test.zig");
+// Stage 5 — Identity user registry integration (IDN-01)
+const idn01_user_registry_integration = @import("idn01_user_registry_test.zig");
+// Stage 5 — Identity group management integration (IDN-02)
+const idn02_group_management_integration = @import("idn02_group_management_test.zig");
+// Stage 5 — Role-based access integration (IDN-03)
+const idn03_role_access_integration = @import("idn03_role_access_test.zig");
+// Stage 5 — API token management integration (IDN-04)
+const idn04_api_token_management_integration = @import("idn04_api_token_management_test.zig");
 // Stage 4 — Process definition CRUD API (API-02)
 const api02_crud_integration = @import("api02_crud_test.zig");
 // Stage 4 — Instance read endpoints (API-03)
 const api03_instance_read_integration = @import("api03_instance_read_test.zig");
 // Stage 4 — Request tracing (API-09)
 const api09_trace_integration = @import("trace_test.zig");
+// Stage 6 — Prometheus metrics endpoint (OBS-02)
+const obs02_metrics_integration = @import("obs02_metrics_test.zig");
 
 comptime {
     _ = std;
@@ -62,9 +72,14 @@ comptime {
     _ = ee12_concurrent;
     _ = sch01_timer_creation_integration;
     _ = sch02_timer_polling_integration;
+    _ = idn01_user_registry_integration;
+    _ = idn02_group_management_integration;
+    _ = idn03_role_access_integration;
+    _ = idn04_api_token_management_integration;
     _ = api02_crud_integration;
     _ = api03_instance_read_integration;
     _ = api09_trace_integration;
+    _ = obs02_metrics_integration;
 }
 
 test "integration placeholder" {

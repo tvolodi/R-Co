@@ -1,0 +1,61 @@
+{
+  "stage": "Stage 6 - Observability + Extensions",
+  "date": "2026-05-24T18:57:28Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "OBS-02"
+  ],
+  "nfr_results": {
+    "benchmark_command": "$env:BPM_DB_URL='postgres://bpm:bpm@localhost:5432/bpm'; zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 0.704,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.075,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 61918.827,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 30.276,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "Benchmark gate passed after connectivity fix with strong margin on NFR-01, NFR-02, and NFR-04."
+  },
+  "test_evidence": {
+    "obs02_step04c_report": "tests/reports/report-2026-05-24-WF02-obs02-step04c-rework2.json",
+    "obs02_step04c_integration_log": "tests/reports/WF02-obs02-20260524-step04c-integration-obs02.log",
+    "obs02_status": "PASS",
+    "build_exit_code": 0,
+    "unit_exit_code": 0,
+    "integration_exit_code": 0,
+    "integration_failure_scope": "OBS-02 targeted integration evidence passed in step-04c; unrelated full-suite API-09 failures remain out of scope for OBS-02 acceptance."
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "OBS-02"
+  ],
+  "non_blocking_issues": [
+    {
+      "id": "RV-OBS02-INT-UNRELATED-01",
+      "severity": "MAJOR",
+      "agent": "RELEASE-VALIDATOR",
+      "description": "Full-suite integration run still reports API-09 trace connectivity failures (CONNECTION_REFUSED). This is unchanged and outside OBS-02 targeted acceptance evidence."
+    }
+  ],
+  "recommendation": "APPROVE OBS-02 release progression and route to DOC-UPDATER for requirement status, changelog, and retrospective updates."
+}

@@ -1,0 +1,18 @@
+{
+  "run_id": "WF02-sch07-20260524",
+  "created_at": "2026-05-24T00:00:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["SCH-07"],
+  "difficulty": 4,
+  "difficulty_rationale": "Recurring timers require multi-module scheduler logic, repeat parsing, transactional re-arm behavior, and overlap with SCH-01/02/03/05 semantics.",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 10,
+    "backend-dev": 12,
+    "test-designer": 11,
+    "test-runner": 7,
+    "release-validator": 2,
+    "doc-updater": 3,
+    "total": 45
+  }
+}

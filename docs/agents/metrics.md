@@ -28,6 +28,23 @@ The system is intentionally lightweight: it adds two files per workflow run (`es
 
 The difficulty reflects the **implementation scope of a single requirement** (or a tightly related group of requirements). When multiple requirements are bundled into one workflow run, estimate each individually and sum the results.
 
+## 2a. Integration Surface
+
+Integration surface is a second axis that captures how many existing modules the new feature
+touches. It predicts rework probability independently of implementation complexity (a simple
+feature that wires into many existing modules generates more integration failures than a complex
+feature in an isolated module).
+
+| Surface | Definition | Surcharge applied to all step estimates |
+|---|---|---|
+| `low` | Additive to one module; no existing function signatures change | 0% |
+| `medium` | Touches 2–3 modules; some call sites update | +25% |
+| `high` | Touches 4+ modules, or any of: `src/engine/transition.zig`, `src/scheduler/scheduler.zig`, `src/api/middleware/auth.zig`, `tests/integration/main_test.zig` | +50% |
+
+ORCH records `integration_surface` and `integration_surface_rationale` in `estimation.json`
+alongside `difficulty`. DOC-UPDATER includes both in the retrospective so rule-adjustment
+analysis can be stratified by surface as well as difficulty.
+
 ---
 
 ## 3. Estimation File Schema
@@ -42,6 +59,8 @@ ORCH creates `handoffs/<run_id>/estimation.json` at the same time as the first h
   "requirement_ids": ["<REQ-ID>", "..."],
   "difficulty": 3,
   "difficulty_rationale": "<one sentence: why this level was chosen>",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "<one sentence: which modules are touched>",
   "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
   "estimated_minutes": {
     "code-designer": 15,
@@ -90,6 +109,7 @@ DOC-UPDATER writes `docs/metrics/retrospectives/<run_id>.json` as the final step
   "run_id": "<RUN-ID>",
   "requirement_ids": ["<REQ-ID>", "..."],
   "difficulty": 3,
+  "integration_surface": "medium",
   "rules_version_used": "1.0",
   "estimated_minutes_total": 99,
   "actual_minutes_total": 120,

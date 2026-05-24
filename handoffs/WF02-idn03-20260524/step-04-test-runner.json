@@ -1,0 +1,59 @@
+{
+  "handoff_id": "b1ed7dfe-f406-4a9f-a16a-fef85017e844",
+  "run_id": "WF02-idn03-20260524",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-idn03-20260524/step-04-test-runner.json",
+  "created_at": "2026-05-24T07:27:20Z",
+  "started_at": "2026-05-24T07:27:40Z",
+  "completed_at": "2026-05-24T07:32:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": [
+      "IDN-03"
+    ],
+    "related_handoff_ids": [
+      "8e2d7f9c-3d11-4d68-8b63-4cd5b6ae2c81",
+      "c4e4f596-c97b-4632-88cb-3275ed95e4a4"
+    ],
+    "artifacts_in": [
+      "tests/specs/IDN-03.md",
+      "tests/integration/idn03_role_access_test.zig",
+      "tests/integration/main_test.zig",
+      "src/api/authorization.zig",
+      "src/api/routes/tasks.zig",
+      "src/tasks/store.zig"
+    ]
+  },
+  "task": {
+    "description": "Execute WF-02 test runner validation for IDN-03. Run the relevant automated suites for the changed backend and IDN-03 coverage (including unit tests and integration tests that cover role checks and TASK_WORKER row filtering). Produce a structured report under tests/reports with command outputs, pass/fail counts, and any issues mapped to requirement IDN-03.",
+    "acceptance_criteria": [
+      "Required test commands complete with exit code 0",
+      "IDN-03-specific test cases are executed and reported",
+      "A test report is written to tests/reports",
+      "Any failures are captured with severity and affected requirement"
+    ],
+    "functions_to_call": [
+      "fn:run-zig-tests",
+      "fn:collect-test-results",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed WF-02 IDN-03 backend unit and integration validation. All required suites completed with exit code 0, including TASK_WORKER row-filtering integration coverage.",
+    "artifacts_out": [
+      "tests/reports/WF02-idn03-20260524-step04-unit.log",
+      "tests/reports/WF02-idn03-20260524-step04-integration.log",
+      "tests/reports/report-2026-05-24-WF02-idn03-step04.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

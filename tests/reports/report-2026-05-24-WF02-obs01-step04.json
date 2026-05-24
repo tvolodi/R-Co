@@ -1,0 +1,94 @@
+{
+  "run_id": "WF02-obs01-20260524",
+  "workflow_id": "WF-02",
+  "handoff_id": "96fc63a6-0bb3-4ad2-874a-7f8bb6ef2c4b",
+  "timestamp": "2026-05-24T14:46:52Z",
+  "requirement_ids": [
+    "OBS-01"
+  ],
+  "summary": {
+    "total": 585,
+    "passed": 288,
+    "failed": 1,
+    "skipped": 296
+  },
+  "commands": [
+    {
+      "command": "zig build --summary all test -- --test-filter OBS-01",
+      "exit_code": 0,
+      "totals": {
+        "total": 386,
+        "passed": 284,
+        "failed": 0,
+        "skipped": 102
+      },
+      "output_artifact": "tests/reports/WF02-obs01-20260524-step04-unit.log"
+    },
+    {
+      "command": "BPM_TEST_URL=http://127.0.0.1:8080 BPM_TEST_LOG_FILE=stdout.txt zig build --summary all test-integration -- --test-filter TC-OBS-01-INT-01",
+      "exit_code": 1,
+      "totals": {
+        "total": 199,
+        "passed": 4,
+        "failed": 1,
+        "skipped": 194
+      },
+      "output_artifact": "tests/reports/WF02-obs01-20260524-step04-integration.log",
+      "notes": [
+        "TC-OBS-01-INT-01 failed with CONNECTION_REFUSED while calling http://127.0.0.1:8080/health/live.",
+        "Output also shows BPM_TEST_DB_URL and BPM_TEST_TOKEN precondition skips across unrelated integration suites; this indicates the full HTTP/DB integration harness was not fully configured during this run.",
+        "The local harness probe before test execution also returned Unable to connect to the remote server for /health/live and showed empty stdout/stderr capture files."
+      ]
+    }
+  ],
+  "obs01_coverage": [
+    {
+      "test_id": "TC-OBS-01-01",
+      "layer": "unit",
+      "file": "src/config.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-OBS-01-02",
+      "layer": "unit",
+      "file": "src/obs/logger.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-OBS-01-03",
+      "layer": "unit",
+      "file": "src/obs/logger.zig",
+      "status": "covered_by_suite_pass"
+    },
+    {
+      "test_id": "TC-OBS-01-04",
+      "layer": "integration",
+      "file": "tests/integration/trace_test.zig",
+      "status": "failed"
+    },
+    {
+      "test_id": "TC-OBS-01-05",
+      "layer": "unit",
+      "file": "src/obs/logger.zig",
+      "status": "covered_by_suite_pass"
+    }
+  ],
+  "failures": [
+    {
+      "test_id": "TC-OBS-01-INT-01",
+      "layer": "integration",
+      "file": "tests/integration/trace_test.zig",
+      "error_message": "error.Unexpected NTSTATUS=0xc0000236 (CONNECTION_REFUSED) while executing health/live request trace propagation test",
+      "severity": "BLOCKER",
+      "affected_requirement": "OBS-01"
+    }
+  ],
+  "issues": [
+    {
+      "id": "ISS-WF02-OBS01-TR-001",
+      "severity": "BLOCKER",
+      "description": "OBS-01 integration evidence could not be completed because the required local HTTP/log capture harness was unavailable during TC-OBS-01-INT-01 (connection refused).",
+      "affected_requirement": "OBS-01"
+    }
+  ]
+}

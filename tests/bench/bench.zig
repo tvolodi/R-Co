@@ -8,7 +8,19 @@ const REPLAY_TARGET_MS = 5000.0;
 
 const LATENCY_ITERATIONS: usize = 200;
 const THROUGHPUT_SECONDS: f64 = 2.0;
+const THROUGHPUT_BATCH_SIZE: usize = 64;
 const REPLAY_EVENT_COUNT: usize = 10_000;
+
+const DbUrlSource = enum {
+    bench,
+    primary,
+    test_db,
+};
+
+const ResolvedDbUrl = struct {
+    url: []const u8,
+    source: DbUrlSource,
+};
 
 const Result = struct {
     id: []const u8,
@@ -22,15 +34,24 @@ const Result = struct {
 pub fn main(init: std.process.Init) !void {
     const gpa = init.gpa;
 
-    const db_url = init.environ_map.get("BPM_DB_URL") orelse {
-        std.debug.print("BENCHMARK_SETUP_ERROR|missing BPM_DB_URL\n", .{});
-        return error.MissingDbUrl;
+    const resolved_db_url = resolveDbUrl(init) catch |err| {
+        std.debug.print("BENCHMARK_SETUP_ERROR|missing BPM_BENCH_DB_URL/BPM_DB_URL/BPM_TEST_DB_URL\n", .{});
+        return err;
     };
 
-    var pool = db.Pool.init(init.io, gpa, .{
-        .url = db_url,
-        .pool_size = 4,
-    }) catch |err| {
+    std.debug.print("BENCHMARK_SETUP_INFO|db_url_source={s}\n", .{dbUrlSourceLabel(resolved_db_url.source)});
+
+    var pool = connectPool(init, gpa, resolved_db_url.url) catch |err| blk: {
+        if (err == db.PoolError.ConnectionFailed and resolved_db_url.source != .test_db) {
+            if (init.environ_map.get("BPM_TEST_DB_URL")) |test_db_url| {
+                std.debug.print("BENCHMARK_SETUP_INFO|retry_db_url_source=BPM_TEST_DB_URL\n", .{});
+                break :blk connectPool(init, gpa, test_db_url) catch |retry_err| {
+                    std.debug.print("BENCHMARK_SETUP_ERROR|pool_init={s}\n", .{@errorName(retry_err)});
+                    return retry_err;
+                };
+            }
+        }
+
         std.debug.print("BENCHMARK_SETUP_ERROR|pool_init={s}\n", .{@errorName(err)});
         return err;
     };
@@ -133,6 +154,37 @@ fn ensureBenchTable(conn: *db.Conn) !void {
     , &.{});
 }
 
+fn resolveDbUrl(init: std.process.Init) error{MissingDbUrl}!ResolvedDbUrl {
+    if (init.environ_map.get("BPM_BENCH_DB_URL")) |url| {
+        return .{ .url = url, .source = .bench };
+    }
+
+    if (init.environ_map.get("BPM_DB_URL")) |url| {
+        return .{ .url = url, .source = .primary };
+    }
+
+    if (init.environ_map.get("BPM_TEST_DB_URL")) |url| {
+        return .{ .url = url, .source = .test_db };
+    }
+
+    return error.MissingDbUrl;
+}
+
+fn dbUrlSourceLabel(source: DbUrlSource) []const u8 {
+    return switch (source) {
+        .bench => "BPM_BENCH_DB_URL",
+        .primary => "BPM_DB_URL",
+        .test_db => "BPM_TEST_DB_URL",
+    };
+}
+
+fn connectPool(init: std.process.Init, allocator: std.mem.Allocator, db_url: []const u8) db.PoolError!db.Pool {
+    return db.Pool.init(init.io, allocator, .{
+        .url = db_url,
+        .pool_size = 4,
+    });
+}
+
 fn cleanupRun(conn: *db.Conn, run_id: []const u8) !void {
     try conn.exec("DELETE FROM nfr_bench_events WHERE run_id = $1", &.{run_id});
 }
@@ -206,10 +258,13 @@ fn measureWriteP99(io: std.Io, conn: *db.Conn, allocator: std.mem.Allocator, run
 }
 
 fn measureThroughput(io: std.Io, conn: *db.Conn, run_id: []const u8, seconds: f64) !f64 {
-    var seq_buf: [32]u8 = undefined;
+    var base_seq_buf: [32]u8 = undefined;
+    var batch_size_buf: [32]u8 = undefined;
     var inserted: usize = 0;
     const start = std.Io.Clock.real.now(io).toMicroseconds();
     const deadline = start + @as(i64, @intFromFloat(seconds * 1_000_000.0));
+
+    const batch_size_str = try std.fmt.bufPrint(&batch_size_buf, "{d}", .{THROUGHPUT_BATCH_SIZE});
 
     conn.begin() catch return error.BenchmarkQueryFailed;
     errdefer conn.rollback() catch {};
@@ -218,13 +273,13 @@ fn measureThroughput(io: std.Io, conn: *db.Conn, run_id: []const u8, seconds: f6
         const now = std.Io.Clock.real.now(io).toMicroseconds();
         if (now >= deadline) break;
 
-        const seq: i64 = @intCast(inserted + 1);
-        const seq_str = try std.fmt.bufPrint(&seq_buf, "{d}", .{seq});
+        const seq: i64 = @intCast(inserted);
+        const seq_str = try std.fmt.bufPrint(&base_seq_buf, "{d}", .{seq});
         try conn.exec(
-            "INSERT INTO nfr_bench_events (run_id, seq, payload) VALUES ($1, $2, $3::jsonb)",
-            &.{ run_id, seq_str, "{}" },
+            "INSERT INTO nfr_bench_events (run_id, seq, payload) SELECT $1, ($2::bigint + gs), $3::jsonb FROM generate_series(1, $4::bigint) AS gs",
+            &.{ run_id, seq_str, "{}", batch_size_str },
         );
-        inserted += 1;
+        inserted += THROUGHPUT_BATCH_SIZE;
     }
 
     conn.commit() catch return error.BenchmarkQueryFailed;

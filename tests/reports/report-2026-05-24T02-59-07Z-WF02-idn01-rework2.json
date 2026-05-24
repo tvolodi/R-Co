@@ -1,0 +1,84 @@
+{
+  "run_id": "WF02-idn01-20260524",
+  "workflow_id": "WF-02",
+  "requirement_ids": [
+    "IDN-01"
+  ],
+  "timestamp": "2026-05-24T02:59:07Z",
+  "overall_status": "PASS",
+  "summary": {
+    "total": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "commands": [
+    {
+      "command": "docker compose up -d db_test",
+      "exit_code": 0,
+      "output_excerpt": "Container my-fab-db_test-1 Running"
+    },
+    {
+      "command": "docker compose ps db_test",
+      "exit_code": 0,
+      "output_excerpt": "my-fab-db_test-1 ... Up (healthy) ... 0.0.0.0:5433->5432/tcp"
+    },
+    {
+      "command": "BPM_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build migrate",
+      "exit_code": 0,
+      "output_excerpt": "No new migrations to apply"
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test --summary all",
+      "exit_code": 0,
+      "output_file": "test_output_idn01_unit_rework2.txt",
+      "output_excerpt": "Build Summary: 58/58 steps succeeded; 280/382 tests passed (102 skipped)"
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration --summary all",
+      "exit_code": 0,
+      "output_file": "test_output_idn01_integration_rework2.txt",
+      "output_excerpt": "Build Summary: 4/4 steps succeeded; 179/185 tests passed (6 skipped)"
+    }
+  ],
+  "environment": {
+    "bpm_test_db_url": "postgres://bpm:bpm@localhost:5433/bpm_test",
+    "db_blocker_resolved": true,
+    "idn_integration_wired": true,
+    "idn_skip_message_present": false
+  },
+  "acceptance_criteria_verdicts": [
+    {
+      "test_case_id": "TC-IDN-01-01",
+      "verdict": "PASS",
+      "reason": "Integration test case is present in tests/integration/idn01_user_registry_test.zig, imported by tests/integration/main_test.zig, and integration suite completed with exit code 0 under BPM_TEST_DB_URL."
+    },
+    {
+      "test_case_id": "TC-IDN-01-02",
+      "verdict": "PASS",
+      "reason": "Integration test case is present in tests/integration/idn01_user_registry_test.zig, imported by tests/integration/main_test.zig, and integration suite completed with exit code 0 under BPM_TEST_DB_URL."
+    },
+    {
+      "test_case_id": "TC-IDN-01-03",
+      "verdict": "PASS",
+      "reason": "Integration test case is present in tests/integration/idn01_user_registry_test.zig, imported by tests/integration/main_test.zig, and integration suite completed with exit code 0 under BPM_TEST_DB_URL."
+    },
+    {
+      "test_case_id": "TC-IDN-01-04",
+      "verdict": "PASS",
+      "reason": "Integration test case is present in tests/integration/idn01_user_registry_test.zig, imported by tests/integration/main_test.zig, and integration suite completed with exit code 0 under BPM_TEST_DB_URL."
+    },
+    {
+      "test_case_id": "TC-IDN-01-05",
+      "verdict": "PASS",
+      "reason": "Integration test case is present in tests/integration/idn01_user_registry_test.zig, imported by tests/integration/main_test.zig, and integration suite completed with exit code 0 under BPM_TEST_DB_URL."
+    },
+    {
+      "test_case_id": "TC-IDN-01-06",
+      "verdict": "PASS",
+      "reason": "TC-IDN-01-06 is defined in tests/unit/test_api08_auth.zig and unit suite completed with exit code 0 while BPM_TEST_DB_URL was set."
+    }
+  ],
+  "issues": [],
+  "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)."
+}

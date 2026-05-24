@@ -53,6 +53,19 @@ fn testAuthToken(allocator: std.mem.Allocator) ![]u8 {
     };
 }
 
+/// Read BPM_TEST_LOG_FILE from the environment; skip if absent.
+fn testLogFilePath(allocator: std.mem.Allocator) ![]u8 {
+    const env: std.process.Environ = .{ .block = .global };
+    return env.getAlloc(allocator, "BPM_TEST_LOG_FILE") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("BPM_TEST_LOG_FILE is not set — skipping log-file integration test\n", .{});
+            return error.SkipZigTest;
+        },
+        error.OutOfMemory => return error.OutOfMemory,
+        else => return error.SkipZigTest,
+    };
+}
+
 /// Result of a single HTTP request: status code, the X-Trace-Id response
 /// header (if present), and the response body (may be empty).
 const HttpResult = struct {
@@ -120,6 +133,17 @@ fn get(
 /// Build an "Authorization: Bearer <token>" header value.
 fn bearerHeader(allocator: std.mem.Allocator, token: []const u8) ![]u8 {
     return std.fmt.allocPrint(allocator, "Bearer {s}", .{token});
+}
+
+fn findLogLineContaining(haystack: []const u8, needle: []const u8) ?[]const u8 {
+    const idx = std.mem.lastIndexOf(u8, haystack, needle) orelse return null;
+    const line_start = blk: {
+        const prev_newline = std.mem.lastIndexOfScalar(u8, haystack[0..idx], '\n') orelse break :blk 0;
+        break :blk prev_newline + 1;
+    };
+    const suffix = haystack[idx..];
+    const line_end = idx + (std.mem.indexOfScalar(u8, suffix, '\n') orelse suffix.len);
+    return haystack[line_start..line_end];
 }
 
 // ── TC-API-09-INT-01 ──────────────────────────────────────────────────────────
@@ -207,17 +231,7 @@ test "TC-API-09-INT-03: trace ID appears in structured log output" {
     defer alloc.free(token);
 
     // Check for log file path.
-    const env: std.process.Environ = .{ .block = .global };
-    const log_file_path = env.getAlloc(alloc, "BPM_TEST_LOG_FILE") catch |err| switch (err) {
-        error.EnvironmentVariableMissing => {
-            std.debug.print(
-                "BPM_TEST_LOG_FILE is not set — skipping TC-API-09-INT-03\n",
-                .{},
-            );
-            return error.SkipZigTest;
-        },
-        else => return err,
-    };
+    const log_file_path = try testLogFilePath(alloc);
     defer alloc.free(log_file_path);
 
     const auth_value = try bearerHeader(alloc, token);
@@ -249,6 +263,54 @@ test "TC-API-09-INT-03: trace ID appears in structured log output" {
     // OBS-01 structured log format contains "trace_id":"<value>"
     const needle = "\"trace_id\":\"" ++ custom_trace ++ "\"";
     try testing.expect(std.mem.indexOf(u8, log_bytes, needle) != null);
+}
+
+test "TC-OBS-01-INT-01: health live request emits structured log with propagated trace id" {
+    const alloc = testing.allocator;
+
+    const base_url = try testServerUrl(alloc);
+    defer alloc.free(base_url);
+    // Keep harness preconditions aligned with the rest of this HTTP integration suite.
+    // The request remains unauthenticated; token presence only gates environment readiness.
+    const token = try testAuthToken(alloc);
+    defer alloc.free(token);
+    const log_file_path = try testLogFilePath(alloc);
+    defer alloc.free(log_file_path);
+
+    const url = try std.fmt.allocPrint(alloc, "{s}/health/live", .{base_url});
+    defer alloc.free(url);
+
+    const custom_trace = "obs01-health-trace-77";
+    const headers: []const std.http.Header = &.{
+        .{ .name = "X-Trace-Id", .value = custom_trace },
+    };
+
+    var result = try get(alloc, url, headers);
+    defer result.deinit(alloc);
+
+    try testing.expectEqual(@as(u16, 200), result.status);
+    try testing.expect(result.trace_id_header != null);
+    try testing.expectEqualStrings(custom_trace, result.trace_id_header.?);
+
+    const log_bytes = try std.Io.Dir.cwd().readFileAlloc(
+        std.testing.io,
+        log_file_path,
+        alloc,
+        std.Io.Limit.limited(16 * 1024 * 1024),
+    );
+    defer alloc.free(log_bytes);
+
+    const trace_needle = "\"trace_id\":\"" ++ custom_trace ++ "\"";
+    const line = findLogLineContaining(log_bytes, trace_needle) orelse return error.TestUnexpectedResult;
+
+    try testing.expect(std.mem.indexOf(u8, line, "\"timestamp\":") != null);
+    try testing.expect(std.mem.indexOf(u8, line, "\"level\":\"INFO\"") != null);
+    try testing.expect(std.mem.indexOf(u8, line, trace_needle) != null);
+    try testing.expect(std.mem.indexOf(u8, line, "\"component\":\"api.health\"") != null);
+    try testing.expect(std.mem.indexOf(u8, line, "\"message\":\"health live request completed\"") != null);
+    try testing.expect(std.mem.indexOf(u8, line, "\"endpoint\":\"/health/live\"") != null);
+    try testing.expect(std.mem.indexOf(u8, line, "\"status_code\":200") != null);
+    try testing.expect(std.mem.indexOfScalar(u8, line, '\n') == null);
 }
 
 // ── TC-API-09-INT-04 ──────────────────────────────────────────────────────────
@@ -297,6 +359,8 @@ test "TC-API-09-INT-05: trace ID assigned and returned even on HTTP 401" {
 
     const base_url = try testServerUrl(alloc);
     defer alloc.free(base_url);
+    const token = try testAuthToken(alloc);
+    defer alloc.free(token);
 
     // No Authorization header — deliberately unauthenticated.
     const url = try std.fmt.allocPrint(alloc, "{s}/api/v1/definitions", .{base_url});

@@ -1,0 +1,41 @@
+{
+  "run_id": "WF02-obs02-20260524",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "timestamp": "2026-05-24T18:27:02Z",
+  "summary": {
+    "status": "FAIL",
+    "unit_scope": {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test BPM_TEST_URL=http://127.0.0.1:8080 BPM_TEST_TOKEN=obs02-rework-token zig build --summary all test -- --test-filter OBS-02",
+      "exit_code": 0,
+      "passed": 284,
+      "failed": 0,
+      "skipped": 102,
+      "detail": "Unit scope command completed successfully."
+    },
+    "integration_scope": {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test BPM_TEST_URL=http://127.0.0.1:8080 BPM_TEST_TOKEN=obs02-rework-token zig test tests/integration/obs02_metrics_test.zig",
+      "exit_code": 0,
+      "passed": 0,
+      "failed": 0,
+      "skipped": 3,
+      "detail": "TC-OBS-02-INT-01/02/03 skipped with OBS-02 integration HTTP target unavailable (error.EndOfStream)."
+    }
+  },
+  "issues": [
+    {
+      "id": "ISS-WF02-OBS02-TR-R1-001",
+      "severity": "BLOCKER",
+      "requirement_id": "OBS-02",
+      "description": "OBS-02 integration tests did not execute successfully and remained skipped despite BPM_TEST_DB_URL, BPM_TEST_URL, and BPM_TEST_TOKEN being set.",
+      "evidence": [
+        "tests/reports/WF02-obs02-20260524-step04b-integration-obs02.log",
+        "tests/reports/WF02-obs02-20260524-step04b-integration.log"
+      ]
+    }
+  ],
+  "notes": [
+    "Direct integration run for OBS-02 recorded error.EndOfStream skip behavior.",
+    "Repository-standard integration run continued to show CONNECTION_REFUSED/skip behavior for HTTP integration cases in this environment."
+  ]
+}

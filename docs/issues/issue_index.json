@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-23T20:03:45Z",
-  "next_issue_id": 3,
+  "last_updated": "2026-05-24T18:34:06Z",
+  "next_issue_id": 11,
   "issues": [
     {
       "id": "ISS-0001",
@@ -32,6 +32,117 @@
       ],
       "created_at": "2026-05-23T20:03:45Z",
       "resolved_at": "2026-05-23T20:03:45Z"
+    },
+    {
+      "id": "ISS-0003",
+      "title": "WF03 SCH-07 integration compile blocker: recurrence insert error-set mismatch and scheduler mutability callsites",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-sch07-fix-20260524",
+      "handoff_id": "64d818ea-1f93-4869-a001-e4a05de6f4f7",
+      "affected_areas": [
+        "src/scheduler/scheduler.zig",
+        "tests/integration/sch02_timer_polling_test.zig"
+      ],
+      "created_at": "2026-05-24T01:57:13Z",
+      "resolved_at": "2026-05-24T01:57:13Z"
+    },
+    {
+      "id": "ISS-0004",
+      "title": "WF03 IDN-01/SCH-07 blocker set: missing IDN integration entrypoint wiring and SCH recurring startup/payload assertion regressions",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-idn01-testfix-20260524",
+      "handoff_id": "2c3b6739-5af4-4fca-8d06-ab51c18d358f",
+      "affected_areas": [
+        "tests/integration/main_test.zig",
+        "tests/integration/idn01_user_registry_test.zig",
+        "src/bpm.zig",
+        "src/scheduler/scheduler.zig",
+        "tests/integration/sch02_timer_polling_test.zig"
+      ],
+      "created_at": "2026-05-24T02:54:16Z",
+      "resolved_at": "2026-05-24T02:54:16Z"
+    },
+    {
+      "id": "ISS-0005",
+      "title": "WF03 IDN-01 release NFR-02 throughput blocker: benchmark append path dominated by per-row protocol overhead",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-idn01-nfr02fix-20260524",
+      "handoff_id": "0c53fcea-b575-4f0d-a66b-18ebfbea8cd6",
+      "affected_areas": [
+        "tests/bench/bench.zig"
+      ],
+      "created_at": "2026-05-24T03:06:48Z",
+      "resolved_at": "2026-05-24T03:06:48Z"
+    },
+    {
+      "id": "ISS-0006",
+      "title": "WF03 IDN-02 integration blocker: API-09 TC-API-09-INT-05 depended on token-gated trace harness preconditions",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-idn02-testfix-20260524",
+      "handoff_id": "b6a8fcb2-81fe-4b26-81b6-c41f9b4d74da",
+      "affected_areas": [
+        "tests/integration/trace_test.zig"
+      ],
+      "created_at": "2026-05-24T06:38:49Z",
+      "resolved_at": "2026-05-24T06:38:49Z"
+    },
+    {
+      "id": "ISS-0007",
+      "title": "WF03 OBS-01 integration blocker: TC-OBS-01-INT-01 lacked token-gated harness precondition and surfaced connection-refused failures",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs01-intfix-20260524",
+      "handoff_id": "7cb42a77-58f5-4ed8-b15b-5469f4e67b4d",
+      "affected_areas": [
+        "tests/integration/trace_test.zig"
+      ],
+      "created_at": "2026-05-24T14:50:36Z",
+      "resolved_at": "2026-05-24T14:50:36Z"
+    },
+    {
+      "id": "ISS-0008",
+      "title": "WF03 OBS-02 integration blocker: TC-SCH-04-02 hang persists with orphaned integration runner test processes",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs02-intfix-20260524",
+      "handoff_id": "90c7fba9-b9d8-4c4e-ab07-3eb1f3c69bd7",
+      "affected_areas": [
+        "src/obs/logger.zig",
+        "tests/integration/sch02_timer_polling_test.zig"
+      ],
+      "created_at": "2026-05-24T17:40:40.739538Z",
+      "resolved_at": "2026-05-24T17:50:46Z"
+    },
+    {
+      "id": "ISS-0009",
+      "title": "WF03 OBS-02 connection-refused blocker: obs02 HTTP integration tests lacked token-gated harness precondition",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs02-httpfix-20260524",
+      "handoff_id": "14ab84e3-85ad-4e0b-b6c6-41fd2495d6ee",
+      "affected_areas": [
+        "tests/integration/obs02_metrics_test.zig"
+      ],
+      "created_at": "2026-05-24T18:13:36.382089Z",
+      "resolved_at": "2026-05-24T18:13:36.382089Z"
+    },
+    {
+      "id": "ISS-0010",
+      "title": "WF03 OBS-02 deterministic harness blocker: integration tests depended on external pre-running HTTP server",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs02-harnessfix2-20260524",
+      "handoff_id": "de8c1e6f-9970-4dce-a4be-b03d6f7612f8",
+      "affected_areas": [
+        "tests/integration/obs02_metrics_test.zig",
+        "src/obs/metrics.zig"
+      ],
+      "created_at": "2026-05-24T18:34:06Z",
+      "resolved_at": "2026-05-24T18:34:06Z"
     }
   ]
 }

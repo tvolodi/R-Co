@@ -211,17 +211,25 @@ with open(filename, "w") as f:
 import json, datetime, os
 
 # Set these based on the requirements being implemented
-difficulty = 3   # 1=Trivial 2=Simple 3=Standard 4=Complex 5=VeryComplex
-rationale  = "<one sentence: why this difficulty level>"
-steps      = ["code-designer", "backend-dev", "test-designer",
-              "test-runner", "release-validator", "doc-updater"]
+difficulty   = 3      # 1=Trivial 2=Simple 3=Standard 4=Complex 5=VeryComplex
+rationale    = "<one sentence: why this difficulty level>"
+# integration_surface: how many existing modules does this feature touch?
+#   low    = additive to one module, no caller signatures change        → 0% surcharge
+#   medium = touches 2-3 modules, some call sites update               → +25% surcharge
+#   high   = touches 4+ modules, or engine/scheduler/auth/main_test    → +50% surcharge
+surface      = "medium"   # low | medium | high
+surface_why  = "<one sentence: which modules are touched>"
+surcharge    = {"low": 0.0, "medium": 0.25, "high": 0.50}[surface]
+
+steps = ["code-designer", "backend-dev", "test-designer",
+         "test-runner", "release-validator", "doc-updater"]
 
 with open("docs/metrics/estimation_rules.json") as f:
     rules = json.load(f)
 
 idx = difficulty - 1
 step_mins = rules["step_estimates_minutes"]
-estimated = {s: step_mins[s][idx] for s in steps if s in step_mins}
+estimated = {s: round(step_mins[s][idx] * (1 + surcharge)) for s in steps if s in step_mins}
 estimated["total"] = sum(v for k, v in estimated.items() if k != "total")
 
 estimation = {
@@ -231,6 +239,8 @@ estimation = {
     "requirement_ids": [],   # fill with requirement IDs for this run
     "difficulty": difficulty,
     "difficulty_rationale": rationale,
+    "integration_surface": surface,
+    "integration_surface_rationale": surface_why,
     "steps": steps,
     "estimated_minutes": estimated
 }
@@ -240,7 +250,7 @@ with open(f"handoffs/{run_id}/estimation.json", "w") as f:
 with open("handoffs/orchestrator.log", "a") as f:
     ts = datetime.datetime.utcnow().isoformat() + "Z"
     req_str = ", ".join(estimation["requirement_ids"]) or "(none)"
-    f.write(f"{ts} | ESTIMATE | {run_id} | D{difficulty} | ~{estimated['total']}min | {req_str}\n")
+    f.write(f"{ts} | ESTIMATE | {run_id} | D{difficulty}/{surface} | ~{estimated['total']}min | {req_str}\n")
 ```
 
 **Rework routing** (when a handoff comes back FAILED and `rework_count < max_rework`):
@@ -313,6 +323,19 @@ print("BLOCKED:" if blocking else "CLEARED")
 for b in blocking: print(f"  {b}")
 ```
 
+**Benchmark environment pre-check** before dispatching RELEASE-VALIDATOR (run every time):
+```bash
+zig build bench 2>&1 | head -5
+```
+If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`:
+- Do NOT dispatch RELEASE-VALIDATOR yet.
+- Create an interim BACKEND-DEV handoff: "Set up benchmark environment so `zig build bench` exits 0."
+- Log: `<ts> | BENCH_ENV_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for env setup`
+- Re-run this check after BACKEND-DEV completes.
+
+If output is clean (exits 0 with benchmark numbers): proceed to dispatch RELEASE-VALIDATOR.
+Log: `<ts> | BENCH_ENV_CHECK | <run-id> | --- | ORCH | CLEARED`
+
 ### ORCH forbidden actions
 
 ```
@@ -358,12 +381,21 @@ zig build migrate
 ```
 All three must exit 0 before completing.
 
-**4. Self-review:**
+**4. Error-set validation (mandatory, run before self-review):**
+```bash
+zig build 2>&1 | grep -i "error set"
+```
+If any output: a function's return type does not cover all errors it propagates. Fix all
+error-set declarations now. This is the #1 cause of TEST-RUNNER compile failures and
+WF-03 dispatches. Do not proceed until this command produces no output.
+
+**5. Self-review:**
 - [ ] No SQL string interpolation of user data (prepared statements only — security critical)
 - [ ] All allocating functions accept `std.mem.Allocator`
 - [ ] `src/engine/transition.zig` has zero I/O if modified (pure function — absolute rule)
 - [ ] Error types defined in per-module error sets
-- [ ] `zig build` exits 0
+- [ ] If any function signature changed: verify all call sites by running `zig build` and checking zero errors
+- [ ] `zig build` exits 0 with no "error set" output in stderr
 
 **5. Complete the handoff:**
 

@@ -4,7 +4,82 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage 6 — Observability + Extensions
+
+### OBS-01 — Structured logging (RELEASED 2026-05-24)
+- Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
+- Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`
+- Enforced strict `BPM_LOG_LEVEL` parsing so invalid values fail startup validation instead of silently falling back
+- Test evidence is recorded in `tests/reports/report-20260524T145355Z-WF02-obs01-20260524-rework1.json` (WF-02 Step 04b PASS)
+- Release approval is recorded in `docs/status/release-OBS-01-20260524.json` with NFR benchmark gate passing
+- Requirement: OBS-01 (MUST, Stage 6) — RELEASED
+
+### OBS-02 — Prometheus metrics (RELEASED 2026-05-24)
+- Implemented Prometheus exposition and metric aggregation via `src/obs/metrics.zig` and `src/api/routes/metrics.zig`, including active instances, task completions, event append latency histogram, DB query latency histogram with `query_type`, and HTTP request/error counters
+- Wired instrumentation in `src/db/pool.zig`, `src/event_store/store.zig`, and `src/engine/instance.zig` to capture runtime metric updates without introducing blocking behavior in request handling
+- Test evidence is recorded in `tests/reports/report-2026-05-24-WF02-obs02-step04c-rework2.json` and `tests/reports/WF02-obs02-20260524-step04c-integration-obs02.log` (WF-02 Step 04c PASS)
+- Release approval is recorded in `docs/status/release-OBS-02-20260524.json` after benchmark gate revalidation in WF-02 Step 05c
+- Requirement: OBS-02 (MUST, Stage 6) — RELEASED
+
 ### Stage 5 — Scheduler + Identity
+
+### IDN-04 — API token management (RELEASED 2026-05-24)
+- Implemented API token issuance, listing, and revocation flows in `src/identity/service.zig` and `src/api/routes/identity.zig`, including one-time secret return semantics and hash-only token persistence
+- Added additive token-management schema support via `migrations/019_idn04_api_token_management.sql` for durable token metadata, expiration tracking, and revocation state
+- Extended bearer-token validation in `src/api/middleware/auth.zig` so revoked and expired tokens are rejected while valid token role claims interoperate with Stage 5 authorization behavior
+- Test evidence is recorded in `tests/reports/WF02-idn04-20260524-run-01.md` (WF-02 Step 04 PASS)
+- Release approval is recorded in `docs/status/release-IDN-04-20260524.json` with NFR benchmark gate passing
+- Requirement: IDN-04 (MUST, Stage 5) — RELEASED
+
+### IDN-03 — Role-based access (RELEASED 2026-05-24)
+- Implemented centralized Stage 5 authorization policy evaluation in `src/api/authorization.zig` with additive role union semantics and explicit default fallback to PLATFORM_ADMIN-only behavior for unmapped endpoints
+- Enforced role checks in task operations and task listing routes via `src/api/routes/tasks.zig`, including permission-denied (403) behavior for unsupported actions and additive-role allow paths for mixed-role principals
+- Added TASK_WORKER task-list row filtering in `src/tasks/store.zig` to return only own assignments or authorized group assignments, aligned with IDN-01/IDN-02 identity and membership context
+- Test evidence is recorded in `tests/reports/report-2026-05-24-WF02-idn03-step04.json` (WF-02 Step 04 PASS)
+- Release approval is recorded in `docs/status/release-IDN-03-20260524.json` with NFR benchmark gate passing
+- Requirement: IDN-03 (MUST, Stage 5) — RELEASED
+
+### IDN-02 — Group management (RELEASED 2026-05-24)
+- Implemented group registry and membership model in `src/identity/registry.zig` and `src/identity/service.zig`, with identity route handlers in `src/api/routes/identity.zig`
+- Added additive schema migration `migrations/018_identity_group_members.sql` for groups and memberships, including constraints/indexes for idempotent membership operations
+- Wired GROUP assignee claim authorization in `src/api/routes/tasks.zig` so ACTIVE group members can claim assigned tasks without mutating assignee semantics
+- Test evidence is recorded in `tests/reports/report-20260524T064224Z-WF02-idn02-20260524-rework1.json` (WF-02 Step 04b PASS)
+- Release approval is recorded in `docs/status/release-IDN-02-20260524.json` with NFR benchmark gate passing
+- Requirement: IDN-02 (MUST, Stage 5) — RELEASED
+
+### IDN-01 — User registry (RELEASED 2026-05-24)
+- Implemented user-registry backend flows in `src/identity/registry.zig` and `src/identity/service.zig` with admin create-user API wiring in `src/api/routes/identity.zig`
+- Added additive persistence migration `migrations/017_identity_user_registry.sql` and auth integration updates in `src/api/middleware/auth.zig` for ACTIVE/INACTIVE enforcement
+- DB-backed validation evidence is recorded in `tests/reports/report-2026-05-24T02-59-07Z-WF02-idn01-rework2.json` (WF-02 Step 04c PASS)
+- Release approval is recorded in `docs/status/release-IDN-01-20260524.json` with NFR benchmark gate passing on rework
+- Requirement: IDN-01 (MUST, Stage 5) — RELEASED
+
+### SCH-07 — Recurring timers (RELEASED 2026-05-24)
+- Implemented ISO 8601 repeat support for timers (`R/PT...` and `Rn/PT...`) with recurrence parsing and persistence in `src/scheduler/recurrence.zig`, `src/scheduler/store.zig`, and `src/scheduler/scheduler.zig`
+- Scheduler fire flow now performs recurring re-arm in the same transaction as TIMER_FIRED persistence, including bounded completion for finite repeats and continuous re-arm for infinite repeats until instance termination
+- Added additive recurrence schema support in `migrations/016_timer_recurrence_fields.sql` and integrated lifecycle interactions with existing cancellation/recovery behavior
+- Test evidence recorded in `tests/reports/WF02-sch07-20260524-run-02.md` from `tests/specs/SCH-07.md`; prior compile blockers were resolved and validation commands passed
+- Release approval recorded in `docs/status/release-SCH-07-20260524.json` with NFR benchmark gate passing on rework
+- Requirement: SCH-07 (SHOULD, Stage 5) — RELEASED
+
+### SCH-06 — Timer jitter (RELEASED 2026-05-23)
+- Implemented configurable random jitter (±N ms) on scheduler polling interval to prevent thundering-herd effects in clustered deployments
+- Added `BPM_SCHEDULER_JITTER_MS` environment variable (u64, default 0 = disabled) to `SchedulerConfig` in `src/scheduler/scheduler.zig`
+- Added thread-local `std.Random.DefaultPrng` seeded from OS entropy (`fillRandom`) to the `Scheduler` struct; independent per node, no shared seed
+- Implemented `computePollDelayMs()`: applies random offset in [-jitter_ms, +jitter_ms], clamped so effective delay ≥ 0
+- Jitter is applied ONLY to the poll-cycle sleep, never to timer `fire_at` values
+- No DB schema changes required; zero new migrations
+- Verified: `zig build` (exit 0), `zig build test` (exit 0), 15 SCH-06 test cases PASS
+- Requirement: SCH-06 (SHOULD, Stage 5) — RELEASED
+
+### SCH-05 — Missed timer recovery (RELEASED 2026-05-23)
+- Implemented missed timer recovery: scheduler detects overdue timers on startup and normal polling and marks them with `fired_late: true` in the TIMER_FIRED event payload
+- Added `is_startup_sweep` flag to the scheduler: first poll after init fires all due timers as overdue; subsequent polls use poll-interval threshold-based detection
+- Extended TIMER_FIRED payload with `fired_late`, `scheduled_fire_at`, and `actual_fire_at` fields
+- All overdue timers are fired exactly once; no timer is skipped
+- Implementation confined to `src/scheduler/scheduler.zig` — no schema changes, no new migrations
+- Verified: `zig build` (exit 0), `zig build test` (exit 0), 11 unit tests PASS
+- Requirement: SCH-05 (MUST, Stage 5) — RELEASED
 
 ### SCH-04 — Escalation timer (RELEASED 2026-05-23)
 - Implemented durable escalation timers for HUMAN_TASK activation across `src/scheduler/store.zig`, `src/tasks/store.zig`, `src/engine/instance.zig`, and `src/scheduler/scheduler.zig`

@@ -4,6 +4,7 @@
 //! Must be called inside an already-open transaction to satisfy DB-03 atomicity.
 const std = @import("std");
 const db = @import("../db/pool.zig");
+const recurrence_mod = @import("recurrence.zig");
 
 pub const Uuid = [16]u8;
 
@@ -12,7 +13,25 @@ pub const CreateTimerArgs = struct {
     instance_id: Uuid,
     step_name: []const u8,
     duration_iso8601: []const u8,
+    repeat_expression: ?[]const u8 = null,
     payload_json: []const u8,
+};
+
+pub const TimerRecurrenceState = struct {
+    expression: []const u8,
+    repeat_total: ?u32,
+    fired_count: u32,
+    interval_us: u64,
+};
+
+pub const CreateRecurringTimerArgs = struct {
+    timer_id: Uuid,
+    instance_id: Uuid,
+    step_name: []const u8,
+    action_type: []const u8,
+    fire_at_us: i64,
+    payload_json: []const u8,
+    recurrence: TimerRecurrenceState,
 };
 
 pub const TimerKind = enum {
@@ -80,6 +99,28 @@ pub fn insertPendingTimerInTx(
     const timer_id_hex = uuidToHex(a, args.timer_id) catch return TimerStoreError.OutOfMemory;
     const instance_id_hex = uuidToHex(a, args.instance_id) catch return TimerStoreError.OutOfMemory;
 
+    var repeat_expression_text: []const u8 = "";
+    var repeat_total_text: []const u8 = "";
+    var repeat_interval_us_text: []const u8 = "";
+    if (args.repeat_expression) |expr| {
+        const spec = recurrence_mod.parseRepeatExpression(a, expr) catch |err| switch (err) {
+            recurrence_mod.ParseRepeatError.InvalidFormat,
+            recurrence_mod.ParseRepeatError.InvalidRepeatCount,
+            recurrence_mod.ParseRepeatError.InvalidDuration,
+            recurrence_mod.ParseRepeatError.ZeroInterval,
+            => return TimerStoreError.InvalidInput,
+            recurrence_mod.ParseRepeatError.Overflow,
+            recurrence_mod.ParseRepeatError.OutOfMemory,
+            => return TimerStoreError.OutOfMemory,
+        };
+
+        repeat_expression_text = spec.normalized;
+        if (spec.repeat_total) |n| {
+            repeat_total_text = std.fmt.allocPrint(a, "{}", .{n}) catch return TimerStoreError.OutOfMemory;
+        }
+        repeat_interval_us_text = std.fmt.allocPrint(a, "{}", .{spec.interval_us}) catch return TimerStoreError.OutOfMemory;
+    }
+
     // Explicit guard: no timer creation for terminal CANCELLED instances.
     const lock_row = conn.queryRow(
         a,
@@ -103,17 +144,93 @@ pub fn insertPendingTimerInTx(
         \\     timer_type, step_name,
         \\     fires_at,
         \\     action_type, action_config,
-        \\     status)
+        \\     status,
+        \\     repeat_expression, repeat_total, fired_count, repeat_interval_us)
         \\VALUES
         \\    ($1::uuid, $2::uuid, NULL,
         \\     'scheduled_transition', $3,
         \\     NOW() + $4::interval,
         \\     'auto_transition', $5::jsonb,
-        \\     'pending')
+        \\     'pending',
+        \\     NULLIF($6, ''), NULLIF($7, '')::integer,
+        \\     CASE WHEN NULLIF($6, '') IS NULL THEN NULL ELSE 0 END,
+        \\     NULLIF($8, '')::bigint)
         \\ON CONFLICT (id) DO NOTHING
         \\RETURNING id
     ,
-        &.{ timer_id_hex, instance_id_hex, args.step_name, args.duration_iso8601, args.payload_json },
+        &.{
+            timer_id_hex,
+            instance_id_hex,
+            args.step_name,
+            args.duration_iso8601,
+            args.payload_json,
+            repeat_expression_text,
+            repeat_total_text,
+            repeat_interval_us_text,
+        },
+    ) catch return TimerStoreError.QueryFailed;
+    defer {
+        var r = ins_rows;
+        r.deinit();
+    }
+
+    if (ins_rows.rows.len == 0) return TimerStoreError.DuplicateTimerId;
+}
+
+pub fn insertRecurringPendingTimerInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    args: CreateRecurringTimerArgs,
+) TimerStoreError!void {
+    if (args.step_name.len == 0 or args.action_type.len == 0 or args.payload_json.len == 0 or args.recurrence.expression.len == 0) {
+        return TimerStoreError.InvalidInput;
+    }
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const timer_id_hex = uuidToHex(a, args.timer_id) catch return TimerStoreError.OutOfMemory;
+    const instance_id_hex = uuidToHex(a, args.instance_id) catch return TimerStoreError.OutOfMemory;
+    const fire_at_us_text = std.fmt.allocPrint(a, "{}", .{args.fire_at_us}) catch return TimerStoreError.OutOfMemory;
+    const repeat_interval_us_text = std.fmt.allocPrint(a, "{}", .{args.recurrence.interval_us}) catch return TimerStoreError.OutOfMemory;
+    const fired_count_text = std.fmt.allocPrint(a, "{}", .{args.recurrence.fired_count}) catch return TimerStoreError.OutOfMemory;
+    const repeat_total_text = if (args.recurrence.repeat_total) |n|
+        std.fmt.allocPrint(a, "{}", .{n}) catch return TimerStoreError.OutOfMemory
+    else
+        "";
+
+    const ins_rows = conn.query(
+        a,
+        \\INSERT INTO timers
+        \\    (id, instance_id, token_id,
+        \\     timer_type, step_name,
+        \\     fires_at,
+        \\     action_type, action_config,
+        \\     status,
+        \\     repeat_expression, repeat_total, fired_count, repeat_interval_us)
+        \\VALUES
+        \\    ($1::uuid, $2::uuid, NULL,
+        \\     'scheduled_transition', $3,
+        \\     to_timestamp($4::double precision / 1000000.0),
+        \\     $5, $6::jsonb,
+        \\     'pending',
+        \\     $7, NULLIF($8, '')::integer, $9::integer, $10::bigint)
+        \\ON CONFLICT (id) DO NOTHING
+        \\RETURNING id
+    ,
+        &.{
+            timer_id_hex,
+            instance_id_hex,
+            args.step_name,
+            fire_at_us_text,
+            args.action_type,
+            args.payload_json,
+            args.recurrence.expression,
+            repeat_total_text,
+            fired_count_text,
+            repeat_interval_us_text,
+        },
     ) catch return TimerStoreError.QueryFailed;
     defer {
         var r = ins_rows;

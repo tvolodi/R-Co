@@ -185,6 +185,35 @@ with open(f"handoffs/{run_id}/estimation.json", "w") as f:
 
 If a run covers multiple requirements, sum the estimates — assign one difficulty to the bundle (the maximum of individual difficulties).
 
+### 7.3 Integration surface (rework surcharge)
+
+After choosing difficulty, assess **integration surface** — how many existing modules the new
+feature touches. This is a better predictor of rework loops than difficulty alone (IDN-01 was
+D3 but had high integration surface and ran +616% over estimate; EE-06 was D4 with low
+integration surface and ran -81%).
+
+| Surface | Definition | Example | Surcharge |
+|---|---|---|---|
+| `low` | Additive to one module, no callers change | New SQL column + single query | 0% |
+| `medium` | Touches 2–3 modules, some callers must update | New endpoint with middleware change | +25% |
+| `high` | Touches 4+ modules, or touches `src/engine/`, `src/scheduler/`, or auth middleware | New capability requiring engine + scheduler + API + auth changes | +50% |
+
+**How to apply:** Multiply each step estimate by `(1 + surcharge)` before summing to `total`.
+Record `integration_surface` in `estimation.json`:
+
+```json
+{
+  "integration_surface": "high",
+  "integration_surface_rationale": "touches scheduler, auth middleware, and integration test harness"
+}
+```
+
+**High-surface indicators (automatic `high` classification):**
+- Requirement touches `src/engine/transition.zig` or `src/engine/instance.zig`
+- Requirement extends the scheduler (`src/scheduler/`) in a way that changes any existing function signature
+- Requirement modifies `src/api/middleware/auth.zig`
+- Requirement requires changes to `tests/integration/main_test.zig` (wiring new suites)
+
 ### 7.3 Log the estimation
 
 Append to `handoffs/orchestrator.log`:
@@ -203,6 +232,31 @@ Before the Orchestrator routes any WF-02 implementation handoffs for Stage N+1, 
 3. `RELEASE-VALIDATOR` has produced a PASS result for Stage N
 
 If any check fails, the Orchestrator blocks the Stage N+1 launch and reports the blocking items.
+
+---
+
+## 8a. Pre-Dispatch Benchmark Environment Check
+
+Before dispatching RELEASE-VALIDATOR for any WF-02 Step 5, the Orchestrator MUST verify the
+benchmark environment is usable. This avoids multi-cycle rework loops caused solely by a
+missing `BPM_DB_URL` (the most expensive class of RELEASE-VALIDATOR failure observed in
+Stage 5 — SCH-01 required 4 extra handoffs, IDN-01 and SCH-07 each required 1 extra).
+
+```bash
+zig build bench 2>&1 | head -5 | grep -qiE "BPM_DB_URL|BENCHMARK_SETUP_ERROR|missing.*URL" \
+  && echo "BLOCKED" || echo "CLEARED"
+```
+
+- If `CLEARED`: dispatch RELEASE-VALIDATOR normally.
+- If `BLOCKED`: create an interim BACKEND-DEV handoff with task = "Set up benchmark
+  environment: export BPM_DB_URL pointing to the test PostgreSQL instance and verify
+  `zig build bench` exits 0". Re-run the check before dispatching RELEASE-VALIDATOR.
+
+Log result in `handoffs/orchestrator.log` with action `BENCH_ENV_CHECK`:
+```
+<ISO8601> | BENCH_ENV_CHECK | <RUN-ID> | --- | ORCH | CLEARED
+<ISO8601> | BENCH_ENV_BLOCK | <RUN-ID> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for env setup
+```
 
 ---
 

@@ -48,6 +48,7 @@ pub const InstanceCancelledPayload = struct {
 pub const TimerCreatedPayload = struct {
     timer_node_id: []const u8,
     duration_iso8601: []const u8,
+    repeat_expression: ?[]const u8 = null,
     token_branch_id: []const u8,
     payload_json: []const u8,
 };
@@ -313,7 +314,7 @@ fn processNodeEntry(
         .TIMER => {
             // Emit a scheduler intent and keep the token parked on the TIMER node.
             // The durable timer row is persisted by the caller in the DB transaction.
-            const duration = parseTimerDuration(allocator, node_attrs) catch |err| switch (err) {
+            const timer_config = parseTimerConfig(allocator, node_attrs) catch |err| switch (err) {
                 error.InvalidTimerConfig => return TransitionError.InvalidState,
                 error.OutOfMemory => return TransitionError.OutOfMemory,
             };
@@ -327,7 +328,13 @@ fn processNodeEntry(
             }
             if (token_branch_id == null) return TransitionError.InvalidState;
 
-            const payload_json = try buildTimerPayloadJson(allocator, node_id, duration, token_branch_id.?);
+            const payload_json = try buildTimerPayloadJson(
+                allocator,
+                node_id,
+                timer_config.duration_iso8601,
+                timer_config.repeat_expression,
+                token_branch_id.?,
+            );
 
             var new_pending_events = std.ArrayList(PendingEvent).empty;
             defer new_pending_events.deinit(allocator);
@@ -335,7 +342,8 @@ fn processNodeEntry(
             try new_pending_events.append(allocator, PendingEvent{
                 .timer_created = .{
                     .timer_node_id = try allocator.dupe(u8, node_id),
-                    .duration_iso8601 = duration,
+                    .duration_iso8601 = timer_config.duration_iso8601,
+                    .repeat_expression = timer_config.repeat_expression,
                     .token_branch_id = try allocator.dupe(u8, token_branch_id.?),
                     .payload_json = payload_json,
                 },
@@ -608,10 +616,15 @@ fn processNodeEntry(
     }
 }
 
-fn parseTimerDuration(
+const ParsedTimerConfig = struct {
+    duration_iso8601: []const u8,
+    repeat_expression: ?[]const u8,
+};
+
+fn parseTimerConfig(
     allocator: std.mem.Allocator,
     node_attrs: ?[]const u8,
-) error{ InvalidTimerConfig, OutOfMemory }![]const u8 {
+) error{ InvalidTimerConfig, OutOfMemory }!ParsedTimerConfig {
     const raw = node_attrs orelse return error.InvalidTimerConfig;
     if (raw.len == 0) return error.InvalidTimerConfig;
 
@@ -624,13 +637,24 @@ fn parseTimerDuration(
     const duration_val = parsed.value.object.get("duration_iso8601") orelse return error.InvalidTimerConfig;
     if (duration_val != .string) return error.InvalidTimerConfig;
     if (duration_val.string.len == 0) return error.InvalidTimerConfig;
-    return allocator.dupe(u8, duration_val.string);
+
+    var repeat_expression: ?[]const u8 = null;
+    if (parsed.value.object.get("repeat_expression")) |repeat_val| {
+        if (repeat_val != .string or repeat_val.string.len == 0) return error.InvalidTimerConfig;
+        repeat_expression = try allocator.dupe(u8, repeat_val.string);
+    }
+
+    return .{
+        .duration_iso8601 = try allocator.dupe(u8, duration_val.string),
+        .repeat_expression = repeat_expression,
+    };
 }
 
 fn buildTimerPayloadJson(
     allocator: std.mem.Allocator,
     timer_node_id: []const u8,
     duration_iso8601: []const u8,
+    repeat_expression: ?[]const u8,
     token_branch_id: []const u8,
 ) TransitionError![]const u8 {
     const node_json = std.json.Stringify.valueAlloc(
@@ -653,6 +677,21 @@ fn buildTimerPayloadJson(
         .{},
     ) catch return TransitionError.OutOfMemory;
     defer allocator.free(branch_json);
+
+    if (repeat_expression) |repeat_expr| {
+        const repeat_json = std.json.Stringify.valueAlloc(
+            allocator,
+            std.json.Value{ .string = repeat_expr },
+            .{},
+        ) catch return TransitionError.OutOfMemory;
+        defer allocator.free(repeat_json);
+
+        return std.fmt.allocPrint(
+            allocator,
+            "{{\"node_id\":{s},\"timer_kind\":\"duration\",\"duration_iso8601\":{s},\"token_branch_id\":{s},\"recurrence\":{{\"expression\":{s}}}}}",
+            .{ node_json, duration_json, branch_json, repeat_json },
+        ) catch TransitionError.OutOfMemory;
+    }
 
     return std.fmt.allocPrint(
         allocator,

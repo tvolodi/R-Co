@@ -1,0 +1,14 @@
+src\obs\metrics.zig:163:16: error: no field or member function named 'writer' in 'array_list.Aligned(u8,null)'
+        try out.writer(allocator).print("bpm_active_instances_total {d}\n", .{self.active_instances_total});
+            ~~~^~~~~~~
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\array_list.zig:576:12: note: struct declared here
+    return struct {
+           ^~~~~~
+referenced by:
+    test.TC-OBS-02-01: collectPrometheusText emits required metric families: src\obs\metrics.zig:427:52
+src\obs\metrics.zig:311:28: error: root source file struct 'mem' has no member named 'trimLeft'
+    const trimmed = std.mem.trimLeft(u8, sql, " \t\r\n");
+                    ~~~~~~~^~~~~~~~~
+C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\mem.zig:1:1: note: struct declared here
+const std = @import("std.zig");
+^~~~~

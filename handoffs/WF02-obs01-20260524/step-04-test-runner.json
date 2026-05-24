@@ -1,0 +1,66 @@
+{
+  "handoff_id": "96fc63a6-0bb3-4ad2-874a-7f8bb6ef2c4b",
+  "run_id": "WF02-obs01-20260524",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-obs01-20260524/step-04-test-runner.json",
+  "created_at": "2026-05-24T14:30:00Z",
+  "started_at": "2026-05-24T14:30:20Z",
+  "completed_at": "2026-05-24T14:46:52Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-01"
+    ],
+    "related_handoff_ids": [
+      "30f4d325-d550-44e0-97f0-2f8e0b2d4c1b",
+      "4fa22b61-5be1-4723-b0bc-91075d1af93a",
+      "1f35fbad-d49a-4dc7-a8a0-5632db4a3c6e"
+    ],
+    "artifacts_in": [
+      "tests/specs/OBS-01.md",
+      "src/obs/logger.zig",
+      "src/config.zig",
+      "tests/integration/trace_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Execute the OBS-01 test coverage introduced by the implementation and test-design steps. Run the relevant unit and integration test scopes for structured logging, trace propagation, and BPM_LOG_LEVEL validation; produce a structured test report under tests/reports/ for WF02-obs01-20260524. If failures occur, record them with severity and affected requirement detail in the handoff result.",
+    "acceptance_criteria": [
+      "Relevant OBS-01 unit and integration tests are executed",
+      "A test report for WF02-obs01-20260524 is written under tests/reports/",
+      "The handoff result clearly records PASS or FAIL with any issues"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Executed the requested OBS-01 unit and integration scopes. OBS-01 unit scope passed, but integration scope failed at TC-OBS-01-INT-01 because the local HTTP/log harness was unavailable (connection refused, with integration output also showing unmet BPM_TEST_DB_URL/BPM_TEST_TOKEN prerequisites).",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-24-WF02-obs01-step04.json",
+      "tests/reports/WF02-obs01-20260524-step04-unit.log",
+      "tests/reports/WF02-obs01-20260524-step04-integration.log",
+      "docs/issue-reports/WF02-obs01-20260524-step-04-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-WF02-OBS01-TR-001",
+        "severity": "BLOCKER",
+        "description": "TC-OBS-01-INT-01 failed with CONNECTION_REFUSED while validating request-trace propagation and structured log capture against /health/live in tests/integration/trace_test.zig.",
+        "affected_requirement": "OBS-01"
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03) to restore/validate the OBS-01 integration harness, then rerun TEST-RUNNER step 04 for WF02-obs01-20260524."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

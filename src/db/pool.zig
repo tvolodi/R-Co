@@ -8,6 +8,14 @@
 const std = @import("std");
 
 const pg = @import("pg");
+const root = @import("root");
+
+fn recordDbQueryDurationFromSql(sql: []const u8, elapsed_s: f64) void {
+    if (@hasDecl(root, "obs_metrics")) {
+        const m = root.obs_metrics;
+        m.recordDbQueryDurationSeconds(m.classifyQueryType(sql), elapsed_s);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Public error set
@@ -59,6 +67,7 @@ pub const Conn = struct {
     _pool_idx: usize, // index into Pool.conns; used by release()
     _is_valid: bool,
     _url: []const u8,
+    _io: std.Io,
     /// Real PostgreSQL connection.  Always valid when _is_valid is true.
     _pg: pg.Conn,
 
@@ -79,6 +88,13 @@ pub const Conn = struct {
         sql: []const u8,
         params: []const []const u8,
     ) PoolError!void {
+        const started_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds() - started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            recordDbQueryDurationFromSql(sql, elapsed_s);
+        }
+
         if (!self._is_valid) return PoolError.StaleConnection;
         self._pg.exec(sql, params) catch |err| {
             // Mark connection invalid on protocol/connection errors.
@@ -101,6 +117,13 @@ pub const Conn = struct {
         sql: []const u8,
         params: []const []const u8,
     ) PoolError!QueryResult {
+        const started_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds() - started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            recordDbQueryDurationFromSql(sql, elapsed_s);
+        }
+
         if (!self._is_valid) return PoolError.StaleConnection;
         var result = self._pg.query(allocator, sql, params) catch |err| {
             if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
@@ -124,6 +147,13 @@ pub const Conn = struct {
         sql: []const u8,
         params: []const []const u8,
     ) PoolError!?[]?[]u8 {
+        const started_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds() - started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            recordDbQueryDurationFromSql(sql, elapsed_s);
+        }
+
         if (!self._is_valid) return PoolError.StaleConnection;
         var result = self._pg.query(allocator, sql, params) catch |err| {
             if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
@@ -146,6 +176,13 @@ pub const Conn = struct {
 
     /// Begin a database transaction.
     pub fn begin(self: *Conn) PoolError!void {
+        const started_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds() - started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            recordDbQueryDurationFromSql("BEGIN", elapsed_s);
+        }
+
         if (!self._is_valid) return PoolError.StaleConnection;
         self._pg.begin() catch |err| {
             if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
@@ -158,6 +195,13 @@ pub const Conn = struct {
 
     /// Commit the current transaction.
     pub fn commit(self: *Conn) PoolError!void {
+        const started_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds() - started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            recordDbQueryDurationFromSql("COMMIT", elapsed_s);
+        }
+
         if (!self._is_valid) return PoolError.StaleConnection;
         self._pg.commit() catch |err| {
             if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
@@ -171,6 +215,13 @@ pub const Conn = struct {
     /// Roll back the current transaction.  Best-effort: errors are non-fatal
     /// because rollback is often called in error-cleanup paths.
     pub fn rollback(self: *Conn) PoolError!void {
+        const started_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds() - started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            recordDbQueryDurationFromSql("ROLLBACK", elapsed_s);
+        }
+
         if (!self._is_valid) return PoolError.StaleConnection;
         self._pg.rollback() catch |err| {
             if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
@@ -261,6 +312,7 @@ pub const Pool = struct {
                 ._pool_idx = i,
                 ._is_valid = true,
                 ._url = config.url,
+                ._io = io,
                 ._pg = pg_conn,
             };
             opened += 1;
@@ -324,6 +376,7 @@ pub const Pool = struct {
                 return PoolError.ConnectionFailed;
             };
             conn._is_valid = true;
+            conn._io = self.io;
         }
 
         return conn;

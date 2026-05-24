@@ -1,0 +1,58 @@
+{
+  "handoff_id": "37734bb0-cf38-4907-8e3a-e8c92777577e",
+  "run_id": "WF02-idn01-20260524",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-idn01-20260524/step-06-doc-updater.json",
+  "created_at": "2026-05-24T05:26:20Z",
+  "started_at": "2026-05-24T05:26:40Z",
+  "completed_at": "2026-05-24T05:28:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 5 — Scheduler + Identity",
+    "requirement_ids": [
+      "IDN-01"
+    ],
+    "related_handoff_ids": [
+      "7ec735d2-f696-4c63-99b4-c59797a2935a"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-idn01-20260524/step-05b-release-validator-rework1.json",
+      "docs/status/release-IDN-01-20260524.json",
+      "handoffs/WF02-idn01-20260524/estimation.json"
+    ]
+  },
+  "task": {
+    "description": "Finalize WF-02 for IDN-01: update docs/status/requirement_status.json to set IDN-01 status to RELEASED with implementation/test/release metadata, update CHANGELOG.md with IDN-01 release entry, and run retrospective generation for this run using handoffs/WF02-idn01-20260524/estimation.json (write docs/metrics/retrospectives/WF02-idn01-20260524.json).",
+    "acceptance_criteria": [
+      "IDN-01 status is RELEASED in requirement_status.json with accurate metadata",
+      "CHANGELOG includes IDN-01 completion entry",
+      "Retrospective artifact exists for WF02-idn01-20260524",
+      "Handoff result artifacts_out lists all updated/created documentation files"
+    ],
+    "functions_to_call": [
+      "fn:update-requirement-status",
+      "fn:update-changelog",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated IDN-01 to RELEASED in requirement status with implementation/test/release metadata, added IDN-01 release notes to CHANGELOG, and completed retrospective output for WF02-idn01-20260524 including a triggered estimation-rules adjustment.",
+    "artifacts_out": [
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md",
+      "docs/metrics/retrospectives/WF02-idn01-20260524.json",
+      "docs/metrics/estimation_rules.json",
+      "docs/issue-reports/WF02-idn01-20260524-step-06-doc-updater-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete for this stage / cycle"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

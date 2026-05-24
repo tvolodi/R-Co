@@ -1,0 +1,57 @@
+{
+  "stage": "Stage 5 - Scheduler + Identity",
+  "date": "2026-05-24T05:25:19Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "IDN-01"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "bpm_db_url": "postgres://bpm:bpm@localhost:5433/bpm_test",
+    "benchmark_stdout_lines": [
+      "NFR_RESULT|NFR-01|p99_read_ms|target=<=200|actual=1.858|unit=ms|passed=true",
+      "NFR_RESULT|NFR-01|p99_write_ms|target=<=500|actual=2.380|unit=ms|passed=true",
+      "NFR_RESULT|NFR-02|append_throughput_eps|target=>=1000|actual=69117.101|unit=events_per_second|passed=true",
+      "NFR_RESULT|NFR-04|replay_10000_ms|target=<=5000|actual=32.340|unit=ms|passed=true",
+      "NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1779600286793"
+    ],
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.858,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.38,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 69117.101,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 32.34,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1779600286793"
+  },
+  "test_evidence": {
+    "test_runner_handoff": "handoffs/WF02-idn01-20260524/step-04c-test-runner-rework2.json",
+    "test_report": "tests/reports/report-2026-05-24T02-59-07Z-WF02-idn01-rework2.json",
+    "acceptance_criteria_verdicts": "PASS (6/6)",
+    "open_functional_issues": 0
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "IDN-01"
+  ],
+  "recommendation": "APPROVE IDN-01 for release progression; route to DOC-UPDATER to mark requirement status RELEASED."
+}

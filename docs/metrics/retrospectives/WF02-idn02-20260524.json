@@ -1,0 +1,57 @@
+{
+  "run_id": "WF02-idn02-20260524",
+  "requirement_ids": [
+    "IDN-02"
+  ],
+  "difficulty": 3,
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 94,
+  "actual_minutes_total": 17.7,
+  "variance_pct": -81.2,
+  "by_step": {
+    "code-designer": {
+      "estimated": 5,
+      "actual": 1.5,
+      "variance_pct": -70.0
+    },
+    "backend-dev": {
+      "estimated": 7,
+      "actual": 8.9,
+      "variance_pct": 27.1
+    },
+    "test-designer": {
+      "estimated": 3,
+      "actual": 0.0,
+      "variance_pct": -100.0
+    },
+    "test-runner": {
+      "estimated": 7,
+      "actual": 5.5,
+      "variance_pct": -21.4
+    },
+    "release-validator": {
+      "estimated": 70,
+      "actual": 0.9,
+      "variance_pct": -98.7
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 0.9,
+      "variance_pct": -55.0
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [
+    {
+      "step": "doc-updater",
+      "difficulty": 3,
+      "old_estimate": 2,
+      "new_estimate": 1,
+      "reason": "Observed 2 consecutive runs at D3 with >25% variance"
+    }
+  ],
+  "notes": "Retrospective aggregates elapsed work time across all step rework iterations for the run.",
+  "completed_at": "2026-05-24T06:49:45Z"
+}

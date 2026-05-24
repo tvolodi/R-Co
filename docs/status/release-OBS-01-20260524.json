@@ -1,0 +1,67 @@
+{
+  "stage": "Stage 6 - Observability + Extensions",
+  "date": "2026-05-24T15:07:10Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "OBS-01"
+  ],
+  "nfr_results": {
+    "benchmark_command": "$env:BPM_DB_URL='postgres://bpm:bpm@localhost:5432/bpm_dev'; zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_stdout_lines": [
+      "NFR_RESULT|NFR-01|p99_read_ms|target=<=200|actual=2.699|unit=ms|passed=true",
+      "NFR_RESULT|NFR-01|p99_write_ms|target=<=500|actual=3.595|unit=ms|passed=true",
+      "NFR_RESULT|NFR-02|append_throughput_eps|target=>=1000|actual=56123.278|unit=events_per_second|passed=true",
+      "NFR_RESULT|NFR-04|replay_10000_ms|target=<=5000|actual=44.480|unit=ms|passed=true",
+      "NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1779634588962"
+    ],
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 2.699,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 3.595,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 56123.278,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 44.480,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1779634588962"
+  },
+  "test_evidence": {
+    "backend_handoff": "handoffs/WF02-obs01-20260524/step-02-backend-dev.json",
+    "test_runner_handoff": "handoffs/WF02-obs01-20260524/step-04b-test-runner-rework1.json",
+    "test_report": "tests/reports/report-20260524T145355Z-WF02-obs01-20260524-rework1.json",
+    "overall_status": "PASS",
+    "open_functional_issues": 0,
+    "obs01_acceptance_coverage": [
+      "Structured single-line JSON logging fields present: timestamp, level, trace_id, component, message",
+      "BPM_LOG_LEVEL invalid values fail startup",
+      "Sensitive values redacted as [REDACTED]",
+      "Request/background trace_id behavior validated in OBS-01 tests"
+    ],
+    "notes": [
+      "WF02 Step 04b rework report is PASS and confirms prior TC-OBS-01-INT-01 blocker is no longer failing in the validated run path.",
+      "No unresolved security or correctness blockers were reported by BACKEND-DEV or TEST-RUNNER artifacts."
+    ]
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "OBS-01"
+  ],
+  "recommendation": "APPROVE OBS-01 for release progression; route to DOC-UPDATER to mark OBS-01 as RELEASED and update CHANGELOG."
+}
