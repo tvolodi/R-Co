@@ -204,9 +204,9 @@ pub fn buildIdempotencyKey(
     token_id: []const u8,
 ) ![]u8 {
     const instance_hex = try std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
-        instance_id[0], instance_id[1], instance_id[2], instance_id[3],
-        instance_id[4], instance_id[5], instance_id[6], instance_id[7],
-        instance_id[8], instance_id[9], instance_id[10], instance_id[11],
+        instance_id[0],  instance_id[1],  instance_id[2],  instance_id[3],
+        instance_id[4],  instance_id[5],  instance_id[6],  instance_id[7],
+        instance_id[8],  instance_id[9],  instance_id[10], instance_id[11],
         instance_id[12], instance_id[13], instance_id[14], instance_id[15],
     });
     defer allocator.free(instance_hex);
