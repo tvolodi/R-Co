@@ -1,0 +1,53 @@
+{
+  "run_id": "WF02-obs03-20260525",
+  "requirement_ids": [
+    "OBS-03"
+  ],
+  "difficulty": 4,
+  "integration_surface": "high",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 213,
+  "actual_minutes_total": 44.9,
+  "variance_pct": -78.9,
+  "by_step": {
+    "code-designer": {
+      "estimated": 182,
+      "actual": 4.4,
+      "variance_pct": -97.6
+    },
+    "backend-dev": {
+      "estimated": 11,
+      "actual": 12.0,
+      "variance_pct": 9.1
+    },
+    "test-designer": {
+      "estimated": 6,
+      "actual": 12.1,
+      "variance_pct": 101.7
+    },
+    "test-runner": {
+      "estimated": 11,
+      "actual": 14.8,
+      "variance_pct": 34.5
+    },
+    "release-validator": {
+      "estimated": 3,
+      "actual": 1.6,
+      "variance_pct": -46.7
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [
+    {
+      "step": "release-validator",
+      "difficulty": 4,
+      "old_estimate": 2,
+      "new_estimate": 2,
+      "reason": "Observed 2 consecutive runs at D4 with >25% variance"
+    }
+  ],
+  "notes": "Retrospective aggregates elapsed work time across all step rework iterations for the run.",
+  "completed_at": "2026-05-24T23:01:03Z"
+}

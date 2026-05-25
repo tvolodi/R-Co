@@ -13,7 +13,11 @@ const PoolError = db.PoolError;
 const snapshot_mod = @import("../definition/snapshot.zig");
 const task_mod = @import("../tasks/store.zig");
 const transition_mod = @import("transition.zig");
+const service_task_mod = @import("service_task.zig");
+const plugin_interface_mod = @import("plugin_interface.zig");
+const plugin_registry_mod = @import("plugin_registry.zig");
 const scheduler_store_mod = @import("../scheduler/store.zig");
+const dlq_store_mod = @import("../dlq/store.zig");
 const metrics = @import("../obs/metrics.zig");
 const json_schema = @import("../tools/json_schema.zig");
 
@@ -165,6 +169,7 @@ pub const ErrorType = enum {
     NO_MATCHING_EDGE,
     /// A task output variable failed registered JSON Schema validation (EE-09).
     SCHEMA_VIOLATION,
+    SERVICE_TASK_FAILURE,
 };
 
 // ---------------------------------------------------------------------------
@@ -690,12 +695,12 @@ pub const InstanceStore = struct {
         conn2.exec(
             \\UPDATE instance_projections
             \\SET
-            \\    status        = $2,
-            \\    current_nodes = $3::jsonb,
-            \\    variables     = $4::jsonb,
-            \\    last_event_seq = 1,
-            \\    updated_at    = NOW()
-            \\WHERE instance_id = $1::uuid
+            \\    status         = $2,
+            \\    current_nodes  = $3::jsonb,
+            \\    variables      = $4::jsonb,
+            \\    last_event_seq = last_event_seq + 1,
+            \\    updated_at     = NOW()
+            \\WHERE instance_id  = $1::uuid
         ,
             &.{ inst_id_hex, status_str, tokens_json, vars_json },
         ) catch return InstanceError.TransactionFailed;
@@ -1392,12 +1397,25 @@ pub const InstanceStore = struct {
             else => return CompleteTaskError.TransitionFailed,
         };
 
+        const service_outcome = try processServiceTaskRuntimeInTx(
+            self,
+            a,
+            conn,
+            def_id,
+            task.instance_id,
+            inst_id_hex,
+            snapshot,
+            new_state,
+        );
+
+        const effective_state = service_outcome.state;
+
         // Serialize new_state for SQL parameters (all in arena, freed at function exit).
-        const new_status_str = instanceStatusToString(new_state.status);
+        const new_status_str = instanceStatusToString(effective_state.status);
 
         var tokens_buf = std.ArrayList(u8).empty;
         tokens_buf.append(a, '[') catch return CompleteTaskError.OutOfMemory;
-        for (new_state.tokens, 0..) |tok, i| {
+        for (effective_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return CompleteTaskError.OutOfMemory;
             const entry = std.fmt.allocPrint(
                 a,
@@ -1409,7 +1427,7 @@ pub const InstanceStore = struct {
         tokens_buf.append(a, ']') catch return CompleteTaskError.OutOfMemory;
         const new_tokens_json = tokens_buf.items;
 
-        const new_vars_value = std.json.Value{ .object = new_state.variables };
+        const new_vars_value = std.json.Value{ .object = effective_state.variables };
         const new_vars_json = std.json.Stringify.valueAlloc(a, new_vars_value, .{}) catch
             return CompleteTaskError.OutOfMemory;
 
@@ -1459,33 +1477,12 @@ pub const InstanceStore = struct {
         // ── Step k: INSERT VARIABLE_OVERWRITTEN events (EE-09) ────────────────
         // One INSERT per overwritten variable key; all in the same transaction.
         // Security: all values bound as $N params; no SQL string interpolation.
-        for (merge_result.overwritten_events) |ov_ev| {
-            const ov_payload = buildOverwrittenPayload(a, inst_id_hex, ov_ev) catch
-                return CompleteTaskError.OutOfMemory;
-
-            var ov_idem: Uuid = undefined;
-            fillRandom(&ov_idem);
-            ov_idem[6] = (ov_idem[6] & 0x0f) | 0x40;
-            ov_idem[8] = (ov_idem[8] & 0x3f) | 0x80;
-            const ov_idem_hex = uuidToHex(a, ov_idem) catch return CompleteTaskError.OutOfMemory;
-
-            conn.exec(
-                \\WITH seq AS (
-                \\    INSERT INTO instance_sequence (instance_id, next_seq)
-                \\    VALUES ($1::uuid, 2)
-                \\    ON CONFLICT (instance_id) DO UPDATE
-                \\        SET next_seq = instance_sequence.next_seq + 1
-                \\    RETURNING next_seq - 1 AS val
-                \\)
-                \\INSERT INTO events
-                \\    (instance_id, event_type, payload, actor_id,
-                \\     sequence_number, idempotency_key)
-                \\SELECT $1::uuid, $2, $3::jsonb, $1::uuid, seq.val, $4
-                \\FROM seq
-            ,
-                &.{ inst_id_hex, "VARIABLE_OVERWRITTEN", ov_payload, ov_idem_hex },
-            ) catch return CompleteTaskError.PersistenceFailed;
-        }
+        try insertVariableOverwrittenEventsInTx(
+            conn,
+            a,
+            inst_id_hex,
+            merge_result.overwritten_events,
+        );
 
         // ── Step l: UPDATE instance_projections ───────────────────────────────
         // Security: $1=instance_id, $2=status, $3=tokens_json, $4=vars_json
@@ -1496,11 +1493,18 @@ pub const InstanceStore = struct {
             \\    status         = $2,
             \\    current_nodes  = $3::jsonb,
             \\    variables      = $4::jsonb,
+            \\    error_detail   = CASE WHEN NULLIF($5, '') IS NULL THEN error_detail ELSE $5::jsonb END,
             \\    last_event_seq = last_event_seq + 1,
             \\    updated_at     = NOW()
             \\WHERE instance_id  = $1::uuid
         ,
-            &.{ inst_id_hex, new_status_str, new_tokens_json, new_vars_json },
+            &.{
+                inst_id_hex,
+                new_status_str,
+                new_tokens_json,
+                new_vars_json,
+                service_outcome.error_payload_json orelse "",
+            },
         ) catch return CompleteTaskError.PersistenceFailed;
 
         persistTimersFromPendingEventsInTx(
@@ -1518,12 +1522,12 @@ pub const InstanceStore = struct {
         cancelPendingTimersForTerminalStatusInTx(
             conn,
             inst_id_hex,
-            new_state.status,
+            effective_state.status,
         ) catch return CompleteTaskError.PersistenceFailed;
 
         // ── Step m: Create tasks for newly activated HUMAN_TASK nodes ─────────
         // Set difference: new_state.pending_task_nodes minus current_state.pending_task_nodes.
-        for (new_state.pending_task_nodes) |new_node| {
+        for (effective_state.pending_task_nodes) |new_node| {
             var already_in_old = false;
             for (current_state.pending_task_nodes) |old_node| {
                 if (std.mem.eql(u8, new_node, old_node)) {
@@ -1551,7 +1555,7 @@ pub const InstanceStore = struct {
 
             // Locate the token parked on this new task node to get token_id.
             var token_id: Uuid = std.mem.zeroes(Uuid);
-            for (new_state.tokens) |tok| {
+            for (effective_state.tokens) |tok| {
                 if (std.mem.eql(u8, tok.node_id, new_node)) {
                     token_id = task_mod.parseUuid(tok.branch_id) catch std.mem.zeroes(Uuid);
                     break;
@@ -1589,7 +1593,7 @@ pub const InstanceStore = struct {
         const definition_id_hex = uuidToHex(a, def_id) catch "_unknown";
         metrics.recordTaskCompletion(definition_id_hex);
 
-        return new_state;
+        return effective_state;
     }
 
     // -----------------------------------------------------------------------
@@ -2428,6 +2432,645 @@ pub fn mapSetErrorToCompleteError(err: SetInstanceErrorError) CompleteTaskError 
     };
 }
 
+const ServiceTaskRuntimeOutcome = struct {
+    state: transition_mod.InstanceState,
+    error_payload_json: ?[]u8,
+};
+
+fn processServiceTaskRuntimeInTx(
+    self: *InstanceStore,
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    definition_id: Uuid,
+    instance_id: Uuid,
+    instance_id_hex: []const u8,
+    snapshot: snapshot_mod.DefinitionGraph,
+    initial_state: transition_mod.InstanceState,
+) CompleteTaskError!ServiceTaskRuntimeOutcome {
+    var current_state = initial_state;
+
+    var outer_guard: usize = 0;
+    while (outer_guard < 32) : (outer_guard += 1) {
+        var service_node_id: ?[]const u8 = null;
+        var service_node_attrs: ?[]const u8 = null;
+        var token_branch_id: ?[]const u8 = null;
+
+        for (current_state.tokens) |tok| {
+            for (snapshot.nodes) |node| {
+                if (!std.mem.eql(u8, node.id, tok.node_id)) continue;
+                if (node.node_type != .SERVICE_TASK) continue;
+
+                service_node_id = tok.node_id;
+                service_node_attrs = node.attributes;
+                token_branch_id = tok.branch_id;
+                break;
+            }
+            if (service_node_id != null) break;
+        }
+
+        if (service_node_id == null) {
+            return ServiceTaskRuntimeOutcome{
+                .state = current_state,
+                .error_payload_json = null,
+            };
+        }
+
+        if (plugin_registry_mod.resolveGlobalPluginHandler("SERVICE_TASK")) |plugin_registration| {
+            const instance_vars_json = std.json.Stringify.valueAlloc(
+                allocator,
+                std.json.Value{ .object = current_state.variables },
+                .{},
+            ) catch return CompleteTaskError.OutOfMemory;
+            defer allocator.free(instance_vars_json);
+
+            const plugin_ctx = plugin_interface_mod.PluginExecutionContext{
+                .allocator = allocator,
+                .instance_id = instance_id,
+                .definition_id = definition_id,
+                .node_id = service_node_id.?,
+                .node_type = "SERVICE_TASK",
+                .instance_variables_json = instance_vars_json,
+                .node_config_json = service_node_attrs orelse "{}",
+                .trace_id = instance_id_hex,
+            };
+
+            const outcome = plugin_interface_mod.invokePluginHandlerSafely(
+                allocator,
+                plugin_registration.handler,
+                plugin_ctx,
+            ) catch |invoke_err| {
+                const vars_json = std.json.Stringify.valueAlloc(
+                    allocator,
+                    std.json.Value{ .object = current_state.variables },
+                    .{},
+                ) catch return CompleteTaskError.OutOfMemory;
+                defer allocator.free(vars_json);
+
+                const payload_json = buildExecutionErrorPayload(allocator, instance_id_hex, .{
+                    .instance_id = instance_id,
+                    .error_type = .SERVICE_TASK_FAILURE,
+                    .affected_node = service_node_id,
+                    .affected_field = null,
+                    .reason = plugin_interface_mod.invocationErrorReason(invoke_err),
+                    .variable_state = vars_json,
+                    .evaluated_conditions = null,
+                    .actor_id = instance_id_hex,
+                }) catch return CompleteTaskError.OutOfMemory;
+
+                try recordExecutionErrorEventInTx(conn, allocator, instance_id_hex, payload_json, instance_id_hex);
+
+                current_state.status = .ERROR;
+                return ServiceTaskRuntimeOutcome{
+                    .state = current_state,
+                    .error_payload_json = payload_json,
+                };
+            };
+
+            plugin_interface_mod.validateOutcome(outcome) catch |invalid_outcome_err| {
+                const vars_json = std.json.Stringify.valueAlloc(
+                    allocator,
+                    std.json.Value{ .object = current_state.variables },
+                    .{},
+                ) catch return CompleteTaskError.OutOfMemory;
+                defer allocator.free(vars_json);
+
+                const payload_json = buildExecutionErrorPayload(allocator, instance_id_hex, .{
+                    .instance_id = instance_id,
+                    .error_type = .SERVICE_TASK_FAILURE,
+                    .affected_node = service_node_id,
+                    .affected_field = null,
+                    .reason = plugin_interface_mod.invocationErrorReason(invalid_outcome_err),
+                    .variable_state = vars_json,
+                    .evaluated_conditions = null,
+                    .actor_id = instance_id_hex,
+                }) catch return CompleteTaskError.OutOfMemory;
+
+                try recordExecutionErrorEventInTx(conn, allocator, instance_id_hex, payload_json, instance_id_hex);
+
+                current_state.status = .ERROR;
+                return ServiceTaskRuntimeOutcome{
+                    .state = current_state,
+                    .error_payload_json = payload_json,
+                };
+            };
+
+            switch (outcome) {
+                .ERROR => |plugin_err| {
+                    const vars_json = std.json.Stringify.valueAlloc(
+                        allocator,
+                        std.json.Value{ .object = current_state.variables },
+                        .{},
+                    ) catch return CompleteTaskError.OutOfMemory;
+                    defer allocator.free(vars_json);
+
+                    const payload_json = buildExecutionErrorPayload(allocator, instance_id_hex, .{
+                        .instance_id = instance_id,
+                        .error_type = .SERVICE_TASK_FAILURE,
+                        .affected_node = service_node_id,
+                        .affected_field = null,
+                        .reason = plugin_err.reason,
+                        .variable_state = vars_json,
+                        .evaluated_conditions = null,
+                        .actor_id = instance_id_hex,
+                    }) catch return CompleteTaskError.OutOfMemory;
+
+                    try recordExecutionErrorEventInTx(conn, allocator, instance_id_hex, payload_json, instance_id_hex);
+
+                    current_state.status = .ERROR;
+                    return ServiceTaskRuntimeOutcome{
+                        .state = current_state,
+                        .error_payload_json = payload_json,
+                    };
+                },
+                .COMPLETE => |plugin_complete| {
+                    const output_json = plugin_complete.output_variables_json orelse "{}";
+                    const parsed_output = std.json.parseFromSlice(
+                        std.json.Value,
+                        allocator,
+                        output_json,
+                        .{ .allocate = .alloc_always },
+                    ) catch {
+                        const vars_json = std.json.Stringify.valueAlloc(
+                            allocator,
+                            std.json.Value{ .object = current_state.variables },
+                            .{},
+                        ) catch return CompleteTaskError.OutOfMemory;
+                        defer allocator.free(vars_json);
+
+                        const payload_json = buildExecutionErrorPayload(allocator, instance_id_hex, .{
+                            .instance_id = instance_id,
+                            .error_type = .SERVICE_TASK_FAILURE,
+                            .affected_node = service_node_id,
+                            .affected_field = null,
+                            .reason = "PLUGIN_OUTPUT_INVALID",
+                            .variable_state = vars_json,
+                            .evaluated_conditions = null,
+                            .actor_id = instance_id_hex,
+                        }) catch return CompleteTaskError.OutOfMemory;
+
+                        try recordExecutionErrorEventInTx(conn, allocator, instance_id_hex, payload_json, instance_id_hex);
+
+                        current_state.status = .ERROR;
+                        return ServiceTaskRuntimeOutcome{
+                            .state = current_state,
+                            .error_payload_json = payload_json,
+                        };
+                    };
+                    defer parsed_output.deinit();
+
+                    if (parsed_output.value != .object) {
+                        const vars_json = std.json.Stringify.valueAlloc(
+                            allocator,
+                            std.json.Value{ .object = current_state.variables },
+                            .{},
+                        ) catch return CompleteTaskError.OutOfMemory;
+                        defer allocator.free(vars_json);
+
+                        const payload_json = buildExecutionErrorPayload(allocator, instance_id_hex, .{
+                            .instance_id = instance_id,
+                            .error_type = .SERVICE_TASK_FAILURE,
+                            .affected_node = service_node_id,
+                            .affected_field = null,
+                            .reason = "PLUGIN_OUTPUT_INVALID",
+                            .variable_state = vars_json,
+                            .evaluated_conditions = null,
+                            .actor_id = instance_id_hex,
+                        }) catch return CompleteTaskError.OutOfMemory;
+
+                        try recordExecutionErrorEventInTx(conn, allocator, instance_id_hex, payload_json, instance_id_hex);
+
+                        current_state.status = .ERROR;
+                        return ServiceTaskRuntimeOutcome{
+                            .state = current_state,
+                            .error_payload_json = payload_json,
+                        };
+                    }
+
+                    var violation_detail: ?SchemaViolationDetail = null;
+                    var merge_result = self.mergeVariables(
+                        allocator,
+                        conn,
+                        definition_id,
+                        instance_id,
+                        null,
+                        current_state.variables,
+                        parsed_output.value.object,
+                        &violation_detail,
+                    ) catch |merge_err| switch (merge_err) {
+                        MergeVariablesError.SchemaViolation => {
+                            const vars_json = std.json.Stringify.valueAlloc(
+                                allocator,
+                                std.json.Value{ .object = current_state.variables },
+                                .{},
+                            ) catch return CompleteTaskError.OutOfMemory;
+                            defer allocator.free(vars_json);
+
+                            const violation_reason: []const u8 = if (violation_detail) |vd| vd.reason else "PLUGIN_OUTPUT_SCHEMA_VIOLATION";
+                            const payload_json = buildExecutionErrorPayload(allocator, instance_id_hex, .{
+                                .instance_id = instance_id,
+                                .error_type = .SERVICE_TASK_FAILURE,
+                                .affected_node = service_node_id,
+                                .affected_field = null,
+                                .reason = violation_reason,
+                                .variable_state = vars_json,
+                                .evaluated_conditions = null,
+                                .actor_id = instance_id_hex,
+                            }) catch return CompleteTaskError.OutOfMemory;
+
+                            try recordExecutionErrorEventInTx(conn, allocator, instance_id_hex, payload_json, instance_id_hex);
+
+                            current_state.status = .ERROR;
+                            return ServiceTaskRuntimeOutcome{
+                                .state = current_state,
+                                .error_payload_json = payload_json,
+                            };
+                        },
+                        MergeVariablesError.PersistenceFailed => return CompleteTaskError.PersistenceFailed,
+                        MergeVariablesError.OutOfMemory => return CompleteTaskError.OutOfMemory,
+                    };
+                    defer {
+                        merge_result.merged.deinit(allocator);
+                        for (merge_result.overwritten_events) |ev| {
+                            allocator.free(ev.key);
+                            allocator.free(ev.old_value);
+                            allocator.free(ev.new_value);
+                        }
+                        if (merge_result.overwritten_events.len > 0) {
+                            allocator.free(merge_result.overwritten_events);
+                        }
+                    }
+
+                    try insertVariableOverwrittenEventsInTx(
+                        conn,
+                        allocator,
+                        instance_id_hex,
+                        merge_result.overwritten_events,
+                    );
+
+                    const event2 = transition_mod.TransitionEvent{
+                        .service_task_completed = .{
+                            .service_task_node_id = service_node_id.?,
+                            .output_variables = parsed_output.value.object,
+                        },
+                    };
+                    current_state = transition_mod.transition(allocator, snapshot, current_state, event2) catch
+                        return CompleteTaskError.TransitionFailed;
+                    continue;
+                },
+            }
+        }
+
+        const cfg = service_task_mod.parseConfigFromNodeAttributes(
+            allocator,
+            service_node_id.?,
+            service_node_attrs orelse "",
+        ) catch {
+            const vars_json = std.json.Stringify.valueAlloc(
+                allocator,
+                std.json.Value{ .object = current_state.variables },
+                .{},
+            ) catch return CompleteTaskError.OutOfMemory;
+            defer allocator.free(vars_json);
+
+            const payload_json = buildExecutionErrorPayload(allocator, instance_id_hex, .{
+                .instance_id = instance_id,
+                .error_type = .SERVICE_TASK_FAILURE,
+                .affected_node = service_node_id,
+                .affected_field = null,
+                .reason = "Invalid SERVICE_TASK configuration",
+                .variable_state = vars_json,
+                .evaluated_conditions = null,
+                .actor_id = instance_id_hex,
+            }) catch return CompleteTaskError.OutOfMemory;
+
+            try recordExecutionErrorEventInTx(conn, allocator, instance_id_hex, payload_json, instance_id_hex);
+
+            current_state.status = .ERROR;
+            return ServiceTaskRuntimeOutcome{
+                .state = current_state,
+                .error_payload_json = payload_json,
+            };
+        };
+        defer {
+            allocator.free(cfg.node_id);
+            allocator.free(cfg.url_template);
+            if (cfg.headers_json) |v| allocator.free(v);
+            if (cfg.body_template_json) |v| allocator.free(v);
+        }
+
+        const idempotency_key = service_task_mod.buildIdempotencyKey(
+            allocator,
+            instance_id,
+            service_node_id.?,
+            token_branch_id.?,
+        ) catch return CompleteTaskError.OutOfMemory;
+        defer allocator.free(idempotency_key);
+
+        var chain_buf = std.ArrayList(u8).empty;
+        defer chain_buf.deinit(allocator);
+        chain_buf.append(allocator, '[') catch return CompleteTaskError.OutOfMemory;
+
+        var attempt_index: u8 = 1;
+        while (true) {
+            var status_code: ?u16 = null;
+            var failure_kind: service_task_mod.ServiceTaskFailureKind = .network;
+            var failure_reason: []const u8 = "network error";
+            var response_body: ?[]u8 = null;
+
+            const execution_result = service_task_mod.executeHttpRequest(
+                allocator,
+                cfg,
+                instance_id_hex,
+                idempotency_key,
+            ) catch null;
+            if (execution_result) |execution| {
+                status_code = execution.status_code;
+                response_body = execution.body;
+            } else {
+                failure_kind = .network;
+                failure_reason = "network request failed";
+                status_code = null;
+            }
+
+            if (response_body) |body| {
+                defer allocator.free(body);
+
+                if (status_code.? >= 200 and status_code.? <= 299) {
+                    const parsed = std.json.parseFromSlice(
+                        std.json.Value,
+                        allocator,
+                        body,
+                        .{ .allocate = .alloc_always },
+                    ) catch null;
+
+                    if (parsed) |response_json| {
+                        if (response_json.value == .object) {
+                            const output_vars = response_json.value.object.clone(allocator) catch return CompleteTaskError.OutOfMemory;
+                            const event2 = transition_mod.TransitionEvent{
+                                .service_task_completed = .{
+                                    .service_task_node_id = service_node_id.?,
+                                    .output_variables = output_vars,
+                                },
+                            };
+                            current_state = transition_mod.transition(allocator, snapshot, current_state, event2) catch
+                                return CompleteTaskError.TransitionFailed;
+                            break;
+                        }
+                    }
+
+                    failure_kind = .invalid_2xx_body;
+                    failure_reason = "2xx response body must be a JSON object";
+                    status_code = null;
+                } else {
+                    failure_kind = service_task_mod.classifyFailureKind(status_code.?) orelse .http_non_2xx;
+                    failure_reason = "http request failed";
+                }
+            }
+
+            if (attempt_index > 1) chain_buf.append(allocator, ',') catch return CompleteTaskError.OutOfMemory;
+            const reason_json = std.json.Stringify.valueAlloc(
+                allocator,
+                std.json.Value{ .string = failure_reason },
+                .{},
+            ) catch return CompleteTaskError.OutOfMemory;
+            defer allocator.free(reason_json);
+
+            const kind_name = @tagName(failure_kind);
+            const entry = if (status_code) |code|
+                std.fmt.allocPrint(
+                    allocator,
+                    "{{\"attempt\":{d},\"kind\":\"{s}\",\"status\":{d},\"reason\":{s}}}",
+                    .{ attempt_index, kind_name, code, reason_json },
+                ) catch return CompleteTaskError.OutOfMemory
+            else
+                std.fmt.allocPrint(
+                    allocator,
+                    "{{\"attempt\":{d},\"kind\":\"{s}\",\"reason\":{s}}}",
+                    .{ attempt_index, kind_name, reason_json },
+                ) catch return CompleteTaskError.OutOfMemory;
+            defer allocator.free(entry);
+            chain_buf.appendSlice(allocator, entry) catch return CompleteTaskError.OutOfMemory;
+
+            const decision = service_task_mod.decideFailure(failure_kind, attempt_index, cfg.retry_limit);
+            if (decision == .retry) {
+                const backoff_ms = service_task_mod.computeServiceTaskBackoffMs(attempt_index, 500, 30_000);
+                std.Io.sleep(
+                    std.Options.debug_io,
+                    .fromMilliseconds(@as(i64, backoff_ms)),
+                    .awake,
+                ) catch {};
+                attempt_index +%= 1;
+                continue;
+            }
+            chain_buf.append(allocator, ']') catch return CompleteTaskError.OutOfMemory;
+            const error_chain_json = try chain_buf.toOwnedSlice(allocator);
+            defer allocator.free(error_chain_json);
+
+            if (decision == .terminal_dlq) {
+                try insertServiceTaskDlqInTx(
+                    conn,
+                    allocator,
+                    instance_id_hex,
+                    service_node_id.?,
+                    cfg,
+                    idempotency_key,
+                    error_chain_json,
+                    attempt_index,
+                );
+            }
+
+            const vars_json = std.json.Stringify.valueAlloc(
+                allocator,
+                std.json.Value{ .object = current_state.variables },
+                .{},
+            ) catch return CompleteTaskError.OutOfMemory;
+            defer allocator.free(vars_json);
+
+            const payload_json = buildExecutionErrorPayload(allocator, instance_id_hex, .{
+                .instance_id = instance_id,
+                .error_type = .SERVICE_TASK_FAILURE,
+                .affected_node = service_node_id,
+                .affected_field = null,
+                .reason = failure_reason,
+                .variable_state = vars_json,
+                .evaluated_conditions = null,
+                .actor_id = instance_id_hex,
+            }) catch return CompleteTaskError.OutOfMemory;
+
+            try recordExecutionErrorEventInTx(conn, allocator, instance_id_hex, payload_json, instance_id_hex);
+
+            current_state.status = .ERROR;
+            return ServiceTaskRuntimeOutcome{
+                .state = current_state,
+                .error_payload_json = payload_json,
+            };
+        }
+    }
+
+    return ServiceTaskRuntimeOutcome{
+        .state = current_state,
+        .error_payload_json = null,
+    };
+}
+
+fn insertVariableOverwrittenEventsInTx(
+    conn: *db.Conn,
+    allocator: std.mem.Allocator,
+    instance_id_hex: []const u8,
+    overwritten_events: []const VariableOverwrittenPayload,
+) CompleteTaskError!void {
+    for (overwritten_events) |ov_ev| {
+        const ov_payload = buildOverwrittenPayload(allocator, instance_id_hex, ov_ev) catch
+            return CompleteTaskError.OutOfMemory;
+
+        var ov_idem: Uuid = undefined;
+        fillRandom(&ov_idem);
+        ov_idem[6] = (ov_idem[6] & 0x0f) | 0x40;
+        ov_idem[8] = (ov_idem[8] & 0x3f) | 0x80;
+        const ov_idem_hex = uuidToHex(allocator, ov_idem) catch return CompleteTaskError.OutOfMemory;
+
+        conn.exec(
+            \\WITH seq AS (
+            \\    INSERT INTO instance_sequence (instance_id, next_seq)
+            \\    VALUES ($1::uuid, 2)
+            \\    ON CONFLICT (instance_id) DO UPDATE
+            \\        SET next_seq = instance_sequence.next_seq + 1
+            \\    RETURNING next_seq - 1 AS val
+            \\)
+            \\INSERT INTO events
+            \\    (instance_id, event_type, payload, actor_id,
+            \\     sequence_number, idempotency_key)
+            \\SELECT $1::uuid, $2, $3::jsonb, $1::uuid, seq.val, $4
+            \\FROM seq
+        ,
+            &.{ instance_id_hex, "VARIABLE_OVERWRITTEN", ov_payload, ov_idem_hex },
+        ) catch return CompleteTaskError.PersistenceFailed;
+    }
+}
+
+fn insertServiceTaskDlqInTx(
+    conn: *db.Conn,
+    allocator: std.mem.Allocator,
+    instance_id_hex: []const u8,
+    node_id: []const u8,
+    cfg: service_task_mod.ServiceTaskConfig,
+    source_ref: []const u8,
+    error_chain_json: []const u8,
+    retry_count: u8,
+) CompleteTaskError!void {
+    const retry_count_text = std.fmt.allocPrint(allocator, "{d}", .{retry_count}) catch return CompleteTaskError.OutOfMemory;
+    defer allocator.free(retry_count_text);
+    const retry_limit_text = std.fmt.allocPrint(allocator, "{d}", .{cfg.retry_limit}) catch return CompleteTaskError.OutOfMemory;
+    defer allocator.free(retry_limit_text);
+
+    const method_text = @tagName(cfg.method);
+    const node_json = std.json.Stringify.valueAlloc(allocator, std.json.Value{ .string = node_id }, .{}) catch return CompleteTaskError.OutOfMemory;
+    defer allocator.free(node_json);
+    const url_json = std.json.Stringify.valueAlloc(allocator, std.json.Value{ .string = cfg.url_template }, .{}) catch return CompleteTaskError.OutOfMemory;
+    defer allocator.free(url_json);
+    const method_json = std.json.Stringify.valueAlloc(allocator, std.json.Value{ .string = method_text }, .{}) catch return CompleteTaskError.OutOfMemory;
+    defer allocator.free(method_json);
+
+    const original_payload_json = std.fmt.allocPrint(
+        allocator,
+        "{{\"node_id\":{s},\"url\":{s},\"method\":{s},\"timeout_ms\":{d}}}",
+        .{ node_json, url_json, method_json, cfg.timeout_ms },
+    ) catch return CompleteTaskError.OutOfMemory;
+    defer allocator.free(original_payload_json);
+
+    const metadata_json = std.fmt.allocPrint(
+        allocator,
+        "{{\"source_module\":\"engine.service_task\",\"trace_id\":\"{s}\"}}",
+        .{instance_id_hex},
+    ) catch return CompleteTaskError.OutOfMemory;
+    defer allocator.free(metadata_json);
+
+    conn.exec(
+        \\INSERT INTO dead_letter_queue (
+        \\  entry_type,
+        \\  instance_id,
+        \\  reason,
+        \\  error_detail,
+        \\  retry_count,
+        \\  max_retries,
+        \\  status,
+        \\  item_type,
+        \\  retry_limit,
+        \\  original_payload,
+        \\  error_chain,
+        \\  processor_metadata,
+        \\  first_failed_at,
+        \\  last_failed_at,
+        \\  source_ref,
+        \\  updated_at
+        \\)
+        \\VALUES (
+        \\  'service_task_failed',
+        \\  $1::uuid,
+        \\  'service task retry exhausted',
+        \\  CASE WHEN jsonb_typeof($2::jsonb) = 'array' THEN jsonb_build_object('chain', $2::jsonb) ELSE $2::jsonb END,
+        \\  $3::int,
+        \\  $4::int,
+        \\  'pending',
+        \\  $5,
+        \\  $4::int,
+        \\  $6::jsonb,
+        \\  $2::jsonb,
+        \\  $7::jsonb,
+        \\  NOW(),
+        \\  NOW(),
+        \\  $8,
+        \\  NOW()
+        \\)
+        \\ON CONFLICT (item_type, source_ref, last_failed_at)
+        \\DO NOTHING
+    ,
+        &.{
+            instance_id_hex,
+            error_chain_json,
+            retry_count_text,
+            retry_limit_text,
+            dlq_store_mod.itemTypeToString(.SERVICE_TASK),
+            original_payload_json,
+            metadata_json,
+            source_ref,
+        },
+    ) catch return CompleteTaskError.PersistenceFailed;
+}
+
+fn recordExecutionErrorEventInTx(
+    conn: *db.Conn,
+    allocator: std.mem.Allocator,
+    instance_id_hex: []const u8,
+    payload_json: []const u8,
+    actor_id: []const u8,
+) CompleteTaskError!void {
+    var idem_bytes: Uuid = undefined;
+    fillRandom(&idem_bytes);
+    idem_bytes[6] = (idem_bytes[6] & 0x0f) | 0x40;
+    idem_bytes[8] = (idem_bytes[8] & 0x3f) | 0x80;
+    const idem_key_hex = uuidToHex(allocator, idem_bytes) catch return CompleteTaskError.OutOfMemory;
+    defer allocator.free(idem_key_hex);
+
+    conn.exec(
+        \\WITH seq AS (
+        \\    INSERT INTO instance_sequence (instance_id, next_seq)
+        \\    VALUES ($1::uuid, 2)
+        \\    ON CONFLICT (instance_id) DO UPDATE
+        \\        SET next_seq = instance_sequence.next_seq + 1
+        \\    RETURNING next_seq - 1 AS val
+        \\)
+        \\INSERT INTO events
+        \\    (instance_id, event_type, payload, actor_id,
+        \\     sequence_number, idempotency_key)
+        \\SELECT $1::uuid, 'EXECUTION_ERROR', $2::jsonb, $3,
+        \\       seq.val, $4
+        \\FROM seq
+    ,
+        &.{ instance_id_hex, payload_json, actor_id, idem_key_hex },
+    ) catch return CompleteTaskError.PersistenceFailed;
+}
+
 fn cancelPendingTimersForTerminalStatusInTx(
     conn: *db.Conn,
     instance_id_hex: []const u8,
@@ -2490,6 +3133,7 @@ fn buildExecutionErrorPayload(
     const error_type_str: []const u8 = switch (args.error_type) {
         .NO_MATCHING_EDGE => "NO_MATCHING_EDGE",
         .SCHEMA_VIOLATION => "SCHEMA_VIOLATION",
+        .SERVICE_TASK_FAILURE => "SERVICE_TASK_FAILURE",
     };
 
     // Helper: serialise a string as a JSON-quoted value.
@@ -2527,6 +3171,14 @@ fn buildExecutionErrorPayload(
                 defer allocator.free(field_json);
                 try buf.appendSlice(allocator, ",\"affected_field\":");
                 try buf.appendSlice(allocator, field_json);
+            }
+        },
+        .SERVICE_TASK_FAILURE => {
+            if (args.affected_node) |node| {
+                const node_json = try strJson(allocator, node);
+                defer allocator.free(node_json);
+                try buf.appendSlice(allocator, ",\"affected_node\":");
+                try buf.appendSlice(allocator, node_json);
             }
         },
     }

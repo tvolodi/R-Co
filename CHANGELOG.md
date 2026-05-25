@@ -21,6 +21,40 @@ All notable changes to the BPM Platform are documented here.
 - Release approval is recorded in `docs/status/release-OBS-02-20260524.json` after benchmark gate revalidation in WF-02 Step 05c
 - Requirement: OBS-02 (MUST, Stage 6) — RELEASED
 
+### OBS-04 — Instance timeline view (RELEASED 2026-05-25)
+- Implemented timeline retrieval contract for `GET /instances/:id/timeline` with deterministic ascending ordering, API-06 cursor pagination, and any-authenticated-role access enforcement across backend route and service layers
+- Added timeline shaping to include required OBS-04 fields (`event_type`, `timestamp`, `actor_display_name`, `description`, plus context fields), including actor fallback behavior for automated and token-originated actions
+- Ensured timeline composition includes archived events and complete cancellation history (including `INSTANCE_CANCELLED`) for cancelled instances
+- Validation evidence passed in `tests/reports/report-20260525T034702Z-WF02-obs04-step04d-rework3.json`; release gate approval is recorded in `docs/status/release-OBS-04-20260525.json`
+- Requirement: OBS-04 (MUST, Stage 6) — RELEASED
+
+### OBS-05 — Dead letter queue (RELEASED 2026-05-25)
+- Implemented durable dead-letter queue processing with configurable retry lifecycle and operator actions, including retention of failure context for investigation and replay workflows
+- Delivered authenticated DLQ listing and action handling for retry/discard operations with deterministic behavior validated by the OBS-05 integration suite
+- Preserved OBS-03 transactional audit semantics for discard actions so audit persistence and DLQ state transitions remain atomic on failure paths
+- Validation evidence passed in `tests/reports/report-20260525-wf02-obs05-step-04-test-runner.json`; release gate approval is recorded in `docs/status/release-OBS-05-20260525.json`
+- Requirement: OBS-05 (MUST, Stage 6) — RELEASED
+
+
+### OBS-06 - Alerting hooks (RELEASED 2026-05-25)
+- Implemented configurable alerting hooks for observability signals, including threshold-based trigger conditions and extension-friendly notification dispatch integration.
+- Release approval is recorded in docs/status/release-OBS-06-20260525.json with NFR benchmark gate passing.
+- Test evidence is recorded in tests/reports/report-20260525-wf02-obs06-step-04c-test-runner-rework2.json (WF-02 Step 04c PASS).
+- Requirement: OBS-06 (SHOULD, Stage 6) - RELEASED
+
+### EXT-01 - Service task node type (RELEASED 2026-05-25)
+- Implemented SERVICE_TASK execution flow to invoke external HTTP endpoints with mapped input/output variables and deterministic payload merge back into instance state.
+- Added retry/backoff and failure handling behavior that routes exhausted attempts into the WF-02 observability/error path while preserving run-level traceability.
+- Validation evidence passed in tests/reports/report-20260525-wf02-ext01-step-04d-test-runner-rework3.json; release gate approval is recorded in docs/status/release-EXT-01-20260525.json.
+- Requirement: EXT-01 (MUST, Stage 6) - RELEASED
+
+### EXT-03 - Plugin interface (RELEASED 2026-05-25)
+- Implemented a stable startup-only plugin registration surface for custom node handlers, including post-bootstrap registry freeze enforcement.
+- Added plugin execution integration with explicit plugin-over-built-in precedence, COMPLETE output variable merge semantics, and ERROR routing through existing EE-10 handling.
+- Added panic-safe plugin invocation behavior by mapping handler panics into structured ERROR outcomes handled by the execution error path.
+- Validation evidence passed in tests/reports/report-20260525T144146Z-WF02-ext03-20260525.json; release gate approval is recorded in docs/status/release-EXT-03-20260525.json.
+- Requirement: EXT-03 (SHOULD, Stage 6) - RELEASED
+
 ### Stage 5 — Scheduler + Identity
 
 ### IDN-04 — API token management (RELEASED 2026-05-24)
@@ -419,3 +453,10 @@ All notable changes to the BPM Platform are documented here.
     - `TIMER`: requires `duration_iso8601` (valid ISO 8601 duration; `P0D` accepted) → HTTP 422
   - Attribute violations surface as `GraphValidationFailed` (HTTP 422) alongside structural violations
   - Test spec: `tests/specs/PD-05.md`; test run: `WF02-pd05-20260521-run-01`
+
+### OBS-03 - Audit log (RELEASED 2026-05-25)
+- Implemented immutable audit logging for state-changing API operations with persisted actor, action, entity, and request-trace context for compliance and forensic traceability
+- Added audit log read access with filterable retrieval for authorized operators, preserving append-only semantics on stored audit records
+- Validation evidence passed in `tests/reports/report-20260524T225404Z-WF02-obs03-step04d-rework3.json` and release gate approval is recorded in `docs/status/release-OBS-03-20260524.json`
+- Requirement: OBS-03 (MUST, Stage 6) - RELEASED
+

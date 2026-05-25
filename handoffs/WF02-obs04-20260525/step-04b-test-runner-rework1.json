@@ -1,0 +1,64 @@
+{
+  "handoff_id": "20260525-019",
+  "run_id": "WF02-obs04-20260525",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-obs04-20260525/step-04b-test-runner-rework1.json",
+  "created_at": "2026-05-25T13:10:00Z",
+  "started_at": "2026-05-25T13:10:20Z",
+  "completed_at": "2026-05-25T03:00:49Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-04"
+    ],
+    "related_handoff_ids": [
+      "20260525-017",
+      "20260525-018",
+      "20260525-016"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-obs04-fixes-20260525/step-01-issue-fixer.json",
+      "docs/issues/ISS-0014.json",
+      "docs/issues/ISS-0015.json",
+      "tests/specs/OBS-04.md",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "Re-run WF-02 Step 04 validation for OBS-04 after WF-03 fixes. Execute required backend and frontend validation commands, including the dedicated OBS-04 integration target introduced by ISSUE-FIXER. Produce updated report evidence and determine whether previously failing blocker OBS04-INTEGRATION-COMPILE-001 is closed. Reassess remaining blocker OBS04-TEST-GAP-001 using latest issue records and explicit release-gate criteria.",
+    "acceptance_criteria": [
+      "OBS04-INTEGRATION-COMPILE-001 is verified closed by execution evidence",
+      "Updated validation report captures all command outcomes and traceability",
+      "Release-blocking status for OBS04-TEST-GAP-001 is explicitly confirmed with rationale",
+      "Result clearly states PASS/FAIL/PARTIAL and next action"
+    ],
+    "functions_to_call": [
+      "fn:run-validation-suite",
+      "fn:collect-test-evidence",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Re-ran backend/frontend validation with explicit OBS-04 integration target evidence. OBS04-INTEGRATION-COMPILE-001 is closed, but OBS04-TEST-GAP-001 remains a release blocker because browser-level UI->API->DB E2E coverage is still not executable in current repo state.",
+    "artifacts_out": [
+      "tests/reports/report-20260525T030046Z-WF02-obs04-step04b-rework1.json"
+    ],
+    "issues": [
+      {
+        "id": "OBS04-TEST-GAP-001",
+        "severity": "BLOCKER",
+        "description": "Release gate for OBS-04 remains uncleared: Playwright E2E coverage is not runnable (0 tests found with runtime error), and backend run path does not provide active UI->API->DB flow.",
+        "affected_requirement": "OBS-04"
+      }
+    ],
+    "next_action": "Route to ORCH for prerequisite runtime/E2E harness enablement, then re-run TEST-RUNNER validation for OBS-04 release-gate closure."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

@@ -1,0 +1,113 @@
+﻿
+  test-integration
+  +- run test 198 pass, 7 skip, 3 fail (208 total); 3 leaks
+> error: 'obs03_audit_log_test.test.TC-OBS-03-INT-01: state-changing writes cre
+ate audit rows with required fields' failed:
+         BPM_TEST_URL is not set — skipping HTTP integration test
+         BPM_TEST_URL is not set — skipping HTTP integration test
+         BPM_TEST_URL is not set — skipping HTTP integration test
+         BPM_TEST_URL is not set — skipping HTTP integration test
+                 ^
+         C:\Users\tvolo\dev\ai-dala\My-Fab\src\db\pool.zig:105:13: 0x7ff6494051
+5b in exec (test_zcu.obj)
+>                    return PoolError.QueryFailed;
+                     ^
+>        C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_te
+st.zig:124:5: 0x7ff6493f4ff9 in seedUserAndToken (test_zcu.obj)
+             try conn.exec(
+             ^
+>        C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_te
+st.zig:264:5: 0x7ff64946e747 in test.TC-OBS-03-INT-01: state-changing writes cr
+eate audit rows with required fields (test_zcu.obj)
+             try seedUserAndToken(
+             ^
+         [DebugAllocator] (err): memory address 0x2611db80030 leaked: 
+         C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microso
+ft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.
+zig:454:40: 0x7ff6492d978b in dupe__anon_15095 (test_zcu.obj)
+                 return rowToDefinition(allocator, update_rows.rows[0], stub) c
+atch
+                                       ^
+>        C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_te
+st.zig:204:25: 0x7ff64946b13f in test.TC-OBS-03-INT-01: state-changing writes c
+reate audit rows with required fields (test_zcu.obj)
+             _ = try store.update(alloc, def.id, .{
+                                 ^
+         C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microso
+ft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\compiler\test_runn
+er.zig:140:68: 0x7ff6493ce95c in mainServer (test_zcu.obj)
+                         const status: TestResults.Status = if (test_fn.func())
+ |v| s: {
+                 return rowToDefinition(allocator, update_rows.rows[0], stub) c
+atch
+                                       ^
+>        C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_te
+st.zig:204:25: 0x7ff64946b13f in test.TC-OBS-03-INT-01: state-changing writes c
+reate audit rows with required fields (test_zcu.obj)
+             _ = try store.update(alloc, def.id, .{
+                                 ^
+         C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microso
+ft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\compiler\test_runn
+er.zig:140:68: 0x7ff6493ce95c in mainServer (test_zcu.obj)
+                         const status: TestResults.Status = if (test_fn.func())
+ |v| s: {
+                 return rowToDefinition(allocator, update_rows.rows[0], stub) c
+atch
+                                       ^
+>        C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_te
+st.zig:204:25: 0x7ff64946b13f in test.TC-OBS-03-INT-01: state-changing writes c
+reate audit rows with required fields (test_zcu.obj)
+             _ = try store.update(alloc, def.id, .{
+                                 ^
+         C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microso
+ft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\compiler\test_runn
+er.zig:140:68: 0x7ff6493ce95c in mainServer (test_zcu.obj)
+                         const status: TestResults.Status = if (test_fn.func())
+ |v| s: {
+         ???:?:?: 0x7ff85b4ce956 in ??? (KERNEL32.DLL)
+         ???:?:?: 0x7ff85cfe427b in ??? (ntdll.dll)
+> error: 'obs03_audit_log_test.test.TC-OBS-03-INT-05: GET /audit supports filte
+rs with deterministic pagination and ordering' failed:
+>        expected 200, found 500
+         C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microso
+ft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\testing.zig:11
+8:17: 0x7ff64941fc1e in expectEqualInner__anon_69922 (test_zcu.obj)
+                         return error.TestExpectedEqual;
+                         ^
+         C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microso
+ft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\testing.zig:83
+: 0x7ff6494209d4 in expectEqual (test_zcu.obj)
+             return expectEqualInner(T, expected, actual);
+         
+>        C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_te
+st.zig:561:5: 0x7ff649420b9d in test.TC-OBS-03-INT-05: GET /audit supports filt
+ers with deterministic pagination and ordering (test_zcu.obj)
+             try testing.expectEqual(@as(u16, 200), second_page.status_code);
+             ^
+> error: 'obs03_audit_log_test.test.TC-OBS-03-INT-06: canceled-token post-auth 
+action remains audited' failed:
+         C:\Users\tvolo\dev\ai-dala\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff649401
+00e in readUntilReady (test_zcu.obj)
+                             if (got_error) return PgError.ServerError;
+                                            ^
+         C:\Users\tvolo\dev\ai-dala\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6494053
+d9 in exec (test_zcu.obj)
+                 ^
+         C:\Users\tvolo\dev\ai-dala\My-Fab\src\db\pool.zig:105:13: 0x7ff6494051
+5b in exec (test_zcu.obj)
+>                    return PoolError.QueryFailed;
+                     ^
+>        C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_te
+st.zig:124:5: 0x7ff6493f4ff9 in seedUserAndToken (test_zcu.obj)
+             try conn.exec(
+             ^
+>        C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_te
+st.zig:599:5: 0x7ff6493f585e in test.TC-OBS-03-INT-06: canceled-token post-auth
+ action remains audited (test_zcu.obj)
+             try seedUserAndToken(
+             ^
+  failed command: ".\\.zig-cache\\o\\1634b457e0a99477b98758a9f734191e\\test.exe
+" "--cache-dir=.\\.zig-cache" --seed=0xb9ab4726 --listen=-
+  System.Management.Automation.RemoteException
+
+

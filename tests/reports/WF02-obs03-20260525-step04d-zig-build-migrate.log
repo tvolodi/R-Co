@@ -1,0 +1,22 @@
+info:   skip  001_event_store.sql
+info:   skip  002_event_type_registry.sql
+info:   skip  003_event_archive.sql
+info:   skip  004_definitions.sql
+info:   skip  005_instances.sql
+info:   skip  006_tasks.sql
+info:   skip  007_timers.sql
+info:   skip  008_identity.sql
+info:   skip  009_audit_log.sql
+info:   skip  010_dlq.sql
+info:   skip  011_webhook_subscriptions.sql
+info:   skip  012_event_retention.sql
+info:   skip  013_event_archive_idempotency.sql
+info:   skip  014_definition_stage.sql
+info:   skip  015_timers_status_constraint.sql
+info:   skip  016_timer_recurrence_fields.sql
+info:   skip  017_identity_user_registry.sql
+info:   skip  018_identity_group_members.sql
+info:   skip  019_idn04_api_token_management.sql
+info:   skip  020_obs03_audit_entries.sql
+info: No new migrations to apply.
+EXIT_CODE=0 

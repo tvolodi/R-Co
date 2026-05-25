@@ -1,0 +1,139 @@
+{
+  "run_id": "WF02-obs04-20260525",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260525-017",
+  "step": "04",
+  "timestamp": "2026-05-25T02:44:54Z",
+  "requirement_ids": [
+    "OBS-04"
+  ],
+  "summary": {
+    "overall_status": "FAIL",
+    "classification": "FAIL",
+    "commands": [
+      {
+        "name": "zig build",
+        "exit_code": 0,
+        "status": "PASS"
+      },
+      {
+        "name": "zig build test",
+        "exit_code": 0,
+        "status": "PASS"
+      },
+      {
+        "name": "zig build migrate (BPM_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test)",
+        "exit_code": 0,
+        "status": "PASS",
+        "notes": "Applied migrations 001 through 020 successfully."
+      },
+      {
+        "name": "zig build test-integration (BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test)",
+        "exit_code": 1,
+        "status": "FAIL",
+        "notes": "Compilation failed in tests/integration/obs04_timeline_test.zig:10 with missing bpm.instance_routes member in src/bpm.zig."
+      },
+      {
+        "name": "npm run type-check",
+        "exit_code": 0,
+        "status": "PASS"
+      },
+      {
+        "name": "npm run lint",
+        "exit_code": 0,
+        "status": "PASS",
+        "notes": "Tooling warning about TypeScript version support from @typescript-eslint; command still passed."
+      },
+      {
+        "name": "npm run test",
+        "exit_code": 0,
+        "status": "PASS",
+        "notes": "web/src/pages/instances/timelineUtils.test.ts: 6 tests passed."
+      },
+      {
+        "name": "npm run build",
+        "exit_code": 0,
+        "status": "PASS"
+      }
+    ]
+  },
+  "obs04_traceability": {
+    "spec": "tests/specs/OBS-04.md",
+    "artifacts": [
+      "tests/integration/obs04_timeline_test.zig",
+      "web/src/pages/instances/timelineUtils.test.ts"
+    ],
+    "acceptance_criteria": [
+      {
+        "criterion": "Missing instance returns 404",
+        "test_ids": [
+          "TC-OBS-04-INT-01"
+        ],
+        "execution_status": "BLOCKED",
+        "evidence": "OBS-04 integration suite did not compile; test binary was not produced."
+      },
+      {
+        "criterion": "Deterministic ascending chronology and cancelled-instance complete history including archived events",
+        "test_ids": [
+          "TC-OBS-04-INT-02"
+        ],
+        "execution_status": "BLOCKED",
+        "evidence": "Blocked by integration compile failure."
+      },
+      {
+        "criterion": "API-06 cursor pagination semantics",
+        "test_ids": [
+          "TC-OBS-04-INT-03",
+          "TC-OBS-04-01",
+          "TC-OBS-04-03",
+          "TC-OBS-04-04"
+        ],
+        "execution_status": "PARTIAL",
+        "evidence": "Unit-level coverage executed via zig build test (pass); integration cursor behavior case blocked by compile failure."
+      },
+      {
+        "criterion": "Actor display-name fallback order",
+        "test_ids": [
+          "TC-OBS-04-INT-04",
+          "TC-OBS-04-FE-01"
+        ],
+        "execution_status": "PARTIAL",
+        "evidence": "Frontend utility fallback tests passed; integration fallback verification blocked by compile failure."
+      },
+      {
+        "criterion": "Frontend timeline rendering and page merge behavior",
+        "test_ids": [
+          "TC-OBS-04-FE-02",
+          "TC-OBS-04-FE-03",
+          "TC-OBS-04-FE-04",
+          "TC-OBS-04-FE-05"
+        ],
+        "execution_status": "PASS",
+        "evidence": "timelineUtils.test.ts passed all 6 tests."
+      }
+    ]
+  },
+  "gap_assessment": {
+    "issue_id": "OBS04-TEST-GAP-001",
+    "description": "Frontend OBS-04 timeline tab lacks browser-level E2E coverage for real UI->API->DB flow.",
+    "source": "handoffs/WF02-obs04-20260525/step-03-test-designer.json",
+    "status": "OPEN",
+    "blocks_release": true,
+    "rationale": "Per docs/guides/test_developer_guide.md directives T-2 and T-3, UI/API behavior requires real-flow E2E validation; utility-only tests are insufficient for release gating."
+  },
+  "issues": [
+    {
+      "id": "OBS04-INTEGRATION-COMPILE-001",
+      "severity": "BLOCKER",
+      "description": "zig build test-integration failed at tests/integration/obs04_timeline_test.zig:10 because bpm.instance_routes is missing from src/bpm.zig exports.",
+      "affected_requirement": "OBS-04"
+    },
+    {
+      "id": "OBS04-TEST-GAP-001",
+      "severity": "BLOCKER",
+      "description": "No browser-level E2E coverage for OBS-04 timeline tab real UI->API->DB path.",
+      "affected_requirement": "OBS-04"
+    }
+  ],
+  "next_action": "Route to ORCH for WF-03 issue-fix handoff(s): integration compile/export fix and OBS-04 E2E test coverage addition."
+}

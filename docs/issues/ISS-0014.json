@@ -1,0 +1,51 @@
+{
+  "issue_id": "ISS-0014",
+  "title": "WF03 OBS-04 integration compile blockers: missing bpm.instance_routes export and optional-string return mismatch",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "A_LOGIC_ERROR",
+  "run_id": "WF03-obs04-fixes-20260525",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260525-018",
+  "requirement_ids": [
+    "OBS-04"
+  ],
+  "summary": "OBS-04 integration could not compile because tests/integration/obs04_timeline_test.zig imported bpm.instance_routes but src/bpm.zig did not re-export instance_routes. After export wiring, a second compile error surfaced in extractJsonStringField return typing (!?[]u8 vs ![]u8). Both defects were fixed and OBS-04 integration tests ran successfully via a dedicated requirement-scoped build step.",
+  "root_cause": {
+    "type": "module_export_wiring_and_test_helper_typing",
+    "details": "The integration shim module src/bpm.zig lacked instance_routes export expected by OBS-04 tests, and the helper extractJsonStringField returned allocator.dupe directly instead of a coerced optional payload, violating Zig 0.16 return typing."
+  },
+  "resolution": {
+    "strategy": "COMPLETE",
+    "changes": [
+      "Added pub const instance_routes = @import(\"api/routes/instances.zig\") in src/bpm.zig.",
+      "Updated tests/integration/obs04_timeline_test.zig extractJsonStringField to return try allocator.dupe(...) for !?[]u8 compatibility.",
+      "Added build.zig step test-integration-obs04 for deterministic OBS-04 requirement-scoped integration validation."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS"
+      },
+      {
+        "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration-obs04",
+        "result": "PASS",
+        "evidence": "OBS04_INTEGRATION_EXIT_CODE=0"
+      }
+    ]
+  },
+  "files_changed": [
+    "src/bpm.zig",
+    "tests/integration/obs04_timeline_test.zig",
+    "build.zig"
+  ],
+  "created_at": "2026-05-25T02:53:20Z",
+  "resolved_at": "2026-05-25T02:53:20Z",
+  "prevention": [
+    "When adding integration tests that import bpm, verify src/bpm.zig re-exports every referenced route/store module.",
+    "For Zig optional-return helpers, return payload values via try/cast rather than returning a non-optional error union directly.",
+    "Prefer dedicated requirement-scoped integration build steps over forwarded --test-filter arguments in Zig 0.16 runs."
+  ]
+}

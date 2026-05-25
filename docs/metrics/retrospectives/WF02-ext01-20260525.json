@@ -1,0 +1,52 @@
+{
+  "run_id": "WF02-ext01-20260525",
+  "requirement_ids": [
+    "EXT-01"
+  ],
+  "difficulty": 4,
+  "integration_surface": "high",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 215,
+  "actual_minutes_total": -6812.5,
+  "variance_pct": -3268.6,
+  "by_step": {
+    "code-designer": {
+      "estimated": 182,
+      "actual": -681.2,
+      "variance_pct": -474.3
+    },
+    "backend-dev": {
+      "estimated": 11,
+      "actual": -1353.6,
+      "variance_pct": -12405.5
+    },
+    "test-designer": {
+      "estimated": 6,
+      "actual": -676.1,
+      "variance_pct": -11368.3
+    },
+    "test-runner": {
+      "estimated": 11,
+      "actual": -2753.3,
+      "variance_pct": -25130
+    },
+    "release-validator": {
+      "estimated": 3,
+      "actual": -670.5,
+      "variance_pct": -22450
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": -677.8,
+      "variance_pct": -33990
+    }
+  },
+  "rework_steps": [
+    "backend-dev",
+    "test-designer",
+    "test-runner"
+  ],
+  "rule_adjustments": [],
+  "notes": "Retrospective aggregates elapsed work time across all step rework iterations for the run. Several source handoffs in this run contain non-monotonic started_at/completed_at timestamps, producing negative elapsed values; no estimation-rules update was applied from this retrospective.",
+  "completed_at": "2026-05-25T10:22:34Z"
+}

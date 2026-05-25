@@ -1,0 +1,27 @@
+{
+  "report_id": "WF02-ext01-20260525-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-ext01-20260525",
+  "step": "01",
+  "created_at": "2026-05-25T07:39:09Z",
+  "summary": "Produced the backend design artefact for EXT-01 at src/design/ext-01-service-task-node.md. The design defines SERVICE_TASK activation/validation, outbound request construction (URL/method/optional headers), timeout behavior (default 30s with timeout_ms override), redirect handling as failure (no auto-follow), retry policy with exponential backoff, terminal exhausted-retry routing to OBS-05 DLQ plus EE-10 ERROR transition, success-path 2xx object merge into variables per EE-09, explicit ERROR behavior for 2xx non-object responses, API-09 trace propagation in outbound headers, idempotency and side-effect safety constraints, module boundaries, and concrete engine/api/obs touchpoints. A complete requirement traceability matrix maps all EXT-01 acceptance criteria and edge cases to implementation modules/functions and required unit/integration tests.",
+  "files_created": [
+    "src/design/ext-01-service-task-node.md",
+    "docs/issue-reports/WF02-ext01-20260525-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-ext01-20260525/step-01-code-designer.json"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and traceability review",
+      "status": "pass",
+      "detail": "Validated all EXT-01 acceptance criteria and listed edge cases against explicit design sections for activation, request construction, timeout/retry/backoff, redirect and 429 handling, 2xx merge/error behavior, DLQ/ERROR transitions, and matrix-mapped unit/integration verification hooks."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)."
+  ],
+  "blockers": []
+}

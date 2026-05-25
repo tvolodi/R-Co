@@ -30,6 +30,12 @@ const ee08_cancel_instance_integration = @import("ee08_cancel_instance_test.zig"
 const ee09_merge_variables_integration = @import("ee09_merge_variables_test.zig");
 // Stage 3 — Execution error handling (EE-10)
 const ee10_instance_error_integration = @import("instance_error_test.zig");
+// Stage 6 — Service task node type (EXT-01)
+const ext01_service_task_integration = @import("ext01_service_task_test.zig");
+// Stage 6 — Webhook event dispatch (EXT-02)
+const ext02_webhook_dispatch_integration = @import("ext02_webhook_dispatch_test.zig");
+// Stage 6 — Plugin interface (EXT-03)
+const ext03_plugin_integration = @import("ext03_plugin_integration_test.zig");
 // Stage 3 — Concurrent instance safety (EE-12)
 const ee12_concurrent = @import("concurrent_instances_test.zig");
 // Stage 5 — Durable timer creation (SCH-01)
@@ -52,6 +58,14 @@ const api03_instance_read_integration = @import("api03_instance_read_test.zig");
 const api09_trace_integration = @import("trace_test.zig");
 // Stage 6 — Prometheus metrics endpoint (OBS-02)
 const obs02_metrics_integration = @import("obs02_metrics_test.zig");
+// Stage 6 — Immutable audit log (OBS-03)
+const obs03_audit_integration = @import("obs03_audit_log_test.zig");
+// Stage 6 — Instance timeline endpoint (OBS-04)
+const obs04_timeline_integration = @import("obs04_timeline_test.zig");
+// Stage 6 — Dead letter queue (OBS-05)
+const obs05_dlq_integration = @import("obs05_dlq_test.zig");
+// Stage 6 — Alerting hooks (OBS-06)
+const obs06_alerts_integration = @import("obs06_alerts_test.zig");
 
 comptime {
     _ = std;
@@ -69,6 +83,9 @@ comptime {
     _ = ee08_cancel_instance_integration;
     _ = ee09_merge_variables_integration;
     _ = ee10_instance_error_integration;
+    _ = ext01_service_task_integration;
+    _ = ext02_webhook_dispatch_integration;
+    _ = ext03_plugin_integration;
     _ = ee12_concurrent;
     _ = sch01_timer_creation_integration;
     _ = sch02_timer_polling_integration;
@@ -80,6 +97,10 @@ comptime {
     _ = api03_instance_read_integration;
     _ = api09_trace_integration;
     _ = obs02_metrics_integration;
+    _ = obs03_audit_integration;
+    _ = obs04_timeline_integration;
+    _ = obs05_dlq_integration;
+    _ = obs06_alerts_integration;
 }
 
 test "integration placeholder" {

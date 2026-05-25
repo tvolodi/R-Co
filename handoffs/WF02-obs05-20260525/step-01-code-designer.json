@@ -1,0 +1,61 @@
+{
+  "handoff_id": "20260525-028",
+  "run_id": "WF02-obs05-20260525",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-obs05-20260525/step-01-code-designer.json",
+  "created_at": "2026-05-25T16:10:00Z",
+  "started_at": "2026-05-25T16:10:20Z",
+  "completed_at": "2026-05-25T16:15:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-05"
+    ],
+    "related_handoff_ids": [
+      "30f4d325-d550-44e0-97f0-2f8e0b2d4c1b",
+      "5d1d2468-02fa-4c10-b7e6-0f6a0a5c9a2d",
+      "20260525-001",
+      "20260525-013"
+    ],
+    "artifacts_in": [
+      "docs/requirements/OBS-05.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "src/design/obs-03-audit-log.md",
+      "src/design/obs-04-instance-timeline.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for OBS-05 at src/design/obs-05-dead-letter-queue.md. Define DLQ architecture and API contract end-to-end for failed SERVICE_TASK/webhook/timer processing that exceeds configurable retry limit N (default 3). Specify dead-letter item schema with required full context (original payload, instance_id, item_type, retry_count, error chain, timestamps, processor metadata), persistence lifecycle, and idempotency constraints. Design GET /dlq with API-06 pagination and filters (instance_id, item_type), deterministic ordering, and RBAC (PROCESS_OPERATOR or above). Design POST /dlq/:id/retry semantics including counter reset to 0, resubmission flow per item_type, transactional guarantees, and conflict handling for CANCELLED instances (HTTP 409 then discard behavior). Design POST /dlq/:id/discard semantics including permanent removal and mandatory audit append per OBS-03 with actor/action conventions. Include security, failure semantics, and requirement traceability matrix mapping every OBS-05 acceptance criterion and edge case to concrete modules/functions and test obligations. Design only; do not modify implementation code.",
+    "acceptance_criteria": [
+      "All OBS-05 acceptance criteria and edge cases map to explicit design elements",
+      "DLQ data model, retry-limit transition rules, and full-context persistence are concrete and testable",
+      "GET /dlq, POST /dlq/:id/retry, and POST /dlq/:id/discard contracts include auth, pagination/filtering, ordering, and failure semantics",
+      "OBS-03 audit-on-discard requirements are explicitly integrated",
+      "Traceability matrix identifies module boundaries and verification hooks for implementation/testing"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for OBS-05 dead letter queue completed at src/design/obs-05-dead-letter-queue.md, including full-context DLQ schema, retry-limit transition rules, GET/POST API contracts, CANCELLED-instance conflict behavior, idempotency and transaction guarantees, OBS-03 discard-audit integration, and a complete requirement-to-design traceability matrix.",
+    "artifacts_out": [
+      "src/design/obs-05-dead-letter-queue.md",
+      "docs/issue-reports/WF02-obs05-20260525-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

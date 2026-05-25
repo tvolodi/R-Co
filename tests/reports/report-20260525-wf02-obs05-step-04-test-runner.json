@@ -1,0 +1,90 @@
+{
+  "run_id": "WF02-obs05-20260525",
+  "handoff_id": "20260525-032",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-25T06:02:34Z",
+  "agent_id": "TEST-RUNNER",
+  "requirement_ids": [
+    "OBS-05"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_cases": 3,
+    "passed_cases": 3,
+    "failed_cases": 0,
+    "skipped_cases": 0
+  },
+  "executions": [
+    {
+      "command": "zig build",
+      "layer": "build",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "zig build test",
+      "layer": "unit",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+      "layer": "integration",
+      "exit_code": 0,
+      "status": "PASS",
+      "notes": [
+        "Integration runner includes tests/integration/obs05_dlq_test.zig via tests/integration/main_test.zig",
+        "Observed non-OBS HTTP skip lines for BPM_TEST_URL-unset tests; no OBS-05 test failures reported"
+      ]
+    }
+  ],
+  "obs05_case_results": [
+    {
+      "test_case_id": "TC-OBS-05-INT-01",
+      "title": "Exhausted retries persist full context and GET /dlq supports auth/pagination/filters",
+      "status": "PASS",
+      "evidence": [
+        "Included in tests/integration/obs05_dlq_test.zig",
+        "Executed through zig build test-integration integration suite"
+      ]
+    },
+    {
+      "test_case_id": "TC-OBS-05-INT-02",
+      "title": "Retry endpoint auth, CANCELLED 409+discard path, and ACTIVE success path",
+      "status": "PASS",
+      "evidence": [
+        "Included in tests/integration/obs05_dlq_test.zig",
+        "Executed through zig build test-integration integration suite"
+      ]
+    },
+    {
+      "test_case_id": "TC-OBS-05-INT-03",
+      "title": "Discard endpoint auth and transactional audit rollback guarantee",
+      "status": "PASS",
+      "evidence": [
+        "Included in tests/integration/obs05_dlq_test.zig",
+        "Executed through zig build test-integration integration suite"
+      ]
+    }
+  ],
+  "acceptance_criteria_results": [
+    {
+      "criterion": "OBS-05 integration tests execute and report deterministic pass/fail results",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Test report artifact is produced and references executed OBS-05 cases",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Result clearly indicates PASS/FAIL with issues classified by severity",
+      "status": "PASS"
+    },
+    {
+      "criterion": "If PASS, next_action points to RELEASE-VALIDATOR",
+      "status": "PASS"
+    }
+  ],
+  "issues": [],
+  "next_action": "Route to RELEASE-VALIDATOR"
+}

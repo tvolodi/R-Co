@@ -1,0 +1,33 @@
+Cleaning test database...
+Test database cleaned.
+test-integration
++- run test w
+error.Unexpected NTSTATUS=0xc000020a (ADDRESS_ALREADY_EXISTS)
+Failed to read debug info from filesystem, trace may be incomplete
+
+???:?:?: 0x7ff754e0824b in ??? (test.exe)
+Failed to read debug info from filesystem, trace may be incomplete
+
+???:?:?: 0x7ff754e6d19e in ??? (test.exe)
+Failed to read debug info from filesystem, trace may be incomplete
+
+???:?:?: 0x7ff754e702de in ??? (test.exe)
+Failed to read debug info from filesystem, trace may be incomplete
+
+???:?:?: 0x7ff754e700c8 in ??? (test.exe)
+Failed to read debug info from filesystem, trace may be incomplete
+
+???:?:?: 0x7ff754e02547 in ??? (test.exe)
+Failed to read debug info from filesystem, trace may be incomplete
+
+???:?:?: 0x7ff754e0179f in ??? (test.exe)
+Failed to read debug info from filesystem, trace may be incomplete
+
+???:?:?: 0x7ff754e012d1 in ??? (test.exe)
+Failed to read debug info from filesystem, trace may be incomplete
+
+???:?:?: 0x7ff754e011aa in ??? (test.exe)
+???:?:?: 0x7ff85b4ce956 in ??? (KERNEL32.DLL)
+???:?:?: 0x7ff85cfe427b in ??? (ntdll.dll)
+failed command: ".\\.zig-cache\\o\\07f48891efd5e2e0e5263a3299daba36\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0x3d8843da --listen=-
+

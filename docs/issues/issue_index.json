@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-24T18:34:06Z",
-  "next_issue_id": 11,
+  "last_updated": "2026-05-25T09:45:38Z",
+  "next_issue_id": 23,
   "issues": [
     {
       "id": "ISS-0001",
@@ -143,6 +143,173 @@
       ],
       "created_at": "2026-05-24T18:34:06Z",
       "resolved_at": "2026-05-24T18:34:06Z"
+    },
+    {
+      "id": "ISS-0011",
+      "title": "WF03 OBS-03 residual integration blockers after compile-fix rework",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs03-intfix-20260525",
+      "handoff_id": "20260525-005",
+      "affected_areas": [
+        "src/obs/audit.zig",
+        "tests/integration/obs03_audit_log_test.zig"
+      ],
+      "created_at": "2026-05-24T21:59:54Z",
+      "resolved_at": "2026-05-24T22:20:31Z"
+    },
+    {
+      "id": "ISS-0012",
+      "title": "WF03 OBS-03 HTTP env blocker: aggregate integration runner masked MUST OBS-03 evidence behind unrelated BPM_TEST_URL skips",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs03-httpenvfix-20260525",
+      "handoff_id": "20260525-007",
+      "affected_areas": [
+        "build.zig",
+        "tests/integration/obs03_audit_log_test.zig"
+      ],
+      "created_at": "2026-05-24T22:37:08Z",
+      "resolved_at": "2026-05-24T22:37:08Z"
+    },
+    {
+      "id": "ISS-0013",
+      "title": "WF03 OBS-03 QueryFailed rerun blocker: immutable audit fixture IDs caused duplicate-key failures",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs03-queryfix-20260525",
+      "handoff_id": "20260525-009",
+      "affected_areas": [
+        "tests/integration/obs03_audit_log_test.zig"
+      ],
+      "created_at": "2026-05-24T22:49:00Z",
+      "resolved_at": "2026-05-24T22:49:00Z"
+    },
+    {
+      "id": "ISS-0014",
+      "title": "WF03 OBS-04 integration compile blockers: missing bpm.instance_routes export and optional-string return mismatch",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-fixes-20260525",
+      "handoff_id": "20260525-018",
+      "affected_areas": [
+        "src/bpm.zig",
+        "tests/integration/obs04_timeline_test.zig",
+        "build.zig"
+      ],
+      "created_at": "2026-05-25T02:53:20Z",
+      "resolved_at": "2026-05-25T02:53:20Z"
+    },
+    {
+      "id": "ISS-0015",
+      "title": "WF03 OBS-04 browser E2E gap remains blocked: no runnable backend UI->API server path in current repo state",
+      "status": "WONT-FIX",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-fixes-20260525",
+      "handoff_id": "20260525-018",
+      "affected_areas": [
+        "src/main.zig",
+        "web/package.json"
+      ],
+      "created_at": "2026-05-25T02:53:20Z",
+      "resolved_at": "2026-05-25T02:53:20Z"
+    },
+    {
+      "id": "ISS-0016",
+      "title": "WF03 OBS-04 E2E prerequisite gap: Playwright harness restored but backend runtime still prevents full browser UI->API->DB execution",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-runtime-20260525",
+      "handoff_id": "20260525-021",
+      "affected_areas": [
+        "src/main.zig"
+      ],
+      "created_at": "2026-05-25T03:06:42Z",
+      "resolved_at": "2026-05-25T03:16:13Z"
+    },
+    {
+      "id": "ISS-0017",
+      "title": "WF03 OBS-04 E2E execution unblocked from skip, but deterministic auth/runtime prerequisite still blocks UI->API->DB closure",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-e2eexec-20260525",
+      "handoff_id": "20260525-023",
+      "affected_areas": [
+        "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+        "src/main.zig",
+        "web/src/auth/AuthProvider.tsx"
+      ],
+      "created_at": "2026-05-25T03:31:04Z",
+      "resolved_at": "2026-05-25T03:37:05Z"
+    },
+    {
+      "id": "ISS-0018",
+      "title": "WF03 OBS-04 deterministic auth harness: Playwright E2E now authenticates and reaches timeline assertions",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-e2eauth-20260525",
+      "handoff_id": "20260525-024",
+      "affected_areas": [
+        "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+        "web/src/auth/AuthProvider.tsx",
+        "web/src/pages/instances/InstanceDetailPage.tsx"
+      ],
+      "created_at": "2026-05-25T03:37:05Z",
+      "resolved_at": "2026-05-25T03:37:05Z"
+    },
+    {
+      "id": "ISS-0019",
+      "title": "WF03 OBS-06 integration compile blocker: Zig 0.16 removed std.Thread.sleep in alert dispatcher backoff path",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs06-compilefix-20260525",
+      "handoff_id": "20260525-039",
+      "affected_areas": [
+        "src/obs/alerts.zig",
+        "tests/integration/obs06_alerts_test.zig"
+      ],
+      "created_at": "2026-05-25T06:58:53Z",
+      "resolved_at": "2026-05-25T06:58:53Z"
+    },
+    {
+      "id": "ISS-0020",
+      "title": "WF03 OBS-06 integration env blocker: BPM_TEST_URL skip noise masked requirement-specific evidence in aggregate integration runs",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs06-testenv-20260525",
+      "handoff_id": "20260525-041",
+      "affected_areas": [
+        "tests/integration/trace_test.zig"
+      ],
+      "created_at": "2026-05-25T07:15:47Z",
+      "resolved_at": "2026-05-25T07:15:47Z"
+    },
+    {
+      "id": "ISS-0021",
+      "title": "WF03 EXT-01 blocker set: service_task unit suite used stale bpm exports/Zig 0.16 request APIs and exposed configured-header lifetime crash",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-ext01-testfix-20260525",
+      "handoff_id": "20260525-052",
+      "affected_areas": [
+        "tests/unit/service_task_test.zig",
+        "src/engine/service_task.zig"
+      ],
+      "created_at": "2026-05-25T08:58:37Z",
+      "resolved_at": "2026-05-25T08:58:37Z"
+    },
+    {
+      "id": "ISS-0022",
+      "title": "WF03 EXT-01 stall removed at TC-EXT-01-INT-03; residual EXT-01 runtime/leak failures remain",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-ext01-intfix-20260525",
+      "handoff_id": "20260525-055",
+      "affected_areas": [
+        "tests/integration/ext01_service_task_test.zig"
+      ],
+      "created_at": "2026-05-25T09:32:46Z",
+      "resolved_at": null
     }
   ]
 }

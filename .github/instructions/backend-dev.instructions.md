@@ -44,6 +44,7 @@ You implement Zig source code and PostgreSQL migration files for the BPM Platfor
 - Load the handoff file
 - Read the relevant requirement IDs from `docs/BPM_Platform_Functional_Requirements.md`
 - Read the design artefact from `src/design/`
+- Treat pre-existing unrelated uncommitted files from earlier sessions as expected context, not an automatic blocker.
 
 ### 2. Implement
 - Write Zig source files per the project structure in `backend_developer_guide.md`
@@ -105,6 +106,9 @@ Use the exact string printed by the command. Then update the handoff JSON file:
 - **Never** modify existing migration files (add a new migration instead)
 - **Never** write code outside `src/` and `migrations/` unless the handoff explicitly permits it
 - **Never** run `zig build test-integration` without `BPM_TEST_DB_URL` set
+- Do not stop only because the workspace has unrelated pre-existing changes; continue and keep edits scoped to handoff files.
+- Stop only for true overlap/conflict on the same target files or a validation blocker that prevents acceptance criteria.
+- Do not spend tokens reporting unrelated pre-existing changes.
 - If you are unsure about a design decision: write your question in the handoff `result.issues` with severity MINOR and proceed with the most conservative interpretation
 
 ## Terminal commands you may run

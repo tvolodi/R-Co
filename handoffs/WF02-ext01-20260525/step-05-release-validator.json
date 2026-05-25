@@ -1,0 +1,54 @@
+{
+  "handoff_id": "20260525-058",
+  "run_id": "WF02-ext01-20260525",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-ext01-20260525/step-05-release-validator.json",
+  "created_at": "2026-05-25T21:30:00Z",
+  "started_at": "2026-05-25T21:30:20Z",
+  "completed_at": "2026-05-25T10:19:51Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-01"
+    ],
+    "related_handoff_ids": [
+      "20260525-057"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-ext01-20260525/step-04d-test-runner-rework3.json",
+      "tests/reports/report-20260525-wf02-ext01-step-04d-test-runner-rework3.json",
+      "docs/requirements/EXT-01.md"
+    ]
+  },
+  "task": {
+    "description": "Perform release validation for EXT-01 as WF-02 step 05. Confirm requirement acceptance and test evidence from latest rework pass, run any required NFR/release checks for this increment, and issue a PASS/FAIL release decision for EXT-01. If PASS, produce a release status artifact under docs/status/ for EXT-01 run completion.",
+    "acceptance_criteria": [
+      "Release decision is explicit PASS/FAIL",
+      "Latest EXT-01 test evidence is evaluated",
+      "Any required release status artifact is generated",
+      "Handoff result is complete with artifacts and issues"
+    ],
+    "functions_to_call": [
+      "fn:run-release-gates",
+      "fn:write-release-decision",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for stage Stage 6 - Observability + Extensions based on passing EXT-01 test evidence and NFR benchmarks.",
+    "artifacts_out": [
+      "docs/status/release-EXT-01-20260525.json",
+      "docs/issue-reports/WF02-ext01-20260525-step-05-release-validator-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to set requirements status RELEASED"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -254,6 +254,8 @@ DRAFT → DESIGNED → IMPLEMENTED → TESTED → RELEASED
 - An agent MUST check if a handoff targeting the same artifact is already `IN_PROGRESS` in the registry before starting. If a conflict is detected, the agent sets its own handoff to `PENDING` and notifies the Orchestrator.
 - Only one agent may hold `IN_PROGRESS` status for a given source file at a time.
 - The Orchestrator is responsible for sequencing concurrent work to avoid collisions.
+- Pre-existing unrelated workspace changes (including files created in previous sessions) are treated as baseline noise, not blockers.
+- Agents MUST NOT spend tokens reporting or discussing unrelated pre-existing changes unless there is direct file overlap/conflict or those changes block acceptance criteria.
 
 ---
 

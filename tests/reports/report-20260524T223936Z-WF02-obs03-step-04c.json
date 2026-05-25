@@ -1,0 +1,88 @@
+{
+  "run_id": "WF02-obs03-20260525",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260525-008",
+  "step": "04c",
+  "timestamp": "2026-05-24T22:41:16Z",
+  "summary": {
+    "total_commands": 5,
+    "passed": 3,
+    "failed": 2,
+    "skipped": 7
+  },
+  "commands": [
+    {
+      "name": "zig build",
+      "status": "PASS",
+      "artifact": "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build.log",
+      "notes": "Completed with exit code 0."
+    },
+    {
+      "name": "zig build test",
+      "status": "PASS",
+      "artifact": "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build-test.log",
+      "notes": "Completed with exit code 0."
+    },
+    {
+      "name": "zig build migrate",
+      "status": "PASS",
+      "artifact": "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build-migrate-cmd.log",
+      "notes": "Completed with exit code 0 against bpm_test DB."
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "FAIL",
+      "artifact": "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build-test-integration.log",
+      "notes": "Output contains repeated 'BPM_TEST_URL is not set — skipping HTTP integration test' messages and a failed command."
+    },
+    {
+      "name": "zig build test-integration-obs03",
+      "status": "FAIL",
+      "artifact": "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build-test-integration-obs03.log",
+      "notes": "Dedicated OBS-03 path executed explicitly; 4 passed, 2 failed, 0 skipped."
+    }
+  ],
+  "obs03_verification": {
+    "dedicated_path_command": "zig build test-integration-obs03",
+    "executed": true,
+    "silent_skip_detected": false,
+    "evidence": [
+      "No skip markers in OBS-03 dedicated log.",
+      "Log reports 6 total OBS-03 tests with 4 pass and 2 fail."
+    ]
+  },
+  "failures": [
+    {
+      "test_id": "TC-OBS-03-INT-04",
+      "layer": "integration",
+      "file": "tests/integration/obs03_audit_log_test.zig",
+      "error_message": "PoolError.QueryFailed during immutability update/delete assertion path.",
+      "severity": "BLOCKER",
+      "requirement_id": "OBS-03"
+    },
+    {
+      "test_id": "TC-OBS-03-INT-05",
+      "layer": "integration",
+      "file": "tests/integration/obs03_audit_log_test.zig",
+      "error_message": "PoolError.QueryFailed during filtered pagination/ordering verification.",
+      "severity": "BLOCKER",
+      "requirement_id": "OBS-03"
+    },
+    {
+      "test_id": "OBS03-HTTP-INTEGRATION-ENV",
+      "layer": "integration",
+      "file": "tests/integration/main_test.zig",
+      "error_message": "BPM_TEST_URL not set; HTTP integration coverage path skipped in full integration command output.",
+      "severity": "BLOCKER",
+      "requirement_id": "OBS-03"
+    }
+  ],
+  "artifacts": [
+    "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build.log",
+    "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build-test.log",
+    "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build-migrate-cmd.log",
+    "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build-test-integration.log",
+    "tests/reports/WF02-obs03-20260525-step-04c-20260524T223936Z-zig-build-test-integration-obs03.log",
+    "tests/reports/report-20260524T223936Z-WF02-obs03-step-04c.json"
+  ]
+}

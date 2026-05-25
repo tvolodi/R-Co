@@ -1,0 +1,102 @@
+{
+  "run_id": "WF02-obs03-20260525",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "handoff_id": "20260525-006",
+  "timestamp": "2026-05-24T22:23:07Z",
+  "summary": {
+    "status": "FAIL",
+    "reason": "Required OBS-03 HTTP integration assertions were skipped because BPM_TEST_URL was not set; requirement-level MUST evidence is incomplete.",
+    "commands": [
+      {
+        "command": "zig build",
+        "exit_code": 0,
+        "status": "PASS",
+        "evidence": "tests/reports/WF02-obs03-20260525-20260524T222307Z-zig-build.log"
+      },
+      {
+        "command": "zig build test",
+        "exit_code": 0,
+        "status": "PASS",
+        "evidence": "tests/reports/WF02-obs03-20260525-20260524T222307Z-zig-build-test.log"
+      },
+      {
+        "command": "$env:BPM_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build migrate",
+        "exit_code": 0,
+        "status": "PASS",
+        "evidence": "tests/reports/WF02-obs03-20260525-20260524T222307Z-zig-build-migrate.log",
+        "notes": [
+          "No new migrations to apply."
+        ]
+      },
+      {
+        "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+        "exit_code": 0,
+        "status": "FAIL",
+        "evidence": "tests/reports/WF02-obs03-20260525-20260524T222307Z-zig-build-test-integration.log",
+        "notes": [
+          "Output contains repeated 'BPM_TEST_URL is not set - skipping HTTP integration test'.",
+          "Output also contains 'failed command: ... test.exe' despite shell exit code 0."
+        ]
+      },
+      {
+        "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration -- --test-filter OBS-03",
+        "exit_code": 0,
+        "status": "FAIL",
+        "evidence": "tests/reports/WF02-obs03-20260525-20260524T222307Z-obs03-assertions.log",
+        "notes": [
+          "Filtered OBS-03 run emitted the same skip markers for missing BPM_TEST_URL.",
+          "OBS-03 assertion set was not executable in this environment."
+        ]
+      }
+    ]
+  },
+  "requirement_traceability": {
+    "requirement_id": "OBS-03",
+    "test_cases": [
+      {
+        "test_id": "TC-OBS-03-INT-01",
+        "status": "BLOCKED",
+        "detail": "OBS-03 targeted run skipped due missing BPM_TEST_URL."
+      },
+      {
+        "test_id": "TC-OBS-03-INT-02",
+        "status": "BLOCKED",
+        "detail": "OBS-03 targeted run skipped due missing BPM_TEST_URL."
+      },
+      {
+        "test_id": "TC-OBS-03-INT-03",
+        "status": "BLOCKED",
+        "detail": "OBS-03 targeted run skipped due missing BPM_TEST_URL."
+      },
+      {
+        "test_id": "TC-OBS-03-INT-04",
+        "status": "BLOCKED",
+        "detail": "OBS-03 targeted run skipped due missing BPM_TEST_URL."
+      },
+      {
+        "test_id": "TC-OBS-03-INT-05",
+        "status": "BLOCKED",
+        "detail": "OBS-03 targeted run skipped due missing BPM_TEST_URL."
+      },
+      {
+        "test_id": "TC-OBS-03-INT-06",
+        "status": "BLOCKED",
+        "detail": "OBS-03 targeted run skipped due missing BPM_TEST_URL."
+      }
+    ]
+  },
+  "issues": [
+    {
+      "id": "ISS-WF02-OBS03-TR-R1-001",
+      "severity": "BLOCKER",
+      "affected_requirement": "OBS-03",
+      "description": "Integration HTTP prerequisites are missing in runtime environment (BPM_TEST_URL unset), causing OBS-03 MUST assertions to skip and preventing test evidence closure.",
+      "evidence": [
+        "tests/reports/WF02-obs03-20260525-20260524T222307Z-zig-build-test-integration.log",
+        "tests/reports/WF02-obs03-20260525-20260524T222307Z-obs03-assertions.log"
+      ]
+    }
+  ],
+  "next_action": "Route to ORCH for WF-03 follow-up or test-environment setup ensuring BPM_TEST_URL-backed HTTP integration execution, then rerun TEST-RUNNER step 04x for OBS-03."
+}

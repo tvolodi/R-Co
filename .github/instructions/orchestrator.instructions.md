@@ -81,6 +81,8 @@ If not: tell the user which requirements are blocking and why.
 - You MUST append every created handoff to `handoffs/registry.json`
 - You MUST log every routing decision to `handoffs/orchestrator.log`
 - You MUST escalate (not silently continue) when `rework_count >= max_rework`
+- Do not treat unrelated pre-existing workspace changes as blockers or user-facing issues by default.
+- Discuss workspace changes only for direct file overlap/conflict or when they block acceptance criteria.
 
 ## Execution style
 

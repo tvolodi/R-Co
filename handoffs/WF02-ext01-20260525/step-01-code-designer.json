@@ -1,0 +1,60 @@
+{
+  "handoff_id": "20260525-045",
+  "run_id": "WF02-ext01-20260525",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-ext01-20260525/step-01-code-designer.json",
+  "created_at": "2026-05-25T19:00:00Z",
+  "started_at": "2026-05-25T19:00:20Z",
+  "completed_at": "2026-05-25T07:39:09Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-01"
+    ],
+    "related_handoff_ids": [
+      "20260525-029",
+      "20260525-034",
+      "20260525-044"
+    ],
+    "artifacts_in": [
+      "docs/requirements/EXT-01.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "src/design/obs-05-dead-letter-queue.md",
+      "src/design/obs-06-alerting-hooks.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for EXT-01 at src/design/ext-01-service-task-node.md. Define SERVICE_TASK execution semantics from activation through completion/failure, including request construction (URL/method/optional headers), timeout behavior (default 30s with timeout_ms override), redirect handling (3xx treated as failure), retry policy (default N=3 configurable per node with exponential backoff), and terminal failure routing to OBS-05 DLQ with EE-10 ERROR transition. Specify success-path response handling: HTTP 2xx JSON object merge into instance variables per EE-09, and explicit ERROR transition when 2xx body is not a JSON object. Include trace propagation requirements (API-09 trace_id in outgoing headers), node-activation validation rules (including empty templated URL edge case), idempotency and side-effect safety considerations for retries, module boundaries, and concrete implementation touchpoints in engine/api/obs modules. Include a complete requirement traceability matrix mapping all EXT-01 acceptance criteria and edge cases to modules/functions and required tests (unit + integration). Design only; do not modify implementation code.",
+    "acceptance_criteria": [
+      "Design fully maps every EXT-01 acceptance criterion and edge case to explicit behavior",
+      "Retry/backoff, timeout, redirect, and DLQ/ERROR transitions are concrete and testable",
+      "Success-path variable-merge and invalid-2xx-body ERROR behavior are precisely specified",
+      "Trace propagation and security considerations for outbound HTTP calls are explicit",
+      "Traceability matrix identifies implementation modules and verification hooks"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for EXT-01 service task node completed at src/design/ext-01-service-task-node.md, including activation-to-terminal execution semantics, outbound request/trace/idempotency contracts, timeout and retry/backoff behavior, redirect and 429 failure treatment, 2xx object-merge and invalid-body ERROR handling, OBS-05 DLQ + EE-10 routing, and complete traceability to modules/functions/tests.",
+    "artifacts_out": [
+      "src/design/ext-01-service-task-node.md",
+      "docs/issue-reports/WF02-ext01-20260525-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

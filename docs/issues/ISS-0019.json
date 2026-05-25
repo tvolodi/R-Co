@@ -1,0 +1,56 @@
+{
+  "issue_id": "ISS-0019",
+  "title": "WF03 OBS-06 integration compile blocker: Zig 0.16 removed std.Thread.sleep in alert dispatcher backoff path",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "A_LOGIC_ERROR",
+  "run_id": "WF03-obs06-compilefix-20260525",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260525-039",
+  "requirement_ids": [
+    "OBS-06"
+  ],
+  "summary": "Resolved OBS06-INTEGRATION-COMPILE-001 by replacing the non-existent Zig 0.16 Thread sleep call with Io-based sleep in src/obs/alerts.zig, then fixed two stale OBS-06 integration assertions to match current payload encoding so the required validation chain passes end-to-end.",
+  "root_cause": {
+    "type": "zig_0_16_api_incompatibility_and_stale_test_expectations",
+    "details": "src/obs/alerts.zig used std.Thread.sleep which does not exist in Zig 0.16. Once compile was unblocked, OBS-06 integration tests surfaced stale payload assertion patterns expecting old JSON string formatting."
+  },
+  "resolution": {
+    "strategy": "REPLACE_THREAD_SLEEP_AND_ALIGN_OBS06_ASSERTIONS",
+    "changes": [
+      "Updated src/obs/alerts.zig sleepMs to use std.Io.sleep(std.Options.debug_io, .fromMilliseconds(...), .awake) with zero-delay fast path and non-fatal catch behavior.",
+      "Updated tests/integration/obs06_alerts_test.zig TC-OBS-06-INT-01 to be order-robust and assert against current payload field encoding.",
+      "Updated tests/integration/obs06_alerts_test.zig TC-OBS-06-INT-04 payload assertions to current encoding.",
+      "Updated tests/integration/obs06_alerts_test.zig TC-OBS-06-INT-05 to compare readDlqDepth against a pre-insert baseline (+2) to avoid interference from ambient pending/retrying rows."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS",
+        "evidence": "exit code 0"
+      },
+      {
+        "command": "zig build test",
+        "result": "PASS",
+        "evidence": "exit code 0"
+      },
+      {
+        "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+        "result": "PASS",
+        "evidence": "VALIDATION_SUMMARY build=0 test=0 integration=0"
+      }
+    ]
+  },
+  "files_changed": [
+    "src/obs/alerts.zig",
+    "tests/integration/obs06_alerts_test.zig"
+  ],
+  "created_at": "2026-05-25T06:58:53Z",
+  "resolved_at": "2026-05-25T06:58:53Z",
+  "prevention": [
+    "For Zig upgrades, validate stdlib API changes in retry/sleep paths before dispatching integration runs.",
+    "Keep integration payload assertions aligned with the canonical payload builder encoding used by current Zig std.json behavior."
+  ]
+}

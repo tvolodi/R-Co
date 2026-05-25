@@ -1,0 +1,52 @@
+﻿{
+    "handoff_id":  "39e61176-57f9-4ecf-8311-cd4a459e8e04",
+    "run_id":  "ADHOC-zig-install-20260525",
+    "workflow_id":  "ADHOC-zig-install",
+    "step":  "01",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "file":  "handoffs/ADHOC-zig-install-20260525/step-01-backend-dev.json",
+    "created_at":  "2026-05-25T09:20:00Z",
+    "started_at":  "2026-05-25T09:31:20Z",
+    "completed_at":  "2026-05-25T09:39:11Z",
+    "status":  "COMPLETED",
+    "priority":  "NORMAL",
+    "context":  {
+                    "stage":  null,
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "artifacts_in":  [
+                                         "build.zig"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Verify Zig installation and project usability for this workspace. Check Zig CLI availability and version, verify the executable resolves in shell PATH, and run a project build check to confirm Zig works with this repository.\n\nREWORK ITERATION 1: Previous attempt failed because Zig was discoverable but broken (`unable to find zig installation directory` from the WinGet shim target). Perform Zig reinstall/repair in this environment, ensure the resolved Zig executable points to a valid installation directory, then re-run verification checks (`zig version`, command resolution, and `zig build`).\n\nREWORK ITERATION 2: Change approach. Do NOT repeat WinGet uninstall/install loop. Install Zig from official release archive to a stable local path, rebind command resolution so `zig` resolves to the valid install (or equivalent stable shim), and then re-run `zig version` + `zig build` verification.",
+                 "acceptance_criteria":  [
+                                             "Zig CLI command resolves successfully",
+                                             "Zig version is reported",
+                                             "Project build command runs and result is captured",
+                                             "Any blocker is documented with actionable issue details"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:verify-zig-install",
+                                           "fn:check-zig-build"
+                                       ]
+             },
+    "result":  {
+                   "status":  "PASS",
+                   "summary":  "Rework iteration 2 completed using official Zig archive extraction into the expected local install path; zig now resolves correctly and project build succeeds.",
+                   "artifacts_out":  [
+                                         "build.zig"
+                                     ],
+                   "issues":  [
+
+                              ],
+                   "next_action":  "Route to ORCH for closure"
+               },
+    "rework_count":  2,
+    "max_rework":  3
+}

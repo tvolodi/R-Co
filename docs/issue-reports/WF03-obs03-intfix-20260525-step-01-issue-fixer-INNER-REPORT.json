@@ -1,0 +1,42 @@
+{
+  "report_id": "WF03-obs03-intfix-20260525-step-01-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-obs03-intfix-20260525",
+  "step": "01",
+  "created_at": "2026-05-24T22:20:31Z",
+  "summary": "Diagnosed and fixed OBS-03 runtime blockers after compile-fix rework. TC-OBS-03-INT-05 internal_error was caused by a use-after-free cursor param in audit pagination; fixed by copying decoded cursor UUID into arena-owned memory before query execution and by using typed timestamp/UUID cursor predicates. TC-OBS-03-INT-06 setup failure was caused by schema drift in users seed data and unsupported SET LOCAL parameterization; fixed seed insert to include username/status and switched actor context set to set_config(..., true). Also fixed unrelated INT-01 allocation leaks that blocked the integration command from exiting cleanly.",
+  "files_created": [
+    "docs/issue-reports/WF03-obs03-intfix-20260525-step-01-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "src/obs/audit.zig",
+    "tests/integration/obs03_audit_log_test.zig",
+    "docs/issues/ISS-0011.json",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-obs03-intfix-20260525/step-01-issue-fixer.json",
+    "handoffs/WF03-obs03-intfix-20260525/registry.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "Compilation succeeded after fixes."
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "Unit test command completed successfully."
+    },
+    {
+      "name": "zig build test-integration (BPM_TEST_DB_URL set)",
+      "status": "pass",
+      "detail": "Command exited with INTEGRATION_EXIT_CODE=0; output captured in tests/reports/WF03-obs03-intfix-20260525-final3-integration.log"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-03 Step 3) for independent re-validation and report update."
+  ],
+  "blockers": []
+}

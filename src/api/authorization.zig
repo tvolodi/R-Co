@@ -21,6 +21,7 @@ pub const Permission = enum {
     AuditRead,
     DlqOperate,
     MetricsRead,
+    WebhooksManage,
 };
 
 pub const AccessDecisionKind = enum {
@@ -49,6 +50,7 @@ pub const EndpointPolicyKey = enum {
     AuditRead,
     DlqReadRetryDiscard,
     MetricsRead,
+    WebhookSubscriptionsManage,
     Unknown,
 };
 
@@ -76,7 +78,7 @@ pub fn endpointPolicyKey(method: []const u8, path_template: []const u8) Endpoint
 
     if (std.mem.eql(u8, method, "POST") and std.mem.eql(u8, path_template, "/instances")) return .InstancesStart;
     if (std.mem.eql(u8, method, "POST") and std.mem.eql(u8, path_template, "/instances/:id/cancel")) return .InstancesCancel;
-    if (std.mem.eql(u8, method, "GET") and (std.mem.eql(u8, path_template, "/instances") or std.mem.eql(u8, path_template, "/instances/:id") or std.mem.eql(u8, path_template, "/instances/:id/history"))) return .InstancesRead;
+    if (std.mem.eql(u8, method, "GET") and (std.mem.eql(u8, path_template, "/instances") or std.mem.eql(u8, path_template, "/instances/:id") or std.mem.eql(u8, path_template, "/instances/:id/history") or std.mem.eql(u8, path_template, "/instances/:id/timeline"))) return .InstancesRead;
 
     if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/tasks")) return .TasksList;
     if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/tasks/:id")) return .TasksGetById;
@@ -90,6 +92,8 @@ pub fn endpointPolicyKey(method: []const u8, path_template: []const u8) Endpoint
     if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/audit")) return .AuditRead;
     if ((std.mem.eql(u8, method, "GET") or std.mem.eql(u8, method, "POST")) and std.mem.startsWith(u8, path_template, "/dlq")) return .DlqReadRetryDiscard;
     if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/metrics")) return .MetricsRead;
+    if ((std.mem.eql(u8, method, "POST") or std.mem.eql(u8, method, "GET")) and std.mem.eql(u8, path_template, "/webhooks/subscriptions")) return .WebhookSubscriptionsManage;
+    if (std.mem.eql(u8, method, "DELETE") and std.mem.eql(u8, path_template, "/webhooks/subscriptions/:id")) return .WebhookSubscriptionsManage;
 
     return .Unknown;
 }
@@ -143,6 +147,7 @@ fn requiredPermission(endpoint: EndpointPolicyKey) Permission {
         .AuditRead => .AuditRead,
         .DlqReadRetryDiscard => .DlqOperate,
         .MetricsRead => .MetricsRead,
+        .WebhookSubscriptionsManage => .WebhooksManage,
         .Unknown => .MetricsRead,
     };
 }
@@ -184,6 +189,7 @@ fn roleAllows(role: Role, permission: Permission) bool {
             .AuditRead,
             .DlqOperate,
             .MetricsRead,
+            .WebhooksManage,
             => true,
             else => false,
         },
@@ -228,4 +234,21 @@ test "TC-IDN-03-04: unmapped endpoints default to PLATFORM_ADMIN" {
 
     try std.testing.expect(denied.kind == .Deny403);
     try std.testing.expect(allowed.kind == .Allow);
+}
+
+test "TC-IDN-03-05: timeline endpoint maps to InstancesRead" {
+    const key = endpointPolicyKey("GET", "/instances/:id/timeline");
+    try std.testing.expect(key == .InstancesRead);
+}
+
+test "TC-IDN-03-06: webhook subscription endpoints map to PLATFORM_ADMIN-only policy" {
+    try std.testing.expect(endpointPolicyKey("POST", "/webhooks/subscriptions") == .WebhookSubscriptionsManage);
+    try std.testing.expect(endpointPolicyKey("GET", "/webhooks/subscriptions") == .WebhookSubscriptionsManage);
+    try std.testing.expect(endpointPolicyKey("DELETE", "/webhooks/subscriptions/:id") == .WebhookSubscriptionsManage);
+
+    const admin_ctx = AccessContext{ .user_id = "u-admin", .roles = &[_]Role{.PLATFORM_ADMIN} };
+    const worker_ctx = AccessContext{ .user_id = "u-worker", .roles = &[_]Role{.TASK_WORKER} };
+
+    try std.testing.expect(evaluateAccess(admin_ctx, .WebhookSubscriptionsManage).kind == .Allow);
+    try std.testing.expect(evaluateAccess(worker_ctx, .WebhookSubscriptionsManage).kind == .Deny403);
 }

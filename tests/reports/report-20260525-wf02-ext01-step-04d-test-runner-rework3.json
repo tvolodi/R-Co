@@ -1,0 +1,150 @@
+{
+  "run_id": "WF02-ext01-20260525",
+  "handoff_id": "20260525-057",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-25T10:16:48Z",
+  "agent_id": "TEST-RUNNER",
+  "requirement_ids": [
+    "EXT-01"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_cases": 12,
+    "passed_cases": 12,
+    "failed_cases": 0,
+    "blocked_cases": 0,
+    "skipped_cases": 0
+  },
+  "executions": [
+    {
+      "command": "zig build test",
+      "layer": "unit",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "tests/reports/WF02-ext01-20260525-step-04d-zig-build-test.log"
+      ],
+      "notes": [
+        "UNIT_EXIT_CODE=0 recorded in the unit log."
+      ]
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+      "layer": "integration",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "tests/reports/WF02-ext01-20260525-step-04d-zig-build-test-integration.log"
+      ],
+      "notes": [
+        "INTEGRATION_EXIT_CODE=0 recorded in the integration log.",
+        "Integration test DB setup/cleanup completed with no runtime stall."
+      ]
+    }
+  ],
+  "ext01_case_results": [
+    {
+      "test_case_id": "TC-EXT-01-U06a",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig:207"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U08a",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig:212"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U09",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig:244"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U10",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig:294"
+    },
+    {
+      "test_case_id": "TC-PD-05-09f",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/graph_node_attributes_test.zig:288"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-01",
+      "layer": "integration",
+      "status": "PASS",
+      "evidence": "tests/integration/ext01_service_task_test.zig:438"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-02",
+      "layer": "integration",
+      "status": "PASS",
+      "evidence": "tests/integration/ext01_service_task_test.zig:488"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-03",
+      "layer": "integration",
+      "status": "PASS",
+      "evidence": "tests/integration/ext01_service_task_test.zig:554"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-04",
+      "layer": "integration",
+      "status": "PASS",
+      "evidence": "tests/integration/ext01_service_task_test.zig:617"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-05",
+      "layer": "integration",
+      "status": "PASS",
+      "evidence": "tests/integration/ext01_service_task_test.zig:670"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-06",
+      "layer": "integration",
+      "status": "PASS",
+      "evidence": "tests/integration/ext01_service_task_test.zig:727"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-07",
+      "layer": "integration",
+      "status": "PASS",
+      "evidence": "tests/integration/ext01_service_task_test.zig:780"
+    }
+  ],
+  "acceptance_criteria_results": [
+    {
+      "criterion": "zig build test exits 0",
+      "status": "PASS"
+    },
+    {
+      "criterion": "zig build test-integration exits 0",
+      "status": "PASS"
+    },
+    {
+      "criterion": "EXT-01 cases pass in unit and integration layers",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Structured test report is generated and linked",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Handoff result is complete with PASS/FAIL/PARTIAL",
+      "status": "PASS"
+    }
+  ],
+  "failures": [],
+  "issues": [],
+  "artifacts_out": [
+    "tests/reports/report-20260525-wf02-ext01-step-04d-test-runner-rework3.json",
+    "tests/reports/WF02-ext01-20260525-step-04d-zig-build-test.log",
+    "tests/reports/WF02-ext01-20260525-step-04d-zig-build-test-integration.log",
+    "docs/issue-reports/WF02-ext01-20260525-step-04d-test-runner-rework3-INNER-REPORT.json"
+  ],
+  "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)."
+}

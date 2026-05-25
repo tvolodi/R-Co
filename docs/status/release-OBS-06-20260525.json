@@ -1,0 +1,52 @@
+{
+  "stage": "Stage 6 - Observability + Extensions",
+  "date": "2026-05-25T07:24:54Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "OBS-06"
+  ],
+  "nfr_results": {
+    "benchmark_command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.311,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.482,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 46622.447,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 35.169,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "test_evidence": {
+    "wf02_step04c_handoff": "handoffs/WF02-obs06-20260525/step-04c-test-runner-rework2.json",
+    "wf02_step04c_report": "tests/reports/report-20260525-wf02-obs06-step-04c-test-runner-rework2.json",
+    "wf02_step04c_status": "PASS",
+    "obs06_cases_passed": 2,
+    "obs06_cases_failed": 0
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "OBS-06"
+  ],
+  "non_blocking_issues": [],
+  "recommendation": "APPROVE OBS-06 release gate and route to DOC-UPDATER for requirement status lifecycle update."
+}

@@ -97,6 +97,10 @@ pub const TransitionEvent = union(enum) {
         task_node_id: []const u8,
         output_variables: std.json.ObjectMap,
     },
+    service_task_completed: struct {
+        service_task_node_id: []const u8,
+        output_variables: std.json.ObjectMap,
+    },
     unknown: struct {
         event_type: []const u8,
     },
@@ -237,6 +241,38 @@ pub fn transition(
             if (!outgoing_found) return TransitionError.InvalidState;
             new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
             // Process node entry
+            return try processNodeEntry(allocator, snapshot, new_state, next_node_id);
+        },
+        .service_task_completed => |payload| {
+            // Find token on service_task_node_id
+            var token_idx: ?usize = null;
+            for (new_state.tokens, 0..) |t, i| {
+                if (std.mem.eql(u8, t.node_id, payload.service_task_node_id)) {
+                    token_idx = i;
+                    break;
+                }
+            }
+            if (token_idx == null) return TransitionError.InvalidState;
+
+            // Merge output variables from successful SERVICE_TASK response.
+            var it = payload.output_variables.iterator();
+            while (it.next()) |entry| {
+                try new_state.variables.put(allocator, entry.key_ptr.*, entry.value_ptr.*);
+            }
+
+            // Advance token along the single outgoing edge.
+            var outgoing_found = false;
+            var next_node_id: []const u8 = undefined;
+            for (snapshot.edges) |edge| {
+                if (std.mem.eql(u8, edge.source, payload.service_task_node_id)) {
+                    next_node_id = edge.target;
+                    outgoing_found = true;
+                    break;
+                }
+            }
+            if (!outgoing_found) return TransitionError.InvalidState;
+
+            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
             return try processNodeEntry(allocator, snapshot, new_state, next_node_id);
         },
         else => return TransitionError.UnknownEventType,

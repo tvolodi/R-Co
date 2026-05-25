@@ -1,0 +1,124 @@
+{
+  "run_id": "WF02-ext03-20260525",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260525-070",
+  "timestamp": "2026-05-25T14:22:47Z",
+  "requirement_ids": [
+    "EXT-03"
+  ],
+  "summary": {
+    "status": "PARTIAL",
+    "layers_executed": [
+      {
+        "layer": "unit",
+        "command": "zig build test",
+        "exit_code": 0,
+        "evidence": "build.zig includes tests/unit/ext03_plugin_test.zig in the test step"
+      },
+      {
+        "layer": "integration",
+        "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+        "exit_code": 0,
+        "environment": {
+          "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+        }
+      },
+      {
+        "layer": "coverage",
+        "command": "zig build test-coverage",
+        "exit_code": 1,
+        "error": "no step named 'test-coverage'"
+      }
+    ],
+    "total_layers": 3,
+    "passed_layers": 2,
+    "failed_layers": 1,
+    "skipped_layers": 0
+  },
+  "acceptance_mapping": [
+    {
+      "criterion": "Startup-only registration constraints",
+      "test_ids": [
+        "TC-EXT-03-U07",
+        "TC-EXT-03-U08",
+        "TC-EXT-03-U09",
+        "TC-EXT-03-U10",
+        "TC-EXT-03-INT-04",
+        "TC-EXT-03-INT-05"
+      ],
+      "result": "PARTIAL"
+    },
+    {
+      "criterion": "Plugin precedence over built-ins",
+      "test_ids": [
+        "TC-EXT-03-U11",
+        "TC-EXT-03-U13",
+        "TC-EXT-03-U14",
+        "TC-EXT-03-INT-06"
+      ],
+      "result": "PARTIAL"
+    },
+    {
+      "criterion": "Panic-to-ERROR mapping",
+      "test_ids": [
+        "TC-EXT-03-U06",
+        "TC-EXT-03-INT-03"
+      ],
+      "result": "PARTIAL"
+    },
+    {
+      "criterion": "COMPLETE/ERROR outcome handling",
+      "test_ids": [
+        "TC-EXT-03-U01",
+        "TC-EXT-03-U02",
+        "TC-EXT-03-U03",
+        "TC-EXT-03-U04",
+        "TC-EXT-03-U05",
+        "TC-EXT-03-U12",
+        "TC-EXT-03-U13",
+        "TC-EXT-03-INT-02",
+        "TC-EXT-03-INT-09"
+      ],
+      "result": "PARTIAL"
+    },
+    {
+      "criterion": "EE-09/EE-10 integration paths for plugin execution",
+      "test_ids": [
+        "TC-EXT-03-INT-07",
+        "TC-EXT-03-INT-08",
+        "TC-EXT-03-INT-09",
+        "TC-EXT-03-INT-10"
+      ],
+      "result": "NOT_VERIFIED"
+    }
+  ],
+  "failures": [
+    {
+      "test_id": "TC-EXT-03-INT-01..10",
+      "layer": "integration",
+      "file": "tests/integration/main_test.zig",
+      "error_message": "No EXT-03 integration test file is imported in the integration entry point, so EXT-03 integration IDs are not explicitly executed.",
+      "severity": "MAJOR",
+      "requirement_id": "EXT-03"
+    }
+  ],
+  "issues": [
+    {
+      "id": "EXT03-INTEGRATION-COVERAGE-GAP",
+      "severity": "MAJOR",
+      "description": "EXT-03 integration cases TC-EXT-03-INT-01..10 are specified but not present as executable integration tests imported by tests/integration/main_test.zig.",
+      "affected_requirement": "EXT-03"
+    },
+    {
+      "id": "EXT03-COVERAGE-STEP-MISSING",
+      "severity": "MINOR",
+      "description": "Coverage command defined by fn:check-code-coverage could not run because build.zig does not define the test-coverage step.",
+      "affected_requirement": "EXT-03"
+    }
+  ],
+  "notes": [
+    "Unit and integration suites both executed successfully at command level.",
+    "Command success is insufficient for full EXT-03 verification because spec-defined EXT-03 integration scenarios are missing.",
+    "No source code changes were applied in this step; only reporting artifacts and handoff state were updated."
+  ]
+}

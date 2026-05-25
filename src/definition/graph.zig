@@ -533,29 +533,90 @@ fn checkServiceTask(
         },
     };
 
-    // Check endpoint: must be non-empty string.
+    // EXT-01 compatibility:
+    // - legacy nodes may still use `endpoint`
+    // - new nodes can use `url`
+    // At least one must be present and non-empty.
     const endpoint_ok: bool = blk: {
-        const v = obj.get("endpoint") orelse break :blk false;
-        break :blk switch (v) {
-            .string => |s| s.len > 0,
-            else => false,
-        };
+        if (obj.get("endpoint")) |v| {
+            if (switch (v) {
+                .string => |s| s.len > 0,
+                else => false,
+            }) break :blk true;
+        }
+        if (obj.get("url")) |v| {
+            if (switch (v) {
+                .string => |s| s.len > 0,
+                else => false,
+            }) break :blk true;
+        }
+        break :blk false;
     };
     if (!endpoint_ok) {
         try addViolation(allocator, violations, "SERVICE_TASK_MISSING_ENDPOINT", "Node '{s}' (SERVICE_TASK) is missing required attribute 'endpoint'", .{node.id});
     }
 
-    // Check timeout_ms: must be integer in [1, 300000].
+    // timeout_ms is optional in EXT-01 (default 30000).
+    // If provided, it must be integer in [1, 300000].
     const timeout_entry = obj.get("timeout_ms");
-    if (timeout_entry == null) {
-        try addViolation(allocator, violations, "SERVICE_TASK_MISSING_TIMEOUT", "Node '{s}' (SERVICE_TASK) is missing required attribute 'timeout_ms'", .{node.id});
-    } else {
+    if (timeout_entry != null) {
         const timeout_ms: i64 = switch (timeout_entry.?) {
             .integer => |n| n,
             else => 0,
         };
         if (timeout_ms < 1 or timeout_ms > 300_000) {
             try addViolation(allocator, violations, "SERVICE_TASK_INVALID_TIMEOUT", "Node '{s}' (SERVICE_TASK) attribute 'timeout_ms' must be 1..300000, got {d}", .{ node.id, timeout_ms });
+        }
+    }
+
+    // method is optional (runtime default), but if present must be one of the
+    // explicitly supported verbs.
+    if (obj.get("method")) |method_entry| {
+        const method_ok = switch (method_entry) {
+            .string => |s| std.mem.eql(u8, s, "GET") or std.mem.eql(u8, s, "POST") or std.mem.eql(u8, s, "PUT") or std.mem.eql(u8, s, "PATCH") or std.mem.eql(u8, s, "DELETE"),
+            else => false,
+        };
+        if (!method_ok) {
+            try addViolation(allocator, violations, "SERVICE_TASK_INVALID_METHOD", "Node '{s}' (SERVICE_TASK) attribute 'method' must be one of GET|POST|PUT|PATCH|DELETE", .{node.id});
+        }
+    }
+
+    // retry_limit is optional (runtime default), but if present must fit u8 and
+    // cannot be negative.
+    if (obj.get("retry_limit")) |retry_entry| {
+        const retry_ok = switch (retry_entry) {
+            .integer => |n| n >= 0 and n <= 255,
+            else => false,
+        };
+        if (!retry_ok) {
+            try addViolation(allocator, violations, "SERVICE_TASK_INVALID_RETRY_LIMIT", "Node '{s}' (SERVICE_TASK) attribute 'retry_limit' must be an integer in 0..255", .{node.id});
+        }
+    }
+
+    // headers is optional. If present, it must be an object containing only
+    // non-empty string keys and non-empty string values.
+    if (obj.get("headers")) |headers_entry| {
+        switch (headers_entry) {
+            .object => |headers_obj| {
+                var it = headers_obj.iterator();
+                while (it.next()) |entry| {
+                    if (entry.key_ptr.*.len == 0) {
+                        try addViolation(allocator, violations, "SERVICE_TASK_INVALID_HEADERS", "Node '{s}' (SERVICE_TASK) attribute 'headers' contains an empty header name", .{node.id});
+                        break;
+                    }
+                    const value_ok = switch (entry.value_ptr.*) {
+                        .string => |s| s.len > 0,
+                        else => false,
+                    };
+                    if (!value_ok) {
+                        try addViolation(allocator, violations, "SERVICE_TASK_INVALID_HEADERS", "Node '{s}' (SERVICE_TASK) attribute 'headers' must contain non-empty string values", .{node.id});
+                        break;
+                    }
+                }
+            },
+            else => {
+                try addViolation(allocator, violations, "SERVICE_TASK_INVALID_HEADERS", "Node '{s}' (SERVICE_TASK) attribute 'headers' must be an object", .{node.id});
+            },
         }
     }
 }

@@ -8,6 +8,8 @@ export const instanceKeys = {
   list: (filters: object) => [...instanceKeys.all, 'list', filters] as const,
   detail: (id: string) => [...instanceKeys.all, 'detail', id] as const,
   events: (id: string) => [...instanceKeys.all, 'events', id] as const,
+  timeline: (id: string, cursor: string | null, pageSize: number) =>
+    [...instanceKeys.all, 'timeline', id, cursor, pageSize] as const,
 }
 
 export function useInstances(params?: { status?: InstanceStatus; definition_id?: string }) {
@@ -30,6 +32,21 @@ export function useInstanceEvents(id: string) {
     queryKey: instanceKeys.events(id),
     queryFn: () => instancesApi.events(id),
     enabled: !!id,
+  })
+}
+
+export function useInstanceTimeline(
+  id: string,
+  params?: { cursor?: string; page_size?: number },
+  enabled = true,
+) {
+  const cursor = params?.cursor ?? null
+  const pageSize = params?.page_size ?? 50
+
+  return useQuery({
+    queryKey: instanceKeys.timeline(id, cursor, pageSize),
+    queryFn: () => instancesApi.timeline(id, params),
+    enabled: !!id && enabled,
   })
 }
 

@@ -1,0 +1,140 @@
+{
+  "run_id": "WF02-obs04-20260525",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260525-019",
+  "timestamp": "2026-05-25T03:00:49Z",
+  "requirement_ids": [
+    "OBS-04"
+  ],
+  "summary": {
+    "overall_status": "FAIL",
+    "commands_total": 10,
+    "commands_passed": 7,
+    "commands_failed": 1,
+    "commands_blocked_or_partial": 2
+  },
+  "command_results": [
+    {
+      "command": "zig build",
+      "layer": "backend",
+      "result": "PASS",
+      "evidence": [
+        "ZIG_BUILD_EXIT=0"
+      ]
+    },
+    {
+      "command": "zig build test",
+      "layer": "backend",
+      "result": "PASS",
+      "evidence": [
+        "ZIG_BUILD_TEST_EXIT=0",
+        "ZIG_BUILD_TEST_SKIP_SIGNAL=0"
+      ]
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration-obs04",
+      "layer": "backend-integration",
+      "result": "PASS",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "OBS04_INTEGRATION_EXIT=0",
+        "OBS04_INTEGRATION_SKIP_SIGNAL=0"
+      ]
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+      "layer": "backend-integration",
+      "result": "PARTIAL",
+      "evidence": [
+        "ZIG_BUILD_TEST_INTEGRATION_EXIT=0",
+        "ZIG_BUILD_TEST_INTEGRATION_SKIP_SIGNAL=1",
+        "ZIG_BUILD_TEST_INTEGRATION_FAILED_COMMAND_SIGNAL=1",
+        "BPM_TEST_URL is not set - skipping HTTP integration test (multiple cases)"
+      ],
+      "notes": "Exit code is 0 but HTTP integration paths are skipped; this cannot be used as full release evidence for UI/API HTTP flow coverage."
+    },
+    {
+      "command": "cd web && npm run type-check",
+      "layer": "frontend",
+      "result": "PASS",
+      "evidence": [
+        "WEB_TYPE_CHECK_EXIT=0"
+      ]
+    },
+    {
+      "command": "cd web && npm run lint",
+      "layer": "frontend",
+      "result": "PASS",
+      "evidence": [
+        "WEB_LINT_EXIT=0"
+      ],
+      "notes": "TypeScript support warning from @typescript-eslint does not fail lint run."
+    },
+    {
+      "command": "cd web && npm run test",
+      "layer": "frontend",
+      "result": "PASS",
+      "evidence": [
+        "1 passed test file",
+        "6 passed tests",
+        "WEB_TEST_EXIT=0"
+      ]
+    },
+    {
+      "command": "cd web && npm run build",
+      "layer": "frontend",
+      "result": "PASS",
+      "evidence": [
+        "vite build completed",
+        "WEB_BUILD_EXIT=0"
+      ]
+    },
+    {
+      "command": "cd web && npm run test:e2e -- --list",
+      "layer": "frontend-e2e",
+      "result": "FAIL",
+      "evidence": [
+        "Error: Vitest failed to access its internal state.",
+        "Error: No tests found",
+        "Total: 0 tests in 0 files",
+        "WEB_E2E_LIST_EXIT=1"
+      ]
+    },
+    {
+      "command": "BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev zig build run",
+      "layer": "backend-runtime-prereq",
+      "result": "BLOCKED",
+      "evidence": [
+        "startup configuration validated",
+        "BPM Platform - not yet implemented",
+        "ZIG_BUILD_RUN_EXIT=0"
+      ],
+      "notes": "Runtime exits after startup log and does not provide the server flow required for browser UI->API->DB E2E execution."
+    }
+  ],
+  "issue_reassessment": {
+    "OBS04-INTEGRATION-COMPILE-001": {
+      "latest_issue_record": "docs/issues/ISS-0014.json",
+      "status": "CLOSED",
+      "rationale": "Dedicated OBS-04 integration target in build.zig executes successfully with exit code 0 and no skip signal."
+    },
+    "OBS04-TEST-GAP-001": {
+      "latest_issue_record": "docs/issues/ISS-0015.json",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "release_gate": "NOT_CLEARED",
+      "rationale": "Release criteria require browser-level UI->API->DB coverage for MUST requirement OBS-04. Current repo state has no runnable Playwright E2E tests and backend runtime path needed for full browser flow remains unavailable."
+    }
+  },
+  "traceability": {
+    "spec_file": "tests/specs/OBS-04.md",
+    "integration_target": "test-integration-obs04",
+    "frontend_unit_evidence": "web/src/pages/instances/timelineUtils.test.ts",
+    "issue_records": [
+      "docs/issues/ISS-0014.json",
+      "docs/issues/ISS-0015.json"
+    ]
+  },
+  "next_action": "FAIL: Keep WF-02 gated and route to ORCH for prerequisite runtime/E2E harness enablement, then re-run TEST-RUNNER validation for OBS-04."
+}

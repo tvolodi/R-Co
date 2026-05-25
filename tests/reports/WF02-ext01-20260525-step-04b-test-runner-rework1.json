@@ -1,0 +1,209 @@
+{
+  "report_id": "WF02-ext01-20260525-step-04b-test-runner-rework1",
+  "run_id": "WF02-ext01-20260525",
+  "handoff_id": "20260525-051",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-25T08:49:47Z",
+  "requirement_ids": [
+    "EXT-01"
+  ],
+  "summary": {
+    "status": "FAIL",
+    "spec_cases_total": 17,
+    "spec_cases_passed": 0,
+    "spec_cases_failed": 0,
+    "spec_cases_blocked": 10,
+    "spec_cases_not_executed": 7,
+    "commands_passed": 0,
+    "commands_failed": 1
+  },
+  "executions": [
+    {
+      "command": "zig build test",
+      "layer": "unit",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidence": "Compilation failed in tests/unit/service_task_test.zig before EXT-01 unit test cases could execute.",
+      "error_excerpt": [
+        "tests\\unit\\service_task_test.zig:6:22: error: root source file struct 'bpm' has no member named 'definition_graph'",
+        "tests\\unit\\service_task_test.zig:82:17: error: expected type 'void', found 'error{HttpExpectationFailed,WriteFailed}'",
+        "tests\\unit\\service_task_test.zig:107:33: error: no field or member function named 'iterateHeaders' in 'http.Server.Request.Head'"
+      ]
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "layer": "integration",
+      "exit_code": null,
+      "status": "NOT_EXECUTED",
+      "evidence": "Skipped due mandatory fail-fast after unit layer failure in this handoff execution."
+    }
+  ],
+  "coverage": [
+    {
+      "layer": "unit",
+      "total_cases": 10,
+      "passed_cases": 0,
+      "failed_cases": 0,
+      "blocked_cases": 10,
+      "notes": "All EXT-01 unit cases were blocked by compilation errors in tests/unit/service_task_test.zig."
+    },
+    {
+      "layer": "integration",
+      "total_cases": 7,
+      "passed_cases": 0,
+      "failed_cases": 0,
+      "not_executed_cases": 7,
+      "notes": "Integration layer was not executed after unit failure (mandatory fail-fast)."
+    }
+  ],
+  "case_results": [
+    {
+      "test_case_id": "TC-EXT-01-U01",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U02",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U03",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U04",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U05",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U06",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U07",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U08",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U09",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U10",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "BLOCKED",
+      "evidence": "Blocked by compile errors in tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-01",
+      "layer": "integration",
+      "file": "tests/integration/ext01_service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "Not executed due fail-fast after unit failure"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-02",
+      "layer": "integration",
+      "file": "tests/integration/ext01_service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "Not executed due fail-fast after unit failure"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-03",
+      "layer": "integration",
+      "file": "tests/integration/ext01_service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "Not executed due fail-fast after unit failure"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-04",
+      "layer": "integration",
+      "file": "tests/integration/ext01_service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "Not executed due fail-fast after unit failure"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-05",
+      "layer": "integration",
+      "file": "tests/integration/ext01_service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "Not executed due fail-fast after unit failure"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-06",
+      "layer": "integration",
+      "file": "tests/integration/ext01_service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "Not executed due fail-fast after unit failure"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-07",
+      "layer": "integration",
+      "file": "tests/integration/ext01_service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "Not executed due fail-fast after unit failure"
+    }
+  ],
+  "issues": [
+    {
+      "id": "EXT01-UNIT-COMPILE-001",
+      "severity": "BLOCKER",
+      "description": "tests/unit/service_task_test.zig imports bpm.definition_graph, but src/bpm.zig has no such member.",
+      "affected_requirement": "EXT-01"
+    },
+    {
+      "id": "EXT01-UNIT-COMPILE-002",
+      "severity": "BLOCKER",
+      "description": "tests/unit/service_task_test.zig uses try request.respond() inside a function returning void, causing a compile-time error.",
+      "affected_requirement": "EXT-01"
+    },
+    {
+      "id": "EXT01-UNIT-COMPILE-003",
+      "severity": "BLOCKER",
+      "description": "tests/unit/service_task_test.zig calls request.head.iterateHeaders(), which is unavailable in the current Zig stdlib HTTP API.",
+      "affected_requirement": "EXT-01"
+    },
+    {
+      "id": "EXT01-INTEGRATION-NOT-RUN-001",
+      "severity": "BLOCKER",
+      "description": "Integration layer was not executed in this handoff because unit compilation failed and fail-fast policy applies.",
+      "affected_requirement": "EXT-01"
+    }
+  ],
+  "next_action": "Route to ORCH for WF-03 ISSUE-FIXER/BACKEND-DEV to resolve EXT01-UNIT-COMPILE-001/002/003, then re-run WF-02 Step 04b TEST-RUNNER."
+}

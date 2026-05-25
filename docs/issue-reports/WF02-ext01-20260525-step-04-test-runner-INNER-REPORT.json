@@ -1,0 +1,47 @@
+{
+  "report_id": "WF02-ext01-20260525-step-04-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-ext01-20260525",
+  "step": "04",
+  "created_at": "2026-05-25T08:15:36Z",
+  "summary": "WF-02 Step 4 EXT-01 test run — PARTIAL. zig build test and zig build test-integration both exited 0, but the repository only contains partial unit coverage for EXT-01 and no dedicated EXT-01 integration suite. Missing direct coverage: header rendering rejection, zero-retry path, trace header injection, response merge, invalid 2xx body, and all seven EXT-01 integration cases. 2 BLOCKER issues.",
+  "files_created": [
+    "tests/reports/WF02-ext01-20260525-step-04-test-runner.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-ext01-20260525/step-04-test-runner.json",
+    "handoffs/WF02-ext01-20260525/registry.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "Exit code 0."
+    },
+    {
+      "name": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "status": "pass",
+      "detail": "Exit code 0 with the real DB URL set."
+    }
+  ],
+  "issues_found": [
+    {
+      "id": "EXT01-UNIT-COVERAGE-GAP",
+      "severity": "BLOCKER",
+      "description": "The current unit suite does not directly test several EXT-01 MUST behaviors."
+    },
+    {
+      "id": "EXT01-INTEGRATION-SUITE-MISSING",
+      "severity": "BLOCKER",
+      "description": "No dedicated EXT-01 integration suite exists in the repository, so the spec-defined integration scenarios were not executed explicitly."
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-DESIGNER for missing EXT-01 unit and integration cases",
+    "Rerun TEST-RUNNER after the test suite is completed"
+  ],
+  "blockers": [
+    "2 BLOCKER coverage gaps prevent a full PASS verdict"
+  ]
+}

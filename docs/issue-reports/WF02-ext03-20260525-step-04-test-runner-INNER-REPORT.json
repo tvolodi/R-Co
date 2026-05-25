@@ -1,0 +1,49 @@
+{
+  "report_id": "WF02-ext03-20260525-step-04-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-ext03-20260525",
+  "step": "04",
+  "created_at": "2026-05-25T14:22:47Z",
+  "summary": "WF-02 Step 4 EXT-03 test run completed with PARTIAL result. zig build test and zig build test-integration passed, but EXT-03 integration scenarios TC-EXT-03-INT-01..10 are not explicitly present in the executed integration suite, and coverage verification could not be performed because build step test-coverage is undefined.",
+  "files_created": [
+    "tests/reports/report-20260525T142247Z-WF02-ext03-20260525.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-ext03-20260525/step-04-test-runner.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "Exit code 0. Unit suite includes tests/unit/ext03_plugin_test.zig via build.zig test step dependency."
+    },
+    {
+      "name": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "status": "pass",
+      "detail": "Exit code 0 after test DB cleanup."
+    },
+    {
+      "name": "zig build test-coverage",
+      "status": "fail",
+      "detail": "Exit code 1: no step named test-coverage."
+    }
+  ],
+  "issues_found": [
+    {
+      "id": "EXT03-INTEGRATION-COVERAGE-GAP",
+      "severity": "MAJOR",
+      "description": "No executable EXT-03 integration suite covering TC-EXT-03-INT-01..10 was found in integration imports."
+    },
+    {
+      "id": "EXT03-COVERAGE-STEP-MISSING",
+      "severity": "MINOR",
+      "description": "Coverage command required by fn:check-code-coverage is unavailable in build.zig."
+    }
+  ],
+  "next_steps": [
+    "Route to TEST-DESIGNER to add missing EXT-03 integration test cases and wire them into tests/integration/main_test.zig",
+    "Rerun TEST-RUNNER Step 04 for EXT-03 after integration coverage is implemented",
+    "Optionally add a coverage build step if coverage gating is required by ORCH for this run"
+  ],
+  "blockers": []
+}

@@ -112,11 +112,12 @@ const definitions_endpoints: [13]model.EndpointDescriptor = .{
     endpoint(.POST, "/api/v1/definitions/import", "importDefinition", "Import definition", "definitions", true, "DefinitionImportRequest", "201", "Imported definition", "Definition"),
 };
 
-const instances_endpoints: [6]model.EndpointDescriptor = .{
+const instances_endpoints: [7]model.EndpointDescriptor = .{
     endpoint(.POST, "/api/v1/instances", "createInstance", "Create instance", "instances", true, "InstanceCreateRequest", "201", "Created instance", "InstanceSummary"),
     endpoint(.GET, "/api/v1/instances", "listInstances", "List instances", "instances", true, null, "200", "Instance list", "InstanceList"),
     endpoint(.GET, "/api/v1/instances/{id}", "getInstanceById", "Get instance by id", "instances", true, null, "200", "Instance", "InstanceSummary"),
     endpoint(.GET, "/api/v1/instances/{id}/history", "getInstanceHistory", "Get instance event history", "instances", true, null, "200", "Event history page", "EventHistoryPage"),
+    endpoint(.GET, "/api/v1/instances/{id}/timeline", "getInstanceTimeline", "Get instance timeline", "instances", true, null, "200", "Instance timeline page", "EventHistoryPage"),
     endpoint(.POST, "/api/v1/instances/{id}/cancel", "cancelInstance", "Cancel instance", "instances", true, null, "200", "Instance cancelled", "InstanceSummary"),
     endpoint(.POST, "/api/v1/instances/{id}/reconstruct", "reconstructInstance", "Reconstruct instance state", "instances", true, null, "200", "Reconstructed instance", "InstanceSummary"),
 };

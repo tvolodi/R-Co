@@ -1,0 +1,52 @@
+{
+  "stage": "Stage 6 - Observability + Extensions",
+  "date": "2026-05-25T10:19:51Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "EXT-01"
+  ],
+  "nfr_results": {
+    "benchmark_command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.551,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 7.291,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 46673.935,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 37.428,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "test_evidence": {
+    "wf02_step04d_handoff": "handoffs/WF02-ext01-20260525/step-04d-test-runner-rework3.json",
+    "wf02_step04d_report": "tests/reports/report-20260525-wf02-ext01-step-04d-test-runner-rework3.json",
+    "wf02_step04d_status": "PASS",
+    "ext01_cases_passed": 12,
+    "ext01_cases_failed": 0
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "EXT-01"
+  ],
+  "non_blocking_issues": [],
+  "recommendation": "APPROVE EXT-01 release gate and route to DOC-UPDATER for requirement status lifecycle update."
+}

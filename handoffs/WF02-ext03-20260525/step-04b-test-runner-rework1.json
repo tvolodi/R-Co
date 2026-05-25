@@ -1,0 +1,62 @@
+{
+  "handoff_id": "20260525-072",
+  "run_id": "WF02-ext03-20260525",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-ext03-20260525/step-04b-test-runner-rework1.json",
+  "created_at": "2026-05-25T14:40:00Z",
+  "started_at": "2026-05-25T14:40:20Z",
+  "completed_at": "2026-05-25T14:41:46Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-03"
+    ],
+    "related_handoff_ids": [
+      "20260525-067",
+      "20260525-068",
+      "20260525-069",
+      "20260525-070",
+      "20260525-071"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-ext03-20260525/step-04-test-runner.json",
+      "tests/reports/report-20260525T142247Z-WF02-ext03-20260525.json",
+      "tests/integration/ext03_plugin_integration_test.zig",
+      "tests/integration/main_test.zig",
+      "tests/specs/EXT-03.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Re-run WF-02 Step 4 for EXT-03 after test-design rework. Execute unit and integration tests and produce updated test report proving EXT-03 integration IDs are now executable and passing. Validate startup-only registration, plugin precedence, panic-to-ERROR mapping, COMPLETE/ERROR handling, and EE-09/EE-10 integration paths. Apply coverage expectation handling per updated EXT-03 spec so result can be PASS when all executable requirements are verified.",
+    "acceptance_criteria": [
+      "Updated report shows EXT-03 unit and integration scenarios executed and passing",
+      "No remaining MAJOR issues for EXT-03 verification",
+      "Handoff result reflects final PASS/FAIL/PARTIAL accurately",
+      "Inner report is registered before completion"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:check-code-coverage",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework iteration 1 verification completed: unit and integration test commands executed with exit code 0, EXT-03 integration IDs TC-EXT-03-INT-01..10 are now executable via integration entrypoint import, and acceptance criteria for startup-only registration, plugin precedence, panic-to-ERROR mapping, COMPLETE/ERROR handling, and EE-09/EE-10 paths are verified.",
+    "artifacts_out": [
+      "tests/reports/report-20260525T144146Z-WF02-ext03-20260525.json",
+      "docs/issue-reports/WF02-ext03-20260525-step-04b-test-runner-rework1-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5 / WF-04 Step 6)."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

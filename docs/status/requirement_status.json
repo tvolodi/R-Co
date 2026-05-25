@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-24T19:00:30Z",
+  "last_updated": "2026-05-25T14:48:52Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -577,7 +577,10 @@
       "stage": 4,
       "priority": "MUST",
       "title": "Bearer token auth",
-      "implemented_in": ["src/api/middleware/auth.zig", "src/api/errors.zig"],
+      "implemented_in": [
+        "src/api/middleware/auth.zig",
+        "src/api/errors.zig"
+      ],
       "test_spec": "tests/specs/API-08.md",
       "test_run": "tests/reports/API-08-test-report.md",
       "released_at": "2026-05-23",
@@ -589,7 +592,12 @@
       "stage": 4,
       "priority": "MUST",
       "title": "Request tracing",
-      "implemented_in": ["src/api/middleware/trace.zig", "src/api/trace_context.zig", "src/obs/logger.zig", "src/api/errors.zig"],
+      "implemented_in": [
+        "src/api/middleware/trace.zig",
+        "src/api/trace_context.zig",
+        "src/obs/logger.zig",
+        "src/api/errors.zig"
+      ],
       "test_spec": "tests/specs/API-09.md",
       "test_run": "tests/reports/API-09-test-report.md",
       "released_at": "2026-05-23",
@@ -655,9 +663,9 @@
       ],
       "test_spec": "tests/specs/API-12.md",
       "test_run": "tests/reports/API-12-test-report.md",
-      "released_at": "2026-05-23T14:31:26.428021Z",
+      "released_at": "2026-05-23T14:31:26Z",
       "release_run": "WF02-api12-20260523",
-      "last_updated": "2026-05-23T14:31:26.428021Z"
+      "last_updated": "2026-05-23T14:31:26Z"
     },
     "SCH-01": {
       "status": "RELEASED",
@@ -890,34 +898,64 @@
       "last_updated": "2026-05-24T19:00:30Z"
     },
     "OBS-03": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "MUST",
-      "title": "Audit log"
+      "title": "Audit log",
+      "test_spec": "tests/specs/OBS-03.md",
+      "test_run": "tests/reports/report-20260524T225404Z-WF02-obs03-step04d-rework3.json",
+      "tested_at": "2026-05-24",
+      "released_at": "2026-05-24T22:56:58Z",
+      "release_run": "WF02-obs03-20260525",
+      "last_updated": "2026-05-24T23:01:03Z"
     },
     "OBS-04": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "MUST",
-      "title": "Instance timeline view"
+      "title": "Instance timeline view",
+      "test_spec": "tests/specs/OBS-04.md",
+      "test_run": "tests/reports/report-20260525T034702Z-WF02-obs04-step04d-rework3.json",
+      "tested_at": "2026-05-25",
+      "released_at": "2026-05-25T03:50:29Z",
+      "release_run": "WF02-obs04-20260525",
+      "last_updated": "2026-05-25T03:53:44Z"
     },
     "OBS-05": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "MUST",
-      "title": "Dead letter queue"
+      "title": "Dead letter queue",
+      "test_spec": "tests/specs/OBS-05.md",
+      "test_run": "tests/reports/report-20260525-wf02-obs05-step-04-test-runner.json",
+      "tested_at": "2026-05-25",
+      "released_at": "2026-05-25T17:06:29Z",
+      "release_run": "WF02-obs05-20260525",
+      "last_updated": "2026-05-25T17:10:51Z"
     },
     "OBS-06": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "SHOULD",
-      "title": "Alerting hooks"
+      "title": "Alerting hooks",
+      "test_spec": "tests/specs/OBS-06.md",
+      "test_run": "tests/reports/report-20260525-wf02-obs06-step-04c-test-runner-rework2.json",
+      "tested_at": "2026-05-25",
+      "released_at": "2026-05-25T07:24:54Z",
+      "release_run": "WF02-obs06-20260525",
+      "last_updated": "2026-05-25T07:29:10Z"
     },
     "EXT-01": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "MUST",
-      "title": "Service task node type"
+      "title": "Service task node type",
+      "test_spec": "tests/specs/EXT-01.md",
+      "test_run": "tests/reports/report-20260525-wf02-ext01-step-04d-test-runner-rework3.json",
+      "tested_at": "2026-05-25",
+      "released_at": "2026-05-25T10:19:51Z",
+      "release_run": "WF02-ext01-20260525",
+      "last_updated": "2026-05-25T10:22:34Z"
     },
     "EXT-02": {
       "status": "VALIDATED",
@@ -926,10 +964,16 @@
       "title": "Webhook event dispatch"
     },
     "EXT-03": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "SHOULD",
-      "title": "Plugin interface"
+      "title": "Plugin interface",
+      "test_spec": "tests/specs/EXT-03.md",
+      "test_run": "tests/reports/report-20260525T144146Z-WF02-ext03-20260525.json",
+      "tested_at": "2026-05-25",
+      "released_at": "2026-05-25T14:45:21Z",
+      "release_run": "WF02-ext03-20260525",
+      "last_updated": "2026-05-25T14:48:52Z"
     },
     "EXT-04": {
       "status": "VALIDATED",

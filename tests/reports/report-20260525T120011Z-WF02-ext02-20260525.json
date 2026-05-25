@@ -1,0 +1,136 @@
+{
+  "run_id": "WF02-ext02-20260525",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260525-063",
+  "timestamp": "2026-05-25T12:00:11Z",
+  "requirement_ids": [
+    "EXT-02"
+  ],
+  "summary": {
+    "status": "PARTIAL",
+    "layers_executed": [
+      {
+        "layer": "build",
+        "command": "zig build",
+        "exit_code": 0
+      },
+      {
+        "layer": "unit",
+        "command": "zig build test",
+        "exit_code": 0
+      },
+      {
+        "layer": "integration",
+        "command": "zig build test-integration",
+        "exit_code": 0,
+        "environment": {
+          "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+        }
+      }
+    ],
+    "total_layers": 3,
+    "passed_layers": 3,
+    "failed_layers": 0,
+    "skipped_layers": 0
+  },
+  "acceptance_mapping": [
+    {
+      "criterion": "Subscription APIs (create/list/delete) with PLATFORM_ADMIN authz",
+      "test_ids": [
+        "TC-EXT-02-U01",
+        "TC-EXT-02-U02",
+        "TC-EXT-02-U03",
+        "TC-EXT-02-INT-01",
+        "TC-EXT-02-INT-02",
+        "TC-EXT-02-INT-03"
+      ],
+      "result": "PARTIAL"
+    },
+    {
+      "criterion": "Dispatch fan-out body/header contract",
+      "test_ids": [
+        "TC-EXT-02-U04",
+        "TC-EXT-02-U05",
+        "TC-EXT-02-INT-04"
+      ],
+      "result": "NOT_VERIFIED"
+    },
+    {
+      "criterion": "HMAC signature behavior",
+      "test_ids": [
+        "TC-EXT-02-U06",
+        "TC-EXT-02-U07",
+        "TC-EXT-02-INT-05"
+      ],
+      "result": "PARTIAL"
+    },
+    {
+      "criterion": "Retry/backoff through five attempts (at-least-once)",
+      "test_ids": [
+        "TC-EXT-02-U08",
+        "TC-EXT-02-INT-06"
+      ],
+      "result": "PARTIAL"
+    },
+    {
+      "criterion": "Pause on fifth consecutive failure + OBS-06 trigger",
+      "test_ids": [
+        "TC-EXT-02-U09",
+        "TC-EXT-02-INT-07"
+      ],
+      "result": "NOT_VERIFIED"
+    },
+    {
+      "criterion": "OBS-03 audit linkage for create/delete",
+      "test_ids": [
+        "TC-EXT-02-U10",
+        "TC-EXT-02-INT-08"
+      ],
+      "result": "NOT_VERIFIED"
+    },
+    {
+      "criterion": "Edge: 2xx invalid/non-JSON response treated as success",
+      "test_ids": [
+        "TC-EXT-02-U11",
+        "TC-EXT-02-INT-09"
+      ],
+      "result": "NOT_VERIFIED"
+    },
+    {
+      "criterion": "Edge: independent retry counters across fan-out subscriptions",
+      "test_ids": [
+        "TC-EXT-02-U12",
+        "TC-EXT-02-INT-10"
+      ],
+      "result": "NOT_VERIFIED"
+    }
+  ],
+  "failures": [
+    {
+      "test_id": "TC-EXT-02-INT-01..10",
+      "layer": "integration",
+      "file": "tests/integration",
+      "error_message": "No dedicated EXT-02 integration test cases were found, so spec-defined integration scenarios could not be explicitly verified.",
+      "severity": "BLOCKER",
+      "requirement_id": "EXT-02"
+    }
+  ],
+  "issues": [
+    {
+      "id": "EXT02-UNIT-COVERAGE-GAP",
+      "severity": "BLOCKER",
+      "description": "Only a subset of EXT-02 unit expectations are covered by source-local tests (event parsing, signature format, retry backoff, and non-admin route rejection). Most unit cases in tests/specs/EXT-02.md are not explicitly implemented.",
+      "affected_requirement": "EXT-02"
+    },
+    {
+      "id": "EXT02-INTEGRATION-SUITE-MISSING",
+      "severity": "BLOCKER",
+      "description": "No explicit EXT-02 integration test suite/cases were found under tests/integration, so TC-EXT-02-INT-01..10 were not directly executed despite zig build test-integration exiting 0.",
+      "affected_requirement": "EXT-02"
+    }
+  ],
+  "notes": [
+    "Integration harness output confirmed test database cleanup completed.",
+    "All required commands exited 0, but command success alone is insufficient to claim full EXT-02 acceptance coverage."
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "run_id": "WF03-ext01-intfix-20260525",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260525-055",
+  "step": "01b",
+  "agent_id": "ISSUE-FIXER",
+  "timestamp": "2026-05-25T09:45:38Z",
+  "status": "FAIL",
+  "summary": "TC-EXT-01-INT-03 integration stall was removed with a changed deterministic server lifecycle approach. Validation now completes and reports explicit runtime failures instead of hanging.",
+  "diagnosis": {
+    "prior_issue_lookup": {
+      "issue_id": "ISS-0022",
+      "match": true,
+      "applied_strategy": "Changed from compile-only fixes to runtime hang diagnosis with deterministic server shutdown"
+    },
+    "failure_category": "D_TEST_ERROR",
+    "category_rationale": "The primary stall came from test harness synchronization/lifecycle behavior (server accept/join deadlock risk), not from requirement ambiguity.",
+    "additional_blockers_after_unblock": [
+      "EXT-01 runtime retry/leak assertion failures (no longer a stall)",
+      "OBS-05 integration pagination assertion failure during full suite"
+    ]
+  },
+  "changes_applied": [
+    "tests/integration/ext01_service_task_test.zig: deterministic `/__stop` join-time shutdown path",
+    "tests/integration/ext01_service_task_test.zig: fixture graph lifetime fix (no escaping slices to local runtime arrays)",
+    "src/engine/service_task.zig: non-null payload for body-capable HTTP methods to avoid Zig std HTTP assertion crash"
+  ],
+  "validation": [
+    {
+      "command": "zig build",
+      "result": "PASS"
+    },
+    {
+      "command": "zig build test",
+      "result": "PASS"
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+      "result": "FAIL",
+      "evidence": "Run terminates (no TC-EXT-01-INT-03 stall) with explicit EXT-01 runtime/leak failures and one OBS-05 assertion failure"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "item": "zig build test exits 0",
+      "status": "PASS"
+    },
+    {
+      "item": "zig build test-integration exits 0",
+      "status": "FAIL"
+    },
+    {
+      "item": "TC-EXT-01-INT-03 no longer stalls",
+      "status": "PASS"
+    },
+    {
+      "item": "No new compile/runtime regressions are introduced",
+      "status": "FAIL"
+    }
+  ],
+  "next_action": "Route to ORCH for residual runtime failure follow-up and re-validation"
+}

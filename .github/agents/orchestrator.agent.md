@@ -1,6 +1,6 @@
 ---
 name: "BPM Orchestrator (ORCH)"
-description: "Use when routing work across the BPM Platform multi-agent pipeline: creating handoff files, checking workflow state, escalating failures, stage-gate checks, or planning which agent to invoke next."
+description: "Use when routing work across the BPM Platform multi-agent pipeline: creating handoff files, checking workflow state, escalating failures, stage-gate checks, or planning which agent to invoke next. GitHub Copilot"
 agents:
   - backend-dev
   - code-designer

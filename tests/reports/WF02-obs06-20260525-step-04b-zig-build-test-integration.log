@@ -1,0 +1,13 @@
+﻿Cleaning test database...
+Test database cleaned.
+test-integration
++- run test w
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+BPM_TEST_URL is not set — skipping HTTP integration test
+failed command: ".\\.zig-cache\\o\\e4d2fbffdf21c4ee0eaaddb917610c74\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xe171168a --listen=-
+System.Management.Automation.RemoteException

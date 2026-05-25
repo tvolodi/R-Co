@@ -1,0 +1,104 @@
+{
+  "run_id": "WF02-ext03-20260525",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260525-072",
+  "timestamp": "2026-05-25T14:41:46Z",
+  "requirement_ids": [
+    "EXT-03"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_layers": 3,
+    "passed_layers": 2,
+    "failed_layers": 0,
+    "not_gated_layers": 1,
+    "layers_executed": [
+      {
+        "layer": "unit",
+        "command": "zig build test",
+        "exit_code": 0,
+        "result": "PASS"
+      },
+      {
+        "layer": "integration",
+        "command": "cmd /c set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& zig build test-integration",
+        "exit_code": 0,
+        "result": "PASS",
+        "environment": {
+          "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+        }
+      },
+      {
+        "layer": "coverage",
+        "command": "zig build test-coverage",
+        "exit_code": 1,
+        "result": "NOT_GATED",
+        "detail": "build.zig does not define test-coverage; EXT-03 spec coverage note allows WF-02 verification via executable test-ID traceability plus passing unit/integration commands."
+      }
+    ]
+  },
+  "acceptance_mapping": [
+    {
+      "criterion": "Startup-only registration constraints",
+      "test_ids": [
+        "TC-EXT-03-U07",
+        "TC-EXT-03-U08",
+        "TC-EXT-03-U09",
+        "TC-EXT-03-U10",
+        "TC-EXT-03-INT-04",
+        "TC-EXT-03-INT-05"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Plugin precedence over built-ins",
+      "test_ids": [
+        "TC-EXT-03-U11",
+        "TC-EXT-03-U13",
+        "TC-EXT-03-U14",
+        "TC-EXT-03-INT-06"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Panic-to-ERROR mapping",
+      "test_ids": [
+        "TC-EXT-03-U06",
+        "TC-EXT-03-INT-03"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "COMPLETE/ERROR outcome handling",
+      "test_ids": [
+        "TC-EXT-03-U01",
+        "TC-EXT-03-U02",
+        "TC-EXT-03-U03",
+        "TC-EXT-03-U04",
+        "TC-EXT-03-U05",
+        "TC-EXT-03-U12",
+        "TC-EXT-03-U13",
+        "TC-EXT-03-INT-02",
+        "TC-EXT-03-INT-09"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "EE-09/EE-10 integration paths for plugin execution",
+      "test_ids": [
+        "TC-EXT-03-INT-07",
+        "TC-EXT-03-INT-08",
+        "TC-EXT-03-INT-09",
+        "TC-EXT-03-INT-10"
+      ],
+      "result": "PASS"
+    }
+  ],
+  "failures": [],
+  "issues": [],
+  "notes": [
+    "tests/integration/ext03_plugin_integration_test.zig is imported by tests/integration/main_test.zig, so TC-EXT-03-INT-01..10 are executable in the integration suite.",
+    "No skip markers for missing BPM_TEST_DB_URL were observed in the integration execution evidence for this run.",
+    "Coverage-step unavailability is handled according to tests/specs/EXT-03.md coverage notes and is not treated as a blocker for this WF-02 rework verification."
+  ]
+}

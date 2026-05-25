@@ -1,0 +1,69 @@
+{
+  "handoff_id": "20260525-023",
+  "run_id": "WF03-obs04-e2eexec-20260525",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-obs04-e2eexec-20260525/step-01-issue-fixer.json",
+  "created_at": "2026-05-25T14:15:00Z",
+  "started_at": "2026-05-25T14:15:20Z",
+  "completed_at": "2026-05-25T03:31:04Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "OBS-04"
+    ],
+    "related_handoff_ids": [
+      "20260525-022",
+      "20260525-021",
+      "20260525-020"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-obs04-20260525/step-04c-test-runner-rework2.json",
+      "tests/reports/report-20260525T032650Z-WF02-obs04-step04c-rework2.json",
+      "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+      "web/playwright.config.ts",
+      "docs/issues/ISS-0015.json",
+      "docs/issues/ISS-0016.json"
+    ]
+  },
+  "task": {
+    "description": "Resolve remaining OBS04-TEST-GAP-001 execution blocker by enabling non-skipped execution of OBS-04 Playwright E2E in current repo context. Remove/replace skip prerequisites with deterministic local test setup when possible (e.g., controlled credentials/fixtures), or implement a test harness path that executes browser UI->API->DB assertions in CI-like local runs. Provide concrete command evidence showing executed (not skipped) OBS-04 E2E outcome.",
+    "acceptance_criteria": [
+      "OBS-04 Playwright test executes (not skipped)",
+      "E2E command evidence captured in report artifacts",
+      "Issue OBS04-TEST-GAP-001 updated with resolved/open status based on execution evidence",
+      "No unrelated regressions introduced"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:run-targeted-validation"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Removed OBS-04 Playwright credential-gated skip and replaced it with deterministic execution + explicit auth failure diagnostics. The test now executes (not skipped) with concrete artifacts, but browser-level UI->API->DB closure remains blocked by runtime auth fixture availability.",
+    "artifacts_out": [
+      "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+      "tests/reports/report-20260525T033104Z-WF03-obs04-step01-e2eexec.json",
+      "docs/issues/ISS-0017.json",
+      "docs/issue-reports/WF03-obs04-e2eexec-20260525-step-01-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "OBS04-TEST-GAP-001",
+        "severity": "BLOCKER",
+        "description": "OBS-04 E2E now executes without skip, but deterministic auth/runtime prerequisites still prevent full timeline UI->API->DB verification in current runtime context.",
+        "affected_requirement": "OBS-04"
+      }
+    ],
+    "next_action": "Route to ORCH for deterministic runtime auth fixture/wiring follow-up, then re-run TEST-RUNNER validation."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

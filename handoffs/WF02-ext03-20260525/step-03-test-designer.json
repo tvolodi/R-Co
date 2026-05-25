@@ -1,0 +1,61 @@
+{
+  "handoff_id": "20260525-069",
+  "run_id": "WF02-ext03-20260525",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-ext03-20260525/step-03-test-designer.json",
+  "created_at": "2026-05-25T14:15:00Z",
+  "started_at": "2026-05-25T14:15:20Z",
+  "completed_at": "2026-05-25T14:18:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-03"
+    ],
+    "related_handoff_ids": [
+      "20260525-067",
+      "20260525-068"
+    ],
+    "artifacts_in": [
+      "src/design/ext-03-plugin-interface.md",
+      "src/engine/plugin_interface.zig",
+      "src/engine/plugin_registry.zig",
+      "src/engine/instance.zig",
+      "tests/unit/ext03_plugin_test.zig",
+      "docs/requirements/EXT-03.md",
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "Design and add any missing tests/specs required for EXT-03 so all acceptance criteria and edge cases are explicitly covered. Review existing EXT-03 unit tests and add/adjust tests and specs where coverage is incomplete, especially startup-only registration, plugin precedence shadowing built-ins, panic-to-ERROR mapping, COMPLETE/ERROR outcome handling, and EE-09/EE-10 integration behavior. Ensure test spec file for EXT-03 is present and aligned with implemented behavior. Keep tests deterministic and follow test developer guide conventions.",
+    "acceptance_criteria": [
+      "Every EXT-03 MUST/SHOULD acceptance criterion and edge case has at least one test case",
+      "A test spec exists and is aligned to implemented behavior",
+      "Tests are deterministic and suitable for CI execution",
+      "Handoff artifacts include all new/updated specs and test files"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:load-test-specs",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created EXT-03 test specification and expanded unit tests to close coverage gaps for startup-only registration, plugin precedence shadowing, COMPLETE/ERROR handling, panic reason mapping, and explicit EE-09/EE-10 integration traceability.",
+    "artifacts_out": [
+      "tests/specs/EXT-03.md",
+      "tests/unit/ext03_plugin_test.zig",
+      "docs/issue-reports/WF02-ext03-20260525-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,219 @@
+{
+  "report_id": "WF03-ext02-auditfix-20260525-step-02-test-runner",
+  "run_id": "WF03-ext02-auditfix-20260525",
+  "handoff_id": "20260525-066",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-25T13:42:14Z",
+  "requirement_ids": [
+    "EXT-02"
+  ],
+  "summary": {
+    "status": "PASS",
+    "spec_cases_total": 22,
+    "spec_cases_passed": 22,
+    "spec_cases_failed": 0,
+    "spec_cases_not_executed": 0,
+    "commands_passed": 3
+  },
+  "executions": [
+    {
+      "command": "zig build",
+      "layer": "build",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "Build check completed successfully."
+    },
+    {
+      "command": "zig build test",
+      "layer": "unit",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "Backend unit suite completed successfully, including the EXT-02 route and dispatcher unit tests."
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "layer": "integration",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "Real PostgreSQL-backed integration suite completed successfully for EXT-02."
+    }
+  ],
+  "coverage": [
+    {
+      "layer": "unit",
+      "total_cases": 12,
+      "passed_cases": 12,
+      "partial_cases": 0,
+      "not_executed_cases": 0,
+      "notes": "Passing source-local tests in src/webhook/dispatcher.zig and src/api/routes/webhooks.zig cover all EXT-02 unit cases."
+    },
+    {
+      "layer": "integration",
+      "total_cases": 10,
+      "passed_cases": 10,
+      "partial_cases": 0,
+      "not_executed_cases": 0,
+      "notes": "Passing tests in tests/integration/ext02_webhook_dispatch_test.zig cover all EXT-02 integration cases against bpm_test."
+    }
+  ],
+  "case_results": [
+    {
+      "test_case_id": "TC-EXT-02-U01",
+      "layer": "unit",
+      "file": "src/api/routes/webhooks.zig",
+      "status": "PASS",
+      "evidence": "Validation rejects missing URLs, invalid schemes, and empty event_types; valid payloads pass."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U02",
+      "layer": "unit",
+      "file": "src/api/routes/webhooks.zig",
+      "status": "PASS",
+      "evidence": "WebhookEventType.fromWire accepts only instance.started, instance.completed, instance.errored, task.activated, and task.completed."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U03",
+      "layer": "unit",
+      "file": "src/api/routes/webhooks.zig",
+      "status": "PASS",
+      "evidence": "Route authorization returns 403 for non-PLATFORM_ADMIN callers and allows admin callers through."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U04",
+      "layer": "unit",
+      "file": "src/webhook/dispatcher.zig",
+      "status": "PASS",
+      "evidence": "Dispatch body builder emits the stable envelope fields event_type, instance_id, timestamp, and payload."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U05",
+      "layer": "unit",
+      "file": "src/webhook/dispatcher.zig",
+      "status": "PASS",
+      "evidence": "Dispatch headers include content-type, x-bpm-event-type, x-bpm-delivery-id, x-bpm-attempt, and x-trace-id."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U06",
+      "layer": "unit",
+      "file": "src/webhook/signing.zig",
+      "status": "PASS",
+      "evidence": "Signature helper formats output as sha256=<hex> for a non-empty secret."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U07",
+      "layer": "unit",
+      "file": "src/webhook/dispatcher.zig",
+      "status": "PASS",
+      "evidence": "Signature header is omitted when no secret is configured."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U08",
+      "layer": "unit",
+      "file": "src/webhook/dispatcher.zig",
+      "status": "PASS",
+      "evidence": "Retry delay logic is exponential and capped across attempts 1..5."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U09",
+      "layer": "unit",
+      "file": "src/webhook/dispatcher.zig",
+      "status": "PASS",
+      "evidence": "Failure classification pauses the subscription when the 5-attempt budget is exhausted."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U10",
+      "layer": "unit",
+      "file": "src/webhook/subscription_store.zig",
+      "status": "PASS",
+      "evidence": "Audit payload shape for create/delete preserves the expected before/after state semantics."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U11",
+      "layer": "unit",
+      "file": "src/webhook/dispatcher.zig",
+      "status": "PASS",
+      "evidence": "HTTP 2xx responses with invalid or non-JSON bodies are treated as delivery success."
+    },
+    {
+      "test_case_id": "TC-EXT-02-U12",
+      "layer": "unit",
+      "file": "src/webhook/dispatcher.zig",
+      "status": "PASS",
+      "evidence": "Retry counters are isolated per subscription for the same source event."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-01",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "Admin create subscription returned 201 and persisted ACTIVE, max_attempts=5 row state."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-02",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "GET subscriptions is admin-only and redacts stored secret values."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-03",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "DELETE subscription is admin-only, returns 204 for existing rows, and removes the row."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-04",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "Matching lifecycle events fan out and deliver the expected JSON body and delivery headers."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-05",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "Signed deliveries include x-bpm-signature and unsigned deliveries omit it."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-06",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "Non-2xx failures retry with at-least-once semantics and update next_attempt_at."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-07",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "Fifth consecutive failure pauses the subscription and marks the delivery exhausted."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-08",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "Create/delete operations write the expected OBS-03 audit rows atomically."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-09",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "HTTP 2xx with invalid/non-JSON response body is treated as success without retry."
+    },
+    {
+      "test_case_id": "TC-EXT-02-INT-10",
+      "layer": "integration",
+      "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+      "status": "PASS",
+      "evidence": "Fan-out to multiple subscriptions keeps retry counters independent."
+    }
+  ],
+  "issues": [],
+  "next_action": "Route to ORCH for handoff completion."
+}

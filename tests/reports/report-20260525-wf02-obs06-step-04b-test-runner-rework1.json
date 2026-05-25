@@ -1,0 +1,102 @@
+{
+  "run_id": "WF02-obs06-20260525",
+  "handoff_id": "20260525-040",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-25T07:05:34Z",
+  "agent_id": "TEST-RUNNER",
+  "requirement_ids": [
+    "OBS-06"
+  ],
+  "summary": {
+    "status": "PARTIAL",
+    "total_cases": 2,
+    "passed_cases": 1,
+    "failed_cases": 0,
+    "skipped_cases": 1
+  },
+  "executions": [
+    {
+      "command": "zig build test",
+      "layer": "unit",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+      "layer": "integration",
+      "exit_code": 0,
+      "status": "PARTIAL",
+      "notes": [
+        "BPM_TEST_URL is not set - skipping HTTP integration test (7 occurrences)",
+        "Integration output includes failed command marker while exit code remained 0",
+        "OBS-06 cannot be marked PASS until required integration coverage executes without skip precondition gaps"
+      ]
+    }
+  ],
+  "obs06_case_results": [
+    {
+      "test_case_id": "TC-OBS-06-INT-01..05",
+      "title": "OBS-06 integration suite in tests/integration/obs06_alerts_test.zig",
+      "status": "PARTIAL",
+      "evidence": [
+        "zig build test-integration exit code 0",
+        "BPM_TEST_URL skip signal observed 7 times",
+        "failed command marker observed once in integration output"
+      ]
+    }
+  ],
+  "acceptance_criteria_results": [
+    {
+      "criterion": "Updated test report is written under tests/reports",
+      "status": "PASS"
+    },
+    {
+      "criterion": "OBS-06 verdict is PASS if unit and integration suites pass with required coverage",
+      "status": "PARTIAL"
+    },
+    {
+      "criterion": "Any failures include severity, diagnostics, and affected requirement mapping",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Handoff result clearly indicates next action for WF-02",
+      "status": "PASS"
+    }
+  ],
+  "failures": [
+    {
+      "id": "OBS06-INTEGRATION-ENV-001",
+      "test_id": "TC-OBS-06-INT-01..05",
+      "layer": "integration",
+      "file": "tests/integration/main_test.zig",
+      "error_message": "BPM_TEST_URL is not set - skipping HTTP integration test",
+      "severity": "BLOCKER",
+      "requirement_id": "OBS-06",
+      "diagnostics": [
+        "Integration run produced 7 BPM_TEST_URL skip messages",
+        "Coverage evidence is incomplete for full integration acceptance",
+        "No deterministic non-skip execution evidence for all OBS-06 required integration paths in this rework iteration"
+      ],
+      "affected_artifacts": [
+        "tests/integration/obs06_alerts_test.zig",
+        "tests/integration/main_test.zig",
+        "tests/specs/OBS-06.md"
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "id": "OBS06-INTEGRATION-ENV-001",
+      "severity": "BLOCKER",
+      "description": "Integration suite execution remains partial because BPM_TEST_URL is unset, causing repeated HTTP integration skips and incomplete acceptance coverage evidence for OBS-06.",
+      "affected_requirement": "OBS-06"
+    }
+  ],
+  "artifacts_out": [
+    "tests/reports/report-20260525-wf02-obs06-step-04b-test-runner-rework1.json",
+    "tests/reports/WF02-obs06-20260525-step-04b-zig-build-test.log",
+    "tests/reports/WF02-obs06-20260525-step-04b-zig-build-test-integration.log",
+    "docs/issue-reports/WF02-obs06-20260525-step-04b-test-runner-rework1-INNER-REPORT.json"
+  ],
+  "next_action": "Route to ORCH for environment-prerequisite rework (set BPM_TEST_URL and required HTTP integration inputs), then rerun WF-02 Step 04b for OBS-06 coverage closure."
+}

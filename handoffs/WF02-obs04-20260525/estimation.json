@@ -1,0 +1,29 @@
+{
+  "run_id": "WF02-obs04-20260525",
+  "created_at": "2026-05-25T11:05:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "OBS-04"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "OBS-04 adds a new replay-and-format timeline API with pagination, actor display-name resolution, and edge-case handling across event history.",
+  "integration_surface": "high",
+  "integration_surface_rationale": "Touches API routing/authorization, event-log query/replay behavior, identity display mapping, and integration test harness wiring.",
+  "steps": [
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 182,
+    "backend-dev": 11,
+    "test-designer": 6,
+    "test-runner": 11,
+    "release-validator": 3,
+    "doc-updater": 2,
+    "total": 215
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "issue_id": "ISS-0012",
+  "title": "WF03 OBS-03 HTTP env blocker: aggregate integration runner masked MUST OBS-03 evidence behind unrelated BPM_TEST_URL skips",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "D_TEST_ERROR",
+  "run_id": "WF03-obs03-httpenvfix-20260525",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260525-007",
+  "requirement_ids": [
+    "OBS-03"
+  ],
+  "summary": "OBS-03 verification was blocked by aggregate integration execution that still ran unrelated HTTP tests requiring BPM_TEST_URL, which produced skip noise and non-actionable output for MUST OBS-03 evidence. A dedicated OBS-03 integration build step was added for deterministic pass/fail, and OBS-03 test fixture cleanup was corrected to avoid mutating immutable audit_entries during setup.",
+  "root_cause": {
+    "type": "integration_harness_scope_and_fixture_setup",
+    "details": "`zig build test-integration` executes the whole integration suite and includes HTTP tests that skip when BPM_TEST_URL is absent. That output masked requirement-specific evidence for OBS-03. In OBS-03 tests, setup also attempted DELETE against immutable `audit_entries`, making fixture behavior non-deterministic under repeated runs."
+  },
+  "resolution": {
+    "strategy": "COMPLETE",
+    "changes": [
+      "Added `zig build test-integration-obs03` in build.zig to run only tests/integration/obs03_audit_log_test.zig with existing integration imports.",
+      "Removed invalid cleanup calls that attempted DELETE on immutable audit_entries in TC-OBS-03-INT-04/05.",
+      "Added deterministic guard cleanup for prior fault-injection hook artifacts before immutable/pagination insert assertions."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS",
+        "evidence": "tests/reports/WF03-obs03-httpenvfix-20260525-zig-build.log"
+      },
+      {
+        "command": "zig build test",
+        "result": "PASS",
+        "evidence": "tests/reports/WF03-obs03-httpenvfix-20260525-zig-build-test.log"
+      },
+      {
+        "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+        "result": "PASS_WITH_UNRELATED_HTTP_SKIPS",
+        "evidence": "tests/reports/WF03-obs03-httpenvfix-20260525-zig-build-test-integration.log"
+      },
+      {
+        "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test (BPM_TEST_URL unset) zig build test-integration-obs03",
+        "result": "PASS",
+        "evidence": "tests/reports/WF03-obs03-httpenvfix-20260525-zig-build-test-integration-obs03.log"
+      }
+    ]
+  },
+  "files_changed": [
+    "build.zig",
+    "tests/integration/obs03_audit_log_test.zig"
+  ],
+  "created_at": "2026-05-24T22:37:08Z",
+  "resolved_at": "2026-05-24T22:37:08Z",
+  "prevention": [
+    "For MUST requirement verification, use requirement-scoped integration entrypoints instead of aggregate suites that include unrelated env-gated tests.",
+    "Do not use DELETE-based cleanup helpers on immutable tables in integration fixtures."
+  ]
+}

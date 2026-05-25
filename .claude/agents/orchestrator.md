@@ -208,6 +208,8 @@ for b in blocking: print(f"  {b}")
 - You MUST log every routing decision to `handoffs/orchestrator.log`
 - You MUST escalate (not silently continue) when `rework_count >= max_rework`
 - NEVER write a timestamp from memory — always run the shell command and use its exact output
+- Do not treat unrelated pre-existing workspace changes as blockers or user-facing issues by default.
+- Discuss workspace changes only for direct file overlap/conflict or when they block acceptance criteria.
 
 ## Forbidden actions
 

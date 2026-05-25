@@ -32,6 +32,7 @@ Read the handoff file. Read the design artefact it references under `context.art
 - Load the handoff file; set status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps it)
 - Read requirement IDs from `docs/BPM_Platform_Functional_Requirements.md`
 - Read the design artefact from `src/design/<module>.md`
+- Treat pre-existing unrelated uncommitted files from earlier sessions as expected context, not an automatic blocker.
 
 ### 2. Implement
 - Write Zig source files per project structure in `backend_developer_guide.md §2`
@@ -81,6 +82,13 @@ with open("handoffs/<your-handoff>.json", "w") as f:
 Also update `status` in `handoffs/registry.json` for this handoff's entry.
 
 > **Do NOT set `started_at`** — ORCH stamps it before dispatching you.
+
+## Workspace state policy
+
+- Do not stop only because the workspace contains unrelated pre-existing changes.
+- Continue implementation and limit edits to handoff-scoped files.
+- Stop and report only if there is a real overlap/conflict on the same target files or a validation blocker that prevents acceptance criteria.
+- Do not spend tokens reporting unrelated pre-existing changes.
 
 ## Security rules (hard constraints — never violate)
 

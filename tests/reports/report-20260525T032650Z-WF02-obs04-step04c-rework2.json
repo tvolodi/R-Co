@@ -1,0 +1,118 @@
+{
+  "run_id": "WF02-obs04-20260525",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260525-022",
+  "timestamp": "2026-05-25T03:26:50Z",
+  "requirement_ids": [
+    "OBS-04"
+  ],
+  "summary": {
+    "overall_status": "FAIL",
+    "commands_total": 9,
+    "commands_passed": 7,
+    "commands_failed": 0,
+    "commands_blocked_or_partial": 2
+  },
+  "command_results": [
+    {
+      "command": "zig build",
+      "layer": "backend",
+      "result": "PASS",
+      "evidence": [
+        "EXIT_CODE=0"
+      ]
+    },
+    {
+      "command": "zig build test",
+      "layer": "backend-unit",
+      "result": "PASS",
+      "evidence": [
+        "EXIT_CODE=0"
+      ]
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+      "layer": "backend-integration",
+      "result": "PARTIAL",
+      "evidence": [
+        "INTEGRATION_EXIT_CODE=0",
+        "BPM_TEST_URL is not set - skipping HTTP integration test (repeated)",
+        "failed command: ... test.exe ...",
+        "Skip semantics with exit code 0 are known in this repo and do not prove full HTTP integration coverage"
+      ],
+      "notes": "Database-backed integration harness starts, but HTTP integration paths are skipped without BPM_TEST_URL/BPM_TEST_TOKEN; this cannot close browser UI->API->DB evidence requirements."
+    },
+    {
+      "command": "BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev zig build migrate",
+      "layer": "backend-migrations",
+      "result": "PASS",
+      "evidence": [
+        "No new migrations to apply.",
+        "MIGRATE_WITH_DB_EXIT=0"
+      ]
+    },
+    {
+      "command": "cd web && npm run type-check",
+      "layer": "frontend",
+      "result": "PASS",
+      "evidence": [
+        "TYPECHECK_EXIT=0"
+      ]
+    },
+    {
+      "command": "cd web && npm run lint",
+      "layer": "frontend",
+      "result": "PASS",
+      "evidence": [
+        "LINT_EXIT=0"
+      ],
+      "notes": "@typescript-eslint warning about unsupported TypeScript 5.9.3 did not fail the lint run."
+    },
+    {
+      "command": "cd web && npm run test",
+      "layer": "frontend-unit",
+      "result": "PASS",
+      "evidence": [
+        "1 passed test file",
+        "6 passed tests",
+        "FE_TEST_EXIT=0"
+      ]
+    },
+    {
+      "command": "cd web && npm run build",
+      "layer": "frontend-build",
+      "result": "PASS",
+      "evidence": [
+        "vite build completed",
+        "FE_BUILD_EXIT=0"
+      ]
+    },
+    {
+      "command": "cd web && npm run test:e2e -- tests/e2e/obs04.timeline.e2e.spec.ts",
+      "layer": "frontend-e2e",
+      "result": "BLOCKED",
+      "evidence": [
+        "Running 1 test using 1 worker",
+        "1 skipped",
+        "OBS04_E2E_EXIT=0",
+        "Spec skips when BPM_E2E_EMAIL/BPM_E2E_PASSWORD are unset"
+      ],
+      "notes": "OBS-04 browser flow is discovered but not executed, so no concrete UI->API->DB proof exists in this run."
+    }
+  ],
+  "issue_reassessment": {
+    "OBS04-TEST-GAP-001": {
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "release_gate": "NOT_CLEARED",
+      "rationale": "OBS-04 E2E scenario was discovered but skipped; this run does not provide executable browser-level UI->API->DB evidence required for MUST requirement closure."
+    }
+  },
+  "traceability": {
+    "spec_file": "tests/specs/OBS-04.md",
+    "e2e_file": "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+    "backend_runtime_file": "src/main.zig",
+    "related_handoff": "handoffs/WF03-obs04-runtime-20260525/step-01-backend-dev.json"
+  },
+  "next_action": "FAIL: Keep WF-02 OBS-04 gated and route to ORCH for executable E2E prerequisite completion, then re-run TEST-RUNNER validation."
+}

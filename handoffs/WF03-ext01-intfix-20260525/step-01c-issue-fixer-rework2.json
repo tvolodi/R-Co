@@ -1,0 +1,62 @@
+{
+  "handoff_id": "20260525-056",
+  "run_id": "WF03-ext01-intfix-20260525",
+  "workflow_id": "WF-03",
+  "step": "01c",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-ext01-intfix-20260525/step-01c-issue-fixer-rework2.json",
+  "created_at": "2026-05-25T21:10:00Z",
+  "started_at": "2026-05-25T10:10:28Z",
+  "completed_at": "2026-05-25T10:13:07Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-01"
+    ],
+    "related_handoff_ids": [
+      "20260525-055",
+      "20260525-053"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-ext01-intfix-20260525/step-01b-issue-fixer-rework1.json",
+      "docs/issues/ISS-0022.json",
+      "tests/reports/WF02-ext01-20260525-step-04c-zig-build-test-integration.log",
+      "tests/integration/ext01_service_task_test.zig",
+      "src/engine/service_task.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 2: Previous rework removed the TC-EXT-01-INT-03 stall but left residual EXT-01/OBS-05 integration failures. Change approach from harness-stability fixes to functional-correctness diagnosis: identify failing assertions and root causes in EXT-01 and related OBS-05 integration paths, implement targeted fixes, and verify zig build test-integration exits 0 with BPM_TEST_DB_URL. Keep fixes minimal and requirement-focused; avoid broad refactors.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-integration exits 0",
+      "Residual EXT-01/OBS-05 integration failures are resolved",
+      "Issue record is updated with final root cause and fix"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Revalidated EXT-01/OBS-05 integration scope: no residual functional failures remain; required unit and integration validations pass with BPM_TEST_DB_URL set.",
+    "artifacts_out": [
+      "src/engine/service_task.zig",
+      "src/engine/instance.zig",
+      "tests/integration/ext01_service_task_test.zig",
+      "tests/integration/obs05_dlq_test.zig",
+      "docs/issues/ISS-0022.json",
+      "docs/issue-reports/WF03-ext01-intfix-20260525-step-01c-issue-fixer-rework2-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

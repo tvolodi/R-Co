@@ -358,6 +358,19 @@ pub fn build(b: *std.Build) void {
     });
     const run_api05_history_tests = b.addRunArtifact(api05_history_tests);
 
+    // OBS-04: timeline endpoint handler unit tests (input validation — no DB)
+    const obs04_timeline_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_obs04_timeline.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_main_mod },
+            },
+        }),
+    });
+    const run_obs04_timeline_tests = b.addRunArtifact(obs04_timeline_tests);
+
     // API-06: Pagination module unit tests (pure functions — no DB)
     // Uses the api_mod shim (src/api/api_mod.zig) to import pagination.zig
     const api06_pagination_tests = b.addTest(.{
@@ -443,6 +456,32 @@ pub fn build(b: *std.Build) void {
     });
     const run_sch06_unit_tests = b.addRunArtifact(sch06_unit_tests);
 
+    // EXT-01: service task config/retry helper unit tests (pure, no DB)
+    const service_task_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/service_task_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_service_task_unit_tests = b.addRunArtifact(service_task_unit_tests);
+
+    // EXT-03: plugin interface and registry unit tests (pure, no DB)
+    const ext03_plugin_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/ext03_plugin_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_ext03_plugin_unit_tests = b.addRunArtifact(ext03_plugin_unit_tests);
+
     // ---------------------------------------------------------------------------
     // `zig build test-engine` — engine unit tests only
     // ---------------------------------------------------------------------------
@@ -483,12 +522,15 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_api02_handler_tests.step);
     test_step.dependOn(&run_api03_handler_tests.step);
     test_step.dependOn(&run_api05_history_tests.step);
+    test_step.dependOn(&run_obs04_timeline_tests.step);
     test_step.dependOn(&run_api06_pagination_tests.step);
     test_step.dependOn(&run_api07_validation_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
     test_step.dependOn(&run_api09_tracing_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
+    test_step.dependOn(&run_service_task_unit_tests.step);
+    test_step.dependOn(&run_ext03_plugin_unit_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
@@ -513,6 +555,26 @@ pub fn build(b: *std.Build) void {
     });
     const run_integration_tests = b.addRunArtifact(integration_tests);
 
+    const obs03_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obs03_audit_log_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_obs03_integration_tests = b.addRunArtifact(obs03_integration_tests);
+
+    const obs04_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/obs04_timeline_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_obs04_integration_tests = b.addRunArtifact(obs04_integration_tests);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python3", "tools/clean_test_db.py" });
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
@@ -521,6 +583,14 @@ pub fn build(b: *std.Build) void {
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL)");
     test_integration_step.dependOn(&clean_test_db.step);
     test_integration_step.dependOn(&run_integration_tests.step);
+
+    const test_integration_obs03_step = b.step("test-integration-obs03", "Run OBS-03 integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_obs03_step.dependOn(&clean_test_db.step);
+    test_integration_obs03_step.dependOn(&run_obs03_integration_tests.step);
+
+    const test_integration_obs04_step = b.step("test-integration-obs04", "Run OBS-04 integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_obs04_step.dependOn(&clean_test_db.step);
+    test_integration_obs04_step.dependOn(&run_obs04_integration_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

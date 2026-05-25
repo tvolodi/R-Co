@@ -53,6 +53,7 @@ Before implementing anything, search this file for the module or pattern you are
 | Completing a handoff without `fn:register-inner-report` | Context loss; next agent has no audit trail | The completion order is always: `fn:validate-completeness → fn:register-inner-report → fn:complete-handoff` |
 | Retrying the same implementation approach after 2 failures | Infinite rework loop; escalation delayed | After 2 identical failures, change the root approach before the third attempt |
 | Embedding large context in handoff JSON `context` fields | Prompt truncation in downstream agents | Write context to a file in `docs/` and reference the path in the handoff |
+| Treating unrelated pre-existing workspace changes as blockers | Pipeline stalls and token waste on non-blocking noise | Ignore pre-existing unrelated changes; only raise when there is direct file overlap/conflict or acceptance criteria are blocked |
 | **ORCH writing `created_at` / `started_at` from the session context date or a manually chosen round number** | `completed_at` (set from the real host clock) precedes `started_at`; step durations become negative; retrospectives are corrupted | Run `(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")` (PowerShell) immediately and use the exact printed string. Never derive timestamps from "current date is …" in the session context. |
 
 ---

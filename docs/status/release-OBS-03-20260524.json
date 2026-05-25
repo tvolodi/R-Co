@@ -1,0 +1,67 @@
+{
+  "stage": "Stage 6 - Observability + Extensions",
+  "date": "2026-05-24T22:56:58Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "OBS-03"
+  ],
+  "nfr_results": {
+    "benchmark_command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.224,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.569,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 53763.559,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 35.960,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04 with benchmark DB URL configured."
+  },
+  "test_evidence": {
+    "obs03_step04d_handoff": "handoffs/WF02-obs03-20260525/step-04d-test-runner-rework3.json",
+    "obs03_step04d_report": "tests/reports/report-20260524T225404Z-WF02-obs03-step04d-rework3.json",
+    "obs03_step04d_status": "PASS",
+    "obs03_dedicated_target": "zig build test-integration-obs03",
+    "obs03_traceability_spec": "tests/specs/OBS-03.md",
+    "obs03_verified_cases": [
+      "TC-OBS-03-INT-01",
+      "TC-OBS-03-INT-02",
+      "TC-OBS-03-INT-03",
+      "TC-OBS-03-INT-04",
+      "TC-OBS-03-INT-05",
+      "TC-OBS-03-INT-06"
+    ]
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "OBS-03"
+  ],
+  "non_blocking_issues": [
+    {
+      "id": "RV-OBS03-AGGREGATE-SKIP-NOISE",
+      "severity": "MINOR",
+      "agent": "RELEASE-VALIDATOR",
+      "description": "Aggregate integration logs include unrelated BPM_TEST_URL skip noise, but dedicated OBS-03 integration evidence passed and remains valid."
+    }
+  ],
+  "recommendation": "APPROVE OBS-03 release gate and route to DOC-UPDATER for requirement status/changelog updates."
+}

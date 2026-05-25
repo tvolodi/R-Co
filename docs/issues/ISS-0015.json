@@ -1,0 +1,45 @@
+{
+  "issue_id": "ISS-0015",
+  "title": "WF03 OBS-04 browser E2E gap remains blocked: no runnable backend UI->API server path in current repo state",
+  "status": "WONT-FIX",
+  "severity": "BLOCKER",
+  "category": "E_ENVIRONMENT",
+  "run_id": "WF03-obs04-fixes-20260525",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260525-018",
+  "requirement_ids": [
+    "OBS-04"
+  ],
+  "summary": "Browser-level UI->API->DB E2E coverage for OBS-04 timeline could not be executed in this handoff because the backend runtime does not expose an active API server flow in current state and the web Playwright suite is not bootstrapped with executable E2E specs.",
+  "root_cause": {
+    "type": "runtime_and_e2e_harness_unavailable",
+    "details": "`zig build run` prints startup validation then exits with 'BPM Platform — not yet implemented' instead of serving API endpoints. In web, `npm run test:e2e -- --list` reports no Playwright tests (0 files) and emits a Vitest state access error. Without a running HTTP backend and E2E specs/harness, UI->API->DB execution is not feasible in this repo state."
+  },
+  "resolution": {
+    "strategy": "WONT_FIX_IN_THIS_HANDOFF",
+    "changes": [
+      "Recorded explicit blocker evidence and maintained release-blocking severity for OBS04-TEST-GAP-001."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev zig build run",
+        "result": "BLOCKED",
+        "evidence": "Process prints startup log then exits: 'BPM Platform — not yet implemented'."
+      },
+      {
+        "command": "cd web && npm run test:e2e -- --list",
+        "result": "BLOCKED",
+        "evidence": "Playwright reports 'No tests found' (0 files) and Vitest internal-state error."
+      }
+    ]
+  },
+  "files_changed": [],
+  "created_at": "2026-05-25T02:53:20Z",
+  "resolved_at": "2026-05-25T02:53:20Z",
+  "prevention": [
+    "Do not classify frontend API-driven requirements as TESTED until a runnable backend server path and Playwright E2E suite exist and execute against real DB-backed flows.",
+    "Track browser E2E harness enablement as a prerequisite work item before assigning requirement-level UI E2E closure tasks."
+  ]
+}

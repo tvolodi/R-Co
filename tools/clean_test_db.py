@@ -23,6 +23,7 @@ TABLES = [
     "events",
     "event_store",
     "audit_log",
+    "audit_entries",
     "dlq",
     "webhook_subscriptions",
     "schema_migrations",
@@ -50,7 +51,10 @@ def run_psql(sql: str) -> bool:
 def main() -> None:
     print("Cleaning test database...", flush=True)
     for table in TABLES:
-        run_psql(f"DELETE FROM {table}")
+        if table == "audit_entries":
+            run_psql("TRUNCATE TABLE audit_entries")
+        else:
+            run_psql(f"DELETE FROM {table}")
     print("Test database cleaned.", flush=True)
 
 

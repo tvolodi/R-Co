@@ -1,0 +1,96 @@
+{
+  "run_id": "WF03-obs04-e2eprereq-20260525",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260525-020",
+  "timestamp": "2026-05-25T03:06:42Z",
+  "requirement_ids": [
+    "OBS-04"
+  ],
+  "summary": {
+    "overall_status": "PARTIAL",
+    "commands_total": 7,
+    "commands_passed": 5,
+    "commands_failed": 0,
+    "commands_blocked_or_partial": 2
+  },
+  "command_results": [
+    {
+      "command": "cd web && npm run type-check",
+      "layer": "frontend",
+      "result": "PASS",
+      "evidence": [
+        "tsc --noEmit exited 0"
+      ]
+    },
+    {
+      "command": "cd web && npm run lint",
+      "layer": "frontend",
+      "result": "PASS",
+      "evidence": [
+        "eslint exited 0"
+      ],
+      "notes": "@typescript-eslint TypeScript version warning is informational only."
+    },
+    {
+      "command": "cd web && npm run test",
+      "layer": "frontend-unit",
+      "result": "PASS",
+      "evidence": [
+        "1 passed test file",
+        "6 passed tests"
+      ]
+    },
+    {
+      "command": "cd web && npm run test:e2e:list",
+      "layer": "frontend-e2e-discovery",
+      "result": "PASS",
+      "evidence": [
+        "Total: 1 test in 1 file",
+        "obs04.timeline.e2e.spec.ts discovered"
+      ]
+    },
+    {
+      "command": "cd web && npm run test:e2e:obs04",
+      "layer": "frontend-e2e-runtime",
+      "result": "PARTIAL",
+      "evidence": [
+        "Running 1 test",
+        "1 skipped"
+      ],
+      "notes": "Scenario executes via Playwright, but skips when BPM_E2E_EMAIL/BPM_E2E_PASSWORD are not provided for real backend auth flow."
+    },
+    {
+      "command": "zig build",
+      "layer": "backend",
+      "result": "PASS",
+      "evidence": [
+        "ZIG_BUILD_EXIT=0"
+      ]
+    },
+    {
+      "command": "BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev zig build run",
+      "layer": "backend-runtime-prereq",
+      "result": "BLOCKED",
+      "evidence": [
+        "startup configuration validated",
+        "BPM Platform - not yet implemented",
+        "ZIG_BUILD_RUN_EXIT=0"
+      ],
+      "notes": "Runtime exits after startup log and does not expose a running HTTP API server required for full browser UI->API->DB E2E coverage."
+    }
+  ],
+  "issue_reassessment": {
+    "OBS04-TEST-GAP-001": {
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "release_gate": "NOT_CLEARED",
+      "rationale": "E2E harness discovery/runtime prerequisites are now present, but full browser-level UI->API->DB execution remains blocked by missing persistent backend server runtime and absent real-credential E2E execution evidence."
+    }
+  },
+  "artifacts": {
+    "e2e_config": "web/playwright.config.ts",
+    "e2e_spec": "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+    "spec_traceability": "tests/specs/OBS-04.md"
+  },
+  "next_action": "Route to ORCH for backend runtime enablement and credentialed E2E execution; then re-run TEST-RUNNER to close OBS-04 release gate."
+}

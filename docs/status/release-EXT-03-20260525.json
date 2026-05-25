@@ -1,0 +1,56 @@
+{
+  "stage": "Stage 6 - Observability + Extensions",
+  "date": "2026-05-25T14:45:21Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "EXT-03"
+  ],
+  "nfr_results": {
+    "benchmark_command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.285,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 3.204,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 51590.993,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 58.46,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "test_evidence": {
+    "test_report": "tests/reports/report-20260525T144146Z-WF02-ext03-20260525.json",
+    "report_status": "PASS",
+    "ext03_acceptance_mappings_passed": 5,
+    "ext03_failures": 0,
+    "implementation_artifacts_reviewed": [
+      "src/engine/plugin_interface.zig",
+      "src/engine/plugin_registry.zig",
+      "src/engine/instance.zig"
+    ]
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "EXT-03"
+  ],
+  "non_blocking_issues": [],
+  "recommendation": "APPROVE EXT-03 release gate and route to DOC-UPDATER for requirement status lifecycle update."
+}

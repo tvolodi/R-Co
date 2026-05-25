@@ -1,0 +1,59 @@
+{
+  "stage": "Stage 6 - Observability + Extensions",
+  "date": "2026-05-25T03:50:29Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "OBS-04"
+  ],
+  "nfr_results": {
+    "benchmark_command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.133,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.897,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 66468.956,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 31.751,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "test_evidence": {
+    "wf02_step04d_handoff": "handoffs/WF02-obs04-20260525/step-04d-test-runner-rework3.json",
+    "wf02_step04d_report": "tests/reports/report-20260525T034702Z-WF02-obs04-step04d-rework3.json",
+    "wf03_fix_report": "tests/reports/report-20260525T033705Z-WF03-obs04-step01-e2eauth.json",
+    "wf02_step04d_status": "PASS",
+    "wf03_fix_status": "PASS"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "OBS-04"
+  ],
+  "non_blocking_issues": [
+    {
+      "id": "RV-OBS04-INTEGRATION-SKIP-NOISE",
+      "severity": "MINOR",
+      "agent": "RELEASE-VALIDATOR",
+      "description": "Aggregate integration command included known BPM_TEST_URL skip noise with exit 0, while dedicated OBS-04 integration and E2E evidence passed in the same validation cycle."
+    }
+  ],
+  "recommendation": "APPROVE OBS-04 release gate and route to DOC-UPDATER for requirement status and changelog updates."
+}

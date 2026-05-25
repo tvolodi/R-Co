@@ -1,0 +1,63 @@
+{
+  "handoff_id": "20260525-047",
+  "run_id": "WF02-ext01-20260525",
+  "workflow_id": "WF-02",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-ext01-20260525/step-02b-backend-dev-rework1.json",
+  "created_at": "2026-05-25T19:20:00Z",
+  "started_at": "2026-05-25T19:20:20Z",
+  "completed_at": "2026-05-25T08:07:38Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-01"
+    ],
+    "related_handoff_ids": [
+      "20260525-045",
+      "20260525-046"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-ext01-20260525/step-02-backend-dev.json",
+      "src/design/ext-01-service-task-node.md",
+      "docs/requirements/EXT-01.md",
+      "src/design/obs-05-dead-letter-queue.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Previous implementation passed build/tests but did not complete end-to-end runtime integration. Change approach from helper-only groundwork to full instance-runtime wiring in execution paths. Required fixes from previous result.issues: (1) [BLOCKER] wire SERVICE_TASK execution into instance runtime with real outbound HTTP orchestration from activation through retries/backoff; (2) [BLOCKER] implement integrated terminal exhaustion handling that persists to OBS-05 DLQ and transitions instance to ERROR per EE-10 in one coherent flow; (3) [MAJOR] apply trace propagation and deterministic idempotency behavior on actual outbound HTTP requests. Preserve prior groundwork, avoid pure-helper-only changes, and complete all EXT-01 acceptance criteria/edge cases as implemented behavior.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build migrate exits 0",
+      "SERVICE_TASK runtime path executes outbound HTTP with timeout/retry/backoff per design",
+      "Retry exhaustion writes to DLQ and transitions instance to ERROR in integrated flow",
+      "Trace and idempotency headers are present on real outbound requests"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:check-zig-tests",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Finalized the validated EXT-01 backend-dev rework handoff.",
+    "artifacts_out": [
+      "src/definition/graph.zig",
+      "tests/unit/graph_node_attributes_test.zig",
+      "src/engine/service_task.zig",
+      "tests/unit/service_task_test.zig",
+      "src/bpm.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 3)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

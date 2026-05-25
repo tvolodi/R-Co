@@ -1,0 +1,82 @@
+{
+  "run_id": "WF02-obs06-20260525",
+  "handoff_id": "20260525-042",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-25T07:21:29Z",
+  "agent_id": "TEST-RUNNER",
+  "requirement_ids": [
+    "OBS-06"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_cases": 2,
+    "passed_cases": 2,
+    "failed_cases": 0,
+    "skipped_cases": 0
+  },
+  "executions": [
+    {
+      "command": "zig build test",
+      "layer": "unit",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "tests/reports/WF02-obs06-20260525-step-04c-zig-build-test.log"
+      ]
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+      "layer": "integration",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "tests/reports/WF02-obs06-20260525-step-04c-zig-build-test-integration.log",
+        "tests/integration/main_test.zig",
+        "tests/integration/obs06_alerts_test.zig"
+      ],
+      "notes": [
+        "Integration log contains database setup lines and no skip-precondition marker text for BPM_TEST_URL/BPM_TEST_DB_URL.",
+        "OBS-06 integration suite is imported by tests/integration/main_test.zig and executed in zig build test-integration runs."
+      ]
+    }
+  ],
+  "obs06_case_results": [
+    {
+      "test_case_id": "TC-OBS-06-INT-01..05",
+      "title": "OBS-06 integration suite in tests/integration/obs06_alerts_test.zig",
+      "status": "PASS",
+      "evidence": [
+        "zig build test-integration exit code 0",
+        "No skip-marker evidence in WF02-obs06-20260525-step-04c-zig-build-test-integration.log",
+        "tests/integration/main_test.zig imports obs06_alerts_test.zig in comptime test entrypoint"
+      ]
+    }
+  ],
+  "acceptance_criteria_results": [
+    {
+      "criterion": "Updated test report is written under tests/reports",
+      "status": "PASS"
+    },
+    {
+      "criterion": "OBS-06 can be marked PASS when full required integration evidence is present",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Any failures or skips are clearly classified with requirement impact",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Handoff next_action is explicit for WF-02 progression",
+      "status": "PASS"
+    }
+  ],
+  "failures": [],
+  "issues": [],
+  "artifacts_out": [
+    "tests/reports/report-20260525-wf02-obs06-step-04c-test-runner-rework2.json",
+    "tests/reports/WF02-obs06-20260525-step-04c-zig-build-test.log",
+    "tests/reports/WF02-obs06-20260525-step-04c-zig-build-test-integration.log",
+    "docs/issue-reports/WF02-obs06-20260525-step-04c-test-runner-rework2-INNER-REPORT.json"
+  ],
+  "next_action": "Route to ORCH for WF-02 Step 05 (RELEASE-VALIDATOR)."
+}

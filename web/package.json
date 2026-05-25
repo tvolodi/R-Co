@@ -8,10 +8,12 @@
     "preview": "vite preview",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test": "vitest run --passWithNoTests --exclude tests/e2e/**",
+    "test:watch": "vitest --exclude tests/e2e/**",
+    "test:coverage": "vitest run --coverage --exclude tests/e2e/**",
+    "test:e2e": "playwright test --config=playwright.config.ts",
+    "test:e2e:list": "playwright test --config=playwright.config.ts --list",
+    "test:e2e:obs04": "playwright test --config=playwright.config.ts tests/e2e/obs04.timeline.e2e.spec.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.28.0",

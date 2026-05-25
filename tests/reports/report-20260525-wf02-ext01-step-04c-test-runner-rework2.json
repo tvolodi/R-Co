@@ -1,0 +1,205 @@
+{
+  "run_id": "WF02-ext01-20260525",
+  "handoff_id": "20260525-053",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-25T09:05:50Z",
+  "agent_id": "TEST-RUNNER",
+  "requirement_ids": [
+    "EXT-01"
+  ],
+  "summary": {
+    "status": "FAIL",
+    "total_cases": 17,
+    "passed_cases": 10,
+    "failed_cases": 0,
+    "blocked_cases": 7,
+    "skipped_cases": 0
+  },
+  "executions": [
+    {
+      "command": "zig build test",
+      "layer": "unit",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "tests/reports/WF02-ext01-20260525-step-04c-zig-build-test.log"
+      ],
+      "notes": [
+        "Unit log contains UNIT_EXIT_CODE=0.",
+        "The rework unit suite includes EXT-01 cases in tests/unit/service_task_test.zig and the mapped addendum case in tests/unit/graph_node_attributes_test.zig."
+      ]
+    },
+    {
+      "command": "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test zig build test-integration",
+      "layer": "integration",
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidence": [
+        "tests/reports/WF02-ext01-20260525-step-04c-zig-build-test-integration.log",
+        "tests/integration/ext01_service_task_test.zig",
+        "tests/integration/main_test.zig"
+      ],
+      "notes": [
+        "Integration log contains INTEGRATION_EXIT_CODE=1.",
+        "Compilation fails before execution of TC-EXT-01-INT-01..07."
+      ]
+    }
+  ],
+  "ext01_case_results": [
+    {
+      "test_case_id": "TC-EXT-01-U01",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U02",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U03",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/graph_node_attributes_test.zig (TC-PD-05-09f)"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U04",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U05",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U06",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U07",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U08",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U09",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U10",
+      "layer": "unit",
+      "status": "PASS",
+      "evidence": "tests/unit/service_task_test.zig"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-01",
+      "layer": "integration",
+      "status": "BLOCKED",
+      "evidence": "Compilation failed in tests/integration/ext01_service_task_test.zig before case execution"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-02",
+      "layer": "integration",
+      "status": "BLOCKED",
+      "evidence": "Compilation failed in tests/integration/ext01_service_task_test.zig before case execution"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-03",
+      "layer": "integration",
+      "status": "BLOCKED",
+      "evidence": "Compilation failed in tests/integration/ext01_service_task_test.zig before case execution"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-04",
+      "layer": "integration",
+      "status": "BLOCKED",
+      "evidence": "Compilation failed in tests/integration/ext01_service_task_test.zig before case execution"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-05",
+      "layer": "integration",
+      "status": "BLOCKED",
+      "evidence": "Compilation failed in tests/integration/ext01_service_task_test.zig before case execution"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-06",
+      "layer": "integration",
+      "status": "BLOCKED",
+      "evidence": "Compilation failed in tests/integration/ext01_service_task_test.zig before case execution"
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-07",
+      "layer": "integration",
+      "status": "BLOCKED",
+      "evidence": "Compilation failed in tests/integration/ext01_service_task_test.zig before case execution"
+    }
+  ],
+  "acceptance_criteria_results": [
+    {
+      "criterion": "zig build test exits 0",
+      "status": "PASS"
+    },
+    {
+      "criterion": "zig build test-integration exits 0",
+      "status": "FAIL"
+    },
+    {
+      "criterion": "All EXT-01 specified unit and integration cases are executed",
+      "status": "FAIL"
+    },
+    {
+      "criterion": "Report is written with PASS/FAIL/PARTIAL and issue severities",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Handoff result fields are complete",
+      "status": "PASS"
+    }
+  ],
+  "failures": [
+    {
+      "test_id": "TC-EXT-01-INT-01..07",
+      "layer": "integration",
+      "file": "tests/integration/ext01_service_task_test.zig",
+      "error_message": "Compilation errors in local HTTP server test harness prevent integration case execution.",
+      "severity": "BLOCKER",
+      "requirement_id": "EXT-01"
+    }
+  ],
+  "issues": [
+    {
+      "id": "EXT01-INT-COMPILE-001",
+      "severity": "BLOCKER",
+      "description": "tests/integration/ext01_service_task_test.zig:204 uses request.head.iterateHeaders(), but current Zig stdlib HTTP API does not provide that member on Request.Head.",
+      "affected_requirement": "EXT-01"
+    },
+    {
+      "id": "EXT01-INT-COMPILE-002",
+      "severity": "BLOCKER",
+      "description": "tests/integration/ext01_service_task_test.zig:250 uses try request.respond(...) inside LocalHttpServer.run() which returns void, causing an error-type mismatch compile failure.",
+      "affected_requirement": "EXT-01"
+    }
+  ],
+  "artifacts_out": [
+    "tests/reports/report-20260525-wf02-ext01-step-04c-test-runner-rework2.json",
+    "tests/reports/WF02-ext01-20260525-step-04c-zig-build-test.log",
+    "tests/reports/WF02-ext01-20260525-step-04c-zig-build-test-integration.log",
+    "docs/issue-reports/WF02-ext01-20260525-step-04c-test-runner-rework2-INNER-REPORT.json"
+  ],
+  "next_action": "Route to ORCH for WF-03 ISSUE-FIXER to resolve EXT01-INT-COMPILE-001/002, then rerun WF-02 Step 04c."
+}

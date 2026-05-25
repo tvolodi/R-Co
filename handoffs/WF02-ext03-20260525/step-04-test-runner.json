@@ -1,0 +1,74 @@
+{
+  "handoff_id": "20260525-070",
+  "run_id": "WF02-ext03-20260525",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-ext03-20260525/step-04-test-runner.json",
+  "created_at": "2026-05-25T14:20:00Z",
+  "started_at": "2026-05-25T14:20:20Z",
+  "completed_at": "2026-05-25T14:22:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-03"
+    ],
+    "related_handoff_ids": [
+      "20260525-067",
+      "20260525-068",
+      "20260525-069"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXT-03.md",
+      "tests/unit/ext03_plugin_test.zig",
+      "src/engine/plugin_interface.zig",
+      "src/engine/plugin_registry.zig",
+      "src/engine/instance.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "Execute WF-02 Step 4 test run for EXT-03. Run relevant unit and integration test suites and produce a structured test report. Validate that EXT-03 behavior is covered and passing, including startup-only registration constraints, plugin precedence over built-ins, panic-to-ERROR mapping, COMPLETE/ERROR outcome handling, and EE-09/EE-10 integration paths. If there are compile-only blockers, apply inline fix authority only as allowed by WF-02. Otherwise classify issues and route guidance accordingly.",
+    "acceptance_criteria": [
+      "Required tests for EXT-03 execute and results are recorded in a test report artifact",
+      "Any failures are classified with severity and clear requirement impact",
+      "Handoff result accurately reports PASS/FAIL/PARTIAL with next action",
+      "Inner report is registered before handoff completion"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:check-code-coverage",
+      "fn:write-test-report",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PARTIAL",
+    "summary": "Unit and integration commands for EXT-03 executed successfully, but verification is partial because EXT-03 integration test IDs TC-EXT-03-INT-01..10 are not explicitly implemented/imported in the integration suite and coverage step test-coverage is unavailable.",
+    "artifacts_out": [
+      "tests/reports/report-20260525T142247Z-WF02-ext03-20260525.json",
+      "docs/issue-reports/WF02-ext03-20260525-step-04-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "EXT03-INTEGRATION-COVERAGE-GAP",
+        "severity": "MAJOR",
+        "description": "EXT-03 integration scenarios are specified in tests/specs/EXT-03.md but no dedicated EXT-03 integration test file is imported by tests/integration/main_test.zig.",
+        "affected_requirement": "EXT-03"
+      },
+      {
+        "id": "EXT03-COVERAGE-STEP-MISSING",
+        "severity": "MINOR",
+        "description": "fn:check-code-coverage command failed because build.zig has no test-coverage step.",
+        "affected_requirement": "EXT-03"
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER to add missing EXT-03 integration cases and rerun TEST-RUNNER Step 04 for full verification."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

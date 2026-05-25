@@ -1,0 +1,190 @@
+{
+  "report_id": "WF02-ext01-20260525-step-04-test-runner",
+  "run_id": "WF02-ext01-20260525",
+  "handoff_id": "20260525-049",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-25T08:15:36Z",
+  "requirement_ids": [
+    "EXT-01"
+  ],
+  "summary": {
+    "status": "PARTIAL",
+    "spec_cases_total": 17,
+    "spec_cases_passed": 5,
+    "spec_cases_partial": 3,
+    "spec_cases_not_executed": 9,
+    "commands_passed": 2
+  },
+  "executions": [
+    {
+      "command": "zig build test",
+      "layer": "unit",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "Backend Zig unit suite completed successfully."
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "layer": "integration",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": "Real PostgreSQL-backed integration suite completed successfully with BPM_TEST_DB_URL set."
+    }
+  ],
+  "coverage": [
+    {
+      "layer": "unit",
+      "total_cases": 10,
+      "passed_cases": 5,
+      "partial_cases": 3,
+      "not_executed_cases": 2,
+      "notes": "tests/unit/service_task_test.zig directly covers defaults, empty URL rejection, backoff, failure classification, and idempotency stability. Header validation, zero-retry, trace header injection, and response merge / invalid-body handling are not directly exercised."
+    },
+    {
+      "layer": "integration",
+      "total_cases": 7,
+      "passed_cases": 0,
+      "partial_cases": 0,
+      "not_executed_cases": 7,
+      "notes": "No dedicated EXT-01 integration suite exists under tests/integration. The broader integration build passed, but the seven EXT-01 scenarios from tests/specs/EXT-01.md were not executed as explicit cases."
+    }
+  ],
+  "case_results": [
+    {
+      "test_case_id": "TC-EXT-01-U01",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "PASS",
+      "evidence": "parse SERVICE_TASK config with defaults asserts timeout_ms=30000 and retry_limit=3"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U02",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "PASS",
+      "evidence": "rendered URL cannot be empty"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U03",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "No test covers empty rendered header names or values."
+    },
+    {
+      "test_case_id": "TC-EXT-01-U04",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "PARTIAL",
+      "evidence": "parse SERVICE_TASK config accepts url + method verifies timeout_ms override is parsed, but not the attempt-context helper."
+    },
+    {
+      "test_case_id": "TC-EXT-01-U05",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "PASS",
+      "evidence": "exponential backoff is capped"
+    },
+    {
+      "test_case_id": "TC-EXT-01-U06",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "PARTIAL",
+      "evidence": "classify and retry decisions exercises retry and terminal decisions, but not the retry_limit=0 single-shot path."
+    },
+    {
+      "test_case_id": "TC-EXT-01-U07",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "PASS",
+      "evidence": "classify and retry decisions covers 302, 429, non-2xx, and invalid body classification helpers."
+    },
+    {
+      "test_case_id": "TC-EXT-01-U08",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "PARTIAL",
+      "evidence": "idempotency key is stable for same tuple, but trace header injection is not asserted."
+    },
+    {
+      "test_case_id": "TC-EXT-01-U09",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "No response-merge test is present."
+    },
+    {
+      "test_case_id": "TC-EXT-01-U10",
+      "layer": "unit",
+      "file": "tests/unit/service_task_test.zig",
+      "status": "NOT_EXECUTED",
+      "evidence": "No invalid 2xx body merge rejection test is present."
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-01",
+      "layer": "integration",
+      "file": "tests/integration",
+      "status": "NOT_EXECUTED",
+      "evidence": "No dedicated EXT-01 integration file found in tests/integration."
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-02",
+      "layer": "integration",
+      "file": "tests/integration",
+      "status": "NOT_EXECUTED",
+      "evidence": "No dedicated EXT-01 integration file found in tests/integration."
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-03",
+      "layer": "integration",
+      "file": "tests/integration",
+      "status": "NOT_EXECUTED",
+      "evidence": "No dedicated EXT-01 integration file found in tests/integration."
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-04",
+      "layer": "integration",
+      "file": "tests/integration",
+      "status": "NOT_EXECUTED",
+      "evidence": "No dedicated EXT-01 integration file found in tests/integration."
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-05",
+      "layer": "integration",
+      "file": "tests/integration",
+      "status": "NOT_EXECUTED",
+      "evidence": "No dedicated EXT-01 integration file found in tests/integration."
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-06",
+      "layer": "integration",
+      "file": "tests/integration",
+      "status": "NOT_EXECUTED",
+      "evidence": "No dedicated EXT-01 integration file found in tests/integration."
+    },
+    {
+      "test_case_id": "TC-EXT-01-INT-07",
+      "layer": "integration",
+      "file": "tests/integration",
+      "status": "NOT_EXECUTED",
+      "evidence": "No dedicated EXT-01 integration file found in tests/integration."
+    }
+  ],
+  "issues": [
+    {
+      "id": "EXT01-UNIT-COVERAGE-GAP",
+      "severity": "BLOCKER",
+      "description": "The current unit suite does not directly test header rendering rejection, zero-retry single-shot behavior, trace header injection, or 2xx merge / invalid-body handling from EXT-01.",
+      "affected_requirement": "EXT-01"
+    },
+    {
+      "id": "EXT01-INTEGRATION-SUITE-MISSING",
+      "severity": "BLOCKER",
+      "description": "There is no dedicated EXT-01 integration suite in tests/integration; the real-database integration build passes, but the seven EXT-01 scenarios from tests/specs/EXT-01.md were not executed as explicit cases.",
+      "affected_requirement": "EXT-01"
+    }
+  ],
+  "next_action": "Route to TEST-DESIGNER to add the missing EXT-01 unit and integration cases, then rerun TEST-RUNNER."
+}

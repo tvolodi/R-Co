@@ -11,6 +11,7 @@ const task_mod = @import("../../tasks/store.zig");
 const reconstruction_mod = @import("../../engine/reconstruction.zig");
 const event_store = @import("../../event_store/store.zig");
 const event_registry = @import("../../event_store/registry.zig");
+const timeline_mod = @import("../../obs/timeline.zig");
 const pagination = @import("../pagination.zig");
 
 // ---------------------------------------------------------------------------
@@ -765,6 +766,14 @@ pub const HistoryParams = struct {
     page_size: u16,
 };
 
+/// Query parameters for GET /api/v1/instances/:id/timeline.
+pub const TimelineParams = struct {
+    /// Opaque base64url cursor. Null = first page.
+    cursor: ?[]const u8,
+    /// Page size; default 50, max 200.
+    page_size: u16,
+};
+
 // ---------------------------------------------------------------------------
 // handleHistory  (API-05)
 // ---------------------------------------------------------------------------
@@ -995,6 +1004,159 @@ pub fn handleHistory(
         allocator,
         "{{\"items\":{s},\"next_cursor\":{s},\"count\":{d}}}",
         .{ items_buf.items, next_cursor_json, page_records.len },
+    ) catch return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+
+    return .{ .status_code = 200, .body = body };
+}
+
+// ---------------------------------------------------------------------------
+// handleTimeline  (OBS-04)
+// ---------------------------------------------------------------------------
+
+/// GET /api/v1/instances/:id/timeline
+///
+/// Returns a human-readable ascending chronological timeline for an instance,
+/// including archived events and actor display-name resolution.
+pub fn handleTimeline(
+    event_store_mod: *event_store.Store,
+    allocator: std.mem.Allocator,
+    instance_id_str: []const u8,
+    params: TimelineParams,
+) HandlerResult {
+    const instance_id = parseUuid(instance_id_str) catch
+        return errorResult(allocator, 422, "INVALID_INSTANCE_ID", "instance_id is not a valid UUID");
+
+    const effective_page_size = pagination.validatePageSize(params.page_size) catch |err| switch (err) {
+        error.PageSizeTooLarge => return errorResult(
+            allocator,
+            422,
+            "INVALID_PAGE_SIZE",
+            "page_size must be between 1 and 200",
+        ),
+    };
+
+    var after_sequence: ?i64 = null;
+    if (params.cursor) |cursor_str| {
+        const cursor = pagination.decodeCursor(
+            allocator,
+            cursor_str,
+            "TL:",
+            3,
+            pagination.CURSOR_EXPIRY_US,
+        ) catch |err| switch (err) {
+            error.InvalidBase64 => return errorResult(allocator, 422, "INVALID_CURSOR", "Cursor is not valid base64url"),
+            error.WrongEndpoint => return errorResult(allocator, 422, "INVALID_CURSOR", "Cursor is not valid for this endpoint"),
+            error.Expired => return errorResult(allocator, 410, "CURSOR_EXPIRED", "Cursor has expired; please restart pagination"),
+            error.OutOfMemory => return errorResult(allocator, 500, "INTERNAL_ERROR", "Out of memory"),
+        };
+        defer cursor.deinit();
+
+        const after_prefix = cursor.inner[3..];
+        const colon = std.mem.indexOfScalar(u8, after_prefix, ':') orelse
+            return errorResult(allocator, 422, "INVALID_CURSOR", "Cursor format is invalid");
+        const seq_str = after_prefix[colon + 1 ..];
+        after_sequence = std.fmt.parseInt(i64, seq_str, 10) catch
+            return errorResult(allocator, 422, "INVALID_CURSOR", "Cursor sequence is not a valid integer");
+    }
+
+    const page = timeline_mod.listTimeline(
+        allocator,
+        event_store_mod.pool,
+        .{
+            .instance_id = instance_id,
+            .after_sequence = after_sequence,
+            .page_size = effective_page_size,
+        },
+    ) catch |err| switch (err) {
+        timeline_mod.TimelineError.InstanceNotFound => return errorResult(allocator, 404, "INSTANCE_NOT_FOUND", "Instance not found"),
+        timeline_mod.TimelineError.InvalidCursor => return errorResult(allocator, 422, "INVALID_CURSOR", "Cursor format is invalid"),
+        timeline_mod.TimelineError.CursorExpired => return errorResult(allocator, 410, "CURSOR_EXPIRED", "Cursor has expired; please restart pagination"),
+        timeline_mod.TimelineError.InvalidPageSize => return errorResult(allocator, 422, "INVALID_PAGE_SIZE", "page_size must be between 1 and 200"),
+        timeline_mod.TimelineError.EventStoreFailure,
+        timeline_mod.TimelineError.IdentityLookupFailure,
+        timeline_mod.TimelineError.RenderFailure,
+        => return errorResult(allocator, 500, "INTERNAL_ERROR", "Internal server error"),
+        timeline_mod.TimelineError.OutOfMemory => return errorResult(allocator, 500, "INTERNAL_ERROR", "Out of memory"),
+    };
+    defer timeline_mod.deinitPage(allocator, &page);
+
+    var serial_arena = std.heap.ArenaAllocator.init(allocator);
+    defer serial_arena.deinit();
+    const sa = serial_arena.allocator();
+
+    var items_buf = std.ArrayList(u8).empty;
+    items_buf.append(sa, '[') catch
+        return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+
+    for (page.items, 0..) |item, i| {
+        if (i > 0) items_buf.append(sa, ',') catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+
+        const event_type_json = std.json.Stringify.valueAlloc(sa, std.json.Value{ .string = item.event_type }, .{}) catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+        const ts_json = std.json.Stringify.valueAlloc(sa, std.json.Value{ .string = item.timestamp }, .{}) catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+        const actor_json = std.json.Stringify.valueAlloc(sa, std.json.Value{ .string = item.actor_display_name }, .{}) catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+        const description_json = std.json.Stringify.valueAlloc(sa, std.json.Value{ .string = item.description }, .{}) catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+
+        const iid_hex = uuidToHex(sa, item.instance_id) catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+        const eid_hex = uuidToHex(sa, item.event_id) catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+
+        const task_id_json: []const u8 = if (item.task_id) |tid| blk: {
+            const tid_hex = uuidToHex(sa, tid) catch
+                return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+            break :blk std.fmt.allocPrint(sa, "\"{s}\"", .{tid_hex}) catch
+                return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+        } else "null";
+
+        const node_id_json: []const u8 = if (item.node_id) |nid|
+            std.json.Stringify.valueAlloc(sa, std.json.Value{ .string = nid }, .{}) catch
+                return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed")
+        else
+            "null";
+
+        const metadata_json: []const u8 = blk: {
+            const trimmed = std.mem.trimStart(u8, item.metadata_json, &std.ascii.whitespace);
+            if (trimmed.len > 0 and trimmed[0] == '{') break :blk item.metadata_json;
+            break :blk "{}";
+        };
+
+        const entry = std.fmt.allocPrint(
+            sa,
+            "{{\"event_type\":{s},\"timestamp\":{s},\"actor_display_name\":{s},\"description\":{s},\"instance_id\":\"{s}\",\"event_id\":\"{s}\",\"sequence_num\":{d},\"task_id\":{s},\"node_id\":{s},\"metadata\":{s}}}",
+            .{
+                event_type_json,
+                ts_json,
+                actor_json,
+                description_json,
+                iid_hex,
+                eid_hex,
+                item.sequence_num,
+                task_id_json,
+                node_id_json,
+                metadata_json,
+            },
+        ) catch return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+        items_buf.appendSlice(sa, entry) catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+    }
+    items_buf.append(sa, ']') catch
+        return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
+
+    const next_cursor_json: []const u8 = if (page.next_cursor) |cursor|
+        std.fmt.allocPrint(sa, "\"{s}\"", .{cursor}) catch
+            return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed")
+    else
+        "null";
+
+    const body = std.fmt.allocPrint(
+        allocator,
+        "{{\"items\":{s},\"next_cursor\":{s},\"count\":{d}}}",
+        .{ items_buf.items, next_cursor_json, page.count },
     ) catch return errorResult(allocator, 500, "INTERNAL_ERROR", "Serialization failed");
 
     return .{ .status_code = 200, .body = body };

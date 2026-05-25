@@ -1,0 +1,54 @@
+{
+  "issue_id": "ISS-0011",
+  "title": "WF03 OBS-03 residual integration blockers after compile-fix rework",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "A_LOGIC_ERROR",
+  "run_id": "WF03-obs03-intfix-20260525",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260525-005",
+  "requirement_ids": [
+    "OBS-03"
+  ],
+  "summary": "OBS-03 runtime blockers were resolved by fixing cursor-param memory ownership in audit pagination, updating identity seed fixture fields for current schema, and correcting session actor assignment during token-revoke auditing.",
+  "root_cause": {
+    "type": "cursor_use_after_free_and_fixture_schema_drift",
+    "details": "TC-OBS-03-INT-05 used a decoded cursor audit_id slice after freeing the decoded cursor buffer, corrupting SQL parameter $6 and causing PostgreSQL ServerError/internal_error on second-page fetch. TC-OBS-03-INT-06 fixture setup used users insert columns that were stale after IDN-01 (missing username/status) and used unsupported parameterized SET LOCAL; both caused QueryFailed in integration setup path."
+  },
+  "resolution": {
+    "strategy": "COMPLETE",
+    "changes": [
+      "In src/obs/audit.zig, changed cursor SQL predicate to typed timestamp/UUID comparison and copied cursor audit_id into arena-owned memory before appending query params (fixes use-after-free).",
+      "In tests/integration/obs03_audit_log_test.zig, updated seedUserAndToken users insert/upsert to include required username/status fields introduced by IDN-01.",
+      "In tests/integration/obs03_audit_log_test.zig, replaced parameterized SET LOCAL statement with SELECT set_config('bpm.actor_id', $1, true) for transaction-scoped actor context.",
+      "In tests/integration/obs03_audit_log_test.zig, fixed TC-OBS-03-INT-01 cleanup leak by freeing the Definition returned from store.update."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS"
+      },
+      {
+        "command": "zig build test",
+        "result": "PASS"
+      },
+      {
+        "command": "zig build test-integration (BPM_TEST_DB_URL set)",
+        "result": "PASS",
+        "detail": "Command exited 0 (INTEGRATION_EXIT_CODE=0); OBS-03 integration tests no longer report TC-OBS-03-INT-05/INT-06 failures"
+      }
+    ]
+  },
+  "files_changed": [
+    "src/obs/audit.zig",
+    "tests/integration/obs03_audit_log_test.zig"
+  ],
+  "created_at": "2026-05-24T21:59:54Z",
+  "resolved_at": "2026-05-24T22:20:31Z",
+  "prevention": [
+    "Never append SQL params from slices owned by a soon-to-be-freed buffer; copy decoded cursor fields into query-lifetime allocator memory before query execution.",
+    "Keep integration seed helpers aligned with additive identity schema changes (username/status) and avoid unsupported parameterized SQL forms such as SET LOCAL $1."
+  ]
+}

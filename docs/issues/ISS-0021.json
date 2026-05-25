@@ -1,0 +1,52 @@
+{
+  "issue_id": "ISS-0021",
+  "title": "WF03 EXT-01 blocker set: service_task unit suite used stale bpm exports/Zig 0.16 request APIs and exposed configured-header lifetime crash",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "A_LOGIC_ERROR",
+  "run_id": "WF03-ext01-testfix-20260525",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260525-052",
+  "requirement_ids": [
+    "EXT-01"
+  ],
+  "summary": "Resolved EXT01-UNIT-COMPILE-001/002/003 by aligning tests/unit/service_task_test.zig with current bpm exports and Zig 0.16 request APIs, then fixed an exposed configured-header lifetime defect in src/engine/service_task.zig and updated end-node state assertion so EXT-01 unit tests run and pass.",
+  "root_cause": {
+    "type": "stale_test_import_api_usage_plus_header_lifetime_bug",
+    "details": "The unit test referenced obsolete bpm exports and server request APIs incompatible with Zig 0.16. After compile recovery, configured headers appended from transient JSON memory in executeHttpRequest triggered invalid-memory access during HTTP request construction."
+  },
+  "resolution": {
+    "strategy": "ALIGN_TEST_API_SURFACE_AND_OWN_HEADER_STORAGE",
+    "changes": [
+      "Updated tests/unit/service_task_test.zig to use bpm.definition and bpm.transition exports.",
+      "Replaced request.head.iterateHeaders() with request.iterateHeaders() and removed try misuse in void CaptureServer.run by handling respond errors inline.",
+      "Adjusted transition end-state assertion in TC-EXT-01-U09 to match current COMPLETED semantics (no remaining active tokens).",
+      "Updated src/engine/service_task.zig to keep configured header name/value storage owned and alive across client.fetch()."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS",
+        "evidence": "exit code 0"
+      },
+      {
+        "command": "zig build test",
+        "result": "PASS",
+        "evidence": "exit code 0"
+      }
+    ]
+  },
+  "files_changed": [
+    "tests/unit/service_task_test.zig",
+    "src/engine/service_task.zig"
+  ],
+  "created_at": "2026-05-25T08:58:37Z",
+  "resolved_at": "2026-05-25T08:58:37Z",
+  "prevention": [
+    "When adding/extending service_task tests, verify bpm shim export names in src/bpm.zig instead of main.zig exports.",
+    "For Zig 0.16 std.http.Server.Request, use request.iterateHeaders() and avoid assumptions from older request head APIs.",
+    "Do not append header pointers sourced from short-lived parsed JSON buffers without owning storage for the request lifetime."
+  ]
+}

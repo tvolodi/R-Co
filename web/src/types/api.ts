@@ -135,6 +135,25 @@ export interface EventRecord {
   created_at: string
 }
 
+export interface TimelineEntry {
+  event_type: string
+  timestamp: string
+  actor_display_name: string
+  description: string
+  instance_id: string
+  event_id: string
+  sequence_num: number
+  task_id: string | null
+  node_id: string | null
+  metadata: Record<string, unknown>
+}
+
+export interface TimelinePage {
+  items: TimelineEntry[]
+  next_cursor: string | null
+  count: number
+}
+
 export interface AppendEventRequest {
   instance_id: string
   event_type: string

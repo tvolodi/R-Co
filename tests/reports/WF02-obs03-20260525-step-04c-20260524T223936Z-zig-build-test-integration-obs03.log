@@ -1,0 +1,38 @@
+Cleaning test database...
+Test database cleaned.
+test-integration-obs03
++- run test 4 pass, 2 fail (6 total)
+error: 'obs03_audit_log_test.test.TC-OBS-03-INT-04: audit rows are immutable against update and delete' failed:
+       C:\Users\tvolo\dev\ai-dala\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff76adf0ffe in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff76adf53c9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\src\db\pool.zig:105:13: 0x7ff76adf514b in exec (test_zcu.obj)
+                   return PoolError.QueryFailed;
+                   ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_test.zig:473:5: 0x7ff76ae2044f in test.TC-OBS-03-INT-04: audit rows are immutable against update and delete (test_zcu.obj)
+           try conn.exec(
+           ^
+error: 'obs03_audit_log_test.test.TC-OBS-03-INT-05: GET /audit supports filters with deterministic pagination and ordering' failed:
+       C:\Users\tvolo\dev\ai-dala\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff76adf0ffe in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff76adf53c9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\src\db\pool.zig:105:13: 0x7ff76adf514b in exec (test_zcu.obj)
+                   return PoolError.QueryFailed;
+                   ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_test.zig:529:5: 0x7ff76ae0ff7e in test.TC-OBS-03-INT-05: GET /audit supports filters with deterministic pagination and ordering (test_zcu.obj)
+           try conn.exec(
+           ^
+failed command: ".\\.zig-cache\\o\\2f6446643b35b834f1392ffdcde31d59\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xb54bf799 --listen=-
+
+Build Summary: 2/4 steps succeeded (1 failed); 4/6 tests passed (2 failed)
+test-integration-obs03 transitive failure
++- run test 4 pass, 2 fail (6 total)
+
+error: the following build command failed with exit code 1:
+.zig-cache\o\6208d388db1c47de39e9e541e0efa2c6\build.exe C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\zig.exe C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib C:\Users\tvolo\dev\ai-dala\My-Fab .zig-cache C:\Users\tvolo\AppData\Local\zig --seed 0xb54bf799 -Zd2ead6f71e4b243d test-integration-obs03

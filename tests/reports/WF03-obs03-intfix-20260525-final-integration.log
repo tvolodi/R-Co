@@ -1,0 +1,103 @@
+Cleaning test database...
+Test database cleaned.
+test-integration
++- run test 201 pass, 7 skip (208 total); 3 leaks
+error: 'obs03_audit_log_test.test.TC-OBS-03-INT-01: state-changing writes create audit rows with required fields' leaked 3 allocations:
+       BPM_TEST_URL is not set — skipping HTTP integration test
+       BPM_TEST_URL is not set — skipping HTTP integration test
+       BPM_TEST_URL is not set — skipping HTTP integration test
+       BPM_TEST_URL is not set — skipping HTTP integration test
+       BPM_TEST_URL is not set — skipping HTTP integration test
+       BPM_TEST_URL is not set — skipping HTTP integration test
+       BPM_TEST_URL is not set — skipping HTTP integration test
+       [DebugAllocator] (err): memory address 0x247db580030 leaked: 
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.zig:454:40: 0x7ff63293978b in dupe__anon_15095 (test_zcu.obj)
+           const new_buf = try allocator.alloc(T, m.len);
+                                              ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\src\definition\store.zig:1199:39: 0x7ff632a9836c in rowToDefinition (test_zcu.obj)
+           const version = try allocator.dupe(u8, if (col.get(row, 2).len > 0) col.get(row, 2) else fallback.version);
+                                             ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\src\definition\store.zig:935:31: 0x7ff632ad2f3e in update (test_zcu.obj)
+               return rowToDefinition(allocator, update_rows.rows[0], stub) catch
+                                     ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_test.zig:206:25: 0x7ff632acb29f in test.TC-OBS-03-INT-01: state-changing writes create audit rows with required fields (test_zcu.obj)
+           _ = try store.update(alloc, def.id, .{
+                               ^
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:140:68: 0x7ff632a2e95c in mainServer (test_zcu.obj)
+                       const status: TestResults.Status = if (test_fn.func()) |v| s: {
+                                                                          ^
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:71:26: 0x7ff632a2eff9 in main (test_zcu.obj)
+               return mainServer(init) catch |err| panic("internal test runner failure: {t}", .{err});
+                                ^
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff632a2d1cc in callMain (test_zcu.obj)
+           if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+       
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff632a2d1cc in WinStartup (test_zcu.obj)
+               callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                       ^
+       ???:?:?: 0x7ff85b4ce956 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ff85cfe427b in ??? (ntdll.dll)
+       
+       [DebugAllocator] (err): memory address 0x247db5400e0 leaked: 
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.zig:454:40: 0x7ff63293978b in dupe__anon_15095 (test_zcu.obj)
+           const new_buf = try allocator.alloc(T, m.len);
+                                              ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\src\definition\store.zig:1198:36: 0x7ff632a9820f in rowToDefinition (test_zcu.obj)
+           const name = try allocator.dupe(u8, if (col.get(row, 1).len > 0) col.get(row, 1) else fallback.name);
+                                          ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\src\definition\store.zig:935:31: 0x7ff632ad2f3e in update (test_zcu.obj)
+               return rowToDefinition(allocator, update_rows.rows[0], stub) catch
+                                     ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_test.zig:206:25: 0x7ff632acb29f in test.TC-OBS-03-INT-01: state-changing writes create audit rows with required fields (test_zcu.obj)
+           _ = try store.update(alloc, def.id, .{
+                               ^
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:140:68: 0x7ff632a2e95c in mainServer (test_zcu.obj)
+                       const status: TestResults.Status = if (test_fn.func()) |v| s: {
+                                                                          ^
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:71:26: 0x7ff632a2eff9 in main (test_zcu.obj)
+               return mainServer(init) catch |err| panic("internal test runner failure: {t}", .{err});
+                                ^
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff632a2d1cc in callMain (test_zcu.obj)
+           if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+       
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff632a2d1cc in WinStartup (test_zcu.obj)
+               callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                       ^
+       ???:?:?: 0x7ff85b4ce956 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ff85cfe427b in ??? (ntdll.dll)
+       
+       [DebugAllocator] (err): memory address 0x247db540100 leaked: 
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.zig:454:40: 0x7ff63293978b in dupe__anon_15095 (test_zcu.obj)
+           const new_buf = try allocator.alloc(T, m.len);
+                                              ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\src\definition\store.zig:1203:27: 0x7ff632a9854c in rowToDefinition (test_zcu.obj)
+               try allocator.dupe(u8, d)
+                                 ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\src\definition\store.zig:935:31: 0x7ff632ad2f3e in update (test_zcu.obj)
+               return rowToDefinition(allocator, update_rows.rows[0], stub) catch
+                                     ^
+       C:\Users\tvolo\dev\ai-dala\My-Fab\tests\integration\obs03_audit_log_test.zig:206:25: 0x7ff632acb29f in test.TC-OBS-03-INT-01: state-changing writes create audit rows with required fields (test_zcu.obj)
+           _ = try store.update(alloc, def.id, .{
+                               ^
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:140:68: 0x7ff632a2e95c in mainServer (test_zcu.obj)
+                       const status: TestResults.Status = if (test_fn.func()) |v| s: {
+                                                                          ^
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:71:26: 0x7ff632a2eff9 in main (test_zcu.obj)
+               return mainServer(init) catch |err| panic("internal test runner failure: {t}", .{err});
+                                ^
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff632a2d1cc in callMain (test_zcu.obj)
+           if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+       
+       C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff632a2d1cc in WinStartup (test_zcu.obj)
+               callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                       ^
+       ???:?:?: 0x7ff85b4ce956 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ff85cfe427b in ??? (ntdll.dll)
+failed command: ".\\.zig-cache\\o\\7f81a2000a8f75bf6731408c7c7a076d\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0x201b7f2c --listen=-
+
+Build Summary: 2/4 steps succeeded (1 failed); 201/208 tests passed (7 skipped)
+test-integration transitive failure
++- run test 201 pass, 7 skip (208 total); 3 leaks
+
+error: the following build command failed with exit code 1:
+.zig-cache\o\938076dbe9320d222de739120e59730a\build.exe C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\zig.exe C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib C:\Users\tvolo\dev\ai-dala\My-Fab .zig-cache C:\Users\tvolo\AppData\Local\zig --seed 0x201b7f2c -Z7a391261bf025148 test-integration

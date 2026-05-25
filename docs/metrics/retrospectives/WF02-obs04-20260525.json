@@ -1,0 +1,45 @@
+{
+  "run_id": "WF02-obs04-20260525",
+  "requirement_ids": [
+    "OBS-04"
+  ],
+  "difficulty": 4,
+  "integration_surface": "high",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 213,
+  "actual_minutes_total": -3649.7,
+  "variance_pct": -1813.5,
+  "by_step": {
+    "code-designer": {
+      "estimated": 182,
+      "actual": 3.1,
+      "variance_pct": -98.3
+    },
+    "backend-dev": {
+      "estimated": 11,
+      "actual": -551.3,
+      "variance_pct": -5111.8
+    },
+    "test-designer": {
+      "estimated": 6,
+      "actual": -595.4,
+      "variance_pct": -10023.3
+    },
+    "test-runner": {
+      "estimated": 11,
+      "actual": -2506.3,
+      "variance_pct": -22884.5
+    },
+    "release-validator": {
+      "estimated": 3,
+      "actual": 0.2,
+      "variance_pct": -93.3
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [],
+  "notes": "Retrospective aggregates elapsed work time across all step rework iterations for the run. Several source handoffs in this run contain non-monotonic started_at/completed_at timestamps, producing negative elapsed values; no estimation-rules update was applied from this retrospective.",
+  "completed_at": "2026-05-25T03:53:44Z"
+}

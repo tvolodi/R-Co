@@ -1,0 +1,64 @@
+{
+  "handoff_id": "20260525-054",
+  "run_id": "WF03-ext01-intfix-20260525",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-ext01-intfix-20260525/step-01-issue-fixer.json",
+  "created_at": "2026-05-25T20:50:00Z",
+  "started_at": "2026-05-25T20:50:20Z",
+  "completed_at": "2026-05-25T09:32:46Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-01"
+    ],
+    "related_handoff_ids": [
+      "20260525-053"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-ext01-20260525/step-04c-test-runner-rework2.json",
+      "tests/reports/report-20260525-wf02-ext01-step-04c-test-runner-rework2.json",
+      "tests/reports/WF02-ext01-20260525-step-04c-zig-build-test-integration.log",
+      "tests/integration/ext01_service_task_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Fix EXT-01 integration compile blockers reported by WF02 step 04c in tests/integration/ext01_service_task_test.zig (noted at lines around 204 and 250 in the failure report/log). Apply minimal, targeted corrections compatible with current Zig stdlib/testing APIs and existing integration harness conventions. Validate with zig build test and zig build test-integration (with BPM_TEST_DB_URL) so WF02 test-runner can perform final rework pass.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-integration exits 0",
+      "Integration compile blockers in ext01_service_task_test.zig are resolved",
+      "No unrelated feature behavior is changed"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Resolved the two reported EXT-01 integration compile blockers in tests/integration/ext01_service_task_test.zig, but validation remains blocked because zig build test-integration stalls at TC-EXT-01-INT-03 and does not complete with exit code 0.",
+    "artifacts_out": [
+      "tests/integration/ext01_service_task_test.zig",
+      "docs/issues/ISS-0022.json",
+      "docs/issue-reports/WF03-ext01-intfix-20260525-step-01-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "EXT01-INT-RUNTIME-003",
+        "severity": "BLOCKER",
+        "description": "zig build test-integration no longer compile-fails in ext01_service_task_test.zig but stalls while running TC-EXT-01-INT-03 (2xx non-object body), preventing acceptance criterion completion.",
+        "affected_requirement": "EXT-01"
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3) to confirm and isolate the runtime stall in TC-EXT-01-INT-03, then route follow-up fix if reproduced."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

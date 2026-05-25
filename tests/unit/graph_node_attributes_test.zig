@@ -133,7 +133,7 @@ test "TC-PD-05-05: SERVICE_TASK with endpoint absent -> SERVICE_TASK_MISSING_END
     try std.testing.expect(hasCode(result.violations, "SERVICE_TASK_MISSING_ENDPOINT"));
 }
 
-test "TC-PD-05-06: SERVICE_TASK with timeout_ms absent -> SERVICE_TASK_MISSING_TIMEOUT" {
+test "TC-PD-05-06: SERVICE_TASK with timeout_ms absent -> valid (runtime default applies)" {
     const nodes = [_]gm.GraphNode{
         .{ .id = "start", .node_type = .START, .label = null },
         .{ .id = "n1", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"endpoint\":\"https://api.example.com\"}" },
@@ -148,8 +148,8 @@ test "TC-PD-05-06: SERVICE_TASK with timeout_ms absent -> SERVICE_TASK_MISSING_T
     const result = try gm.validateNodeAttributes(alloc, g);
     defer freeResult(result);
 
-    try std.testing.expect(!result.valid);
-    try std.testing.expect(hasCode(result.violations, "SERVICE_TASK_MISSING_TIMEOUT"));
+    try std.testing.expect(result.valid);
+    try std.testing.expectEqual(@as(usize, 0), result.violations.len);
 }
 
 test "TC-PD-05-07: SERVICE_TASK with timeout_ms = 0 -> SERVICE_TASK_INVALID_TIMEOUT" {
@@ -207,6 +207,101 @@ test "TC-PD-05-09: SERVICE_TASK with timeout_ms = 300000 -> valid (boundary: max
 
     try std.testing.expect(result.valid);
     try std.testing.expectEqual(@as(usize, 0), result.violations.len);
+}
+
+test "TC-PD-05-09b: SERVICE_TASK with url (without endpoint) -> valid" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "n1", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"url\":\"https://api.example.com\",\"method\":\"POST\"}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "n1", .condition = null },
+        .{ .id = "e2", .source = "n1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(result.valid);
+    try std.testing.expectEqual(@as(usize, 0), result.violations.len);
+}
+
+test "TC-PD-05-09c: SERVICE_TASK with invalid method -> SERVICE_TASK_INVALID_METHOD" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "n1", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"url\":\"https://api.example.com\",\"method\":\"TRACE\"}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "n1", .condition = null },
+        .{ .id = "e2", .source = "n1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SERVICE_TASK_INVALID_METHOD"));
+}
+
+test "TC-PD-05-09d: SERVICE_TASK with invalid retry_limit -> SERVICE_TASK_INVALID_RETRY_LIMIT" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "n1", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"url\":\"https://api.example.com\",\"retry_limit\":256}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "n1", .condition = null },
+        .{ .id = "e2", .source = "n1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SERVICE_TASK_INVALID_RETRY_LIMIT"));
+}
+
+test "TC-PD-05-09e: SERVICE_TASK with invalid headers type -> SERVICE_TASK_INVALID_HEADERS" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "n1", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"url\":\"https://api.example.com\",\"headers\":\"bad\"}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "n1", .condition = null },
+        .{ .id = "e2", .source = "n1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SERVICE_TASK_INVALID_HEADERS"));
+}
+
+test "TC-PD-05-09f: SERVICE_TASK with empty header name/value -> SERVICE_TASK_INVALID_HEADERS" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "n1", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"url\":\"https://api.example.com\",\"headers\":{\"\":\"value\",\"X-Trace\":\"\"}}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "n1", .condition = null },
+        .{ .id = "e2", .source = "n1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SERVICE_TASK_INVALID_HEADERS"));
 }
 
 // ---------------------------------------------------------------------------

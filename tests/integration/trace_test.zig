@@ -31,10 +31,7 @@ const testing = std.testing;
 fn testServerUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_URL") catch |err| switch (err) {
-        error.EnvironmentVariableMissing => {
-            std.debug.print("BPM_TEST_URL is not set — skipping HTTP integration test\n", .{});
-            return error.SkipZigTest;
-        },
+        error.EnvironmentVariableMissing => return error.SkipZigTest,
         error.OutOfMemory => return error.OutOfMemory,
         else => return error.SkipZigTest,
     };
@@ -44,10 +41,7 @@ fn testServerUrl(allocator: std.mem.Allocator) ![]u8 {
 fn testAuthToken(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_TOKEN") catch |err| switch (err) {
-        error.EnvironmentVariableMissing => {
-            std.debug.print("BPM_TEST_TOKEN is not set — skipping HTTP integration test\n", .{});
-            return error.SkipZigTest;
-        },
+        error.EnvironmentVariableMissing => return error.SkipZigTest,
         error.OutOfMemory => return error.OutOfMemory,
         else => return error.SkipZigTest,
     };
@@ -57,10 +51,7 @@ fn testAuthToken(allocator: std.mem.Allocator) ![]u8 {
 fn testLogFilePath(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_LOG_FILE") catch |err| switch (err) {
-        error.EnvironmentVariableMissing => {
-            std.debug.print("BPM_TEST_LOG_FILE is not set — skipping log-file integration test\n", .{});
-            return error.SkipZigTest;
-        },
+        error.EnvironmentVariableMissing => return error.SkipZigTest,
         error.OutOfMemory => return error.OutOfMemory,
         else => return error.SkipZigTest,
     };

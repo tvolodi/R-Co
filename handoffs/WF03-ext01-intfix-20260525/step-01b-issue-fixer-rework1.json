@@ -1,0 +1,66 @@
+{
+  "handoff_id": "20260525-055",
+  "run_id": "WF03-ext01-intfix-20260525",
+  "workflow_id": "WF-03",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-ext01-intfix-20260525/step-01b-issue-fixer-rework1.json",
+  "created_at": "2026-05-25T21:00:00Z",
+  "started_at": "2026-05-25T21:00:20Z",
+  "completed_at": "2026-05-25T09:45:38Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6 — Observability + Extensions",
+    "requirement_ids": [
+      "EXT-01"
+    ],
+    "related_handoff_ids": [
+      "20260525-054",
+      "20260525-053"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-ext01-intfix-20260525/step-01-issue-fixer.json",
+      "tests/reports/WF02-ext01-20260525-step-04c-zig-build-test-integration.log",
+      "tests/integration/ext01_service_task_test.zig",
+      "docs/issues/ISS-0022.json"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Previous attempt fixed compile errors but left an integration runtime stall at TC-EXT-01-INT-03. Change approach from compile-only fixes to hang diagnosis and deterministic completion guarantees for the integration scenario. Identify and fix the exact cause of the stall in EXT-01 integration flow (server lifecycle, request completion, timeout path, or test harness synchronization), ensure no deadlock/hang conditions remain, and verify zig build test-integration exits 0 with BPM_TEST_DB_URL set.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-integration exits 0",
+      "TC-EXT-01-INT-03 no longer stalls",
+      "No new compile/runtime regressions are introduced"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Resolved the TC-EXT-01-INT-03 integration stall by changing to deterministic local-server shutdown and removed a fixture graph lifetime corruption path; validation now completes without hanging, but full `zig build test-integration` still fails due additional EXT-01 runtime/leak regressions and one OBS-05 integration assertion failure.",
+    "artifacts_out": [
+      "tests/integration/ext01_service_task_test.zig",
+      "src/engine/service_task.zig",
+      "docs/issues/ISS-0022.json",
+      "docs/issue-reports/WF03-ext01-intfix-20260525-step-01b-issue-fixer-rework1-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0022",
+        "severity": "BLOCKER",
+        "description": "TC-EXT-01-INT-03 no longer stalls, but integration still fails with remaining EXT-01 runtime/leak behavior gaps (retry/timeout path assertions) and an OBS-05 pagination assertion failure.",
+        "affected_requirement": "EXT-01"
+      }
+    ],
+    "next_action": "Route to ORCH for follow-up WF-03 ISSUE-FIXER/BACKEND-DEV work on residual EXT-01 runtime semantics and integration leak cleanup, then re-run TEST-RUNNER."
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}
