@@ -91,6 +91,8 @@ const adp07_agent_role_reserved_usernames_integration = @import("adp07_agent_rol
 const adp09_tamper_evident_audit_chain_integration = @import("adp09_tamper_evident_audit_chain_test.zig");
 // Stage 6.5 — Agent I/O capture in audit (ADP-10)
 const adp10_agent_io_capture_audit_integration = @import("adp10_agent_io_capture_audit_test.zig");
+// Stage 6.5 — Default-tenant migration-boundary regression suite (ADP-12)
+const adp12_default_tenant_regression_integration = @import("adp12_default_tenant_regression_test.zig");
 
 comptime {
     _ = std;
@@ -137,6 +139,7 @@ comptime {
     _ = adp07_agent_role_reserved_usernames_integration;
     _ = adp09_tamper_evident_audit_chain_integration;
     _ = adp10_agent_io_capture_audit_integration;
+    _ = adp12_default_tenant_regression_integration;
 }
 
 test "integration placeholder" {

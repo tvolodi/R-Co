@@ -1,0 +1,32 @@
+{
+  "run_id": "WF03-adp12-testfix-20260526",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260526-107",
+  "timestamp": "2026-05-26T18:33:14Z",
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "checks": [
+    {
+      "name": "zig build",
+      "layer": "build",
+      "status": "PASS",
+      "evidence": "Command completed with no build errors emitted."
+    },
+    {
+      "name": "zig build test-integration",
+      "layer": "integration",
+      "status": "PASS",
+      "evidence": "Task output includes INTEGRATION_EXIT_CODE=0 after test DB cleanup.",
+      "address_already_exists_seen": false
+    }
+  ],
+  "issues": {
+    "classification": "NONE",
+    "items": []
+  },
+  "conclusion": "PASS: targeted ADP-12 confirmation run succeeded; no recurring ADDRESS_ALREADY_EXISTS blocker observed."
+}

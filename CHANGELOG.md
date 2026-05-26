@@ -87,6 +87,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-2026-05-26-wf02-adp11-step04.json and tests/reports/WF02-adp11-20260526-step-05-release-validator-bench.log; release approval is recorded in docs/status/release-ADP-11-20260526.json.
 - Requirement: ADP-11 (MUST, Stage 6.5) - RELEASED
 
+### ADP-12 - Default-tenant regression suite (RELEASED 2026-05-26)
+- Implemented automated default-tenant pre/post migration regression validation across Stage 1-6 API and workflow behaviors, with deterministic canonicalization and pairwise comparison coverage.
+- Reworked test execution after WF-03 blocker fix and validated zero-diff outcomes across all paired cases in the ADP-12 regression summary artifact.
+- Validation evidence passed in tests/reports/report-20260526T183724Z-WF02-adp12-20260526-step04b-rework1.json; release approval is recorded in docs/status/release-ADP-12-20260526.json.
+- Requirement: ADP-12 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

@@ -229,7 +229,17 @@ const LocalWebhookServer = struct {
 
     fn run(self: *LocalWebhookServer) void {
         const listen_address = std.Io.net.IpAddress.parse("127.0.0.1", self.port) catch return;
-        var server = listen_address.listen(std.testing.io, .{ .reuse_address = true }) catch return;
+        var server = blk: {
+            var bind_attempt: usize = 0;
+            while (bind_attempt < 50) : (bind_attempt += 1) {
+                const bound = listen_address.listen(std.testing.io, .{ .reuse_address = true }) catch {
+                    std.Io.sleep(std.Options.debug_io, .fromMilliseconds(20), .awake) catch {};
+                    continue;
+                };
+                break :blk bound;
+            }
+            return;
+        };
         defer server.deinit(std.testing.io);
 
         while (self.request_count < self.max_requests) {

@@ -3,9 +3,11 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const adp12_phase = b.option([]const u8, "phase", "ADP-12 phase filter (pre|post)");
 
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "platform_version", "0.1.0");
+    build_options.addOption(?[]const u8, "adp12_phase", adp12_phase);
     const build_options_mod = build_options.createModule();
 
     // ---------------------------------------------------------------------------
@@ -542,6 +544,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "http", .module = http_mod },
         .{ .name = "cel", .module = cel_mod },
         .{ .name = "bpm", .module = bpm_src_mod },
+        .{ .name = "build_options", .module = build_options_mod },
     };
 
     const integration_tests = b.addTest(.{
@@ -574,6 +577,16 @@ pub fn build(b: *std.Build) void {
     });
     const run_obs04_integration_tests = b.addRunArtifact(obs04_integration_tests);
 
+    const adp12_regression_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/adp12_default_tenant_regression_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_adp12_regression_tests = b.addRunArtifact(adp12_regression_tests);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python3", "tools/clean_test_db.py" });
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
@@ -590,6 +603,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_obs04_step = b.step("test-integration-obs04", "Run OBS-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs04_step.dependOn(&clean_test_db.step);
     test_integration_obs04_step.dependOn(&run_obs04_integration_tests.step);
+
+    const test_adp12_regression_step = b.step("test-adp12-regression", "Run ADP-12 default-tenant pre/post regression suite");
+    test_adp12_regression_step.dependOn(&clean_test_db.step);
+    test_adp12_regression_step.dependOn(&run_adp12_regression_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

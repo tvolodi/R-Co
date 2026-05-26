@@ -1,0 +1,56 @@
+{
+  "run_id": "WF02-adp12-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-108",
+  "timestamp": "2026-05-26T18:37:24Z",
+  "requirement_ids": [
+    "ADP-12"
+  ],
+  "summary": {
+    "layers_total": 3,
+    "layers_passed": 3,
+    "layers_failed": 0,
+    "result": "PASS"
+  },
+  "layers": [
+    {
+      "name": "build",
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "unit",
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "integration",
+      "command": "set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& zig build test-integration",
+      "exit_code": 0,
+      "status": "PASS"
+    }
+  ],
+  "adp12_artifact_check": {
+    "summary_json": "tests/reports/adp12/adp12-regression-summary.json",
+    "flaky_signals": "tests/reports/adp12/flaky-signals.json",
+    "diffs": "tests/reports/adp12/diffs.ndjson",
+    "pre_snapshots": "tests/reports/adp12/pre-snapshots.ndjson",
+    "post_snapshots": "tests/reports/adp12/post-snapshots.ndjson",
+    "summary_evidence": {
+      "run_id": "WF02-adp12-20260526",
+      "cases_total": 46,
+      "pairs_compared": 46,
+      "zero_diff": true,
+      "mismatches": 0,
+      "flaky_signals": 0
+    },
+    "flaky_gate": {
+      "baseline_phase_a_diff_detected": false,
+      "flaky_signals_detected": false
+    }
+  },
+  "issues": [],
+  "verdict": "PASS: build/unit/integration layers succeeded, ADP-12 deterministic regression artifacts show zero diff across all paired Stage 1-6 default-tenant cases, and no blocker/major issues remain."
+}

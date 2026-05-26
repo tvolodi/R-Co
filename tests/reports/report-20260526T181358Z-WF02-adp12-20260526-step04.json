@@ -1,0 +1,59 @@
+{
+  "run_id": "WF02-adp12-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-105",
+  "timestamp": "2026-05-26T18:13:58Z",
+  "requirement_ids": [
+    "ADP-12"
+  ],
+  "summary": {
+    "layers_total": 3,
+    "layers_passed": 2,
+    "layers_failed": 1,
+    "result": "FAIL"
+  },
+  "layers": [
+    {
+      "name": "build",
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "unit",
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "integration",
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "exit_code": 0,
+      "status": "FAIL",
+      "failure_signature": "error.Unexpected NTSTATUS=0xc000020a (ADDRESS_ALREADY_EXISTS) and failed command: .\\.zig-cache\\...\\test.exe"
+    }
+  ],
+  "adp12_artifact_check": {
+    "summary_json": "tests/reports/adp12/adp12-regression-summary.json",
+    "flaky_signals": "tests/reports/adp12/flaky-signals.json",
+    "diffs": "tests/reports/adp12/diffs.ndjson",
+    "pre_snapshots": "tests/reports/adp12/pre-snapshots.ndjson",
+    "post_snapshots": "tests/reports/adp12/post-snapshots.ndjson",
+    "summary_evidence": {
+      "run_id": "WF02-adp12-20260526",
+      "zero_diff": true,
+      "mismatches": 0,
+      "flaky_signals": 0
+    }
+  },
+  "issues": [
+    {
+      "id": "ISS-ADP12-TR-001",
+      "severity": "BLOCKER",
+      "description": "Integration execution did not complete cleanly: runtime failure signature `ADDRESS_ALREADY_EXISTS` and test runner process reported a failed command during `zig build test-integration`.",
+      "affected_requirement": "ADP-12",
+      "classification": "Infrastructure FAIL"
+    }
+  ],
+  "verdict": "FAILED due to integration-layer runtime failure; WF-03 issue-fix workflow required before ADP-12 can be marked TESTED."
+}
