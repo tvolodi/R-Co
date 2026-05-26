@@ -2,8 +2,128 @@ const std = @import("std");
 const provider_interface = @import("../../interface.zig");
 const provider_types = @import("../../types.zig");
 const provider_errors = @import("../../errors.zig");
+const keycloak_config = @import("config.zig");
+const keycloak_urls = @import("urls.zig");
+
+pub const Config = keycloak_config.Config;
+
+pub const Method = enum {
+    GET,
+    POST,
+    PUT,
+    DELETE,
+};
+
+pub const Header = struct {
+    name: []const u8,
+    value: []const u8,
+};
+
+pub const HttpRequest = struct {
+    method: Method,
+    url: []const u8,
+    bearer_token: ?[]const u8 = null,
+    content_type: ?[]const u8 = null,
+    body: ?[]const u8 = null,
+};
+
+pub const HttpResponse = struct {
+    status: u16,
+    body: []const u8 = "",
+    headers: []const Header = &.{},
+
+    pub fn header(self: HttpResponse, name: []const u8) ?[]const u8 {
+        for (self.headers) |item| {
+            if (std.ascii.eqlIgnoreCase(item.name, name)) return item.value;
+        }
+        return null;
+    }
+};
+
+pub const HttpTransport = struct {
+    ctx: *anyopaque,
+    sendFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, request: HttpRequest) anyerror!HttpResponse,
+
+    pub fn send(self: HttpTransport, allocator: std.mem.Allocator, request: HttpRequest) anyerror!HttpResponse {
+        return self.sendFn(self.ctx, allocator, request);
+    }
+};
+
+pub const SecretResolver = struct {
+    ctx: *anyopaque,
+    resolveFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, secret_ref: []const u8) anyerror![]const u8,
+
+    pub fn resolve(self: SecretResolver, allocator: std.mem.Allocator, secret_ref: []const u8) anyerror![]const u8 {
+        return self.resolveFn(self.ctx, allocator, secret_ref);
+    }
+};
+
+pub const Clock = struct {
+    ctx: *anyopaque,
+    nowUnixSecondsFn: *const fn (ctx: *anyopaque) i64,
+
+    pub fn nowUnixSeconds(self: Clock) i64 {
+        return self.nowUnixSecondsFn(self.ctx);
+    }
+};
+
+pub const InitDeps = struct {
+    transport: HttpTransport,
+    clock: Clock,
+    secret_resolver: SecretResolver,
+};
+
+const CachedAdminToken = struct {
+    access_token: []u8,
+    expires_at: i64,
+};
+
+const DiscoveryDocument = struct {
+    issuer: []const u8,
+    jwks_uri: []const u8,
+};
+
+const KeycloakRoleRepresentation = struct {
+    id: []const u8,
+    name: []const u8,
+};
 
 pub const Adapter = struct {
+    allocator: std.mem.Allocator,
+    config: Config,
+    transport: HttpTransport,
+    clock: Clock,
+    admin_client_secret: []u8,
+    cached_admin_token: ?CachedAdminToken = null,
+
+    pub fn init(allocator: std.mem.Allocator, config: Config, deps: InitDeps) provider_errors.ProviderError!Adapter {
+        var owned_config = keycloak_config.Config.clone(allocator, config) catch |err| switch (err) {
+            error.OutOfMemory => return error.OutOfMemory,
+            error.InvalidConfig => return error.Internal,
+        };
+        errdefer owned_config.deinit(allocator);
+
+        const resolved_secret = deps.secret_resolver.resolve(allocator, owned_config.admin_client_secret_ref) catch |err| {
+            return mapExternalError(err);
+        };
+        defer allocator.free(resolved_secret);
+        const admin_client_secret = allocator.dupe(u8, resolved_secret) catch return error.OutOfMemory;
+
+        return .{
+            .allocator = allocator,
+            .config = owned_config,
+            .transport = deps.transport,
+            .clock = deps.clock,
+            .admin_client_secret = admin_client_secret,
+        };
+    }
+
+    pub fn deinit(self: *Adapter) void {
+        if (self.cached_admin_token) |cache| self.allocator.free(cache.access_token);
+        self.allocator.free(self.admin_client_secret);
+        self.config.deinit(self.allocator);
+    }
+
     pub fn asIdentityProvider(self: *Adapter) provider_interface.IdentityProvider {
         return .{
             .ctx = self,
@@ -20,38 +140,850 @@ pub const Adapter = struct {
     }
 };
 
-fn verifyToken(_: *anyopaque, _: std.mem.Allocator, _: provider_types.VerifyTokenInput) provider_errors.ProviderError!provider_types.VerifiedPrincipal {
-    return error.NotImplemented;
+fn verifyToken(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.VerifyTokenInput) provider_errors.ProviderError!provider_types.VerifiedPrincipal {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+
+    const header = try parseJwtSegment(allocator, input.raw_token, 0);
+    defer header.deinit();
+    const payload = try parseJwtSegment(allocator, input.raw_token, 1);
+    defer payload.deinit();
+
+    const kid = valueString(payloadlessObject(header.value), "kid") orelse return error.SignatureVerificationFailed;
+    const issuer_claim = valueString(payloadlessObject(payload.value), "iss") orelse return error.ClaimValidationFailed;
+    const subject = valueString(payloadlessObject(payload.value), "sub") orelse return error.ClaimValidationFailed;
+    const realm_name = realmFromIssuer(issuer_claim) orelse self.config.bootstrap_realm;
+
+    const discovery_doc = try fetchDiscovery(self, allocator, realm_name);
+    defer {
+        allocator.free(discovery_doc.issuer);
+        allocator.free(discovery_doc.jwks_uri);
+    }
+
+    if (!std.mem.eql(u8, issuer_claim, discovery_doc.issuer)) return error.TokenIssuerMismatch;
+    if (input.expected_issuer) |expected_issuer| {
+        if (!std.mem.eql(u8, issuer_claim, expected_issuer)) return error.TokenIssuerMismatch;
+    } else if (self.config.expected_issuer) |expected_issuer| {
+        if (!std.mem.eql(u8, issuer_claim, expected_issuer)) return error.TokenIssuerMismatch;
+    }
+
+    const audience = if (input.expected_audience.len != 0) input.expected_audience else self.config.expected_audience;
+    try ensureAudience(payload.value, audience);
+
+    const now_unix_seconds = if (input.now_unix_seconds > 0) input.now_unix_seconds else self.clock.nowUnixSeconds();
+    try ensureTokenWindow(payload.value, now_unix_seconds);
+
+    const has_kid = try jwksContainsKid(self, allocator, discovery_doc.jwks_uri, kid);
+    if (!has_kid) return error.SignatureVerificationFailed;
+
+    const roles = try extractRoles(allocator, payload.value);
+    errdefer allocator.free(roles);
+
+    const username_claim = valueString(payloadlessObject(payload.value), "preferred_username") orelse subject;
+    const display_name_claim = valueString(payloadlessObject(payload.value), "name") orelse username_claim;
+
+    const provider_subject = allocator.dupe(u8, subject) catch return error.OutOfMemory;
+    errdefer allocator.free(provider_subject);
+    const username = allocator.dupe(u8, username_claim) catch return error.OutOfMemory;
+    errdefer allocator.free(username);
+    const display_name = allocator.dupe(u8, display_name_claim) catch return error.OutOfMemory;
+    errdefer allocator.free(display_name);
+    const email = try dupeOptional(allocator, valueString(payloadlessObject(payload.value), "email"));
+    errdefer if (email) |value| allocator.free(value);
+    const external_realm = allocator.dupe(u8, realm_name) catch return error.OutOfMemory;
+    errdefer allocator.free(external_realm);
+    const token_id_hint = try dupeOptional(allocator, valueString(payloadlessObject(payload.value), "jti"));
+    errdefer if (token_id_hint) |value| allocator.free(value);
+
+    return .{
+        .provider_subject = provider_subject,
+        .username = username,
+        .display_name = display_name,
+        .email = email,
+        .tenant_id = extractTenantId(payload.value),
+        .roles = roles,
+        .external_realm = external_realm,
+        .token_id_hint = token_id_hint,
+    };
 }
 
-fn lookupUser(_: *anyopaque, _: std.mem.Allocator, _: provider_types.LookupUserInput) provider_errors.ProviderError!?provider_types.ProviderUser {
-    return error.NotImplemented;
+fn lookupUser(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.LookupUserInput) provider_errors.ProviderError!?provider_types.ProviderUser {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+
+    const url = keycloak_urls.userById(allocator, self.config, input.external_realm, input.external_id) catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = url,
+        .bearer_token = bearer,
+    });
+    if (response.status == 404) return null;
+    if (response.status != 200) return mapStatus(response.status, .lookup_user);
+
+    return try parseProviderUser(allocator, response.body);
 }
 
-fn provisionRealm(_: *anyopaque, _: std.mem.Allocator, _: provider_types.ProvisionRealmInput) provider_errors.ProviderError!provider_types.ProvisionRealmResult {
-    return error.NotImplemented;
+fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.ProvisionRealmInput) provider_errors.ProviderError!provider_types.ProvisionRealmResult {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+    const realm_id = input.desired_realm_id orelse input.tenant_slug;
+
+    const existing_url = keycloak_urls.realm(allocator, self.config, realm_id) catch return error.OutOfMemory;
+    defer allocator.free(existing_url);
+
+    const existing = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = existing_url,
+        .bearer_token = bearer,
+    });
+
+    if (existing.status == 200) {
+        return .{
+            .realm_id = allocator.dupe(u8, realm_id) catch return error.OutOfMemory,
+            .created = false,
+        };
+    }
+    if (existing.status != 404) return mapStatus(existing.status, .provision_realm);
+
+    const body = try buildRealmCreateBody(allocator, realm_id, input.display_name);
+    defer allocator.free(body);
+    const collection_url = keycloak_urls.realmsCollection(allocator, self.config) catch return error.OutOfMemory;
+    defer allocator.free(collection_url);
+
+    const create_response = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = collection_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = body,
+    });
+    if (create_response.status != 201 and create_response.status != 204) return mapStatus(create_response.status, .provision_realm);
+
+    return .{
+        .realm_id = allocator.dupe(u8, realm_id) catch return error.OutOfMemory,
+        .created = true,
+    };
 }
 
-fn provisionUser(_: *anyopaque, _: std.mem.Allocator, _: provider_types.ProvisionUserInput) provider_errors.ProviderError!provider_types.ProvisionUserResult {
-    return error.NotImplemented;
+fn provisionUser(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.ProvisionUserInput) provider_errors.ProviderError!provider_types.ProvisionUserResult {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+
+    if (try findUser(self, allocator, bearer, input.external_realm, input.external_id, .external_id)) |existing_user_id| {
+        return .{ .external_user_id = existing_user_id, .created = false };
+    }
+    if (try findUser(self, allocator, bearer, input.external_realm, input.preferred_username, .username)) |existing_user_id| {
+        return .{ .external_user_id = existing_user_id, .created = false };
+    }
+
+    const body = try buildUserCreateBody(allocator, input);
+    defer allocator.free(body);
+    const url = keycloak_urls.usersCollection(allocator, self.config, input.external_realm) catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = body,
+    });
+    if (response.status != 201 and response.status != 204) return mapStatus(response.status, .provision_user);
+
+    const location = response.header("Location") orelse return error.UpstreamProtocolError;
+    const user_id = lastPathSegment(location) orelse return error.UpstreamProtocolError;
+    return .{
+        .external_user_id = allocator.dupe(u8, user_id) catch return error.OutOfMemory,
+        .created = true,
+    };
 }
 
-fn grantRoles(_: *anyopaque, _: std.mem.Allocator, _: provider_types.GrantRolesInput) provider_errors.ProviderError!provider_types.GrantRolesResult {
-    return error.NotImplemented;
+fn grantRoles(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.GrantRolesInput) provider_errors.ProviderError!provider_types.GrantRolesResult {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    if (input.roles.len == 0) return .{ .applied = 0 };
+
+    const bearer = try ensureAdminToken(self, allocator);
+    var unique_roles: std.ArrayList(KeycloakRoleRepresentation) = .empty;
+    defer {
+        for (unique_roles.items) |item| {
+            allocator.free(item.id);
+            allocator.free(item.name);
+        }
+        unique_roles.deinit(allocator);
+    }
+
+    for (input.roles) |role| {
+        const role_name = providerRoleName(role);
+        var seen = false;
+        for (unique_roles.items) |existing| {
+            if (std.mem.eql(u8, existing.name, role_name)) {
+                seen = true;
+                break;
+            }
+        }
+        if (seen) continue;
+
+        const url = keycloak_urls.role(allocator, self.config, input.realm_id, role_name) catch return error.OutOfMemory;
+        defer allocator.free(url);
+        const response = try sendRequest(self, allocator, .{
+            .method = .GET,
+            .url = url,
+            .bearer_token = bearer,
+        });
+        if (response.status != 200) return mapStatus(response.status, .grant_roles);
+        const representation = try parseRoleRepresentation(allocator, response.body);
+        errdefer {
+            allocator.free(representation.id);
+            allocator.free(representation.name);
+        }
+        unique_roles.append(allocator, representation) catch return error.OutOfMemory;
+    }
+
+    const body = try buildRoleMappingsBody(allocator, unique_roles.items);
+    defer allocator.free(body);
+    const mapping_url = keycloak_urls.userRoleMappings(allocator, self.config, input.realm_id, input.external_user_id) catch return error.OutOfMemory;
+    defer allocator.free(mapping_url);
+
+    const apply_response = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = mapping_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = body,
+    });
+    if (apply_response.status != 204) return mapStatus(apply_response.status, .grant_roles);
+
+    return .{ .applied = unique_roles.items.len };
 }
 
-fn provisionClient(_: *anyopaque, _: std.mem.Allocator, _: provider_types.ProvisionClientInput) provider_errors.ProviderError!provider_types.ProvisionClientResult {
-    return error.NotImplemented;
+fn provisionClient(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.ProvisionClientInput) provider_errors.ProviderError!provider_types.ProvisionClientResult {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+
+    const lookup_url = keycloak_urls.clientsByName(allocator, self.config, input.realm_id, input.client_name) catch return error.OutOfMemory;
+    defer allocator.free(lookup_url);
+    const lookup_response = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = lookup_url,
+        .bearer_token = bearer,
+    });
+    if (lookup_response.status != 200) return mapStatus(lookup_response.status, .provision_client);
+    if (try hasClient(allocator, lookup_response.body, input.client_name)) {
+        return .{
+            .client_id = allocator.dupe(u8, input.client_name) catch return error.OutOfMemory,
+            .created = false,
+        };
+    }
+
+    const body = try buildClientCreateBody(allocator, input);
+    defer allocator.free(body);
+    const create_url = keycloak_urls.clientsCollection(allocator, self.config, input.realm_id) catch return error.OutOfMemory;
+    defer allocator.free(create_url);
+    const create_response = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = create_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = body,
+    });
+    if (create_response.status != 201 and create_response.status != 204) return mapStatus(create_response.status, .provision_client);
+
+    return .{
+        .client_id = allocator.dupe(u8, input.client_name) catch return error.OutOfMemory,
+        .created = true,
+    };
 }
 
-fn upsertFederation(_: *anyopaque, _: std.mem.Allocator, _: provider_types.UpsertFederationInput) provider_errors.ProviderError!provider_types.FederationResult {
-    return error.NotImplemented;
+fn upsertFederation(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.UpsertFederationInput) provider_errors.ProviderError!provider_types.FederationResult {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+    const instance_url = keycloak_urls.federationInstance(allocator, self.config, input.realm_id, input.provider_alias) catch return error.OutOfMemory;
+    defer allocator.free(instance_url);
+    const body = try buildFederationBody(allocator, input);
+    defer allocator.free(body);
+
+    const existing = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = instance_url,
+        .bearer_token = bearer,
+    });
+    if (existing.status == 200) {
+        const update_response = try sendRequest(self, allocator, .{
+            .method = .PUT,
+            .url = instance_url,
+            .bearer_token = bearer,
+            .content_type = "application/json",
+            .body = body,
+        });
+        if (update_response.status != 204) return mapStatus(update_response.status, .upsert_federation);
+        return .{
+            .federation_id = allocator.dupe(u8, input.provider_alias) catch return error.OutOfMemory,
+            .created = false,
+        };
+    }
+    if (existing.status != 404) return mapStatus(existing.status, .upsert_federation);
+
+    const collection_url = keycloak_urls.federationCollection(allocator, self.config, input.realm_id) catch return error.OutOfMemory;
+    defer allocator.free(collection_url);
+    const create_response = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = collection_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = body,
+    });
+    if (create_response.status != 201 and create_response.status != 204) return mapStatus(create_response.status, .upsert_federation);
+
+    return .{
+        .federation_id = allocator.dupe(u8, input.provider_alias) catch return error.OutOfMemory,
+        .created = true,
+    };
 }
 
-fn deleteFederation(_: *anyopaque, _: std.mem.Allocator, _: provider_types.DeleteFederationInput) provider_errors.ProviderError!void {
-    return error.NotImplemented;
+fn deleteFederation(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.DeleteFederationInput) provider_errors.ProviderError!void {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+    const url = keycloak_urls.federationInstance(allocator, self.config, input.realm_id, input.provider_alias) catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .DELETE,
+        .url = url,
+        .bearer_token = bearer,
+    });
+    if (response.status == 404) return error.FederationNotFound;
+    if (response.status != 204) return mapStatus(response.status, .delete_federation);
 }
 
-fn listAuditEvents(_: *anyopaque, _: std.mem.Allocator, _: provider_types.ListAuditEventsInput) provider_errors.ProviderError!provider_types.AuditEventPage {
-    return error.NotImplemented;
+fn listAuditEvents(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.ListAuditEventsInput) provider_errors.ProviderError!provider_types.AuditEventPage {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+    const first = parseCursor(input.cursor) catch return error.ClaimValidationFailed;
+    const url = keycloak_urls.auditEvents(allocator, self.config, input.realm_id, first, input.page_size, input.from_timestamp_ms, input.to_timestamp_ms) catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = url,
+        .bearer_token = bearer,
+    });
+    if (response.status != 200) return mapStatus(response.status, .list_audit_events);
+
+    return try parseAuditEventPage(allocator, response.body, first, input.page_size);
+}
+
+const LookupMode = enum {
+    external_id,
+    username,
+};
+
+fn findUser(self: *Adapter, allocator: std.mem.Allocator, bearer: []const u8, realm_id: []const u8, lookup_value: []const u8, mode: LookupMode) provider_errors.ProviderError!?[]u8 {
+    const url = switch (mode) {
+        .external_id => keycloak_urls.usersByExternalId(allocator, self.config, realm_id, lookup_value),
+        .username => keycloak_urls.usersByUsername(allocator, self.config, realm_id, lookup_value),
+    } catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = url,
+        .bearer_token = bearer,
+    });
+    if (response.status != 200) return mapStatus(response.status, .provision_user);
+    return try firstUserIdFromSearch(allocator, response.body);
+}
+
+fn fetchDiscovery(self: *Adapter, allocator: std.mem.Allocator, realm_name: []const u8) provider_errors.ProviderError!DiscoveryDocument {
+    const url = keycloak_urls.discovery(allocator, self.config, realm_name) catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = url,
+    });
+    if (response.status == 404) return error.RealmNotFound;
+    if (response.status != 200) return mapStatus(response.status, .verify_token);
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, response.body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    const obj = payloadlessObject(parsed.value);
+    const issuer = valueString(obj, "issuer") orelse return error.UpstreamProtocolError;
+    const jwks_uri = valueString(obj, "jwks_uri") orelse return error.UpstreamProtocolError;
+
+    return .{
+        .issuer = allocator.dupe(u8, issuer) catch return error.OutOfMemory,
+        .jwks_uri = allocator.dupe(u8, jwks_uri) catch return error.OutOfMemory,
+    };
+}
+
+fn jwksContainsKid(self: *Adapter, allocator: std.mem.Allocator, jwks_uri: []const u8, kid: []const u8) provider_errors.ProviderError!bool {
+    const response = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = jwks_uri,
+    });
+    if (response.status != 200) return mapStatus(response.status, .verify_token);
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, response.body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    const root = payloadlessObject(parsed.value);
+    const keys_value = root.get("keys") orelse return error.UpstreamProtocolError;
+    if (keys_value != .array) return error.UpstreamProtocolError;
+
+    for (keys_value.array.items) |item| {
+        if (item != .object) continue;
+        const key_kid = valueString(item.object, "kid") orelse continue;
+        if (std.mem.eql(u8, key_kid, kid)) return true;
+    }
+    return false;
+}
+
+fn ensureAdminToken(self: *Adapter, allocator: std.mem.Allocator) provider_errors.ProviderError![]const u8 {
+    const now = self.clock.nowUnixSeconds();
+    if (self.cached_admin_token) |cache| {
+        if (cache.expires_at > now + 30) return cache.access_token;
+        self.allocator.free(cache.access_token);
+        self.cached_admin_token = null;
+    }
+
+    const url = keycloak_urls.adminToken(allocator, self.config) catch return error.OutOfMemory;
+    defer allocator.free(url);
+    const body = try buildAdminTokenBody(allocator, self.config.admin_client_id, self.admin_client_secret);
+    defer allocator.free(body);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = url,
+        .content_type = "application/x-www-form-urlencoded",
+        .body = body,
+    });
+    if (response.status != 200) return mapStatus(response.status, .admin_token);
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, response.body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    const obj = payloadlessObject(parsed.value);
+    const access_token = valueString(obj, "access_token") orelse return error.UpstreamProtocolError;
+    const expires_in = valueInteger(obj.get("expires_in") orelse return error.UpstreamProtocolError) orelse return error.UpstreamProtocolError;
+    const owned_token = allocator.dupe(u8, access_token) catch return error.OutOfMemory;
+    self.cached_admin_token = .{
+        .access_token = owned_token,
+        .expires_at = now + expires_in,
+    };
+    return owned_token;
+}
+
+fn sendRequest(self: *Adapter, allocator: std.mem.Allocator, request: HttpRequest) provider_errors.ProviderError!HttpResponse {
+    return self.transport.send(allocator, request) catch |err| return mapExternalError(err);
+}
+
+fn parseJwtSegment(allocator: std.mem.Allocator, raw_token: []const u8, segment_index: usize) provider_errors.ProviderError!std.json.Parsed(std.json.Value) {
+    var start: usize = 0;
+    var index: usize = 0;
+    while (index < segment_index) : (index += 1) {
+        const dot = std.mem.indexOfScalarPos(u8, raw_token, start, '.') orelse return error.InvalidToken;
+        start = dot + 1;
+    }
+    const end = std.mem.indexOfScalarPos(u8, raw_token, start, '.') orelse raw_token.len;
+    const encoded = raw_token[start..end];
+    if (encoded.len == 0) return error.InvalidToken;
+
+    const decoder = std.base64.url_safe_no_pad.Decoder;
+    const decoded_len = decoder.calcSizeForSlice(encoded) catch return error.InvalidToken;
+    const decoded = allocator.alloc(u8, decoded_len) catch return error.OutOfMemory;
+    defer allocator.free(decoded);
+    decoder.decode(decoded, encoded) catch return error.InvalidToken;
+
+    return std.json.parseFromSlice(std.json.Value, allocator, decoded, .{ .allocate = .alloc_always }) catch return error.InvalidToken;
+}
+
+fn ensureAudience(payload: std.json.Value, expected_audience: []const u8) provider_errors.ProviderError!void {
+    const obj = payloadlessObject(payload);
+    const aud = obj.get("aud") orelse return error.TokenAudienceMismatch;
+    switch (aud) {
+        .string => |value| {
+            if (!std.mem.eql(u8, value, expected_audience)) return error.TokenAudienceMismatch;
+        },
+        .array => |items| {
+            for (items.items) |item| {
+                if (item == .string and std.mem.eql(u8, item.string, expected_audience)) return;
+            }
+            return error.TokenAudienceMismatch;
+        },
+        else => return error.TokenAudienceMismatch,
+    }
+}
+
+fn ensureTokenWindow(payload: std.json.Value, now_unix_seconds: i64) provider_errors.ProviderError!void {
+    const obj = payloadlessObject(payload);
+    if (obj.get("exp")) |exp_value| {
+        const exp = valueInteger(exp_value) orelse return error.ClaimValidationFailed;
+        if (exp < now_unix_seconds) return error.TokenExpired;
+    }
+    if (obj.get("nbf")) |nbf_value| {
+        const nbf = valueInteger(nbf_value) orelse return error.ClaimValidationFailed;
+        if (nbf > now_unix_seconds) return error.InvalidToken;
+    }
+}
+
+fn extractRoles(allocator: std.mem.Allocator, payload: std.json.Value) provider_errors.ProviderError![]provider_types.ProviderRole {
+    const obj = payloadlessObject(payload);
+    var roles = std.ArrayList(provider_types.ProviderRole).empty;
+    defer roles.deinit(allocator);
+
+    if (obj.get("realm_access")) |realm_access| {
+        if (realm_access == .object) {
+            if (realm_access.object.get("roles")) |realm_roles| try appendRoleValues(allocator, &roles, realm_roles);
+        }
+    }
+    if (roles.items.len == 0) {
+        if (obj.get("roles")) |top_level_roles| try appendRoleValues(allocator, &roles, top_level_roles);
+    }
+    return roles.toOwnedSlice(allocator) catch return error.OutOfMemory;
+}
+
+fn appendRoleValues(allocator: std.mem.Allocator, roles: *std.ArrayList(provider_types.ProviderRole), value: std.json.Value) provider_errors.ProviderError!void {
+    if (value != .array) return error.ClaimValidationFailed;
+    for (value.array.items) |item| {
+        if (item != .string) continue;
+        const mapped = mapRole(item.string) orelse continue;
+        var seen = false;
+        for (roles.items) |existing| {
+            if (existing == mapped) {
+                seen = true;
+                break;
+            }
+        }
+        if (!seen) roles.append(allocator, mapped) catch return error.OutOfMemory;
+    }
+}
+
+fn extractTenantId(payload: std.json.Value) ?[36]u8 {
+    const obj = payloadlessObject(payload);
+    const claim = obj.get("tenant_id") orelse return null;
+    if (claim != .string) return null;
+    if (claim.string.len != 36) return null;
+    var tenant_id: [36]u8 = undefined;
+    @memcpy(&tenant_id, claim.string[0..36]);
+    return tenant_id;
+}
+
+fn parseProviderUser(allocator: std.mem.Allocator, body: []const u8) provider_errors.ProviderError!provider_types.ProviderUser {
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    const obj = payloadlessObject(parsed.value);
+    const external_id = valueString(obj, "id") orelse return error.UpstreamProtocolError;
+    const username = valueString(obj, "username") orelse return error.UpstreamProtocolError;
+    const first_name = valueString(obj, "firstName");
+    const last_name = valueString(obj, "lastName");
+    const display_name_source = try joinDisplayName(allocator, first_name, last_name, username);
+    defer allocator.free(display_name_source);
+
+    return .{
+        .external_id = allocator.dupe(u8, external_id) catch return error.OutOfMemory,
+        .username = allocator.dupe(u8, username) catch return error.OutOfMemory,
+        .display_name = allocator.dupe(u8, display_name_source) catch return error.OutOfMemory,
+        .email = try dupeOptional(allocator, valueString(obj, "email")),
+        .active = valueBool(obj.get("enabled")) orelse true,
+    };
+}
+
+fn parseRoleRepresentation(allocator: std.mem.Allocator, body: []const u8) provider_errors.ProviderError!KeycloakRoleRepresentation {
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    const obj = payloadlessObject(parsed.value);
+    const id = valueString(obj, "id") orelse return error.UpstreamProtocolError;
+    const name = valueString(obj, "name") orelse return error.UpstreamProtocolError;
+    return .{
+        .id = allocator.dupe(u8, id) catch return error.OutOfMemory,
+        .name = allocator.dupe(u8, name) catch return error.OutOfMemory,
+    };
+}
+
+fn firstUserIdFromSearch(allocator: std.mem.Allocator, body: []const u8) provider_errors.ProviderError!?[]u8 {
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    if (parsed.value != .array) return error.UpstreamProtocolError;
+    if (parsed.value.array.items.len == 0) return null;
+    const first = parsed.value.array.items[0];
+    if (first != .object) return error.UpstreamProtocolError;
+    const id = valueString(first.object, "id") orelse return error.UpstreamProtocolError;
+    return allocator.dupe(u8, id) catch return error.OutOfMemory;
+}
+
+fn hasClient(allocator: std.mem.Allocator, body: []const u8, client_name: []const u8) provider_errors.ProviderError!bool {
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    if (parsed.value != .array) return error.UpstreamProtocolError;
+    for (parsed.value.array.items) |item| {
+        if (item != .object) continue;
+        const existing_client_id = valueString(item.object, "clientId") orelse continue;
+        if (std.mem.eql(u8, existing_client_id, client_name)) return true;
+    }
+    return false;
+}
+
+fn parseAuditEventPage(allocator: std.mem.Allocator, body: []const u8, first: usize, page_size: u16) provider_errors.ProviderError!provider_types.AuditEventPage {
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    if (parsed.value != .array) return error.UpstreamProtocolError;
+
+    const events = allocator.alloc(provider_types.AuditEvent, parsed.value.array.items.len) catch return error.OutOfMemory;
+    errdefer {
+        for (events[0..parsed.value.array.items.len]) |event| event.deinit(allocator);
+        allocator.free(events);
+    }
+
+    for (parsed.value.array.items, 0..) |item, idx| {
+        if (item != .object) return error.UpstreamProtocolError;
+        const event_id_text = valueString(item.object, "id") orelse synthesizeAuditEventId(allocator, item.object) catch return error.OutOfMemory;
+        defer if (!item.object.contains("id")) allocator.free(event_id_text);
+        const operation_type = valueString(item.object, "operationType") orelse "unknown";
+        const resource_type = valueString(item.object, "resourceType") orelse "resource";
+        const event_type = std.fmt.allocPrint(allocator, "{s}:{s}", .{ operation_type, resource_type }) catch return error.OutOfMemory;
+        errdefer allocator.free(event_type);
+
+        const actor_id = if (item.object.get("authDetails")) |auth_details|
+            try parseAuditActorId(allocator, auth_details)
+        else
+            null;
+        errdefer if (actor_id) |value| allocator.free(value);
+
+        const timestamp_ms = valueInteger(item.object.get("time") orelse return error.UpstreamProtocolError) orelse return error.UpstreamProtocolError;
+        events[idx] = .{
+            .event_id = allocator.dupe(u8, event_id_text) catch return error.OutOfMemory,
+            .event_type = event_type,
+            .actor_id = actor_id,
+            .timestamp_ms = timestamp_ms,
+        };
+    }
+
+    const next_cursor = if (parsed.value.array.items.len == page_size)
+        std.fmt.allocPrint(allocator, "{d}", .{first + parsed.value.array.items.len}) catch return error.OutOfMemory
+    else
+        null;
+
+    return .{
+        .events = events,
+        .next_cursor = next_cursor,
+    };
+}
+
+fn parseAuditActorId(allocator: std.mem.Allocator, auth_details: std.json.Value) provider_errors.ProviderError!?[]u8 {
+    if (auth_details != .object) return null;
+    const user_id = valueString(auth_details.object, "userId");
+    if (user_id) |value| return allocator.dupe(u8, value) catch return error.OutOfMemory;
+    const client_id = valueString(auth_details.object, "clientId");
+    if (client_id) |value| return allocator.dupe(u8, value) catch return error.OutOfMemory;
+    return null;
+}
+
+fn synthesizeAuditEventId(allocator: std.mem.Allocator, obj: std.json.ObjectMap) ![]u8 {
+    const operation_type = valueString(obj, "operationType") orelse "event";
+    const resource_path = valueString(obj, "resourcePath") orelse "resource";
+    const timestamp = valueInteger(obj.get("time") orelse return error.OutOfMemory) orelse 0;
+    return std.fmt.allocPrint(allocator, "{s}:{s}:{d}", .{ operation_type, resource_path, timestamp });
+}
+
+fn buildAdminTokenBody(allocator: std.mem.Allocator, client_id: []const u8, client_secret: []const u8) provider_errors.ProviderError![]u8 {
+    return std.fmt.allocPrint(
+        allocator,
+        "grant_type=client_credentials&client_id={s}&client_secret={s}",
+        .{ client_id, client_secret },
+    ) catch return error.OutOfMemory;
+}
+
+fn buildRealmCreateBody(allocator: std.mem.Allocator, realm_id: []const u8, display_name: []const u8) provider_errors.ProviderError![]u8 {
+    return std.json.Stringify.valueAlloc(allocator, .{
+        .realm = realm_id,
+        .displayName = display_name,
+        .enabled = true,
+    }, .{}) catch return error.OutOfMemory;
+}
+
+fn buildUserCreateBody(allocator: std.mem.Allocator, input: provider_types.ProvisionUserInput) provider_errors.ProviderError![]u8 {
+    const names = splitDisplayName(input.display_name, input.preferred_username);
+    const external_ids = [_][]const u8{input.external_id};
+    return std.json.Stringify.valueAlloc(allocator, .{
+        .username = input.preferred_username,
+        .email = input.email,
+        .enabled = true,
+        .firstName = names.first_name,
+        .lastName = names.last_name,
+        .attributes = .{
+            .external_id = external_ids[0..],
+        },
+    }, .{}) catch return error.OutOfMemory;
+}
+
+fn buildRoleMappingsBody(allocator: std.mem.Allocator, roles: []const KeycloakRoleRepresentation) provider_errors.ProviderError![]u8 {
+    return std.json.Stringify.valueAlloc(allocator, roles, .{}) catch return error.OutOfMemory;
+}
+
+fn buildClientCreateBody(allocator: std.mem.Allocator, input: provider_types.ProvisionClientInput) provider_errors.ProviderError![]u8 {
+    return std.json.Stringify.valueAlloc(allocator, .{
+        .clientId = input.client_name,
+        .redirectUris = input.redirect_uris,
+        .serviceAccountsEnabled = input.service_account_enabled,
+        .protocol = "openid-connect",
+    }, .{}) catch return error.OutOfMemory;
+}
+
+fn buildFederationBody(allocator: std.mem.Allocator, input: provider_types.UpsertFederationInput) provider_errors.ProviderError![]u8 {
+    const config_value = try parseEmbeddedJson(allocator, input.config_json);
+    defer config_value.deinit();
+    const mapper_value = try parseEmbeddedJson(allocator, input.claim_mapping_json);
+    defer mapper_value.deinit();
+
+    return std.json.Stringify.valueAlloc(allocator, .{
+        .alias = input.provider_alias,
+        .providerId = input.provider_type,
+        .config = config_value.value,
+        .claimMappings = mapper_value.value,
+    }, .{}) catch return error.OutOfMemory;
+}
+
+fn parseEmbeddedJson(allocator: std.mem.Allocator, raw: []const u8) provider_errors.ProviderError!std.json.Parsed(std.json.Value) {
+    return std.json.parseFromSlice(std.json.Value, allocator, raw, .{ .allocate = .alloc_always }) catch return error.ClaimValidationFailed;
+}
+
+fn parseCursor(cursor: ?[]const u8) error{InvalidCursor}!usize {
+    const raw = cursor orelse return 0;
+    return std.fmt.parseInt(usize, raw, 10) catch error.InvalidCursor;
+}
+
+fn splitDisplayName(display_name: []const u8, fallback_username: []const u8) struct { first_name: []const u8, last_name: []const u8 } {
+    const trimmed = std.mem.trim(u8, display_name, " ");
+    if (trimmed.len == 0) return .{ .first_name = fallback_username, .last_name = "" };
+    if (std.mem.indexOfScalar(u8, trimmed, ' ')) |space_idx| {
+        return .{
+            .first_name = trimmed[0..space_idx],
+            .last_name = trimLeftSpaces(trimmed[space_idx + 1 ..]),
+        };
+    }
+    return .{ .first_name = trimmed, .last_name = "" };
+}
+
+fn joinDisplayName(allocator: std.mem.Allocator, first_name: ?[]const u8, last_name: ?[]const u8, fallback_username: []const u8) ![]u8 {
+    const first = if (first_name) |value| std.mem.trim(u8, value, " ") else "";
+    const last = if (last_name) |value| std.mem.trim(u8, value, " ") else "";
+    if (first.len == 0 and last.len == 0) return allocator.dupe(u8, fallback_username);
+    if (first.len == 0) return allocator.dupe(u8, last);
+    if (last.len == 0) return allocator.dupe(u8, first);
+    return std.fmt.allocPrint(allocator, "{s} {s}", .{ first, last });
+}
+
+fn mapRole(raw_role: []const u8) ?provider_types.ProviderRole {
+    if (std.ascii.eqlIgnoreCase(raw_role, "PLATFORM_ADMIN")) return .PLATFORM_ADMIN;
+    if (std.ascii.eqlIgnoreCase(raw_role, "PROCESS_DESIGNER")) return .PROCESS_DESIGNER;
+    if (std.ascii.eqlIgnoreCase(raw_role, "PROCESS_OPERATOR")) return .PROCESS_OPERATOR;
+    if (std.ascii.eqlIgnoreCase(raw_role, "TASK_WORKER")) return .TASK_WORKER;
+    if (std.ascii.eqlIgnoreCase(raw_role, "VIEWER")) return .VIEWER;
+    if (std.ascii.eqlIgnoreCase(raw_role, "AGENT_RUNNER")) return .AGENT_RUNNER;
+    return null;
+}
+
+fn providerRoleName(role: provider_types.ProviderRole) []const u8 {
+    return @tagName(role);
+}
+
+fn realmFromIssuer(issuer: []const u8) ?[]const u8 {
+    const marker = "/realms/";
+    const idx = std.mem.lastIndexOf(u8, issuer, marker) orelse return null;
+    const realm = issuer[idx + marker.len ..];
+    if (realm.len == 0) return null;
+    return realm;
+}
+
+fn lastPathSegment(url: []const u8) ?[]const u8 {
+    const trimmed = trimRightSlashes(url);
+    const idx = std.mem.lastIndexOfScalar(u8, trimmed, '/') orelse return null;
+    if (idx + 1 >= trimmed.len) return null;
+    return trimmed[idx + 1 ..];
+}
+
+fn trimLeftSpaces(input: []const u8) []const u8 {
+    var start: usize = 0;
+    while (start < input.len and input[start] == ' ') : (start += 1) {}
+    return input[start..];
+}
+
+fn trimRightSlashes(input: []const u8) []const u8 {
+    var end = input.len;
+    while (end > 0 and input[end - 1] == '/') : (end -= 1) {}
+    return input[0..end];
+}
+
+fn payloadlessObject(value: std.json.Value) std.json.ObjectMap {
+    return switch (value) {
+        .object => |obj| obj,
+        else => unreachable,
+    };
+}
+
+fn valueString(obj: std.json.ObjectMap, field_name: []const u8) ?[]const u8 {
+    const value = obj.get(field_name) orelse return null;
+    return switch (value) {
+        .string => |text| text,
+        else => null,
+    };
+}
+
+fn valueBool(value: ?std.json.Value) ?bool {
+    const inner = value orelse return null;
+    return switch (inner) {
+        .bool => |flag| flag,
+        else => null,
+    };
+}
+
+fn valueInteger(value: std.json.Value) ?i64 {
+    return switch (value) {
+        .integer => |number| number,
+        .float => |number| @intFromFloat(number),
+        .number_string => |number| std.fmt.parseInt(i64, number, 10) catch null,
+        else => null,
+    };
+}
+
+fn dupeOptional(allocator: std.mem.Allocator, input: ?[]const u8) provider_errors.ProviderError!?[]u8 {
+    const value = input orelse return null;
+    return allocator.dupe(u8, value) catch return error.OutOfMemory;
+}
+
+const StatusContext = enum {
+    admin_token,
+    verify_token,
+    lookup_user,
+    provision_realm,
+    provision_user,
+    grant_roles,
+    provision_client,
+    upsert_federation,
+    delete_federation,
+    list_audit_events,
+};
+
+fn mapStatus(status: u16, context: StatusContext) provider_errors.ProviderError {
+    return switch (status) {
+        401 => error.UnauthorizedAdminCall,
+        403 => error.ForbiddenAdminCall,
+        404 => switch (context) {
+            .lookup_user => error.UserNotFound,
+            .provision_realm => error.RealmNotFound,
+            .provision_client => error.ClientNotFound,
+            .upsert_federation, .delete_federation => error.FederationNotFound,
+            else => error.RealmNotFound,
+        },
+        409 => error.Conflict,
+        429 => error.RateLimited,
+        500...599 => error.UpstreamUnavailable,
+        else => error.UpstreamProtocolError,
+    };
+}
+
+fn mapExternalError(err: anyerror) provider_errors.ProviderError {
+    return switch (err) {
+        error.OutOfMemory => error.OutOfMemory,
+        else => error.UpstreamUnavailable,
+    };
 }

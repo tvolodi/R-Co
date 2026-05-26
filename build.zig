@@ -464,6 +464,15 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc01_provider_stub_tests = b.addRunArtifact(oidc01_provider_stub_tests);
 
+    const oidc02_keycloak_adapter_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/identity/provider/test_oidc02_keycloak_adapter.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_oidc02_keycloak_adapter_tests = b.addRunArtifact(oidc02_keycloak_adapter_tests);
+
     // SCH-05: Missed timer recovery — pure function unit tests (no DB)
     const sch05_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -563,6 +572,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_api09_tracing_tests.step);
     test_step.dependOn(&run_oidc01_provider_boundary_tests.step);
     test_step.dependOn(&run_oidc01_provider_stub_tests.step);
+    test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
     test_step.dependOn(&run_service_task_unit_tests.step);

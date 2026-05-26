@@ -1,0 +1,66 @@
+{
+  "run_id": "WF02-oidc02-20260527",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260527-013",
+  "timestamp": "2026-05-26T20:27:23Z",
+  "requirement_ids": [
+    "OIDC-02"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_cases": 3,
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0
+  },
+  "layer_results": [
+    {
+      "layer": "unit",
+      "command": "zig build test",
+      "exit_code": 0,
+      "evidence": "ZIG_BUILD_TEST_OK"
+    },
+    {
+      "layer": "adapter-boundary-scan",
+      "command": "PowerShell source scan for keycloak references in src/**/*.zig",
+      "exit_code": 0,
+      "matches": [
+        {
+          "path": "src/identity/provider/test_oidc02_keycloak_adapter.zig",
+          "line": 5,
+          "text": "const keycloak = @import(\"adapters/keycloak/provider.zig\");"
+        },
+        {
+          "path": "src/identity/provider/adapters/keycloak/provider.zig",
+          "line": 5,
+          "text": "const keycloak_config = @import(\"config.zig\");"
+        },
+        {
+          "path": "src/identity/provider/adapters/keycloak/urls.zig",
+          "line": 2,
+          "text": "const keycloak_config = @import(\"config.zig\");"
+        }
+      ],
+      "assessment": "PASS - Keycloak references are confined to adapter-local files and the adapter-local test file"
+    }
+  ],
+  "oidc02_traceability": [
+    {
+      "test_case_id": "TC-OIDC-02-01",
+      "status": "PASS",
+      "evidence": "Provider root remains compile-isolated from Keycloak adapter exports; the mapped boundary test passes via zig build test"
+    },
+    {
+      "test_case_id": "TC-OIDC-02-02",
+      "status": "PASS",
+      "evidence": "Adapter token verification test passes under zig build test and exercises discovery plus JWKS mapping"
+    },
+    {
+      "test_case_id": "TC-OIDC-02-03",
+      "status": "PASS",
+      "evidence": "Adapter admin route and payload confinement test passes under zig build test"
+    }
+  ],
+  "failures": [],
+  "issues": []
+}

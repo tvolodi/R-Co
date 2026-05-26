@@ -99,6 +99,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260527-wf02-oidc01-step-04.json; release approval is recorded in docs/status/release-OIDC-01-20260526.json.
 - Requirement: OIDC-01 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-02 - Keycloak adapter (RELEASED 2026-05-26)
+- Implemented a concrete Keycloak 26.x adapter under `src/identity/provider/adapters/keycloak/` that satisfies the OIDC-01 IdentityProvider contract while keeping Keycloak-specific URLs, payloads, and behavior adapter-local.
+- Preserved compile isolation by keeping Keycloak references confined to adapter modules and adapter-local tests, so removing the adapter does not affect non-adapter compilation paths.
+- Validation evidence passed in tests/reports/report-20260527-wf02-oidc02-step-04.json; release approval is recorded in docs/status/release-OIDC-02-20260526.json.
+- Requirement: OIDC-02 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-26T16:51:05Z",
-  "updated_by": "WF02-adp11-20260526",
-  "update_count": 39,
+  "updated_at": "2026-05-26T20:34:15Z",
+  "updated_by": "WF02-oidc02-20260527",
+  "update_count": 41,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
     "2": "Single function or endpoint, no schema change, < 50 LOC",
@@ -15,7 +15,7 @@
       5,
       3,
       26,
-      121,
+      62,
       40
     ],
     "backend-dev": [
@@ -43,7 +43,7 @@
       5,
       4,
       5,
-      7,
+      4,
       25
     ],
     "release-validator": [
