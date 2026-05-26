@@ -1,0 +1,40 @@
+{
+  "report_id": "WF02-adp12-20260526-step-05-release-validator",
+  "agent_id": "RELEASE-VALIDATOR",
+  "run_id": "WF02-adp12-20260526",
+  "step": "05",
+  "created_at": "2026-05-26T18:40:59Z",
+  "summary": "Validated ADP-12 release evidence for the default-tenant regression suite. The step-04b report shows build, unit, and integration passes with zero regression diff across 46/46 paired cases, and the benchmark gate passed with all NFR targets met. No blocking or major issues remain.",
+  "files_created": [
+    "docs/status/release-ADP-12-20260526.json",
+    "docs/issue-reports/WF02-adp12-20260526-step-05-release-validator-INNER-REPORT.json",
+    "tests/reports/WF02-adp12-20260526-step-05-release-validator-bench.log",
+    "handoffs/WF02-adp12-20260526/registry.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp12-20260526/step-05-release-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "reviewed tests/reports/report-20260526T183724Z-WF02-adp12-20260526-step04b-rework1.json",
+      "status": "pass",
+      "detail": "Build, unit, and integration layers all passed; ADP-12 summary reported zero_diff=true across 46 paired cases."
+    },
+    {
+      "name": "reviewed tests/reports/adp12/adp12-regression-summary.json",
+      "status": "pass",
+      "detail": "46/46 paired default-tenant cases matched; mismatches=0; flaky_signals=0."
+    },
+    {
+      "name": "zig build bench",
+      "status": "pass",
+      "detail": "NFR-01 read 3.118 ms, NFR-01 write 4.580 ms, NFR-02 28898.472 events/s, NFR-04 replay 65.462 ms; overall_passed=true."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route the approved ADP-12 release to DOC-UPDATER so requirement status can be set to RELEASED."
+  ],
+  "blockers": []
+}

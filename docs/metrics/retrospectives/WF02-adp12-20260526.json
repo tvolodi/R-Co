@@ -1,0 +1,110 @@
+{
+  "run_id": "WF02-adp12-20260526",
+  "workflow_id": "WF-02",
+  "date": "2026-05-26T18:44:37Z",
+  "requirement_ids": [
+    "ADP-12"
+  ],
+  "estimation_file": "handoffs/WF02-adp12-20260526/estimation.json",
+  "difficulty": 3,
+  "integration_surface": "high",
+  "steps": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "estimated_minutes": 39,
+      "started_at": "2026-05-26T17:49:40Z",
+      "completed_at": "2026-05-26T17:51:31Z",
+      "actual_minutes": 2,
+      "variance_pct": -94.9
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "estimated_minutes": 15,
+      "started_at": "2026-05-26T17:52:20Z",
+      "completed_at": "2026-05-26T18:06:00Z",
+      "actual_minutes": 14,
+      "variance_pct": -6.7
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "estimated_minutes": 9,
+      "started_at": "2026-05-26T18:06:40Z",
+      "completed_at": "2026-05-26T18:08:38Z",
+      "actual_minutes": 2,
+      "variance_pct": -77.8
+    },
+    {
+      "step": "04b",
+      "agent": "TEST-RUNNER",
+      "estimated_minutes": 8,
+      "started_at": "2026-05-26T18:34:00Z",
+      "completed_at": "2026-05-26T18:37:24Z",
+      "actual_minutes": 3,
+      "variance_pct": -62.5
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "estimated_minutes": 18,
+      "started_at": "2026-05-26T18:38:00Z",
+      "completed_at": "2026-05-26T18:40:59Z",
+      "actual_minutes": 3,
+      "variance_pct": -83.3
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "estimated_minutes": 4,
+      "started_at": "2026-05-26T18:40:20Z",
+      "completed_at": "2026-05-26T18:44:37Z",
+      "actual_minutes": 4,
+      "variance_pct": 0.0
+    }
+  ],
+  "rework_steps": [
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "status": "FAILED",
+      "rework_iteration": 1,
+      "rework_handoff": "handoffs/WF02-adp12-20260526/step-04b-test-runner-rework1.json"
+    }
+  ],
+  "estimated_total_minutes": 93,
+  "actual_total_minutes": 28,
+  "overall_variance_pct": -69.9,
+  "adjustments": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "issue": "Variance -94.9% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Insufficient reliable consecutive D3/high timing evidence to recalibrate estimation rules from this run."
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "issue": "Variance -77.8% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Insufficient reliable consecutive D3/high timing evidence to recalibrate estimation rules from this run."
+    },
+    {
+      "step": "04b",
+      "agent": "TEST-RUNNER",
+      "issue": "Variance -62.5% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Observed test-runner timing includes WF-03 rework handoff transition; keep existing rule until another D3/high run confirms direction."
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "issue": "Variance -83.3% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Release-validator duration remains strongly under estimate, but no rule change was applied in this run to avoid overfitting sparse D3/high samples."
+    }
+  ],
+  "summary": "WF02-adp12-20260526 completed 69.9% faster than estimated (28 actual vs 93 estimated minutes) for D3/high. ADP-12 is released after rework closure and zero-diff regression validation evidence."
+}

@@ -1,0 +1,68 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "date": "2026-05-26T18:40:59Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "ADP-12"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "benchmark_setup_info": "db_url_source=BPM_DB_URL",
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 3.118,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 4.58,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 28898.472,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 65.462,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "release_checks": {
+    "wf02_step04b_status": "PASS",
+    "adp12_acceptance_evidence_complete": "PASS",
+    "adp12_required_commands": {
+      "zig_build_test": "PASS",
+      "zig_build_test_integration": "PASS",
+      "zig_build_bench": "PASS"
+    },
+    "unresolved_blocker_or_major_issues": "NONE",
+    "release_gate_conditions": "PASS"
+  },
+  "test_evidence": {
+    "wf02_step04b_handoff": "handoffs/WF02-adp12-20260526/step-04b-test-runner-rework1.json",
+    "wf02_step04b_report": "tests/reports/report-20260526T183724Z-WF02-adp12-20260526-step04b-rework1.json",
+    "adp12_spec": "tests/specs/ADP-12.md",
+    "adp12_regression_summary": "tests/reports/adp12/adp12-regression-summary.json",
+    "bench_log": "tests/reports/WF02-adp12-20260526-step-05-release-validator-bench.log"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "ADP-12"
+  ],
+  "non_blocking_issues": [],
+  "residual_risk": {
+    "classification": "LOW",
+    "rationale": "All required regression and benchmark gates passed for ADP-12 in this validation run."
+  },
+  "recommendation": "APPROVE ADP-12 release gate and route to DOC-UPDATER to set requirement status to RELEASED."
+}

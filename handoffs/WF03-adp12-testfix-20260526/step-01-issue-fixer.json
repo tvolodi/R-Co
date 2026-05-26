@@ -1,0 +1,61 @@
+{
+  "handoff_id": "20260526-106",
+  "run_id": "WF03-adp12-testfix-20260526",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-adp12-testfix-20260526/step-01-issue-fixer.json",
+  "created_at": "2026-05-26T18:14:20Z",
+  "started_at": "2026-05-26T18:14:40Z",
+  "completed_at": "2026-05-26T18:26:08Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-12"
+    ],
+    "related_handoff_ids": [
+      "20260526-105"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-adp12-20260526/step-04-test-runner.json",
+      "tests/reports/report-20260526T181358Z-WF02-adp12-20260526-step04.json",
+      "tests/integration/adp12_default_tenant_regression_test.zig",
+      "tests/integration/main_test.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "Diagnose and fix the ADP-12 integration blocker from WF02 step-04: runtime failure signature ADDRESS_ALREADY_EXISTS during zig build test-integration. Identify root cause, apply minimal corrective changes, and verify integration stability so ADP-12 can resume WF-02 testing. Register issue lifecycle artifacts per ISSUE-FIXER workflow.",
+    "acceptance_criteria": [
+      "Root cause for ADDRESS_ALREADY_EXISTS failure is identified and documented",
+      "Code/test harness fix applied with minimal scope",
+      "zig build test-integration succeeds in the ADP-12 context",
+      "Issue report artifacts are created/updated with resolution and prevention notes"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:check-zig-build",
+      "fn:check-zig-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed ADP-12 integration stability blocker (category E) by hardening EXT-01/EXT-02 local HTTP harness server startup against transient ADDRESS_ALREADY_EXISTS bind collisions; build and integration checks now pass in the ADP-12 context.",
+    "artifacts_out": [
+      "tests/integration/ext01_service_task_test.zig",
+      "tests/integration/ext02_webhook_dispatch_test.zig",
+      "docs/issues/ISS-0029.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-adp12-testfix-20260526-step-01-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

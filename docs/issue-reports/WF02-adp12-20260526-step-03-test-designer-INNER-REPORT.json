@@ -1,0 +1,33 @@
+{
+  "report_id": "WF02-adp12-20260526-step-03-test-designer",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF02-adp12-20260526",
+  "step": "03",
+  "created_at": "2026-05-26T18:08:38Z",
+  "summary": "Produced ADP-12 test design artifacts aligned with implemented default-tenant regression suite behavior, including deterministic zero-diff invariants, canonicalization exclusion boundaries, expected report artifacts, and failure classification for release gating.",
+  "files_created": [
+    "tests/specs/ADP-12.md",
+    "docs/issue-reports/WF02-adp12-20260526-step-03-test-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp12-20260526/step-03-test-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "fn:validate-completeness",
+      "status": "pass",
+      "detail": "Validated ADP-12 acceptance coverage against handoff criteria: executable mapping, deterministic zero-diff pass/fail rules, canonicalization exclusions, flaky-signal handling, and documented report artifact paths."
+    },
+    {
+      "name": "fn:register-inner-report",
+      "status": "pass",
+      "detail": "Registered TEST-DESIGNER inner report at docs/issue-reports/WF02-adp12-20260526-step-03-test-designer-INNER-REPORT.json."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-02 Step 4) to execute ADP-12 mapped integration tests and verify ADP-12 artifacts under tests/reports/adp12/."
+  ],
+  "blockers": []
+}

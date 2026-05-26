@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-26T16:51:05Z",
+  "last_updated": "2026-05-26T18:44:37Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1195,6 +1195,21 @@
       "release_run": "WF02-adp11-20260526",
       "release_decision": "docs/status/release-ADP-11-20260526.json",
       "last_updated": "2026-05-26T16:51:05Z"
+    },
+    "ADP-12": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Default-tenant regression suite",
+      "implementation_run": "WF02-adp12-20260526",
+      "implementation_handoff": "handoffs/WF02-adp12-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-12.md",
+      "test_run": "tests/reports/report-20260526T183724Z-WF02-adp12-20260526-step04b-rework1.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T18:40:59Z",
+      "release_run": "WF02-adp12-20260526",
+      "release_decision": "docs/status/release-ADP-12-20260526.json",
+      "last_updated": "2026-05-26T18:44:37Z"
     }
   }
 }
