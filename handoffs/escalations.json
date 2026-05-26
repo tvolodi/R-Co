@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "created_at": "2026-05-26T16:15:00Z",
+  "escalations": [
+    {
+      "escalation_id": "ESC-001",
+      "handoff_id": "8e3f02a9-bef6-4934-b92a-e3c8cf40047a",
+      "run_id": "ADHOC-env-check-20260526",
+      "workflow_id": "ADHOC-env-setup",
+      "created_at": "2026-05-26T16:15:00Z",
+      "severity": "CRITICAL",
+      "category": "INFRASTRUCTURE_BLOCKER",
+      "title": "Zig 0.16.0 required but not publicly available",
+      "description": "The BPM Platform codebase requires Zig 0.16.0 (confirmed by test reports and API usage patterns in build.zig). However, this version is not available from official sources (ziglang.org returns 404 for version 0.16.0). Available versions (0.13.0, 0.14.0) have incompatible APIs. Previous installation from May 25 (handoff 39e61176) was successful but is no longer accessible. This blocks all backend development work.",
+      "blocking_agents": [
+        "BACKEND-DEV",
+        "TEST-RUNNER"
+      ],
+      "resolution_options": [
+        {
+          "option": "Wait for Zig 0.16.0 public release",
+          "effort": "NONE",
+          "risk": "UNKNOWN",
+          "notes": "Version may be in development and not yet released"
+        },
+        {
+          "option": "Refactor codebase for Zig 0.14.0 compatibility",
+          "effort": "HIGH",
+          "risk": "MEDIUM",
+          "notes": "Would require updating build.zig patterns, removing .root_module usage, and replacing std.Io references"
+        },
+        {
+          "option": "Locate pre-release or nightly Zig 0.16.0 build",
+          "effort": "LOW",
+          "risk": "MEDIUM",
+          "notes": "May exist in CI artifacts or pre-release channels but not in stable downloads"
+        },
+        {
+          "option": "Use Zig 0.15.0 if compatible",
+          "effort": "LOW",
+          "risk": "LOW",
+          "notes": "Test if 0.15.0 supports the required API patterns"
+        }
+      ],
+      "status": "RESOLVED",
+      "resolved_at": "2026-05-26T16:25:20Z",
+      "resolution_summary": "Installed Zig 0.17.0-dev master build as a compatible alternative to unavailable Zig 0.16.0. Fixed 5 trivial whitespace linting errors (** operator spacing). Project builds successfully and executable generated. Zig added to persistent PATH."
+    }
+  ]
+}

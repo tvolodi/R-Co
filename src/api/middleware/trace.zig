@@ -222,7 +222,7 @@ test "extractOrGenerate: non-UUID header propagated without validation" {
 
 test "extractOrGenerate: header longer than MAX_TRACE_ID_LEN is truncated" {
     const alloc = testing.allocator;
-    const long_id = "x" ** (MAX_TRACE_ID_LEN + 10);
+    const long_id = "x"**(MAX_TRACE_ID_LEN + 10);
     const result = try extractOrGenerate(alloc, long_id);
     defer alloc.free(result.trace_id);
 

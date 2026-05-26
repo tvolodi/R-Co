@@ -267,8 +267,8 @@ pub fn validateGraph(
 
     // ── CHK-04: no isolated nodes ─────────────────────────────────────────
     // Build per-node edge presence flags from edges with valid endpoints.
-    var has_incoming = [_]bool{false} ** MAX_NODES;
-    var has_outgoing = [_]bool{false} ** MAX_NODES;
+    var has_incoming = [_]bool{false}**MAX_NODES;
+    var has_outgoing = [_]bool{false}**MAX_NODES;
     for (edges) |edge| {
         if (nodeIndex(nodes, edge.source)) |si| has_outgoing[si] = true;
         if (nodeIndex(nodes, edge.target)) |ti| has_incoming[ti] = true;
@@ -293,8 +293,8 @@ pub fn validateGraph(
     // ── CHK-06: no cycles not through gateway nodes (DFS) ─────────────────
     // Build compact parallel arrays of (from_idx, to_idx) for edges whose
     // both endpoints exist in the node list.
-    var adj_from = [_]u16{0} ** MAX_EDGES;
-    var adj_to = [_]u16{0} ** MAX_EDGES;
+    var adj_from = [_]u16{0}**MAX_EDGES;
+    var adj_to = [_]u16{0}**MAX_EDGES;
     var adj_count: usize = 0;
     for (edges) |edge| {
         const si = nodeIndex(nodes, edge.source) orelse continue;
@@ -304,7 +304,7 @@ pub fn validateGraph(
         adj_count += 1;
     }
 
-    var is_gateway = [_]bool{false} ** MAX_NODES;
+    var is_gateway = [_]bool{false}**MAX_NODES;
     for (nodes, 0..) |node, i| {
         if (node.node_type == .EXCLUSIVE_GATEWAY or
             node.node_type == .PARALLEL_GATEWAY)
@@ -313,8 +313,8 @@ pub fn validateGraph(
         }
     }
 
-    var visited = [_]bool{false} ** MAX_NODES;
-    var on_stack = [_]bool{false} ** MAX_NODES;
+    var visited = [_]bool{false}**MAX_NODES;
+    var on_stack = [_]bool{false}**MAX_NODES;
 
     for (0..n_safe) |i| {
         if (!visited[i]) {
@@ -919,7 +919,7 @@ pub fn validateEdgeConditions(
     // ── CHK-EC-05 pre-scan: count is_default=true edges per EXCLUSIVE_GATEWAY ──
     // Stack-allocated parallel arrays bounded by MAX_NODES.
     var gw_ids: [MAX_NODES][]const u8 = undefined;
-    var gw_counts = [_]usize{0} ** MAX_NODES;
+    var gw_counts = [_]usize{0}**MAX_NODES;
     var gw_len: usize = 0;
 
     for (edges) |edge| {

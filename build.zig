@@ -3,10 +3,9 @@ const std = @import("std");
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
-    const package_manifest = @import("build.zig.zon");
 
     const build_options = b.addOptions();
-    build_options.addOption([]const u8, "platform_version", package_manifest.version);
+    build_options.addOption([]const u8, "platform_version", "0.1.0");
     const build_options_mod = build_options.createModule();
 
     // ---------------------------------------------------------------------------
