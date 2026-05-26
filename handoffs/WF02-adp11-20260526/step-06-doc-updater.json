@@ -51,7 +51,7 @@
   },
   "result": {
     "status": "PASS",
-    "summary": "Updated requirement_status.json to set ADP-11 status to RELEASED with implementation/test/release linkage; updated CHANGELOG.md with ADP-11 release entry; generated retrospective for WF02-adp11-20260526 and applied triggered estimation-rule adjustments.",
+    "summary": "Updated requirement_status.json to set ADP-11 status to RELEASED with implementation/test/release linkage; updated CHANGELOG.md with ADP-11 release entry; generated retrospective for WF02-adp11-20260526 and applied triggered estimation-rule adjustments. Retroactive git protocol executed on 2026-05-26: branch feature/WF02-adp11-20260526, commit 8ac7538, branch pushed to origin, and gh PR creation attempted but blocked by invalid GitHub CLI token (manual compare URL available).",
     "artifacts_out": [
       "docs/status/requirement_status.json",
       "CHANGELOG.md",
