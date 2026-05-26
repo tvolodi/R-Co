@@ -21,6 +21,9 @@ const errors = @import("../errors.zig");
 const tenant_context = @import("../tenant_context.zig");
 const pipeline_context = @import("../pipeline_context.zig");
 const pool_mod = @import("pool");
+const identity_provider = @import("identity_provider");
+const provider_manager_mod = identity_provider.manager;
+const provider_types = identity_provider.types;
 
 // ── Module-level state ────────────────────────────────────────────────────────
 
@@ -30,6 +33,10 @@ var bootstrap_hash: ?[]const u8 = null;
 
 /// The allocator that owns bootstrap_hash.  Used by deinit() to free it.
 var bootstrap_hash_allocator: ?std.mem.Allocator = null;
+
+/// Provider-agnostic identity manager for JWT-like token verification.
+/// Default is unconfigured and preserves legacy local token behavior.
+var identity_provider_manager: provider_manager_mod.Manager = provider_manager_mod.defaultManager();
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -130,6 +137,42 @@ fn primaryRole(roles: []const Role) Role {
         }
     }
     return best;
+}
+
+fn providerRolePriority(role: provider_types.ProviderRole) u8 {
+    return switch (role) {
+        .PLATFORM_ADMIN => 0,
+        .PROCESS_DESIGNER => 1,
+        .PROCESS_OPERATOR => 2,
+        .TASK_WORKER => 3,
+        .VIEWER => 4,
+        .AGENT_RUNNER => 5,
+    };
+}
+
+fn fromProviderRole(role: provider_types.ProviderRole) Role {
+    return switch (role) {
+        .PLATFORM_ADMIN => .PLATFORM_ADMIN,
+        .PROCESS_DESIGNER => .PROCESS_DESIGNER,
+        .PROCESS_OPERATOR => .PROCESS_OPERATOR,
+        .TASK_WORKER => .TASK_WORKER,
+        .VIEWER => .VIEWER,
+        .AGENT_RUNNER => .AGENT_RUNNER,
+    };
+}
+
+fn primaryProviderRole(roles: []const provider_types.ProviderRole) Role {
+    if (roles.len == 0) return .VIEWER;
+    var best = roles[0];
+    var best_priority = providerRolePriority(best);
+    for (roles[1..]) |role| {
+        const priority = providerRolePriority(role);
+        if (priority < best_priority) {
+            best = role;
+            best_priority = priority;
+        }
+    }
+    return fromProviderRole(best);
 }
 
 fn parseRolesJson(allocator: std.mem.Allocator, roles_json: []const u8) ![]Role {
@@ -413,6 +456,14 @@ pub fn deinit() void {
     }
 }
 
+pub fn configureIdentityProviderManager(manager: provider_manager_mod.Manager) void {
+    identity_provider_manager = manager;
+}
+
+pub fn resetIdentityProviderManager() void {
+    identity_provider_manager = provider_manager_mod.defaultManager();
+}
+
 /// Authenticate a single HTTP request.  Called by the HTTP server in the
 /// middleware chain BEFORE any route handler is dispatched.
 ///
@@ -465,6 +516,58 @@ pub fn authenticate(
     const raw_token = trimmed[BEARER.len..];
     if (raw_token.len == 0) {
         return .{ .unauthenticated = buildUnauthorized(allocator, "empty Bearer token") };
+    }
+
+    if (identity_provider_manager.shouldVerifyExternalToken(raw_token)) {
+        var principal = identity_provider_manager.verifyBearerToken(allocator, raw_token) catch |err| switch (err) {
+            error.InvalidToken,
+            error.TokenExpired,
+            error.TokenAudienceMismatch,
+            error.TokenIssuerMismatch,
+            error.SignatureVerificationFailed,
+            error.ClaimValidationFailed,
+            => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid bearer token") },
+
+            error.UpstreamUnavailable,
+            error.UpstreamTimeout,
+            error.RateLimited,
+            => return .{ .unauthenticated = buildUnauthorized(allocator, "service unavailable") },
+
+            else => return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") },
+        };
+        defer principal.deinit(allocator);
+
+        const pipeline_run_id = resolvePipelineRunIdClaim(allocator, raw_token) catch |err| switch (err) {
+            error.InvalidPipelineRunIdClaimFormat => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid pipeline_run_id claim") },
+            error.OutOfMemory => return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") },
+        };
+
+        const resolved_tenant = if (principal.tenant_id) |tenant_id|
+            ResolvedTenantContext{ .tenant_id = tenant_id, .source = .token_claim }
+        else
+            resolveTenantContext(allocator, raw_token) catch |err| switch (err) {
+                error.InvalidTenantClaimFormat => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid tenant_id claim") },
+                error.OutOfMemory => return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") },
+            };
+
+        tenant_context.set(resolved_tenant.tenant_id[0..]);
+        if (pipeline_run_id) |rid| pipeline_context.set(rid[0..]);
+
+        const user_id = allocator.dupe(u8, principal.provider_subject) catch
+            return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
+        const token_id = allocator.dupe(u8, principal.token_id_hint orelse "oidc") catch {
+            allocator.free(user_id);
+            return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
+        };
+
+        return .{ .authenticated = .{
+            .user_id = user_id,
+            .role = primaryProviderRole(principal.roles),
+            .is_bootstrap = false,
+            .token_id = token_id,
+            .tenant_id = resolved_tenant.tenant_id,
+            .tenant_source = resolved_tenant.source,
+        } };
     }
 
     // Step 5: Hash token once for both bootstrap and DB lookup.

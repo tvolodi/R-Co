@@ -6,6 +6,7 @@
 pub const errors = @import("errors.zig");
 pub const content_type = @import("middleware/content_type.zig");
 pub const auth = @import("middleware/auth.zig");
+pub const identity_provider = @import("identity_provider");
 pub const response = @import("response.zig");
 pub const pagination = @import("pagination.zig");
 pub const validation = @import("validation.zig");
