@@ -124,6 +124,14 @@ handoffs/WF03-EE05-fix/step-02-test-runner.json
         "affected_requirement": "<REQ-ID or null>"
       }
     ],
+    "git_evidence": {
+      "branch_name": "<feature/<run_id> or null if not a git step>",
+      "commit_sha_list": ["<sha>"],
+      "remote_branch": "<origin/branch or null>",
+      "push_status": "<ok|failed|skipped>",
+      "pr_url": "<url or null>",
+      "pr_create_error": "<error string or null>"
+    },
     "next_action": "<suggested next step for Orchestrator>"
   },
   "rework_count": 0,

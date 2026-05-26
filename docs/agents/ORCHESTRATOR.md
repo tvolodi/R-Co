@@ -20,6 +20,42 @@
 - Route FAIL results back to the originating agent with rework instructions
 - Escalate when `rework_count >= max_rework`
 - Build ad-hoc workflows when a situation is not covered by a standard workflow
+- **Enforce git wrapper steps as hard pipeline gates (see §8)**
+
+---
+
+## 8. Git Wrapper Protocol (Mandatory for WF-02, WF-03, WF-04)
+
+Every WF-02, WF-03, and WF-04 run MUST be wrapped with two additional BACKEND-DEV steps. These are **not optional** and are treated as hard pipeline gates.
+
+### Step 00 — git-setup (blocking gate before any implementation step)
+
+- Create a BACKEND-DEV handoff with step ID `00` and task: execute `fn:git-setup` per `docs/agents/protocols/GIT_SETUP.md`.
+- The handoff MUST record `branch_name`, `base_commit_sha`, and `push_status` in its result.
+- **ORCH MUST NOT dispatch Step 01 until Step 00 returns PASS.**
+- Branch naming convention: `feature/<run_id>` (e.g. `feature/WF02-adp11-20260526`).
+
+### Step Final — git-merge (blocking gate before DONE)
+
+- After DOC-UPDATER (Step 06) returns PASS, create a BACKEND-DEV handoff with step ID `final` and task: execute `fn:git-merge` per `docs/agents/protocols/GIT_MERGE.md`.
+- The handoff result MUST contain: `branch_name`, `commit_sha_list` (at least one entry), `remote_branch`, `pr_url` (or `pr_create_error` if gh auth is unavailable), and `push_status: ok`.
+- **ORCH MUST NOT write a `DONE` log entry until Step Final returns PASS and `push_status` is `ok`.**
+- If Step Final FAILS, treat as a rework loop (same `max_rework` rules).
+
+### DONE log entry
+
+Only write:
+```
+<ISO8601> | DONE | <run_id> | --- | PIPELINE COMPLETE | <REQ-ID> RELEASED
+```
+after Step Final PASS is confirmed. Include the pushed branch name and PR URL (if available) in a follow-on log line:
+```
+<ISO8601> | GIT  | <run_id> | <branch_name> | <commit_sha> | PR: <pr_url or MANUAL>
+```
+
+### Exception
+
+WF-01 (requirement drafting) may skip git wrapper steps because it writes only to `docs/`.
 
 ---
 
