@@ -20,10 +20,18 @@ pub fn build(b: *std.Build) void {
     const pg_mod = pg_dep.module("pg");
     const http_mod = http_dep.module("http");
     const cel_mod = cel_dep.module("cel");
+    const idp_config_mod = b.createModule(.{
+        .root_source_file = b.path("src/config/identity_provider.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const identity_provider_mod = b.createModule(.{
         .root_source_file = b.path("src/identity/provider/mod.zig"),
         .target = target,
         .optimize = optimize,
+        .imports = &.{
+            .{ .name = "idp_config", .module = idp_config_mod },
+        },
     });
 
     const transition_mod = b.createModule(.{

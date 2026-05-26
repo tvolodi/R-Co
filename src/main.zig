@@ -54,6 +54,8 @@ pub const webhook_dispatcher = @import("webhook/dispatcher.zig"); // EXT-02 webh
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01 user registry persistence
 pub const identity_service = @import("identity/service.zig"); // IDN-01 user registry service
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01 user registry HTTP handlers
+pub const identity_provider = @import("identity_provider"); // OIDC provider contract and bootstrap wiring
+pub const api_auth = @import("api/middleware/auth.zig"); // API-08 auth middleware provider-manager configuration
 
 const placeholder_health_live = "{\"status\":\"live\"}";
 const placeholder_health_ready = "{\"status\":\"ready\",\"api\":\"placeholder\"}";
@@ -70,13 +72,35 @@ pub fn main() !void {
     const config = try config_mod.load(allocator);
     try obs_logger.init(.{ .level = config.log_level, .component = "main" });
 
+    var idp_boot = identity_provider.bootstrap.initializeActiveProviderFromEnv(allocator, config.env) catch |err| {
+        try logIdentityProviderConfigError(allocator, err);
+        return err;
+    };
+    defer idp_boot.active.deinit();
+
+    api_auth.configureIdentityProviderManager(idp_boot.active.manager);
+
     const fields = [_]obs_logger.LogField{
         .{ .key = "port", .value = .{ .integer = config.port } },
         .{ .key = "environment", .value = .{ .string = config.env } },
+        .{ .key = "idp_provider_type", .value = .{ .string = @tagName(idp_boot.provider_type) } },
     };
     obs_logger.log(allocator, .INFO, "main", "startup configuration validated", &fields) catch {};
 
     try runPlaceholderApiServer(io, allocator, config.port);
+}
+
+fn logIdentityProviderConfigError(allocator: std.mem.Allocator, err: anyerror) !void {
+    const detail = identity_provider.bootstrap.describeConfigError(err);
+    const error_code = if (detail) |d| d.error_code else "adapter_bootstrap_failed";
+    const field = if (detail) |d| d.field else "BPM_IDP_ADMIN_CREDENTIALS_REF";
+
+    const fields = [_]obs_logger.LogField{
+        .{ .key = "error_code", .value = .{ .string = error_code } },
+        .{ .key = "field", .value = .{ .string = field } },
+        .{ .key = "detail", .value = .{ .string = @errorName(err) } },
+    };
+    _ = obs_logger.log(allocator, .ERROR, "startup.identity_provider", "identity provider configuration invalid", &fields) catch {};
 }
 
 fn runPlaceholderApiServer(io: std.Io, allocator: std.mem.Allocator, port: u16) !void {

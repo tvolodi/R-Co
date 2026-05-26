@@ -105,6 +105,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260527-wf02-oidc02-step-04.json; release approval is recorded in docs/status/release-OIDC-02-20260526.json.
 - Requirement: OIDC-02 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-03 - Configuration source (RELEASED 2026-05-26)
+- Implemented startup identity-provider configuration loading and validation for required OIDC provider fields (`provider_type`, `base_url`, `admin_credentials_ref`, `default_realm`) with clear field-attributed startup errors for misconfiguration.
+- Wired provider bootstrap selection by configured provider type while preserving provider-agnostic boundaries outside adapter modules.
+- Validation evidence passed in tests/reports/report-20260527-wf02-oidc03-step-04.json; release approval is recorded in docs/status/release-OIDC-03-20260526.json.
+- Requirement: OIDC-03 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`
