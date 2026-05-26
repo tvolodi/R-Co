@@ -8,6 +8,7 @@
 //! Design artefact: src/design/event_store.md
 const std = @import("std");
 const db = @import("../db/pool.zig");
+const root = @import("root");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
 const registry_mod = @import("registry.zig");
@@ -42,6 +43,8 @@ pub const StoreError = error{
     /// metadata value is not a string, key > 128 chars, value > 1024 chars,
     /// or more than 50 entries → HTTP 422 (ES-08).
     MetadataInvalid,
+    /// Caller metadata pipeline_run_id conflicts with trusted request context.
+    PipelineRunIdMetadataConflict,
     /// idempotency_key is absent or empty → HTTP 422 (ES-03).
     IdempotencyKeyMissing,
     /// idempotency_key > 255 chars → HTTP 422 (ES-03).
@@ -85,6 +88,7 @@ pub const AppendParams = struct {
     actor_id: Uuid,
     idempotency_key: []const u8,
     metadata: ?[]const u8,
+    pipeline_run_id: ?[]const u8 = null,
 };
 
 pub const AppendResult = struct {
@@ -107,6 +111,8 @@ pub const GlobalReadOpts = struct {
     tenant_id: []const u8 = DEFAULT_TENANT_ID,
     /// Resume cursor: return events with global_seq > value; null = from start (ES-04).
     after_global_seq: ?i64,
+    /// Optional correlation filter for ADP-06 metadata propagation.
+    pipeline_run_id: ?[]const u8 = null,
     /// Page size; 1..1000; 0 treated as default 100 (ES-04).
     limit: u32,
 };
@@ -119,6 +125,8 @@ pub const HistoryReadOpts = struct {
     from: ?i64,
     /// Optional: inclusive upper bound on created_at (UTC µs). Null = no upper bound.
     to: ?i64,
+    /// Optional ADP-06 metadata filter.
+    pipeline_run_id: ?[]const u8 = null,
     /// Cursor: only return events with sequence_number > this value. Null = from start.
     after_sequence: ?i64,
     /// Maximum number of events to return. 1..200.
@@ -212,6 +220,17 @@ pub const Store = struct {
         const metadata = params.metadata orelse "{}";
         try validateMetadata(metadata);
 
+        const pipeline_run_id = params.pipeline_run_id orelse currentRequestPipelineRunId();
+        if (pipeline_run_id.len > 0) {
+            const metadata_pipeline_run_id = metadataPipelineRunId(allocator, metadata) catch return StoreError.MetadataInvalid;
+            defer if (metadata_pipeline_run_id) |v| allocator.free(v);
+            if (metadata_pipeline_run_id) |v| {
+                if (!std.mem.eql(u8, v, pipeline_run_id)) {
+                    return StoreError.PipelineRunIdMetadataConflict;
+                }
+            }
+        }
+
         // ES-05: registry validation before any write.
         self.registry.validatePayload(allocator, params.event_type, params.payload) catch |err| switch (err) {
             registry_mod.RegistryError.UnknownEventType => return StoreError.UnknownEventType,
@@ -228,9 +247,38 @@ pub const Store = struct {
         };
         defer self.pool.release(conn);
 
+        var effective_pipeline_run_id: []const u8 = pipeline_run_id;
+        if (effective_pipeline_run_id.len == 0) {
+            const session_row_opt = conn.queryRow(
+                allocator,
+                "SELECT COALESCE(current_setting('bpm.pipeline_run_id', true), '')",
+                &.{},
+            ) catch null;
+            if (session_row_opt) |session_row| {
+                defer {
+                    for (session_row) |c| if (c) |v| allocator.free(v);
+                    allocator.free(session_row);
+                }
+                if (session_row.len > 0) {
+                    if (session_row[0]) |v| {
+                        if (v.len > 0) {
+                            effective_pipeline_run_id = param_alloc.dupe(u8, v) catch return StoreError.TransactionFailed;
+                        }
+                    }
+                }
+            }
+        }
+
         // BEGIN
         conn.exec("BEGIN", &.{}) catch return StoreError.TransactionFailed;
         errdefer conn.exec("ROLLBACK", &.{}) catch {};
+
+        if (effective_pipeline_run_id.len > 0) {
+            conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{effective_pipeline_run_id}) catch {
+                conn.exec("ROLLBACK", &.{}) catch {};
+                return StoreError.TransactionFailed;
+            };
+        }
 
         // Step 1: Check instance exists and is ACTIVE.
         // Parameterised — no string interpolation. (ES-01, security)
@@ -305,7 +353,12 @@ pub const Store = struct {
             \\   global_seq)
             \\VALUES
             \\  ($1, $2, $3::jsonb, $4,
-            \\$5, $6, $7::jsonb, $8::uuid,
+            \\   $5, $6,
+            \\   CASE
+            \\     WHEN $9::text = '' THEN $7::jsonb
+            \\     ELSE jsonb_set($7::jsonb, '{pipeline_run_id}', to_jsonb($9::text), true)
+            \\   END,
+            \\   $8::uuid,
             \\   nextval('events_global_seq'))
             \\ON CONFLICT (idempotency_key) DO NOTHING
             \\RETURNING
@@ -322,6 +375,7 @@ pub const Store = struct {
                 params.idempotency_key,
                 metadata,
                 params.tenant_id,
+                effective_pipeline_run_id,
             },
         ) catch {
             conn.exec("ROLLBACK", &.{}) catch {};
@@ -462,7 +516,9 @@ pub const Store = struct {
                 \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
                 \\       sequence_number, idempotency_key, metadata, global_seq
                 \\FROM events
-                \\WHERE instance_id = $1 AND tenant_id = $2::uuid AND sequence_number <= $3
+                \\WHERE instance_id = $1
+                \\  AND tenant_id = $2::uuid
+                \\  AND sequence_number <= $3::bigint
                 \\ORDER BY sequence_number ASC
             ,
                 &.{
@@ -549,6 +605,7 @@ pub const Store = struct {
 
         const page_size: u32 = if (opts.limit == 0 or opts.limit > 1000) 100 else opts.limit;
         const cursor: i64 = opts.after_global_seq orelse 0;
+        const pipeline_filter = opts.pipeline_run_id orelse "";
 
         // Parameterised query — no string interpolation. (ES-04, security)
         const rows = conn.query(
@@ -558,6 +615,7 @@ pub const Store = struct {
             \\       sequence_number, idempotency_key, metadata, global_seq
             \\FROM events
             \\WHERE global_seq > $1 AND tenant_id = $2::uuid
+            \\  AND ($4::text = '' OR metadata->>'pipeline_run_id' = $4)
             \\ORDER BY global_seq ASC
             \\LIMIT $3
         ,
@@ -565,6 +623,7 @@ pub const Store = struct {
                 intToStr(param_alloc, cursor) catch return StoreError.TransactionFailed,
                 opts.tenant_id,
                 uintToStr(param_alloc, page_size) catch return StoreError.TransactionFailed,
+                pipeline_filter,
             },
         ) catch return StoreError.TransactionFailed;
         defer {
@@ -661,14 +720,21 @@ pub const Store = struct {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // after_sequence cursor ($6)
+        // pipeline_run_id filter ($6)
+        if (opts.pipeline_run_id) |prid| {
+            params_list.append(allocator, prid) catch return StoreError.TransactionFailed;
+        } else {
+            params_list.append(allocator, "") catch return StoreError.TransactionFailed;
+        }
+
+        // after_sequence cursor ($7)
         if (opts.after_sequence) |as| {
             params_list.append(allocator, intToStr(param_alloc, as) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // limit ($7) — fetch page_size + 1 to detect next page
+        // limit ($8) — fetch page_size + 1 to detect next page
         const fetch_limit: u16 = if (opts.limit < 200) opts.limit + 1 else opts.limit;
         params_list.append(allocator, intToStr(param_alloc, @as(i64, fetch_limit)) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
 
@@ -690,6 +756,7 @@ pub const Store = struct {
             \\      AND ($3::text = '' OR event_type = $3)
             \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $4::bigint)
             \\      AND ($5::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $5::bigint)
+            \\      AND ($6::text = '' OR metadata->>'pipeline_run_id' = $6)
             \\    UNION ALL
             \\    SELECT event_id, instance_id, event_type, payload, actor_id,
             \\           created_at, sequence_number, idempotency_key, metadata, global_seq
@@ -699,10 +766,11 @@ pub const Store = struct {
             \\      AND ($3::text = '' OR event_type = $3)
             \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $4::bigint)
             \\      AND ($5::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $5::bigint)
+            \\      AND ($6::text = '' OR metadata->>'pipeline_run_id' = $6)
             \\) AS combined
-            \\WHERE ($6::text = '' OR sequence_number > $6::bigint)
+            \\WHERE ($7::text = '' OR sequence_number > $7::bigint)
             \\ORDER BY sequence_number ASC
-            \\LIMIT $7
+            \\LIMIT $8
         ;
 
         const rows = conn.query(
@@ -970,6 +1038,23 @@ fn duplicateFromParams(params: AppendParams, sequence_number: i64, metadata: []c
         .metadata = metadata,
         .global_seq = 0,
     };
+}
+
+fn currentRequestPipelineRunId() []const u8 {
+    if (@hasDecl(root, "api_pipeline_context")) {
+        return root.api_pipeline_context.get();
+    }
+    return "";
+}
+
+fn metadataPipelineRunId(allocator: std.mem.Allocator, metadata: []const u8) !?[]u8 {
+    const parsed = try std.json.parseFromSlice(std.json.Value, allocator, metadata, .{ .allocate = .alloc_always });
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return null;
+    const pipeline_id = parsed.value.object.get("pipeline_run_id") orelse return null;
+    if (pipeline_id != .string) return null;
+    return try allocator.dupe(u8, pipeline_id.string);
 }
 
 fn rowsToEventRecords(allocator: std.mem.Allocator, rows: [][]?[]u8) StoreError![]EventRecord {

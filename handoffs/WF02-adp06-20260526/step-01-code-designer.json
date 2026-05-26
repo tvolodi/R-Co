@@ -1,0 +1,61 @@
+{
+  "handoff_id": "20260526-059",
+  "run_id": "WF02-adp06-20260526",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-adp06-20260526/step-01-code-designer.json",
+  "created_at": "2026-05-26T07:14:00Z",
+  "started_at": "2026-05-26T07:14:00Z",
+  "completed_at": "2026-05-26T07:29:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-06"
+    ],
+    "related_handoff_ids": [
+      "20260526-041",
+      "20260526-049",
+      "20260526-050",
+      "20260526-058"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/03-extension-adaptations.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "docs/status/implementation_order.md",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for ADP-06 at src/design/adp-06-pipeline-run-correlation.md. Define additive schema semantics for a nullable audit.pipeline_run_id UUID column and event metadata propagation of pipeline_run_id for pipeline-driven actions while preserving existing audit/event behavior for non-pipeline actions. Specify data-flow contracts for sourcing and threading pipeline_run_id through API/engine/event emission boundaries, queryability requirements across audit and events, migration/backfill nullability rules, indexing and lookup considerations, and compatibility constraints with OBS-03 and ES-08. Include concrete testability notes for correlation write/read behavior and non-pipeline null behavior. Design only; no implementation edits.",
+    "acceptance_criteria": [
+      "Design defines additive ADP-06 schema and metadata semantics with backward-compatible null behavior",
+      "Pipeline-driven audit and event write-path propagation rules for pipeline_run_id are explicit and consistent",
+      "Cross-surface queryability requirements for pipeline_run_id across audit and events are concrete and testable",
+      "Migration/index/nullability behavior is specified with compatibility constraints for existing records",
+      "Design includes traceability to OBS-03, ES-08, and ADP-09 with actionable testability guidance"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ADP-06 pipeline run correlation with additive nullable audit pipeline_run_id semantics, explicit event metadata propagation rules for pipeline-driven actions, backward-compatible null behavior for non-pipeline actions, cross-surface queryability/indexing guidance, and testability coverage linked to OBS-03, ES-08, and ADP-09.",
+    "artifacts_out": [
+      "src/design/adp-06-pipeline-run-correlation.md",
+      "docs/issue-reports/WF02-adp06-20260526-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-26T04:53:15Z",
+  "last_updated": "2026-05-26T13:38:17Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1075,6 +1075,96 @@
       "release_run": "WF02-adp04a-20260526",
       "release_decision": "docs/status/release-ADP-04a-20260526.json",
       "last_updated": "2026-05-26T04:53:15Z"
+    },
+    "ADP-04b": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Tenant realm binding for OIDC foundations",
+      "implementation_run": "WF02-adp04b-20260526",
+      "implementation_handoff": "handoffs/WF02-adp04b-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-04b.md",
+      "test_run": "tests/reports/report-20260526T055349Z-WF02-adp04b-20260526-step04b-rework1.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T05:58:22Z",
+      "release_run": "WF02-adp04b-20260526",
+      "release_decision": "docs/status/release-ADP-04b-20260526.json",
+      "last_updated": "2026-05-26T06:02:24Z"
+    },
+    "ADP-05": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Artifact hash reference on instance",
+      "implementation_run": "WF02-adp05-20260526",
+      "implementation_handoff": "handoffs/WF02-adp05-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-05.md",
+      "test_run": "tests/reports/report-20260526T070227Z-WF02-adp05-20260526-step04b.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T07:09:18Z",
+      "release_run": "WF02-adp05-20260526",
+      "release_decision": "docs/status/release-ADP-05-20260526.json",
+      "last_updated": "2026-05-26T07:13:16Z"
+    },
+    "ADP-06": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "SHOULD",
+      "title": "Pipeline run correlation on audit and events",
+      "implementation_run": "WF02-adp06-20260526",
+      "implementation_handoff": "handoffs/WF02-adp06-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-06.md",
+      "test_run": "tests/reports/report-20260526T085420Z-WF02-adp06-20260526-step04b.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T09:00:49Z",
+      "release_run": "WF02-adp06-20260526",
+      "release_decision": "docs/status/release-ADP-06-20260526.json",
+      "last_updated": "2026-05-26T09:05:16Z"
+    },
+    "ADP-07": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Agent role and reserved usernames",
+      "implementation_run": "WF02-adp07-20260526",
+      "implementation_handoff": "handoffs/WF02-adp07-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-07.md",
+      "test_run": "tests/reports/report-20260526T103148Z-WF02-adp07-20260526-step04.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T10:36:37Z",
+      "release_run": "WF02-adp07-20260526",
+      "release_decision": "docs/status/release-ADP-07-20260526.json",
+      "last_updated": "2026-05-26T10:40:16Z"
+    },
+    "ADP-08": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Service task catalog reference",
+      "implementation_run": "WF02-adp08-20260526",
+      "implementation_handoff": "handoffs/WF02-adp08-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-08.md",
+      "test_run": "tests/reports/report-20260526T114455Z-WF02-adp08-20260526-step04.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T11:50:35Z",
+      "release_run": "WF02-adp08-20260526",
+      "release_decision": "docs/status/release-ADP-08-20260526.json",
+      "last_updated": "2026-05-26T11:54:24Z"
+    },
+    "ADP-09": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Tamper-evident audit chain",
+      "implementation_run": "WF02-adp09-20260526",
+      "implementation_handoff": "handoffs/WF02-adp09-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-09.md",
+      "test_run": "tests/reports/report-20260526T132149Z-WF02-adp09-20260526-step04b-rework1.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T13:31:17Z",
+      "release_run": "WF02-adp09-20260526",
+      "release_decision": "docs/status/release-ADP-09-20260526.json",
+      "last_updated": "2026-05-26T13:38:17Z"
     }
   }
 }

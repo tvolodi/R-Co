@@ -1,0 +1,121 @@
+{
+  "run_id": "WF03-adp06-testfix-20260526",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260526-064",
+  "step": "02",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-26T08:45:14Z",
+  "spec": "tests/specs/ADP-06.md",
+  "summary": {
+    "result": "PASS",
+    "reason": "Re-validated ISSUE-FIXER changes with required build, unit, and integration command chain; previously failing TC-ADP-06-02 and TC-ES-06-02 now execute and pass with no blocker/major regressions."
+  },
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "ZIG_BUILD_EXIT=0"
+      ]
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "ZIG_BUILD_TEST_EXIT=0"
+      ]
+    },
+    {
+      "command": "zig build test-integration",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "ZIG_BUILD_TEST_INTEGRATION_EXIT=0"
+      ]
+    },
+    {
+      "command": "zig build test-integration -- --test-filter \"TC-ADP-06-02\"",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "FILTER_ADP06_TC02_EXIT=0"
+      ]
+    },
+    {
+      "command": "zig build test-integration -- --test-filter \"TC-ES-06-02\"",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "FILTER_ES06_TC02_EXIT=0"
+      ]
+    }
+  ],
+  "case_outcomes": [
+    {
+      "case_id": "TC-ADP-06-01",
+      "execution_status": "PASS",
+      "evidence": "TC-ADP-06-01 is implemented in tests/integration/adp06_pipeline_run_correlation_test.zig and included via tests/integration/main_test.zig; integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ADP-06-02",
+      "execution_status": "PASS",
+      "evidence": "Focused re-run using zig build test-integration -- --test-filter \"TC-ADP-06-02\" exits 0 (FILTER_ADP06_TC02_EXIT=0)."
+    },
+    {
+      "case_id": "TC-ADP-06-03",
+      "execution_status": "PASS",
+      "evidence": "TC-ADP-06-03 is implemented in tests/integration/adp06_pipeline_run_correlation_test.zig and included via tests/integration/main_test.zig; integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ES-06-02",
+      "execution_status": "PASS",
+      "evidence": "Focused re-run using zig build test-integration -- --test-filter \"TC-ES-06-02\" exits 0 (FILTER_ES06_TC02_EXIT=0)."
+    }
+  ],
+  "requirement_traceability": [
+    {
+      "requirement_id": "ADP-06",
+      "acceptance_criterion": "Pipeline-produced audit/event records are queryable by pipeline_run_id with cross-surface correlation parity",
+      "tests": [
+        "TC-ADP-06-02"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ES-06",
+      "acceptance_criterion": "Read path with up_to_sequence returns exact event window without regression",
+      "tests": [
+        "TC-ES-06-02"
+      ],
+      "status": "PASS"
+    }
+  ],
+  "issues": [],
+  "artifacts_checked": [
+    "handoffs/WF03-adp06-testfix-20260526/step-01-issue-fixer.json",
+    "tests/reports/report-20260526T080141Z-WF02-adp06-20260526-step04.json",
+    "tests/specs/ADP-06.md",
+    "tests/integration/adp06_pipeline_run_correlation_test.zig",
+    "tests/integration/event_store_integration_test.zig",
+    "tests/integration/main_test.zig",
+    "src/event_store/store.zig"
+  ],
+  "next_action": "Route to ORCH for downstream workflow continuation after PASS validation."
+}

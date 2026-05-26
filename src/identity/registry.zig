@@ -21,6 +21,24 @@ pub const UserStatus = enum {
     }
 };
 
+pub const TenantStatus = enum {
+    ACTIVE,
+    INACTIVE,
+
+    pub fn fromString(s: []const u8) ?TenantStatus {
+        if (std.mem.eql(u8, s, "ACTIVE")) return .ACTIVE;
+        if (std.mem.eql(u8, s, "INACTIVE")) return .INACTIVE;
+        return null;
+    }
+
+    pub fn asString(self: TenantStatus) []const u8 {
+        return switch (self) {
+            .ACTIVE => "ACTIVE",
+            .INACTIVE => "INACTIVE",
+        };
+    }
+};
+
 pub const User = struct {
     user_id: []const u8,
     username: []const u8,
@@ -34,6 +52,23 @@ pub const User = struct {
         allocator.free(self.username);
         allocator.free(self.display_name);
         allocator.free(self.email);
+        allocator.free(self.created_at);
+    }
+};
+
+pub const Tenant = struct {
+    tenant_id: []const u8,
+    slug: []const u8,
+    display_name: []const u8,
+    status: TenantStatus,
+    idp_realm_id: ?[]const u8,
+    created_at: []const u8,
+
+    pub fn deinit(self: Tenant, allocator: std.mem.Allocator) void {
+        allocator.free(self.tenant_id);
+        allocator.free(self.slug);
+        allocator.free(self.display_name);
+        if (self.idp_realm_id) |v| allocator.free(v);
         allocator.free(self.created_at);
     }
 };
@@ -87,11 +122,22 @@ pub const CreateOidcUserInput = struct {
     external_id: []const u8,
 };
 
+pub const CreateTenantInput = struct {
+    tenant_id: ?[]const u8,
+    slug: []const u8,
+    display_name: []const u8,
+    status: TenantStatus,
+    idp_realm_id: ?[]const u8,
+};
+
 pub const RegistryError = error{
     DuplicateUsername,
+    DuplicateTenantSlug,
+    DuplicateRealmBinding,
     DuplicateGroupName,
     ExternalIdentityCollision,
     NotFound,
+    TenantNotFound,
     GroupNotFound,
     UserNotFound,
     PoolExhausted,
@@ -167,6 +213,153 @@ pub const Registry = struct {
 
         if (row == null) return error.PersistenceFailed;
         return materializeUser(allocator, row.?);
+    }
+
+    pub fn createTenant(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        input: CreateTenantInput,
+    ) RegistryError!Tenant {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        if (input.idp_realm_id) |realm| {
+            if (try self.selectTenantByRealmId(allocator, realm)) |existing| {
+                existing.deinit(allocator);
+                return error.DuplicateRealmBinding;
+            }
+        }
+
+        const status_str = input.status.asString();
+
+        const row = blk: {
+            if (input.tenant_id) |tenant_id| {
+                if (input.idp_realm_id) |realm| {
+                    break :blk conn.queryRow(
+                        allocator,
+                        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+                        \\VALUES ($1::uuid, $2, $3, $4, $5)
+                        \\ON CONFLICT (slug) DO NOTHING
+                        \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+                    ,
+                        &[_][]const u8{ tenant_id, input.slug, input.display_name, status_str, realm },
+                    );
+                }
+
+                break :blk conn.queryRow(
+                    allocator,
+                    \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+                    \\VALUES ($1::uuid, $2, $3, $4, NULL)
+                    \\ON CONFLICT (slug) DO NOTHING
+                    \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+                ,
+                    &[_][]const u8{ tenant_id, input.slug, input.display_name, status_str },
+                );
+            }
+
+            if (input.idp_realm_id) |realm| {
+                break :blk conn.queryRow(
+                    allocator,
+                    \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+                    \\VALUES (gen_random_uuid(), $1, $2, $3, $4)
+                    \\ON CONFLICT (slug) DO NOTHING
+                    \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+                ,
+                    &[_][]const u8{ input.slug, input.display_name, status_str, realm },
+                );
+            }
+
+            break :blk conn.queryRow(
+                allocator,
+                \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+                \\VALUES (gen_random_uuid(), $1, $2, $3, NULL)
+                \\ON CONFLICT (slug) DO NOTHING
+                \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+            ,
+                &[_][]const u8{ input.slug, input.display_name, status_str },
+            );
+        };
+
+        const inserted = row catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (inserted == null) return error.DuplicateTenantSlug;
+        return materializeTenant(allocator, inserted.?);
+    }
+
+    pub fn selectTenantById(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+    ) RegistryError!?Tenant {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const row = conn.queryRow(
+            allocator,
+            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\FROM tenant
+            \\WHERE id = $1::uuid
+            \\LIMIT 1
+        ,
+            &[_][]const u8{tenant_id},
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (row == null) return null;
+        const tenant = try materializeTenant(allocator, row.?);
+        return tenant;
+    }
+
+    pub fn selectTenantByRealmId(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        realm_id: []const u8,
+    ) RegistryError!?Tenant {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const row = conn.queryRow(
+            allocator,
+            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\FROM tenant
+            \\WHERE idp_realm_id = $1
+            \\LIMIT 1
+        ,
+            &[_][]const u8{realm_id},
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (row == null) return null;
+        const tenant = try materializeTenant(allocator, row.?);
+        return tenant;
     }
 
     pub fn updateUserStatus(
@@ -737,6 +930,28 @@ fn materializeUser(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!Use
         .display_name = allocator.dupe(u8, display_name) catch return error.OutOfMemory,
         .email = allocator.dupe(u8, email) catch return error.OutOfMemory,
         .status = status,
+        .created_at = allocator.dupe(u8, created_at) catch return error.OutOfMemory,
+    };
+}
+
+fn materializeTenant(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!Tenant {
+    defer freeRow(allocator, row);
+    if (row.len < 6) return error.PersistenceFailed;
+
+    const tenant_id = row[0] orelse return error.PersistenceFailed;
+    const slug = row[1] orelse return error.PersistenceFailed;
+    const display_name = row[2] orelse return error.PersistenceFailed;
+    const status_raw = row[3] orelse return error.PersistenceFailed;
+    const created_at = row[5] orelse return error.PersistenceFailed;
+
+    const status = TenantStatus.fromString(status_raw) orelse return error.PersistenceFailed;
+
+    return .{
+        .tenant_id = allocator.dupe(u8, tenant_id) catch return error.OutOfMemory,
+        .slug = allocator.dupe(u8, slug) catch return error.OutOfMemory,
+        .display_name = allocator.dupe(u8, display_name) catch return error.OutOfMemory,
+        .status = status,
+        .idp_realm_id = if (row[4]) |realm| allocator.dupe(u8, realm) catch return error.OutOfMemory else null,
         .created_at = allocator.dupe(u8, created_at) catch return error.OutOfMemory,
     };
 }

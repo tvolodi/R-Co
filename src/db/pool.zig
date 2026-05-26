@@ -17,10 +17,20 @@ fn currentRequestTenantId() []const u8 {
     return "";
 }
 
+fn currentRequestPipelineRunId() []const u8 {
+    if (@hasDecl(root, "api_pipeline_context")) {
+        return root.api_pipeline_context.get();
+    }
+    return "";
+}
+
 fn applyRequestTenantContext(conn: *Conn) PoolError!void {
     const tenant_id = currentRequestTenantId();
     const effective_tenant = if (tenant_id.len == 0) "" else tenant_id;
+    const pipeline_run_id = currentRequestPipelineRunId();
+    const effective_pipeline_run = if (pipeline_run_id.len == 0) "" else pipeline_run_id;
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{effective_tenant});
+    try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{effective_pipeline_run});
 }
 
 fn recordDbQueryDurationFromSql(sql: []const u8, elapsed_s: f64) void {

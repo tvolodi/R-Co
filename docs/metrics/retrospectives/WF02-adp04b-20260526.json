@@ -1,0 +1,65 @@
+{
+  "run_id": "WF02-adp04b-20260526",
+  "requirement_ids": [
+    "ADP-04b"
+  ],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 117,
+  "actual_minutes_total": 44.8,
+  "variance_pct": -61.7,
+  "by_step": {
+    "code-designer": {
+      "estimated": 7,
+      "actual": 12.3,
+      "variance_pct": 75.7
+    },
+    "backend-dev": {
+      "estimated": 8,
+      "actual": 15.3,
+      "variance_pct": 91.3
+    },
+    "test-designer": {
+      "estimated": 3,
+      "actual": 1.2,
+      "variance_pct": -60.0
+    },
+    "test-runner": {
+      "estimated": 8,
+      "actual": 9.9,
+      "variance_pct": 23.8
+    },
+    "release-validator": {
+      "estimated": 89,
+      "actual": 3.0,
+      "variance_pct": -96.6
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 3.1,
+      "variance_pct": 55.0
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [
+    {
+      "step": "backend-dev",
+      "difficulty": 3,
+      "old_estimate": 7,
+      "new_estimate": 10,
+      "reason": "Observed 2 consecutive runs at D3 with more than 25% positive variance for backend-dev duration"
+    },
+    {
+      "step": "release-validator",
+      "difficulty": 3,
+      "old_estimate": 70,
+      "new_estimate": 36,
+      "reason": "Observed 2 consecutive runs at D3 with more than 25% negative variance for release-validator duration"
+    }
+  ],
+  "notes": "Retrospective aggregates elapsed work time across run handoffs, summing rework iterations for repeated steps; estimation-rule updates were applied where same-difficulty consecutive-run variance exceeded the 25% threshold.",
+  "completed_at": "2026-05-26T06:02:24Z"
+}

@@ -1,0 +1,29 @@
+{
+  "report_id": "WF02-adp05-20260526-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-adp05-20260526",
+  "step": "01",
+  "created_at": "2026-05-26T06:12:26Z",
+  "summary": "Produced the backend design artefact for ADP-05 at src/design/adp-05-instance-artifact-hash.md. The design defines additive instance schema semantics for nullable definition_artifact_hash, explicit new-instance hash versus NULL persistence rules, repository-first reconstruction with mandatory PD-08 snapshot fallback, migration/nullability compatibility rules, invariants linking snapshots to artifact provenance, and concrete traceability-backed testability notes.",
+  "files_created": [
+    "src/design/adp-05-instance-artifact-hash.md",
+    "docs/issue-reports/WF02-adp05-20260526-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp05-20260526/step-01-code-designer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and acceptance traceability review",
+      "status": "pass",
+      "detail": "Verified required sections and explicit mapping to ADP-05 acceptance criteria, including migration/backward-compatibility semantics, write-path hash/null decision rules, artifact-hash-first replay contracts, and PD-08 fallback behavior."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,63 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "date": "2026-05-26T10:36:37Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "ADP-07"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "benchmark_setup_info": "db_url_source=BPM_DB_URL",
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.662,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.445,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 27844.955,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 35.52,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "release_checks": {
+    "wf02_step04_status": "PASS",
+    "adp07_acceptance_evidence_complete": "PASS",
+    "unresolved_blocker_or_major_issues": "NONE",
+    "release_gate_conditions": "PASS"
+  },
+  "test_evidence": {
+    "wf02_step04_handoff": "handoffs/WF02-adp07-20260526/step-04-test-runner.json",
+    "wf02_step04_report": "tests/reports/report-20260526T103148Z-WF02-adp07-20260526-step04.json",
+    "adp07_spec": "tests/specs/ADP-07.md",
+    "adp07_design": "src/design/adp-07-agent-role-reserved-usernames.md",
+    "bench_log": "tests/reports/WF02-adp07-20260526-step-05-release-validator-bench.log"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "ADP-07"
+  ],
+  "non_blocking_issues": [],
+  "residual_risk": {
+    "classification": "LOW",
+    "rationale": "All required build, unit, integration, and benchmark checks passed for ADP-07 in this environment. Remaining risk is limited to infrastructure/load variance outside this run."
+  },
+  "recommendation": "APPROVE ADP-07 release gate and route to DOC-UPDATER to set requirement status to RELEASED."
+}

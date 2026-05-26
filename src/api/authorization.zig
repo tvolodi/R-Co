@@ -5,6 +5,7 @@ pub const Role = enum {
     PROCESS_DESIGNER,
     PROCESS_OPERATOR,
     TASK_WORKER,
+    AGENT_RUNNER,
 };
 
 pub const Permission = enum {
@@ -201,6 +202,7 @@ fn roleAllows(role: Role, permission: Permission) bool {
             => true,
             else => false,
         },
+        .AGENT_RUNNER => false,
     };
 }
 
@@ -251,4 +253,12 @@ test "TC-IDN-03-06: webhook subscription endpoints map to PLATFORM_ADMIN-only po
 
     try std.testing.expect(evaluateAccess(admin_ctx, .WebhookSubscriptionsManage).kind == .Allow);
     try std.testing.expect(evaluateAccess(worker_ctx, .WebhookSubscriptionsManage).kind == .Deny403);
+}
+
+test "TC-IDN-03-07: AGENT_RUNNER does not inherit task or admin permissions" {
+    const agent_ctx = AccessContext{ .user_id = "u-agent", .roles = &[_]Role{.AGENT_RUNNER} };
+
+    try std.testing.expect(evaluateAccess(agent_ctx, .DefinitionsRead).kind == .Deny403);
+    try std.testing.expect(evaluateAccess(agent_ctx, .TasksList).kind == .Deny403);
+    try std.testing.expect(evaluateAccess(agent_ctx, .Unknown).kind == .Deny403);
 }

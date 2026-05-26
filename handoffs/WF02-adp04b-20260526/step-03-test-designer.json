@@ -1,0 +1,70 @@
+{
+  "handoff_id": "20260526-043",
+  "run_id": "WF02-adp04b-20260526",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-adp04b-20260526/step-03-test-designer.json",
+  "created_at": "2026-05-26T05:24:00Z",
+  "started_at": "2026-05-26T05:25:56Z",
+  "completed_at": "2026-05-26T05:27:11Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-04b"
+    ],
+    "related_handoff_ids": [
+      "20260526-041",
+      "20260526-042"
+    ],
+    "artifacts_in": [
+      "src/design/adp-04b-tenant-realm-binding.md",
+      "migrations/031_adp04b_tenant_realm_binding.sql",
+      "src/identity/registry.zig",
+      "src/identity/service.zig",
+      "src/api/routes/identity.zig",
+      "tests/integration/adp04b_tenant_realm_binding_test.zig",
+      "tests/integration/adp04a_external_identity_linkage_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Produce/refresh ADP-04b test specification and test-design evidence for implemented behavior: default-tenant backfill to bpm-default, OIDC-enabled tenant creation validation requiring idp_realm_id for non-default tenants, compatibility for existing/default tenant flows, and realm ownership invariants aligned with ADP-04a/OIDC-12. Ensure traceability from requirement acceptance criteria to concrete tests already in integration suite and identify any missing test cases as explicit issues if present.",
+    "acceptance_criteria": [
+      "ADP-04b test spec exists and maps each requirement acceptance criterion to concrete test cases",
+      "Spec documents deterministic assertions for default-tenant backfill and tenant-creation validation boundaries",
+      "Cross-reference to ADP-04a realm ownership invariants is explicit where relevant",
+      "If gaps exist, issues list includes severity and exact missing coverage"
+    ],
+    "functions_to_call": [
+      "fn:read-test-guide",
+      "fn:validate-coverage",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Produced ADP-04b test specification with deterministic acceptance-criteria traceability to concrete integration tests and explicit ADP-04a/OIDC-12 invariant cross-references.",
+    "artifacts_out": [
+      "tests/specs/ADP-04b.md",
+      "docs/issue-reports/WF02-adp04b-20260526-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Missing explicit integration test for OIDC-enabled default-tenant validation boundary that must reject non-'bpm-default' realm values with IdentityError.DefaultTenantRealmMismatch.",
+        "affected_requirement": "ADP-04b"
+      },
+      {
+        "severity": "MINOR",
+        "description": "Missing explicit integration test proving OIDC-enabled default-tenant create/bootstrap normalizes omitted realm binding to 'bpm-default'.",
+        "affected_requirement": "ADP-04b"
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

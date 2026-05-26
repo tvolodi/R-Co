@@ -538,11 +538,25 @@ fn checkServiceTask(
         },
     };
 
-    // EXT-01 compatibility:
-    // - legacy nodes may still use `endpoint`
-    // - new nodes can use `url`
-    // At least one must be present and non-empty.
+    const service_id = switch (obj.get("service_id") orelse .null) {
+        .string => |s| std.mem.trim(u8, s, " \t\r\n"),
+        .null => null,
+        else => blk: {
+            try addViolation(allocator, violations, "SERVICE_TASK_INVALID_SERVICE_ID", "Node '{s}' (SERVICE_TASK) attribute 'service_id' must be a non-empty string", .{node.id});
+            break :blk null;
+        },
+    };
+    const has_service_id = service_id != null and service_id.?.len > 0;
+    if (obj.get("service_id") != null and !has_service_id) {
+        try addViolation(allocator, violations, "SERVICE_TASK_INVALID_SERVICE_ID", "Node '{s}' (SERVICE_TASK) attribute 'service_id' must be a non-empty string", .{node.id});
+    }
+
+    // EXT-01 / ADP-08 compatibility:
+    // - legacy nodes may use `endpoint` or `url`
+    // - ADP-08 nodes may use `service_id`
+    // At least one route selector must be present and non-empty.
     const endpoint_ok: bool = blk: {
+        if (has_service_id) break :blk true;
         if (obj.get("endpoint")) |v| {
             if (switch (v) {
                 .string => |s| s.len > 0,
@@ -559,6 +573,18 @@ fn checkServiceTask(
     };
     if (!endpoint_ok) {
         try addViolation(allocator, violations, "SERVICE_TASK_MISSING_ENDPOINT", "Node '{s}' (SERVICE_TASK) is missing required attribute 'endpoint'", .{node.id});
+    }
+
+    if (has_service_id) {
+        if (!hasServiceCapability(allocator, obj, service_id.?)) {
+            try addViolation(
+                allocator,
+                violations,
+                "SERVICE_TASK_MISSING_SERVICE_CAPABILITY",
+                "Node '{s}' (SERVICE_TASK) requires capability 'service:call:<service_id>' or wildcard 'service:call:*' when service_id is used",
+                .{node.id},
+            );
+        }
     }
 
     // timeout_ms is optional in EXT-01 (default 30000).
@@ -624,6 +650,33 @@ fn checkServiceTask(
             },
         }
     }
+}
+
+fn hasServiceCapability(
+    allocator: std.mem.Allocator,
+    obj: std.json.ObjectMap,
+    service_id: []const u8,
+) bool {
+    const caps_entry = obj.get("capabilities") orelse return false;
+    const caps = switch (caps_entry) {
+        .array => |arr| arr,
+        else => return false,
+    };
+
+    const expected = std.fmt.allocPrint(allocator, "service:call:{s}", .{service_id}) catch return false;
+    defer allocator.free(expected);
+
+    for (caps.items) |cap| {
+        const cap_text = switch (cap) {
+            .string => |s| s,
+            else => continue,
+        };
+        if (std.mem.eql(u8, cap_text, expected) or std.mem.eql(u8, cap_text, "service:call:*")) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 fn checkTimer(

@@ -19,6 +19,7 @@
 const std = @import("std");
 const errors = @import("../errors.zig");
 const tenant_context = @import("../tenant_context.zig");
+const pipeline_context = @import("../pipeline_context.zig");
 const pool_mod = @import("pool");
 
 // ── Module-level state ────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ pub const Role = enum {
     PROCESS_OPERATOR,
     TASK_WORKER,
     VIEWER,
+    AGENT_RUNNER,
 
     /// Parse from the database text value.
     /// Returns null for unrecognised role names.
@@ -58,6 +60,7 @@ pub const Role = enum {
             .{ "PROCESS_OPERATOR", .PROCESS_OPERATOR },
             .{ "TASK_WORKER", .TASK_WORKER },
             .{ "VIEWER", .VIEWER },
+            .{ "AGENT_RUNNER", .AGENT_RUNNER },
         });
         return mapping.get(s);
     }
@@ -76,6 +79,11 @@ pub const TenantResolutionError = error{
 pub const ResolvedTenantContext = struct {
     tenant_id: [36]u8,
     source: TenantContextSource,
+};
+
+pub const PipelineResolutionError = error{
+    InvalidPipelineRunIdClaimFormat,
+    OutOfMemory,
 };
 
 /// The authenticated caller's identity and permissions.
@@ -107,6 +115,7 @@ fn rolePriority(role: Role) u8 {
         .PROCESS_OPERATOR => 2,
         .TASK_WORKER => 3,
         .VIEWER => 4,
+        .AGENT_RUNNER => 5,
     };
 }
 
@@ -221,6 +230,40 @@ pub fn resolveTenantContext(allocator: std.mem.Allocator, raw_token: []const u8)
             return resolved;
         },
         else => return error.InvalidTenantClaimFormat,
+    }
+}
+
+/// Resolve optional pipeline_run_id claim from a JWT-like token.
+/// Opaque legacy tokens or missing/null claims resolve to null.
+pub fn resolvePipelineRunIdClaim(allocator: std.mem.Allocator, raw_token: []const u8) PipelineResolutionError!?[36]u8 {
+    const first_dot = std.mem.indexOfScalar(u8, raw_token, '.') orelse return null;
+    const second_dot_rel = std.mem.indexOfScalar(u8, raw_token[first_dot + 1 ..], '.') orelse return null;
+    const payload_b64 = raw_token[first_dot + 1 .. first_dot + 1 + second_dot_rel];
+    if (payload_b64.len == 0) return null;
+
+    const decoder = std.base64.url_safe_no_pad.Decoder;
+    const decoded_len = decoder.calcSizeForSlice(payload_b64) catch return null;
+    const decoded_payload = try allocator.alloc(u8, decoded_len);
+    defer allocator.free(decoded_payload);
+    decoder.decode(decoded_payload, payload_b64) catch return null;
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, decoded_payload, .{ .allocate = .alloc_always }) catch return null;
+    defer parsed.deinit();
+    if (parsed.value != .object) return null;
+
+    const claim = parsed.value.object.get("pipeline_run_id") orelse return null;
+    switch (claim) {
+        .null => return null,
+        .string => |run_id_text| {
+            const parsed_uuid = parseUuid(run_id_text) catch return error.InvalidPipelineRunIdClaimFormat;
+            var canonical: [36]u8 = undefined;
+            formatUuidLower(parsed_uuid, &canonical);
+            if (!std.mem.eql(u8, run_id_text, canonical[0..])) {
+                return error.InvalidPipelineRunIdClaimFormat;
+            }
+            return canonical;
+        },
+        else => return error.InvalidPipelineRunIdClaimFormat,
     }
 }
 
@@ -403,6 +446,7 @@ pub fn authenticate(
     db_pool: *pool_mod.Pool,
 ) AuthResult {
     tenant_context.clear();
+    pipeline_context.clear();
 
     // Step 1: Check for missing header.
     const header = authorization_header orelse
@@ -435,7 +479,12 @@ pub fn authenticate(
                 error.InvalidTenantClaimFormat => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid tenant_id claim") },
                 error.OutOfMemory => return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") },
             };
+            const pipeline_run_id = resolvePipelineRunIdClaim(allocator, raw_token) catch |err| switch (err) {
+                error.InvalidPipelineRunIdClaimFormat => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid pipeline_run_id claim") },
+                error.OutOfMemory => return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") },
+            };
             tenant_context.set(resolved_tenant.tenant_id[0..]);
+            if (pipeline_run_id) |rid| pipeline_context.set(rid[0..]);
             const user_id_boot = allocator.dupe(u8, BOOTSTRAP_USER_ID) catch
                 return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
             const token_id_boot = allocator.dupe(u8, "bootstrap") catch {
@@ -567,6 +616,7 @@ pub fn authenticate(
             \\  WHEN 'PROCESS_OPERATOR' THEN 2
             \\  WHEN 'TASK_WORKER'      THEN 3
             \\  WHEN 'VIEWER'           THEN 4
+            \\  WHEN 'AGENT_RUNNER'     THEN 5
             \\END
             \\LIMIT 1
         ,
@@ -604,7 +654,20 @@ pub fn authenticate(
             return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
         },
     };
+    const pipeline_run_id = resolvePipelineRunIdClaim(allocator, raw_token) catch |err| switch (err) {
+        error.InvalidPipelineRunIdClaimFormat => {
+            allocator.free(token_id);
+            allocator.free(user_id);
+            return .{ .unauthenticated = buildUnauthorized(allocator, "invalid pipeline_run_id claim") };
+        },
+        error.OutOfMemory => {
+            allocator.free(token_id);
+            allocator.free(user_id);
+            return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
+        },
+    };
     tenant_context.set(resolved_tenant.tenant_id[0..]);
+    if (pipeline_run_id) |rid| pipeline_context.set(rid[0..]);
 
     // Step 10: Return authenticated.
     return .{ .authenticated = .{
@@ -625,6 +688,7 @@ test "Role.fromString: all known roles" {
     try std.testing.expect(Role.fromString("PROCESS_OPERATOR") == .PROCESS_OPERATOR);
     try std.testing.expect(Role.fromString("TASK_WORKER") == .TASK_WORKER);
     try std.testing.expect(Role.fromString("VIEWER") == .VIEWER);
+    try std.testing.expect(Role.fromString("AGENT_RUNNER") == .AGENT_RUNNER);
 }
 
 test "Role.fromString: unknown role returns null" {
@@ -757,4 +821,27 @@ test "resolveTenantContext: malformed tenant_id claim fails resolution" {
     defer std.testing.allocator.free(token);
 
     try std.testing.expectError(error.InvalidTenantClaimFormat, resolveTenantContext(std.testing.allocator, token));
+}
+
+test "resolvePipelineRunIdClaim: missing claim resolves to null" {
+    const token = try makeJwtLikeToken(std.testing.allocator, "{\"tenant_id\":\"11111111-1111-1111-1111-111111111111\"}");
+    defer std.testing.allocator.free(token);
+
+    const resolved = try resolvePipelineRunIdClaim(std.testing.allocator, token);
+    try std.testing.expect(resolved == null);
+}
+
+test "resolvePipelineRunIdClaim: valid claim resolves canonical uuid" {
+    const token = try makeJwtLikeToken(std.testing.allocator, "{\"pipeline_run_id\":\"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\"}");
+    defer std.testing.allocator.free(token);
+
+    const resolved = (try resolvePipelineRunIdClaim(std.testing.allocator, token)) orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", resolved[0..]);
+}
+
+test "resolvePipelineRunIdClaim: malformed claim fails" {
+    const token = try makeJwtLikeToken(std.testing.allocator, "{\"pipeline_run_id\":\"invalid\"}");
+    defer std.testing.allocator.free(token);
+
+    try std.testing.expectError(error.InvalidPipelineRunIdClaimFormat, resolvePipelineRunIdClaim(std.testing.allocator, token));
 }

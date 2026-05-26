@@ -38,6 +38,42 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/WF02-adp04a-20260526-step-04-test-runner.md and tests/reports/WF02-adp04a-20260526-step-04c-test-runner-rework2.log; release approval is recorded in docs/status/release-ADP-04a-20260526.json.
 - Requirement: ADP-04a (MUST, Stage 6.5) - RELEASED
 
+### ADP-04b - Tenant realm binding for OIDC foundations (RELEASED 2026-05-26)
+- Implemented and validated default-tenant realm binding behavior for OIDC foundations, including strict rejection of non-bpm-default realm assignment for the default tenant.
+- Added explicit executable coverage for default-tenant realm mismatch rejection and omitted-realm normalization to bpm-default, then revalidated through the ADP-04b rework test run.
+- Validation evidence passed in tests/reports/report-20260526T055349Z-WF02-adp04b-20260526-step04b-rework1.json; release approval is recorded in docs/status/release-ADP-04b-20260526.json.
+- Requirement: ADP-04b (MUST, Stage 6.5) - RELEASED
+
+### ADP-05 - Artifact hash reference on instance (RELEASED 2026-05-26)
+- Implemented additive nullable instance artifact-hash persistence support, including deterministic hash population for repository-backed starts while preserving NULL compatibility for legacy and pre-repository paths.
+- Implemented and validated artifact-hash-first reconstruction source selection with explicit snapshot fallback for absent or mismatched hashes, preserving PD-08 compatibility semantics.
+- Validation evidence passed in tests/reports/report-20260526T070227Z-WF02-adp05-20260526-step04b.json; release approval is recorded in docs/status/release-ADP-05-20260526.json.
+- Requirement: ADP-05 (MUST, Stage 6.5) - RELEASED
+
+### ADP-06 - Pipeline run correlation on audit and events (RELEASED 2026-05-26)
+- Implemented additive pipeline-run correlation persistence on audit and event records, preserving backward compatibility while enabling deterministic cross-artifact traceability for pipeline execution analysis.
+- Added and validated ADP-06 end-to-end evidence through WF-02 rework completion, including test-runner revalidation after WF-03 issue-fix handoff closure.
+- Validation evidence passed in tests/reports/report-20260526T085420Z-WF02-adp06-20260526-step04b.json; release approval is recorded in docs/status/release-ADP-06-20260526.json.
+- Requirement: ADP-06 (SHOULD, Stage 6.5) - RELEASED
+
+### ADP-07 - Agent role and reserved usernames (RELEASED 2026-05-26)
+- Implemented additive identity-role support by introducing AGENT_RUNNER as a grantable role in token and authorization paths while preserving existing role behavior.
+- Enforced reserved username policy for the agent: prefix so non-PLATFORM_ADMIN actors are rejected and PLATFORM_ADMIN creation paths remain explicitly allowed.
+- Validation evidence passed in tests/reports/report-20260526T103148Z-WF02-adp07-20260526-step04.json; release approval is recorded in docs/status/release-ADP-07-20260526.json.
+- Requirement: ADP-07 (MUST, Stage 6.5) - RELEASED
+
+### ADP-08 - Service task catalog reference (RELEASED 2026-05-26)
+- Implemented additive SERVICE_TASK configuration support for catalog-based service routing via `service_id`, while preserving legacy inline `url` behavior for backward compatibility.
+- Enforced `service:call:<service_id>` capability checks and deterministic precedence behavior where `service_id` overrides `url`, including error-path handling for missing or inactive catalog entries.
+- Validation evidence passed in tests/reports/report-20260526T114455Z-WF02-adp08-20260526-step04.json; release approval is recorded in docs/status/release-ADP-08-20260526.json.
+- Requirement: ADP-08 (MUST, Stage 6.5) - RELEASED
+
+### ADP-09 - Tamper-evident audit chain (RELEASED 2026-05-26)
+- Implemented additive tamper-evident audit chaining with nullable `chain_hash` and `prev_chain_hash` persistence, deterministic canonical SHA-256 chain computation, and tenant-scoped predecessor linkage semantics.
+- Added chain-validation behavior that detects tampered rows and propagates validation failure forward from the modified row, while preserving compatibility for historical rows with null chain fields.
+- Validation evidence passed in tests/reports/report-20260526T132149Z-WF02-adp09-20260526-step04b-rework1.json; release approval is recorded in docs/status/release-ADP-09-20260526.json.
+- Requirement: ADP-09 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

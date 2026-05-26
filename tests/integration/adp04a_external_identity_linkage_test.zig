@@ -92,6 +92,24 @@ fn cleanupUserByExternalIdentity(pool: *pool_mod.Pool, realm: []const u8, extern
     ) catch {};
 }
 
+fn ensureTenantBinding(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []const u8, display_name: []const u8, realm: []const u8) !void {
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+
+    try conn.exec(
+        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+        \\VALUES ($1::uuid, $2, $3, 'ACTIVE', $4)
+        \\ON CONFLICT (id) DO UPDATE
+        \\SET slug = EXCLUDED.slug,
+        \\    display_name = EXCLUDED.display_name,
+        \\    status = 'ACTIVE',
+        \\    idp_realm_id = EXCLUDED.idp_realm_id,
+        \\    updated_at = NOW()
+    ,
+        &[_][]const u8{ tenant_id, slug, display_name, realm },
+    );
+}
+
 test "TC-ADP-04a-01: legacy/internal users keep auth_source=internal and NULL external linkage" {
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
@@ -149,6 +167,8 @@ test "TC-ADP-04a-02: createOrGetJitOidcUser stores oidc linkage and resolves by 
     cleanupUserByExternalIdentity(&pool, realm, external_id);
     defer cleanupUserByUsername(&pool, username);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
+
+    try ensureTenantBinding(&pool, tenant_a, "adp04a-tenant-a", "ADP04a Tenant A", realm);
 
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
@@ -215,6 +235,8 @@ test "TC-ADP-04a-03: createOrGetJitOidcUser is idempotent for same tenant+realm+
     defer cleanupUserByUsername(&pool, first_username);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
 
+    try ensureTenantBinding(&pool, tenant_a, "adp04a-tenant-a", "ADP04a Tenant A", realm);
+
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
 
@@ -273,6 +295,7 @@ test "TC-ADP-04a-04: tenant-scoped resolution prevents cross-tenant identity bin
     defer pool.deinit();
 
     const realm = "kc-realm-adp04a-04";
+    const tenant_b_realm = "kc-realm-adp04a-04-b";
     const external_id = "sub-adp04a-04";
     const username = "tc-adp-04a-04-user";
 
@@ -280,6 +303,9 @@ test "TC-ADP-04a-04: tenant-scoped resolution prevents cross-tenant identity bin
     cleanupUserByExternalIdentity(&pool, realm, external_id);
     defer cleanupUserByUsername(&pool, username);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
+
+    try ensureTenantBinding(&pool, tenant_a, "adp04a-tenant-a", "ADP04a Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_b, "adp04a-tenant-b", "ADP04a Tenant B", tenant_b_realm);
 
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
@@ -296,14 +322,12 @@ test "TC-ADP-04a-04: tenant-scoped resolution prevents cross-tenant identity bin
     defer first.user.deinit(alloc);
     try testing.expect(first.created);
 
-    const foreign = try service.resolveUserByExternalIdentity(alloc, .{
+    const foreign = service.resolveUserByExternalIdentity(alloc, .{
         .tenant_id = tenant_b,
         .external_realm = realm,
         .external_id = external_id,
     });
-    defer if (foreign) |u| u.deinit(alloc);
-
-    try testing.expect(foreign == null);
+    try testing.expectError(identity_service.IdentityError.RealmOwnershipMismatch, foreign);
 
     const collision = service.createOrGetJitOidcUser(alloc, .{
         .tenant_id = tenant_b,
@@ -314,7 +338,7 @@ test "TC-ADP-04a-04: tenant-scoped resolution prevents cross-tenant identity bin
         .email = "tc-adp-04a-04-other@example.com",
         .status = .ACTIVE,
     });
-    try testing.expectError(identity_service.IdentityError.ExternalIdentityCollision, collision);
+    try testing.expectError(identity_service.IdentityError.RealmOwnershipMismatch, collision);
 }
 
 test "TC-ADP-04a-06: multiple internal NULL-linkage rows coexist while duplicate external pairs are rejected" {
@@ -342,6 +366,8 @@ test "TC-ADP-04a-06: multiple internal NULL-linkage rows coexist while duplicate
     defer cleanupUserByUsername(&pool, oidc_user);
     defer cleanupUserByUsername(&pool, duplicate_user);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
+
+    try ensureTenantBinding(&pool, tenant_a, "adp04a-tenant-a", "ADP04a Tenant A", realm);
 
     const conn = try pool.acquire();
     defer pool.release(conn);

@@ -1,0 +1,107 @@
+{
+  "run_id": "WF03-adp04b-testfix-20260526",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260526-046",
+  "step": "02",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-26T05:48:55Z",
+  "spec": "tests/specs/ADP-04b.md",
+  "summary": {
+    "result": "PASS",
+    "reason": "All required validation commands succeeded and both previously missing ADP-04b boundary coverage cases are now executable and passing."
+  },
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "zig build test-integration",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test",
+        "INTEGRATION_EXIT=0"
+      ]
+    }
+  ],
+  "case_outcomes": [
+    {
+      "case_id": "ADP04B-COVERAGE-01",
+      "test_id": "TC-ADP-04b-05",
+      "test_description": "OIDC-enabled default-tenant rejects non-bpm-default realm binding",
+      "execution_status": "PASS",
+      "evidence": "Integration suite executed with BPM_TEST_DB_URL configured and exited 0; test case is present in tests/integration/adp04b_tenant_realm_binding_test.zig and exercised by tests/integration/main_test.zig."
+    },
+    {
+      "case_id": "ADP04B-COVERAGE-02",
+      "test_id": "TC-ADP-04b-06",
+      "test_description": "OIDC-enabled default-tenant omitted realm normalizes to bpm-default",
+      "execution_status": "PASS",
+      "evidence": "Integration suite executed with BPM_TEST_DB_URL configured and exited 0; test case is present in tests/integration/adp04b_tenant_realm_binding_test.zig and exercised by tests/integration/main_test.zig."
+    }
+  ],
+  "requirement_traceability": [
+    {
+      "requirement_id": "ADP-04b",
+      "acceptance_criterion": "Default tenant has idp_realm_id = 'bpm-default'",
+      "tests": [
+        "TC-ADP-04b-01",
+        "TC-ADP-04b-06"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-04b",
+      "acceptance_criterion": "OIDC-enabled non-default tenant creation requires realm binding",
+      "tests": [
+        "TC-ADP-04b-02",
+        "TC-ADP-04b-03"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-04b",
+      "acceptance_criterion": "Realm ownership/uniqueness invariants align with ADP-04a and OIDC-12",
+      "tests": [
+        "TC-ADP-04b-04",
+        "TC-ADP-04a-04",
+        "TC-ADP-04a-06"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-04b",
+      "acceptance_criterion": "OIDC-enabled default-tenant realm mismatch is explicitly rejected with IdentityError.DefaultTenantRealmMismatch",
+      "tests": [
+        "TC-ADP-04b-05"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-04b",
+      "acceptance_criterion": "OIDC-enabled default-tenant omitted realm is explicitly normalized to bpm-default",
+      "tests": [
+        "TC-ADP-04b-06"
+      ],
+      "status": "PASS"
+    }
+  ],
+  "issues": [],
+  "artifacts_checked": [
+    "handoffs/WF03-adp04b-testfix-20260526/step-01-issue-fixer.json",
+    "src/identity/service.zig",
+    "tests/integration/adp04b_tenant_realm_binding_test.zig",
+    "tests/specs/ADP-04b.md"
+  ],
+  "next_action": "Route to ORCH for downstream workflow continuation after PASS validation."
+}

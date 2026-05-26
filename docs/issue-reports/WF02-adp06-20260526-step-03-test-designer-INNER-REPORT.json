@@ -1,0 +1,29 @@
+{
+  "report_id": "WF02-adp06-20260526-step-03-test-designer",
+  "agent_id": "TEST-DESIGNER",
+  "run_id": "WF02-adp06-20260526",
+  "step": "03",
+  "created_at": "2026-05-26T07:54:26Z",
+  "summary": "Produced ADP-06 test specification with deterministic traceability from acceptance scope to executable integration tests for nullable schema compatibility, pipeline-run propagation into audit/event surfaces, cross-surface pipeline_run_id queryability, and non-pipeline null/absent compatibility.",
+  "files_created": [
+    "tests/specs/ADP-06.md",
+    "docs/issue-reports/WF02-adp06-20260526-step-03-test-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp06-20260526/step-03-test-designer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "fn:validate-completeness",
+      "status": "pass",
+      "detail": "Validated handoff acceptance criteria: ADP-06 spec exists, maps each listed behavior to concrete deterministic integration tests, includes explicit null-behavior assertions for non-pipeline actions, and provides cross-surface queryability evidence."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-02 Step 4) to execute mapped ADP-06 integration tests."
+  ],
+  "blockers": []
+}

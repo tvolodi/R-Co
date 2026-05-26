@@ -1,0 +1,50 @@
+{
+  "run_id": "WF02-adp09-20260526",
+  "requirement_ids": [
+    "ADP-09"
+  ],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 78,
+  "actual_minutes_total": 79.2,
+  "variance_pct": 1.5,
+  "by_step": {
+    "code-designer": {
+      "estimated": 33,
+      "actual": 11.2,
+      "variance_pct": -66.1
+    },
+    "backend-dev": {
+      "estimated": 13,
+      "actual": 15.2,
+      "variance_pct": 16.9
+    },
+    "test-designer": {
+      "estimated": 8,
+      "actual": 12.3,
+      "variance_pct": 53.8
+    },
+    "test-runner": {
+      "estimated": 6,
+      "actual": 22.3,
+      "variance_pct": 271.7
+    },
+    "release-validator": {
+      "estimated": 15,
+      "actual": 8.6,
+      "variance_pct": -42.7
+    },
+    "doc-updater": {
+      "estimated": 3,
+      "actual": 9.6,
+      "variance_pct": 220.0
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [],
+  "notes": "Retrospective aggregates elapsed work time across run handoffs, summing rework iterations for repeated steps; no estimation-rule updates were applied because no same-difficulty consecutive-run variance trigger satisfied adjustment policy.",
+  "completed_at": "2026-05-26T13:38:17Z"
+}

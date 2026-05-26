@@ -158,7 +158,7 @@ _Gate: Stage 6 MUST requirements RELEASED._
 | ID | Title | Priority |
 |---|---|---|
 | OIDC-01 | Pluggable provider interface | MUST |
-| OIDC-02 | Keycloak adapter | MUST |
+| OIDC-02 | Keycloak adapter |
 | OIDC-03 | Configuration source | MUST |
 | OIDC-04 | Standards compliance boundary | MUST |
 | OIDC-05 | Bearer token acceptance | MUST |

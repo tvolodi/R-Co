@@ -755,15 +755,17 @@ pub const ListInstancesParams = struct {
 /// Query parameters for GET /api/v1/instances/:id/history.
 pub const HistoryParams = struct {
     /// Optional: filter to a specific event_type name. Null = all types.
-    event_type: ?[]const u8,
+    event_type: ?[]const u8 = null,
     /// Optional: ISO 8601 timestamp (inclusive lower bound on created_at).
-    from: ?[]const u8,
+    from: ?[]const u8 = null,
     /// Optional: ISO 8601 timestamp (inclusive upper bound on created_at).
-    to: ?[]const u8,
+    to: ?[]const u8 = null,
+    /// Optional: ADP-06 pipeline run correlation filter.
+    pipeline_run_id: ?[]const u8 = null,
     /// Cursor for continuation pagination (opaque base64url string).
-    cursor: ?[]const u8,
+    cursor: ?[]const u8 = null,
     /// Page size; default 50, max 200.
-    page_size: u16,
+    page_size: u16 = 50,
 };
 
 /// Query parameters for GET /api/v1/instances/:id/timeline.
@@ -787,6 +789,7 @@ pub const TimelineParams = struct {
 ///   event_type — optional filter to a specific event type name
 ///   from       — optional ISO 8601 timestamp (inclusive lower bound on created_at)
 ///   to         — optional ISO 8601 timestamp (inclusive upper bound on created_at)
+///   pipeline_run_id — optional ADP-06 correlation filter
 ///   cursor     — optional opaque continuation cursor
 ///   page_size  — validated integer, default 50, max 200
 ///
@@ -899,6 +902,7 @@ pub fn handleHistory(
             .event_type = params.event_type,
             .from = from_us,
             .to = to_us,
+            .pipeline_run_id = params.pipeline_run_id,
             .after_sequence = after_sequence,
             .limit = effective_history_page_size,
         },

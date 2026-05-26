@@ -1,0 +1,122 @@
+{
+  "run_id": "WF02-adp05-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-053",
+  "step": "04",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-26T06:42:11Z",
+  "spec": "tests/specs/ADP-05.md",
+  "summary": {
+    "result": "FAIL",
+    "reason": "Required build, unit, and integration commands all passed, but ADP-05 cannot be marked PASS because executable coverage for deterministic positive artifact-hash-first replay source selection is still missing."
+  },
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "zig build test-integration",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "PASS"
+    }
+  ],
+  "case_outcomes": [
+    {
+      "case_id": "TC-ADP-05-01",
+      "execution_status": "PASS",
+      "evidence": "Case is implemented in tests/integration/adp05_instance_artifact_hash_test.zig and integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ADP-05-02",
+      "execution_status": "PASS",
+      "evidence": "Case is implemented in tests/integration/adp05_instance_artifact_hash_test.zig and integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ADP-05-03",
+      "execution_status": "PASS",
+      "evidence": "Case is implemented in tests/integration/adp05_instance_artifact_hash_test.zig and integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ADP-05-04",
+      "execution_status": "PASS",
+      "evidence": "Case is implemented in tests/integration/adp05_instance_artifact_hash_test.zig and integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ADP-05-05",
+      "execution_status": "PASS",
+      "evidence": "Case asserts snapshot_fallback for null or mismatched hash and integration suite exits 0."
+    },
+    {
+      "case_id": "ADP05-COVERAGE-RISK-01",
+      "execution_status": "FAIL",
+      "evidence": "No executable test assertion was found for ReplayDefinitionSource.artifact_repository in tests/."
+    }
+  ],
+  "requirement_traceability": [
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "Nullable additive schema support with backward compatibility",
+      "tests": [
+        "TC-ADP-05-01"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "Write-path compatibility for legacy/pre-repository starts (NULL semantics)",
+      "tests": [
+        "TC-ADP-05-02"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "Repository-backed starts persist deterministic artifact hash",
+      "tests": [
+        "TC-ADP-05-03",
+        "TC-ADP-05-04"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "PD-08 snapshot fallback behavior for absent/mismatched hash",
+      "tests": [
+        "TC-ADP-05-05"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "Deterministic positive artifact-hash-first replay source selection (ReplayDefinitionSource.artifact_repository)",
+      "tests": [],
+      "status": "FAIL"
+    }
+  ],
+  "issues": [
+    {
+      "id": "ADP05-COVERAGE-RISK-01",
+      "severity": "MAJOR",
+      "description": "Missing explicit deterministic executable test for positive artifact-hash-first replay source selection (ReplayDefinitionSource.artifact_repository) under canonical hash/snapshot equivalence.",
+      "affected_requirement": "ADP-05"
+    }
+  ],
+  "artifacts_checked": [
+    "tests/specs/ADP-05.md",
+    "tests/integration/adp05_instance_artifact_hash_test.zig",
+    "tests/integration/main_test.zig",
+    "docs/issue-reports/WF02-adp05-20260526-step-03-test-designer-INNER-REPORT.json",
+    "handoffs/WF02-adp05-20260526/step-04-test-runner.json"
+  ],
+  "next_action": "Route to ISSUE-FIXER to add explicit deterministic integration coverage for ReplayDefinitionSource.artifact_repository and rerun WF-03 Step 2 validation."
+}

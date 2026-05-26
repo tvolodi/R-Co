@@ -1,0 +1,46 @@
+{
+    "report_id":  "WF02-adp08-20260526-step-03-test-designer",
+    "agent_id":  "TEST-DESIGNER",
+    "run_id":  "WF02-adp08-20260526",
+    "step":  "03",
+    "created_at":  "2026-05-26T11:36:36Z",
+    "summary":  "Produced ADP-08 test spec and executable edge-case coverage additions aligned to implemented unit/integration surfaces, including legacy url compatibility mapping, service_id precedence semantics, capability enforcement, and missing/invalid catalog handling.",
+    "files_created":  [
+                          "tests/specs/ADP-08.md",
+                          "docs/issue-reports/WF02-adp08-20260526-step-03-test-designer-INNER-REPORT.json"
+                      ],
+    "files_modified":  [
+                           "tests/unit/service_task_test.zig",
+                           "tests/unit/graph_node_attributes_test.zig",
+                           "tests/integration/ext01_service_task_test.zig",
+                           "handoffs/WF02-adp08-20260526/step-03-test-designer.json",
+                           "handoffs/registry.json",
+                           "handoffs/orchestrator.log"
+                       ],
+    "tests_run":  [
+                      {
+                          "name":  "fn:validate-completeness",
+                          "status":  "pass",
+                          "detail":  "Validated ADP-08 spec completeness against handoff acceptance criteria: explicit traceability, positive/negative deterministic scenarios for url/service_id/precedence, capability enforcement, missing/invalid catalog behavior, and executable test mapping."
+                      },
+                      {
+                          "name":  "zig build test",
+                          "status":  "pass",
+                          "detail":  "Command executed; process exit code reported as 0."
+                      },
+                      {
+                          "name":  "zig build test-integration",
+                          "status":  "pass",
+                          "detail":  "Command executed with BPM_TEST_DB_URL set; process exit code reported as 0."
+                      }
+                  ],
+    "issues_found":  [
+
+                     ],
+    "next_steps":  [
+                       "Route to TEST-RUNNER (WF-02 Step 4) to execute mapped ADP-08 tests."
+                   ],
+    "blockers":  [
+
+                 ]
+}

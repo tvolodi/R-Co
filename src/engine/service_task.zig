@@ -12,11 +12,23 @@ pub const HttpMethod = enum {
 pub const ServiceTaskConfig = struct {
     node_id: []const u8,
     url_template: []const u8,
+    service_id: ?[]const u8,
+    route_kind: ServiceTaskRouteKind,
+    warning: ?ServiceTaskConfigWarning,
     method: HttpMethod,
     headers_json: ?[]const u8,
     timeout_ms: u32,
     retry_limit: u8,
     body_template_json: ?[]const u8,
+};
+
+pub const ServiceTaskRouteKind = enum {
+    inline_url,
+    catalog_service,
+};
+
+pub const ServiceTaskConfigWarning = enum {
+    BothUrlAndServiceIdProvidedUrlIgnored,
 };
 
 pub const ServiceTaskFailureKind = enum {
@@ -38,6 +50,10 @@ pub const ServiceTaskDecision = enum {
 pub const ServiceTaskExecutionError = error{
     InvalidConfig,
     EmptyRenderedUrl,
+    CatalogEntryNotFound,
+    CatalogEntryInvalid,
+    CatalogEntryInactive,
+    MissingServiceCapability,
     OutOfMemory,
 };
 
@@ -65,23 +81,28 @@ pub fn parseConfigFromNodeAttributes(
         else => return error.InvalidConfig,
     };
 
-    const url_template_raw = blk: {
-        if (obj.get("url")) |entry| {
-            const s = switch (entry) {
-                .string => |v| v,
-                else => return error.InvalidConfig,
-            };
-            if (s.len == 0) return error.InvalidConfig;
-            break :blk s;
+    const url_template_raw = try parseOptionalNonEmptyString(obj, "url", true) orelse
+        try parseOptionalNonEmptyString(obj, "endpoint", true);
+    const service_id_raw = try parseOptionalNonEmptyString(obj, "service_id", true);
+
+    var route_kind: ServiceTaskRouteKind = .inline_url;
+    var warning: ?ServiceTaskConfigWarning = null;
+    const selected_url = blk: {
+        if (service_id_raw) |service_id| {
+            route_kind = .catalog_service;
+            try ensureServiceCapability(allocator, obj, service_id);
+
+            if (url_template_raw != null) {
+                warning = .BothUrlAndServiceIdProvidedUrlIgnored;
+            }
+
+            break :blk try resolveCatalogEndpoint(obj, service_id);
         }
-        if (obj.get("endpoint")) |entry| {
-            const s = switch (entry) {
-                .string => |v| v,
-                else => return error.InvalidConfig,
-            };
-            if (s.len == 0) return error.InvalidConfig;
-            break :blk s;
+
+        if (url_template_raw) |url| {
+            break :blk url;
         }
+
         return error.InvalidConfig;
     };
 
@@ -139,18 +160,97 @@ pub fn parseConfigFromNodeAttributes(
 
     const out_node_id = try allocator.dupe(u8, node_id);
     errdefer allocator.free(out_node_id);
-    const out_url_template = try allocator.dupe(u8, url_template_raw);
+    const out_url_template = try allocator.dupe(u8, selected_url);
     errdefer allocator.free(out_url_template);
+    const out_service_id = if (service_id_raw) |service_id| try allocator.dupe(u8, service_id) else null;
+    errdefer if (out_service_id) |s| allocator.free(s);
 
     return ServiceTaskConfig{
         .node_id = out_node_id,
         .url_template = out_url_template,
+        .service_id = out_service_id,
+        .route_kind = route_kind,
+        .warning = warning,
         .method = method,
         .headers_json = headers_json,
         .timeout_ms = timeout_ms,
         .retry_limit = retry_limit,
         .body_template_json = body_template_json,
     };
+}
+
+fn parseOptionalNonEmptyString(
+    obj: std.json.ObjectMap,
+    key: []const u8,
+    trim_whitespace: bool,
+) ServiceTaskExecutionError!?[]const u8 {
+    const entry = obj.get(key) orelse return null;
+    const raw = switch (entry) {
+        .string => |s| s,
+        else => return error.InvalidConfig,
+    };
+
+    const value = if (trim_whitespace) std.mem.trim(u8, raw, " \t\r\n") else raw;
+    if (value.len == 0) return error.InvalidConfig;
+    return value;
+}
+
+fn ensureServiceCapability(
+    allocator: std.mem.Allocator,
+    obj: std.json.ObjectMap,
+    service_id: []const u8,
+) ServiceTaskExecutionError!void {
+    const expected = try std.fmt.allocPrint(allocator, "service:call:{s}", .{service_id});
+    defer allocator.free(expected);
+
+    const caps_entry = obj.get("capabilities") orelse return error.MissingServiceCapability;
+    const caps = switch (caps_entry) {
+        .array => |arr| arr,
+        else => return error.MissingServiceCapability,
+    };
+
+    for (caps.items) |cap| {
+        const text = switch (cap) {
+            .string => |s| s,
+            else => continue,
+        };
+        if (std.mem.eql(u8, text, expected) or std.mem.eql(u8, text, "service:call:*")) {
+            return;
+        }
+    }
+
+    return error.MissingServiceCapability;
+}
+
+fn resolveCatalogEndpoint(
+    obj: std.json.ObjectMap,
+    service_id: []const u8,
+) ServiceTaskExecutionError![]const u8 {
+    const catalog_entry = obj.get("service_catalog") orelse return error.CatalogEntryNotFound;
+    const catalog = switch (catalog_entry) {
+        .object => |o| o,
+        else => return error.CatalogEntryInvalid,
+    };
+
+    const service_entry = catalog.get(service_id) orelse return error.CatalogEntryNotFound;
+    const service_obj = switch (service_entry) {
+        .object => |o| o,
+        else => return error.CatalogEntryInvalid,
+    };
+
+    if (service_obj.get("is_active")) |active_entry| {
+        const is_active = switch (active_entry) {
+            .bool => |v| v,
+            else => return error.CatalogEntryInvalid,
+        };
+        if (!is_active) return error.CatalogEntryInactive;
+    }
+
+    if (try parseOptionalNonEmptyString(service_obj, "endpoint_url", true)) |endpoint_url| return endpoint_url;
+    if (try parseOptionalNonEmptyString(service_obj, "url", true)) |url| return url;
+    if (try parseOptionalNonEmptyString(service_obj, "endpoint", true)) |endpoint| return endpoint;
+
+    return error.CatalogEntryInvalid;
 }
 
 pub fn validateRenderedUrl(rendered_url: []const u8) ServiceTaskExecutionError!void {

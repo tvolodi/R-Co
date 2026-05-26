@@ -1,0 +1,122 @@
+{
+  "run_id": "WF02-adp07-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-071",
+  "step": "04",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-26T10:31:48Z",
+  "spec": "tests/specs/ADP-07.md",
+  "summary": {
+    "result": "PASS",
+    "reason": "Executed required build, unit, and integration validation chain for ADP-07. All required commands passed and ADP-07 acceptance criteria are covered by deterministic passing integration tests with no unresolved BLOCKER or MAJOR issues."
+  },
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "BUILD_EXIT_CODE=0"
+      ]
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "UNIT_EXIT_CODE=0"
+      ]
+    },
+    {
+      "command": "zig build test-integration",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "INTEGRATION_EXIT_CODE=0"
+      ]
+    }
+  ],
+  "case_outcomes": [
+    {
+      "case_id": "TC-ADP-07-01",
+      "execution_status": "PASS",
+      "evidence": "AGENT_RUNNER role seed and token issuance acceptance are covered by tests/integration/adp07_agent_role_reserved_usernames_test.zig under a passing integration suite."
+    },
+    {
+      "case_id": "TC-ADP-07-02",
+      "execution_status": "PASS",
+      "evidence": "Non-admin actor rejection for reserved agent-prefixed username is covered by a passing deterministic integration assertion expecting ReservedUsernameRequiresPlatformAdmin."
+    },
+    {
+      "case_id": "TC-ADP-07-03",
+      "execution_status": "PASS",
+      "evidence": "PLATFORM_ADMIN allowed-path creation for agent-prefixed username is covered by a passing integration assertion on persisted username equality."
+    },
+    {
+      "case_id": "TC-ADP-07-04",
+      "execution_status": "PASS",
+      "evidence": "JIT OIDC path reserved-prefix enforcement is covered by a passing deterministic integration assertion expecting ReservedUsernameRequiresPlatformAdmin."
+    },
+    {
+      "case_id": "TC-ADP-07-05",
+      "execution_status": "PASS",
+      "evidence": "Non-agent username compatibility behavior remains intact and is covered by a passing integration assertion on successful user creation."
+    }
+  ],
+  "requirement_traceability": [
+    {
+      "requirement_id": "ADP-07",
+      "acceptance_criterion": "AGENT_RUNNER is grantable and accepted in issuance path",
+      "tests": [
+        "TC-ADP-07-01"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-07",
+      "acceptance_criterion": "Non-PLATFORM_ADMIN actor cannot create agent-prefixed usernames",
+      "tests": [
+        "TC-ADP-07-02"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-07",
+      "acceptance_criterion": "PLATFORM_ADMIN actor can create agent-prefixed usernames",
+      "tests": [
+        "TC-ADP-07-03"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-07",
+      "acceptance_criterion": "Reserved-prefix enforcement is consistent on JIT OIDC path",
+      "tests": [
+        "TC-ADP-07-04"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-07",
+      "acceptance_criterion": "Non-agent identities remain behaviorally compatible",
+      "tests": [
+        "TC-ADP-07-05"
+      ],
+      "status": "PASS"
+    }
+  ],
+  "issues": [],
+  "artifacts_checked": [
+    "handoffs/WF02-adp07-20260526/step-04-test-runner.json",
+    "tests/specs/ADP-07.md",
+    "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+    "src/design/adp-07-agent-role-reserved-usernames.md",
+    "docs/BPM_Platform_Functional_Requirements.md"
+  ],
+  "next_action": "Route to ORCH for WF-02 Step 05 RELEASE-VALIDATOR dispatch."
+}

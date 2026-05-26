@@ -1,0 +1,131 @@
+{
+  "run_id": "WF02-adp09-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-083",
+  "step": "04",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-26T12:48:08Z",
+  "spec": "tests/specs/ADP-09.md",
+  "summary": {
+    "result": "FAIL",
+    "reason": "Required command chain was executed, but both zig build test and zig build test-integration reported failed nested test.exe invocations using --listen while still returning EXIT_CODE=0. This produced non-deterministic/invalid evidence for ADP-09 acceptance and leaves a blocker unresolved."
+  },
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "EXIT_CODE=0"
+      ]
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "FAIL",
+      "evidence": [
+        "failed command: .\\.zig-cache\\o\\aaf5ba7811f35beb6cada3ea66c9c927\\test.exe --cache-dir=.\\.zig-cache --seed=0x4db29a56 --listen=-",
+        "EXIT_CODE=0"
+      ]
+    },
+    {
+      "command": "zig build test-integration",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "FAIL",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "failed command: .\\.zig-cache\\o\\c618fa319b0c13c7b0e068811016bfd8\\test.exe --cache-dir=.\\.zig-cache --seed=0x5058f8d7 --listen=-",
+        "EXIT_CODE=0"
+      ]
+    }
+  ],
+  "case_outcomes": [
+    {
+      "case_id": "TC-ADP-09-01",
+      "execution_status": "UNVERIFIED",
+      "evidence": "Required integration command did not provide reliable pass evidence due failed nested test runner invocation."
+    },
+    {
+      "case_id": "TC-ADP-09-02",
+      "execution_status": "UNVERIFIED",
+      "evidence": "Required integration command did not provide reliable pass evidence due failed nested test runner invocation."
+    },
+    {
+      "case_id": "TC-ADP-09-03",
+      "execution_status": "UNVERIFIED",
+      "evidence": "Required integration command did not provide reliable pass evidence due failed nested test runner invocation."
+    },
+    {
+      "case_id": "TC-ADP-09-04",
+      "execution_status": "UNVERIFIED",
+      "evidence": "Required integration command did not provide reliable pass evidence due failed nested test runner invocation."
+    },
+    {
+      "case_id": "TC-ADP-09-05",
+      "execution_status": "UNVERIFIED",
+      "evidence": "Required integration command did not provide reliable pass evidence due failed nested test runner invocation."
+    }
+  ],
+  "requirement_traceability": [
+    {
+      "requirement_id": "ADP-09",
+      "acceptance_criterion": "Deterministic chain computation",
+      "tests": [
+        "TC-ADP-09-02",
+        "TC-ADP-09-05"
+      ],
+      "status": "UNVERIFIED"
+    },
+    {
+      "requirement_id": "ADP-09",
+      "acceptance_criterion": "Tenant-scoped predecessor linkage",
+      "tests": [
+        "TC-ADP-09-02"
+      ],
+      "status": "UNVERIFIED"
+    },
+    {
+      "requirement_id": "ADP-09",
+      "acceptance_criterion": "Tamper detection and forward failure propagation",
+      "tests": [
+        "TC-ADP-09-03"
+      ],
+      "status": "UNVERIFIED"
+    },
+    {
+      "requirement_id": "ADP-09",
+      "acceptance_criterion": "Legacy/null-chain compatibility",
+      "tests": [
+        "TC-ADP-09-04"
+      ],
+      "status": "UNVERIFIED"
+    }
+  ],
+  "summary_counts": {
+    "total": 5,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 0,
+    "unverified": 5
+  },
+  "issues": [
+    {
+      "id": "ISS-WF02-ADP09-STEP04-001",
+      "severity": "BLOCKER",
+      "description": "Required zig test command wrappers report failed nested test.exe invocations with --listen while returning exit code 0, so ADP-09 integration evidence is not trustworthy.",
+      "affected_requirement": "ADP-09"
+    }
+  ],
+  "artifacts_checked": [
+    "handoffs/WF02-adp09-20260526/step-04-test-runner.json",
+    "tests/specs/ADP-09.md",
+    "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+    "src/design/adp-09-tamper-evident-audit-chain.md",
+    "docs/BPM_Platform_Functional_Requirements.md"
+  ],
+  "next_action": "Route to ORCH for WF-03 issue-fix to restore deterministic zig build test and zig build test-integration evidence path, then re-run WF-02 Step 04 for ADP-09."
+}

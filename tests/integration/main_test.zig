@@ -3,6 +3,7 @@
 const std = @import("std");
 const bpm = @import("bpm");
 pub const api_tenant_context = bpm.api_tenant_context;
+pub const api_pipeline_context = bpm.api_pipeline_context;
 
 // Integration test helpers (TestHarness with rollback-on-deinit isolation).
 const helpers = @import("helpers.zig");
@@ -78,6 +79,16 @@ const adp03_tenant_context_integration = @import("adp03_tenant_context_resolutio
 const adp04_user_tenant_binding_integration = @import("adp04_user_tenant_binding_test.zig");
 // Stage 6.5 — External identity linkage on users (ADP-04a)
 const adp04a_external_identity_linkage_integration = @import("adp04a_external_identity_linkage_test.zig");
+// Stage 6.5 — Tenant realm binding and OIDC ownership invariants (ADP-04b)
+const adp04b_tenant_realm_binding_integration = @import("adp04b_tenant_realm_binding_test.zig");
+// Stage 6.5 — Artifact hash reference on instance (ADP-05)
+const adp05_instance_artifact_hash_integration = @import("adp05_instance_artifact_hash_test.zig");
+// Stage 6.5 — Pipeline run correlation on audit and events (ADP-06)
+const adp06_pipeline_run_correlation_integration = @import("adp06_pipeline_run_correlation_test.zig");
+// Stage 6.5 — Agent role and reserved usernames (ADP-07)
+const adp07_agent_role_reserved_usernames_integration = @import("adp07_agent_role_reserved_usernames_test.zig");
+// Stage 6.5 — Tamper-evident audit chain (ADP-09)
+const adp09_tamper_evident_audit_chain_integration = @import("adp09_tamper_evident_audit_chain_test.zig");
 
 comptime {
     _ = std;
@@ -118,6 +129,11 @@ comptime {
     _ = adp03_tenant_context_integration;
     _ = adp04_user_tenant_binding_integration;
     _ = adp04a_external_identity_linkage_integration;
+    _ = adp04b_tenant_realm_binding_integration;
+    _ = adp05_instance_artifact_hash_integration;
+    _ = adp06_pipeline_run_correlation_integration;
+    _ = adp07_agent_role_reserved_usernames_integration;
+    _ = adp09_tamper_evident_audit_chain_integration;
 }
 
 test "integration placeholder" {

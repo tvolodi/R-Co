@@ -228,6 +228,63 @@ test "TC-PD-05-09b: SERVICE_TASK with url (without endpoint) -> valid" {
     try std.testing.expectEqual(@as(usize, 0), result.violations.len);
 }
 
+test "TC-ADP-08-01: SERVICE_TASK with service_id and capability -> valid" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "n1", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"service_id\":\"svc.orders\",\"capabilities\":[\"service:call:svc.orders\"]}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "n1", .condition = null },
+        .{ .id = "e2", .source = "n1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(result.valid);
+    try std.testing.expectEqual(@as(usize, 0), result.violations.len);
+}
+
+test "TC-ADP-08-01b: SERVICE_TASK with service_id and wildcard capability -> valid" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "n1", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"service_id\":\"svc.orders\",\"capabilities\":[\"service:call:*\"]}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "n1", .condition = null },
+        .{ .id = "e2", .source = "n1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(result.valid);
+    try std.testing.expectEqual(@as(usize, 0), result.violations.len);
+}
+
+test "TC-ADP-08-02: SERVICE_TASK with service_id missing capability -> violation" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "n1", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"service_id\":\"svc.orders\",\"capabilities\":[\"definitions:write\"]}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "n1", .condition = null },
+        .{ .id = "e2", .source = "n1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SERVICE_TASK_MISSING_SERVICE_CAPABILITY"));
+}
+
 test "TC-PD-05-09c: SERVICE_TASK with invalid method -> SERVICE_TASK_INVALID_METHOD" {
     const nodes = [_]gm.GraphNode{
         .{ .id = "start", .node_type = .START, .label = null },

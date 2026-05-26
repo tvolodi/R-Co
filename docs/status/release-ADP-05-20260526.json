@@ -1,0 +1,69 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "date": "2026-05-26T07:09:18Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "ADP-05"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "benchmark_setup_info": "db_url_source=BPM_TEST_DB_URL",
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 20.1,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 22.4,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 4278.655,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 100.57,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "release_checks": {
+    "wf02_step04b_rework1_status": "PASS",
+    "wf03_testfix_validation_status": "PASS",
+    "must_acceptance_nullable_additive_schema_support": "PASS",
+    "must_acceptance_legacy_write_path_null_semantics": "PASS",
+    "must_acceptance_repository_hash_persistence": "PASS",
+    "must_acceptance_snapshot_fallback_on_absent_or_mismatched_hash": "PASS",
+    "must_acceptance_positive_artifact_repository_source_selection": "PASS",
+    "unresolved_blocker_or_major_issues": "NONE"
+  },
+  "test_evidence": {
+    "wf02_step04b_handoff": "handoffs/WF02-adp05-20260526/step-04b-test-runner-rework1.json",
+    "wf02_step04b_report": "tests/reports/report-20260526T070227Z-WF02-adp05-20260526-step04b.json",
+    "wf03_step02_report": "tests/reports/report-20260526T065805Z-WF03-adp05-testfix-20260526-step02.json",
+    "migration": "migrations/032_adp05_instance_artifact_hash.sql",
+    "instance_impl": "src/engine/instance.zig",
+    "reconstruction_impl": "src/engine/reconstruction.zig",
+    "bench_log": "tests/reports/WF02-adp05-20260526-step-05-release-validator-bench.log"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "ADP-05"
+  ],
+  "non_blocking_issues": [],
+  "residual_risk": {
+    "classification": "LOW",
+    "rationale": "Current evidence includes passing build/unit/integration suites and passing NFR benchmarks in this environment. Residual risk remains tied to environment variance (hardware/load profile) outside this single-node benchmark run."
+  },
+  "recommendation": "APPROVE ADP-05 release gate and route to DOC-UPDATER to set requirement status to RELEASED."
+}

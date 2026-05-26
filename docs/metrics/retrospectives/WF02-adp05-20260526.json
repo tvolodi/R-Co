@@ -1,0 +1,50 @@
+{
+  "run_id": "WF02-adp05-20260526",
+  "requirement_ids": [
+    "ADP-05"
+  ],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 75,
+  "actual_minutes_total": 54.9,
+  "variance_pct": -26.8,
+  "by_step": {
+    "code-designer": {
+      "estimated": 6,
+      "actual": 10.0,
+      "variance_pct": 66.7
+    },
+    "backend-dev": {
+      "estimated": 13,
+      "actual": 21.6,
+      "variance_pct": 66.2
+    },
+    "test-designer": {
+      "estimated": 4,
+      "actual": 3.9,
+      "variance_pct": -2.5
+    },
+    "test-runner": {
+      "estimated": 6,
+      "actual": 8.6,
+      "variance_pct": 43.3
+    },
+    "release-validator": {
+      "estimated": 45,
+      "actual": 6.8,
+      "variance_pct": -84.9
+    },
+    "doc-updater": {
+      "estimated": 1,
+      "actual": 4.0,
+      "variance_pct": 300.0
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [],
+  "notes": "Retrospective aggregates elapsed work time across run handoffs, summing rework iterations for repeated steps; estimation-rule updates were applied only where same-difficulty consecutive-run variance exceeded the 25% threshold.",
+  "completed_at": "2026-05-26T07:13:16Z"
+}

@@ -41,6 +41,19 @@ pub const ReconstructionError = error{
     OutOfMemory,
 };
 
+pub const ReplayDefinitionSource = enum {
+    artifact_repository,
+    snapshot_fallback,
+};
+
+pub fn determineReplaySourceForSnapshot(
+    allocator: std.mem.Allocator,
+    snapshot: snapshot_mod.DefinitionGraph,
+    definition_artifact_hash: ?[]const u8,
+) error{OutOfMemory}!ReplayDefinitionSource {
+    return replaySourceFromSnapshotHash(allocator, snapshot, definition_artifact_hash);
+}
+
 // ---------------------------------------------------------------------------
 // reconstructInstance
 // ---------------------------------------------------------------------------
@@ -94,6 +107,32 @@ pub fn reconstructInstance(
         else => return ReconstructionError.QueryFailed,
     };
     defer pool.release(conn);
+
+    const ref_row = conn.queryRow(
+        ra,
+        \\SELECT definition_artifact_hash
+        \\FROM instance_projections
+        \\WHERE instance_id = $1::uuid
+    ,
+        &.{inst_id_hex},
+    ) catch return ReconstructionError.QueryFailed;
+    if (ref_row == null) return ReconstructionError.InstanceNotFound;
+
+    const definition_artifact_hash: ?[]const u8 = blk: {
+        const raw = ref_row.?[0];
+        if (raw) |hash| {
+            if (hash.len == 0) break :blk null;
+            break :blk hash;
+        }
+        break :blk null;
+    };
+
+    const replay_source = replaySourceFromSnapshotHash(
+        ra,
+        snapshot,
+        definition_artifact_hash,
+    ) catch return ReconstructionError.OutOfMemory;
+    _ = replay_source;
 
     // Primary query: UNION ALL across events + events_archive ordered by
     // sequence_number ASC.  Falls back to events-only when events_archive is
@@ -387,4 +426,34 @@ fn instanceStatusToString(status: InstanceStatus) []const u8 {
         .CANCELLED => "CANCELLED",
         .ERROR => "ERROR",
     };
+}
+
+fn replaySourceFromSnapshotHash(
+    allocator: std.mem.Allocator,
+    snapshot: snapshot_mod.DefinitionGraph,
+    definition_artifact_hash: ?[]const u8,
+) error{OutOfMemory}!ReplayDefinitionSource {
+    const hash = definition_artifact_hash orelse return .snapshot_fallback;
+    if (!isValidDefinitionArtifactHash(hash)) return .snapshot_fallback;
+
+    const canonical_json = std.json.Stringify.valueAlloc(allocator, snapshot, .{}) catch
+        return error.OutOfMemory;
+
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(canonical_json, &digest, .{});
+    const computed = std.fmt.allocPrint(allocator, "{s}", .{std.fmt.bytesToHex(&digest, .lower)}) catch
+        return error.OutOfMemory;
+
+    if (std.ascii.eqlIgnoreCase(computed, hash)) {
+        return .artifact_repository;
+    }
+    return .snapshot_fallback;
+}
+
+fn isValidDefinitionArtifactHash(value: []const u8) bool {
+    if (value.len != 64) return false;
+    for (value) |c| {
+        if (!std.ascii.isHex(c)) return false;
+    }
+    return true;
 }

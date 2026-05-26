@@ -17,6 +17,7 @@ pub const AuditEntry = struct {
     action: []u8,
     resource_type: []u8,
     resource_id: []u8,
+    pipeline_run_id: ?[]u8,
     timestamp: []u8,
     before_state: ?[]u8,
     after_state: ?[]u8,
@@ -27,6 +28,7 @@ pub const AuditEntry = struct {
         allocator.free(self.action);
         allocator.free(self.resource_type);
         allocator.free(self.resource_id);
+        if (self.pipeline_run_id) |v| allocator.free(v);
         allocator.free(self.timestamp);
         if (self.before_state) |v| allocator.free(v);
         if (self.after_state) |v| allocator.free(v);
@@ -37,6 +39,7 @@ pub const ListFilters = struct {
     actor_id: ?[]const u8 = null,
     resource_type: ?[]const u8 = null,
     resource_id: ?[]const u8 = null,
+    pipeline_run_id: ?[]const u8 = null,
     from_ts: ?[]const u8 = null,
     to_ts: ?[]const u8 = null,
     cursor: ?[]const u8 = null,
@@ -81,6 +84,7 @@ pub fn list(
         \\  action,
         \\  resource_type,
         \\  resource_id::text,
+            \\  pipeline_run_id::text,
         \\  to_char("timestamp" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  before_state::text,
         \\  after_state::text,
@@ -104,6 +108,11 @@ pub fn list(
     if (filters.resource_id) |rid| {
         sql.appendSlice(a, std.fmt.allocPrint(a, "\nAND resource_id = ${d}::uuid", .{pidx}) catch return error.OutOfMemory) catch return error.OutOfMemory;
         params.append(a, rid) catch return error.OutOfMemory;
+        pidx += 1;
+    }
+    if (filters.pipeline_run_id) |pipeline_run_id| {
+        sql.appendSlice(a, std.fmt.allocPrint(a, "\nAND pipeline_run_id = ${d}::uuid", .{pidx}) catch return error.OutOfMemory) catch return error.OutOfMemory;
+        params.append(a, pipeline_run_id) catch return error.OutOfMemory;
         pidx += 1;
     }
     if (filters.from_ts) |from_ts| {
@@ -176,16 +185,17 @@ pub fn list(
             .action = allocator.dupe(u8, row[2] orelse "") catch return error.OutOfMemory,
             .resource_type = allocator.dupe(u8, row[3] orelse "") catch return error.OutOfMemory,
             .resource_id = allocator.dupe(u8, row[4] orelse "") catch return error.OutOfMemory,
-            .timestamp = allocator.dupe(u8, row[5] orelse "") catch return error.OutOfMemory,
-            .before_state = if (row[6]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
-            .after_state = if (row[7]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
+            .pipeline_run_id = if (row[5]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
+            .timestamp = allocator.dupe(u8, row[6] orelse "") catch return error.OutOfMemory,
+            .before_state = if (row[7]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
+            .after_state = if (row[8]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
         };
     }
 
     var next_cursor: ?[]u8 = null;
     if (has_next and out_len > 0) {
         const last = rows.rows[out_len - 1];
-        const ts_us = std.fmt.parseInt(i64, last[8] orelse "0", 10) catch 0;
+        const ts_us = std.fmt.parseInt(i64, last[9] orelse "0", 10) catch 0;
         const now_us = currentMicrosecondTimestamp();
         const raw = pagination.buildRawCursorTimestampKey(
             allocator,

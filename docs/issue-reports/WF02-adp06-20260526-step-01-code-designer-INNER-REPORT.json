@@ -1,0 +1,29 @@
+{
+  "report_id": "WF02-adp06-20260526-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-adp06-20260526",
+  "step": "01",
+  "created_at": "2026-05-26T07:29:01Z",
+  "summary": "Produced the backend design artefact for ADP-06 at src/design/adp-06-pipeline-run-correlation.md. The design defines additive correlation semantics for nullable audit.pipeline_run_id and event metadata propagation for pipeline-driven actions, with explicit null-compatible behavior for non-pipeline paths, cross-surface queryability contracts, migration/indexing guidance, ADP-09 compatibility constraints, and concrete testability notes.",
+  "files_created": [
+    "src/design/adp-06-pipeline-run-correlation.md",
+    "docs/issue-reports/WF02-adp06-20260526-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp06-20260526/step-01-code-designer.json",
+    "handoffs/registry.json",
+    "handoffs/orchestrator.log"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and acceptance traceability review",
+      "status": "pass",
+      "detail": "Verified required sections and explicit mapping to ADP-06 acceptance criteria, including additive schema/null behavior, write-path propagation rules, cross-surface queryability requirements, migration/indexing considerations, and compatibility links to OBS-03, ES-08, and ADP-09."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)."
+  ],
+  "blockers": []
+}

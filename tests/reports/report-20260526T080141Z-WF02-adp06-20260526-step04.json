@@ -1,0 +1,113 @@
+{
+  "run_id": "WF02-adp06-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-062",
+  "step": "04",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-26T08:01:41Z",
+  "spec": "tests/specs/ADP-06.md",
+  "summary": {
+    "result": "FAIL",
+    "reason": "Build and unit layers passed, but integration failed with two failing tests (including ADP-06 correlation propagation), so ADP-06 acceptance cannot be marked satisfied in this run."
+  },
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Command produced no output",
+        "Exit code 0"
+      ]
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Command produced no output",
+        "Exit code 0"
+      ]
+    },
+    {
+      "command": "zig build test-integration",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 1,
+      "status": "FAIL",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "run test 280 pass, 7 skip, 2 fail (289 total)",
+        "TC-ES-06-02 failed in tests/integration/event_store_integration_test.zig",
+        "TC-ADP-06-02 failed in tests/integration/adp06_pipeline_run_correlation_test.zig:172",
+        "Build Summary: 2/4 steps succeeded (1 failed); 280/289 tests passed (7 skipped, 2 failed)"
+      ]
+    }
+  ],
+  "case_outcomes": [
+    {
+      "case_id": "TC-ADP-06-01",
+      "execution_status": "PASS",
+      "evidence": "No failure entry for TC-ADP-06-01 in the integration run; only TC-ADP-06-02 is reported failed for ADP-06 suite."
+    },
+    {
+      "case_id": "TC-ADP-06-02",
+      "execution_status": "FAIL",
+      "evidence": "Integration run reports failure in tests/integration/adp06_pipeline_run_correlation_test.zig at assertion event_row[0] != null (line 172)."
+    },
+    {
+      "case_id": "TC-ADP-06-03",
+      "execution_status": "PASS",
+      "evidence": "No failure entry for TC-ADP-06-03 in the integration run; only TC-ADP-06-02 is reported failed for ADP-06 suite."
+    }
+  ],
+  "requirement_traceability": [
+    {
+      "requirement_id": "ADP-06",
+      "acceptance_criterion": "Additive nullable schema support and queryability infrastructure for pipeline-run correlation",
+      "tests": [
+        "TC-ADP-06-01"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-06",
+      "acceptance_criterion": "Pipeline-produced audit/event records are queryable by pipeline_run_id with cross-surface correlation parity",
+      "tests": [
+        "TC-ADP-06-02"
+      ],
+      "status": "FAIL"
+    },
+    {
+      "requirement_id": "ADP-06",
+      "acceptance_criterion": "Backward-compatible null/absent behavior for non-pipeline actions while preserving run-id filter semantics",
+      "tests": [
+        "TC-ADP-06-03"
+      ],
+      "status": "PASS"
+    }
+  ],
+  "issues": [
+    {
+      "id": "ADP06-INT-FAIL-01",
+      "severity": "BLOCKER",
+      "description": "TC-ADP-06-02 failed: trusted pipeline context did not yield non-null events.metadata->>'pipeline_run_id' at assertion site.",
+      "affected_requirement": "ADP-06"
+    },
+    {
+      "id": "ES06-INT-FAIL-01",
+      "severity": "BLOCKER",
+      "description": "TC-ES-06-02 failed in event_store integration read-path query execution, blocking clean integration suite completion.",
+      "affected_requirement": "ES-06"
+    }
+  ],
+  "artifacts_checked": [
+    "tests/specs/ADP-06.md",
+    "tests/integration/adp06_pipeline_run_correlation_test.zig",
+    "tests/integration/main_test.zig",
+    "docs/issue-reports/WF02-adp06-20260526-step-03-test-designer-INNER-REPORT.json"
+  ],
+  "next_action": "Route to ISSUE-FIXER to resolve integration failures (ADP-06 propagation assertion and ES-06 read-path failure), then rerun WF-03 Step 2 TEST-RUNNER validation."
+}

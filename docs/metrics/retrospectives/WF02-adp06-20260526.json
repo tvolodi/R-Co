@@ -1,0 +1,50 @@
+{
+  "run_id": "WF02-adp06-20260526",
+  "requirement_ids": [
+    "ADP-06"
+  ],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 75,
+  "actual_minutes_total": 69.5,
+  "variance_pct": -7.3,
+  "by_step": {
+    "code-designer": {
+      "estimated": 6,
+      "actual": 15.0,
+      "variance_pct": 150.0
+    },
+    "backend-dev": {
+      "estimated": 13,
+      "actual": 21.1,
+      "variance_pct": 62.3
+    },
+    "test-designer": {
+      "estimated": 4,
+      "actual": 4.3,
+      "variance_pct": 7.5
+    },
+    "test-runner": {
+      "estimated": 6,
+      "actual": 16.3,
+      "variance_pct": 171.7
+    },
+    "release-validator": {
+      "estimated": 45,
+      "actual": 6.5,
+      "variance_pct": -85.6
+    },
+    "doc-updater": {
+      "estimated": 1,
+      "actual": 6.3,
+      "variance_pct": 530.0
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [],
+  "notes": "Retrospective aggregates elapsed work time across run handoffs, summing rework iterations for repeated steps; no estimation-rule updates were applied because no same-difficulty consecutive-run variance trigger exceeded policy thresholds in the required direction.",
+  "completed_at": "2026-05-26T09:05:16Z"
+}

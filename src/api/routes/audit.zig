@@ -11,6 +11,7 @@ pub const ListAuditParams = struct {
     actor_id: ?[]const u8 = null,
     resource_type: ?[]const u8 = null,
     resource_id: ?[]const u8 = null,
+    pipeline_run_id: ?[]const u8 = null,
     from: ?[]const u8 = null,
     to: ?[]const u8 = null,
     cursor: ?[]const u8 = null,
@@ -32,6 +33,7 @@ pub fn handleList(
         .actor_id = params.actor_id,
         .resource_type = params.resource_type,
         .resource_id = params.resource_id,
+        .pipeline_run_id = params.pipeline_run_id,
         .from_ts = params.from,
         .to_ts = params.to,
         .cursor = params.cursor,
@@ -95,6 +97,13 @@ fn appendItem(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), item: audit
 
     try buf.appendSlice(allocator, ",\"resource_id\":");
     try appendJsonString(allocator, buf, item.resource_id);
+
+    try buf.appendSlice(allocator, ",\"pipeline_run_id\":");
+    if (item.pipeline_run_id) |pipeline_run_id| {
+        try appendJsonString(allocator, buf, pipeline_run_id);
+    } else {
+        try buf.appendSlice(allocator, "null");
+    }
 
     try buf.appendSlice(allocator, ",\"timestamp\":");
     try appendJsonString(allocator, buf, item.timestamp);

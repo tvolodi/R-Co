@@ -126,9 +126,12 @@ test "EXT-01: parse SERVICE_TASK config with defaults" {
     );
     defer allocator.free(cfg.node_id);
     defer allocator.free(cfg.url_template);
+    defer if (cfg.service_id) |v| allocator.free(v);
     if (cfg.headers_json) |h| allocator.free(h);
     if (cfg.body_template_json) |b| allocator.free(b);
 
+    try std.testing.expectEqual(st.ServiceTaskRouteKind.inline_url, cfg.route_kind);
+    try std.testing.expect(cfg.service_id == null);
     try std.testing.expectEqual(st.HttpMethod.POST, cfg.method);
     try std.testing.expectEqual(@as(u32, 30000), cfg.timeout_ms);
     try std.testing.expectEqual(@as(u8, 3), cfg.retry_limit);
@@ -144,12 +147,106 @@ test "EXT-01: parse SERVICE_TASK config accepts url + method" {
     );
     defer allocator.free(cfg.node_id);
     defer allocator.free(cfg.url_template);
+    defer if (cfg.service_id) |v| allocator.free(v);
     if (cfg.headers_json) |h| allocator.free(h);
     if (cfg.body_template_json) |b| allocator.free(b);
 
+    try std.testing.expectEqual(st.ServiceTaskRouteKind.inline_url, cfg.route_kind);
+    try std.testing.expect(cfg.service_id == null);
     try std.testing.expectEqual(st.HttpMethod.PATCH, cfg.method);
     try std.testing.expectEqual(@as(u32, 5000), cfg.timeout_ms);
     try std.testing.expectEqual(@as(u8, 1), cfg.retry_limit);
+}
+
+test "ADP-08: parse SERVICE_TASK config resolves service_id via catalog and enforces precedence" {
+    const allocator = std.testing.allocator;
+
+    const cfg = try st.parseConfigFromNodeAttributes(
+        allocator,
+        "svc-adp08-1",
+        "{\"service_id\":\"svc.billing\",\"url\":\"https://inline.example.com/ignored\",\"service_catalog\":{\"svc.billing\":{\"endpoint_url\":\"https://catalog.example.com/billing\",\"is_active\":true}},\"capabilities\":[\"service:call:svc.billing\"],\"method\":\"POST\"}",
+    );
+    defer allocator.free(cfg.node_id);
+    defer allocator.free(cfg.url_template);
+    defer if (cfg.service_id) |v| allocator.free(v);
+    if (cfg.headers_json) |h| allocator.free(h);
+    if (cfg.body_template_json) |b| allocator.free(b);
+
+    try std.testing.expectEqual(st.ServiceTaskRouteKind.catalog_service, cfg.route_kind);
+    try std.testing.expect(cfg.warning != null);
+    try std.testing.expectEqualStrings("svc.billing", cfg.service_id.?);
+    try std.testing.expectEqualStrings("https://catalog.example.com/billing", cfg.url_template);
+}
+
+test "ADP-08: service_id path accepts wildcard service capability" {
+    const allocator = std.testing.allocator;
+
+    const cfg = try st.parseConfigFromNodeAttributes(
+        allocator,
+        "svc-adp08-1b",
+        "{\"service_id\":\"svc.billing\",\"service_catalog\":{\"svc.billing\":{\"endpoint_url\":\"https://catalog.example.com/billing\",\"is_active\":true}},\"capabilities\":[\"service:call:*\"],\"method\":\"POST\"}",
+    );
+    defer allocator.free(cfg.node_id);
+    defer allocator.free(cfg.url_template);
+    defer if (cfg.service_id) |v| allocator.free(v);
+    if (cfg.headers_json) |h| allocator.free(h);
+    if (cfg.body_template_json) |b| allocator.free(b);
+
+    try std.testing.expectEqual(st.ServiceTaskRouteKind.catalog_service, cfg.route_kind);
+    try std.testing.expectEqualStrings("svc.billing", cfg.service_id.?);
+    try std.testing.expectEqualStrings("https://catalog.example.com/billing", cfg.url_template);
+}
+
+test "ADP-08: service_id path without required capability is rejected" {
+    const allocator = std.testing.allocator;
+
+    try std.testing.expectError(
+        error.MissingServiceCapability,
+        st.parseConfigFromNodeAttributes(
+            allocator,
+            "svc-adp08-2",
+            "{\"service_id\":\"svc.billing\",\"service_catalog\":{\"svc.billing\":{\"endpoint_url\":\"https://catalog.example.com/billing\",\"is_active\":true}},\"capabilities\":[\"definitions:write\"]}",
+        ),
+    );
+}
+
+test "ADP-08: service_id path with missing catalog entry is rejected deterministically" {
+    const allocator = std.testing.allocator;
+
+    try std.testing.expectError(
+        error.CatalogEntryNotFound,
+        st.parseConfigFromNodeAttributes(
+            allocator,
+            "svc-adp08-3",
+            "{\"service_id\":\"svc.billing\",\"service_catalog\":{\"svc.users\":{\"endpoint_url\":\"https://catalog.example.com/users\",\"is_active\":true}},\"capabilities\":[\"service:call:svc.billing\"]}",
+        ),
+    );
+}
+
+test "ADP-08: service_id path with inactive catalog entry is rejected" {
+    const allocator = std.testing.allocator;
+
+    try std.testing.expectError(
+        error.CatalogEntryInactive,
+        st.parseConfigFromNodeAttributes(
+            allocator,
+            "svc-adp08-4",
+            "{\"service_id\":\"svc.billing\",\"service_catalog\":{\"svc.billing\":{\"endpoint_url\":\"https://catalog.example.com/billing\",\"is_active\":false}},\"capabilities\":[\"service:call:svc.billing\"]}",
+        ),
+    );
+}
+
+test "ADP-08: service_id path with invalid catalog endpoint shape is rejected" {
+    const allocator = std.testing.allocator;
+
+    try std.testing.expectError(
+        error.InvalidConfig,
+        st.parseConfigFromNodeAttributes(
+            allocator,
+            "svc-adp08-5",
+            "{\"service_id\":\"svc.billing\",\"service_catalog\":{\"svc.billing\":{\"endpoint_url\":42,\"is_active\":true}},\"capabilities\":[\"service:call:svc.billing\"]}",
+        ),
+    );
 }
 
 test "EXT-01: parse SERVICE_TASK config rejects invalid method" {
@@ -225,6 +322,9 @@ test "TC-EXT-01-U08a: executeHttpRequest injects trace, idempotency, and configu
     const cfg = st.ServiceTaskConfig{
         .node_id = "svc-1",
         .url_template = "http://127.0.0.1:18181/execute",
+        .service_id = null,
+        .route_kind = .inline_url,
+        .warning = null,
         .method = .POST,
         .headers_json = "{\"X-Custom\":\"alpha\"}",
         .timeout_ms = 5000,

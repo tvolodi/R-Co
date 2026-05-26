@@ -833,3 +833,222 @@ test "TC-EXT-01-INT-07: exhausted retries move the failure to OBS-05 DLQ and ERR
     const error_count = try rowCount(conn, allocator, "SELECT COUNT(*) FROM events WHERE instance_id = $1::uuid AND event_type = 'EXECUTION_ERROR'", &.{fixture.inst_id_hex});
     try testing.expectEqual(@as(usize, 1), error_count);
 }
+
+// ---------------------------------------------------------------------------
+// TC-ADP-08-INT-01: service_id catalog route executes with capability check
+// ---------------------------------------------------------------------------
+
+test "TC-ADP-08-INT-01: service_id uses catalog endpoint and ignores inline url when both are present" {
+    const allocator = testing.allocator;
+    var h = try TestHarness.init(allocator);
+    defer h.deinit();
+
+    const url = try testDbUrl(allocator);
+    defer allocator.free(url);
+
+    var pool = try makePool(allocator, url);
+    defer pool.deinit();
+
+    var def_store = DefinitionStore.init(allocator, &pool);
+    defer def_store.deinit();
+    var snap_store = SnapshotStore{ .pool = &pool };
+    var inst_store = InstanceStore.init(&pool, &snap_store);
+    defer inst_store.deinit();
+    var task_store = TaskStore.init(&pool);
+
+    var server = LocalHttpServer{
+        .port = 18188,
+        .scenario = .object_merge,
+        .max_requests = 1,
+    };
+    try server.start();
+    defer server.join();
+
+    const process_name = "ADP08-INT-01";
+    const fixture = try createWorkflowFixture(
+        allocator,
+        &def_store,
+        &inst_store,
+        &task_store,
+        process_name,
+        "{\"service_id\":\"svc.orders\",\"url\":\"http://127.0.0.1:19999/inline-ignored\",\"service_catalog\":{\"svc.orders\":{\"endpoint_url\":\"http://127.0.0.1:18188/catalog\",\"is_active\":true}},\"capabilities\":[\"service:call:svc.orders\"],\"method\":\"POST\",\"timeout_ms\":5000,\"retry_limit\":1}",
+        "{}",
+    );
+    defer cleanupWorkflow(&pool, fixture.inst_id_hex, process_name);
+    defer allocator.free(fixture.inst_id_hex);
+    defer freeInstance(allocator, fixture.inst);
+    defer freeDefinition(allocator, fixture.active_def);
+    defer freeDefinition(allocator, fixture.def);
+
+    _ = try inst_store.completeTask(allocator, &task_store, fixture.task_id, "{}");
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    const status = try rowText(conn, allocator, "SELECT status FROM instance_projections WHERE instance_id = $1::uuid", &.{fixture.inst_id_hex});
+    defer allocator.free(status);
+    try testing.expectEqualStrings("COMPLETED", status);
+
+    try testing.expectEqual(@as(usize, 1), server.request_count);
+}
+
+// ---------------------------------------------------------------------------
+// TC-ADP-08-INT-02: missing required service capability blocks execution
+// ---------------------------------------------------------------------------
+
+test "TC-ADP-08-INT-02: service_id without service:call capability is rejected at definition validation" {
+    const allocator = testing.allocator;
+    var h = try TestHarness.init(allocator);
+    defer h.deinit();
+
+    const url = try testDbUrl(allocator);
+    defer allocator.free(url);
+
+    var pool = try makePool(allocator, url);
+    defer pool.deinit();
+
+    var def_store = DefinitionStore.init(allocator, &pool);
+    defer def_store.deinit();
+    _ = SnapshotStore;
+    _ = InstanceStore;
+    _ = TaskStore;
+
+    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const nodes = [_]GraphNode{
+        .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
+        .{ .id = "H", .node_type = .HUMAN_TASK, .label = "Approve", .attributes = "{\"role\":\"tester\",\"assignee_type\":\"USER\",\"assignee_ref\":\"u1\"}" },
+        .{ .id = "X", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"service_id\":\"svc.orders\",\"service_catalog\":{\"svc.orders\":{\"endpoint_url\":\"http://127.0.0.1:18189/catalog\",\"is_active\":true}},\"capabilities\":[\"definitions:write\"],\"method\":\"POST\",\"timeout_ms\":5000,\"retry_limit\":1}" },
+        .{ .id = "E", .node_type = .END, .label = null, .attributes = null },
+    };
+    const edges = [_]GraphEdge{
+        .{ .id = "e1", .source = "S", .target = "H", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "H", .target = "X", .condition = null, .is_default = false },
+        .{ .id = "e3", .source = "X", .target = "E", .condition = null, .is_default = false },
+    };
+    const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    try testing.expectError(
+        bpm.definition.DefinitionError.GraphValidationFailed,
+        def_store.create(allocator, CreateParams{
+            .name = "ADP08-INT-02-invalid-capability",
+            .version = "1.0",
+            .description = null,
+            .stage = null,
+            .created_by = created_by,
+            .graph = graph,
+        }),
+    );
+}
+
+// ---------------------------------------------------------------------------
+// TC-ADP-08-INT-03: missing catalog entry fails deterministically
+// ---------------------------------------------------------------------------
+
+test "TC-ADP-08-INT-03: missing catalog entry transitions to ERROR before HTTP call" {
+    const allocator = testing.allocator;
+    var h = try TestHarness.init(allocator);
+    defer h.deinit();
+
+    const url = try testDbUrl(allocator);
+    defer allocator.free(url);
+
+    var pool = try makePool(allocator, url);
+    defer pool.deinit();
+
+    var def_store = DefinitionStore.init(allocator, &pool);
+    defer def_store.deinit();
+    var snap_store = SnapshotStore{ .pool = &pool };
+    var inst_store = InstanceStore.init(&pool, &snap_store);
+    defer inst_store.deinit();
+    var task_store = TaskStore.init(&pool);
+
+    var server = LocalHttpServer{
+        .port = 18190,
+        .scenario = .object_merge,
+        .max_requests = 1,
+    };
+    try server.start();
+    defer server.join();
+
+    const process_name = "ADP08-INT-03";
+    const fixture = try createWorkflowFixture(
+        allocator,
+        &def_store,
+        &inst_store,
+        &task_store,
+        process_name,
+        "{\"service_id\":\"svc.orders\",\"service_catalog\":{\"svc.users\":{\"endpoint_url\":\"http://127.0.0.1:18190/catalog\",\"is_active\":true}},\"capabilities\":[\"service:call:svc.orders\"],\"method\":\"POST\",\"timeout_ms\":5000,\"retry_limit\":1}",
+        "{}",
+    );
+    defer cleanupWorkflow(&pool, fixture.inst_id_hex, process_name);
+    defer allocator.free(fixture.inst_id_hex);
+    defer freeInstance(allocator, fixture.inst);
+    defer freeDefinition(allocator, fixture.active_def);
+    defer freeDefinition(allocator, fixture.def);
+
+    _ = try inst_store.completeTask(allocator, &task_store, fixture.task_id, "{}");
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    const status = try rowText(conn, allocator, "SELECT status FROM instance_projections WHERE instance_id = $1::uuid", &.{fixture.inst_id_hex});
+    defer allocator.free(status);
+    try testing.expectEqualStrings("ERROR", status);
+
+    try testing.expectEqual(@as(usize, 0), server.request_count);
+}
+
+// ---------------------------------------------------------------------------
+// TC-ADP-08-INT-04: inactive catalog entry fails deterministically
+// ---------------------------------------------------------------------------
+
+test "TC-ADP-08-INT-04: inactive catalog entry transitions to ERROR before HTTP call" {
+    const allocator = testing.allocator;
+    var h = try TestHarness.init(allocator);
+    defer h.deinit();
+
+    const url = try testDbUrl(allocator);
+    defer allocator.free(url);
+
+    var pool = try makePool(allocator, url);
+    defer pool.deinit();
+
+    var def_store = DefinitionStore.init(allocator, &pool);
+    defer def_store.deinit();
+    var snap_store = SnapshotStore{ .pool = &pool };
+    var inst_store = InstanceStore.init(&pool, &snap_store);
+    defer inst_store.deinit();
+    var task_store = TaskStore.init(&pool);
+
+    var server = LocalHttpServer{
+        .port = 18191,
+        .scenario = .object_merge,
+        .max_requests = 1,
+    };
+    try server.start();
+    defer server.join();
+
+    const process_name = "ADP08-INT-04";
+    const fixture = try createWorkflowFixture(
+        allocator,
+        &def_store,
+        &inst_store,
+        &task_store,
+        process_name,
+        "{\"service_id\":\"svc.orders\",\"service_catalog\":{\"svc.orders\":{\"endpoint_url\":\"http://127.0.0.1:18191/catalog\",\"is_active\":false}},\"capabilities\":[\"service:call:svc.orders\"],\"method\":\"POST\",\"timeout_ms\":5000,\"retry_limit\":1}",
+        "{}",
+    );
+    defer cleanupWorkflow(&pool, fixture.inst_id_hex, process_name);
+    defer allocator.free(fixture.inst_id_hex);
+    defer freeInstance(allocator, fixture.inst);
+    defer freeDefinition(allocator, fixture.active_def);
+    defer freeDefinition(allocator, fixture.def);
+
+    _ = try inst_store.completeTask(allocator, &task_store, fixture.task_id, "{}");
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+    const status = try rowText(conn, allocator, "SELECT status FROM instance_projections WHERE instance_id = $1::uuid", &.{fixture.inst_id_hex});
+    defer allocator.free(status);
+    try testing.expectEqualStrings("ERROR", status);
+
+    try testing.expectEqual(@as(usize, 0), server.request_count);
+}

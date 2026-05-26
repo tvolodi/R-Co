@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-26T02:30:19Z",
-  "updated_by": "WF02-adp03-20260526",
-  "update_count": 35,
+  "updated_at": "2026-05-26T11:54:24Z",
+  "updated_by": "WF02-adp08-20260526",
+  "update_count": 38,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
     "2": "Single function or endpoint, no schema change, < 50 LOC",
@@ -14,14 +14,14 @@
     "code-designer": [
       5,
       3,
-      5,
+      26,
       121,
       40
     ],
     "backend-dev": [
       10,
       8,
-      7,
+      10,
       6,
       100
     ],
@@ -35,7 +35,7 @@
     "test-designer": [
       5,
       6,
-      3,
+      6,
       4,
       40
     ],
@@ -49,14 +49,14 @@
     "release-validator": [
       5,
       1,
-      70,
+      12,
       1,
       25
     ],
     "doc-updater": [
       5,
       2,
-      1,
+      2,
       1,
       20
     ]

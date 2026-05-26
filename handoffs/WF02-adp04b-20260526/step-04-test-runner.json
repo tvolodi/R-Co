@@ -1,0 +1,72 @@
+{
+  "handoff_id": "20260526-044",
+  "run_id": "WF02-adp04b-20260526",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-adp04b-20260526/step-04-test-runner.json",
+  "created_at": "2026-05-26T05:28:00Z",
+  "started_at": "2026-05-26T05:28:20Z",
+  "completed_at": "2026-05-26T05:34:27Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-04b"
+    ],
+    "related_handoff_ids": [
+      "20260526-041",
+      "20260526-042",
+      "20260526-043"
+    ],
+    "artifacts_in": [
+      "tests/specs/ADP-04b.md",
+      "tests/integration/adp04b_tenant_realm_binding_test.zig",
+      "tests/integration/adp04a_external_identity_linkage_test.zig",
+      "tests/integration/main_test.zig",
+      "docs/issue-reports/WF02-adp04b-20260526-step-03-test-designer-INNER-REPORT.json"
+    ]
+  },
+  "task": {
+    "description": "Execute the ADP-04b validation run from tests/specs/ADP-04b.md and produce a structured test report. Run required unit/integration suites and verify that all ADP-04b acceptance criteria are covered by executable passing tests. Enforce the two known coverage risks from Step 03: (1) explicit rejection for OIDC-enabled default-tenant non-bpm-default realm (DefaultTenantRealmMismatch), and (2) explicit normalization of omitted default-tenant realm to bpm-default. If either case lacks an executable passing test, return FAIL with MAJOR issue details and next_action route to ISSUE-FIXER.",
+    "acceptance_criteria": [
+      "Test report documents executed commands, pass/fail outcomes, and requirement traceability for ADP-04b",
+      "All ADP-04b acceptance criteria are backed by passing executable tests",
+      "Known coverage risks are explicitly validated or raised as FAIL issues",
+      "No BLOCKER/MAJOR unresolved issues remain for ADP-04b"
+    ],
+    "functions_to_call": [
+      "fn:run-zig-build",
+      "fn:run-zig-test",
+      "fn:run-zig-test-integration",
+      "fn:write-test-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Required build/unit/integration commands all passed, but ADP-04b fails acceptance due to two missing executable passing tests for default-tenant OIDC boundary coverage.",
+    "artifacts_out": [
+      "tests/reports/report-20260526T053427Z-WF02-adp04b-20260526-step04.json"
+    ],
+    "issues": [
+      {
+        "id": "ADP04B-COVERAGE-01",
+        "severity": "MAJOR",
+        "description": "Missing explicit executable integration test for OIDC-enabled default-tenant non-bpm-default realm rejection with IdentityError.DefaultTenantRealmMismatch.",
+        "affected_requirement": "ADP-04b"
+      },
+      {
+        "id": "ADP04B-COVERAGE-02",
+        "severity": "MAJOR",
+        "description": "Missing explicit executable integration test proving omitted default-tenant realm is normalized to bpm-default under OIDC-enabled mode.",
+        "affected_requirement": "ADP-04b"
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER to implement explicit ADP-04b default-tenant OIDC boundary tests, then re-run TEST-RUNNER validation."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

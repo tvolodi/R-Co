@@ -4,6 +4,8 @@ const auth = @import("../api/middleware/auth.zig");
 const pagination = @import("../api/pagination.zig");
 const registry_mod = @import("registry.zig");
 
+const reserved_username_prefix = "agent:";
+
 pub const CreateUserInput = struct {
     tenant_id: ?[]const u8,
     username: []const u8,
@@ -38,6 +40,19 @@ pub const ProvisionExternalUserInput = struct {
 pub const ProvisionExternalUserResult = struct {
     user: registry_mod.User,
     created: bool,
+};
+
+pub const OidcMode = enum {
+    disabled,
+    enabled,
+};
+
+pub const CreateTenantInput = struct {
+    tenant_id: ?[]const u8,
+    slug: []const u8,
+    display_name: []const u8,
+    idp_realm_id: ?[]const u8,
+    oidc_mode: OidcMode,
 };
 
 pub const CreateGroupInput = struct {
@@ -172,13 +187,21 @@ pub const TokenError = error{
 
 pub const IdentityError = error{
     DuplicateUsername,
+    DuplicateTenantSlug,
+    DuplicateRealmBinding,
     ExternalIdentityCollision,
     InvalidEmail,
     MissingTenantContext,
     MissingExternalRealm,
     MissingExternalId,
+    MissingRealmBinding,
+    DefaultTenantRealmMismatch,
+    RealmOwnershipMismatch,
+    TenantNotFound,
     CallerProvidedUserId,
     CallerProvidedCreatedAt,
+    ReservedUsernameRequiresPlatformAdmin,
+    ReservedUsernameInvalidFormat,
     Forbidden,
     NotFound,
     ValidationFailed,
@@ -194,12 +217,67 @@ pub const Service = struct {
         return .{ .registry = registry };
     }
 
+    pub fn resolveTenantRealmBinding(input: CreateTenantInput) IdentityError!?[]const u8 {
+        const effective_tenant_id = input.tenant_id;
+        const is_default_tenant = if (effective_tenant_id) |tenant_id|
+            std.mem.eql(u8, tenant_id, auth.DEFAULT_TENANT_ID)
+        else
+            false;
+
+        const normalized_realm = normalizeOptionalText(input.idp_realm_id);
+
+        if (input.oidc_mode == .enabled) {
+            if (is_default_tenant) {
+                if (normalized_realm) |realm| {
+                    if (!std.mem.eql(u8, realm, "bpm-default")) return error.DefaultTenantRealmMismatch;
+                }
+            } else if (normalized_realm == null) {
+                return error.MissingRealmBinding;
+            }
+        }
+
+        return if (is_default_tenant)
+            "bpm-default"
+        else if (normalized_realm) |realm|
+            realm
+        else
+            null;
+    }
+
+    pub fn createTenant(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
+        input: CreateTenantInput,
+    ) IdentityError!registry_mod.Tenant {
+        if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+        if (input.slug.len == 0 or input.display_name.len == 0) return error.ValidationFailed;
+
+        const realm_to_store = try resolveTenantRealmBinding(input);
+
+        return self.registry.createTenant(allocator, .{
+            .tenant_id = input.tenant_id,
+            .slug = input.slug,
+            .display_name = input.display_name,
+            .status = .ACTIVE,
+            .idp_realm_id = realm_to_store,
+        }) catch |err| switch (err) {
+            registry_mod.RegistryError.DuplicateTenantSlug => error.DuplicateTenantSlug,
+            registry_mod.RegistryError.DuplicateRealmBinding => error.DuplicateRealmBinding,
+            registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+            else => error.PersistenceFailed,
+        };
+    }
+
     pub fn createUser(
         self: *Service,
         allocator: std.mem.Allocator,
         actor: auth.AuthContext,
         input: CreateUserInput,
     ) IdentityError!registry_mod.User {
+        try validateReservedUsernamePolicy(actor, input.username);
         if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
         if (input.caller_supplied_user_id) return error.CallerProvidedUserId;
         if (input.caller_supplied_created_at) return error.CallerProvidedCreatedAt;
@@ -266,6 +344,8 @@ pub const Service = struct {
         if (input.external_realm.len == 0) return error.MissingExternalRealm;
         if (input.external_id.len == 0) return error.MissingExternalId;
 
+        try self.assertRealmOwnedByTenant(allocator, input.tenant_id, input.external_realm);
+
         return self.registry.selectUserByExternalIdentity(
             allocator,
             input.tenant_id,
@@ -284,11 +364,14 @@ pub const Service = struct {
         allocator: std.mem.Allocator,
         input: ProvisionExternalUserInput,
     ) IdentityError!ProvisionExternalUserResult {
+        try validateReservedUsernameForNonAdmin(input.preferred_username);
         if (input.tenant_id.len == 0) return error.MissingTenantContext;
         if (input.external_realm.len == 0) return error.MissingExternalRealm;
         if (input.external_id.len == 0) return error.MissingExternalId;
         if (input.preferred_username.len == 0 or input.display_name.len == 0) return error.ValidationFailed;
         if (!isValidEmail(input.email)) return error.InvalidEmail;
+
+        try self.assertRealmOwnedByTenant(allocator, input.tenant_id, input.external_realm);
 
         const result = self.registry.createOrGetJitOidcUser(allocator, input.tenant_id, .{
             .username = input.preferred_username,
@@ -728,7 +811,36 @@ pub const Service = struct {
         if (row == null) return error.TokenNotFound;
         freeRow(allocator, row.?);
     }
+
+    fn assertRealmOwnedByTenant(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+        external_realm: []const u8,
+    ) IdentityError!void {
+        const tenant = self.registry.selectTenantById(allocator, tenant_id) catch |err| switch (err) {
+            registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
+            else => return error.PersistenceFailed,
+        };
+
+        if (tenant == null) return error.TenantNotFound;
+        defer tenant.?.deinit(allocator);
+
+        const bound_realm = tenant.?.idp_realm_id orelse return error.MissingRealmBinding;
+        if (!std.mem.eql(u8, bound_realm, external_realm)) return error.RealmOwnershipMismatch;
+    }
 };
+
+fn normalizeOptionalText(input: ?[]const u8) ?[]const u8 {
+    if (input) |value| {
+        if (value.len == 0) return null;
+        if (std.mem.trim(u8, value, " \t\r\n").len == 0) return null;
+        return value;
+    }
+    return null;
+}
 
 fn isValidEmail(email: []const u8) bool {
     if (email.len < 3) return false;
@@ -740,6 +852,35 @@ fn isValidEmail(email: []const u8) bool {
     if (dot_idx == 0 or dot_idx + 1 >= domain.len) return false;
 
     return true;
+}
+
+fn validateReservedUsernamePolicy(actor: auth.AuthContext, username: []const u8) IdentityError!void {
+    const normalized = std.mem.trim(u8, username, " \t\r\n");
+    if (!startsWithIgnoreCase(normalized, reserved_username_prefix)) return;
+
+    if (normalized.len == reserved_username_prefix.len) {
+        return error.ReservedUsernameInvalidFormat;
+    }
+
+    if (actor.role != .PLATFORM_ADMIN) {
+        return error.ReservedUsernameRequiresPlatformAdmin;
+    }
+}
+
+fn validateReservedUsernameForNonAdmin(username: []const u8) IdentityError!void {
+    const normalized = std.mem.trim(u8, username, " \t\r\n");
+    if (!startsWithIgnoreCase(normalized, reserved_username_prefix)) return;
+
+    if (normalized.len == reserved_username_prefix.len) {
+        return error.ReservedUsernameInvalidFormat;
+    }
+
+    return error.ReservedUsernameRequiresPlatformAdmin;
+}
+
+fn startsWithIgnoreCase(input: []const u8, prefix: []const u8) bool {
+    if (input.len < prefix.len) return false;
+    return std.ascii.eqlIgnoreCase(input[0..prefix.len], prefix);
 }
 
 fn currentMicrosecondTimestamp() i64 {
@@ -760,7 +901,7 @@ fn currentMicrosecondTimestamp() i64 {
 
 fn isIssuableTokenRole(role: auth.Role) bool {
     return switch (role) {
-        .PLATFORM_ADMIN, .PROCESS_DESIGNER, .PROCESS_OPERATOR, .TASK_WORKER => true,
+        .PLATFORM_ADMIN, .PROCESS_DESIGNER, .PROCESS_OPERATOR, .TASK_WORKER, .AGENT_RUNNER => true,
         else => false,
     };
 }
@@ -772,6 +913,7 @@ fn roleToString(role: auth.Role) []const u8 {
         .PROCESS_OPERATOR => "PROCESS_OPERATOR",
         .TASK_WORKER => "TASK_WORKER",
         .VIEWER => "VIEWER",
+        .AGENT_RUNNER => "AGENT_RUNNER",
     };
 }
 

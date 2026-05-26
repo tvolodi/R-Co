@@ -1,0 +1,67 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "date": "2026-05-26T05:58:22Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "ADP-04b"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "benchmark_setup_info": "db_url_source=BPM_DB_URL",
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.628,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 3.209,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 62906.869,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 59.505,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "release_checks": {
+    "wf02_step04b_rework1_status": "PASS",
+    "wf03_testfix_validation_status": "PASS",
+    "must_acceptance_default_tenant_realm_binding": "PASS",
+    "must_acceptance_oidc_non_default_requires_realm": "PASS",
+    "must_acceptance_default_tenant_mismatch_rejection": "PASS",
+    "must_acceptance_default_tenant_omitted_realm_normalization": "PASS",
+    "unresolved_blocker_or_major_issues": "NONE"
+  },
+  "test_evidence": {
+    "wf02_step04b_handoff": "handoffs/WF02-adp04b-20260526/step-04b-test-runner-rework1.json",
+    "wf02_step04b_report": "tests/reports/report-20260526T055349Z-WF02-adp04b-20260526-step04b-rework1.json",
+    "wf03_step02_report": "tests/reports/report-20260526T054855Z-WF03-adp04b-testfix-20260526-step02.json",
+    "migration": "migrations/031_adp04b_tenant_realm_binding.sql",
+    "service_impl": "src/identity/service.zig",
+    "bench_log": "tests/reports/WF02-adp04b-20260526-step-05-release-validator-bench.log"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "ADP-04b"
+  ],
+  "non_blocking_issues": [],
+  "residual_risk": {
+    "classification": "LOW",
+    "rationale": "Current evidence includes passing build/unit/integration suites and passing NFR benchmarks in this environment. Residual risk remains tied to environment variance (hardware/load profile) outside this single-node benchmark run."
+  },
+  "recommendation": "APPROVE ADP-04b release gate and route to DOC-UPDATER to set requirement status to RELEASED."
+}

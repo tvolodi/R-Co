@@ -1,0 +1,125 @@
+{
+  "run_id": "WF03-adp05-testfix-20260526",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260526-055",
+  "step": "02",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-26T06:58:05Z",
+  "spec": "tests/specs/ADP-05.md",
+  "summary": {
+    "result": "PASS",
+    "reason": "Validated ISSUE-FIXER ADP-05 update with required command chain and confirmed deterministic positive artifact-hash-first replay-source coverage is executable and passing."
+  },
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "zig build test-integration",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test",
+        "zig build test-integration EXIT_CODE=0"
+      ]
+    }
+  ],
+  "case_outcomes": [
+    {
+      "case_id": "TC-ADP-05-01",
+      "execution_status": "PASS",
+      "evidence": "Case is implemented in tests/integration/adp05_instance_artifact_hash_test.zig and included by tests/integration/main_test.zig; integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ADP-05-02",
+      "execution_status": "PASS",
+      "evidence": "Case is implemented in tests/integration/adp05_instance_artifact_hash_test.zig and included by tests/integration/main_test.zig; integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ADP-05-03",
+      "execution_status": "PASS",
+      "evidence": "Case is implemented in tests/integration/adp05_instance_artifact_hash_test.zig and included by tests/integration/main_test.zig; integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ADP-05-04",
+      "execution_status": "PASS",
+      "evidence": "Case is implemented in tests/integration/adp05_instance_artifact_hash_test.zig and included by tests/integration/main_test.zig; integration suite exits 0."
+    },
+    {
+      "case_id": "TC-ADP-05-05",
+      "execution_status": "PASS",
+      "evidence": "Case asserts snapshot_fallback for null or mismatched hash in tests/integration/adp05_instance_artifact_hash_test.zig; integration suite exits 0."
+    },
+    {
+      "case_id": "ADP05-COVERAGE-RISK-01",
+      "test_id": "TC-ADP-05-06",
+      "test_description": "reconstruction selects ReplayDefinitionSource.artifact_repository when hash matches canonical snapshot",
+      "execution_status": "PASS",
+      "evidence": "TC-ADP-05-06 in tests/integration/adp05_instance_artifact_hash_test.zig explicitly asserts ReplayDefinitionSource.artifact_repository and is executed via tests/integration/main_test.zig; integration suite exits 0."
+    }
+  ],
+  "requirement_traceability": [
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "Nullable additive schema support with backward compatibility",
+      "tests": [
+        "TC-ADP-05-01"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "Write-path compatibility for legacy/pre-repository starts (NULL semantics)",
+      "tests": [
+        "TC-ADP-05-02"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "Repository-backed starts persist deterministic artifact hash",
+      "tests": [
+        "TC-ADP-05-03",
+        "TC-ADP-05-04"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "PD-08 snapshot fallback behavior for absent/mismatched hash",
+      "tests": [
+        "TC-ADP-05-05"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-05",
+      "acceptance_criterion": "Deterministic positive artifact-hash-first replay source selection (ReplayDefinitionSource.artifact_repository)",
+      "tests": [
+        "TC-ADP-05-06"
+      ],
+      "status": "PASS"
+    }
+  ],
+  "issues": [],
+  "artifacts_checked": [
+    "handoffs/WF03-adp05-testfix-20260526/step-01-issue-fixer.json",
+    "tests/integration/adp05_instance_artifact_hash_test.zig",
+    "tests/integration/main_test.zig",
+    "tests/specs/ADP-05.md",
+    "src/engine/reconstruction.zig"
+  ],
+  "next_action": "Route to ORCH for downstream workflow continuation after PASS validation."
+}

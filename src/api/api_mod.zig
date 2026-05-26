@@ -12,6 +12,7 @@ pub const validation = @import("validation.zig");
 pub const validate_middleware = @import("middleware/validate.zig");
 pub const trace_context = @import("trace_context.zig");
 pub const tenant_context = @import("tenant_context.zig");
+pub const pipeline_context = @import("pipeline_context.zig");
 pub const trace_middleware = @import("middleware/trace.zig");
 pub const rate_limit = @import("middleware/rate_limit.zig");
 pub const openapi = @import("openapi/mod.zig");

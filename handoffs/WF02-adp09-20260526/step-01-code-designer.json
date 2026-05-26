@@ -1,0 +1,63 @@
+{
+  "handoff_id": "20260526-080",
+  "run_id": "WF02-adp09-20260526",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-adp09-20260526/step-01-code-designer.json",
+  "created_at": "2026-05-26T11:55:00Z",
+  "started_at": "2026-05-26T11:55:20Z",
+  "completed_at": "2026-05-26T12:06:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-09"
+    ],
+    "related_handoff_ids": [
+      "20260526-074",
+      "20260526-075",
+      "20260526-076",
+      "20260526-077",
+      "20260526-078",
+      "20260526-079"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/03-extension-adaptations.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "docs/status/implementation_order.md",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for ADP-09 at src/design/adp-09-tamper-evident-audit-chain.md. Define additive audit chaining semantics for new nullable columns chain_hash and prev_chain_hash on audit rows, including canonical content rules for hash input, per-tenant predecessor selection, insert-time chain computation behavior, and chain validation traversal/error reporting rules. Preserve existing OBS-03 fields/queries and define compatibility behavior for historical rows where chain fields are null. Include migration/index guidance, operational implications, and explicit testability mapping for the tampering scenario in ADP-09 acceptance criteria. Design only; no implementation edits.",
+    "acceptance_criteria": [
+      "Design specifies deterministic canonicalization and SHA-256 chain computation rules for chain_hash",
+      "Per-tenant predecessor linkage and first-row boundary behavior are explicit and non-ambiguous",
+      "Validation algorithm and failure semantics for tampered rows are concrete and testable",
+      "Compatibility plan preserves existing OBS-03 behavior and legacy rows during additive rollout",
+      "Design includes traceability to ADP-09 acceptance criteria with actionable test guidance"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ADP-09 tamper-evident audit chaining with deterministic canonicalization, per-tenant predecessor semantics, validation traversal/failure reporting, additive compatibility behavior, migration-index guidance, and acceptance-to-test traceability.",
+    "artifacts_out": [
+      "src/design/adp-09-tamper-evident-audit-chain.md",
+      "docs/issue-reports/WF02-adp09-20260526-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) for ADP-09 implementation, then TEST-DESIGNER for tamper scenario coverage."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

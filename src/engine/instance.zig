@@ -466,6 +466,7 @@ pub const InstanceStore = struct {
         // Security: definition_id bound as $1::uuid — no SQL string interpolation.
         const def_id_hex = uuidToHex(a, definition_id) catch
             return InstanceError.TransactionFailed;
+        var definition_artifact_hash: ?[]const u8 = null;
 
         {
             const conn = self.pool.acquire() catch |err| switch (err) {
@@ -476,7 +477,7 @@ pub const InstanceStore = struct {
 
             const def_rows = conn.query(
                 allocator,
-                \\SELECT id, status FROM process_definitions
+                \\SELECT id, status, definition_artifact_hash FROM process_definitions
                 \\WHERE id = $1::uuid
                 \\  AND tenant_id = bpm_effective_tenant_id()
             ,
@@ -491,6 +492,15 @@ pub const InstanceStore = struct {
 
             const status_str = colGet(def_rows.rows[0], 1);
             if (!std.mem.eql(u8, status_str, "ACTIVE")) return InstanceError.DefinitionNotActive;
+
+            const artifact_hash_raw = def_rows.rows[0][2];
+            if (artifact_hash_raw) |raw_hash| {
+                if (raw_hash.len > 0) {
+                    if (!isValidDefinitionArtifactHash(raw_hash)) return InstanceError.InvalidInput;
+                    definition_artifact_hash = a.dupe(u8, raw_hash) catch
+                        return InstanceError.TransactionFailed;
+                }
+            }
         }
 
         // ── Step c: Generate a fresh UUID v4 (client-side) ─────────────────
@@ -559,6 +569,7 @@ pub const InstanceStore = struct {
         // Security: all values bound as $N parameters — no SQL string
         // interpolation of user-supplied data anywhere in this function.
         const ck_param = correlation_key orelse "";
+        const definition_artifact_hash_param = definition_artifact_hash orelse "";
 
         const conn2 = self.pool.acquire() catch |err| switch (err) {
             PoolError.ExhaustedPool => return InstanceError.PoolExhausted,
@@ -575,10 +586,10 @@ pub const InstanceStore = struct {
             allocator,
             \\INSERT INTO instance_projections
             \\    (tenant_id, instance_id, definition_id, correlation_key,
-            \\     status, variables, current_nodes, started_at, updated_at)
+            \\     definition_artifact_hash, status, variables, current_nodes, started_at, updated_at)
             \\VALUES
-            \\    (bpm_effective_tenant_id(), $1::uuid, $2::uuid, NULLIF($3, ''),
-            \\     'ACTIVE', $4::jsonb, '[]'::jsonb, NOW(), NOW())
+            \\    (bpm_effective_tenant_id(), $1::uuid, $2::uuid, NULLIF($3, ''), NULLIF($4, ''),
+            \\     'ACTIVE', $5::jsonb, '[]'::jsonb, NOW(), NOW())
             \\ON CONFLICT (tenant_id, definition_id, correlation_key)
             \\    WHERE correlation_key IS NOT NULL DO NOTHING
             \\RETURNING
@@ -590,7 +601,7 @@ pub const InstanceStore = struct {
             \\    (EXTRACT(EPOCH FROM started_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
-            &.{ inst_id_hex, def_id_hex, ck_param, initial_variables },
+            &.{ inst_id_hex, def_id_hex, ck_param, definition_artifact_hash_param, initial_variables },
         ) catch return InstanceError.TransactionFailed;
         defer {
             var r = ins_rows;
@@ -2847,7 +2858,14 @@ fn processServiceTaskRuntimeInTx(
             allocator,
             service_node_id.?,
             service_node_attrs orelse "",
-        ) catch {
+        ) catch |cfg_err| {
+            const reason = switch (cfg_err) {
+                service_task_mod.ServiceTaskExecutionError.CatalogEntryNotFound => "SERVICE_TASK catalog entry not found",
+                service_task_mod.ServiceTaskExecutionError.CatalogEntryInvalid => "SERVICE_TASK catalog entry invalid",
+                service_task_mod.ServiceTaskExecutionError.CatalogEntryInactive => "SERVICE_TASK catalog entry inactive",
+                service_task_mod.ServiceTaskExecutionError.MissingServiceCapability => "SERVICE_TASK missing required capability",
+                else => "Invalid SERVICE_TASK configuration",
+            };
             const vars_json = std.json.Stringify.valueAlloc(
                 allocator,
                 std.json.Value{ .object = current_state.variables },
@@ -2860,7 +2878,7 @@ fn processServiceTaskRuntimeInTx(
                 .error_type = .SERVICE_TASK_FAILURE,
                 .affected_node = service_node_id,
                 .affected_field = null,
-                .reason = "Invalid SERVICE_TASK configuration",
+                .reason = reason,
                 .variable_state = vars_json,
                 .evaluated_conditions = null,
                 .actor_id = instance_id_hex,
@@ -2877,6 +2895,7 @@ fn processServiceTaskRuntimeInTx(
         defer {
             allocator.free(cfg.node_id);
             allocator.free(cfg.url_template);
+            if (cfg.service_id) |v| allocator.free(v);
             if (cfg.headers_json) |v| allocator.free(v);
             if (cfg.body_template_json) |v| allocator.free(v);
         }
@@ -3987,6 +4006,14 @@ fn hexNibble(c: u8) error{InvalidHex}!u8 {
         'A'...'F' => c - 'A' + 10,
         else => error.InvalidHex,
     };
+}
+
+fn isValidDefinitionArtifactHash(value: []const u8) bool {
+    if (value.len != 64) return false;
+    for (value) |c| {
+        if (!std.ascii.isHex(c)) return false;
+    }
+    return true;
 }
 
 /// Serialize an InstanceStatus to uppercase TEXT for use as a SQL parameter.

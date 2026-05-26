@@ -71,9 +71,11 @@ pub fn handleCreateUser(
         .caller_supplied_user_id = obj.get("user_id") != null,
         .caller_supplied_created_at = obj.get("created_at") != null,
     }) catch |err| switch (err) {
+        identity_service.IdentityError.ReservedUsernameRequiresPlatformAdmin => return errorResult(allocator, 403, "forbidden"),
         identity_service.IdentityError.Forbidden => return errorResult(allocator, 403, "forbidden"),
         identity_service.IdentityError.DuplicateUsername => return errorResult(allocator, 409, "duplicate_username"),
         identity_service.IdentityError.InvalidEmail,
+        identity_service.IdentityError.ReservedUsernameInvalidFormat,
         identity_service.IdentityError.CallerProvidedUserId,
         identity_service.IdentityError.CallerProvidedCreatedAt,
         identity_service.IdentityError.ValidationFailed,
@@ -84,6 +86,87 @@ pub fn handleCreateUser(
     defer user.deinit(allocator);
 
     return .{ .status_code = 201, .body = serializeUser(allocator, user) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handleCreateTenant(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    body: []const u8,
+) HandlerResult {
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        body,
+        .{ .allocate = .alloc_always },
+    ) catch return errorResult(allocator, 400, "malformed_json");
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return errorResult(allocator, 422, "invalid_body");
+    const obj = parsed.value.object;
+
+    const slug_val = obj.get("slug") orelse return errorResult(allocator, 422, "slug_required");
+    const display_name_val = obj.get("display_name") orelse return errorResult(allocator, 422, "display_name_required");
+
+    const slug = switch (slug_val) {
+        .string => |s| s,
+        else => return errorResult(allocator, 422, "slug_invalid"),
+    };
+    const display_name = switch (display_name_val) {
+        .string => |s| s,
+        else => return errorResult(allocator, 422, "display_name_invalid"),
+    };
+
+    const tenant_id: ?[]const u8 = blk: {
+        const raw = obj.get("tenant_id") orelse break :blk null;
+        break :blk switch (raw) {
+            .null => null,
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "tenant_id_invalid"),
+        };
+    };
+
+    const idp_realm_id: ?[]const u8 = blk: {
+        const raw = obj.get("idp_realm_id") orelse break :blk null;
+        break :blk switch (raw) {
+            .null => null,
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "idp_realm_id_invalid"),
+        };
+    };
+
+    const oidc_mode = blk: {
+        const raw = obj.get("oidc_mode") orelse break :blk identity_service.OidcMode.disabled;
+        const value = switch (raw) {
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "oidc_mode_invalid"),
+        };
+        if (std.mem.eql(u8, value, "enabled")) break :blk identity_service.OidcMode.enabled;
+        if (std.mem.eql(u8, value, "disabled")) break :blk identity_service.OidcMode.disabled;
+        return errorResult(allocator, 422, "oidc_mode_invalid");
+    };
+
+    const tenant = service.createTenant(allocator, actor, .{
+        .tenant_id = tenant_id,
+        .slug = slug,
+        .display_name = display_name,
+        .idp_realm_id = idp_realm_id,
+        .oidc_mode = oidc_mode,
+    }) catch |err| switch (err) {
+        identity_service.IdentityError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.IdentityError.DuplicateTenantSlug => return errorResult(allocator, 409, "duplicate_tenant_slug"),
+        identity_service.IdentityError.DuplicateRealmBinding => return errorResult(allocator, 409, "duplicate_realm_binding"),
+        identity_service.IdentityError.MissingRealmBinding,
+        identity_service.IdentityError.DefaultTenantRealmMismatch,
+        identity_service.IdentityError.ValidationFailed,
+        => return errorResult(allocator, 422, "validation_failed"),
+        identity_service.IdentityError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer tenant.deinit(allocator);
+
+    return .{ .status_code = 201, .body = serializeTenant(allocator, tenant) catch
         return errorResult(allocator, 500, "serialization_failed") };
 }
 
@@ -361,6 +444,22 @@ fn serializeUser(allocator: std.mem.Allocator, user: identity_registry.User) ![]
     return buf.toOwnedSlice(allocator);
 }
 
+fn serializeTenant(allocator: std.mem.Allocator, tenant: identity_registry.Tenant) ![]u8 {
+    var body = std.ArrayList(u8).empty;
+    defer body.deinit(allocator);
+
+    try std.json.stringify(.{
+        .tenant_id = tenant.tenant_id,
+        .slug = tenant.slug,
+        .display_name = tenant.display_name,
+        .status = tenant.status.asString(),
+        .idp_realm_id = tenant.idp_realm_id,
+        .created_at = tenant.created_at,
+    }, .{}, body.writer(allocator));
+
+    return body.toOwnedSlice(allocator);
+}
+
 fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []const u8) !void {
     try buf.append(allocator, '"');
     for (s) |c| {
@@ -488,6 +587,7 @@ fn roleToString(role: auth.Role) []const u8 {
         .PROCESS_OPERATOR => "PROCESS_OPERATOR",
         .TASK_WORKER => "TASK_WORKER",
         .VIEWER => "VIEWER",
+        .AGENT_RUNNER => "AGENT_RUNNER",
     };
 }
 
