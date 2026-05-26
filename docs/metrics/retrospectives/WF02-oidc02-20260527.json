@@ -1,0 +1,88 @@
+﻿{
+    "run_id": "WF02-oidc02-20260527",
+    "workflow_id": "WF-02",
+    "date": "2026-05-26T20:34:15Z",
+    "requirement_ids": [
+        "OIDC-02"
+    ],
+    "estimation_file": "handoffs/WF02-oidc02-20260527/estimation.json",
+    "difficulty": 4,
+    "integration_surface": "high",
+    "steps": [
+        {
+            "step": "01",
+            "agent": "CODE-DESIGNER",
+            "estimated_minutes": 182,
+            "started_at": "2026-05-26T20:03:27Z",
+            "completed_at": "2026-05-26T20:07:10Z",
+            "actual_minutes": 3,
+            "variance_pct": -98.4
+        },
+        {
+            "step": "02",
+            "agent": "BACKEND-DEV",
+            "estimated_minutes": 9,
+            "started_at": "2026-05-26T20:08:34Z",
+            "completed_at": "2026-05-26T20:20:27Z",
+            "actual_minutes": 11,
+            "variance_pct": 22.2
+        },
+        {
+            "step": "03",
+            "agent": "TEST-DESIGNER",
+            "estimated_minutes": 6,
+            "started_at": "2026-05-26T20:22:30Z",
+            "completed_at": "2026-05-26T20:24:22Z",
+            "actual_minutes": 1,
+            "variance_pct": -83.3
+        },
+        {
+            "step": "04",
+            "agent": "TEST-RUNNER",
+            "estimated_minutes": 11,
+            "started_at": "2026-05-26T20:25:56Z",
+            "completed_at": "2026-05-26T20:27:23Z",
+            "actual_minutes": 1,
+            "variance_pct": -90.9
+        },
+        {
+            "step": "05",
+            "agent": "RELEASE-VALIDATOR",
+            "estimated_minutes": 2,
+            "started_at": "2026-05-26T20:28:44Z",
+            "completed_at": "2026-05-26T20:30:22Z",
+            "actual_minutes": 1,
+            "variance_pct": -50.0
+        },
+        {
+            "step": "06",
+            "agent": "DOC-UPDATER",
+            "estimated_minutes": 2,
+            "started_at": "2026-05-26T20:31:38Z",
+            "completed_at": "2026-05-26T20:34:15Z",
+            "actual_minutes": 2,
+            "variance_pct": 0.0
+        }
+    ],
+    "estimated_total_minutes": 212,
+    "actual_total_minutes": 19,
+    "overall_variance_pct": -91.0,
+    "adjustments": [
+        {
+            "step": "01",
+            "agent": "CODE-DESIGNER",
+            "issue": "Variance -98.4% exceeds 25% threshold",
+            "action": "UPDATED - estimation_rules.json adjusted",
+            "rationale": "Observed 2 consecutive D4/high runs with matching under-run direction; adjusted D4 code-designer estimate from 121 to 62."
+        },
+        {
+            "step": "04",
+            "agent": "TEST-RUNNER",
+            "issue": "Variance -90.9% exceeds 25% threshold",
+            "action": "UPDATED - estimation_rules.json adjusted",
+            "rationale": "Observed 2 consecutive D4/high runs with matching under-run direction; adjusted D4 test-runner estimate from 7 to 4."
+        }
+    ],
+    "summary": "WF02-oidc02-20260527 completed documentation and release-state updates for OIDC-02 with retrospective capture recorded. Two consecutive D4/high variance signals triggered calibration updates for code-designer and test-runner estimates.",
+    "completed_at": "2026-05-26T20:34:15Z"
+}

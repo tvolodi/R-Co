@@ -32,3 +32,9 @@ test "TC-OIDC-01-04: manager local_only mode preserves non-provider auth path" {
     try testing.expect(!manager.shouldVerifyExternalToken("a.b.c"));
     try testing.expect(!manager.shouldVerifyExternalToken("opaque-token"));
 }
+
+test "TC-OIDC-02-01: provider root stays compile-isolated from keycloak adapter exports" {
+    try testing.expect(@hasDecl(api.identity_provider, "adapters"));
+    try testing.expect(@hasDecl(api.identity_provider.adapters, "stub"));
+    try testing.expect(!@hasDecl(api.identity_provider.adapters, "keycloak"));
+}

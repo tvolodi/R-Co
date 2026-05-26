@@ -1,0 +1,28 @@
+{
+  "report_id": "WF02-oidc02-20260527-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-oidc02-20260527",
+  "step": "01",
+  "created_at": "2026-05-26T20:06:44Z",
+  "summary": "Produced the backend design artifact for OIDC-02 at src/design/oidc-02-keycloak-adapter.md. The design defines the concrete Keycloak 26.x adapter package, provider-contract implementation surface, Keycloak-only endpoint ownership, request and response mappings, compile-isolation and build-wiring expectations, adapter-local test seams, and acceptance traceability back to OIDC-02 without introducing implementation code or schema changes.",
+  "files_created": [
+    "src/design/oidc-02-keycloak-adapter.md"
+  ],
+  "files_modified": [
+    "handoffs/WF02-oidc02-20260527/step-01-code-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and acceptance traceability review",
+      "status": "pass",
+      "detail": "Verified the artifact contains module purpose, public interface, data flow, state transitions, error taxonomy, dependency boundaries, compile-isolation rules, and explicit mapping from each handoff acceptance criterion to concrete validation points."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) to implement the Keycloak adapter package and provider selection wiring implied by the design.",
+    "Route to TEST-DESIGNER to define adapter conformance, compile-isolation, and Keycloak integration tests for OIDC-02."
+  ],
+  "blockers": []
+}

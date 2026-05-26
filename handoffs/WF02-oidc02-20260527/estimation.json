@@ -1,0 +1,31 @@
+{
+  "run_id": "WF02-oidc02-20260527",
+  "created_at": "2026-05-26T19:52:24Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "OIDC-02"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "Implements the full concrete Keycloak adapter surface behind the OIDC-01 contract, covering token verification and admin/provisioning operations while preserving adapter-only coupling.",
+  "integration_surface": "high",
+  "integration_surface_rationale": "Touches provider adapter boundaries, auth verification integration points, provisioning flows, and build/module isolation guarantees for the identity subsystem.",
+  "steps": [
+    "git-setup",
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater",
+    "git-merge"
+  ],
+  "estimated_minutes": {
+    "code-designer": 182,
+    "backend-dev": 9,
+    "test-designer": 6,
+    "test-runner": 11,
+    "release-validator": 2,
+    "doc-updater": 2,
+    "total": 212
+  }
+}
