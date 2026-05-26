@@ -57,6 +57,21 @@ AGENT_ID: ORCH
    ```
 7. Tell the user which agent should now be invoked and with which handoff ID
 
+## WF-05 wrapping (always for agent work)
+
+**Rule:** ALL agent-driven workflows (WF-02, WF-03, fixes from WF-04) ALWAYS use WF-05.
+
+**No detection needed.** Just always wrap:
+- WF-02: Step 00 (git-setup) → Steps 01–06 → Step Final (git-merge)
+- WF-03: Step 00 (git-setup) → Steps 1–3 → Step Final (git-merge)
+- WF-04 fix routing: Step 00 → fix work → Step Final
+
+**Why:** Creating the feature branch IS the coordination signal. Other hosts see it via `git fetch; git branch -r`. The rebase + PR workflow naturally queues merges.
+
+**Exception:** WF-01 (requirement drafting) can skip WF-05 since it only modifies docs.
+
+See full procedure in `docs/agents/workflows/WF-05_parallel_git_protocol.md`.
+
 ## Routing decisions
 
 After an agent completes a handoff, read `result.status`:

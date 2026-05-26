@@ -1,8 +1,10 @@
 # WF-03 — Issue Resolving
 
-**Version:** 0.1 · 2026-05-20  
+**Version:** 0.2 · 2026-05-26  
 **Trigger:** Test failure, bug report, DLQ escalation, or regression detected during WF-02/WF-04  
 **Owner:** `ORCH`
+
+**Parallel-host runs:** Wrap this workflow with WF-05 (`docs/agents/workflows/WF-05_parallel_git_protocol.md`) when fixing issues that need to be committed on a feature branch to avoid conflicts with simultaneous work on other hosts.
 
 ---
 
@@ -33,12 +35,50 @@ its handoff as PASS.
 **Do not launch WF-03 when:**
 - TEST-RUNNER resolved a compile-only blocker inline and resubmitted PASS
 
+**WF-05 wrapping:** WF-03 ALWAYS uses WF-05 (feature branch workflow). ORCH creates Step 00 (git-setup) before Step 1 and Step Final (git-merge) after Step 3. No detection check needed.
+
+---
+
+## Step 00 — Git Setup
+
+**Agent:** `BACKEND-DEV` (backend fixes) or `FRONTEND-DEV` (frontend fixes)  
+**Function:** `fn:git-setup`
+
+This step is ALWAYS executed for WF-03 runs. It creates the feature branch and announces the work to other hosts.
+
+### Procedure
+
+Follow the exact procedure defined in `docs/agents/workflows/WF-05_parallel_git_protocol.md` Step 00:
+
+```
+1. git checkout main
+2. git pull --ff-only origin main
+3. git checkout -b feature/WF03-<issue-id>-<timestamp>
+4. Verify branch creation
+5. → fn:register-inner-report
+6. → fn:complete-handoff (status: PASS, next_action: "Route to ISSUE-FIXER for Step 1")
+```
+
+### Acceptance criteria
+
+- [ ] `git pull --ff-only` exited 0
+- [ ] `git branch --show-current` outputs `feature/WF03-<issue-id>-<timestamp>`
+- [ ] No uncommitted changes remain on the new branch
+
+---
+
 ## Overview
 
 ```
 [INPUT: failing test report or bug description]
             │
             ▼
+┌───────────────────────┐
+│  STEP 00: GIT-SETUP   │ ← BACKEND-DEV (backend) or FRONTEND-DEV (frontend)
+│  git pull + branch    │   (only when parallel-host mode; skip for single-host)
+└──────────┬────────────┘
+           │ PASS
+           ▼
 ┌───────────────────────┐
 │  STEP 1: DIAGNOSE     │ ← ISSUE-FIXER
 │  Root cause analysis  │
@@ -70,8 +110,17 @@ its handoff as PASS.
           YES
            │
            ▼
+┌───────────────────────┐
+│  STEP FINAL:          │ ← same agent as step 00
+│  GIT-MERGE            │   Rebase → PR → merge → cleanup
+│  (parallel-host only) │   (skip for single-host)
+└──────────┬────────────┘
+           │ PASS
+           ▼
 [OUTPUT: PASS result → caller workflow (WF-02 Step 4 or WF-04) resumes]
 ```
+
+**Note:** Steps 00 and Final are ALWAYS executed for agent-driven WF-03 runs. Inline fixes by TEST-RUNNER bypass WF-03 entirely (no handoff created).
 
 ---
 
@@ -214,3 +263,36 @@ When `ISSUE-FIXER` completes Step 1, it classifies severity to help `ORCH` prior
 | `MINOR` | Failing COULD requirement; cosmetic or edge case | Log and defer to next iteration |
 
 `ORCH` MUST NOT advance WF-02 to release validation while any BLOCKER issues are open.
+
+---
+
+## Step Final — Git Merge
+
+**Agent:** `BACKEND-DEV` (backend fixes) or `FRONTEND-DEV` (frontend fixes) — same agent as Step 00  
+**Function:** `fn:git-merge`
+
+This step is ALWAYS executed for WF-03 runs. It merges the fix back into main via PR.
+
+### Procedure
+
+Follow the exact procedure defined in `docs/agents/workflows/WF-05_parallel_git_protocol.md` Step Final:
+
+```
+1. Verify current branch is feature/WF03-<issue-id>-<timestamp>
+2. git add -A
+3. git commit -m "fix(WF03-<issue-id>): <summary from ISSUE-FIXER>"
+4. git fetch origin main
+5. git rebase origin/main (with conflict handling per WF-05)
+6. git push origin feature/WF03-<issue-id>-<timestamp>
+7. gh pr create
+8. gh pr merge --squash --delete-branch
+9. git checkout main; git pull --ff-only; git branch -d feature/WF03-<issue-id>-<timestamp>
+10. → fn:register-inner-report
+11. → fn:complete-handoff (status: PASS, next_action: "WF-03 complete")
+```
+
+### Acceptance criteria
+
+- [ ] `gh pr merge` exited 0
+- [ ] `git branch --show-current` is `main`
+- [ ] Feature branch deleted locally and remotely

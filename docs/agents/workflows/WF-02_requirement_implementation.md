@@ -3,7 +3,7 @@
 **Version:** 0.2 · 2026-05-26
 **Trigger:** One or more requirements reach status VALIDATED; stage gate cleared by `ORCH`
 **Owner:** `ORCH`
-**Parallel-host runs:** Wrap this workflow with WF-05 (`docs/agents/workflows/WF-05_parallel_git_protocol.md`) when multiple hosts implement different requirements simultaneously on separate branches.
+**Git protocol:** This workflow ALWAYS uses WF-05 (`docs/agents/workflows/WF-05_parallel_git_protocol.md`) — feature branch creation is mandatory for all agent work. ORCH adds Step 00 (git-setup) before Step 01 and Step Final (git-merge) after Step 06.
 
 ---
 

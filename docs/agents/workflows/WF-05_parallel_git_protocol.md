@@ -1,19 +1,83 @@
 # WF-05 — Parallel Git Protocol
 
-**Version:** 0.1 · 2026-05-26
-**Trigger:** Any WF-02 run where parallel-host isolation is required (multiple agents implementing different requirements simultaneously on separate hosts)
+**Version:** 0.2 · 2026-05-26
+**Trigger:** ALL WF-02, WF-03, and WF-04 agent-driven workflows (not optional)
 **Owner:** `ORCH`
 
 ---
 
 ## Purpose
 
-WF-05 wraps WF-02 with git branch management so that multiple hosts can implement different requirements in parallel without clobbering each other. It adds exactly two steps around the standard WF-02 pipeline:
+WF-05 wraps ALL agent-driven implementation workflows (WF-02, WF-03, WF-04 fix routing) with git branch management. This is **NOT optional coordination** - it is the **default workflow** for all agent work.
 
-- **Step 00 — Git Setup** (before CODE-DESIGNER): creates the feature branch
-- **Step Final — Git Merge** (after DOC-UPDATER): commits, pushes, creates PR, merges, cleans up
+**Why always use branches:**
+- Creating the feature branch IS the coordination signal
+- Other hosts see `origin/feature/WF02-xyz` immediately after first push
+- Git/GitHub naturally queues PRs for sequential merge
+- No collision detection needed - git handles it
 
-All intermediate WF-02 steps (01–06) run unchanged on the feature branch. No git commands are issued during those steps.
+**Single-host mode (working directly on main) only applies to:**
+- Human manual edits
+- Emergency hotfixes by operators
+- Documentation-only changes (WF-01 requirement drafting)
+
+**Agent workflows ALWAYS create a feature branch.**
+
+It adds exactly two steps around the standard WF-02/WF-03/WF-04 pipeline:
+
+- **Step 00 — Git Setup** (before first code-changing step): creates the feature branch, pushes immediately
+- **Step Final — Git Merge** (after last step): rebases, creates PR, merges, cleans up
+
+All intermediate steps run unchanged on the feature branch.
+
+---
+
+## When to Use WF-05 (Simple Rule)
+
+**Rule:** ORCH ALWAYS uses WF-05 for agent-driven workflows: WF-02, WF-03, and any fix routing from WF-04.
+
+**No detection check needed.** Every workflow run creates a feature branch in Step 00.
+
+### Why This Works: The Branch IS the Coordination
+
+**Scenario:** Two hosts start work simultaneously
+
+```
+10:00 - Host A: WF-02 for API-13 starts
+        ↓ Step 00: creates feature/WF02-api13-20260526
+        ↓ git push origin feature/WF02-api13-20260526  ← ANNOUNCEMENT
+        ↓ Works on feature branch...
+
+10:05 - Host B: WF-02 for API-14 starts  
+        ↓ Step 00: creates feature/WF02-api14-20260526
+        ↓ git push origin feature/WF02-api14-20260526  ← ANNOUNCEMENT
+        ↓ Works on feature branch...
+        (Host B can see Host A's branch via: git fetch; git branch -r)
+
+11:00 - Host A: Step Final attempts merge
+        ↓ git fetch origin main
+        ↓ git rebase origin/main   (clean - A is first)
+        ↓ gh pr create + gh pr merge --squash
+        ↓ feature/WF02-api13-20260526 merged into main ✓
+
+11:30 - Host B: Step Final attempts merge
+        ↓ git fetch origin main   (now includes A's work)
+        ↓ git rebase origin/main  (may have conflicts - handle per WF-05 conflict protocol)
+        ↓ gh pr create + gh pr merge --squash
+        ↓ feature/WF02-api14-20260526 merged into main ✓
+```
+
+**The merge queue is natural:**
+- First to finish Step Final: merges cleanly
+- Second to finish: rebases onto first's merged work
+- Third to finish: rebases onto both
+- Conflicts detected during rebase, resolved inline
+
+**The `git push origin feature/<run-id>` in Step 00 is the coordination signal** - all other hosts see it immediately after `git fetch`.
+
+### Exception: Documentation-Only Workflows
+
+**WF-01 (requirement development)** does not need WF-05 because it only modifies markdown files in `docs/` that rarely conflict. ORCH may skip WF-05 for WF-01 runs.
 
 ---
 
@@ -74,8 +138,11 @@ All intermediate WF-02 steps (01–06) run unchanged on the feature branch. No g
    git branch -D feature/<run-id>   # delete stale branch
 5. git checkout -b feature/<run-id>
 6. Verify: git branch --show-current outputs feature/<run-id>
-7. → fn:register-inner-report
-8. → fn:complete-handoff (status: PASS,
+7. IMMEDIATELY push the branch (creates coordination signal):
+   git push -u origin feature/<run-id>
+   (This announces "I am working" to all other hosts)
+8. → fn:register-inner-report
+9. → fn:complete-handoff (status: PASS,
      artifacts_out: ["branch: feature/<run-id>"],
      next_action: "Route to CODE-DESIGNER for WF-02 Step 01")
 ```
@@ -84,7 +151,8 @@ All intermediate WF-02 steps (01–06) run unchanged on the feature branch. No g
 
 - [ ] `git pull --ff-only` exited 0
 - [ ] `git branch --show-current` outputs `feature/<run-id>`
-- [ ] No uncommitted changes remain on the new branch (working tree clean)
+- [ ] `git push -u origin feature/<run-id>` exited 0
+- [ ] Other hosts can see the branch via: `git fetch; git branch -r`
 
 ---
 

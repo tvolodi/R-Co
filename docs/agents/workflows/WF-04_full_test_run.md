@@ -1,8 +1,10 @@
 # WF-04 — Full Test Run
 
-**Version:** 0.1 · 2026-05-20  
+**Version:** 0.2 · 2026-05-26  
 **Trigger:** Pre-release gate, scheduled CI run, or explicit operator request  
 **Owner:** `ORCH`
+
+**Git protocol:** When WF-04 spawns WF-03 or routes directly to BACKEND-DEV/FRONTEND-DEV/TEST-DESIGNER for fixes, those sub-workflows ALWAYS use WF-05 (`docs/agents/workflows/WF-05_parallel_git_protocol.md`) — feature branch creation is mandatory for all agent work.
 
 ---
 
@@ -269,12 +271,18 @@ ORCH:
        workflow_id = "WF03-<timestamp>"
        context.related_handoff_ids = [failing WF-04 handoff id]
        task.description = "Fix the following failures: <failure list>"
-  2. Run WF-03 to completion
+  
+  2. Launch WF-03 with WF-05 wrapping (always):
+       a. Create WF-03 Step 00 handoff (git-setup) first
+       b. Run WF-03 Steps 00 → 1 → 2 → 3 → Final
+  
   3. On WF-03 PASS: resume WF-04 at the step that failed
   4. On WF-03 ESCALATED: pause WF-04; surface for human review
 ```
 
 The WF-04 step counter does NOT reset when WF-03 is run. WF-04 resumes at the exact step it left.
+
+**Direct routing to dev agents (Steps 6, 7):** When WF-04 routes directly to BACKEND-DEV (NFR performance fixes) or TEST-DESIGNER (coverage gaps), ORCH wraps those with WF-05 (Step 00 → work → Step Final).
 
 ---
 
