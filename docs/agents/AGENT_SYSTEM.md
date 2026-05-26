@@ -41,8 +41,8 @@ This document is the root reference for the multi-agent system that develops and
 | `REQ-ANALYST` | ✓ | ✓ | ✗ | ✗ | ✗ |
 | `REQ-VALIDATOR` | ✓ | ✓ (handoffs) | ✗ | ✗ | ✗ |
 | `CODE-DESIGNER` | ✓ | ✓ | ✗ | ✗ | ✗ |
-| `BACKEND-DEV` | ✓ | ✓ | ✓ (build, migrate) | ✗ | ✗ |
-| `FRONTEND-DEV` | ✓ | ✓ | ✓ (build, lint) | ✗ | ✗ |
+| `BACKEND-DEV` | ✓ | ✓ | ✓ (build, migrate, git, gh) | ✗ | ✗ |
+| `FRONTEND-DEV` | ✓ | ✓ | ✓ (build, lint, git, gh) | ✗ | ✗ |
 | `TEST-DESIGNER` | ✓ | ✓ | ✗ | ✗ | ✗ |
 | `TEST-RUNNER` | ✓ | ✓ (reports) | ✓ (tests only) | ✗ | ✗ |
 | `ISSUE-FIXER` | ✓ | ✓ | ✓ (build, tests) | ✗ | ✗ |

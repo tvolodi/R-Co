@@ -445,12 +445,30 @@ zig build migrate
 zig build bench
 cat, grep, find, ls, head, tail
 python3 -c "import json ..."
+# Git operations — WF-05 steps only (see docs/agents/workflows/WF-05_parallel_git_protocol.md)
+git checkout main
+git pull --ff-only origin main
+git checkout -b feature/<run-id>
+git branch --show-current
+git add -A
+git commit -m "..."
+git fetch origin main
+git rebase origin/main
+git rebase --continue
+git rebase --abort
+git push origin feature/<run-id>   # feature branches only — never push to main directly
+git branch -d feature/<run-id>     # local cleanup only
+gh pr create
+gh pr merge --squash --delete-branch
 ```
 
 ### Forbidden commands
 
 ```bash
-git push / git reset --hard / git rebase / rm -rf
+git push --force             # never force-push
+git push origin main        # never push directly to main
+git reset --hard            # destructive — forbidden
+rm -rf
 psql -c "DROP ..." / DROP TABLE in any file
 curl <external-url>
 ```
@@ -499,10 +517,32 @@ All must pass before completing.
 
 **5. Complete the handoff** — same pattern as BACKEND-DEV section above.
 
+### Allowed git commands (WF-05 steps only)
+
+```bash
+git checkout main
+git pull --ff-only origin main
+git checkout -b feature/<run-id>
+git branch --show-current
+git add -A
+git commit -m "..."
+git fetch origin main
+git rebase origin/main
+git rebase --continue
+git rebase --abort
+git push origin feature/<run-id>   # feature branches only
+git branch -d feature/<run-id>
+gh pr create
+gh pr merge --squash --delete-branch
+```
+
 ### Forbidden commands
 
 ```bash
-git push / git reset --hard / rm -rf
+git push --force             # never force-push
+git push origin main        # never push directly to main
+git reset --hard            # destructive — forbidden
+rm -rf
 Directly calling fetch() or axios outside src/api/client.ts
 ```
 

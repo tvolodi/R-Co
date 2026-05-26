@@ -30,7 +30,8 @@
 | WF-01 | Requirement Development & Validation | New feature request or stage begins | `docs/agents/workflows/WF-01_requirement_development.md` |
 | WF-02 | Requirement Implementation | Requirement status = VALIDATED | `docs/agents/workflows/WF-02_requirement_implementation.md` |
 | WF-03 | Issue Resolving | Test failure or bug report | `docs/agents/workflows/WF-03_issue_resolving.md` |
-| WF-04 | Full Test Run | Pre-release or scheduled CI run | `docs/agents/workflows/WF-04_full_test_run.md` |
+| WF-04 | Full Test Run | Pre-release or full-suite validation | `docs/agents/workflows/WF-04_full_test_run.md` |
+| WF-05 | Parallel Git Protocol | WF-02 run where multiple hosts work in parallel | `docs/agents/workflows/WF-05_parallel_git_protocol.md` |
 
 ---
 
@@ -43,7 +44,8 @@ INPUT: trigger event
 │     └─► Launch WF-01
 │
 ├─ Is it a VALIDATED requirement ready to build?
-│     └─► Launch WF-02
+│     ├─ Single host?  └─► Launch WF-02
+│     └─ Parallel hosts? └─► Launch WF-05 (wraps WF-02 with git branch/merge steps)
 │
 ├─ Is it a test failure or bug report?
 │     └─► Launch WF-03

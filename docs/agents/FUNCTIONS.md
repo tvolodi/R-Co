@@ -86,3 +86,10 @@ Functions may call other functions (noted as `→ fn:name` in the individual fil
 |---|---|---|
 | `fn:validate-completeness` | [fn-validate-completeness.md](functions/fn-validate-completeness.md) | All agents — mandatory before fn:register-inner-report on impl tasks |
 | `fn:register-inner-report` | [fn-register-inner-report.md](functions/fn-register-inner-report.md) | **ALL agents** — mandatory |
+
+### Category: Git Operations (GIT)
+
+| Function ID | File | Used by |
+|---|---|---|
+| `fn:git-setup` | [fn-git-setup.md](functions/fn-git-setup.md) | `BACKEND-DEV`, `FRONTEND-DEV` — WF-05 Step 00 |
+| `fn:git-merge` | [fn-git-merge.md](functions/fn-git-merge.md) | `BACKEND-DEV`, `FRONTEND-DEV` — WF-05 Step Final |
