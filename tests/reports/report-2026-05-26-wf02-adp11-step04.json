@@ -1,0 +1,72 @@
+{
+  "run_id": "WF02-adp11-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-098",
+  "step": "04",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-26T16:42:12Z",
+  "requirement_ids": [
+    "ADP-11"
+  ],
+  "commands": [
+    {
+      "command": "zig build test",
+      "layer": "backend-unit",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "UNIT_EXIT_CODE=0"
+      ]
+    },
+    {
+      "command": "zig build test-integration",
+      "layer": "backend-integration",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "INTEGRATION_EXIT_CODE=0"
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Protected-family hard-delete configuration is rejected at policy upsert time.",
+      "test_cases": [
+        "TC-ADP-11-01"
+      ],
+      "source": "tests/integration/event_store_integration_test.zig",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Explicit INSTANCE_STARTED hard-delete rejection returns deterministic structured error semantics.",
+      "test_cases": [
+        "TC-ADP-11-01"
+      ],
+      "source": "tests/integration/event_store_integration_test.zig",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Non-protected families preserve ES-07 hard-delete configurability and hard-delete behavior.",
+      "test_cases": [
+        "TC-ADP-11-02"
+      ],
+      "source": "tests/integration/event_store_integration_test.zig",
+      "status": "PASS"
+    },
+    {
+      "criterion": "Replay-safe archive/queryability invariant holds for protected families configured with archive retention.",
+      "test_cases": [
+        "TC-ADP-11-03"
+      ],
+      "source": "tests/integration/event_store_integration_test.zig",
+      "status": "PASS"
+    }
+  ],
+  "issues": [],
+  "result": {
+    "status": "PASS",
+    "summary": "ADP-11 validation passed: required unit and integration commands completed successfully, and integration coverage maps all ADP-11 acceptance criteria to passing test cases."
+  }
+}

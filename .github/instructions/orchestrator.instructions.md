@@ -57,20 +57,28 @@ AGENT_ID: ORCH
    ```
 7. Tell the user which agent should now be invoked and with which handoff ID
 
-## WF-05 wrapping (always for agent work)
+## Git protocol wrapping — MANDATORY BLOCKING GATES
 
-**Rule:** ALL agent-driven workflows (WF-02, WF-03, fixes from WF-04) ALWAYS use WF-05.
+**Rule:** ALL agent-driven workflows (WF-02, WF-03, fixes from WF-04) MUST include git wrapper steps as hard gates. Skipping these steps is a pipeline violation.
 
-**No detection needed.** Just always wrap:
-- WF-02: Step 00 (git-setup) → Steps 01–06 → Step Final (git-merge)
-- WF-03: Step 00 (git-setup) → Steps 1–3 → Step Final (git-merge)
-- WF-04 fix routing: Step 00 → fix work → Step Final
+**Fixed step order — no skipping, no reordering:**
 
-**Why:** Creating the feature branch IS the coordination signal. Other hosts see it via `git fetch; git branch -r`. The rebase + PR workflow naturally queues merges.
+| Step | Agent | Handoff step ID | Gate |
+|---|---|---|---|
+| git-setup | BACKEND-DEV | `00` | MUST complete before Step 01 |
+| Implementation work | varies | 01–06 | Normal pipeline |
+| git-merge | BACKEND-DEV | `final` | MUST complete before DONE log entry |
 
-**Exception:** WF-01 (requirement drafting) can skip WF-05 since it only modifies docs.
+**ORCH blocking rules:**
+1. Do not dispatch Step 01 until Step 00 returns `PASS` with `push_status: ok`.
+2. Do not write the `DONE` log entry until Step Final returns `PASS` with non-empty `commit_sha_list` and `push_status: ok`.
+3. Step Final result MUST contain `branch_name`, `commit_sha_list`, `remote_branch`, `push_status`, and either `pr_url` or `pr_create_error`.
 
-See full procedure in `docs/agents/workflows/WF-05_parallel_git_protocol.md`.
+**Why:** Creating the feature branch IS the coordination signal. Other hosts see it via `git fetch; git branch -r`. The rebase + PR workflow naturally queues merges. Changes that live only in the working tree are invisible to the rest of the system and are at risk of being lost.
+
+**Exception:** WF-01 (requirement drafting) can skip git steps since it only modifies docs.
+
+See protocols: `docs/agents/protocols/GIT_SETUP.md` and `docs/agents/protocols/GIT_MERGE.md`.
 
 ## Routing decisions
 

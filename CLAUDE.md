@@ -358,6 +358,8 @@ AGENT_ID: BACKEND-DEV
 Also read:
 ```bash
 cat docs/guides/backend_developer_guide.md
+cat docs/agents/protocols/GIT_SETUP.md
+cat docs/agents/protocols/GIT_MERGE.md
 ```
 
 Then find your handoff:
@@ -445,7 +447,7 @@ zig build migrate
 zig build bench
 cat, grep, find, ls, head, tail
 python3 -c "import json ..."
-# Git operations — WF-05 steps only (see docs/agents/workflows/WF-05_parallel_git_protocol.md)
+# Git operations — Step 00 and Step Final only (see docs/agents/protocols/GIT_SETUP.md and GIT_MERGE.md)
 git checkout main
 git pull --ff-only origin main
 git checkout -b feature/<run-id>
@@ -485,6 +487,8 @@ Also read:
 ```bash
 cat docs/guides/frontend_developer_guide.md
 cat docs/guides/frontend_design_system.md
+cat docs/agents/protocols/GIT_SETUP.md
+cat docs/agents/protocols/GIT_MERGE.md
 ```
 
 Then find your handoff:
@@ -517,7 +521,7 @@ All must pass before completing.
 
 **5. Complete the handoff** — same pattern as BACKEND-DEV section above.
 
-### Allowed git commands (WF-05 steps only)
+### Allowed git commands (Step 00 and Step Final only)
 
 ```bash
 git checkout main

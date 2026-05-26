@@ -91,5 +91,5 @@ Functions may call other functions (noted as `→ fn:name` in the individual fil
 
 | Function ID | File | Used by |
 |---|---|---|
-| `fn:git-setup` | [fn-git-setup.md](functions/fn-git-setup.md) | `BACKEND-DEV`, `FRONTEND-DEV` — WF-05 Step 00 |
-| `fn:git-merge` | [fn-git-merge.md](functions/fn-git-merge.md) | `BACKEND-DEV`, `FRONTEND-DEV` — WF-05 Step Final |
+| `fn:git-setup` | [fn-git-setup.md](functions/fn-git-setup.md) | `BACKEND-DEV`, `FRONTEND-DEV` — Step 00 |
+| `fn:git-merge` | [fn-git-merge.md](functions/fn-git-merge.md) | `BACKEND-DEV`, `FRONTEND-DEV` — Step Final |

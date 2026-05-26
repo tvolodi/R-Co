@@ -55,6 +55,7 @@ Before implementing anything, search this file for the module or pattern you are
 | Embedding large context in handoff JSON `context` fields | Prompt truncation in downstream agents | Write context to a file in `docs/` and reference the path in the handoff |
 | Treating unrelated pre-existing workspace changes as blockers | Pipeline stalls and token waste on non-blocking noise | Ignore pre-existing unrelated changes; only raise when there is direct file overlap/conflict or acceptance criteria are blocked |
 | **ORCH writing `created_at` / `started_at` from the session context date or a manually chosen round number** | `completed_at` (set from the real host clock) precedes `started_at`; step durations become negative; retrospectives are corrupted | Run `(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")` (PowerShell) immediately and use the exact printed string. Never derive timestamps from "current date is …" in the session context. |
+| **Completing a WF-02/WF-03/WF-04 pipeline without git wrapper steps (no branch, no commit, no push)** | Implementation exists only in the working tree; changes are never persisted to VCS; branch-based coordination with other agents/hosts is impossible; the DONE log entry is false | Always dispatch a BACKEND-DEV Step 00 (git-setup) handoff before Step 01, and a BACKEND-DEV Step Final (git-merge) handoff after Step 06/DOC-UPDATER. Block DONE log entry until Step Final returns PASS with non-empty `branch_name`, `commit_sha_list`, and `push_status: ok`. |
 
 ---
 

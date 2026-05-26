@@ -20,6 +20,42 @@
 - Route FAIL results back to the originating agent with rework instructions
 - Escalate when `rework_count >= max_rework`
 - Build ad-hoc workflows when a situation is not covered by a standard workflow
+- **Enforce git wrapper steps as hard pipeline gates (see §8)**
+
+---
+
+## 8. Git Wrapper Protocol (Mandatory for WF-02, WF-03, WF-04)
+
+Every WF-02, WF-03, and WF-04 run MUST be wrapped with two additional BACKEND-DEV steps. These are **not optional** and are treated as hard pipeline gates.
+
+### Step 00 — git-setup (blocking gate before any implementation step)
+
+- Create a BACKEND-DEV handoff with step ID `00` and task: execute `fn:git-setup` per `docs/agents/protocols/GIT_SETUP.md`.
+- The handoff MUST record `branch_name`, `base_commit_sha`, and `push_status` in its result.
+- **ORCH MUST NOT dispatch Step 01 until Step 00 returns PASS.**
+- Branch naming convention: `feature/<run_id>` (e.g. `feature/WF02-adp11-20260526`).
+
+### Step Final — git-merge (blocking gate before DONE)
+
+- After DOC-UPDATER (Step 06) returns PASS, create a BACKEND-DEV handoff with step ID `final` and task: execute `fn:git-merge` per `docs/agents/protocols/GIT_MERGE.md`.
+- The handoff result MUST contain: `branch_name`, `commit_sha_list` (at least one entry), `remote_branch`, `pr_url` (or `pr_create_error` if gh auth is unavailable), and `push_status: ok`.
+- **ORCH MUST NOT write a `DONE` log entry until Step Final returns PASS and `push_status` is `ok`.**
+- If Step Final FAILS, treat as a rework loop (same `max_rework` rules).
+
+### DONE log entry
+
+Only write:
+```
+<ISO8601> | DONE | <run_id> | --- | PIPELINE COMPLETE | <REQ-ID> RELEASED
+```
+after Step Final PASS is confirmed. Include the pushed branch name and PR URL (if available) in a follow-on log line:
+```
+<ISO8601> | GIT  | <run_id> | <branch_name> | <commit_sha> | PR: <pr_url or MANUAL>
+```
+
+### Exception
+
+WF-01 (requirement drafting) may skip git wrapper steps because it writes only to `docs/`.
 
 ---
 
@@ -31,7 +67,13 @@
 | WF-02 | Requirement Implementation | Requirement status = VALIDATED | `docs/agents/workflows/WF-02_requirement_implementation.md` |
 | WF-03 | Issue Resolving | Test failure or bug report | `docs/agents/workflows/WF-03_issue_resolving.md` |
 | WF-04 | Full Test Run | Pre-release or full-suite validation | `docs/agents/workflows/WF-04_full_test_run.md` |
-| WF-05 | Parallel Git Protocol | WF-02 run where multiple hosts work in parallel | `docs/agents/workflows/WF-05_parallel_git_protocol.md` |
+
+**Git protocols** (not workflows — referenced by WF-02, WF-03, WF-04):
+
+| Protocol | Function | Document |
+|---|---|---|
+| GIT_SETUP | `fn:git-setup` — pull, branch, push | `docs/agents/protocols/GIT_SETUP.md` |
+| GIT_MERGE | `fn:git-merge` — rebase, PR, merge, cleanup | `docs/agents/protocols/GIT_MERGE.md` |
 
 ---
 
@@ -44,14 +86,13 @@ INPUT: trigger event
 │     └─► Launch WF-01
 │
 ├─ Is it a VALIDATED requirement ready to build?
-│     ├─ Single host?  └─► Launch WF-02
-│     └─ Parallel hosts? └─► Launch WF-05 (wraps WF-02 with git branch/merge steps)
+│     └─► Launch WF-02  (always includes Step 00 git-setup and Step Final git-merge)
 │
 ├─ Is it a test failure or bug report?
-│     └─► Launch WF-03
+│     └─► Launch WF-03  (always includes Step 00 git-setup and Step Final git-merge)
 │
 ├─ Is it a pre-release gate or scheduled full test?
-│     └─► Launch WF-04
+│     └─► Launch WF-04  (sub-workflows always include git-setup and git-merge steps)
 │
 └─ Does not match any standard workflow?
       └─► Build ad-hoc workflow (see Section 5)
@@ -275,4 +316,67 @@ Example:
 2026-05-20T14:32:00Z | ROUTE | WF-02 | a3f1... | CODE-DESIGNER → BACKEND-DEV | PENDING
 2026-05-20T15:10:00Z | REWORK | WF-02 | a3f1... | BACKEND-DEV → BACKEND-DEV | REWORK(1/3)
 2026-05-20T16:00:00Z | ADVANCE | WF-02 | a3f1... | BACKEND-DEV → TEST-RUNNER | PASS
+```
+
+Additional log actions for git protocol steps:
+
+```
+<ISO8601> | GIT_SETUP    | <run-id> | <handoff-id> | ORCH → BACKEND-DEV | PENDING
+<ISO8601> | GIT_MERGE    | <run-id> | <handoff-id> | ORCH → BACKEND-DEV | PENDING
+<ISO8601> | MODULE_LOCK  | <run-id> | ---           | ORCH | LOCKED: <module-paths>
+<ISO8601> | MODULE_FREE  | <run-id> | ---           | ORCH | RELEASED: <module-paths>
+<ISO8601> | DEFER_RUN    | <run-id> | ---           | ORCH | DEFERRED: overlaps with <other-run-id>
+```
+
+---
+
+## 10. Parallel-Host Coordination
+
+Every agent-driven workflow (WF-02, WF-03, WF-04 sub-workflows) runs on a feature branch. ORCH is responsible for preventing module collisions between concurrent runs.
+
+### Why branches are always used
+
+Creating the feature branch in Step 00 is the coordination signal: `git push origin feature/<run-id>` makes the work visible to all other hosts immediately. Git/GitHub naturally queues PRs for sequential merge. No external lock service is needed.
+
+### owned_modules lock
+
+**At run start (Step 00 dispatch):**
+
+1. Record `owned_modules` — the list of `src/` paths this run will write — in the Step 00 handoff `context.owned_modules`.
+2. Check registry: no active run may share `owned_modules` with this new run.
+   - If overlap detected: set the new run to PENDING, log `DEFER_RUN`, and wait until the conflicting run reaches Step Final PASS before dispatching Step 00.
+3. Log `MODULE_LOCK` immediately after Step 00 PASS.
+
+**After Step Final PASS:**
+
+4. Log `MODULE_FREE`.
+5. Check the PENDING queue — if a deferred run's `owned_modules` no longer conflicts, dispatch its Step 00.
+
+### Serialising concurrent WF-03 sub-runs from the same WF-04 run
+
+When WF-04 spawns multiple WF-03 runs for different failures, ORCH checks `owned_modules` before each dispatch. If two WF-03 runs would touch the same files, the second is deferred to PENDING until the first completes Step Final.
+
+### owned_modules check snippet
+
+```python
+import json
+
+def modules_overlap(a: list, b: list) -> bool:
+    return any(m in b for m in a)
+
+with open("handoffs/registry.json") as f:
+    reg = json.load(f)
+
+new_modules = ["src/engine/", "src/api/"]   # fill from the new run's design artefact
+active = [e for e in reg["entries"]
+          if e["status"] in ("PENDING", "IN_PROGRESS")
+          and e.get("owned_modules")]
+
+conflicts = [e["run_id"] for e in active
+             if modules_overlap(new_modules, e["owned_modules"])]
+
+if conflicts:
+    print(f"DEFER: overlaps with {conflicts}")
+else:
+    print("CLEAR: no module overlap — proceed with Step 00 dispatch")
 ```

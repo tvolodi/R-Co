@@ -124,6 +124,14 @@ handoffs/WF03-EE05-fix/step-02-test-runner.json
         "affected_requirement": "<REQ-ID or null>"
       }
     ],
+    "git_evidence": {
+      "branch_name": "<feature/<run_id> or null if not a git step>",
+      "commit_sha_list": ["<sha>"],
+      "remote_branch": "<origin/branch or null>",
+      "push_status": "<ok|failed|skipped>",
+      "pr_url": "<url or null>",
+      "pr_create_error": "<error string or null>"
+    },
     "next_action": "<suggested next step for Orchestrator>"
   },
   "rework_count": 0,
@@ -241,6 +249,7 @@ DRAFT → DESIGNED → IMPLEMENTED → TESTED → RELEASED
 | Handoff files | `handoffs/` | All (via `ORCH`) |
 | Requirement status | `docs/status/` | `DOC-UPDATER`, `RELEASE-VALIDATOR` |
 | Agent workflows | `docs/agents/workflows/` | `ORCH` reads only |
+| Git protocols | `docs/agents/protocols/` | `BACKEND-DEV`, `FRONTEND-DEV` read |
 | Agent function index | `docs/agents/FUNCTIONS.md` | All agents read |
 | Estimation rules (living) | `docs/metrics/estimation_rules.json` | `ORCH` (read), `DOC-UPDATER` (update) |
 | Per-run estimation | `handoffs/<run_id>/estimation.json` | `ORCH` |
