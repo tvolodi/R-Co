@@ -2,8 +2,8 @@
 
 **Category:** Git
 **Used by:** `BACKEND-DEV`, `FRONTEND-DEV`
-**Step:** WF-05 Step 00
-**Document:** `docs/agents/workflows/WF-05_parallel_git_protocol.md`
+**Step:** Step 00 (WF-02, WF-03, WF-04 sub-workflows)
+**Document:** `docs/agents/protocols/GIT_SETUP.md`
 
 ---
 

@@ -241,6 +241,7 @@ DRAFT → DESIGNED → IMPLEMENTED → TESTED → RELEASED
 | Handoff files | `handoffs/` | All (via `ORCH`) |
 | Requirement status | `docs/status/` | `DOC-UPDATER`, `RELEASE-VALIDATOR` |
 | Agent workflows | `docs/agents/workflows/` | `ORCH` reads only |
+| Git protocols | `docs/agents/protocols/` | `BACKEND-DEV`, `FRONTEND-DEV` read |
 | Agent function index | `docs/agents/FUNCTIONS.md` | All agents read |
 | Estimation rules (living) | `docs/metrics/estimation_rules.json` | `ORCH` (read), `DOC-UPDATER` (update) |
 | Per-run estimation | `handoffs/<run_id>/estimation.json` | `ORCH` |

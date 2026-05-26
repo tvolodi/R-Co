@@ -1,10 +1,10 @@
 # WF-04 — Full Test Run
 
-**Version:** 0.2 · 2026-05-26  
+**Version:** 0.3 · 2026-05-26  
 **Trigger:** Pre-release gate, scheduled CI run, or explicit operator request  
 **Owner:** `ORCH`
 
-**Git protocol:** When WF-04 spawns WF-03 or routes directly to BACKEND-DEV/FRONTEND-DEV/TEST-DESIGNER for fixes, those sub-workflows ALWAYS use WF-05 (`docs/agents/workflows/WF-05_parallel_git_protocol.md`) — feature branch creation is mandatory for all agent work.
+**Git protocol:** When WF-04 spawns WF-03 or routes directly to BACKEND-DEV/FRONTEND-DEV/TEST-DESIGNER for fixes, those sub-workflows ALWAYS use the git protocols — feature branch creation is mandatory for all agent work. ORCH wraps each sub-workflow with Step 00 (`docs/agents/protocols/GIT_SETUP.md`) and Step Final (`docs/agents/protocols/GIT_MERGE.md`).
 
 ---
 
@@ -272,7 +272,7 @@ ORCH:
        context.related_handoff_ids = [failing WF-04 handoff id]
        task.description = "Fix the following failures: <failure list>"
   
-  2. Launch WF-03 with WF-05 wrapping (always):
+  2. Launch WF-03 (always includes git protocol steps):
        a. Create WF-03 Step 00 handoff (git-setup) first
        b. Run WF-03 Steps 00 → 1 → 2 → 3 → Final
   
@@ -282,7 +282,14 @@ ORCH:
 
 The WF-04 step counter does NOT reset when WF-03 is run. WF-04 resumes at the exact step it left.
 
-**Direct routing to dev agents (Steps 6, 7):** When WF-04 routes directly to BACKEND-DEV (NFR performance fixes) or TEST-DESIGNER (coverage gaps), ORCH wraps those with WF-05 (Step 00 → work → Step Final).
+**Direct routing to dev agents (Steps 6, 7):** When WF-04 routes directly to BACKEND-DEV (NFR performance fixes) or TEST-DESIGNER (coverage gaps), ORCH wraps those with Step 00 → work → Step Final using the git protocols. Branch naming for these cases:
+
+```
+feature/WF04-nfr-<run-id>-<timestamp>   (NFR fix routed to BACKEND-DEV)
+feature/WF04-cov-<run-id>-<timestamp>   (coverage gap routed to TEST-DESIGNER)
+```
+
+ORCH records `owned_modules` for these branches and enforces no-overlap with any concurrent WF-02 or WF-03 run (see ORCHESTRATOR.md §10 Parallel-Host Coordination). If a WF-04-spawned fix run and a concurrent WF-03 run would touch the same modules, ORCH serialises them: the second run is deferred to PENDING until the first reaches Step Final PASS.
 
 ---
 

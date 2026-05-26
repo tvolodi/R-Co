@@ -1,9 +1,8 @@
 # WF-02 — Requirement Implementation
 
-**Version:** 0.2 · 2026-05-26
-**Trigger:** One or more requirements reach status VALIDATED; stage gate cleared by `ORCH`
+**Version:** 0.3 · 2026-05-26  
+**Trigger:** One or more requirements reach status VALIDATED; stage gate cleared by `ORCH`  
 **Owner:** `ORCH`
-**Git protocol:** This workflow ALWAYS uses WF-05 (`docs/agents/workflows/WF-05_parallel_git_protocol.md`) — feature branch creation is mandatory for all agent work. ORCH adds Step 00 (git-setup) before Step 01 and Step Final (git-merge) after Step 06.
 
 ---
 
@@ -23,6 +22,12 @@ Step workflow chain template:
 ```
 [INPUT: VALIDATED requirement IDs]
            │
+           ▼
+┌──────────────────────────┐
+│  STEP 00: GIT SETUP      │ ← BACKEND-DEV (backend/mixed) or FRONTEND-DEV (frontend-only)
+│  pull → branch → push    │   fn:git-setup  (see docs/agents/protocols/GIT_SETUP.md)
+└──────────┬───────────────┘
+           │ PASS
            ▼
 ┌──────────────────────┐
 │  STEP 1: CODE DESIGN │ ← CODE-DESIGNER
@@ -86,10 +91,26 @@ Step workflow chain template:
            │  Status → RELEASED   │
            │  Changelog, OpenAPI  │
            └──────────┬───────────┘
-                      │
+                      │ PASS
                       ▼
-           [OUTPUT: requirements RELEASED]
+┌──────────────────────────┐
+│  STEP FINAL: GIT MERGE   │ ← same agent as Step 00
+│  rebase → PR → merge     │   fn:git-merge  (see docs/agents/protocols/GIT_MERGE.md)
+└──────────┬───────────────┘
+           │ PASS
+           ▼
+[OUTPUT: requirements RELEASED; feature/<run-id> squash-merged into main]
 ```
+
+---
+
+## Step 00 — Git Setup
+
+**Agent:** `BACKEND-DEV` (backend/mixed runs) or `FRONTEND-DEV` (frontend-only runs)  
+**Protocol:** `docs/agents/protocols/GIT_SETUP.md`
+
+ORCH supplies `context.branch_name = "feature/<run-id>"` in this handoff.  
+Follow GIT_SETUP.md exactly. On PASS, ORCH routes to Step 1.
 
 ---
 
@@ -121,7 +142,8 @@ Step workflow chain template:
 7. Validate design against requirements:
    - Every acceptance criterion maps to at least one designed function/component
    - No acceptance criterion is left unaddressed
-8. → fn:complete-handoff (status: PASS/FAIL,
+8. → fn:register-inner-report
+9. → fn:complete-handoff (status: PASS/FAIL,
                            artifacts_out: ["src/design/<module>.md", ...],
                            next_action: "Route to BACKEND-DEV and/or FRONTEND-DEV")
 ```
@@ -144,36 +166,37 @@ Step workflow chain template:
 ### Procedure
 
 ```
-1. Read src/design/<module>.md for this implementation unit
-2. → fn:read-backend-conventions
-3. Implement source code in src/<module>/*.zig per the design
-4. Write SQL migration file(s) in migrations/ per the design spec
-5. → fn:check-zig-build
+1. Verify current branch:
+   git branch --show-current  →  must equal feature/<run-id> from context.branch_name
+   If not on the correct branch: STOP; report FAIL to ORCH before touching any file.
+2. Read src/design/<module>.md for this implementation unit
+3. → fn:read-backend-conventions
+4. Implement source code in src/<module>/*.zig per the design
+5. Write SQL migration file(s) in migrations/ per the design spec
+6. → fn:check-zig-build
    If FAIL: fix compilation errors; retry (counts as rework)
-6. → fn:apply-migrations (test DB)
+7. → fn:apply-migrations (test DB)
    If FAIL: fix migration SQL; retry
-7. Error-set validation (mandatory — run before self-review):
+8. Error-set validation (mandatory — run before self-review):
    zig build 2>&1 | grep -i "error set"
-   If any output: the return type of a function does not cover all errors it can
-   propagate. Fix all error-set declarations before proceeding. This is the
-   single most common cause of downstream TEST-RUNNER compile failures and
-   WF-03 dispatches. Do not skip this step.
-8. Self-review checklist:
+   If any output: fix all error-set declarations before proceeding.
+9. Self-review checklist:
    [ ] No string interpolation of user input into SQL (prepared statements only)
    [ ] All allocations accept an allocator parameter
    [ ] No I/O inside transition.zig (if modified)
    [ ] Each error type is in the module's error set
    [ ] If any function signature changed: verify all call sites compile
-   [ ] New public functions have a doc comment (one line describing behaviour)
-9. → fn:complete-handoff (status: PASS/FAIL,
-                           artifacts_out: ["src/...", "migrations/NNN_*.sql"],
-                           next_action: "Route to TEST-DESIGNER once Step 2b also complete")
+   [ ] New public functions have a doc comment (one line)
+10. → fn:register-inner-report
+11. → fn:complete-handoff (status: PASS/FAIL,
+                            artifacts_out: ["src/...", "migrations/NNN_*.sql"],
+                            next_action: "Route to TEST-DESIGNER once Step 2b also complete")
 ```
 
 ### Acceptance criteria for this step
 
 - [ ] `zig build` exits 0 with no "error set" warnings in stderr
-- [ ] All migrations apply cleanly against fresh DB (`fn:apply-migrations` PASS)
+- [ ] All migrations apply cleanly against fresh DB
 - [ ] No SQL string interpolation of user data
 - [ ] Pure transition function has no I/O (if modified)
 - [ ] All callers of any changed function signature compile without error
@@ -188,25 +211,29 @@ Step workflow chain template:
 ### Procedure
 
 ```
-1. Read src/design/<module>.md for frontend components/hooks
-2. → fn:read-frontend-conventions
-3. Implement components in web/src/ per the design
-4. → fn:check-frontend-types
+1. Verify current branch:
+   git branch --show-current  →  must equal feature/<run-id> from context.branch_name
+   If not on the correct branch: STOP; report FAIL to ORCH before touching any file.
+2. Read src/design/<module>.md for frontend components/hooks
+3. → fn:read-frontend-conventions
+4. Implement components in web/src/ per the design
+5. → fn:check-frontend-types
    If FAIL: fix TypeScript errors; retry
-5. → fn:check-frontend-lint
+6. → fn:check-frontend-lint
    If FAIL: fix lint errors; retry (warnings do not block)
-6. → fn:check-frontend-build
+7. → fn:check-frontend-build
    If FAIL: fix build errors; retry
-7. Self-review checklist:
+8. Self-review checklist:
    [ ] No raw API calls in components (all via api/ modules)
    [ ] Destructive actions use ConfirmDialog
    [ ] Role-gating hides (not disables) unauthorized elements
    [ ] All interactive elements have accessible labels
    [ ] No hardcoded hex colors (all from design token variables)
    [ ] Token never stored in localStorage/sessionStorage
-8. → fn:complete-handoff (status: PASS/FAIL,
-                           artifacts_out: ["web/src/..."],
-                           next_action: "Route to TEST-DESIGNER once Step 2a also complete")
+9. → fn:register-inner-report
+10. → fn:complete-handoff (status: PASS/FAIL,
+                            artifacts_out: ["web/src/..."],
+                            next_action: "Route to TEST-DESIGNER once Step 2a also complete")
 ```
 
 ### Acceptance criteria for this step
@@ -237,7 +264,8 @@ Step workflow chain template:
       - Frontend unit tests: web/src/**/*.test.ts
       - E2E tests: web/tests/e2e/<journey>.spec.ts (for critical journeys only)
 4. Verify: every MUST requirement has ≥1 unit or integration test case
-5. → fn:complete-handoff (status: PASS/FAIL,
+5. → fn:register-inner-report
+6. → fn:complete-handoff (status: PASS/FAIL,
                            artifacts_out: ["tests/specs/...", "tests/unit/...", ...],
                            next_action: "Route to TEST-RUNNER")
 ```
@@ -267,7 +295,8 @@ Step workflow chain template:
    - If any BLOCKER failures: status = FAIL; classify failure type (see below)
    - If coverage below threshold: status = FAIL
    - If only MINOR failures: status = PARTIAL (Orchestrator decides)
-7. → fn:complete-handoff (status: PASS/FAIL/PARTIAL,
+7. → fn:register-inner-report
+8. → fn:complete-handoff (status: PASS/FAIL/PARTIAL,
                            artifacts_out: ["tests/reports/report-<date>-WF02.json"],
                            next_action: PASS → "Route to RELEASE-VALIDATOR"
                                         FAIL (compile) → "Inline fix authority granted — see below"
@@ -308,9 +337,7 @@ When TEST-RUNNER returns FAIL for non-compile errors, ORCH routes to `ISSUE-FIXE
 
 ### ORCH pre-dispatch benchmark environment check
 
-**ORCH MUST run this check before dispatching RELEASE-VALIDATOR.** If it fails, ORCH routes
-to BACKEND-DEV to provision the environment — do NOT dispatch RELEASE-VALIDATOR into an
-environment where benchmarks will error on missing configuration.
+**ORCH MUST run this check before dispatching RELEASE-VALIDATOR.**
 
 ```bash
 # PowerShell
@@ -346,7 +373,8 @@ Log the block with action `BENCH_ENV_BLOCK` in `handoffs/orchestrator.log`.
    Any stale docs = MAJOR issue
 5. Stage gate check (ORCH responsibility, not RELEASE-VALIDATOR):
    - All MUST requirements for this stage = TESTED
-6. → fn:complete-handoff (status: PASS/FAIL,
+6. → fn:register-inner-report
+7. → fn:complete-handoff (status: PASS/FAIL,
                            next_action: PASS → "Route to DOC-UPDATER"
                                         FAIL → "Identify blocker and route to correct agent")
 ```
@@ -374,14 +402,24 @@ On FAIL, `ORCH` inspects the blocking issue type:
    → fn:generate-openapi
 4. → fn:check-doc-freshness (final verification)
    If issues remain: fix them inline
-5. → fn:complete-handoff (status: PASS,
-                           next_action: "Implementation complete.")
+5. → fn:register-inner-report
+6. → fn:complete-handoff (status: PASS,
+                           next_action: "Route to BACKEND-DEV or FRONTEND-DEV for Step Final")
 ```
+
+---
+
+## Step Final — Git Merge
+
+**Agent:** `BACKEND-DEV` (backend/mixed runs) or `FRONTEND-DEV` (frontend-only runs) — same agent as Step 00  
+**Protocol:** `docs/agents/protocols/GIT_MERGE.md`
+
+ORCH supplies `context.branch_name` and `context.requirement_ids` in this handoff.  
+Use DOC-UPDATER's `result.summary` as the commit and PR one-line summary.  
+Follow GIT_MERGE.md exactly.
 
 ---
 
 ## Parallel Execution Rule
 
-Steps 2a (backend) and 2b (frontend) MAY run in parallel when both are present. The Orchestrator MUST wait for both to return PASS before routing to Step 3.
-
-Steps 2a, 2b, and 3 MUST all complete before Step 4. The Orchestrator MUST NOT start a test run against incomplete code.
+Steps 2a (backend) and 2b (frontend) MAY run in parallel when both are present. Both run on the same feature branch created in Step 00. ORCH MUST wait for both to return PASS before routing to Step 3. ORCH MUST NOT assign overlapping `owned_modules` to two concurrent WF-02 runs (see ORCHESTRATOR.md §10 Parallel-Host Coordination).
