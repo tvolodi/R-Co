@@ -1165,6 +1165,21 @@
       "release_run": "WF02-adp09-20260526",
       "release_decision": "docs/status/release-ADP-09-20260526.json",
       "last_updated": "2026-05-26T13:38:17Z"
+    },
+    "ADP-10": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Agent IO capture audit",
+      "implementation_run": "WF02-adp10-20260526",
+      "implementation_handoff": "handoffs/WF02-adp10-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-10.md",
+      "test_run": "tests/reports/report-20260526T151827Z-WF02-adp10-20260526-step04.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T15:23:42Z",
+      "release_run": "WF02-adp10-20260526",
+      "release_decision": "docs/status/release-ADP-10-20260526.json",
+      "last_updated": "2026-05-26T15:26:37Z"
     }
   }
 }

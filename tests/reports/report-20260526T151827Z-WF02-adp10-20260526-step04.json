@@ -1,0 +1,117 @@
+{
+  "run_id": "WF02-adp10-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-092",
+  "step": "04",
+  "agent_id": "TEST-RUNNER",
+  "timestamp": "2026-05-26T15:18:27Z",
+  "spec": "tests/specs/ADP-10.md",
+  "summary": {
+    "result": "PASS",
+    "reason": "Executed ADP-10 WF-02 Step 04 validation. Required unit and integration commands completed with explicit exit-code markers, and focused ADP-10 integration filter also exited 0. Results verify payload_full agent/non-agent semantics and ADP-10 compatibility expectations."
+  },
+  "commands": [
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "UNIT_EXIT_CODE=0"
+      ]
+    },
+    {
+      "command": "zig build test-integration",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "INTEGRATION_EXIT_CODE=0"
+      ]
+    },
+    {
+      "command": "zig build test-integration -- --test-filter \"TC-ADP-10\"",
+      "env": {
+        "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+      },
+      "exit_code": 0,
+      "status": "PASS",
+      "evidence": [
+        "Cleaning test database...",
+        "Test database cleaned.",
+        "ADP10_FILTER_EXIT_CODE=0"
+      ]
+    }
+  ],
+  "case_outcomes": [
+    {
+      "case_id": "TC-ADP-10-01",
+      "execution_status": "PASS",
+      "evidence": "ADP-10 integration suite passed, including migration metadata validation in tests/integration/adp10_agent_io_capture_audit_test.zig."
+    },
+    {
+      "case_id": "TC-ADP-10-02",
+      "execution_status": "PASS",
+      "evidence": "Focused and full integration runs passed with explicit exit code 0, covering payload_full non-null agent rows and NULL non-agent rows."
+    },
+    {
+      "case_id": "TC-ADP-10-03",
+      "execution_status": "PASS",
+      "evidence": "Focused and full integration runs passed with explicit exit code 0, covering ADP-09 chain compatibility and OBS-03 field compatibility assertions."
+    }
+  ],
+  "requirement_traceability": [
+    {
+      "requirement_id": "ADP-10",
+      "acceptance_criterion": "Additive schema support exists: nullable payload_full plus payload index and object-shape guard",
+      "tests": [
+        "TC-ADP-10-01"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-10",
+      "acceptance_criterion": "Agent actions persist non-null payload_full envelope with required ADP-10 keys",
+      "tests": [
+        "TC-ADP-10-02"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-10",
+      "acceptance_criterion": "Non-agent actions preserve OBS-03 behavior and keep payload_full = NULL",
+      "tests": [
+        "TC-ADP-10-02"
+      ],
+      "status": "PASS"
+    },
+    {
+      "requirement_id": "ADP-10",
+      "acceptance_criterion": "ADP-10 rows remain compatible with ADP-09 deterministic chain semantics",
+      "tests": [
+        "TC-ADP-10-03"
+      ],
+      "status": "PASS"
+    }
+  ],
+  "summary_counts": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "unverified": 0
+  },
+  "issues": [],
+  "artifacts_checked": [
+    "handoffs/WF02-adp10-20260526/step-04-test-runner.json",
+    "tests/specs/ADP-10.md",
+    "tests/integration/adp10_agent_io_capture_audit_test.zig",
+    "tests/integration/main_test.zig",
+    "migrations/036_adp10_agent_io_capture_audit.sql",
+    "src/design/adp-10-agent-io-capture-audit.md"
+  ],
+  "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 05)."
+}

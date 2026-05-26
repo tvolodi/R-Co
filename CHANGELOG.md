@@ -74,6 +74,13 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260526T132149Z-WF02-adp09-20260526-step04b-rework1.json; release approval is recorded in docs/status/release-ADP-09-20260526.json.
 - Requirement: ADP-09 (MUST, Stage 6.5) - RELEASED
 
+### ADP-10 - Agent IO capture audit (RELEASED 2026-05-26)
+- Implemented additive nullable `payload_full` audit field for capturing agent invocation IO payloads, including deterministic JSON object-shape validation and per-agent row filtering semantics.
+- Added agent-invocation detection logic to distinguish agent-initiated actions from user/platform-initiated actions, ensuring non-agent rows preserve NULL payload_full behavior.
+- Implemented and validated ADP-10 integration coverage across new `tests/integration/adp10_agent_io_capture_audit_test.zig` with explicit unit/integration exit-code markers and focused filter runs.
+- Validation evidence passed in tests/reports/report-20260526T151827Z-WF02-adp10-20260526-step04.json; release approval is recorded in docs/status/release-ADP-10-20260526.json.
+- Requirement: ADP-10 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`
