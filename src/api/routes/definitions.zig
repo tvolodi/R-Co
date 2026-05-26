@@ -588,6 +588,16 @@ pub fn handleActivate(
     }
     allocator.free(vresult.violations);
 
+    const transform_result = graph_mod.validateEdgeTransforms(allocator, graph_to_validate) catch
+        return errorResult(allocator, 500, "internal_error");
+    if (!transform_result.valid) {
+        store.last_violations = transform_result.violations;
+        const body_str = serializeViolations(allocator, store.lastViolations(), 422) catch
+            return errorResult(allocator, 500, "serialization failed");
+        return .{ .status_code = 422, .body = body_str };
+    }
+    allocator.free(transform_result.violations);
+
     const def = store.activate(allocator, id) catch |err| switch (err) {
         error.DefinitionNotFound => return errorResult(allocator, 404, "not_found"),
         error.AlreadyActive => {
@@ -607,6 +617,11 @@ pub fn handleActivate(
                 .{},
             ) catch "{\"error\":\"not_draft\"}";
             return .{ .status_code = 409, .body = resp };
+        },
+        error.GraphValidationFailed => {
+            const body_str = serializeViolations(allocator, store.lastViolations(), 422) catch
+                return errorResult(allocator, 500, "serialization failed");
+            return .{ .status_code = 422, .body = body_str };
         },
         error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
         else => return errorResult(allocator, 500, "internal_error"),
@@ -1135,6 +1150,7 @@ fn duplicateImportGraph(
             .source = try allocator.dupe(u8, e.source),
             .target = try allocator.dupe(u8, e.target),
             .condition = if (e.condition) |c| try allocator.dupe(u8, c) else null,
+            .transform = if (e.transform) |t| try allocator.dupe(u8, t) else null,
             .is_default = e.is_default,
         };
     }

@@ -1,0 +1,40 @@
+{
+  "report_id": "WF03-adp01-es07fix-20260526-step-01-issue-fixer",
+  "agent_id": "ISSUE-FIXER",
+  "run_id": "WF03-adp01-es07fix-20260526",
+  "step": "01",
+  "created_at": "2026-05-25T20:55:05Z",
+  "summary": "Diagnosed TC-ES-07-01 as a source logic regression (Category A): ADP-01 tenant_id schema change made archive INSERT ... SELECT * invalid for events_archive, and SQL errors were swallowed. Implemented explicit archive column mapping and boundary-inclusive keep_days fallback cutoff, then verified zig build, zig build test, and zig build test-integration all pass.",
+  "files_created": [
+    "docs/issues/ISS-0023.json",
+    "docs/issue-reports/WF03-adp01-es07fix-20260526-step-01-issue-fixer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "src/event_store/store.zig",
+    "docs/issues/issue_index.json",
+    "handoffs/WF03-adp01-es07fix-20260526/step-01-issue-fixer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "BUILD_EXIT_CODE=0"
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "UNIT_EXIT_CODE=0"
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "pass",
+      "detail": "INTEGRATION_EXIT_CODE=0"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-RUNNER (WF-03 Step 3)"
+  ],
+  "blockers": []
+}

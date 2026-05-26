@@ -31,6 +31,7 @@ pub const api_errors = @import("api/errors.zig"); // API-01 RFC 9457 Problem Det
 pub const api_response = @import("api/response.zig"); // API-01 response builder
 pub const api_content_type = @import("api/middleware/content_type.zig"); // API-01 Content-Type enforcement
 pub const api_trace_context = @import("api/trace_context.zig"); // API-09 trace context
+pub const api_tenant_context = @import("api/tenant_context.zig"); // ADP-03 request tenant context
 pub const api_trace = @import("api/middleware/trace.zig"); // API-09 trace middleware
 pub const api_rate_limit = @import("api/middleware/rate_limit.zig"); // API-10 rate limiting
 pub const api_openapi = @import("api/openapi/mod.zig"); // API-11 OpenAPI builder/serializer

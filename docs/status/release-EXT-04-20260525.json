@@ -1,0 +1,63 @@
+{
+  "stage": "Stage 6 - Observability + Extensions",
+  "date": "2026-05-25T15:31:00Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "EXT-04"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.579,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.593,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 49336.147,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 39.853,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "test_evidence": {
+    "test_report": "tests/reports/report-20260525T152809Z-WF02-ext04-20260525.json",
+    "report_status": "PASS",
+    "ext04_acceptance_mappings_passed": 6,
+    "ext04_failures": 0,
+    "implementation_artifacts_reviewed": [
+      "src/engine/transition.zig",
+      "src/engine/instance.zig",
+      "src/definition/graph.zig"
+    ]
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "EXT-04"
+  ],
+  "non_blocking_issues": [
+    {
+      "id": "EXT04-COVERAGE-STEP-MISSING",
+      "severity": "MINOR",
+      "description": "Coverage build step test-coverage is not defined in build.zig.",
+      "reroute_guidance": "Route to TEST-DESIGNER and BACKEND-DEV if WF-04 coverage gating becomes mandatory for this stage."
+    }
+  ],
+  "recommendation": "APPROVE EXT-04 release gate and route to DOC-UPDATER for requirement status lifecycle update."
+}

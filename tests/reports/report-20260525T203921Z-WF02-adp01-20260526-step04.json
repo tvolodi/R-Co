@@ -1,0 +1,61 @@
+{
+  "run_id": "WF02-adp01-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-004",
+  "step": "04",
+  "timestamp": "2026-05-25T20:39:21Z",
+  "overall_verdict": "FAIL",
+  "adp01_acceptance_coverage_status": "PARTIAL",
+  "adp01_coverage_summary": "No ADP-01 test case failures were reported by the integration runner output. Workflow acceptance is blocked by an unrelated integration failure in ES-07.",
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "command": "zig build test-integration",
+      "exit_code": 1,
+      "status": "FAIL",
+      "summary": "250 passed, 7 skipped, 1 failed (258 total)",
+      "failing_test": "TC-ES-07-01: archive moves expired events to events_archive",
+      "failing_file": "tests/integration/event_store_integration_test.zig:806",
+      "observed_output_excerpt": "expect(n >= 1) failed in TC-ES-07-01 during events_archive assertion"
+    }
+  ],
+  "summary": {
+    "total": 258,
+    "passed": 250,
+    "failed": 1,
+    "skipped": 7
+  },
+  "failures": [
+    {
+      "test_id": "TC-ES-07-01",
+      "layer": "integration",
+      "file": "tests/integration/event_store_integration_test.zig",
+      "line": 806,
+      "error_message": "Assertion failed: expected archived event count n >= 1 after archive() call.",
+      "severity": "BLOCKER",
+      "requirement_id": "ES-07",
+      "requirement_impact": "Blocks full WF-02 verification completion; not mapped to ADP-01 acceptance criteria.",
+      "classification": "Pre-existing blocker (already observed in step-03 handoff issues)."
+    }
+  ],
+  "issues": [
+    {
+      "severity": "BLOCKER",
+      "description": "Integration suite fails at TC-ES-07-01 archive retention assertion, preventing full WF-02 test-runner PASS.",
+      "impacted_requirements": [
+        "ES-07"
+      ],
+      "adp01_regression": false
+    }
+  ],
+  "next_action_recommendation": "Route to ISSUE-FIXER (WF-03) to resolve ES-07 archival integration failure, then rerun WF-02 Step 04."
+}

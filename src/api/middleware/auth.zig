@@ -18,6 +18,7 @@
 
 const std = @import("std");
 const errors = @import("../errors.zig");
+const tenant_context = @import("../tenant_context.zig");
 const pool_mod = @import("pool");
 
 // ── Module-level state ────────────────────────────────────────────────────────
@@ -36,6 +37,8 @@ pub const HandlerResult = struct {
     status_code: u16,
     body: []const u8,
 };
+
+pub const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
 /// Platform roles seeded by 008_identity.sql.
 /// Maps to the `roles.name` column.
@@ -60,6 +63,21 @@ pub const Role = enum {
     }
 };
 
+pub const TenantContextSource = enum {
+    token_claim,
+    default_fallback,
+};
+
+pub const TenantResolutionError = error{
+    InvalidTenantClaimFormat,
+    OutOfMemory,
+};
+
+pub const ResolvedTenantContext = struct {
+    tenant_id: [36]u8,
+    source: TenantContextSource,
+};
+
 /// The authenticated caller's identity and permissions.
 /// Route handlers receive this via the request context.
 pub const AuthContext = struct {
@@ -77,6 +95,9 @@ pub const AuthContext = struct {
     /// Used as the key for per-token rate limiting (API-10).
     /// Caller owns this string; freed with the same allocator passed to authenticate().
     token_id: []const u8,
+    /// Resolved tenant context for the request lifecycle.
+    tenant_id: [36]u8 = DEFAULT_TENANT_ID.*,
+    tenant_source: TenantContextSource = .default_fallback,
 };
 
 fn rolePriority(role: Role) u8 {
@@ -115,6 +136,92 @@ fn parseRolesJson(allocator: std.mem.Allocator, roles_json: []const u8) ![]Role 
         roles[idx] = Role.fromString(item.string) orelse return error.InvalidRoleClaim;
     }
     return roles;
+}
+
+fn hexNibble(c: u8) error{InvalidHex}!u8 {
+    return switch (c) {
+        '0'...'9' => c - '0',
+        'a'...'f' => c - 'a' + 10,
+        'A'...'F' => c - 'A' + 10,
+        else => error.InvalidHex,
+    };
+}
+
+fn parseUuid(hex: []const u8) error{InvalidUuid}![16]u8 {
+    if (hex.len != 36) return error.InvalidUuid;
+    var uuid: [16]u8 = undefined;
+    var byte_idx: usize = 0;
+    var i: usize = 0;
+    while (i < hex.len) {
+        if (hex[i] == '-') {
+            i += 1;
+            continue;
+        }
+        if (i + 1 >= hex.len) return error.InvalidUuid;
+        const hi = hexNibble(hex[i]) catch return error.InvalidUuid;
+        const lo = hexNibble(hex[i + 1]) catch return error.InvalidUuid;
+        if (byte_idx >= 16) return error.InvalidUuid;
+        uuid[byte_idx] = (hi << 4) | lo;
+        byte_idx += 1;
+        i += 2;
+    }
+    if (byte_idx != 16) return error.InvalidUuid;
+    return uuid;
+}
+
+fn formatUuidLower(uuid: [16]u8, out: *[36]u8) void {
+    const rendered = std.fmt.bufPrint(
+        out,
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
+        .{
+            uuid[0],  uuid[1],  uuid[2],  uuid[3],
+            uuid[4],  uuid[5],  uuid[6],  uuid[7],
+            uuid[8],  uuid[9],  uuid[10], uuid[11],
+            uuid[12], uuid[13], uuid[14], uuid[15],
+        },
+    ) catch unreachable;
+    _ = rendered;
+}
+
+/// Resolve tenant context from bearer token claims represented by JWT payload,
+/// while preserving compatibility for opaque legacy tokens.
+pub fn resolveTenantContext(allocator: std.mem.Allocator, raw_token: []const u8) TenantResolutionError!ResolvedTenantContext {
+    var resolved = ResolvedTenantContext{
+        .tenant_id = DEFAULT_TENANT_ID.*,
+        .source = .default_fallback,
+    };
+
+    const first_dot = std.mem.indexOfScalar(u8, raw_token, '.') orelse return resolved;
+    const second_dot_rel = std.mem.indexOfScalar(u8, raw_token[first_dot + 1 ..], '.') orelse return resolved;
+    const payload_b64 = raw_token[first_dot + 1 .. first_dot + 1 + second_dot_rel];
+    if (payload_b64.len == 0) return resolved;
+
+    const decoder = std.base64.url_safe_no_pad.Decoder;
+    const decoded_len = decoder.calcSizeForSlice(payload_b64) catch return resolved;
+    const decoded_payload = try allocator.alloc(u8, decoded_len);
+    defer allocator.free(decoded_payload);
+    decoder.decode(decoded_payload, payload_b64) catch return resolved;
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, decoded_payload, .{ .allocate = .alloc_always }) catch return resolved;
+    defer parsed.deinit();
+    if (parsed.value != .object) return resolved;
+
+    const tenant_field = parsed.value.object.get("tenant_id") orelse return resolved;
+    switch (tenant_field) {
+        .null => return resolved,
+        .string => |tenant_text| {
+            const parsed_uuid = parseUuid(tenant_text) catch return error.InvalidTenantClaimFormat;
+            var canonical: [36]u8 = undefined;
+            formatUuidLower(parsed_uuid, &canonical);
+            if (!std.mem.eql(u8, tenant_text, canonical[0..])) {
+                return error.InvalidTenantClaimFormat;
+            }
+            resolved.tenant_id = canonical;
+            resolved.source = .token_claim;
+            return resolved;
+        },
+        else => return error.InvalidTenantClaimFormat,
+    }
 }
 
 /// Result of the auth middleware check.
@@ -295,6 +402,8 @@ pub fn authenticate(
     authorization_header: ?[]const u8,
     db_pool: *pool_mod.Pool,
 ) AuthResult {
+    tenant_context.clear();
+
     // Step 1: Check for missing header.
     const header = authorization_header orelse
         return .{ .unauthenticated = buildUnauthorized(allocator, "missing Authorization header") };
@@ -322,6 +431,11 @@ pub fn authenticate(
     // Step 5a-c: Check bootstrap token (constant-time comparison).
     if (bootstrap_hash) |boot_hash| {
         if (constantTimeEql(token_hash, boot_hash)) {
+            const resolved_tenant = resolveTenantContext(allocator, raw_token) catch |err| switch (err) {
+                error.InvalidTenantClaimFormat => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid tenant_id claim") },
+                error.OutOfMemory => return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") },
+            };
+            tenant_context.set(resolved_tenant.tenant_id[0..]);
             const user_id_boot = allocator.dupe(u8, BOOTSTRAP_USER_ID) catch
                 return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
             const token_id_boot = allocator.dupe(u8, "bootstrap") catch {
@@ -333,6 +447,8 @@ pub fn authenticate(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = true,
                 .token_id = token_id_boot,
+                .tenant_id = resolved_tenant.tenant_id,
+                .tenant_source = resolved_tenant.source,
             } };
         }
     }
@@ -476,12 +592,28 @@ pub fn authenticate(
         &[_][]const u8{token_hash},
     ) catch {};
 
+    const resolved_tenant = resolveTenantContext(allocator, raw_token) catch |err| switch (err) {
+        error.InvalidTenantClaimFormat => {
+            allocator.free(token_id);
+            allocator.free(user_id);
+            return .{ .unauthenticated = buildUnauthorized(allocator, "invalid tenant_id claim") };
+        },
+        error.OutOfMemory => {
+            allocator.free(token_id);
+            allocator.free(user_id);
+            return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
+        },
+    };
+    tenant_context.set(resolved_tenant.tenant_id[0..]);
+
     // Step 10: Return authenticated.
     return .{ .authenticated = .{
         .user_id = user_id,
         .role = role,
         .is_bootstrap = false,
         .token_id = token_id,
+        .tenant_id = resolved_tenant.tenant_id,
+        .tenant_source = resolved_tenant.source,
     } };
 }
 
@@ -594,4 +726,35 @@ test "buildForbidden: produces 403 with correct Problem Details" {
     try std.testing.expectEqual(@as(u16, 403), result.status_code);
     try std.testing.expect(std.mem.indexOf(u8, result.body, "forbidden") != null);
     try std.testing.expect(std.mem.indexOf(u8, result.body, "insufficient permissions") != null);
+}
+
+fn makeJwtLikeToken(allocator: std.mem.Allocator, payload_json: []const u8) ![]u8 {
+    const encoder = std.base64.url_safe_no_pad.Encoder;
+    const encoded_len = encoder.calcSize(payload_json.len);
+    const encoded_payload = try allocator.alloc(u8, encoded_len);
+    defer allocator.free(encoded_payload);
+    _ = encoder.encode(encoded_payload, payload_json);
+    return std.fmt.allocPrint(allocator, "h.{s}.s", .{encoded_payload});
+}
+
+test "resolveTenantContext: opaque legacy token resolves to default tenant" {
+    const resolved = try resolveTenantContext(std.testing.allocator, "legacy-opaque-token");
+    try std.testing.expectEqualStrings(DEFAULT_TENANT_ID, resolved.tenant_id[0..]);
+    try std.testing.expectEqual(TenantContextSource.default_fallback, resolved.source);
+}
+
+test "resolveTenantContext: valid tenant_id claim scopes to claim tenant" {
+    const token = try makeJwtLikeToken(std.testing.allocator, "{\"tenant_id\":\"11111111-1111-1111-1111-111111111111\"}");
+    defer std.testing.allocator.free(token);
+
+    const resolved = try resolveTenantContext(std.testing.allocator, token);
+    try std.testing.expectEqualStrings("11111111-1111-1111-1111-111111111111", resolved.tenant_id[0..]);
+    try std.testing.expectEqual(TenantContextSource.token_claim, resolved.source);
+}
+
+test "resolveTenantContext: malformed tenant_id claim fails resolution" {
+    const token = try makeJwtLikeToken(std.testing.allocator, "{\"tenant_id\":\"not-a-uuid\"}");
+    defer std.testing.allocator.free(token);
+
+    try std.testing.expectError(error.InvalidTenantClaimFormat, resolveTenantContext(std.testing.allocator, token));
 }

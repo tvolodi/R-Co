@@ -3,6 +3,7 @@ const db = @import("../db/pool.zig");
 const pagination = @import("../api/pagination.zig");
 
 pub const Uuid = [16]u8;
+pub const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
 pub const TimelineError = error{
     InstanceNotFound,
@@ -17,6 +18,7 @@ pub const TimelineError = error{
 
 pub const TimelineQuery = struct {
     instance_id: Uuid,
+    tenant_id: []const u8 = DEFAULT_TENANT_ID,
     after_sequence: ?i64,
     page_size: u16,
 };
@@ -84,6 +86,7 @@ pub fn listTimeline(
     const pa = param_arena.allocator();
 
     const instance_hex = uuidToHex(pa, query.instance_id) catch return TimelineError.OutOfMemory;
+    const tenant_id = query.tenant_id;
 
     const exists_rows = conn.query(
         allocator,
@@ -127,6 +130,7 @@ pub fn listTimeline(
         \\    sequence_number
         \\  FROM events
         \\  WHERE instance_id = $1
+        \\    AND tenant_id = $2::uuid
         \\  UNION ALL
         \\  SELECT
         \\    event_id,
@@ -139,12 +143,13 @@ pub fn listTimeline(
         \\    sequence_number
         \\  FROM events_archive
         \\  WHERE instance_id = $1
+        \\    AND tenant_id = $2::uuid
         \\) AS combined
-        \\WHERE ($2::text = '' OR sequence_number > $2::bigint)
+        \\WHERE ($3::text = '' OR sequence_number > $3::bigint)
         \\ORDER BY created_at_us ASC, sequence_number ASC
-        \\LIMIT $3
+        \\LIMIT $4
     ,
-        &.{ instance_hex, after_seq_str, limit_str },
+        &.{ instance_hex, tenant_id, after_seq_str, limit_str },
     ) catch return TimelineError.EventStoreFailure;
     defer {
         var mr = rows;

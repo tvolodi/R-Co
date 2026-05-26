@@ -20,12 +20,15 @@ const metrics = @import("../obs/metrics.zig");
 
 /// Raw 16-byte UUID v4 representation.
 pub const Uuid = [16]u8;
+pub const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
 // ---------------------------------------------------------------------------
 // Public error set
 // ---------------------------------------------------------------------------
 
 pub const StoreError = error{
+    /// tenant_id is absent at storage boundary; deterministic fallback is required by caller.
+    MissingTenantContext,
     /// Pool.acquire() returned ExhaustedPool → HTTP 503.
     PoolExhausted,
     /// instance_id does not exist in instance_projections → HTTP 404 (ES-01).
@@ -75,6 +78,7 @@ pub const EventRecord = struct {
 };
 
 pub const AppendParams = struct {
+    tenant_id: []const u8 = DEFAULT_TENANT_ID,
     instance_id: Uuid,
     event_type: []const u8,
     payload: []const u8,
@@ -91,6 +95,7 @@ pub const AppendResult = struct {
 };
 
 pub const ReadOpts = struct {
+    tenant_id: []const u8 = DEFAULT_TENANT_ID,
     /// Return events with sequence_number ≤ value; null = no upper limit (ES-06).
     up_to_sequence: ?i64,
     /// Return events with created_at ≤ value (UTC µs); null = no upper limit (ES-06).
@@ -99,6 +104,7 @@ pub const ReadOpts = struct {
 };
 
 pub const GlobalReadOpts = struct {
+    tenant_id: []const u8 = DEFAULT_TENANT_ID,
     /// Resume cursor: return events with global_seq > value; null = from start (ES-04).
     after_global_seq: ?i64,
     /// Page size; 1..1000; 0 treated as default 100 (ES-04).
@@ -106,6 +112,7 @@ pub const GlobalReadOpts = struct {
 };
 
 pub const HistoryReadOpts = struct {
+    tenant_id: []const u8 = DEFAULT_TENANT_ID,
     /// Optional: filter to a specific event_type name. Null = all types.
     event_type: ?[]const u8,
     /// Optional: inclusive lower bound on created_at (UTC µs). Null = no lower bound.
@@ -195,6 +202,8 @@ pub const Store = struct {
         // ES-03: idempotency_key constraints.
         if (params.idempotency_key.len == 0) return StoreError.IdempotencyKeyMissing;
         if (params.idempotency_key.len > 255) return StoreError.IdempotencyKeyTooLong;
+
+        if (params.tenant_id.len == 0) return StoreError.MissingTenantContext;
 
         // ES-01: payload must be a JSON object (not null, array, or scalar).
         if (!isJsonObject(params.payload)) return StoreError.PayloadInvalid;
@@ -292,11 +301,11 @@ pub const Store = struct {
             allocator,
             \\INSERT INTO events
             \\  (instance_id, event_type, payload, actor_id,
-            \\   sequence_number, idempotency_key, metadata,
+            \\sequence_number, idempotency_key, metadata, tenant_id,
             \\   global_seq)
             \\VALUES
             \\  ($1, $2, $3::jsonb, $4,
-            \\   $5, $6, $7::jsonb,
+            \\$5, $6, $7::jsonb, $8::uuid,
             \\   nextval('events_global_seq'))
             \\ON CONFLICT (idempotency_key) DO NOTHING
             \\RETURNING
@@ -312,6 +321,7 @@ pub const Store = struct {
                 intToStr(param_alloc, sequence_number) catch return StoreError.TransactionFailed,
                 params.idempotency_key,
                 metadata,
+                params.tenant_id,
             },
         ) catch {
             conn.exec("ROLLBACK", &.{}) catch {};
@@ -452,11 +462,12 @@ pub const Store = struct {
                 \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
                 \\       sequence_number, idempotency_key, metadata, global_seq
                 \\FROM events
-                \\WHERE instance_id = $1 AND sequence_number <= $2
+                \\WHERE instance_id = $1 AND tenant_id = $2::uuid AND sequence_number <= $3
                 \\ORDER BY sequence_number ASC
             ,
                 &.{
                     uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed,
+                    opts.tenant_id,
                     intToStr(param_alloc, opts.up_to_sequence.?) catch return StoreError.TransactionFailed,
                 },
             ) catch return StoreError.TransactionFailed;
@@ -475,11 +486,13 @@ pub const Store = struct {
                 \\       sequence_number, idempotency_key, metadata, global_seq
                 \\FROM events
                 \\WHERE instance_id = $1
-                \\  AND (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $2
+                \\  AND tenant_id = $2::uuid
+                \\  AND (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $3
                 \\ORDER BY sequence_number ASC
             ,
                 &.{
                     uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed,
+                    opts.tenant_id,
                     intToStr(param_alloc, opts.up_to_timestamp.?) catch return StoreError.TransactionFailed,
                 },
             ) catch return StoreError.TransactionFailed;
@@ -497,10 +510,13 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\       sequence_number, idempotency_key, metadata, global_seq
             \\FROM events
-            \\WHERE instance_id = $1
+            \\WHERE instance_id = $1 AND tenant_id = $2::uuid
             \\ORDER BY sequence_number ASC
         ,
-            &.{uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed},
+            &.{
+                uuidToHex(param_alloc, instance_id) catch return StoreError.TransactionFailed,
+                opts.tenant_id,
+            },
         ) catch return StoreError.TransactionFailed;
         defer {
             var mr = rows;
@@ -541,12 +557,13 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\       sequence_number, idempotency_key, metadata, global_seq
             \\FROM events
-            \\WHERE global_seq > $1
+            \\WHERE global_seq > $1 AND tenant_id = $2::uuid
             \\ORDER BY global_seq ASC
-            \\LIMIT $2
+            \\LIMIT $3
         ,
             &.{
                 intToStr(param_alloc, cursor) catch return StoreError.TransactionFailed,
+                opts.tenant_id,
                 uintToStr(param_alloc, page_size) catch return StoreError.TransactionFailed,
             },
         ) catch return StoreError.TransactionFailed;
@@ -617,38 +634,41 @@ pub const Store = struct {
         var params_list: std.ArrayList([]const u8) = .empty;
         defer params_list.deinit(allocator);
 
-        // $1 = instance_id (for events table)
+        // $1 = instance_id
         params_list.append(allocator, instance_hex) catch return StoreError.TransactionFailed;
 
-        // event_type filter ($2 for events, reused for archive)
+        // $2 = tenant_id
+        params_list.append(allocator, opts.tenant_id) catch return StoreError.TransactionFailed;
+
+        // event_type filter ($3 for events, reused for archive)
         if (opts.event_type) |et| {
             params_list.append(allocator, et) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // from filter ($3 for events, reused for archive)
+        // from filter ($4 for events, reused for archive)
         if (opts.from) |f| {
             params_list.append(allocator, intToStr(param_alloc, f) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // to filter ($4 for events, reused for archive)
+        // to filter ($5 for events, reused for archive)
         if (opts.to) |t| {
             params_list.append(allocator, intToStr(param_alloc, t) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // after_sequence cursor ($5)
+        // after_sequence cursor ($6)
         if (opts.after_sequence) |as| {
             params_list.append(allocator, intToStr(param_alloc, as) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
         } else {
             params_list.append(allocator, "") catch return StoreError.TransactionFailed;
         }
 
-        // limit ($6) — fetch page_size + 1 to detect next page
+        // limit ($7) — fetch page_size + 1 to detect next page
         const fetch_limit: u16 = if (opts.limit < 200) opts.limit + 1 else opts.limit;
         params_list.append(allocator, intToStr(param_alloc, @as(i64, fetch_limit)) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
 
@@ -666,21 +686,23 @@ pub const Store = struct {
             \\           created_at, sequence_number, idempotency_key, metadata, global_seq
             \\    FROM events
             \\    WHERE instance_id = $1
-            \\      AND ($2::text = '' OR event_type = $2)
-            \\      AND ($3::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $3::bigint)
-            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $4::bigint)
+            \\      AND tenant_id = $2::uuid
+            \\      AND ($3::text = '' OR event_type = $3)
+            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $4::bigint)
+            \\      AND ($5::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $5::bigint)
             \\    UNION ALL
             \\    SELECT event_id, instance_id, event_type, payload, actor_id,
             \\           created_at, sequence_number, idempotency_key, metadata, global_seq
             \\    FROM events_archive
             \\    WHERE instance_id = $1
-            \\      AND ($2::text = '' OR event_type = $2)
-            \\      AND ($3::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $3::bigint)
-            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $4::bigint)
+            \\      AND tenant_id = $2::uuid
+            \\      AND ($3::text = '' OR event_type = $3)
+            \\      AND ($4::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint >= $4::bigint)
+            \\      AND ($5::text = '' OR (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint <= $5::bigint)
             \\) AS combined
-            \\WHERE ($5::text = '' OR sequence_number > $5::bigint)
+            \\WHERE ($6::text = '' OR sequence_number > $6::bigint)
             \\ORDER BY sequence_number ASC
-            \\LIMIT $6
+            \\LIMIT $7
         ;
 
         const rows = conn.query(
@@ -771,9 +793,15 @@ pub const Store = struct {
                 // Parameterised. (ES-07, security)
                 conn.exec(
                     \\INSERT INTO events_archive
-                    \\  SELECT *, NOW() AS archived_at FROM events
+                    \\  (event_id, instance_id, event_type, payload, actor_id,
+                    \\   created_at, sequence_number, idempotency_key, metadata, global_seq,
+                    \\   archived_at, tenant_id)
+                    \\  SELECT event_id, instance_id, event_type, payload, actor_id,
+                    \\         created_at, sequence_number, idempotency_key, metadata, global_seq,
+                    \\         NOW() AS archived_at, tenant_id
+                    \\  FROM events
                     \\  WHERE event_type = $1
-                    \\    AND created_at < NOW() - ($2 || ' days')::interval
+                    \\    AND created_at <= NOW() - ($2 || ' days')::interval
                     \\ON CONFLICT (idempotency_key) DO NOTHING
                 ,
                     &.{
@@ -785,7 +813,7 @@ pub const Store = struct {
                 conn.exec(
                     \\DELETE FROM events e
                     \\WHERE event_type = $1
-                    \\  AND created_at < NOW() - ($2 || ' days')::interval
+                    \\  AND created_at <= NOW() - ($2 || ' days')::interval
                     \\  AND EXISTS (
                     \\    SELECT 1 FROM events_archive ea
                     \\    WHERE ea.idempotency_key = e.idempotency_key
@@ -804,7 +832,13 @@ pub const Store = struct {
                 // Parameterised. (ES-07, security)
                 conn.exec(
                     \\INSERT INTO events_archive
-                    \\  SELECT *, NOW() AS archived_at FROM events
+                    \\  (event_id, instance_id, event_type, payload, actor_id,
+                    \\   created_at, sequence_number, idempotency_key, metadata, global_seq,
+                    \\   archived_at, tenant_id)
+                    \\  SELECT event_id, instance_id, event_type, payload, actor_id,
+                    \\         created_at, sequence_number, idempotency_key, metadata, global_seq,
+                    \\         NOW() AS archived_at, tenant_id
+                    \\  FROM events
                     \\  WHERE event_type = $1
                     \\    AND event_id NOT IN (
                     \\      SELECT event_id FROM events
@@ -846,8 +880,14 @@ pub const Store = struct {
         if (retention_days > 0) {
             conn.exec(
                 \\INSERT INTO events_archive
-                \\  SELECT *, NOW() AS archived_at FROM events
-                \\  WHERE created_at < NOW() - ($1 || ' days')::interval
+                \\  (event_id, instance_id, event_type, payload, actor_id,
+                \\   created_at, sequence_number, idempotency_key, metadata, global_seq,
+                \\   archived_at, tenant_id)
+                \\  SELECT event_id, instance_id, event_type, payload, actor_id,
+                \\         created_at, sequence_number, idempotency_key, metadata, global_seq,
+                \\         NOW() AS archived_at, tenant_id
+                \\  FROM events
+                \\  WHERE created_at <= NOW() - ($1 || ' days')::interval
                 \\    AND event_type NOT IN (
                 \\      SELECT event_type FROM event_retention_policies
                 \\    )
@@ -857,7 +897,7 @@ pub const Store = struct {
             ) catch return StoreError.TransactionFailed;
             conn.exec(
                 \\DELETE FROM events e
-                \\WHERE created_at < NOW() - ($1 || ' days')::interval
+                \\WHERE created_at <= NOW() - ($1 || ' days')::interval
                 \\  AND event_type NOT IN (
                 \\    SELECT event_type FROM event_retention_policies
                 \\  )

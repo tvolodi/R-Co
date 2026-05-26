@@ -5,6 +5,7 @@ const pagination = @import("../api/pagination.zig");
 const registry_mod = @import("registry.zig");
 
 pub const CreateUserInput = struct {
+    tenant_id: ?[]const u8,
     username: []const u8,
     display_name: []const u8,
     email: []const u8,
@@ -16,6 +17,27 @@ pub const CreateUserInput = struct {
 pub const UpdateUserStatusInput = struct {
     user_id: []const u8,
     status: registry_mod.UserStatus,
+};
+
+pub const ResolveExternalUserInput = struct {
+    tenant_id: []const u8,
+    external_realm: []const u8,
+    external_id: []const u8,
+};
+
+pub const ProvisionExternalUserInput = struct {
+    tenant_id: []const u8,
+    external_realm: []const u8,
+    external_id: []const u8,
+    preferred_username: []const u8,
+    display_name: []const u8,
+    email: []const u8,
+    status: registry_mod.UserStatus,
+};
+
+pub const ProvisionExternalUserResult = struct {
+    user: registry_mod.User,
+    created: bool,
 };
 
 pub const CreateGroupInput = struct {
@@ -124,6 +146,7 @@ pub const TokenListPage = struct {
 
 pub const GroupError = error{
     Forbidden,
+    CrossTenantAccessDenied,
     ValidationFailed,
     DuplicateGroupName,
     GroupNotFound,
@@ -149,7 +172,11 @@ pub const TokenError = error{
 
 pub const IdentityError = error{
     DuplicateUsername,
+    ExternalIdentityCollision,
     InvalidEmail,
+    MissingTenantContext,
+    MissingExternalRealm,
+    MissingExternalId,
     CallerProvidedUserId,
     CallerProvidedCreatedAt,
     Forbidden,
@@ -178,8 +205,9 @@ pub const Service = struct {
         if (input.caller_supplied_created_at) return error.CallerProvidedCreatedAt;
         if (input.username.len == 0 or input.display_name.len == 0) return error.ValidationFailed;
         if (!isValidEmail(input.email)) return error.InvalidEmail;
+        const effective_tenant_id = input.tenant_id orelse actor.tenant_id[0..];
 
-        return self.registry.createUser(allocator, .{
+        return self.registry.createUser(allocator, effective_tenant_id, .{
             .username = input.username,
             .display_name = input.display_name,
             .email = input.email,
@@ -203,7 +231,7 @@ pub const Service = struct {
         if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
         if (input.user_id.len == 0) return error.ValidationFailed;
 
-        return self.registry.updateUserStatus(allocator, input.user_id, input.status) catch |err| switch (err) {
+        return self.registry.updateUserStatus(allocator, actor.tenant_id[0..], input.user_id, input.status) catch |err| switch (err) {
             registry_mod.RegistryError.NotFound => error.NotFound,
             registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
@@ -216,9 +244,10 @@ pub const Service = struct {
     pub fn getUserStatusById(
         self: *Service,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         user_id: []const u8,
     ) IdentityError!?registry_mod.UserStatus {
-        return self.registry.getUserStatusById(allocator, user_id) catch |err| switch (err) {
+        return self.registry.getUserStatusById(allocator, tenant_id, user_id) catch |err| switch (err) {
             registry_mod.RegistryError.NotFound => error.NotFound,
             registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
@@ -226,6 +255,58 @@ pub const Service = struct {
             registry_mod.RegistryError.DuplicateUsername => error.DuplicateUsername,
             else => error.PersistenceFailed,
         };
+    }
+
+    pub fn resolveUserByExternalIdentity(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        input: ResolveExternalUserInput,
+    ) IdentityError!?registry_mod.User {
+        if (input.tenant_id.len == 0) return error.MissingTenantContext;
+        if (input.external_realm.len == 0) return error.MissingExternalRealm;
+        if (input.external_id.len == 0) return error.MissingExternalId;
+
+        return self.registry.selectUserByExternalIdentity(
+            allocator,
+            input.tenant_id,
+            input.external_realm,
+            input.external_id,
+        ) catch |err| switch (err) {
+            registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+            else => error.PersistenceFailed,
+        };
+    }
+
+    pub fn createOrGetJitOidcUser(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        input: ProvisionExternalUserInput,
+    ) IdentityError!ProvisionExternalUserResult {
+        if (input.tenant_id.len == 0) return error.MissingTenantContext;
+        if (input.external_realm.len == 0) return error.MissingExternalRealm;
+        if (input.external_id.len == 0) return error.MissingExternalId;
+        if (input.preferred_username.len == 0 or input.display_name.len == 0) return error.ValidationFailed;
+        if (!isValidEmail(input.email)) return error.InvalidEmail;
+
+        const result = self.registry.createOrGetJitOidcUser(allocator, input.tenant_id, .{
+            .username = input.preferred_username,
+            .display_name = input.display_name,
+            .email = input.email,
+            .status = input.status,
+            .external_realm = input.external_realm,
+            .external_id = input.external_id,
+        }) catch |err| switch (err) {
+            registry_mod.RegistryError.DuplicateUsername => return error.DuplicateUsername,
+            registry_mod.RegistryError.ExternalIdentityCollision => return error.ExternalIdentityCollision,
+            registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
+            else => return error.PersistenceFailed,
+        };
+
+        return .{ .user = result.user, .created = result.created };
     }
 
     pub fn createGroup(
@@ -237,7 +318,7 @@ pub const Service = struct {
         if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
         if (input.name.len == 0) return error.ValidationFailed;
 
-        return self.registry.createGroup(allocator, input.name) catch |err| switch (err) {
+        return self.registry.createGroup(allocator, actor.tenant_id[0..], input.name) catch |err| switch (err) {
             registry_mod.RegistryError.DuplicateGroupName => error.DuplicateGroupName,
             registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
@@ -255,7 +336,9 @@ pub const Service = struct {
         if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
         if (input.group_id.len == 0 or input.user_id.len == 0) return error.ValidationFailed;
 
-        const group_exists = self.registry.groupExists(allocator, input.group_id) catch |err| switch (err) {
+        const tenant_id = actor.tenant_id[0..];
+
+        const group_exists = self.registry.groupExists(allocator, tenant_id, input.group_id) catch |err| switch (err) {
             registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
             else => return error.PersistenceFailed,
@@ -264,7 +347,7 @@ pub const Service = struct {
             return error.GroupNotFound;
         }
 
-        const user_status = self.registry.getUserStatusById(allocator, input.user_id) catch |err| switch (err) {
+        const user_status = self.registry.getUserStatusById(allocator, tenant_id, input.user_id) catch |err| switch (err) {
             registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
             registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
@@ -275,7 +358,7 @@ pub const Service = struct {
             return error.UserNotFound;
         }
 
-        const result = self.registry.addGroupMember(allocator, input.group_id, input.user_id) catch |err| switch (err) {
+        const result = self.registry.addGroupMember(allocator, tenant_id, input.group_id, input.user_id) catch |err| switch (err) {
             registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
             registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
@@ -294,7 +377,9 @@ pub const Service = struct {
         if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
         if (input.group_id.len == 0 or input.user_id.len == 0) return error.ValidationFailed;
 
-        const group_exists = self.registry.groupExists(allocator, input.group_id) catch |err| switch (err) {
+        const tenant_id = actor.tenant_id[0..];
+
+        const group_exists = self.registry.groupExists(allocator, tenant_id, input.group_id) catch |err| switch (err) {
             registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
             else => return error.PersistenceFailed,
@@ -303,7 +388,7 @@ pub const Service = struct {
             return error.GroupNotFound;
         }
 
-        return self.registry.removeGroupMember(allocator, input.group_id, input.user_id) catch |err| switch (err) {
+        return self.registry.removeGroupMember(allocator, tenant_id, input.group_id, input.user_id) catch |err| switch (err) {
             registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
             else => error.PersistenceFailed,
@@ -313,11 +398,14 @@ pub const Service = struct {
     pub fn listGroupMembers(
         self: *Service,
         allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
         group_id: []const u8,
         params: ListGroupMembersParams,
     ) GroupError!GroupMemberPage {
         if (group_id.len == 0) return error.ValidationFailed;
-        const group_exists = self.registry.groupExists(allocator, group_id) catch |err| switch (err) {
+        const tenant_id = actor.tenant_id[0..];
+
+        const group_exists = self.registry.groupExists(allocator, tenant_id, group_id) catch |err| switch (err) {
             registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
             else => return error.PersistenceFailed,
@@ -352,6 +440,7 @@ pub const Service = struct {
 
         const records = self.registry.listGroupMemberRecords(
             allocator,
+            tenant_id,
             group_id,
             cursor_added_at_us,
             cursor_user_id,
@@ -419,12 +508,13 @@ pub const Service = struct {
     pub fn canClaimGroupTask(
         self: *Service,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         group_id: []const u8,
         user_id: []const u8,
     ) GroupError!bool {
         if (group_id.len == 0 or user_id.len == 0) return error.ValidationFailed;
 
-        return self.registry.isActiveGroupMember(allocator, group_id, user_id) catch |err| switch (err) {
+        return self.registry.isActiveGroupMember(allocator, tenant_id, group_id, user_id) catch |err| switch (err) {
             registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
             registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
@@ -445,7 +535,7 @@ pub const Service = struct {
             if (!isIssuableTokenRole(role)) return error.InvalidRoleSet;
         }
 
-        const user_status = self.registry.getUserStatusById(allocator, input.user_id) catch |err| switch (err) {
+        const user_status = self.registry.getUserStatusById(allocator, actor.tenant_id[0..], input.user_id) catch |err| switch (err) {
             registry_mod.RegistryError.NotFound => return error.UserNotFound,
             registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,

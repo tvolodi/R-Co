@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-25T14:48:52Z",
+  "last_updated": "2026-05-26T04:53:15Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -976,16 +976,105 @@
       "last_updated": "2026-05-25T14:48:52Z"
     },
     "EXT-04": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "SHOULD",
-      "title": "Variable transformer"
+      "title": "Variable transformer",
+      "test_spec": "tests/specs/EXT-04.md",
+      "test_run": "tests/reports/report-20260525T152809Z-WF02-ext04-20260525.json",
+      "tested_at": "2026-05-25",
+      "released_at": "2026-05-25T15:31:00Z",
+      "release_run": "WF02-ext04-20260525",
+      "last_updated": "2026-05-25T15:35:22Z"
     },
     "EXT-05": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "SHOULD",
-      "title": "Sub-process support"
+      "title": "Sub-process support",
+      "test_spec": "tests/specs/EXT-05.md",
+      "test_run": "tests/reports/report-20260525T162125Z-WF02-ext05-20260525.json",
+      "tested_at": "2026-05-25",
+      "released_at": "2026-05-25T16:24:12Z",
+      "release_run": "WF02-ext05-20260525",
+      "last_updated": "2026-05-25T16:26:54Z"
+    },
+    "ADP-01": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Tenant Column on Event Store",
+      "test_spec": "tests/specs/ADP-01.md",
+      "test_run": "tests/reports/report-20260525T210953Z-WF02-adp01-20260526-step04b.json",
+      "tested_at": "2026-05-25",
+      "released_at": "2026-05-25T21:14:14Z",
+      "release_run": "WF02-adp01-20260526",
+      "last_updated": "2026-05-25T21:18:01Z"
+    },
+    "ADP-02": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Tenant column on definition, instance, and audit tables",
+      "implemented_in": [
+        "migrations/028_adp02_tenant_scope_persistence.sql",
+        "src/definition/store.zig",
+        "src/definition/snapshot.zig",
+        "src/definition/export_import.zig",
+        "src/engine/instance.zig",
+        "src/obs/audit.zig",
+        "tests/integration/adp02_tenant_scope_test.zig"
+      ],
+      "test_spec": "tests/specs/ADP-02.md",
+      "test_run": "tests/reports/report-20260525T215115Z-WF02-adp02-20260526-step04.json",
+      "tested_at": "2026-05-25",
+      "released_at": "2026-05-25T21:53:34Z",
+      "release_run": "WF02-adp02-20260526",
+      "last_updated": "2026-05-25T21:56:25Z"
+    },
+    "ADP-03": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Tenant context resolution on API",
+      "implementation_run": "WF02-adp03-20260526",
+      "implementation_handoff": "handoffs/WF02-adp03-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-03.md",
+      "test_run": "tests/reports/report-20260526T022434Z-WF02-adp03-20260526-step04.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T02:27:06Z",
+      "release_run": "WF02-adp03-20260526",
+      "last_updated": "2026-05-26T02:30:19Z"
+    },
+    "ADP-04": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Tenant binding for users",
+      "implementation_run": "WF02-adp04-20260526",
+      "implementation_handoff": "handoffs/WF02-adp04-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-04.md",
+      "test_run": "tests/reports/report-20260526T032153Z-WF02-adp04-20260526-step-04b-rework1.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T03:26:11Z",
+      "release_run": "WF02-adp04-20260526",
+      "release_decision": "docs/status/release-ADP-04-20260526.json",
+      "last_updated": "2026-05-26T03:30:03Z"
+    },
+    "ADP-04a": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "External identity linkage for users",
+      "implementation_run": "WF02-adp04a-20260526",
+      "implementation_handoff": "handoffs/WF02-adp04a-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-04a.md",
+      "test_run": "tests/reports/WF02-adp04a-20260526-step-04-test-runner.md",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T04:49:32Z",
+      "release_run": "WF02-adp04a-20260526",
+      "release_decision": "docs/status/release-ADP-04a-20260526.json",
+      "last_updated": "2026-05-26T04:53:15Z"
     }
   }
 }

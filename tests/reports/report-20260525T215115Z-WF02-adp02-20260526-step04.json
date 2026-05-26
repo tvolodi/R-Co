@@ -1,0 +1,94 @@
+{
+  "run_id": "WF02-adp02-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-013",
+  "step": "04",
+  "timestamp": "2026-05-25T21:51:15Z",
+  "overall_verdict": "PASS",
+  "adp02_acceptance_coverage_status": "PASS",
+  "adp02_coverage_summary": "Required WF-02 Step 04 build and test commands completed successfully. ADP-02 integration coverage includes tenant isolation and default-tenant compatibility scenarios defined in tests/specs/ADP-02.md.",
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "tests/reports/WF02-adp02-20260526-step-04-zig-build.log"
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "tests/reports/WF02-adp02-20260526-step-04-zig-build-test.log"
+    },
+    {
+      "command": "zig build test-integration",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "tests/reports/WF02-adp02-20260526-step-04-zig-test-integration.log"
+    }
+  ],
+  "adp02_acceptance_criteria": [
+    {
+      "criterion": "Tenant column/index/policy contract is present for ADP-02 tables.",
+      "status": "PASS",
+      "evidence": "TC-ADP-02-01 defined and executed via zig build test-integration (exit 0)."
+    },
+    {
+      "criterion": "Definition persistence/read behavior is tenant-partitioned with no cross-tenant leakage.",
+      "status": "PASS",
+      "evidence": "TC-ADP-02-02 defined and executed via zig build test-integration (exit 0)."
+    },
+    {
+      "criterion": "Instance persistence is tenant-scoped and default-tenant compatible.",
+      "status": "PASS",
+      "evidence": "TC-ADP-02-03 defined and executed via zig build test-integration (exit 0)."
+    },
+    {
+      "criterion": "Task and transition persistence remain tenant-isolated.",
+      "status": "PASS",
+      "evidence": "TC-ADP-02-04 defined and executed via zig build test-integration (exit 0)."
+    },
+    {
+      "criterion": "Audit persistence is tenant-scoped for audit_entries and audit_log.",
+      "status": "PASS",
+      "evidence": "TC-ADP-02-05 defined and executed via zig build test-integration (exit 0)."
+    }
+  ],
+  "executed_test_cases": [
+    {
+      "test_id": "TC-ADP-02-01",
+      "layer": "integration",
+      "file": "tests/integration/adp02_tenant_scope_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-02-02",
+      "layer": "integration",
+      "file": "tests/integration/adp02_tenant_scope_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-02-03",
+      "layer": "integration",
+      "file": "tests/integration/adp02_tenant_scope_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-02-04",
+      "layer": "integration",
+      "file": "tests/integration/adp02_tenant_scope_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-02-05",
+      "layer": "integration",
+      "file": "tests/integration/adp02_tenant_scope_test.zig"
+    }
+  ],
+  "summary": {
+    "total": null,
+    "passed": null,
+    "failed": 0,
+    "skipped": null,
+    "note": "Current command outputs for this run did not emit per-test aggregate totals. Command-level pass/fail is recorded from exit codes."
+  },
+  "failures": [],
+  "issues": [],
+  "next_action_recommendation": "Route to RELEASE-VALIDATOR (WF-02 Step 5)."
+}

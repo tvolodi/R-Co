@@ -218,6 +218,14 @@ pub const Store = struct {
         }
         allocator.free(edge_result.violations);
 
+        const transform_result = graph_mod.validateEdgeTransforms(allocator, params.graph) catch
+            return DefinitionError.TransactionFailed;
+        if (!transform_result.valid) {
+            self.last_violations = transform_result.violations;
+            return DefinitionError.GraphValidationFailed;
+        }
+        allocator.free(transform_result.violations);
+
         // [C] Acquire pool connection.
         const conn = self.pool.acquire() catch |err| switch (err) {
             PoolError.ExhaustedPool => return DefinitionError.PoolExhausted,
@@ -231,15 +239,15 @@ pub const Store = struct {
             return DefinitionError.TransactionFailed;
         // graph_json is freed when param_arena is deinitialized at function exit.
 
-        // [D] INSERT … ON CONFLICT (name, version) DO NOTHING RETURNING *
+        // [D] INSERT … ON CONFLICT (tenant_id, name, version) DO NOTHING RETURNING *
         //     Parameterised — $1=name, $2=version, $3=description, $4=graph, $5=created_by.
         //     Security: no user data appears in the SQL string literal.
         const insert_rows = conn.query(
             allocator,
             \\INSERT INTO process_definitions
-            \\  (name, version, description, status, graph, created_by, stage)
-            \\VALUES ($1, $2, $3, 'DRAFT', $4::jsonb, $5::uuid, $6)
-            \\ON CONFLICT (name, version) DO NOTHING
+            \\  (tenant_id, name, version, description, status, graph, created_by, stage)
+            \\VALUES (bpm_effective_tenant_id(), $1, $2, $3, 'DRAFT', $4::jsonb, $5::uuid, $6)
+            \\ON CONFLICT (tenant_id, name, version) DO NOTHING
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -299,6 +307,7 @@ pub const Store = struct {
             \\       stage
             \\FROM process_definitions
             \\WHERE id = $1::uuid
+            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{uuidToHex(a, id) catch return DefinitionError.TransactionFailed},
         ) catch return DefinitionError.TransactionFailed;
@@ -353,7 +362,7 @@ pub const Store = struct {
         var sql: std.ArrayList(u8) = .empty;
         var bound: std.ArrayList([]const u8) = .empty;
         var pidx: usize = 1;
-        var first_clause = true;
+        var first_clause = false;
 
         sql.appendSlice(a,
             \\SELECT id, name, version, description, status, graph, created_by,
@@ -362,6 +371,7 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint,
             \\       stage
             \\FROM process_definitions
+            \\WHERE tenant_id = bpm_effective_tenant_id()
         ) catch return DefinitionError.TransactionFailed;
 
         if (opts.name) |name| {
@@ -489,6 +499,7 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint
             \\FROM process_definitions
             \\WHERE id = $1::uuid
+            \\  AND tenant_id = bpm_effective_tenant_id()
             \\FOR UPDATE
         ,
             &.{id_hex},
@@ -510,6 +521,53 @@ pub const Store = struct {
         };
 
         const current_status = parseDefinitionStatus(col.get(row, 4)) catch .DRAFT;
+
+        if (current_status == .DRAFT) {
+            self.clearLastViolations();
+
+            const graph_json = col.get(row, 5);
+            const graph_to_validate = parseGraphJson(allocator, graph_json) catch {
+                self.setSingleValidationViolation(
+                    allocator,
+                    "GRAPH_STRUCTURE_INVALID",
+                    "Stored definition graph is not a valid JSON graph document",
+                ) catch return DefinitionError.TransactionFailed;
+                return DefinitionError.GraphValidationFailed;
+            };
+            defer freeDefinitionGraph(allocator, graph_to_validate);
+
+            const vresult = graph_mod.validateGraph(allocator, graph_to_validate) catch
+                return DefinitionError.TransactionFailed;
+            if (!vresult.valid) {
+                self.last_violations = vresult.violations;
+                return DefinitionError.GraphValidationFailed;
+            }
+            allocator.free(vresult.violations);
+
+            const attr_result = graph_mod.validateNodeAttributes(allocator, graph_to_validate) catch
+                return DefinitionError.TransactionFailed;
+            if (!attr_result.valid) {
+                self.last_violations = attr_result.violations;
+                return DefinitionError.GraphValidationFailed;
+            }
+            allocator.free(attr_result.violations);
+
+            const edge_result = graph_mod.validateEdgeConditions(allocator, graph_to_validate) catch
+                return DefinitionError.TransactionFailed;
+            if (!edge_result.valid) {
+                self.last_violations = edge_result.violations;
+                return DefinitionError.GraphValidationFailed;
+            }
+            allocator.free(edge_result.violations);
+
+            const transform_result = graph_mod.validateEdgeTransforms(allocator, graph_to_validate) catch
+                return DefinitionError.TransactionFailed;
+            if (!transform_result.valid) {
+                self.last_violations = transform_result.violations;
+                return DefinitionError.GraphValidationFailed;
+            }
+            allocator.free(transform_result.violations);
+        }
 
         // [B] Already ACTIVE → return AlreadyActive error (HTTP 200 via handler).
         //     The handler layer fetches the current definition and returns it with
@@ -534,6 +592,7 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'DEPRECATED', updated_at = NOW()
             \\WHERE name = $1 AND status = 'ACTIVE'
+            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{def_name},
         ) catch return DefinitionError.TransactionFailed;
@@ -546,6 +605,7 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'ACTIVE', updated_at = NOW()
             \\WHERE id = $1::uuid AND status = 'DRAFT'
+            \\  AND tenant_id = bpm_effective_tenant_id()
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -615,6 +675,7 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'DEPRECATED', updated_at = NOW()
             \\WHERE id = $1::uuid AND status = 'ACTIVE'
+            \\  AND tenant_id = bpm_effective_tenant_id()
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -632,7 +693,9 @@ pub const Store = struct {
         if (update_rows.rows.len == 0) {
             const check_rows = conn.query(
                 allocator,
-                \\SELECT id FROM process_definitions WHERE id = $1::uuid
+                \\SELECT id FROM process_definitions
+                \\WHERE id = $1::uuid
+                \\  AND tenant_id = bpm_effective_tenant_id()
             ,
                 &.{id_hex},
             ) catch return DefinitionError.TransactionFailed;
@@ -699,6 +762,7 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'ARCHIVED', archived_at = NOW(), updated_at = NOW()
             \\WHERE id = $1::uuid AND status = 'DEPRECATED'
+            \\  AND tenant_id = bpm_effective_tenant_id()
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -716,7 +780,9 @@ pub const Store = struct {
         if (update_rows.rows.len == 0) {
             const check_rows = conn.query(
                 allocator,
-                \\SELECT id FROM process_definitions WHERE id = $1::uuid
+                \\SELECT id FROM process_definitions
+                \\WHERE id = $1::uuid
+                \\  AND tenant_id = bpm_effective_tenant_id()
             ,
                 &.{id_hex},
             ) catch return DefinitionError.TransactionFailed;
@@ -795,6 +861,14 @@ pub const Store = struct {
                 return DefinitionError.GraphValidationFailed;
             }
             allocator.free(edge_result.violations);
+
+            const transform_result = graph_mod.validateEdgeTransforms(allocator, g) catch
+                return DefinitionError.TransactionFailed;
+            if (!transform_result.valid) {
+                self.last_violations = transform_result.violations;
+                return DefinitionError.GraphValidationFailed;
+            }
+            allocator.free(transform_result.violations);
         }
 
         // [B] Acquire pool connection.
@@ -813,7 +887,10 @@ pub const Store = struct {
         //     $1 = id (bound parameter — no SQL string interpolation).
         const lock_rows = conn.query(
             allocator,
-            \\SELECT id, status FROM process_definitions WHERE id = $1::uuid FOR UPDATE
+            \\SELECT id, status FROM process_definitions
+            \\WHERE id = $1::uuid
+            \\  AND tenant_id = bpm_effective_tenant_id()
+            \\FOR UPDATE
         ,
             &.{id_hex},
         ) catch return DefinitionError.TransactionFailed;
@@ -886,7 +963,7 @@ pub const Store = struct {
         // WHERE clause: id AND status = 'DRAFT' (double-check after SELECT FOR UPDATE).
         sql.appendSlice(a, std.fmt.allocPrint(
             a,
-            " WHERE id = ${d}::uuid AND status = 'DRAFT'",
+            " WHERE id = ${d}::uuid AND status = 'DRAFT' AND tenant_id = bpm_effective_tenant_id()",
             .{pidx},
         ) catch return DefinitionError.TransactionFailed) catch
             return DefinitionError.TransactionFailed;
@@ -973,7 +1050,10 @@ pub const Store = struct {
         //     $1 = id (bound parameter — no SQL string interpolation).
         const lock_rows = conn.query(
             allocator,
-            \\SELECT id, status FROM process_definitions WHERE id = $1::uuid FOR UPDATE
+            \\SELECT id, status FROM process_definitions
+            \\WHERE id = $1::uuid
+            \\  AND tenant_id = bpm_effective_tenant_id()
+            \\FOR UPDATE
         ,
             &.{id_hex},
         ) catch return DefinitionError.TransactionFailed;
@@ -997,7 +1077,9 @@ pub const Store = struct {
         // [B] DELETE the DRAFT row.
         //     $1 = id (bound parameter — no SQL string interpolation).
         conn.exec(
-            \\DELETE FROM process_definitions WHERE id = $1::uuid AND status = 'DRAFT'
+            \\DELETE FROM process_definitions
+            \\WHERE id = $1::uuid AND status = 'DRAFT'
+            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{id_hex},
         ) catch return DefinitionError.TransactionFailed;
@@ -1024,8 +1106,8 @@ pub const Store = struct {
     /// Retrieve the currently ACTIVE version of a definition by name.
     /// Returns DefinitionNotFound if no ACTIVE version exists for the given name.
     ///
-    /// SQL: SELECT … FROM process_definitions WHERE name = $1 AND status = 'ACTIVE'
-    /// The unique partial index uq_active_definition guarantees at most one row.
+    /// SQL: SELECT … FROM process_definitions WHERE tenant_id = bpm_effective_tenant_id() AND name = $1 AND status = 'ACTIVE'
+    /// The unique partial index uq_active_definition_tenant guarantees at most one row.
     ///
     /// Security: name binds as $1 — no SQL string interpolation.
     pub fn getActiveByName(
@@ -1047,7 +1129,8 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint,
             \\       stage
             \\FROM process_definitions
-            \\WHERE name = $1 AND status = 'ACTIVE'
+            \\WHERE tenant_id = bpm_effective_tenant_id()
+            \\  AND name = $1 AND status = 'ACTIVE'
         ,
             &.{name},
         ) catch return DefinitionError.TransactionFailed;
@@ -1131,7 +1214,8 @@ pub const Store = struct {
             \\       stage,
             \\       CASE WHEN name ILIKE $1 THEN 3.0 WHEN name ILIKE $2 THEN 2.0 ELSE 1.0 END AS rank
             \\FROM process_definitions
-            \\WHERE name ILIKE $2 OR description ILIKE $2
+            \\WHERE tenant_id = bpm_effective_tenant_id()
+            \\  AND (name ILIKE $2 OR description ILIKE $2)
             \\ORDER BY rank DESC, created_at DESC
             \\LIMIT $3 OFFSET $4
         ,
@@ -1156,11 +1240,99 @@ pub const Store = struct {
             self.last_violations = &.{};
         }
     }
+
+    fn setSingleValidationViolation(
+        self: *Store,
+        allocator: std.mem.Allocator,
+        code: []const u8,
+        message: []const u8,
+    ) error{OutOfMemory}!void {
+        self.clearLastViolations();
+        const msg = try std.fmt.allocPrint(allocator, "{s}: {s}", .{ code, message });
+        const violations = try allocator.alloc(Violation, 1);
+        violations[0] = Violation{ .code = code, .message = msg };
+        self.last_violations = violations;
+    }
 };
 
 // ---------------------------------------------------------------------------
 // Row parsing helpers
 // ---------------------------------------------------------------------------
+
+fn freeDefinitionGraph(allocator: std.mem.Allocator, graph: DefinitionGraph) void {
+    for (graph.nodes) |n| {
+        allocator.free(n.id);
+        if (n.label) |l| allocator.free(l);
+        if (n.attributes) |attrs| allocator.free(attrs);
+    }
+    allocator.free(graph.nodes);
+
+    for (graph.edges) |e| {
+        allocator.free(e.id);
+        allocator.free(e.source);
+        allocator.free(e.target);
+        if (e.condition) |c| allocator.free(c);
+        if (e.transform) |t| allocator.free(t);
+    }
+    allocator.free(graph.edges);
+}
+
+fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !DefinitionGraph {
+    var parsed = try std.json.parseFromSlice(DefinitionGraph, allocator, graph_json, .{
+        .ignore_unknown_fields = true,
+        .allocate = .alloc_always,
+    });
+    errdefer parsed.deinit();
+
+    const nodes_copy = try allocator.alloc(graph_mod.GraphNode, parsed.value.nodes.len);
+    var nodes_built: usize = 0;
+    errdefer {
+        var i: usize = 0;
+        while (i < nodes_built) : (i += 1) {
+            allocator.free(nodes_copy[i].id);
+            if (nodes_copy[i].label) |l| allocator.free(l);
+            if (nodes_copy[i].attributes) |a| allocator.free(a);
+        }
+        allocator.free(nodes_copy);
+    }
+    for (parsed.value.nodes, 0..) |n, i| {
+        nodes_copy[i] = .{
+            .id = try allocator.dupe(u8, n.id),
+            .node_type = n.node_type,
+            .label = if (n.label) |l| try allocator.dupe(u8, l) else null,
+            .attributes = if (n.attributes) |a| try allocator.dupe(u8, a) else null,
+        };
+        nodes_built += 1;
+    }
+
+    const edges_copy = try allocator.alloc(graph_mod.GraphEdge, parsed.value.edges.len);
+    var edges_built: usize = 0;
+    errdefer {
+        var i: usize = 0;
+        while (i < edges_built) : (i += 1) {
+            allocator.free(edges_copy[i].id);
+            allocator.free(edges_copy[i].source);
+            allocator.free(edges_copy[i].target);
+            if (edges_copy[i].condition) |c| allocator.free(c);
+            if (edges_copy[i].transform) |t| allocator.free(t);
+        }
+        allocator.free(edges_copy);
+    }
+    for (parsed.value.edges, 0..) |e, i| {
+        edges_copy[i] = .{
+            .id = try allocator.dupe(u8, e.id),
+            .source = try allocator.dupe(u8, e.source),
+            .target = try allocator.dupe(u8, e.target),
+            .condition = if (e.condition) |c| try allocator.dupe(u8, c) else null,
+            .transform = if (e.transform) |t| try allocator.dupe(u8, t) else null,
+            .is_default = e.is_default,
+        };
+        edges_built += 1;
+    }
+
+    parsed.deinit();
+    return DefinitionGraph{ .nodes = nodes_copy, .edges = edges_copy };
+}
 
 /// Columns returned by every SELECT / INSERT RETURNING in this module:
 ///   0  id           UUID text

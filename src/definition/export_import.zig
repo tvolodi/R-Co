@@ -104,6 +104,7 @@ pub const ExportImportStore = struct {
             \\SELECT id, name, version, description, graph
             \\FROM process_definitions
             \\WHERE id = $1::uuid
+            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{id_hex},
         ) catch return ExportImportError.DatabaseError;
@@ -185,7 +186,10 @@ pub const ExportImportStore = struct {
             // Security: name=$1, version=$2 — no SQL string interpolation.
             const count_rows = conn.query(
                 allocator,
-                \\SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = $2
+                \\SELECT COUNT(*)
+                \\FROM process_definitions
+                \\WHERE tenant_id = bpm_effective_tenant_id()
+                \\  AND name = $1 AND version = $2
             ,
                 &.{ doc.name, doc.version },
             ) catch return ExportImportError.DatabaseError;
@@ -201,7 +205,7 @@ pub const ExportImportStore = struct {
             }
         }
 
-        // Step 3: re-validate graph (structural + node attributes + edge conditions).
+        // Step 3: re-validate graph (structural + node attributes + edge conditions + edge transforms).
         const vresult = graph_mod.validateGraph(allocator, doc.graph) catch
             return ExportImportError.InvalidGraph;
         if (vresult.violations.len > 0) {
@@ -228,6 +232,15 @@ pub const ExportImportStore = struct {
             return ExportImportError.InvalidGraph;
         }
         allocator.free(edge_result.violations);
+
+        const transform_result = graph_mod.validateEdgeTransforms(allocator, doc.graph) catch
+            return ExportImportError.InvalidGraph;
+        if (transform_result.violations.len > 0) {
+            for (transform_result.violations) |v| allocator.free(v.message);
+            allocator.free(transform_result.violations);
+            return ExportImportError.InvalidGraph;
+        }
+        allocator.free(transform_result.violations);
 
         // Step 4: create the definition via Store.create() — status = DRAFT.
         // doc.id is NOT passed; the platform assigns a new UUID on INSERT.
@@ -356,6 +369,7 @@ fn duplicateGraph(
             .source = try allocator.dupe(u8, e.source),
             .target = try allocator.dupe(u8, e.target),
             .condition = if (e.condition) |c| try allocator.dupe(u8, c) else null,
+            .transform = if (e.transform) |t| try allocator.dupe(u8, t) else null,
             .is_default = e.is_default,
         };
     }

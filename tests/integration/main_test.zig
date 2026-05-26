@@ -1,6 +1,8 @@
 // main_test.zig — integration test entry point.
 // Each comptime import below pulls its test blocks into zig build test-integration.
 const std = @import("std");
+const bpm = @import("bpm");
+pub const api_tenant_context = bpm.api_tenant_context;
 
 // Integration test helpers (TestHarness with rollback-on-deinit isolation).
 const helpers = @import("helpers.zig");
@@ -36,6 +38,10 @@ const ext01_service_task_integration = @import("ext01_service_task_test.zig");
 const ext02_webhook_dispatch_integration = @import("ext02_webhook_dispatch_test.zig");
 // Stage 6 — Plugin interface (EXT-03)
 const ext03_plugin_integration = @import("ext03_plugin_integration_test.zig");
+// Stage 6 — Variable transformer (EXT-04)
+const ext04_variable_transformer_integration = @import("ext04_variable_transformer_test.zig");
+// Stage 6 — Sub-process support (EXT-05)
+const ext05_sub_process_support_integration = @import("ext05_sub_process_support_test.zig");
 // Stage 3 — Concurrent instance safety (EE-12)
 const ee12_concurrent = @import("concurrent_instances_test.zig");
 // Stage 5 — Durable timer creation (SCH-01)
@@ -66,6 +72,12 @@ const obs04_timeline_integration = @import("obs04_timeline_test.zig");
 const obs05_dlq_integration = @import("obs05_dlq_test.zig");
 // Stage 6 — Alerting hooks (OBS-06)
 const obs06_alerts_integration = @import("obs06_alerts_test.zig");
+// Stage 6.5 — Tenant context resolution on API (ADP-03)
+const adp03_tenant_context_integration = @import("adp03_tenant_context_resolution_test.zig");
+// Stage 6.5 — User tenant binding and identity isolation (ADP-04)
+const adp04_user_tenant_binding_integration = @import("adp04_user_tenant_binding_test.zig");
+// Stage 6.5 — External identity linkage on users (ADP-04a)
+const adp04a_external_identity_linkage_integration = @import("adp04a_external_identity_linkage_test.zig");
 
 comptime {
     _ = std;
@@ -86,6 +98,8 @@ comptime {
     _ = ext01_service_task_integration;
     _ = ext02_webhook_dispatch_integration;
     _ = ext03_plugin_integration;
+    _ = ext04_variable_transformer_integration;
+    _ = ext05_sub_process_support_integration;
     _ = ee12_concurrent;
     _ = sch01_timer_creation_integration;
     _ = sch02_timer_polling_integration;
@@ -101,6 +115,9 @@ comptime {
     _ = obs04_timeline_integration;
     _ = obs05_dlq_integration;
     _ = obs06_alerts_integration;
+    _ = adp03_tenant_context_integration;
+    _ = adp04_user_tenant_binding_integration;
+    _ = adp04a_external_identity_linkage_integration;
 }
 
 test "integration placeholder" {

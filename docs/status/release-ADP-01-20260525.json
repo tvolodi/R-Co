@@ -1,0 +1,57 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "date": "2026-05-25T21:14:14Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "ADP-01"
+  ],
+  "nfr_results": {
+    "benchmark_command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.794,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 3.369,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 38279.855,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 59.682,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "release_checks": {
+    "zig_build_exit_code": 0,
+    "zig_build_test_exit_code": 0,
+    "zig_build_test_integration_exit_code": 0
+  },
+  "test_evidence": {
+    "wf02_step04b_handoff": "handoffs/WF02-adp01-20260526/step-04b-test-runner-rework1.json",
+    "wf02_step04b_report": "tests/reports/report-20260525T210953Z-WF02-adp01-20260526-step04b.json",
+    "wf03_fix_report": "tests/reports/report-20260525T210506Z-WF03-adp01-es07fix-20260526-step02.json",
+    "wf02_step04b_status": "PASS",
+    "wf03_fix_status": "PASS"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "ADP-01"
+  ],
+  "non_blocking_issues": [],
+  "recommendation": "APPROVE ADP-01 release gate and route to DOC-UPDATER to set requirement status to RELEASED."
+}

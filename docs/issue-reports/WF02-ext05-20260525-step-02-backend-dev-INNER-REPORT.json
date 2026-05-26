@@ -1,0 +1,49 @@
+{
+  "report_id": "WF02-ext05-20260525-step-02-backend-dev",
+  "agent_id": "BACKEND-DEV",
+  "run_id": "WF02-ext05-20260525",
+  "step": "02",
+  "created_at": "2026-05-25T16:09:41Z",
+  "summary": "Implemented EXT-05 sub-process backend support end-to-end: SUB_PROCESS node validation and transition semantics, parent WAITING token tracking, child start/runtime linkage persistence, child completion merge propagation via EE-09 semantics, child terminal propagation to parent ERROR events, and non-cascading parent cancel behavior. Fixed EXT-05 memory leaks in runtime propagation paths and reduced concurrency side effects by making parent completion propagation best-effort.",
+  "files_created": [
+    "migrations/026_ext05_subprocess_links.sql",
+    "tests/integration/ext05_sub_process_support_test.zig",
+    "docs/issue-reports/WF02-ext05-20260525-step-02-backend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "src/definition/graph.zig",
+    "src/engine/transition.zig",
+    "src/engine/instance.zig",
+    "tests/unit/graph_node_attributes_test.zig",
+    "tests/integration/main_test.zig",
+    "handoffs/WF02-ext05-20260525/step-02-backend-dev.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build",
+      "status": "pass",
+      "detail": "Exit code 0"
+    },
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "Exit code 0"
+    },
+    {
+      "name": "$env:BPM_DB_URL='postgres://bpm:bpm@localhost:5432/bpm_dev'; zig build migrate",
+      "status": "pass",
+      "detail": "Migrations applied/skipped successfully, including 026_ext05_subprocess_links.sql"
+    },
+    {
+      "name": "zig build 2>&1 | Select-String -Pattern 'error set'",
+      "status": "pass",
+      "detail": "No error-set mismatch output"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to TEST-DESIGNER"
+  ],
+  "blockers": []
+}

@@ -228,3 +228,168 @@ test "TC-EE-05-05: first true condition wins among multiple true conditions" {
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
 }
+
+// ---------------------------------------------------------------------------
+// EXT-04 transition tests
+// ---------------------------------------------------------------------------
+
+test "EXT-04-UT-03: edge transform merges object result into instance variables" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "task", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "next", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "task", .target = "next", .condition = null, .transform = "variables.payload", .is_default = false },
+    };
+    const snap = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    var payload_obj: std.json.ObjectMap = .{};
+    try payload_obj.put(alloc, "approved", .{ .bool = true });
+    try payload_obj.put(alloc, "amount", .{ .integer = 42 });
+
+    var out_vars: std.json.ObjectMap = .{};
+    try out_vars.put(alloc, "payload", .{ .object = payload_obj });
+    var tokens = [_]Token{.{ .node_id = "task", .branch_id = "b" }};
+    var pending = [_][]const u8{"task"};
+
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = tokens[0..],
+        .variables = std.json.ObjectMap.empty,
+        .pending_task_nodes = pending[0..],
+        .error_detail = null,
+        .pending_events = &[_]transition_mod.PendingEvent{},
+    };
+
+    const event = TransitionEvent{ .task_completed = .{
+        .task_node_id = "task",
+        .output_variables = out_vars,
+    } };
+
+    const new_state = try transition_mod.transition(alloc, snap, state, event);
+    try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
+    try testing.expectEqualStrings("next", new_state.tokens[0].node_id);
+    try testing.expect(new_state.variables.get("approved") != null);
+    try testing.expect(new_state.variables.get("amount") != null);
+}
+
+test "EXT-04-UT-04: missing transform variable returns CelEvaluationError" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "task", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "next", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "task", .target = "next", .condition = null, .transform = "variables.missing_payload", .is_default = false },
+    };
+    const snap = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+    var tokens = [_]Token{.{ .node_id = "task", .branch_id = "b" }};
+    var pending = [_][]const u8{"task"};
+
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = tokens[0..],
+        .variables = std.json.ObjectMap.empty,
+        .pending_task_nodes = pending[0..],
+        .error_detail = null,
+        .pending_events = &[_]transition_mod.PendingEvent{},
+    };
+
+    const event = TransitionEvent{ .task_completed = .{
+        .task_node_id = "task",
+        .output_variables = std.json.ObjectMap.empty,
+    } };
+
+    try testing.expectError(
+        transition_mod.TransitionError.CelEvaluationError,
+        transition_mod.transition(alloc, snap, state, event),
+    );
+}
+
+test "EXT-04-UT-05: non-object transform result returns TransformResultNonObject" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "task", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "next", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "task", .target = "next", .condition = null, .transform = "variables.amount", .is_default = false },
+    };
+    const snap = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    var out_vars: std.json.ObjectMap = .{};
+    try out_vars.put(alloc, "amount", .{ .integer = 10 });
+    var tokens = [_]Token{.{ .node_id = "task", .branch_id = "b" }};
+    var pending = [_][]const u8{"task"};
+
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = tokens[0..],
+        .variables = std.json.ObjectMap.empty,
+        .pending_task_nodes = pending[0..],
+        .error_detail = null,
+        .pending_events = &[_]transition_mod.PendingEvent{},
+    };
+
+    const event = TransitionEvent{ .task_completed = .{
+        .task_node_id = "task",
+        .output_variables = out_vars,
+    } };
+
+    try testing.expectError(
+        transition_mod.TransitionError.TransformResultNonObject,
+        transition_mod.transition(alloc, snap, state, event),
+    );
+}
+
+test "EXT-04-UT-06: whitespace-only transform is treated as no-op" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "task", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "next", .node_type = .HUMAN_TASK, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "task", .target = "next", .condition = null, .transform = "   ", .is_default = false },
+    };
+    const snap = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    var out_vars: std.json.ObjectMap = .{};
+    try out_vars.put(alloc, "k", .{ .string = "v" });
+    var tokens = [_]Token{.{ .node_id = "task", .branch_id = "b" }};
+    var pending = [_][]const u8{"task"};
+
+    const state = InstanceState{
+        .instance_id = [_]u8{0} ** 16,
+        .status = .ACTIVE,
+        .tokens = tokens[0..],
+        .variables = std.json.ObjectMap.empty,
+        .pending_task_nodes = pending[0..],
+        .error_detail = null,
+        .pending_events = &[_]transition_mod.PendingEvent{},
+    };
+
+    const event = TransitionEvent{ .task_completed = .{
+        .task_node_id = "task",
+        .output_variables = out_vars,
+    } };
+
+    const new_state = try transition_mod.transition(alloc, snap, state, event);
+    try testing.expectEqualStrings("next", new_state.tokens[0].node_id);
+    try testing.expect(new_state.variables.get("k") != null);
+}

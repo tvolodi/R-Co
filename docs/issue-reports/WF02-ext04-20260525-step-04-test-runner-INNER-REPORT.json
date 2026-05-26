@@ -1,0 +1,44 @@
+{
+  "report_id": "WF02-ext04-20260525-step-04-test-runner",
+  "agent_id": "TEST-RUNNER",
+  "run_id": "WF02-ext04-20260525",
+  "step": "04",
+  "created_at": "2026-05-25T15:28:09Z",
+  "summary": "Executed WF-02 Step 4 for EXT-04. Unit and integration layers passed with BPM_TEST_DB_URL configured for integration. Structured requirement-level mapping confirms activation-time syntax validation, runtime ordering, object-only output contract, EE-10 runtime failure mapping, missing-variable behavior, and empty-transform no-op behavior. Coverage check command is unavailable (test-coverage step missing) and recorded as a non-gating MINOR issue.",
+  "files_created": [
+    "tests/reports/report-20260525T152809Z-WF02-ext04-20260525.json",
+    "docs/issue-reports/WF02-ext04-20260525-step-04-test-runner-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-ext04-20260525/step-04-test-runner.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "UNIT_EXIT_CODE=0"
+    },
+    {
+      "name": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "status": "pass",
+      "detail": "INTEGRATION_EXIT_CODE=0"
+    },
+    {
+      "name": "zig build test-coverage",
+      "status": "fail",
+      "detail": "Exit code 1: no step named test-coverage."
+    }
+  ],
+  "issues_found": [
+    {
+      "id": "EXT04-COVERAGE-STEP-MISSING",
+      "severity": "MINOR",
+      "description": "Coverage command required by fn:check-code-coverage is unavailable in build.zig."
+    }
+  ],
+  "next_steps": [
+    "Route to RELEASE-VALIDATOR (WF-02 Step 5).",
+    "If strict coverage gating is required in future WF-04 full runs, add and wire a test-coverage build step."
+  ],
+  "blockers": []
+}

@@ -150,6 +150,7 @@ pub const SnapshotStore = struct {
             \\SELECT id, name, version, graph
             \\FROM process_definitions
             \\WHERE id = $1::uuid
+            \\  AND tenant_id = bpm_effective_tenant_id()
             \\FOR SHARE
         ,
             &.{def_id_hex},
@@ -356,6 +357,7 @@ fn duplicateGraph(
             .source = try allocator.dupe(u8, e.source),
             .target = try allocator.dupe(u8, e.target),
             .condition = if (e.condition) |c| try allocator.dupe(u8, c) else null,
+            .transform = if (e.transform) |t| try allocator.dupe(u8, t) else null,
             .is_default = e.is_default,
         };
     }

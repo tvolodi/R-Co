@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-24T23:01:03Z",
-  "updated_by": "WF02-obs03-20260525",
-  "update_count": 33,
+  "updated_at": "2026-05-26T02:30:19Z",
+  "updated_by": "WF02-adp03-20260526",
+  "update_count": 35,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
     "2": "Single function or endpoint, no schema change, < 50 LOC",
@@ -22,7 +22,7 @@
       10,
       8,
       7,
-      7,
+      6,
       100
     ],
     "frontend-dev": [
@@ -42,7 +42,7 @@
     "test-runner": [
       5,
       4,
-      7,
+      5,
       7,
       25
     ],
@@ -50,7 +50,7 @@
       5,
       1,
       70,
-      2,
+      1,
       25
     ],
     "doc-updater": [

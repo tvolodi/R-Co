@@ -1,0 +1,62 @@
+{
+  "handoff_id": "20260526-003",
+  "run_id": "WF02-adp01-20260526",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-adp01-20260526/step-03-test-designer.json",
+  "created_at": "2026-05-26T00:26:00Z",
+  "started_at": "2026-05-26T00:26:20Z",
+  "completed_at": "2026-05-25T20:34:20Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-01"
+    ],
+    "related_handoff_ids": [
+      "20260526-001",
+      "20260526-002"
+    ],
+    "artifacts_in": [
+      "src/design/adp-01-tenant-column-event-store.md",
+      "handoffs/WF02-adp01-20260526/step-02-backend-dev.json",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/03-extension-adaptations.md"
+    ]
+  },
+  "task": {
+    "description": "Design and implement test coverage for ADP-01. Produce/update test spec and concrete tests that validate tenant_id additive behavior in event store, tenant-scoped ordered and global reads, and default-tenant backward compatibility for legacy flows. Ensure tests explicitly cover migration-side expectations and deterministic behavior for missing tenant context as specified in design. Add or update tests in appropriate backend test locations and include traceability to ADP-01 and impacted ES requirements. Keep test scope focused on ADP-01 acceptance and non-regression.",
+    "acceptance_criteria": [
+      "ADP-01 test spec exists with traceability to acceptance criteria",
+      "Automated tests cover tenant-scoped and default-tenant compatibility behavior",
+      "Tests are executable by TEST-RUNNER without manual preconditions beyond documented env",
+      "Edge cases for missing tenant context are asserted deterministically"
+    ],
+    "functions_to_call": [
+      "fn:read-test-guide",
+      "fn:register-test-spec",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and integration test coverage for ADP-01 were implemented, covering default-tenant compatibility, tenant isolation, migration/index expectations, and deterministic missing-tenant context handling.",
+    "artifacts_out": [
+      "tests/specs/ADP-01.md",
+      "tests/integration/event_store_integration_test.zig",
+      "docs/issue-reports/WF02-adp01-20260526-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Unrelated integration failure observed during validation: TC-ES-07-01 archive retention expectation in tests/integration/event_store_integration_test.zig."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

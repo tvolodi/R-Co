@@ -33,6 +33,7 @@ pub const NodeType = enum {
     EXCLUSIVE_GATEWAY,
     PARALLEL_GATEWAY,
     TIMER,
+    SUB_PROCESS,
 };
 
 /// Allowed values for `process_definitions.status` (PD-04).
@@ -67,6 +68,9 @@ pub const GraphEdge = struct {
     /// MUST be present (non-null, non-empty) on every non-default outgoing
     /// edge from an EXCLUSIVE_GATEWAY. MUST be null on all other edges.
     condition: ?[]const u8,
+    /// Optional CEL transform expression evaluated when traversing this edge (EXT-04).
+    /// Null or empty/whitespace-only value is treated as a no-op transform.
+    transform: ?[]const u8 = null,
     /// When true, this edge is the default (fallback) route from an
     /// EXCLUSIVE_GATEWAY. MUST NOT coexist with a non-null condition.
     /// At most one outgoing edge per EXCLUSIVE_GATEWAY may be default.
@@ -459,6 +463,7 @@ pub fn validateNodeAttributes(
             .HUMAN_TASK => try checkHumanTask(allocator, &violations, node),
             .SERVICE_TASK => try checkServiceTask(allocator, &violations, node),
             .TIMER => try checkTimer(allocator, &violations, node),
+            .SUB_PROCESS => try checkSubProcess(allocator, &violations, node),
             .START, .END, .EXCLUSIVE_GATEWAY, .PARALLEL_GATEWAY => {},
         }
     }
@@ -657,6 +662,68 @@ fn checkTimer(
         try addViolation(allocator, violations, "TIMER_MISSING_DURATION", "Node '{s}' (TIMER) is missing required attribute 'duration_iso8601'", .{node.id});
     } else if (!isValidIso8601Duration(duration.?)) {
         try addViolation(allocator, violations, "TIMER_INVALID_DURATION", "Node '{s}' (TIMER) attribute 'duration_iso8601' is not a valid ISO 8601 duration: '{s}'", .{ node.id, duration.? });
+    }
+}
+
+fn checkSubProcess(
+    allocator: std.mem.Allocator,
+    violations: *std.ArrayList(Violation),
+    node: GraphNode,
+) GraphError!void {
+    const raw = node.attributes orelse "";
+    if (raw.len == 0) {
+        try addViolation(
+            allocator,
+            violations,
+            "SUB_PROCESS_MISSING_CHILD_DEFINITION_ID",
+            "Node '{s}' (SUB_PROCESS) is missing required attribute 'child_definition_id'",
+            .{node.id},
+        );
+        return;
+    }
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, raw, .{}) catch {
+        try addViolation(
+            allocator,
+            violations,
+            "SUB_PROCESS_MISSING_CHILD_DEFINITION_ID",
+            "Node '{s}' (SUB_PROCESS) is missing required attribute 'child_definition_id'",
+            .{node.id},
+        );
+        return;
+    };
+    defer parsed.deinit();
+
+    const obj = switch (parsed.value) {
+        .object => |o| o,
+        else => {
+            try addViolation(
+                allocator,
+                violations,
+                "SUB_PROCESS_MISSING_CHILD_DEFINITION_ID",
+                "Node '{s}' (SUB_PROCESS) is missing required attribute 'child_definition_id'",
+                .{node.id},
+            );
+            return;
+        },
+    };
+
+    const child_ok: bool = blk: {
+        const v = obj.get("child_definition_id") orelse break :blk false;
+        break :blk switch (v) {
+            .string => |s| s.len > 0,
+            else => false,
+        };
+    };
+
+    if (!child_ok) {
+        try addViolation(
+            allocator,
+            violations,
+            "SUB_PROCESS_MISSING_CHILD_DEFINITION_ID",
+            "Node '{s}' (SUB_PROCESS) is missing required attribute 'child_definition_id'",
+            .{node.id},
+        );
     }
 }
 
@@ -905,6 +972,51 @@ pub fn validateEdgeConditions(
                 "EDGE_MULTIPLE_DEFAULTS",
                 "EXCLUSIVE_GATEWAY '{s}' has {d} default outgoing edges; at most one is permitted",
                 .{ gw_ids[gi], gw_counts[gi] },
+            );
+        }
+    }
+
+    const owned = try violations.toOwnedSlice(allocator);
+    return ValidationResult{
+        .valid = owned.len == 0,
+        .violations = owned,
+    };
+}
+
+/// Validate EXT-04 edge transform expressions.
+///
+/// Rules:
+/// - null transform is allowed (no-op)
+/// - empty or whitespace-only transform is allowed (normalized no-op)
+/// - non-empty transform must pass the same minimal CEL structural check used
+///   for PD-06 condition validation
+pub fn validateEdgeTransforms(
+    allocator: std.mem.Allocator,
+    graph: DefinitionGraph,
+) GraphError!ValidationResult {
+    var violations: std.ArrayList(Violation) = .empty;
+    errdefer {
+        for (violations.items) |v| allocator.free(v.message);
+        violations.deinit(allocator);
+    }
+
+    const e_safe = if (graph.edges.len > MAX_EDGES) MAX_EDGES else graph.edges.len;
+    const edges = graph.edges[0..e_safe];
+
+    for (edges) |edge| {
+        const raw_transform = edge.transform orelse continue;
+        const transform_expr = std.mem.trim(u8, raw_transform, " \t\r\n");
+        if (transform_expr.len == 0) continue;
+
+        if (!isValidCelSyntax(transform_expr)) {
+            const max_display: usize = 80;
+            const display_len = if (transform_expr.len > max_display) max_display else transform_expr.len;
+            try addViolation(
+                allocator,
+                &violations,
+                "EDGE_INVALID_TRANSFORM_CEL",
+                "Edge '{s}' has a syntactically invalid transform CEL expression: '{s}'",
+                .{ edge.id, transform_expr[0..display_len] },
             );
         }
     }

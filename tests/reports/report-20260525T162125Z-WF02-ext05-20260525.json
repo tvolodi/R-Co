@@ -1,0 +1,91 @@
+{
+  "run_id": "WF02-ext05-20260525",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260525-084",
+  "timestamp": "2026-05-25T16:21:25Z",
+  "requirement_ids": [
+    "EXT-05"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_layers": 2,
+    "passed_layers": 2,
+    "failed_layers": 0,
+    "not_gated_layers": 0,
+    "layers_executed": [
+      {
+        "layer": "unit",
+        "command": "zig build test",
+        "exit_code": 0,
+        "result": "PASS"
+      },
+      {
+        "layer": "integration",
+        "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+        "exit_code": 0,
+        "result": "PASS",
+        "environment": {
+          "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+        }
+      }
+    ]
+  },
+  "acceptance_mapping": [
+    {
+      "criterion": "AC1: SUB_PROCESS activation starts child and parks parent token in waiting state",
+      "test_ids": [
+        "TC-EXT-05-INT-01"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "AC2: child gets copy-on-start variables; child mutation does not change parent before child completion",
+      "test_ids": [
+        "TC-EXT-05-INT-02"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "AC3: child completion advances parent and merges child output via EE-09 semantics",
+      "test_ids": [
+        "TC-EXT-05-INT-03"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "AC4: child ERROR propagates parent ERROR with parent/child IDs",
+      "test_ids": [
+        "TC-EXT-05-INT-04"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "AC5: external child cancellation propagates parent ERROR with parent/child IDs",
+      "test_ids": [
+        "TC-EXT-05-INT-05"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "AC6: parent cancellation does not cascade to child",
+      "test_ids": [
+        "TC-EXT-05-INT-06"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Edge: SUB_PROCESS node requires child_definition_id attribute",
+      "test_ids": [
+        "TC-EXT-05-UT-01"
+      ],
+      "result": "PASS"
+    }
+  ],
+  "failures": [],
+  "issues": [],
+  "notes": [
+    "Integration scenario coverage is implemented in tests/integration/ext05_sub_process_support_test.zig and imported by tests/integration/main_test.zig.",
+    "Unit validation for SUB_PROCESS child_definition_id contract is covered by tests/unit/graph_node_attributes_test.zig and included by zig build test.",
+    "Integration command emitted cleanup progress: Cleaning test database... Test database cleaned."
+  ]
+}

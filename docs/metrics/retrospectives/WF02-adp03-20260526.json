@@ -1,0 +1,56 @@
+{
+  "run_id": "WF02-adp03-20260526",
+  "requirement_ids": [
+    "ADP-03"
+  ],
+  "difficulty": 3,
+  "integration_surface": "high",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 139,
+  "actual_minutes_total": 29.2,
+  "variance_pct": -79.0,
+  "by_step": {
+    "code-designer": {
+      "estimated": 8,
+      "actual": 1.5,
+      "variance_pct": -81.2
+    },
+    "backend-dev": {
+      "estimated": 10,
+      "actual": 22.5,
+      "variance_pct": 125.0
+    },
+    "test-designer": {
+      "estimated": 4,
+      "actual": 1.3,
+      "variance_pct": -67.5
+    },
+    "test-runner": {
+      "estimated": 10,
+      "actual": 3.1,
+      "variance_pct": -69.0
+    },
+    "release-validator": {
+      "estimated": 105,
+      "actual": 0.0,
+      "variance_pct": -100.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 0.8,
+      "variance_pct": -60.0
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "test-runner",
+      "difficulty": 3,
+      "old_estimate": 7,
+      "new_estimate": 5,
+      "reason": "Observed 2 consecutive runs at D3 with more than 25% negative variance for test-runner duration"
+    }
+  ],
+  "notes": "Retrospective uses run handoff started_at/completed_at durations for WF02-adp03-20260526 and applies calibration only where consecutive-run criteria are satisfied.",
+  "completed_at": "2026-05-26T02:30:19Z"
+}

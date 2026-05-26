@@ -1,0 +1,28 @@
+{
+  "report_id": "WF02-adp04-20260526-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-adp04-20260526",
+  "step": "01",
+  "created_at": "2026-05-26T02:39:34Z",
+  "summary": "Produced the backend design artefact for ADP-04 at src/design/adp-04-user-tenant-binding.md. The design specifies additive users.tenant_id schema semantics with default-tenant backfill, explicit single-tenant user and group-membership invariants, tenant-aware identity service/repository contracts for reads and writes, compatibility boundaries for IDN-01 and IDN-02, and cross-tenant leakage prevention rules aligned to ADP-02 tenant-column patterns.",
+  "files_created": [
+    "src/design/adp-04-user-tenant-binding.md",
+    "docs/issue-reports/WF02-adp04-20260526-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp04-20260526/step-01-code-designer.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "design completeness and acceptance traceability review",
+      "status": "pass",
+      "detail": "Verified required design sections and mapped each handoff acceptance criterion to explicit sections, including ADP-02 pattern traceability and IDN-01/IDN-02 compatibility constraints."
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)."
+  ],
+  "blockers": []
+}

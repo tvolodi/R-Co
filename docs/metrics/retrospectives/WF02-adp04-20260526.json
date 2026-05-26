@@ -1,0 +1,50 @@
+{
+  "run_id": "WF02-adp04-20260526",
+  "requirement_ids": [
+    "ADP-04"
+  ],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 117,
+  "actual_minutes_total": 39.2,
+  "variance_pct": -66.5,
+  "by_step": {
+    "code-designer": {
+      "estimated": 7,
+      "actual": 8.2,
+      "variance_pct": 17.1
+    },
+    "backend-dev": {
+      "estimated": 8,
+      "actual": 12.0,
+      "variance_pct": 50.0
+    },
+    "test-designer": {
+      "estimated": 3,
+      "actual": 6.8,
+      "variance_pct": 126.7
+    },
+    "test-runner": {
+      "estimated": 8,
+      "actual": 7.6,
+      "variance_pct": -5.0
+    },
+    "release-validator": {
+      "estimated": 89,
+      "actual": 3.9,
+      "variance_pct": -95.6
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 0.7,
+      "variance_pct": -65.0
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [],
+  "notes": "Retrospective aggregates elapsed work time across run handoffs, including failed step-04 and successful rework step-04b for test-runner; no estimation-rule update was applied because no step met the consecutive-run adjustment threshold.",
+  "completed_at": "2026-05-26T03:30:03Z"
+}

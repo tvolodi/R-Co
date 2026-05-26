@@ -1,0 +1,58 @@
+{
+  "run_id": "WF02-ext04-20260525",
+  "requirement_ids": [
+    "EXT-04"
+  ],
+  "difficulty": 4,
+  "integration_surface": "high",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 213,
+  "actual_minutes_total": 28.3,
+  "variance_pct": -86.7,
+  "by_step": {
+    "code-designer": {
+      "estimated": 182,
+      "actual": 0,
+      "variance_pct": -100
+    },
+    "backend-dev": {
+      "estimated": 11,
+      "actual": 8.2,
+      "variance_pct": -25.5
+    },
+    "test-designer": {
+      "estimated": 6,
+      "actual": 16.1,
+      "variance_pct": 168.3
+    },
+    "test-runner": {
+      "estimated": 11,
+      "actual": 3.3,
+      "variance_pct": -70
+    },
+    "release-validator": {
+      "estimated": 3,
+      "actual": 0.7,
+      "variance_pct": -76.7
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "backend-dev",
+      "difficulty": 4,
+      "old_estimate": 7,
+      "new_estimate": 6,
+      "reason": "Observed 5 consecutive runs at D4 with variance below -25%"
+    },
+    {
+      "step": "release-validator",
+      "difficulty": 4,
+      "old_estimate": 2,
+      "new_estimate": 1,
+      "reason": "Observed 2 consecutive runs at D4 with variance below -25%"
+    }
+  ],
+  "notes": "Retrospective aggregates elapsed work time across completed step handoffs for this run. DOC-UPDATER step time was excluded because this retrospective is generated before step completion fields are finalized.",
+  "completed_at": "2026-05-25T15:35:22Z"
+}

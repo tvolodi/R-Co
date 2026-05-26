@@ -1,0 +1,99 @@
+{
+  "run_id": "WF02-adp03-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-019",
+  "step": "04",
+  "timestamp": "2026-05-26T02:24:34Z",
+  "overall_verdict": "PASS",
+  "adp03_acceptance_coverage_status": "PASS",
+  "adp03_coverage_summary": "Required WF-02 Step 04 build and test commands completed successfully. ADP-03 integration coverage includes deterministic tenant resolution for tokens with/without tenant_id, tenant-scoped behavior, cross-tenant read/write rejection, malformed tenant claim handling, and default-tenant compatibility scenarios defined in tests/specs/ADP-03.md and implemented in tests/integration/adp03_tenant_context_resolution_test.zig.",
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "tests/reports/WF02-adp03-20260526-step-04-zig-build.log"
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "tests/reports/WF02-adp03-20260526-step-04-zig-build-test.log"
+    },
+    {
+      "command": "zig build test-integration",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "tests/reports/WF02-adp03-20260526-step-04-zig-test-integration.log"
+    }
+  ],
+  "adp03_acceptance_criteria": [
+    {
+      "criterion": "Legacy tokens without tenant_id resolve deterministically to the default tenant.",
+      "status": "PASS",
+      "evidence": "TC-ADP-03-01 and TC-ADP-03-07 are present in tests/integration/adp03_tenant_context_resolution_test.zig and integration command exited 0."
+    },
+    {
+      "criterion": "Tokens with tenant_id resolve deterministically and scope request behavior to the claim tenant.",
+      "status": "PASS",
+      "evidence": "TC-ADP-03-02 and TC-ADP-03-03 are present in tests/integration/adp03_tenant_context_resolution_test.zig and integration command exited 0."
+    },
+    {
+      "criterion": "Cross-tenant operations are rejected for request-scoped reads and mutations.",
+      "status": "PASS",
+      "evidence": "TC-ADP-03-05 and TC-ADP-03-06 are present in tests/integration/adp03_tenant_context_resolution_test.zig and integration command exited 0."
+    },
+    {
+      "criterion": "Malformed tenant claim is rejected before tenant-scoped operations while preserving auth semantics.",
+      "status": "PASS",
+      "evidence": "TC-ADP-03-04 is present in tests/integration/adp03_tenant_context_resolution_test.zig and integration command exited 0."
+    }
+  ],
+  "executed_test_cases": [
+    {
+      "test_id": "TC-ADP-03-01",
+      "layer": "integration",
+      "file": "tests/integration/adp03_tenant_context_resolution_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-03-02",
+      "layer": "integration",
+      "file": "tests/integration/adp03_tenant_context_resolution_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-03-03",
+      "layer": "integration",
+      "file": "tests/integration/adp03_tenant_context_resolution_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-03-04",
+      "layer": "integration",
+      "file": "tests/integration/adp03_tenant_context_resolution_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-03-05",
+      "layer": "integration",
+      "file": "tests/integration/adp03_tenant_context_resolution_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-03-06",
+      "layer": "integration",
+      "file": "tests/integration/adp03_tenant_context_resolution_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-03-07",
+      "layer": "integration",
+      "file": "tests/integration/adp03_tenant_context_resolution_test.zig"
+    }
+  ],
+  "summary": {
+    "total": null,
+    "passed": null,
+    "failed": 0,
+    "skipped": null,
+    "note": "Current command outputs for this run did not emit per-test aggregate totals. Command-level pass/fail is recorded from exit codes."
+  },
+  "failures": [],
+  "issues": [],
+  "next_action_recommendation": "Route to RELEASE-VALIDATOR (WF-02 Step 5 / WF-04 Step 6)."
+}

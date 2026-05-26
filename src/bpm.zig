@@ -27,6 +27,7 @@ pub const service_task = @import("engine/service_task.zig"); // EXT-01
 pub const plugin_interface = @import("engine/plugin_interface.zig"); // EXT-03
 pub const plugin_registry = @import("engine/plugin_registry.zig"); // EXT-03
 pub const api_auth = @import("api/middleware/auth.zig");
+pub const api_tenant_context = @import("api/tenant_context.zig");
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01
 pub const identity_service = @import("identity/service.zig"); // IDN-01
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01

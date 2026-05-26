@@ -1,0 +1,101 @@
+{
+  "run_id": "WF02-ext04-20260525",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260525-078",
+  "timestamp": "2026-05-25T15:28:09Z",
+  "requirement_ids": [
+    "EXT-04"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_layers": 3,
+    "passed_layers": 2,
+    "failed_layers": 0,
+    "not_gated_layers": 1,
+    "layers_executed": [
+      {
+        "layer": "unit",
+        "command": "zig build test",
+        "exit_code": 0,
+        "result": "PASS"
+      },
+      {
+        "layer": "integration",
+        "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+        "exit_code": 0,
+        "result": "PASS",
+        "environment": {
+          "BPM_TEST_DB_URL": "postgres://bpm:bpm@localhost:5433/bpm_test"
+        }
+      },
+      {
+        "layer": "coverage",
+        "command": "zig build test-coverage",
+        "exit_code": 1,
+        "result": "NOT_GATED",
+        "detail": "build.zig does not define test-coverage. EXT-04 acceptance verification is gated by mapped executable tests plus passing unit and integration layers."
+      }
+    ]
+  },
+  "acceptance_mapping": [
+    {
+      "criterion": "Activation-time syntax validation",
+      "test_ids": [
+        "EXT-04-UT-02",
+        "TC-EXT-04-INT-01"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Runtime ordering after EE-09 merge and before next-node activation",
+      "test_ids": [
+        "EXT-04-UT-03"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Object-only transform output contract",
+      "test_ids": [
+        "EXT-04-UT-05"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "EE-10 mapping for runtime CEL and non-object transform failures",
+      "test_ids": [
+        "EXT-04-UT-04",
+        "EXT-04-UT-05"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Missing-variable runtime error path",
+      "test_ids": [
+        "EXT-04-UT-04"
+      ],
+      "result": "PASS"
+    },
+    {
+      "criterion": "Empty-transform no-op behavior",
+      "test_ids": [
+        "EXT-04-UT-01",
+        "EXT-04-UT-06"
+      ],
+      "result": "PASS"
+    }
+  ],
+  "failures": [],
+  "issues": [
+    {
+      "id": "EXT04-COVERAGE-STEP-MISSING",
+      "severity": "MINOR",
+      "description": "Coverage build step test-coverage is not defined in build.zig.",
+      "affected_requirement": null
+    }
+  ],
+  "notes": [
+    "Unit test IDs EXT-04-UT-01..06 are present across tests/unit/graph_edge_conditions_test.zig and tests/unit/test_engine_ee05.zig and are included by zig build test via build.zig test steps.",
+    "Integration test ID TC-EXT-04-INT-01 is implemented in tests/integration/ext04_variable_transformer_test.zig and imported by tests/integration/main_test.zig.",
+    "An existing VS Code task definition for integration used broken quoting for BPM_TEST_DB_URL; this run used a direct command with explicit environment assignment to ensure valid execution evidence."
+  ]
+}

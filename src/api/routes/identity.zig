@@ -53,7 +53,17 @@ pub fn handleCreateUser(
             return errorResult(allocator, 422, "status_invalid");
     };
 
+    const tenant_id: ?[]const u8 = blk: {
+        const raw = obj.get("tenant_id") orelse break :blk null;
+        break :blk switch (raw) {
+            .null => null,
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "tenant_id_invalid"),
+        };
+    };
+
     const user = service.createUser(allocator, actor, .{
+        .tenant_id = tenant_id,
         .username = username,
         .display_name = display_name,
         .email = email,
@@ -197,9 +207,10 @@ pub fn handleListGroupMembers(
 ) HandlerResult {
     if (actor.role != .PLATFORM_ADMIN) return errorResult(allocator, 403, "forbidden");
 
-    const page = service.listGroupMembers(allocator, group_id, params) catch |err| switch (err) {
+    const page = service.listGroupMembers(allocator, actor, group_id, params) catch |err| switch (err) {
         identity_service.GroupError.Forbidden => return errorResult(allocator, 403, "forbidden"),
         identity_service.GroupError.GroupNotFound => return errorResult(allocator, 404, "group_not_found"),
+        identity_service.GroupError.CrossTenantAccessDenied => return errorResult(allocator, 404, "group_not_found"),
         identity_service.GroupError.InvalidCursor => return errorResult(allocator, 422, "invalid_cursor"),
         identity_service.GroupError.CursorExpired => return errorResult(allocator, 410, "cursor_expired"),
         identity_service.GroupError.ValidationFailed => return errorResult(allocator, 422, "validation_failed"),
@@ -1058,7 +1069,7 @@ test "TC-IDN-02-05: active group members can claim group tasks" {
     _ = handleAddGroupMember(&service, alloc, adminActor(), group_id, add_active);
     _ = handleAddGroupMember(&service, alloc, adminActor(), group_id, add_inactive);
 
-    try std.testing.expect(try service.canClaimGroupTask(alloc, group_id, active_user_id));
-    try std.testing.expect(!(try service.canClaimGroupTask(alloc, group_id, inactive_user_id)));
-    try std.testing.expect(!(try service.canClaimGroupTask(alloc, group_id, "11111111-1111-1111-1111-111111111111")));
+    try std.testing.expect(try service.canClaimGroupTask(alloc, auth.DEFAULT_TENANT_ID, group_id, active_user_id));
+    try std.testing.expect(!(try service.canClaimGroupTask(alloc, auth.DEFAULT_TENANT_ID, group_id, inactive_user_id)));
+    try std.testing.expect(!(try service.canClaimGroupTask(alloc, auth.DEFAULT_TENANT_ID, group_id, "11111111-1111-1111-1111-111111111111")));
 }

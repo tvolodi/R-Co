@@ -857,3 +857,262 @@ test "TC-ES-08-04: absent metadata field defaults to empty object in returned re
     // metadata must be "{}" (the empty JSON object), never null.
     try std.testing.expectEqualStrings("{}", result.record.metadata);
 }
+
+// ---------------------------------------------------------------------------
+// ADP-01: Tenant scope on event store (integration)
+// ---------------------------------------------------------------------------
+
+test "TC-ADP-01-01: default-tenant behavior remains backward compatible" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = "ADP01_TYPE",
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_str = "ad010000-0001-0000-0000-000000000001";
+    const def_str = "defdef00-ad01-0000-0000-000000000001";
+    try insertInstance(&pool, inst_str, def_str);
+    defer cleanupInstance(&pool, inst_str, &.{"adp01-default-idem-01"});
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000021");
+
+    _ = try store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "ADP01_TYPE",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = "adp01-default-idem-01",
+        .metadata = null,
+    });
+
+    const legacy_read = try store.read(alloc, inst_uuid, ReadOpts{
+        .up_to_sequence = null,
+        .up_to_timestamp = null,
+    });
+    defer alloc.free(legacy_read);
+
+    const explicit_default = try store.read(alloc, inst_uuid, ReadOpts{
+        .tenant_id = bpm.store.DEFAULT_TENANT_ID,
+        .up_to_sequence = null,
+        .up_to_timestamp = null,
+    });
+    defer alloc.free(explicit_default);
+
+    try std.testing.expectEqual(@as(usize, 1), legacy_read.len);
+    try std.testing.expectEqual(@as(usize, 1), explicit_default.len);
+}
+
+test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = "ADP01_ISO_TYPE",
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_str = "ad010000-0002-0000-0000-000000000002";
+    const def_str = "defdef00-ad01-0000-0000-000000000002";
+    try insertInstance(&pool, inst_str, def_str);
+    defer cleanupInstance(&pool, inst_str, &.{ "adp01-iso-idem-default", "adp01-iso-idem-alt" });
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000022");
+    const alt_tenant = "11111111-1111-1111-1111-111111111111";
+
+    _ = try store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "ADP01_ISO_TYPE",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = "adp01-iso-idem-default",
+        .metadata = null,
+    });
+
+    _ = try store.append(alloc, AppendParams{
+        .tenant_id = alt_tenant,
+        .instance_id = inst_uuid,
+        .event_type = "ADP01_ISO_TYPE",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = "adp01-iso-idem-alt",
+        .metadata = null,
+    });
+
+    const default_events = try store.read(alloc, inst_uuid, ReadOpts{
+        .tenant_id = bpm.store.DEFAULT_TENANT_ID,
+        .up_to_sequence = null,
+        .up_to_timestamp = null,
+    });
+    defer alloc.free(default_events);
+
+    const alt_events = try store.read(alloc, inst_uuid, ReadOpts{
+        .tenant_id = alt_tenant,
+        .up_to_sequence = null,
+        .up_to_timestamp = null,
+    });
+    defer alloc.free(alt_events);
+
+    try std.testing.expectEqual(@as(usize, 1), default_events.len);
+    try std.testing.expectEqual(@as(usize, 1), alt_events.len);
+}
+
+test "TC-ADP-01-03: migration provisions tenant columns/defaults and tenant indexes" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+
+    const cols = try conn.query(
+        alloc,
+        \\SELECT table_name, is_nullable, column_default
+        \\FROM information_schema.columns
+        \\WHERE table_schema = 'public'
+        \\  AND column_name = 'tenant_id'
+        \\  AND table_name IN ('events', 'events_archive')
+        \\ORDER BY table_name ASC
+    ,
+        &.{},
+    );
+    defer {
+        var mr = cols;
+        mr.deinit();
+    }
+
+    try std.testing.expectEqual(@as(usize, 2), cols.rows.len);
+
+    for (cols.rows) |row| {
+        const nullable = row[1] orelse "";
+        const default_expr = row[2] orelse "";
+        try std.testing.expectEqualStrings("NO", nullable);
+        try std.testing.expect(std.mem.indexOf(u8, default_expr, bpm.store.DEFAULT_TENANT_ID) != null);
+    }
+
+    const idx = try conn.query(
+        alloc,
+        \\SELECT indexname
+        \\FROM pg_indexes
+        \\WHERE schemaname = 'public'
+        \\  AND indexname IN (
+        \\      'idx_events_tenant_instance_seq',
+        \\      'idx_events_tenant_global_seq',
+        \\      'idx_events_archive_tenant_instance_seq',
+        \\      'idx_events_archive_tenant_global_seq'
+        \\  )
+        \\ORDER BY indexname ASC
+    ,
+        &.{},
+    );
+    defer {
+        var mr = idx;
+        mr.deinit();
+    }
+
+    try std.testing.expectEqual(@as(usize, 4), idx.rows.len);
+    try std.testing.expectEqualStrings("idx_events_archive_tenant_global_seq", idx.rows[0][0] orelse "");
+    try std.testing.expectEqualStrings("idx_events_archive_tenant_instance_seq", idx.rows[1][0] orelse "");
+    try std.testing.expectEqualStrings("idx_events_tenant_global_seq", idx.rows[2][0] orelse "");
+    try std.testing.expectEqualStrings("idx_events_tenant_instance_seq", idx.rows[3][0] orelse "");
+}
+
+test "TC-ADP-01-04: append rejects empty tenant context deterministically" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = "ADP01_ERR_TYPE",
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_str = "ad010000-0004-0000-0000-000000000004";
+    const def_str = "defdef00-ad01-0000-0000-000000000004";
+    try insertInstance(&pool, inst_str, def_str);
+    defer cleanupInstance(&pool, inst_str, &.{"adp01-missing-tenant-idem"});
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000024");
+
+    try std.testing.expectError(StoreError.MissingTenantContext, store.append(alloc, AppendParams{
+        .tenant_id = "",
+        .instance_id = inst_uuid,
+        .event_type = "ADP01_ERR_TYPE",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = "adp01-missing-tenant-idem",
+        .metadata = null,
+    }));
+
+    const check_conn = try pool.acquire();
+    defer pool.release(check_conn);
+
+    var cnt = try check_conn.query(
+        alloc,
+        "SELECT COUNT(*) FROM events WHERE idempotency_key = $1",
+        &.{"adp01-missing-tenant-idem"},
+    );
+    defer cnt.deinit();
+    const live_count = std.fmt.parseInt(i64, cnt.rows[0][0] orelse "0", 10) catch 0;
+    try std.testing.expectEqual(@as(i64, 0), live_count);
+
+    var arc = try check_conn.query(
+        alloc,
+        "SELECT COUNT(*) FROM events_archive WHERE idempotency_key = $1",
+        &.{"adp01-missing-tenant-idem"},
+    );
+    defer arc.deinit();
+    const archive_count = std.fmt.parseInt(i64, arc.rows[0][0] orelse "0", 10) catch 0;
+    try std.testing.expectEqual(@as(i64, 0), archive_count);
+}

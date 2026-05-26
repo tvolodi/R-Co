@@ -10,6 +10,19 @@ const std = @import("std");
 const pg = @import("pg");
 const root = @import("root");
 
+fn currentRequestTenantId() []const u8 {
+    if (@hasDecl(root, "api_tenant_context")) {
+        return root.api_tenant_context.get();
+    }
+    return "";
+}
+
+fn applyRequestTenantContext(conn: *Conn) PoolError!void {
+    const tenant_id = currentRequestTenantId();
+    const effective_tenant = if (tenant_id.len == 0) "" else tenant_id;
+    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{effective_tenant});
+}
+
 fn recordDbQueryDurationFromSql(sql: []const u8, elapsed_s: f64) void {
     if (@hasDecl(root, "obs_metrics")) {
         const m = root.obs_metrics;
@@ -378,6 +391,12 @@ pub const Pool = struct {
             conn._is_valid = true;
             conn._io = self.io;
         }
+
+        applyRequestTenantContext(conn) catch |err| {
+            self.idle_indices[self.idle_count] = idx;
+            self.idle_count += 1;
+            return err;
+        };
 
         return conn;
     }

@@ -6,6 +6,38 @@ All notable changes to the BPM Platform are documented here.
 
 ### Stage 6 — Observability + Extensions
 
+### Stage 6.5 — Schema adaptations + OIDC foundations
+
+### ADP-01 - Tenant Column on Event Store (RELEASED 2026-05-25)
+- Implemented additive tenant-aware event-store persistence and read behavior with default-tenant backward compatibility preserved for legacy flows without explicit tenant context.
+- Added migration support for tenant indexing and tenant-scoped filtering in event-store query paths, plus deterministic handling rules for missing tenant context.
+- Validation evidence passed in tests/reports/report-20260525T210953Z-WF02-adp01-20260526-step04b.json; release approval is recorded in docs/status/release-ADP-01-20260525.json.
+- Requirement: ADP-01 (MUST, Stage 6.5) - RELEASED
+
+### ADP-02 - Tenant column on definition, instance, and audit tables (RELEASED 2026-05-25)
+- Implemented additive tenant scoping persistence on definition, instance, and audit data paths, with migration-backed tenant_id columns and index updates to prevent cross-tenant leakage.
+- Added deterministic default-tenant behavior for legacy flows with missing tenant context while preserving tenant-scoped read/write invariants across updated backend stores.
+- Validation evidence passed in tests/reports/report-20260525T215115Z-WF02-adp02-20260526-step04.json; release approval is recorded in docs/status/release-ADP-02-20260525.json.
+- Requirement: ADP-02 (MUST, Stage 6.5) - RELEASED
+
+### ADP-03 - Tenant context resolution on API (RELEASED 2026-05-26)
+- Implemented deterministic tenant context resolution for bearer tokens so requests without tenant_id resolve to default tenant and requests with tenant_id remain scoped to the claimed tenant.
+- Added ADP-03 integration coverage for tenant-scoped reads/writes, cross-tenant rejection, malformed tenant claim rejection, and default-tenant compatibility behavior.
+- Validation evidence passed in tests/reports/report-20260526T022434Z-WF02-adp03-20260526-step04.json; release approval is recorded in docs/status/release-ADP-03-20260526.json.
+- Requirement: ADP-03 (MUST, Stage 6.5) - RELEASED
+
+### ADP-04 - Tenant binding for users (RELEASED 2026-05-26)
+- Implemented additive tenant binding for identity users and aligned identity/group service paths to explicit tenant-aware behavior, including default-tenant compatibility for pre-existing users.
+- Enforced single-tenant membership and claim invariants in identity/group operations to prevent cross-tenant leakage.
+- Validation evidence passed in tests/reports/report-20260526T032153Z-WF02-adp04-20260526-step-04b-rework1.json; release approval is recorded in docs/status/release-ADP-04-20260526.json.
+- Requirement: ADP-04 (MUST, Stage 6.5) - RELEASED
+
+### ADP-04a - External identity linkage for users (RELEASED 2026-05-26)
+- Implemented additive user identity-linkage support for external authentication by introducing external realm/sub fields with compatibility-preserving internal-user defaults.
+- Enforced tenant-scoped uniqueness and lookup semantics for realm+sub identity resolution used by OIDC JIT provisioning while preserving legacy internal-user behavior.
+- Validation evidence passed in tests/reports/WF02-adp04a-20260526-step-04-test-runner.md and tests/reports/WF02-adp04a-20260526-step-04c-test-runner-rework2.log; release approval is recorded in docs/status/release-ADP-04a-20260526.json.
+- Requirement: ADP-04a (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`
@@ -54,6 +86,19 @@ All notable changes to the BPM Platform are documented here.
 - Added panic-safe plugin invocation behavior by mapping handler panics into structured ERROR outcomes handled by the execution error path.
 - Validation evidence passed in tests/reports/report-20260525T144146Z-WF02-ext03-20260525.json; release gate approval is recorded in docs/status/release-EXT-03-20260525.json.
 - Requirement: EXT-03 (SHOULD, Stage 6) - RELEASED
+
+### EXT-04 - Variable transformer (RELEASED 2026-05-25)
+- Implemented optional CEL-based edge transform expressions for traversed edges, with activation-time syntax validation integrated into definition validation and activation paths.
+- Added runtime transform evaluation in edge traversal after EE-09 variable merge and before next-node activation, with output constrained to JSON object merge semantics.
+- Routed runtime CEL evaluation failures and non-object transform outputs through existing EE-10 error handling behavior.
+- Validation evidence passed in tests/reports/report-20260525T152809Z-WF02-ext04-20260525.json; release gate approval is recorded in docs/status/release-EXT-04-20260525.json.
+- Requirement: EXT-04 (SHOULD, Stage 6) - RELEASED
+
+### EXT-05 - Sub-process support (RELEASED 2026-05-25)
+- Implemented SUB_PROCESS runtime support with parent WAITING semantics, child-start linkage, copy-on-start variable isolation, and merge-on-child-complete behavior aligned to EE-09.
+- Added child terminal propagation behavior so child ERROR and external child cancellation transition the parent to ERROR with required parent and child identifiers in emitted events.
+- Validation evidence passed in tests/reports/report-20260525T162125Z-WF02-ext05-20260525.json; release gate approval is recorded in docs/status/release-EXT-05-20260525.json.
+- Requirement: EXT-05 (SHOULD, Stage 6) - RELEASED
 
 ### Stage 5 — Scheduler + Identity
 

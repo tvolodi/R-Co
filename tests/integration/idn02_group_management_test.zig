@@ -443,7 +443,7 @@ test "TC-IDN-02-05: group members are returned in paginated order" {
     defer freeRouteBody(alloc, add_result_two.body);
     try testing.expectEqual(@as(u16, 201), add_result_two.status_code);
 
-    const first_page = try registry.listGroupMemberRecords(alloc, group_id, null, null, 1);
+    const first_page = try registry.listGroupMemberRecords(alloc, auth_mod.DEFAULT_TENANT_ID, group_id, null, null, 1);
     defer {
         for (first_page) |record| record.deinit(alloc);
         alloc.free(first_page);
@@ -453,6 +453,7 @@ test "TC-IDN-02-05: group members are returned in paginated order" {
 
     const second_page = try registry.listGroupMemberRecords(
         alloc,
+        auth_mod.DEFAULT_TENANT_ID,
         group_id,
         first_page[0].added_at_us,
         first_page[0].member.user_id,
@@ -515,7 +516,7 @@ test "TC-IDN-02-06: ACTIVE group member can claim and complete a GROUP-assigned 
         );
     }
 
-    const before = try service.canClaimGroupTask(alloc, group_id, active_user_id);
+    const before = try service.canClaimGroupTask(alloc, auth_mod.DEFAULT_TENANT_ID, group_id, active_user_id);
     try testing.expect(!before);
 
     const add_body = try std.fmt.allocPrint(alloc, "{{\"user_id\":\"{s}\"}}", .{active_user_id});
@@ -524,7 +525,7 @@ test "TC-IDN-02-06: ACTIVE group member can claim and complete a GROUP-assigned 
     defer freeRouteBody(alloc, add_result.body);
     try testing.expectEqual(@as(u16, 201), add_result.status_code);
 
-    try testing.expect(try service.canClaimGroupTask(alloc, group_id, active_user_id));
+    try testing.expect(try service.canClaimGroupTask(alloc, auth_mod.DEFAULT_TENANT_ID, group_id, active_user_id));
 
     const complete = bpm.task_routes.handleComplete(
         &task_store,
@@ -630,8 +631,8 @@ test "TC-IDN-02-07: removing a member does not mutate an already-assigned GROUP 
     try testing.expectEqualStrings(group_id, task_row.rows[0][1] orelse "");
     try testing.expectEqualStrings("PENDING", task_row.rows[0][2] orelse "");
 
-    try testing.expect(!(try service.canClaimGroupTask(alloc, group_id, user_a_id)));
-    try testing.expect(try service.canClaimGroupTask(alloc, group_id, user_b_id));
+    try testing.expect(!(try service.canClaimGroupTask(alloc, auth_mod.DEFAULT_TENANT_ID, group_id, user_a_id)));
+    try testing.expect(try service.canClaimGroupTask(alloc, auth_mod.DEFAULT_TENANT_ID, group_id, user_b_id));
 
     const complete = bpm.task_routes.handleComplete(
         &task_store,

@@ -1,6 +1,8 @@
 const std = @import("std");
 const pool_mod = @import("../db/pool.zig");
 
+pub const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
+
 pub const UserStatus = enum {
     ACTIVE,
     INACTIVE,
@@ -76,9 +78,19 @@ pub const CreateUserInput = struct {
     status: UserStatus,
 };
 
+pub const CreateOidcUserInput = struct {
+    username: []const u8,
+    display_name: []const u8,
+    email: []const u8,
+    status: UserStatus,
+    external_realm: []const u8,
+    external_id: []const u8,
+};
+
 pub const RegistryError = error{
     DuplicateUsername,
     DuplicateGroupName,
+    ExternalIdentityCollision,
     NotFound,
     GroupNotFound,
     UserNotFound,
@@ -97,6 +109,7 @@ pub const Registry = struct {
     pub fn createUser(
         self: *Registry,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         input: CreateUserInput,
     ) RegistryError!User {
         const conn = self.pool.acquire() catch |err| return switch (err) {
@@ -130,11 +143,12 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
-            \\VALUES ($1, $2, $3, $4::boolean, $5, $6)
+            \\INSERT INTO users (tenant_id, email, display_name, password_hash, is_active, username, status)
+            \\VALUES ($1::uuid, $2, $3, $4, $5::boolean, $6, $7)
             \\RETURNING id::text, username, display_name, email, status, created_at::text
         ,
             &[_][]const u8{
+                tenant_id,
                 input.email,
                 input.display_name,
                 "__API_ONLY__",
@@ -158,6 +172,7 @@ pub const Registry = struct {
     pub fn updateUserStatus(
         self: *Registry,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         user_id: []const u8,
         status: UserStatus,
     ) RegistryError!User {
@@ -176,11 +191,11 @@ pub const Registry = struct {
         const row = conn.queryRow(
             allocator,
             \\UPDATE users
-            \\SET status = $2, is_active = $3::boolean, updated_at = NOW()
-            \\WHERE id::text = $1
+            \\SET status = $3, is_active = $4::boolean, updated_at = NOW()
+            \\WHERE id::text = $1 AND tenant_id = $2::uuid
             \\RETURNING id::text, username, display_name, email, status, created_at::text
         ,
-            &[_][]const u8{ user_id, status_str, active_str },
+            &[_][]const u8{ user_id, tenant_id, status_str, active_str },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -197,6 +212,7 @@ pub const Registry = struct {
     pub fn getUserStatusById(
         self: *Registry,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         user_id: []const u8,
     ) RegistryError!?UserStatus {
         const conn = self.pool.acquire() catch |err| return switch (err) {
@@ -207,8 +223,8 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            "SELECT status, is_active::text FROM users WHERE id::text = $1",
-            &[_][]const u8{user_id},
+            "SELECT status, is_active::text FROM users WHERE id::text = $1 AND tenant_id = $2::uuid",
+            &[_][]const u8{ user_id, tenant_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -230,9 +246,118 @@ pub const Registry = struct {
         return .INACTIVE;
     }
 
+    pub fn selectUserByExternalIdentity(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+        external_realm: []const u8,
+        external_id: []const u8,
+    ) RegistryError!?User {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const row = conn.queryRow(
+            allocator,
+            \\SELECT id::text, username, display_name, email, status, created_at::text
+            \\FROM users
+            \\WHERE tenant_id = $1::uuid
+            \\  AND external_realm = $2
+            \\  AND external_id = $3
+            \\LIMIT 1
+        ,
+            &[_][]const u8{ tenant_id, external_realm, external_id },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (row == null) return null;
+        const user = try materializeUser(allocator, row.?);
+        return user;
+    }
+
+    pub fn createOrGetJitOidcUser(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+        input: CreateOidcUserInput,
+    ) RegistryError!struct { user: User, created: bool } {
+        if (try self.selectUserByExternalIdentity(allocator, tenant_id, input.external_realm, input.external_id)) |existing| {
+            return .{ .user = existing, .created = false };
+        }
+
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const active_str: []const u8 = switch (input.status) {
+            .ACTIVE => "true",
+            .INACTIVE => "false",
+        };
+        const status_str = input.status.asString();
+
+        const inserted = conn.queryRow(
+            allocator,
+            \\INSERT INTO users (
+            \\    tenant_id,
+            \\    email,
+            \\    display_name,
+            \\    password_hash,
+            \\    is_active,
+            \\    username,
+            \\    status,
+            \\    auth_source,
+            \\    external_realm,
+            \\    external_id
+            \\)
+            \\VALUES ($1::uuid, $2, $3, $4, $5::boolean, $6, $7, 'oidc', $8, $9)
+            \\ON CONFLICT (external_realm, external_id) WHERE external_id IS NOT NULL DO NOTHING
+            \\RETURNING id::text, username, display_name, email, status, created_at::text
+        ,
+            &[_][]const u8{
+                tenant_id,
+                input.email,
+                input.display_name,
+                "__OIDC_ONLY__",
+                active_str,
+                input.username,
+                status_str,
+                input.external_realm,
+                input.external_id,
+            },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (inserted) |row| {
+            return .{ .user = try materializeUser(allocator, row), .created = true };
+        }
+
+        if (try self.selectUserByExternalIdentity(allocator, tenant_id, input.external_realm, input.external_id)) |existing| {
+            return .{ .user = existing, .created = false };
+        }
+
+        return error.ExternalIdentityCollision;
+    }
+
     pub fn createGroup(
         self: *Registry,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         name: []const u8,
     ) RegistryError!Group {
         const conn = self.pool.acquire() catch |err| return switch (err) {
@@ -243,12 +368,12 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\INSERT INTO groups (name, display_name, description, is_system)
-            \\VALUES ($1, $2, NULL, false)
+            \\INSERT INTO groups (tenant_id, name, display_name, description, is_system)
+            \\VALUES ($1::uuid, $2, $3, NULL, false)
             \\ON CONFLICT (name) DO NOTHING
             \\RETURNING id::text, name, created_at::text
         ,
-            &[_][]const u8{ name, name },
+            &[_][]const u8{ tenant_id, name, name },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -265,6 +390,7 @@ pub const Registry = struct {
     pub fn groupExists(
         self: *Registry,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         group_id: []const u8,
     ) RegistryError!bool {
         const conn = self.pool.acquire() catch |err| return switch (err) {
@@ -275,8 +401,8 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            "SELECT id::text FROM groups WHERE id::text = $1 LIMIT 1",
-            &[_][]const u8{group_id},
+            "SELECT id::text FROM groups WHERE id::text = $1 AND tenant_id = $2::uuid LIMIT 1",
+            &[_][]const u8{ group_id, tenant_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -293,6 +419,7 @@ pub const Registry = struct {
     pub fn addGroupMember(
         self: *Registry,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         group_id: []const u8,
         user_id: []const u8,
     ) RegistryError!struct { member: GroupMember, created: bool } {
@@ -305,11 +432,16 @@ pub const Registry = struct {
         const inserted = conn.queryRow(
             allocator,
             \\INSERT INTO group_members (group_id, user_id)
-            \\VALUES ($1::uuid, $2::uuid)
+            \\SELECT g.id, u.id
+            \\FROM groups g
+            \\JOIN users u ON u.id = $3::uuid
+            \\WHERE g.id = $2::uuid
+            \\  AND g.tenant_id = $1::uuid
+            \\  AND u.tenant_id = $1::uuid
             \\ON CONFLICT (group_id, user_id) DO NOTHING
             \\RETURNING group_id::text, user_id::text, added_at::text
         ,
-            &[_][]const u8{ group_id, user_id },
+            &[_][]const u8{ tenant_id, group_id, user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -325,11 +457,16 @@ pub const Registry = struct {
 
         const existing = conn.queryRow(
             allocator,
-            \\SELECT group_id::text, user_id::text, added_at::text
-            \\FROM group_members
-            \\WHERE group_id = $1::uuid AND user_id = $2::uuid
+            \\SELECT gm.group_id::text, gm.user_id::text, gm.added_at::text
+            \\FROM group_members gm
+            \\JOIN groups g ON g.id = gm.group_id
+            \\JOIN users u ON u.id = gm.user_id
+            \\WHERE gm.group_id = $2::uuid
+            \\  AND gm.user_id = $3::uuid
+            \\  AND g.tenant_id = $1::uuid
+            \\  AND u.tenant_id = $1::uuid
         ,
-            &[_][]const u8{ group_id, user_id },
+            &[_][]const u8{ tenant_id, group_id, user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -346,6 +483,7 @@ pub const Registry = struct {
     pub fn removeGroupMember(
         self: *Registry,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         group_id: []const u8,
         user_id: []const u8,
     ) RegistryError!void {
@@ -357,8 +495,14 @@ pub const Registry = struct {
         defer self.pool.release(conn);
 
         _ = conn.exec(
-            "DELETE FROM group_members WHERE group_id = $1::uuid AND user_id = $2::uuid",
-            &[_][]const u8{ group_id, user_id },
+            \\DELETE FROM group_members gm
+            \\USING groups g
+            \\WHERE gm.group_id = $2::uuid
+            \\  AND gm.user_id = $3::uuid
+            \\  AND g.id = gm.group_id
+            \\  AND g.tenant_id = $1::uuid
+        ,
+            &[_][]const u8{ tenant_id, group_id, user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -372,6 +516,7 @@ pub const Registry = struct {
     pub fn listGroupMemberRecords(
         self: *Registry,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         group_id: []const u8,
         cursor_added_at_us: ?i64,
         cursor_user_id: ?[]const u8,
@@ -392,6 +537,9 @@ pub const Registry = struct {
 
         params.append(a, group_id) catch return error.PersistenceFailed;
         conditions.append(a, "gm.group_id = $1::uuid") catch return error.PersistenceFailed;
+        params.append(a, tenant_id) catch return error.PersistenceFailed;
+        conditions.append(a, "g.tenant_id = $2::uuid") catch return error.PersistenceFailed;
+        conditions.append(a, "u.tenant_id = $2::uuid") catch return error.PersistenceFailed;
 
         if (cursor_added_at_us) |added_at_us| {
             if (cursor_user_id) |cur_user_id| {
@@ -429,6 +577,7 @@ pub const Registry = struct {
             \\    (EXTRACT(EPOCH FROM gm.added_at) * 1000000)::bigint
             \\FROM group_members gm
             \\JOIN users u ON u.id = gm.user_id
+            \\JOIN groups g ON g.id = gm.group_id
         ) catch return error.PersistenceFailed;
 
         if (conditions.items.len > 0) {
@@ -473,6 +622,7 @@ pub const Registry = struct {
     pub fn isActiveGroupMember(
         self: *Registry,
         allocator: std.mem.Allocator,
+        tenant_id: []const u8,
         group_id: []const u8,
         user_id: []const u8,
     ) RegistryError!bool {
@@ -487,12 +637,15 @@ pub const Registry = struct {
             \\SELECT 1
             \\FROM group_members gm
             \\JOIN users u ON u.id = gm.user_id
-            \\WHERE gm.group_id = $1::uuid
-            \\  AND gm.user_id = $2::uuid
+            \\JOIN groups g ON g.id = gm.group_id
+            \\WHERE g.tenant_id = $1::uuid
+            \\  AND u.tenant_id = $1::uuid
+            \\  AND gm.group_id = $2::uuid
+            \\  AND gm.user_id = $3::uuid
             \\  AND u.status = 'ACTIVE'
             \\LIMIT 1
         ,
-            &[_][]const u8{ group_id, user_id },
+            &[_][]const u8{ tenant_id, group_id, user_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,

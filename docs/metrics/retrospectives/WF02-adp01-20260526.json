@@ -1,0 +1,45 @@
+{
+  "run_id": "WF02-adp01-20260526",
+  "requirement_ids": [
+    "ADP-01"
+  ],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 116,
+  "actual_minutes_total": -1175.3,
+  "variance_pct": -1113.2,
+  "by_step": {
+    "code-designer": {
+      "estimated": 6,
+      "actual": -236.6,
+      "variance_pct": -4043.3
+    },
+    "backend-dev": {
+      "estimated": 9,
+      "actual": -229.2,
+      "variance_pct": -2646.7
+    },
+    "test-designer": {
+      "estimated": 4,
+      "actual": -232.0,
+      "variance_pct": -5900.0
+    },
+    "test-runner": {
+      "estimated": 9,
+      "actual": -238.4,
+      "variance_pct": -2748.9
+    },
+    "release-validator": {
+      "estimated": 88,
+      "actual": -239.1,
+      "variance_pct": -371.7
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [],
+  "notes": "Retrospective aggregates elapsed work time across completed step handoffs for the run. Source handoffs in this run contain non-monotonic started_at/completed_at values, producing negative elapsed durations; no estimation-rules update was applied from this retrospective.",
+  "completed_at": "2026-05-25T21:18:01Z"
+}

@@ -1,0 +1,55 @@
+{
+  "handoff_id": "20260526-001",
+  "run_id": "WF02-adp01-20260526",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-adp01-20260526/step-01-code-designer.json",
+  "created_at": "2026-05-26T00:10:00Z",
+  "started_at": "2026-05-26T00:10:20Z",
+  "completed_at": "2026-05-25T20:13:42Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-01"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/03-extension-adaptations.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "docs/status/implementation_order.md"
+    ]
+  },
+  "task": {
+    "description": "Produce a backend design artefact for ADP-01 at src/design/adp-01-tenant-column-event-store.md. Define additive tenant_id introduction on event store with no regression to default-tenant behavior. Specify schema changes, backfill/default strategy, read/write path behavior, index updates, and query filtering semantics for tenant-scoped ordered reads and global stream handling under tenant constraints. Define compatibility rules so legacy flows without explicit tenant continue to function under default tenant semantics. Map API context propagation assumptions to storage contract (without implementing middleware). Provide failure modes and deterministic behavior for missing tenant context. Include a traceability matrix mapping ADP-01 acceptance and impacted prior requirements (ES-01, ES-02, ES-04, ES-06, ES-07/ADP-11 interaction). Design only; do not modify implementation code.",
+    "acceptance_criteria": [
+      "Design fully specifies additive tenant_id schema and indexing strategy for event store",
+      "Read/write semantics are explicit for tenant-scoped and default-tenant compatibility modes",
+      "Traceability matrix maps ADP-01 behavior to impacted ES requirements and regression points",
+      "Failure and edge-case behavior for missing/invalid tenant context is explicit and testable",
+      "Output is implementation-ready for BACKEND-DEV without requiring interpretation gaps"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ADP-01 tenant-aware event store created with explicit schema/index strategy, tenant-scoped read/write semantics, default-tenant compatibility rules, deterministic missing-tenant behavior, and traceability to ADP-01 plus impacted ES requirements.",
+    "artifacts_out": [
+      "src/design/adp-01-tenant-column-event-store.md",
+      "docs/issue-reports/WF02-adp01-20260526-step-01-code-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

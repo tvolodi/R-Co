@@ -15,6 +15,7 @@ const Uuid = graph_mod.Uuid;
 pub const Token = struct {
     node_id: []const u8,
     branch_id: []const u8,
+    waiting_child_instance_id: ?[]const u8 = null,
 };
 
 // ---------------------------------------------------------------------------
@@ -53,11 +54,18 @@ pub const TimerCreatedPayload = struct {
     payload_json: []const u8,
 };
 
+pub const SubProcessStartPayload = struct {
+    parent_node_id: []const u8,
+    parent_branch_id: []const u8,
+    child_definition_id: []const u8,
+};
+
 pub const PendingEvent = union(enum) {
     parallel_split: ParallelSplitPayload,
     parallel_join: ParallelJoinPayload, // EE-07
     instance_cancelled: InstanceCancelledPayload, // EE-07
     timer_created: TimerCreatedPayload, // SCH-01
+    sub_process_start: SubProcessStartPayload,
 };
 
 // ---------------------------------------------------------------------------
@@ -101,9 +109,17 @@ pub const TransitionEvent = union(enum) {
         service_task_node_id: []const u8,
         output_variables: std.json.ObjectMap,
     },
+    sub_process_completed: struct {
+        sub_process_node_id: []const u8,
+        child_instance_id: []const u8,
+    },
     unknown: struct {
         event_type: []const u8,
     },
+};
+
+const ParsedSubProcessConfig = struct {
+    child_definition_id: []const u8,
 };
 
 // ---------------------------------------------------------------------------
@@ -114,6 +130,7 @@ pub const TransitionError = error{
     TokenOnMissingNode,
     NoMatchingEdge,
     CelEvaluationError,
+    TransformResultNonObject,
     InvalidState,
     OutOfMemory,
 };
@@ -230,15 +247,38 @@ pub fn transition(
             new_state.pending_task_nodes = try new_pending.toOwnedSlice(allocator);
             // Advance token
             var outgoing_found = false;
+            var chosen_edge: graph_mod.GraphEdge = undefined;
             var next_node_id: []const u8 = undefined;
             for (snapshot.edges) |edge| {
                 if (std.mem.eql(u8, edge.source, payload.task_node_id)) {
+                    chosen_edge = edge;
                     next_node_id = edge.target;
                     outgoing_found = true;
                     break;
                 }
             }
             if (!outgoing_found) return TransitionError.InvalidState;
+
+            if (chosen_edge.transform) |raw_expr| {
+                const expr = std.mem.trim(u8, raw_expr, " \t\r\n");
+                if (expr.len > 0) {
+                    const transform_obj = evaluateEdgeTransform(
+                        allocator,
+                        expr,
+                        new_state.variables,
+                    ) catch |err| switch (err) {
+                        error.TransformEvaluationFailed => return TransitionError.CelEvaluationError,
+                        error.TransformResultNonObject => return TransitionError.TransformResultNonObject,
+                        error.OutOfMemory => return TransitionError.OutOfMemory,
+                    };
+
+                    var transform_it = transform_obj.iterator();
+                    while (transform_it.next()) |entry| {
+                        try new_state.variables.put(allocator, entry.key_ptr.*, entry.value_ptr.*);
+                    }
+                }
+            }
+
             new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
             // Process node entry
             return try processNodeEntry(allocator, snapshot, new_state, next_node_id);
@@ -262,9 +302,11 @@ pub fn transition(
 
             // Advance token along the single outgoing edge.
             var outgoing_found = false;
+            var chosen_edge: graph_mod.GraphEdge = undefined;
             var next_node_id: []const u8 = undefined;
             for (snapshot.edges) |edge| {
                 if (std.mem.eql(u8, edge.source, payload.service_task_node_id)) {
+                    chosen_edge = edge;
                     next_node_id = edge.target;
                     outgoing_found = true;
                     break;
@@ -272,11 +314,99 @@ pub fn transition(
             }
             if (!outgoing_found) return TransitionError.InvalidState;
 
+            if (chosen_edge.transform) |raw_expr| {
+                const expr = std.mem.trim(u8, raw_expr, " \t\r\n");
+                if (expr.len > 0) {
+                    const transform_obj = evaluateEdgeTransform(
+                        allocator,
+                        expr,
+                        new_state.variables,
+                    ) catch |err| switch (err) {
+                        error.TransformEvaluationFailed => return TransitionError.CelEvaluationError,
+                        error.TransformResultNonObject => return TransitionError.TransformResultNonObject,
+                        error.OutOfMemory => return TransitionError.OutOfMemory,
+                    };
+
+                    var transform_it = transform_obj.iterator();
+                    while (transform_it.next()) |entry| {
+                        try new_state.variables.put(allocator, entry.key_ptr.*, entry.value_ptr.*);
+                    }
+                }
+            }
+
+            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+            return try processNodeEntry(allocator, snapshot, new_state, next_node_id);
+        },
+        .sub_process_completed => |payload| {
+            var token_idx: ?usize = null;
+            for (new_state.tokens, 0..) |t, i| {
+                if (!std.mem.eql(u8, t.node_id, payload.sub_process_node_id)) continue;
+                const waiting_child = t.waiting_child_instance_id orelse continue;
+                if (std.mem.eql(u8, waiting_child, payload.child_instance_id)) {
+                    token_idx = i;
+                    break;
+                }
+            }
+            if (token_idx == null) return TransitionError.InvalidState;
+
+            var outgoing_found = false;
+            var next_node_id: []const u8 = undefined;
+            for (snapshot.edges) |edge| {
+                if (std.mem.eql(u8, edge.source, payload.sub_process_node_id)) {
+                    next_node_id = edge.target;
+                    outgoing_found = true;
+                    break;
+                }
+            }
+            if (!outgoing_found) return TransitionError.InvalidState;
+
+            new_state.tokens[token_idx.?].waiting_child_instance_id = null;
             new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
             return try processNodeEntry(allocator, snapshot, new_state, next_node_id);
         },
         else => return TransitionError.UnknownEventType,
     }
+}
+
+const EdgeTransformError = error{
+    TransformEvaluationFailed,
+    TransformResultNonObject,
+    OutOfMemory,
+};
+
+fn evaluateEdgeTransform(
+    allocator: std.mem.Allocator,
+    expression: []const u8,
+    variables: std.json.ObjectMap,
+) EdgeTransformError!std.json.ObjectMap {
+    if (std.mem.startsWith(u8, expression, "variables.")) {
+        const var_name = expression["variables.".len..];
+        if (!isSimpleIdentifier(var_name)) return error.TransformEvaluationFailed;
+
+        const value = variables.get(var_name) orelse return error.TransformEvaluationFailed;
+        return switch (value) {
+            .object => |obj| obj.clone(allocator) catch error.OutOfMemory,
+            else => error.TransformResultNonObject,
+        };
+    }
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, expression, .{}) catch
+        return error.TransformEvaluationFailed;
+    defer parsed.deinit();
+
+    return switch (parsed.value) {
+        .object => |obj| obj.clone(allocator) catch error.OutOfMemory,
+        else => error.TransformResultNonObject,
+    };
+}
+
+fn isSimpleIdentifier(name: []const u8) bool {
+    if (name.len == 0) return false;
+    for (name, 0..) |c, idx| {
+        if (idx == 0 and !(std.ascii.isAlphabetic(c) or c == '_')) return false;
+        if (idx > 0 and !(std.ascii.isAlphabetic(c) or std.ascii.isDigit(c) or c == '_')) return false;
+    }
+    return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -382,6 +512,43 @@ fn processNodeEntry(
                     .repeat_expression = timer_config.repeat_expression,
                     .token_branch_id = try allocator.dupe(u8, token_branch_id.?),
                     .payload_json = payload_json,
+                },
+            });
+
+            var new_state = state;
+            new_state.pending_events = try new_pending_events.toOwnedSlice(allocator);
+            return new_state;
+        },
+        .SUB_PROCESS => {
+            const sub_cfg = parseSubProcessConfig(allocator, node_attrs) catch |err| switch (err) {
+                error.InvalidSubProcessConfig => return TransitionError.InvalidState,
+                error.OutOfMemory => return TransitionError.OutOfMemory,
+            };
+
+            var token_branch_id: ?[]const u8 = null;
+            var token_waiting_child: ?[]const u8 = null;
+            for (state.tokens) |tok| {
+                if (!std.mem.eql(u8, tok.node_id, node_id)) continue;
+                token_branch_id = tok.branch_id;
+                token_waiting_child = tok.waiting_child_instance_id;
+                break;
+            }
+            if (token_branch_id == null) return TransitionError.InvalidState;
+
+            if (token_waiting_child != null) {
+                // Parent already waiting on child completion for this token.
+                return state;
+            }
+
+            var new_pending_events = std.ArrayList(PendingEvent).empty;
+            defer new_pending_events.deinit(allocator);
+            for (state.pending_events) |ev| try new_pending_events.append(allocator, ev);
+
+            try new_pending_events.append(allocator, PendingEvent{
+                .sub_process_start = .{
+                    .parent_node_id = try allocator.dupe(u8, node_id),
+                    .parent_branch_id = try allocator.dupe(u8, token_branch_id.?),
+                    .child_definition_id = sub_cfg.child_definition_id,
                 },
             });
 
@@ -684,6 +851,25 @@ fn parseTimerConfig(
         .duration_iso8601 = try allocator.dupe(u8, duration_val.string),
         .repeat_expression = repeat_expression,
     };
+}
+
+fn parseSubProcessConfig(
+    allocator: std.mem.Allocator,
+    node_attrs: ?[]const u8,
+) error{ InvalidSubProcessConfig, OutOfMemory }!ParsedSubProcessConfig {
+    const raw = node_attrs orelse return error.InvalidSubProcessConfig;
+    if (raw.len == 0) return error.InvalidSubProcessConfig;
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, raw, .{ .allocate = .alloc_always }) catch {
+        return error.InvalidSubProcessConfig;
+    };
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return error.InvalidSubProcessConfig;
+    const child_def = parsed.value.object.get("child_definition_id") orelse return error.InvalidSubProcessConfig;
+    if (child_def != .string or child_def.string.len == 0) return error.InvalidSubProcessConfig;
+
+    return .{ .child_definition_id = try allocator.dupe(u8, child_def.string) };
 }
 
 fn buildTimerPayloadJson(
@@ -1527,4 +1713,81 @@ test "TC-EE-07-04: PARALLEL_JOIN event records branch_id with edge_index 0 as ou
     try std.testing.expect(std.mem.eql(u8, join_payload.outgoing_token_id, branch_0));
     try std.testing.expect(join_payload.branch_ids_arrived.len == 2);
     try std.testing.expect(join_payload.branch_ids_cancelled.len == 0);
+}
+
+test "TC-EXT-05-UT-01: entering SUB_PROCESS emits sub_process_start pending event" {
+    const allocator = std.testing.allocator;
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "sp1", .node_type = .SUB_PROCESS, .label = null, .attributes = "{\"child_definition_id\":\"123e4567-e89b-12d3-a456-426614174000\"}" },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "sp1", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const state = InstanceState{
+        .instance_id = [_]u8{0x11} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
+    };
+
+    var init_vars = std.json.ObjectMap.init(allocator);
+    defer init_vars.deinit();
+
+    const result = try transition(allocator, graph, state, .{
+        .instance_started = .{
+            .initial_variables = init_vars,
+            .start_node_id = "start",
+        },
+    });
+
+    try std.testing.expect(result.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "sp1"));
+    try std.testing.expect(result.pending_events.len == 1);
+    _ = result.pending_events[0].sub_process_start;
+}
+
+test "TC-EXT-05-UT-02: sub_process_completed advances waiting token" {
+    const allocator = std.testing.allocator;
+
+    const nodes = [_]graph_mod.GraphNode{
+        .{ .id = "sp1", .node_type = .SUB_PROCESS, .label = null, .attributes = "{\"child_definition_id\":\"123e4567-e89b-12d3-a456-426614174000\"}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]graph_mod.GraphEdge{
+        .{ .id = "e1", .source = "sp1", .target = "end", .condition = null, .is_default = false },
+    };
+    const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const state = InstanceState{
+        .instance_id = [_]u8{0x22} ** 16,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{.{
+            .node_id = "sp1",
+            .branch_id = "b1",
+            .waiting_child_instance_id = "123e4567-e89b-12d3-a456-426614174001",
+        }},
+        .variables = std.json.ObjectMap.init(allocator),
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
+    };
+
+    const result = try transition(allocator, graph, state, .{
+        .sub_process_completed = .{
+            .sub_process_node_id = "sp1",
+            .child_instance_id = "123e4567-e89b-12d3-a456-426614174001",
+        },
+    });
+
+    try std.testing.expect(result.status == .COMPLETED);
+    try std.testing.expect(result.tokens.len == 0);
 }

@@ -1,0 +1,61 @@
+{
+  "handoff_id": "20260526-008",
+  "run_id": "WF02-adp01-20260526",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-adp01-20260526/step-05-release-validator.json",
+  "created_at": "2026-05-26T01:13:00Z",
+  "started_at": "2026-05-26T01:13:20Z",
+  "completed_at": "2026-05-25T21:14:14Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-01"
+    ],
+    "related_handoff_ids": [
+      "20260526-001",
+      "20260526-002",
+      "20260526-003",
+      "20260526-004",
+      "20260526-005",
+      "20260526-006",
+      "20260526-007"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-adp01-20260526/step-04b-test-runner-rework1.json",
+      "tests/reports/report-20260525T210953Z-WF02-adp01-20260526-step04b.json",
+      "tests/reports/report-20260525T210506Z-WF03-adp01-es07fix-20260526-step02.json"
+    ]
+  },
+  "task": {
+    "description": "Perform WF-02 release validation for ADP-01. Confirm ADP-01 acceptance is satisfied with current implementation and test evidence, including post-fix integration pass. Execute required release checks and produce release decision artifact in docs/status/. Verify no blocker/major issues remain attributable to this run.",
+    "acceptance_criteria": [
+      "Release decision artifact created in docs/status/",
+      "Decision clearly states PASS/FAIL with rationale and linked evidence",
+      "No unresolved BLOCKER/MAJOR issues for ADP-01 remain"
+    ],
+    "functions_to_call": [
+      "zig build",
+      "zig build test",
+      "zig build test-integration",
+      "zig build bench",
+      "fn:write-release-decision"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for stage Stage 6.5 - Schema adaptations + OIDC foundations based on passing ADP-01 acceptance evidence and NFR benchmarks.",
+    "artifacts_out": [
+      "docs/status/release-ADP-01-20260525.json",
+      "docs/issue-reports/WF02-adp01-20260526-step-05-release-validator-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to set requirements status RELEASED"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

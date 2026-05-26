@@ -327,6 +327,44 @@ test "TC-PD-05-10: TIMER with valid duration_iso8601 = PT5M -> valid" {
     try std.testing.expectEqual(@as(usize, 0), result.violations.len);
 }
 
+test "TC-PD-05-20: SUB_PROCESS with child_definition_id -> valid" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "sp1", .node_type = .SUB_PROCESS, .label = null, .attributes = "{\"child_definition_id\":\"123e4567-e89b-12d3-a456-426614174000\"}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "sp1", .condition = null },
+        .{ .id = "e2", .source = "sp1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(result.valid);
+    try std.testing.expectEqual(@as(usize, 0), result.violations.len);
+}
+
+test "TC-PD-05-21: SUB_PROCESS without child_definition_id -> violation" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "sp1", .node_type = .SUB_PROCESS, .label = null, .attributes = "{}" },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "sp1", .condition = null },
+        .{ .id = "e2", .source = "sp1", .target = "end", .condition = null },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateNodeAttributes(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "SUB_PROCESS_MISSING_CHILD_DEFINITION_ID"));
+}
+
 test "TC-PD-05-11: TIMER with duration_iso8601 = P0D -> valid (zero duration permitted)" {
     const nodes = [_]gm.GraphNode{
         .{ .id = "start", .node_type = .START, .label = null },

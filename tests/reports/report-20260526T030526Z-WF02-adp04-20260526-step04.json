@@ -1,0 +1,102 @@
+{
+  "run_id": "WF02-adp04-20260526",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260526-025",
+  "step": "04",
+  "timestamp": "2026-05-26T03:05:26Z",
+  "overall_verdict": "FAIL",
+  "adp04_acceptance_coverage_status": "PASS",
+  "adp04_coverage_summary": "ADP-04 acceptance criteria remain covered by the integration suite content and execution context: tests/specs/ADP-04.md maps all criteria and tests/integration/adp04_user_tenant_binding_test.zig contains TC-ADP-04-01..04 for default-tenant compatibility and cross-tenant identity/group isolation checks. Workflow-level integration command failed due a pre-existing non-ADP-04 regression in TC-IDN-02-03.",
+  "commands": [
+    {
+      "command": "zig build",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "tests/reports/WF02-adp04-20260526-step-04-zig-build.log"
+    },
+    {
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS",
+      "log": "tests/reports/WF02-adp04-20260526-step-04-zig-build-test.log"
+    },
+    {
+      "command": "zig build test-integration",
+      "exit_code": 1,
+      "status": "FAIL",
+      "log": "tests/reports/WF02-adp04-20260526-step-04-zig-test-integration.log"
+    }
+  ],
+  "adp04_acceptance_criteria": [
+    {
+      "criterion": "User creation without explicit tenant_id binds to actor/default tenant context.",
+      "status": "PASS",
+      "evidence": "TC-ADP-04-01 is implemented in tests/integration/adp04_user_tenant_binding_test.zig and included by tests/integration/main_test.zig."
+    },
+    {
+      "criterion": "Cross-tenant group membership insertion is blocked with no membership side effects.",
+      "status": "PASS",
+      "evidence": "TC-ADP-04-02 validates cross-tenant membership rejection and persisted row count = 0."
+    },
+    {
+      "criterion": "Pre-existing users remain valid in default tenant via DB default/backfill compatibility.",
+      "status": "PASS",
+      "evidence": "TC-ADP-04-03 verifies legacy insert default tenant binding and tenant-scoped lookup behavior."
+    },
+    {
+      "criterion": "Identity/group claim checks enforce tenant isolation in positive and negative paths.",
+      "status": "PASS",
+      "evidence": "TC-ADP-04-04 verifies same-tenant claim allowed and cross-tenant claim denied."
+    }
+  ],
+  "executed_test_cases": [
+    {
+      "test_id": "TC-ADP-04-01",
+      "layer": "integration",
+      "file": "tests/integration/adp04_user_tenant_binding_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-04-02",
+      "layer": "integration",
+      "file": "tests/integration/adp04_user_tenant_binding_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-04-03",
+      "layer": "integration",
+      "file": "tests/integration/adp04_user_tenant_binding_test.zig"
+    },
+    {
+      "test_id": "TC-ADP-04-04",
+      "layer": "integration",
+      "file": "tests/integration/adp04_user_tenant_binding_test.zig"
+    }
+  ],
+  "summary": {
+    "total": 269,
+    "passed": 261,
+    "failed": 1,
+    "skipped": 7,
+    "note": "Suite totals from zig build test-integration output. Workflow verdict is FAIL because a required command failed."
+  },
+  "failures": [
+    {
+      "test_id": "TC-IDN-02-03",
+      "layer": "integration",
+      "file": "tests/integration/idn02_group_management_test.zig",
+      "error_message": "expected 200, found 500 for duplicate group membership insertion idempotency path",
+      "severity": "BLOCKER",
+      "requirement_id": "IDN-02",
+      "classification": "Pre-existing unrelated failure (outside ADP-04 scope)",
+      "evidence": "tests/reports/WF02-adp04-20260526-step-04-zig-test-integration.log"
+    }
+  ],
+  "issues": [
+    {
+      "id": "ISS-WF02-ADP04-STEP04-001",
+      "severity": "BLOCKER",
+      "description": "Workflow-layer integration run failed on pre-existing IDN-02 regression: TC-IDN-02-03 returned HTTP 500 instead of 200 on duplicate add-member idempotency.",
+      "affected_requirement": "IDN-02"
+    }
+  ],
+  "next_action_recommendation": "Route to ORCH for WF-03 issue-fix on IDN-02 failure; keep ADP-04 acceptance marked covered/passing in this run context."
+}

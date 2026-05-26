@@ -1,0 +1,47 @@
+{
+  "handoff_id": "20260526-025",
+  "run_id": "WF02-adp04-20260526",
+  "agent": "TEST-RUNNER",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "timestamp": "2026-05-26T03:05:26Z",
+  "status": "FAIL",
+  "validation": {
+    "commands_executed": [
+      "zig build",
+      "zig build test",
+      "zig build test-integration",
+      "fn:write-test-report",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ],
+    "required_acceptance_criteria_met": false,
+    "adp04_default_tenant_compatibility_covered": true,
+    "adp04_cross_tenant_identity_group_isolation_covered": true,
+    "workflow_failure_classification_complete": true
+  },
+  "evidence": {
+    "build_exit_code": 0,
+    "unit_exit_code": 0,
+    "integration_exit_code": 1,
+    "failing_test": "TC-IDN-02-03",
+    "failing_test_file": "tests/integration/idn02_group_management_test.zig",
+    "failing_requirement": "IDN-02",
+    "failure_classification": "Pre-existing unrelated failure",
+    "build_log": "tests/reports/WF02-adp04-20260526-step-04-zig-build.log",
+    "unit_log": "tests/reports/WF02-adp04-20260526-step-04-zig-build-test.log",
+    "integration_log": "tests/reports/WF02-adp04-20260526-step-04-zig-test-integration.log",
+    "structured_report": "tests/reports/report-20260526T030526Z-WF02-adp04-20260526-step04.json"
+  },
+  "issues": [
+    {
+      "severity": "BLOCKER",
+      "description": "Required workflow integration command failed due IDN-02 regression TC-IDN-02-03 (expected 200, found 500).",
+      "affected_requirement": "IDN-02"
+    }
+  ],
+  "notes": [
+    "ADP-04-specific coverage remains present in suite artifacts and mapped acceptance criteria.",
+    "WF-02 Step 4 verdict must be FAIL because a required command failed."
+  ]
+}

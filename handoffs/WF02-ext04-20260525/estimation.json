@@ -1,0 +1,29 @@
+{
+  "run_id": "WF02-ext04-20260525",
+  "created_at": "2026-05-25T14:55:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "EXT-04"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "Variable transformer spans definition validation, runtime execution ordering, CEL evaluation, and error propagation.",
+  "integration_surface": "high",
+  "integration_surface_rationale": "Touches process definition validation, engine traversal path, CEL runtime, and EE-09/EE-10 integration behavior.",
+  "steps": [
+    "code-designer",
+    "backend-dev",
+    "test-designer",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 182,
+    "backend-dev": 11,
+    "test-designer": 6,
+    "test-runner": 11,
+    "release-validator": 3,
+    "doc-updater": 2,
+    "total": 215
+  }
+}

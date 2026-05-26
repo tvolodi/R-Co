@@ -471,3 +471,49 @@ test "TC-PD-06-19: graph with no EXCLUSIVE_GATEWAY and no conditions -> valid" {
     try std.testing.expect(result.valid);
     try std.testing.expectEqual(@as(usize, 0), result.violations.len);
 }
+
+// ---------------------------------------------------------------------------
+// EXT-04-UT-01 — transform validation: valid no-op and simple expression
+// ---------------------------------------------------------------------------
+
+test "EXT-04-UT-01: null and whitespace transform expressions are valid no-ops" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "task", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "task", .condition = null, .transform = null },
+        .{ .id = "e2", .source = "task", .target = "end", .condition = null, .transform = "   \t  " },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateEdgeTransforms(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(result.valid);
+    try std.testing.expectEqual(@as(usize, 0), result.violations.len);
+}
+
+// ---------------------------------------------------------------------------
+// EXT-04-UT-02 — transform validation: malformed expression rejected
+// ---------------------------------------------------------------------------
+
+test "EXT-04-UT-02: malformed transform expression is rejected" {
+    const nodes = [_]gm.GraphNode{
+        .{ .id = "start", .node_type = .START, .label = null },
+        .{ .id = "task", .node_type = .HUMAN_TASK, .label = null },
+        .{ .id = "end", .node_type = .END, .label = null },
+    };
+    const edges = [_]gm.GraphEdge{
+        .{ .id = "e1", .source = "start", .target = "task", .condition = null },
+        .{ .id = "e2", .source = "task", .target = "end", .condition = null, .transform = "variables.(" },
+    };
+    const g = gm.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const result = try gm.validateEdgeTransforms(alloc, g);
+    defer freeResult(result);
+
+    try std.testing.expect(!result.valid);
+    try std.testing.expect(hasCode(result.violations, "EDGE_INVALID_TRANSFORM_CEL"));
+}

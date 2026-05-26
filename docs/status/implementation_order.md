@@ -1,6 +1,6 @@
 # BPM Platform — Implementation Order
 
-**Version:** 0.1 · 2026-05-20  
+**Version:** 0.2 · 2026-05-26  
 **Maintained by:** ORCH
 
 ---
@@ -128,6 +128,195 @@ _Gate: Stage 5 MUST requirements RELEASED._
 
 ---
 
+### Stage 6.5 — Schema adaptations + OIDC foundations
+
+_Gate: Stage 6 MUST requirements RELEASED._
+
+**Note:** This stage has two parallel streams (A and B) that can run simultaneously. Both must complete before Stage 7 begins. The adaptation requirements (ADP-*) extend shipped tables additively — no existing behaviour changes.
+
+**Stream A — Schema adaptations (BACKEND-DEV):**
+
+| ID | Title | Priority |
+|---|---|---|
+| ADP-01 | Tenant column on event store | MUST |
+| ADP-02 | Tenant column on definition, instance, and audit tables | MUST |
+| ADP-03 | Tenant context resolution on API | MUST |
+| ADP-04 | User tenant binding | MUST |
+| ADP-04a | External identity linkage on user | MUST |
+| ADP-04b | Realm binding on tenant | MUST |
+| ADP-05 | Artifact hash reference on instance | MUST |
+| ADP-06 | Pipeline run correlation on audit and events | SHOULD |
+| ADP-07 | Agent role and reserved usernames | MUST |
+| ADP-08 | Service task catalog reference | MUST |
+| ADP-09 | Tamper-evident audit chain | MUST |
+| ADP-10 | Agent I/O capture in audit | MUST |
+| ADP-11 | Replay-safe retention policy | MUST |
+| ADP-12 | Default-tenant regression suite | MUST |
+
+**Stream B — Identity provider integration (BACKEND-DEV):**
+
+| ID | Title | Priority |
+|---|---|---|
+| OIDC-01 | Pluggable provider interface | MUST |
+| OIDC-02 | Keycloak adapter | MUST |
+| OIDC-03 | Configuration source | MUST |
+| OIDC-04 | Standards compliance boundary | MUST |
+| OIDC-05 | Bearer token acceptance | MUST |
+| OIDC-06 | JWKS caching | MUST |
+| OIDC-07 | Claim validation | MUST |
+| OIDC-08 | Standard claim mapping | MUST |
+| OIDC-09 | JIT user creation | MUST |
+| OIDC-10 | Attribute synchronisation | MUST |
+| OIDC-11 | External user identity stability | MUST |
+| OIDC-12 | Realm-tenant binding | MUST |
+| OIDC-13 | Tenant claim source | MUST |
+| OIDC-14 | Realm provisioning via adapter | MUST |
+| OIDC-15 | Realm deletion safety | MUST |
+| OIDC-16 | Full lifecycle API for agents | MUST |
+| OIDC-17 | Provisioning idempotency | MUST |
+| OIDC-18 | Provisioning transactional semantics | MUST |
+| OIDC-19 | Provisioning audit | MUST |
+| OIDC-20 | Service accounts for agents | MUST |
+| OIDC-21 | Agent token rotation | MUST |
+| OIDC-22 | Bootstrap agent identity | MUST |
+| OIDC-23 | IDP federation support | MUST |
+| OIDC-24 | Federated user attribute mapping | SHOULD |
+| OIDC-25 | Provider health check | MUST |
+| OIDC-26 | Provider metrics | MUST |
+| OIDC-27 | Token verification performance | SHOULD |
+| OIDC-28 | Local development realm | MUST |
+| OIDC-29 | Realm seed as versioned artifact | MUST |
+| OIDC-30 | Test token issuance helper | MUST |
+| OIDC-31 | End-to-end authentication test suite | MUST |
+| OIDC-32 | Agent test identities | MUST |
+| OIDC-33 | Coexistence period | MUST |
+| OIDC-34 | Migration helper | SHOULD |
+
+---
+
+### Stages 7, 8, 9 — Execution tiers (parallel)
+
+_Gate: Stage 6.5 Stream A (ADP-* MUST) RELEASED. Stages 7, 8, 9 are fully independent of each other and can run in parallel._
+
+#### Stage 7 — Expression DSL
+
+| ID | Title | Priority |
+|---|---|---|
+| DSL-01 | Grammar conformance | MUST |
+| DSL-02 | AST stability | MUST |
+| DSL-03 | Error recovery | SHOULD |
+| DSL-04 | Supported types | MUST |
+| DSL-05 | Type coercion rules | MUST |
+| DSL-06 | Total evaluation | MUST |
+| DSL-07 | Function whitelist | MUST |
+| DSL-08 | Function purity | MUST |
+| DSL-09 | Date built-ins | MUST |
+| DSL-10 | Context resolution | MUST |
+| DSL-11 | Dot path traversal | MUST |
+| DSL-12 | Engine API | MUST |
+| DSL-13 | Performance target | SHOULD |
+
+#### Stage 8 — Lua Script Execution
+
+| ID | Title | Priority |
+|---|---|---|
+| LUA-01 | LuaJIT integration | MUST |
+| LUA-02 | State isolation | MUST |
+| LUA-03 | Stdlib restriction | MUST |
+| LUA-04 | Bytecode loading disabled | MUST |
+| LUA-05 | Host API registration | MUST |
+| LUA-06 | Capability check at call site | MUST |
+| LUA-07 | Capability manifest validation | MUST |
+| LUA-08 | Instruction limit | MUST |
+| LUA-09 | Memory limit | MUST |
+| LUA-10 | Wall clock timeout | MUST |
+| LUA-11 | Variable read/write | MUST |
+| LUA-12 | Service call | MUST |
+| LUA-13 | Logging | MUST |
+| LUA-14 | Time source | MUST |
+| LUA-15 | Structured failure | MUST |
+| LUA-16 | Runtime error capture | MUST |
+
+#### Stage 9 — Wasm Module Execution
+
+| ID | Title | Priority |
+|---|---|---|
+| WASM-01 | Wasmtime integration | MUST |
+| WASM-02 | Module ABI | MUST |
+| WASM-03 | Source compilation job | MUST |
+| WASM-04 | Compile caching | MUST |
+| WASM-05 | Build reproducibility | SHOULD |
+| WASM-06 | Import whitelist | MUST |
+| WASM-07 | No filesystem access | MUST |
+| WASM-08 | Memory isolation | MUST |
+| WASM-09 | Fuel-based execution limit | MUST |
+| WASM-10 | Memory cap | MUST |
+| WASM-11 | Wall clock timeout | MUST |
+| WASM-12 | Parity with Lua host API | MUST |
+| WASM-13 | Instance pooling | SHOULD |
+| WASM-14 | Hot reload | MUST |
+
+---
+
+### Stage 10 — Platform Repository
+
+_Gate: Stages 7, 8, 9 MUST requirements RELEASED. Stage 6.5 Stream B (OIDC-* MUST) RELEASED._
+
+| ID | Title | Priority |
+|---|---|---|
+| REPO-01 | Content addressing | MUST |
+| REPO-02 | Immutability | MUST |
+| REPO-03 | Versioning | MUST |
+| REPO-04 | Canonical serialisation | MUST |
+| REPO-05 | Form schema indexing | MUST |
+| REPO-06 | Event type registry | MUST |
+| REPO-07 | Service catalog | MUST |
+| REPO-08 | Atomic activation | MUST |
+| REPO-09 | Per-tenant activation | MUST |
+| REPO-10 | Activation history | MUST |
+| REPO-11 | Create artifact | MUST |
+| REPO-12 | List versions | MUST |
+| REPO-13 | Tenant activations | MUST |
+| REPO-14 | Bulk bundle operations | SHOULD |
+
+**Cross-cutting requirements applied at this stage:**
+
+| ID | Title | Priority | Note |
+|---|---|---|---|
+| XC-01 | Trace propagation | MUST | Verify end-to-end with new stages |
+| XC-02 | Audit immutability | MUST | Chain validation (ADP-09) now exercised |
+| XC-03 | Configuration in repository | MUST | First use of repository for platform config |
+| XC-04 | Kernel determinism | MUST | Confirm no LLM calls on kernel paths |
+| XC-05 | Deterministic replay for non-LLM tiers | SHOULD | First replay tests across all tiers |
+| XC-06 | Backwards compatibility | MUST | Upgrade test: pre-Stage 6.5 instances continue |
+
+---
+
+### Stage 11 — Test Runner and Simulation Mode
+
+_Gate: Stage 10 MUST requirements RELEASED._
+
+| ID | Title | Priority |
+|---|---|---|
+| SIM-01 | Simulation tenant | MUST |
+| SIM-02 | Service mocking | MUST |
+| SIM-03 | Time control | MUST |
+| SIM-04 | Deterministic UUIDs | MUST |
+| SIM-05 | Scenario schema | MUST |
+| SIM-06 | Assertion vocabulary | MUST |
+| SIM-07 | Scenario runner | MUST |
+| SIM-08 | Batch execution | MUST |
+| SIM-09 | Test result storage | MUST |
+| SIM-10 | Failure diagnostics | MUST |
+
+---
+
+### Stage 12 — AI Agent Pipeline
+
+_Gate: Stage 11 MUST requirements RELEASED. **DEFERRED** — specification not yet written. See docs/addon-1/02-functional-requirements.md §"Stage 12" for rationale._
+
+---
+
 ## Frontend implementation order
 
 Frontend stages align with backend stages that provide the APIs they depend on.
@@ -240,12 +429,53 @@ _Gate: Stage F5 MUST requirements RELEASED. Backend Stage 6 MUST RELEASED._
 | WH-UI-03 | Pause / resume subscription | MUST |
 | WH-UI-04 | Delivery log | SHOULD |
 
+### Stage F7 — Identity management (OIDC-aware)
+
+_Gate: Stage F5 MUST requirements RELEASED. Backend Stage 6.5 MUST RELEASED._
+
+**Note:** This stage updates the existing administration UI to reflect the OIDC identity model — realm management, external user provisioning, agent identities. Exact requirement IDs to be specified in WF-02 for this stage.
+
+---
+
+## Dependency graph
+
+```
+Already shipped:  Stages 1–6  (Stages 1–6 + F1–F6)
+                       │
+                       ▼
+              ┌────────┴────────────────┐
+              │ Stream A                │ Stream B
+        ADP-01..ADP-12            OIDC-01..OIDC-34
+        (schema adaptations)      (IDP integration)
+              │                         │
+              └─────────┬───────────────┘
+                        │ Stage 6.5 gate (both streams)
+                        │
+              ┌─────────┼─────────┐
+              │         │         │
+        Stage 7       Stage 8   Stage 9
+        (DSL)         (Lua)     (Wasm)
+              │         │         │
+              └────────┬┘─────────┘
+                       │ Stages 7+8+9 gate
+                       ▼
+                 Stage 10 (Repository)
+                       │
+                       ▼
+                 Stage 11 (Test Runner)
+                       │
+                       ▼
+           Stage 12 (Agent Pipeline — DEFERRED)
+```
+
 ---
 
 ## Summary counts
 
 | Track | Stages | MUST | SHOULD | COULD | Total |
 |---|---|---|---|---|---|
-| Backend | 1–6 | 54 | 12 | 2 | 68 |
-| Frontend | F1–F6 | 47 | 16 | 3 | 66 |
-| **All** | | **101** | **28** | **5** | **134** |
+| Backend (original) | 1–6 | 54 | 12 | 2 | 68 |
+| Backend (extension) | 6.5–11 + ADP + XC | 115 | 9 | 0 | 124 |
+| Frontend (original) | F1–F6 | 47 | 16 | 3 | 66 |
+| Frontend (extension) | F7 | TBD | TBD | TBD | TBD |
+| **All (in-scope)** | | **216+** | **37+** | **5** | **258+** |

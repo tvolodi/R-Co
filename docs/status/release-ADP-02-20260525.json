@@ -1,0 +1,56 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "date": "2026-05-25T21:53:34Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "ADP-02"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.003,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.948,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 65559.16,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 34.625,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "release_checks": {
+    "zig_build_exit_code": 0,
+    "zig_build_test_exit_code": 0,
+    "zig_build_test_integration_exit_code": 0
+  },
+  "test_evidence": {
+    "wf02_step04_handoff": "handoffs/WF02-adp02-20260526/step-04-test-runner.json",
+    "wf02_step04_report": "tests/reports/report-20260525T215115Z-WF02-adp02-20260526-step04.json",
+    "wf02_step04_inner_report": "docs/issue-reports/WF02-adp02-20260526-step-04-test-runner-INNER-REPORT.json",
+    "wf02_step04_status": "PASS"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "ADP-02"
+  ],
+  "non_blocking_issues": [],
+  "recommendation": "APPROVE ADP-02 release gate and route to DOC-UPDATER to set requirement status to RELEASED."
+}

@@ -14,6 +14,8 @@ const instance_mod = @import("../../engine/instance.zig");
 const pagination = @import("../pagination.zig");
 const authorization = @import("../authorization.zig");
 
+const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -37,6 +39,8 @@ pub const Actor = struct {
     is_operator_or_above: bool,
     /// True if caller holds PLATFORM_ADMIN.
     is_platform_admin: bool,
+    /// Request tenant context from auth middleware claim resolution.
+    tenant_id: [36]u8 = DEFAULT_TENANT_ID.*,
 };
 
 /// Query parameters for GET /api/v1/tasks (parsed by the router before calling handleList).
@@ -392,7 +396,7 @@ pub fn handleComplete(
             }
             if (std.mem.eql(u8, assignee_type, "GROUP")) {
                 if (task.assignee_ref == null) break :blk false;
-                const group_claim_allowed = identity.canClaimGroupTask(allocator, task.assignee_ref.?, actor.user_id) catch |err| switch (err) {
+                const group_claim_allowed = identity.canClaimGroupTask(allocator, actor.tenant_id[0..], task.assignee_ref.?, actor.user_id) catch |err| switch (err) {
                     identity_service.GroupError.PoolExhausted => return errorResult(
                         allocator,
                         503,

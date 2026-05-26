@@ -170,6 +170,8 @@ pub const ErrorType = enum {
     /// A task output variable failed registered JSON Schema validation (EE-09).
     SCHEMA_VIOLATION,
     SERVICE_TASK_FAILURE,
+    TRANSFORM_EVALUATION_ERROR,
+    TRANSFORM_RESULT_NON_OBJECT,
 };
 
 // ---------------------------------------------------------------------------
@@ -371,6 +373,9 @@ fn freeOwnedTransitionState(
     for (state.tokens) |tok| {
         allocator.free(tok.node_id);
         allocator.free(tok.branch_id);
+        if (tok.waiting_child_instance_id) |child_id| {
+            allocator.free(child_id);
+        }
     }
     allocator.free(state.tokens);
 
@@ -471,7 +476,9 @@ pub const InstanceStore = struct {
 
             const def_rows = conn.query(
                 allocator,
-                \\SELECT id, status FROM process_definitions WHERE id = $1::uuid
+                \\SELECT id, status FROM process_definitions
+                \\WHERE id = $1::uuid
+                \\  AND tenant_id = bpm_effective_tenant_id()
             ,
                 &.{def_id_hex},
             ) catch return InstanceError.TransactionFailed;
@@ -544,9 +551,9 @@ pub const InstanceStore = struct {
         //     uq_instance_correlation (WHERE correlation_key IS NOT NULL).
         //   - Non-null correlation_key is stored and participates in uniqueness.
         //
-        // ON CONFLICT (definition_id, correlation_key)
+        // ON CONFLICT (tenant_id, definition_id, correlation_key)
         //     WHERE correlation_key IS NOT NULL DO NOTHING
-        //   matches the uq_instance_correlation partial index; 0 RETURNING rows
+        //   matches the uq_instance_tenant_correlation partial index; 0 RETURNING rows
         //   means the conflict fired → DuplicateCorrelationKey.
         //
         // Security: all values bound as $N parameters — no SQL string
@@ -567,12 +574,12 @@ pub const InstanceStore = struct {
         const ins_rows = conn2.query(
             allocator,
             \\INSERT INTO instance_projections
-            \\    (instance_id, definition_id, correlation_key,
+            \\    (tenant_id, instance_id, definition_id, correlation_key,
             \\     status, variables, current_nodes, started_at, updated_at)
             \\VALUES
-            \\    ($1::uuid, $2::uuid, NULLIF($3, ''),
+            \\    (bpm_effective_tenant_id(), $1::uuid, $2::uuid, NULLIF($3, ''),
             \\     'ACTIVE', $4::jsonb, '[]'::jsonb, NOW(), NOW())
-            \\ON CONFLICT (definition_id, correlation_key)
+            \\ON CONFLICT (tenant_id, definition_id, correlation_key)
             \\    WHERE correlation_key IS NOT NULL DO NOTHING
             \\RETURNING
             \\    instance_id,
@@ -649,11 +656,18 @@ pub const InstanceStore = struct {
         tokens_buf.append(a, '[') catch return InstanceError.TransactionFailed;
         for (new_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return InstanceError.TransactionFailed;
-            const entry = std.fmt.allocPrint(
-                a,
-                "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
-                .{ tok.node_id, tok.branch_id },
-            ) catch return InstanceError.TransactionFailed;
+            const entry = if (tok.waiting_child_instance_id) |child_id|
+                std.fmt.allocPrint(
+                    a,
+                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
+                    .{ tok.node_id, tok.branch_id, child_id },
+                ) catch return InstanceError.TransactionFailed
+            else
+                std.fmt.allocPrint(
+                    a,
+                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                    .{ tok.node_id, tok.branch_id },
+                ) catch return InstanceError.TransactionFailed;
             tokens_buf.appendSlice(a, entry) catch return InstanceError.TransactionFailed;
         }
         tokens_buf.append(a, ']') catch return InstanceError.TransactionFailed;
@@ -849,11 +863,18 @@ pub const InstanceStore = struct {
         tokens_buf.append(a, '[') catch return ApplyError.OutOfMemory;
         for (new_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return ApplyError.OutOfMemory;
-            const entry = std.fmt.allocPrint(
-                a,
-                "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
-                .{ tok.node_id, tok.branch_id },
-            ) catch return ApplyError.OutOfMemory;
+            const entry = if (tok.waiting_child_instance_id) |child_id|
+                std.fmt.allocPrint(
+                    a,
+                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
+                    .{ tok.node_id, tok.branch_id, child_id },
+                ) catch return ApplyError.OutOfMemory
+            else
+                std.fmt.allocPrint(
+                    a,
+                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                    .{ tok.node_id, tok.branch_id },
+                ) catch return ApplyError.OutOfMemory;
             tokens_buf.appendSlice(a, entry) catch return ApplyError.OutOfMemory;
         }
         tokens_buf.append(a, ']') catch return ApplyError.OutOfMemory;
@@ -875,6 +896,8 @@ pub const InstanceStore = struct {
         const event_type_str: []const u8 = switch (event) {
             .instance_started => "instance_started",
             .task_completed => "task_completed",
+            .service_task_completed => "service_task_completed",
+            .sub_process_completed => "sub_process_completed",
             .unknown => "unknown",
         };
 
@@ -1135,11 +1158,23 @@ pub const InstanceStore = struct {
                     allocator.free(nid);
                     return CompleteTaskError.OutOfMemory;
                 };
+                var waiting_child: ?[]const u8 = null;
+                if (obj.get("waiting_child_instance_id")) |waiting_val| {
+                    if (waiting_val == .string and waiting_val.string.len > 0) {
+                        waiting_child = allocator.dupe(u8, waiting_val.string) catch {
+                            allocator.free(nid);
+                            allocator.free(bid);
+                            return CompleteTaskError.OutOfMemory;
+                        };
+                    }
+                }
                 tokens.append(allocator, .{ .node_id = nid, .branch_id = bid }) catch {
                     allocator.free(nid);
                     allocator.free(bid);
+                    if (waiting_child) |w| allocator.free(w);
                     return CompleteTaskError.OutOfMemory;
                 };
+                tokens.items[tokens.items.len - 1].waiting_child_instance_id = waiting_child;
             }
         }
 
@@ -1394,6 +1429,54 @@ pub const InstanceStore = struct {
 
                 return CompleteTaskError.InstanceInError;
             },
+            transition_mod.TransitionError.CelEvaluationError => {
+                conn.rollback() catch {};
+                tx_committed = true;
+
+                const vars_json_for_error = std.json.Stringify.valueAlloc(
+                    allocator,
+                    std.json.Value{ .object = merged_state.variables },
+                    .{},
+                ) catch return CompleteTaskError.OutOfMemory;
+                defer allocator.free(vars_json_for_error);
+
+                self.setInstanceError(allocator, SetInstanceErrorArgs{
+                    .instance_id = task.instance_id,
+                    .error_type = .TRANSFORM_EVALUATION_ERROR,
+                    .affected_node = task.node_id,
+                    .affected_field = null,
+                    .reason = "Edge transform evaluation failed",
+                    .variable_state = vars_json_for_error,
+                    .evaluated_conditions = null,
+                    .actor_id = inst_id_hex,
+                }) catch |set_err| return mapSetErrorToCompleteError(set_err);
+
+                return CompleteTaskError.InstanceInError;
+            },
+            transition_mod.TransitionError.TransformResultNonObject => {
+                conn.rollback() catch {};
+                tx_committed = true;
+
+                const vars_json_for_error = std.json.Stringify.valueAlloc(
+                    allocator,
+                    std.json.Value{ .object = merged_state.variables },
+                    .{},
+                ) catch return CompleteTaskError.OutOfMemory;
+                defer allocator.free(vars_json_for_error);
+
+                self.setInstanceError(allocator, SetInstanceErrorArgs{
+                    .instance_id = task.instance_id,
+                    .error_type = .TRANSFORM_RESULT_NON_OBJECT,
+                    .affected_node = task.node_id,
+                    .affected_field = null,
+                    .reason = "Edge transform result must be a JSON object",
+                    .variable_state = vars_json_for_error,
+                    .evaluated_conditions = null,
+                    .actor_id = inst_id_hex,
+                }) catch |set_err| return mapSetErrorToCompleteError(set_err);
+
+                return CompleteTaskError.InstanceInError;
+            },
             else => return CompleteTaskError.TransitionFailed,
         };
 
@@ -1408,7 +1491,15 @@ pub const InstanceStore = struct {
             new_state,
         );
 
-        const effective_state = service_outcome.state;
+        var effective_state = service_outcome.state;
+        effective_state = try startSubProcessesForPendingEventsInTx(
+            self,
+            a,
+            conn,
+            task.instance_id,
+            inst_id_hex,
+            effective_state,
+        );
 
         // Serialize new_state for SQL parameters (all in arena, freed at function exit).
         const new_status_str = instanceStatusToString(effective_state.status);
@@ -1417,11 +1508,18 @@ pub const InstanceStore = struct {
         tokens_buf.append(a, '[') catch return CompleteTaskError.OutOfMemory;
         for (effective_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return CompleteTaskError.OutOfMemory;
-            const entry = std.fmt.allocPrint(
-                a,
-                "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
-                .{ tok.node_id, tok.branch_id },
-            ) catch return CompleteTaskError.OutOfMemory;
+            const entry = if (tok.waiting_child_instance_id) |child_id|
+                std.fmt.allocPrint(
+                    a,
+                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
+                    .{ tok.node_id, tok.branch_id, child_id },
+                ) catch return CompleteTaskError.OutOfMemory
+            else
+                std.fmt.allocPrint(
+                    a,
+                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                    .{ tok.node_id, tok.branch_id },
+                ) catch return CompleteTaskError.OutOfMemory;
             tokens_buf.appendSlice(a, entry) catch return CompleteTaskError.OutOfMemory;
         }
         tokens_buf.append(a, ']') catch return CompleteTaskError.OutOfMemory;
@@ -1592,6 +1690,15 @@ pub const InstanceStore = struct {
 
         const definition_id_hex = uuidToHex(a, def_id) catch "_unknown";
         metrics.recordTaskCompletion(definition_id_hex);
+
+        if (effective_state.status == .COMPLETED) {
+            propagateChildCompletionToParent(
+                self,
+                allocator,
+                task.instance_id,
+                effective_state.variables,
+            ) catch {};
+        }
 
         return effective_state;
     }
@@ -1976,6 +2083,14 @@ pub const InstanceStore = struct {
         // ── Step h: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return CancelInstanceError.PersistenceFailed;
         refreshActiveInstancesMetric(self.pool, allocator);
+
+        propagateChildTerminalToParent(
+            self,
+            allocator,
+            instance_id,
+            "CHILD_PROCESS_CANCELLED",
+            "Child instance cancelled externally",
+        ) catch {};
     }
 
     // -----------------------------------------------------------------------
@@ -2414,6 +2529,14 @@ pub const InstanceStore = struct {
         // ── Step f: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return SetInstanceErrorError.PersistenceFailed;
         refreshActiveInstancesMetric(self.pool, allocator);
+
+        propagateChildTerminalToParent(
+            self,
+            allocator,
+            args.instance_id,
+            "CHILD_PROCESS_ERROR",
+            args.reason,
+        ) catch {};
     }
 };
 
@@ -3134,6 +3257,8 @@ fn buildExecutionErrorPayload(
         .NO_MATCHING_EDGE => "NO_MATCHING_EDGE",
         .SCHEMA_VIOLATION => "SCHEMA_VIOLATION",
         .SERVICE_TASK_FAILURE => "SERVICE_TASK_FAILURE",
+        .TRANSFORM_EVALUATION_ERROR => "TRANSFORM_EVALUATION_ERROR",
+        .TRANSFORM_RESULT_NON_OBJECT => "TRANSFORM_RESULT_NON_OBJECT",
     };
 
     // Helper: serialise a string as a JSON-quoted value.
@@ -3174,6 +3299,22 @@ fn buildExecutionErrorPayload(
             }
         },
         .SERVICE_TASK_FAILURE => {
+            if (args.affected_node) |node| {
+                const node_json = try strJson(allocator, node);
+                defer allocator.free(node_json);
+                try buf.appendSlice(allocator, ",\"affected_node\":");
+                try buf.appendSlice(allocator, node_json);
+            }
+        },
+        .TRANSFORM_EVALUATION_ERROR => {
+            if (args.affected_node) |node| {
+                const node_json = try strJson(allocator, node);
+                defer allocator.free(node_json);
+                try buf.appendSlice(allocator, ",\"affected_node\":");
+                try buf.appendSlice(allocator, node_json);
+            }
+        },
+        .TRANSFORM_RESULT_NON_OBJECT => {
             if (args.affected_node) |node| {
                 const node_json = try strJson(allocator, node);
                 defer allocator.free(node_json);
@@ -3362,6 +3503,375 @@ fn maybeInsertEscalationTimerInTx(
         scheduler_store_mod.TimerStoreError.OutOfMemory => return error.OutOfMemory,
         else => return error.PersistenceFailed,
     };
+}
+
+fn startSubProcessesForPendingEventsInTx(
+    self: *InstanceStore,
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    parent_instance_id: Uuid,
+    parent_instance_id_hex: []const u8,
+    state: transition_mod.InstanceState,
+) CompleteTaskError!transition_mod.InstanceState {
+    const next_state = state;
+
+    for (state.pending_events) |ev| {
+        switch (ev) {
+            .sub_process_start => |sp| {
+                const child_definition_id = parseUuid(sp.child_definition_id) catch return CompleteTaskError.TransitionFailed;
+
+                const parent_vars_json = std.json.Stringify.valueAlloc(
+                    allocator,
+                    std.json.Value{ .object = state.variables },
+                    .{},
+                ) catch return CompleteTaskError.OutOfMemory;
+                defer allocator.free(parent_vars_json);
+
+                const child_instance = self.create(
+                    allocator,
+                    child_definition_id,
+                    null,
+                    parent_vars_json,
+                ) catch |err| switch (err) {
+                    InstanceError.PoolExhausted => return CompleteTaskError.PoolExhausted,
+                    else => return CompleteTaskError.PersistenceFailed,
+                };
+                defer {
+                    if (child_instance.correlation_key) |ck| allocator.free(ck);
+                    allocator.free(child_instance.initial_variables);
+                    allocator.free(child_instance.definition_snapshot);
+                }
+
+                const child_instance_id_hex = uuidToHex(allocator, child_instance.instance_id) catch return CompleteTaskError.OutOfMemory;
+                defer allocator.free(child_instance_id_hex);
+
+                conn.exec(
+                    \\INSERT INTO subprocess_links
+                    \\    (parent_instance_id, child_instance_id, parent_node_id, parent_branch_id, status)
+                    \\VALUES
+                    \\    ($1::uuid, $2::uuid, $3, $4, 'WAITING')
+                    \\ON CONFLICT (child_instance_id) DO NOTHING
+                ,
+                    &.{ parent_instance_id_hex, child_instance_id_hex, sp.parent_node_id, sp.parent_branch_id },
+                ) catch return CompleteTaskError.PersistenceFailed;
+
+                const started_payload = std.fmt.allocPrint(
+                    allocator,
+                    "{{\"node_id\":\"{s}\",\"parent_instance_id\":\"{s}\",\"child_instance_id\":\"{s}\"}}",
+                    .{ sp.parent_node_id, parent_instance_id_hex, child_instance_id_hex },
+                ) catch return CompleteTaskError.OutOfMemory;
+                defer allocator.free(started_payload);
+
+                var idem_bytes: Uuid = undefined;
+                fillRandom(&idem_bytes);
+                idem_bytes[6] = (idem_bytes[6] & 0x0f) | 0x40;
+                idem_bytes[8] = (idem_bytes[8] & 0x3f) | 0x80;
+                const idem_key_hex = uuidToHex(allocator, idem_bytes) catch return CompleteTaskError.OutOfMemory;
+                defer allocator.free(idem_key_hex);
+
+                conn.exec(
+                    \\WITH seq AS (
+                    \\    INSERT INTO instance_sequence (instance_id, next_seq)
+                    \\    VALUES ($1::uuid, 2)
+                    \\    ON CONFLICT (instance_id) DO UPDATE
+                    \\        SET next_seq = instance_sequence.next_seq + 1
+                    \\    RETURNING next_seq - 1 AS val
+                    \\)
+                    \\INSERT INTO events
+                    \\    (instance_id, event_type, payload, actor_id,
+                    \\     sequence_number, idempotency_key)
+                    \\SELECT $1::uuid, 'SUBPROCESS_STARTED', $2::jsonb, $1::uuid,
+                    \\       seq.val, $3
+                    \\FROM seq
+                ,
+                    &.{ parent_instance_id_hex, started_payload, idem_key_hex },
+                ) catch return CompleteTaskError.PersistenceFailed;
+
+                for (next_state.tokens) |*tok| {
+                    if (!std.mem.eql(u8, tok.node_id, sp.parent_node_id)) continue;
+                    if (!std.mem.eql(u8, tok.branch_id, sp.parent_branch_id)) continue;
+                    tok.waiting_child_instance_id = allocator.dupe(u8, child_instance_id_hex) catch return CompleteTaskError.OutOfMemory;
+                    break;
+                }
+
+                _ = parent_instance_id;
+            },
+            else => {},
+        }
+    }
+
+    return next_state;
+}
+
+fn propagateChildCompletionToParent(
+    self: *InstanceStore,
+    allocator: std.mem.Allocator,
+    child_instance_id: Uuid,
+    child_variables: std.json.ObjectMap,
+) CompleteTaskError!void {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const child_instance_id_hex = uuidToHex(a, child_instance_id) catch return CompleteTaskError.OutOfMemory;
+
+    const conn = self.pool.acquire() catch |err| switch (err) {
+        PoolError.ExhaustedPool => return CompleteTaskError.PoolExhausted,
+        else => return CompleteTaskError.PersistenceFailed,
+    };
+    defer self.pool.release(conn);
+
+    const link_rows = conn.query(
+        a,
+        \\SELECT parent_instance_id, parent_node_id
+        \\FROM subprocess_links
+        \\WHERE child_instance_id = $1::uuid
+        \\  AND status = 'WAITING'
+    ,
+        &.{child_instance_id_hex},
+    ) catch return CompleteTaskError.PersistenceFailed;
+    defer {
+        var r = link_rows;
+        r.deinit();
+    }
+
+    if (link_rows.rows.len == 0) return;
+    const parent_instance_id_hex = colGet(link_rows.rows[0], 0);
+    const parent_node_id = colGet(link_rows.rows[0], 1);
+
+    conn.begin() catch return CompleteTaskError.PersistenceFailed;
+    errdefer conn.rollback() catch {};
+
+    const parent_rows = conn.query(
+        a,
+        \\SELECT definition_id, status, variables
+        \\FROM instance_projections
+        \\WHERE instance_id = $1::uuid
+        \\FOR UPDATE
+    ,
+        &.{parent_instance_id_hex},
+    ) catch return CompleteTaskError.PersistenceFailed;
+    defer {
+        var r = parent_rows;
+        r.deinit();
+    }
+
+    if (parent_rows.rows.len == 0) {
+        conn.rollback() catch {};
+        return;
+    }
+    if (!std.mem.eql(u8, colGet(parent_rows.rows[0], 1), "ACTIVE")) {
+        conn.rollback() catch {};
+        return;
+    }
+
+    const parent_definition_id = parseUuid(colGet(parent_rows.rows[0], 0)) catch return CompleteTaskError.PersistenceFailed;
+    const parent_vars_json = colGet(parent_rows.rows[0], 2);
+    const parsed_parent_vars = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        parent_vars_json,
+        .{ .allocate = .alloc_always },
+    ) catch return CompleteTaskError.PersistenceFailed;
+    defer parsed_parent_vars.deinit();
+    if (parsed_parent_vars.value != .object) return CompleteTaskError.PersistenceFailed;
+
+    var violation_detail: ?SchemaViolationDetail = null;
+    var merge_result = self.mergeVariables(
+        allocator,
+        conn,
+        parent_definition_id,
+        parseUuid(parent_instance_id_hex) catch return CompleteTaskError.PersistenceFailed,
+        null,
+        parsed_parent_vars.value.object,
+        child_variables,
+        &violation_detail,
+    ) catch return CompleteTaskError.PersistenceFailed;
+    defer merge_result.merged.deinit(allocator);
+    defer {
+        for (merge_result.overwritten_events) |ev| {
+            allocator.free(ev.key);
+            allocator.free(ev.old_value);
+            allocator.free(ev.new_value);
+        }
+        if (merge_result.overwritten_events.len > 0) {
+            allocator.free(merge_result.overwritten_events);
+        }
+    }
+
+    const merged_json = std.json.Stringify.valueAlloc(
+        a,
+        std.json.Value{ .object = merge_result.merged },
+        .{},
+    ) catch return CompleteTaskError.OutOfMemory;
+
+    const completed_payload = std.fmt.allocPrint(
+        a,
+        "{{\"node_id\":\"{s}\",\"parent_instance_id\":\"{s}\",\"child_instance_id\":\"{s}\",\"output_variables\":{s}}}",
+        .{ parent_node_id, parent_instance_id_hex, child_instance_id_hex, merged_json },
+    ) catch return CompleteTaskError.OutOfMemory;
+
+    var idem_bytes: Uuid = undefined;
+    fillRandom(&idem_bytes);
+    idem_bytes[6] = (idem_bytes[6] & 0x0f) | 0x40;
+    idem_bytes[8] = (idem_bytes[8] & 0x3f) | 0x80;
+    const idem_key_hex = uuidToHex(a, idem_bytes) catch return CompleteTaskError.OutOfMemory;
+
+    conn.exec(
+        \\WITH seq AS (
+        \\    INSERT INTO instance_sequence (instance_id, next_seq)
+        \\    VALUES ($1::uuid, 2)
+        \\    ON CONFLICT (instance_id) DO UPDATE
+        \\        SET next_seq = instance_sequence.next_seq + 1
+        \\    RETURNING next_seq - 1 AS val
+        \\)
+        \\INSERT INTO events
+        \\    (instance_id, event_type, payload, actor_id,
+        \\     sequence_number, idempotency_key)
+        \\SELECT $1::uuid, 'SUBPROCESS_COMPLETED', $2::jsonb, $1::uuid,
+        \\       seq.val, $3
+        \\FROM seq
+    ,
+        &.{ parent_instance_id_hex, completed_payload, idem_key_hex },
+    ) catch return CompleteTaskError.PersistenceFailed;
+
+    conn.exec(
+        \\UPDATE instance_projections
+        \\SET
+        \\    status = 'COMPLETED',
+        \\    current_nodes = '[]'::jsonb,
+        \\    variables = $2::jsonb,
+        \\    updated_at = NOW()
+        \\WHERE instance_id = $1::uuid
+    ,
+        &.{ parent_instance_id_hex, merged_json },
+    ) catch return CompleteTaskError.PersistenceFailed;
+
+    conn.exec(
+        \\UPDATE subprocess_links
+        \\SET status = 'COMPLETED', completed_at = NOW()
+        \\WHERE child_instance_id = $1::uuid
+    ,
+        &.{child_instance_id_hex},
+    ) catch return CompleteTaskError.PersistenceFailed;
+
+    conn.commit() catch return CompleteTaskError.PersistenceFailed;
+}
+
+fn propagateChildTerminalToParent(
+    self: *InstanceStore,
+    allocator: std.mem.Allocator,
+    child_instance_id: Uuid,
+    event_type: []const u8,
+    reason: []const u8,
+) !void {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const child_instance_id_hex = try uuidToHex(a, child_instance_id);
+
+    const conn = try self.pool.acquire();
+    defer self.pool.release(conn);
+
+    const link_rows = try conn.query(
+        a,
+        \\SELECT parent_instance_id, parent_node_id
+        \\FROM subprocess_links
+        \\WHERE child_instance_id = $1::uuid
+        \\  AND status = 'WAITING'
+    ,
+        &.{child_instance_id_hex},
+    );
+    defer {
+        var r = link_rows;
+        r.deinit();
+    }
+
+    if (link_rows.rows.len == 0) return;
+    const parent_instance_id_hex = colGet(link_rows.rows[0], 0);
+    const parent_node_id = colGet(link_rows.rows[0], 1);
+
+    try conn.begin();
+    errdefer conn.rollback() catch {};
+
+    const parent_rows = try conn.query(
+        a,
+        \\SELECT status, variables
+        \\FROM instance_projections
+        \\WHERE instance_id = $1::uuid
+        \\FOR UPDATE
+    ,
+        &.{parent_instance_id_hex},
+    );
+    defer {
+        var r = parent_rows;
+        r.deinit();
+    }
+    if (parent_rows.rows.len == 0) {
+        conn.rollback() catch {};
+        return;
+    }
+    if (!std.mem.eql(u8, colGet(parent_rows.rows[0], 0), "ACTIVE")) {
+        conn.rollback() catch {};
+        return;
+    }
+
+    const child_status = if (std.mem.eql(u8, event_type, "CHILD_PROCESS_CANCELLED")) "CANCELLED" else "ERROR";
+    const variable_state = colGet(parent_rows.rows[0], 1);
+    const reason_json = try std.json.Stringify.valueAlloc(a, std.json.Value{ .string = reason }, .{});
+
+    const payload_json = try std.fmt.allocPrint(
+        a,
+        "{{\"event_type\":\"{s}\",\"parent_instance_id\":\"{s}\",\"child_instance_id\":\"{s}\",\"parent_node_id\":\"{s}\",\"child_status\":\"{s}\",\"reason\":{s},\"variable_state\":{s}}}",
+        .{ event_type, parent_instance_id_hex, child_instance_id_hex, parent_node_id, child_status, reason_json, variable_state },
+    );
+
+    var idem_bytes: Uuid = undefined;
+    fillRandom(&idem_bytes);
+    idem_bytes[6] = (idem_bytes[6] & 0x0f) | 0x40;
+    idem_bytes[8] = (idem_bytes[8] & 0x3f) | 0x80;
+    const idem_key_hex = try uuidToHex(a, idem_bytes);
+
+    try conn.exec(
+        \\WITH seq AS (
+        \\    INSERT INTO instance_sequence (instance_id, next_seq)
+        \\    VALUES ($1::uuid, 2)
+        \\    ON CONFLICT (instance_id) DO UPDATE
+        \\        SET next_seq = instance_sequence.next_seq + 1
+        \\    RETURNING next_seq - 1 AS val
+        \\)
+        \\INSERT INTO events
+        \\    (instance_id, event_type, payload, actor_id,
+        \\     sequence_number, idempotency_key)
+        \\SELECT $1::uuid, $2, $3::jsonb, $1::uuid,
+        \\       seq.val, $4
+        \\FROM seq
+    ,
+        &.{ parent_instance_id_hex, event_type, payload_json, idem_key_hex },
+    );
+
+    try conn.exec(
+        \\UPDATE instance_projections
+        \\SET
+        \\    status = 'ERROR',
+        \\    current_nodes = '[]'::jsonb,
+        \\    error_detail = $2::jsonb,
+        \\    updated_at = NOW()
+        \\WHERE instance_id = $1::uuid
+    ,
+        &.{ parent_instance_id_hex, payload_json },
+    );
+
+    try conn.exec(
+        \\UPDATE subprocess_links
+        \\SET status = $2, completed_at = NOW()
+        \\WHERE child_instance_id = $1::uuid
+    ,
+        &.{ child_instance_id_hex, child_status },
+    );
+
+    try conn.commit();
 }
 
 // ---------------------------------------------------------------------------

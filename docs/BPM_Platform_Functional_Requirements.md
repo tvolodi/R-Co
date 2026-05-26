@@ -1426,8 +1426,1758 @@ Roles are additive: a user may hold multiple roles; their effective permissions 
 
 ---
 
+---
+
+## Stage 6.5 — Identity Provider Integration
+
+**Goal:** Replace the platform's internal authentication mechanism with delegated authentication via an OIDC-compliant external identity provider. Keycloak 26.x (Quarkus-based, Apache 2.0 OSS distribution) is the primary implementation target. The integration layer MUST remain provider-agnostic at the contract level. After this stage, real human users can authenticate and exercise the full Stage 1–6 platform end-to-end. This is the foundation for any later stage requiring tenancy or agent identities.
+
+**Relationship to existing IDN-* requirements:** Existing internal user records, tokens, and roles continue to work for backwards compatibility. This stage adds an alternative authentication path. Internal users may be deprecated in a future migration after all consumers have moved to OIDC.
+
+**Realm strategy:** One realm per BPM tenant (full isolation). The default tenant maps to a realm named `bpm-default`. New tenants get realms named `bpm-<tenant_slug>`.
+
+---
+
+### Provider-Agnostic Integration Layer
+
+### OIDC-01 — Pluggable provider interface `[MUST]`
+
+> The authentication subsystem MUST be implemented behind an abstract `IdentityProvider` interface, not coupled to Keycloak-specific APIs in any path used by the rest of the platform. The interface MUST expose at minimum: token verification, user lookup, realm/tenant provisioning, user provisioning, role grant management, client (OIDC application) provisioning, IDP federation management, and audit event retrieval.
+
+**Acceptance Criteria:**
+- GIVEN the platform is compiled with a stub `IdentityProvider` implementation, THEN no Keycloak-specific code appears outside the Keycloak adapter package.
+- Every path in the authentication subsystem referenced by non-adapter modules MUST use only the abstract interface.
+
+**See:** OIDC-02 (Keycloak adapter implements this interface), OIDC-03 (active provider selected via configuration), API-08 (authentication layer calls through this interface)
+
+---
+
+### OIDC-02 — Keycloak adapter `[MUST]`
+
+> A concrete adapter implementing the `IdentityProvider` interface against Keycloak's Admin REST API and OIDC endpoints MUST be provided. The adapter is the only place in the platform that references Keycloak-specific URLs, payloads, or behaviour. All Keycloak Admin REST API references MUST target the current 26.x Quarkus-based distribution.
+
+**Acceptance Criteria:**
+- Removing the Keycloak adapter from the build does not affect compilation of any other module.
+- A different adapter can be substituted without changes outside the adapter package.
+
+**See:** OIDC-01 (interface the adapter implements), OIDC-03 (configuration selects this adapter)
+
+---
+
+### OIDC-03 — Configuration source `[MUST]`
+
+> The active identity provider MUST be selected via platform configuration (stored as an artifact per XC-03 once Stage 10 is operational; via environment variable until then). The configuration MUST include: provider type, base URL, admin credentials reference, default realm/tenant identifier.
+
+**Acceptance Criteria:**
+- Switching the configured provider type triggers loading the corresponding adapter.
+- Misconfiguration produces a clear startup error identifying the invalid field.
+
+**See:** OIDC-01 (interface loaded at startup), XC-03 (configuration stored as repository artifact post-Stage 10)
+
+---
+
+### OIDC-04 — Standards compliance boundary `[MUST]`
+
+> All token verification MUST use only standard OIDC mechanisms: JWKS endpoint for signing keys, discovery document (`/.well-known/openid-configuration`) for endpoint resolution, and standard claims (`iss`, `sub`, `aud`, `exp`, `nbf`, `iat`). Provider-specific token features MUST NOT be required for core authentication.
+
+**Acceptance Criteria:**
+- A token verifier configured against any OIDC-compliant provider's discovery URL works without code changes.
+- No provider-specific token extension is required for a request to authenticate successfully.
+
+**See:** OIDC-06 (JWKS caching), OIDC-07 (claim validation rules)
+
+---
+
+### Token Verification
+
+### OIDC-05 — Bearer token acceptance `[MUST]`
+
+> The existing API-08 Bearer token verification path MUST be extended to recognise OIDC-issued JWTs. The platform MUST distinguish OIDC tokens from internally-issued tokens (per IDN-04) by token format inspection without ambiguity.
+
+**Acceptance Criteria:**
+- GIVEN a request with an OIDC JWT, THEN the platform authenticates it via OIDC verification.
+- GIVEN a request with an internally-issued token, THEN the platform authenticates it via IDN-04 verification.
+- GIVEN a request with a malformed token of indeterminate type, THEN the platform returns HTTP 401 with a structured error.
+- Both token types coexist; a request with either type succeeds.
+
+**See:** API-08 (Bearer token auth requirement), IDN-04 (internal token issuance), OIDC-07 (claim validation)
+
+---
+
+### OIDC-06 — JWKS caching `[MUST]`
+
+> The platform MUST cache JWKS keys per realm with a configurable TTL (default 10 minutes). On verification failure due to an unknown key ID (`kid`), the cache MUST be refreshed once before final failure. Cache refresh MUST be rate-limited to prevent JWKS-endpoint hammering.
+
+**Acceptance Criteria:**
+- Key rotation at the provider is picked up within TTL plus one refresh cycle.
+- Pathological refresh storms are bounded by the rate limiter.
+- TTL is configurable via platform configuration.
+
+**See:** OIDC-04 (JWKS endpoint is the key source), OIDC-07 (verification uses cached keys)
+
+---
+
+### OIDC-07 — Claim validation `[MUST]`
+
+> Token verification MUST validate: signature against cached JWKS; `iss` matches the configured issuer for the tenant; `aud` includes the configured client ID; `exp` is in the future (with configurable clock skew, default 30 seconds); `nbf` is in the past or absent. Tokens failing any check MUST be rejected with HTTP 401.
+
+**Acceptance Criteria:**
+- Each invalid case (wrong issuer, wrong audience, expired, not-yet-valid, bad signature) is tested individually and produces HTTP 401.
+- Clock skew is configurable and applied symmetrically.
+
+**See:** OIDC-05 (token type detected before validation), OIDC-06 (signature verified against cached JWKS)
+
+---
+
+### OIDC-08 — Standard claim mapping `[MUST]`
+
+> On successful verification, the platform MUST extract: `sub` → external user ID; configurable claim (default `tenant_id`) → tenant; configurable claim (default `realm_access.roles` for Keycloak, falling back to `roles`) → role list; standard claims `email`, `preferred_username`, `name` → user attributes. Mapping rules MUST be configurable per realm to accommodate other providers.
+
+**Acceptance Criteria:**
+- Tokens from different configured providers produce equivalent internal user contexts.
+- Claim mapping rules are configurable per realm and stored in platform configuration.
+- Missing optional claims produce concrete defaults, not errors: missing `email` claim defaults to empty string; missing `preferred_username` defaults to the `sub` value; missing `roles` claim defaults to empty list.
+<!-- CHANGE: Replaced vague "appropriate defaults" with explicit per-claim default values per REQ-VALIDATOR ISSUE-002, 2026-05-26 -->
+
+**See:** OIDC-07 (verification precedes mapping), OIDC-09 (extracted identity used for JIT provisioning), ADP-03 (tenant_id claim scopes the request)
+
+---
+
+### Just-In-Time User Provisioning
+
+### OIDC-09 — JIT user creation `[MUST]`
+
+> On first successful authentication of an external user, the platform MUST create a local user record (per IDN-01 schema) mirroring the OIDC identity, with `external_id` (the OIDC `sub`), `external_realm`, and `tenant_id` populated. The local user MUST be marked as externally authenticated (no local password).
+
+**Acceptance Criteria:**
+- First login of a new OIDC user creates exactly one local record.
+- Subsequent logins for the same OIDC user do not create duplicates.
+- The created record has `auth_source = 'oidc'` (per ADP-04a).
+
+**See:** IDN-01 (user record schema), ADP-04a (external identity columns), OIDC-11 (sub is the stable identifier)
+
+---
+
+### OIDC-10 — Attribute synchronisation `[MUST]`
+
+> On every successful authentication, the platform MUST update the local user record with current values from token claims for: display name, email, status. Roles MUST be reconciled: token roles are authoritative; local role bindings sourced from OIDC are replaced; locally-assigned roles (from IDN-03) are preserved.
+
+**Acceptance Criteria:**
+- Changing a user's role in Keycloak takes effect on the next token issuance and is reflected in the local record after the next successful authentication.
+- Locally-assigned roles are not overwritten by OIDC reconciliation.
+
+**See:** OIDC-09 (record created on first auth; updated on subsequent), IDN-03 (role-based access control)
+
+---
+
+### OIDC-11 — External user identity stability `[MUST]`
+
+> The `sub` claim MUST be treated as the stable identifier. Changes to email or username at the provider MUST NOT cause the platform to treat the user as a different person.
+
+**Acceptance Criteria:**
+- A user renamed or re-emailed in Keycloak retains the same local `user_id` and all task assignments, audit attribution, and history.
+- Lookup by `(external_realm, sub)` is the authoritative identity lookup path.
+
+**See:** OIDC-09 (JIT provisioning uses sub as key), ADP-04a (unique index on realm + external_id)
+
+---
+
+### Tenant Provisioning via Provider
+
+### OIDC-12 — Realm-tenant binding `[MUST]`
+
+> Each BPM tenant MUST be associated with exactly one realm at the provider. The `tenant` table MUST have an `idp_realm_id` column referencing the provider's realm identifier.
+
+**Acceptance Criteria:**
+- Tenant creation API requires an `idp_realm_id`.
+- Lookup by realm ID returns the tenant.
+- The default tenant has `idp_realm_id = 'bpm-default'` (per ADP-04b).
+
+**See:** ADP-04b (schema migration adds this column), OIDC-14 (realm provisioned programmatically)
+
+---
+
+### OIDC-13 — Tenant claim source `[MUST]`
+
+> The `tenant_id` claim required by ADP-03 MUST be populated by the identity provider, not constructed by the client. For Keycloak, this MUST be implemented via a protocol mapper at the realm or client level that injects the `tenant_id` from realm metadata.
+
+**Acceptance Criteria:**
+- Tokens issued by Keycloak for a given realm contain the corresponding `tenant_id` claim.
+- Clients cannot override the `tenant_id` claim.
+
+**See:** ADP-03 (tenant context resolved from token claim), OIDC-14 (realm provisioning configures the protocol mapper)
+
+---
+
+### OIDC-14 — Realm provisioning via adapter `[MUST]`
+
+> The `IdentityProvider` interface MUST support programmatic realm creation, including: realm name, display name, default token lifetimes, default password policy, default MFA policy, signing key generation, protocol mapper for `tenant_id` claim. The Keycloak adapter implements this via the Admin REST API.
+
+**Acceptance Criteria:**
+- Creating a tenant via platform API results in a fully configured realm at the provider.
+- The realm is immediately ready to issue tokens after provisioning.
+- The `tenant_id` protocol mapper is included in the provisioned realm configuration.
+
+**See:** OIDC-02 (adapter implements the Admin REST calls), OIDC-12 (realm bound to tenant), OIDC-13 (protocol mapper for tenant_id)
+
+---
+
+### OIDC-15 — Realm deletion safety `[MUST]`
+
+> Realm deletion via the adapter MUST be a two-step operation: mark for deletion (no new tokens issued, existing tokens accepted until expiry), then hard delete (after a configurable grace period, default 7 days). Hard deletion MUST be irreversible and audit-logged.
+
+**Acceptance Criteria:**
+- Marked realms continue to authenticate existing sessions; new logins are refused.
+- After the grace period, all provider-side realm data is removed.
+- Each step is recorded in the audit log per OBS-03 and ADP-09.
+
+**See:** OIDC-02 (adapter performs the deletion steps), OBS-03 (audit log), ADP-09 (tamper-evident audit chain)
+
+---
+
+### Agent-Driven Provisioning
+
+### OIDC-16 — Full lifecycle API for agents `[MUST]`
+
+> The platform MUST expose REST endpoints wrapping the adapter for: create/list/get/update/delete realms; create/list/get/update/delete users in a realm; assign/revoke roles; create/list/update/delete OIDC clients (applications); create/list/delete IDP federations (SAML, social); rotate client secrets. Endpoints MUST require `PLATFORM_ADMIN` or `AGENT_RUNNER` with the appropriate sub-scope.
+
+**Acceptance Criteria:**
+- An agent with proper credentials can provision a complete tenant (realm + admin user + OIDC client + federation) via REST calls alone.
+- All provisioning endpoints are documented in the OpenAPI specification (API-11).
+
+**See:** ADP-07 (AGENT_RUNNER role), OIDC-17 (provisioning idempotency), OIDC-18 (transactional semantics), OIDC-19 (provisioning audit)
+
+---
+
+### OIDC-17 — Provisioning idempotency `[MUST]`
+
+> All provisioning endpoints MUST accept an idempotency key. Repeated submission with the same key MUST be deduplicated; the original response is returned.
+
+**Acceptance Criteria:**
+- An agent retrying after a network timeout does not produce duplicate realms or users.
+- Idempotency behaviour matches ES-03 (original record returned, HTTP 200 on duplicate).
+
+**See:** ES-03 (event idempotency pattern reused here), OIDC-16 (endpoints that accept the key)
+
+---
+
+### OIDC-18 — Provisioning transactional semantics `[MUST]`
+
+> A multi-step provisioning request (e.g. "create realm, admin user, OIDC client, federation in one call") MUST be a single platform-level transaction from the API perspective: either all steps succeed and are committed at the provider, or all steps are rolled back (provider-side rollback may require compensating delete calls).
+
+**Acceptance Criteria:**
+- Failure at any step leaves the provider in a state equivalent to before the request.
+- Compensating delete calls are executed in reverse order on rollback.
+
+**See:** DB-03 (transactional integrity pattern), OIDC-16 (multi-step provisioning endpoints)
+
+---
+
+### OIDC-19 — Provisioning audit `[MUST]`
+
+> Every adapter call (read or write) MUST be recorded in the platform audit log with: actor identity, adapter method, provider response status, timing. Sensitive payload fields (secrets, passwords, MFA seeds) MUST be redacted before logging.
+
+**Acceptance Criteria:**
+- Audit retrieval shows full provisioning timeline.
+- No secret material appears in audit content; redacted fields show `"[REDACTED]"`.
+
+**See:** OBS-03 (audit log structure), ADP-09 (tamper-evident audit chain), ADP-10 (agent I/O capture)
+
+---
+
+### Agent Identity at the Provider
+
+### OIDC-20 — Service accounts for agents `[MUST]`
+
+> Each AI agent identity (per ADP-07) MUST be represented at the provider as a dedicated client with the service account flow enabled, scoped to the minimum roles required (`AGENT_RUNNER` plus role-specific grants). Agent tokens MUST be obtained via the client credentials flow, not the password flow.
+
+**Acceptance Criteria:**
+- Each agent has its own client credentials.
+- Revoking one agent's credentials does not affect others.
+- Agent tokens carry `auth_source` distinguishing them from human tokens.
+
+**See:** ADP-07 (AGENT_RUNNER role), OIDC-21 (agent token rotation), OIDC-22 (bootstrap agent identity)
+
+---
+
+### OIDC-21 — Agent token rotation `[MUST]`
+
+> Agent client secrets MUST be rotatable via the adapter API without service interruption. The platform MUST support overlapping validity (old and new secret both work) for a configurable grace period (default 1 hour).
+
+**Acceptance Criteria:**
+- Rotation in progress does not cause in-flight agent invocations to fail.
+- After the grace period, the old secret is invalidated.
+
+**See:** OIDC-20 (agent service accounts), OIDC-16 (rotate client secrets endpoint)
+
+---
+
+### OIDC-22 — Bootstrap agent identity `[MUST]`
+
+> The platform MUST support a bootstrap mechanism for the first agent (used during tenant provisioning when no agent yet exists at the provider). Bootstrap MUST require a one-time secret presented out-of-band (e.g. environment variable on first startup). Once any persistent agent exists, the bootstrap path is disabled until manually re-enabled.
+
+**Acceptance Criteria:**
+- First-run bootstrap succeeds once.
+- Re-attempts fail with an explicit error identifying that bootstrap is disabled.
+- Re-enabling bootstrap requires a manual operator action.
+
+**See:** OIDC-20 (persistent agent identities that succeed bootstrap)
+
+---
+
+### Federation and SSO
+
+### OIDC-23 — IDP federation support `[MUST]`
+
+> The adapter MUST support adding identity provider federations (SAML 2.0, OIDC providers, social providers where supported) to a realm. Configuration parameters per federation type are passed through the adapter API.
+
+**Acceptance Criteria:**
+- A federation added via API allows authentication via the federated provider.
+- Users authenticated through federation appear as JIT-provisioned local users per OIDC-09.
+
+**See:** OIDC-16 (IDP federation endpoint), OIDC-09 (JIT provisioning for federated users)
+
+---
+
+### OIDC-24 — Federated user attribute mapping `[SHOULD]`
+
+> The adapter SHOULD support configurable mapping from federated provider claims (SAML attributes, OIDC claims from social providers) to internal user attributes and roles.
+
+**Acceptance Criteria:**
+- Mapping configuration from documentation produces expected internal user records.
+- Unmapped attributes are ignored gracefully without error.
+
+**See:** OIDC-23 (federation support), OIDC-08 (claim mapping for non-Keycloak providers)
+
+---
+
+### Health and Observability
+
+### OIDC-25 — Provider health check `[MUST]`
+
+> The platform's `/health/ready` endpoint MUST include an identity provider connectivity check. Failure of this check MUST set the platform to not-ready (per the existing API-12 semantics).
+
+**Acceptance Criteria:**
+- Provider downtime is reflected in readiness; the platform returns HTTP 503 with the failing subsystem identified.
+- Recovery of the provider restores readiness on the next health check.
+
+**See:** API-12 (health endpoints), DB-04 (pattern for health check function)
+
+---
+
+### OIDC-26 — Provider metrics `[MUST]`
+
+> The platform MUST expose Prometheus metrics for: token verification rate, verification latency, JWKS cache hit ratio, adapter call rate per method, adapter call error rate.
+
+**Acceptance Criteria:**
+- Metrics are present at `/metrics` (OBS-02) and reflect actual traffic.
+- Each metric is labelled sufficiently to distinguish by realm and method.
+
+**See:** OBS-02 (Prometheus metrics endpoint)
+
+---
+
+### OIDC-27 — Token verification performance `[SHOULD]`
+
+> P95 token verification latency (with warm JWKS cache) SHOULD be under 2 ms. Cold-cache verification SHOULD be under 100 ms (one network round-trip to JWKS).
+
+**Acceptance Criteria:**
+- Benchmark suite measures and reports against these targets.
+- Warm-cache and cold-cache scenarios are tested separately.
+
+**See:** OIDC-06 (JWKS caching governs cold vs. warm path), NFR-01 (general API latency target)
+
+---
+
+### Development and Test Infrastructure
+
+### OIDC-28 — Local development realm `[MUST]`
+
+> The platform repository MUST include a docker-compose configuration that starts Keycloak 26.x (Quarkus-based) with a pre-seeded `bpm-default` realm, a pre-configured OIDC client for the platform, and at least three test users with distinct role bindings (`PLATFORM_ADMIN`, `PROCESS_DESIGNER`, `TASK_WORKER`).
+
+**Acceptance Criteria:**
+- A developer runs `docker compose up`, waits for health, and can immediately authenticate against the BPM API with any seeded test user.
+- No manual configuration step is required after container start.
+
+**See:** OIDC-29 (seed is versioned), OIDC-30 (test token helper)
+
+---
+
+### OIDC-29 — Realm seed as versioned artifact `[MUST]`
+
+> The realm export JSON used to seed development Keycloak MUST be stored in the repository under version control at `infrastructure/keycloak/realms/bpm-default.json`. Updates to the seed are reviewed like any other code change.
+
+**Acceptance Criteria:**
+- Repository contains `infrastructure/keycloak/realms/bpm-default.json`.
+- CI validates that the file imports cleanly into Keycloak 26.x.
+
+**See:** OIDC-28 (docker-compose uses this seed)
+
+---
+
+### OIDC-30 — Test token issuance helper `[MUST]`
+
+> A test helper utility MUST be provided that issues OIDC tokens for the development realm via the password grant or client credentials flow, suitable for use in integration tests. The helper MUST NOT be reachable in production builds.
+
+**Acceptance Criteria:**
+- Integration test suites authenticate via this helper without manual token retrieval.
+- The helper is gated by a build flag or `BPM_ENV` environment check; it is absent in production builds.
+
+**See:** OIDC-28 (development realm the helper authenticates against), API-08 (bootstrap token for pre-Stage 6.5 test equivalence)
+
+---
+
+### OIDC-31 — End-to-end authentication test suite `[MUST]`
+
+> After Stage 6.5 completion, the platform CI MUST include an end-to-end test suite that: starts Keycloak from compose, starts the platform, exercises the full Stage 1–6 API surface authenticated via OIDC tokens, and confirms equivalence with pre-OIDC test results.
+
+**Acceptance Criteria:**
+- CI green confirms OIDC integration does not regress Stage 1–6 behaviour.
+- Test suite covers all roles defined in the Stage 5 permission matrix.
+
+**See:** ADP-12 (default-tenant regression suite), OIDC-30 (token helper used by this suite)
+
+---
+
+### OIDC-32 — Agent test identities `[MUST]`
+
+> The development realm seed MUST include service-account clients for the three pipeline agents (`agent-architect`, `agent-developer`, `agent-devops`), each with appropriate role bindings. Agents in development obtain tokens via these clients.
+
+**Acceptance Criteria:**
+- Agent integration tests authenticate using these seeded service accounts without manual setup.
+- Each client has the minimum roles required (AGENT_RUNNER plus stage-specific grants).
+
+**See:** OIDC-29 (seed file contains these clients), OIDC-20 (service account pattern)
+
+---
+
+### Migration from Internal Authentication
+
+### OIDC-33 — Coexistence period `[MUST]`
+
+> After Stage 6.5 deployment, internal authentication (per existing IDN-04 tokens) MUST continue to work indefinitely. There is no forced migration. Internal and OIDC tokens are both valid simultaneously.
+
+**Acceptance Criteria:**
+- A token issued before Stage 6.5 deployment continues to authenticate successfully after deployment.
+- Both token types produce equivalent internal user contexts for the same user.
+
+**See:** IDN-04 (internal token issuance remains operational), OIDC-05 (dual-type verification)
+
+---
+
+### OIDC-34 — Migration helper `[SHOULD]`
+
+> The platform SHOULD provide an administrative API to enumerate internal users not yet linked to an OIDC identity, and to assist in their provisioning at the provider (creating matching Keycloak users in bulk).
+
+**Acceptance Criteria:**
+- Admin can list unmigrated users via a dedicated endpoint.
+- Bulk provisioning succeeds end-to-end: users are created in Keycloak and linked in the local record.
+
+**See:** IDN-01 (user registry to enumerate), ADP-04a (external_id field set by this process)
+
+---
+
+## Stage 7 — Expression DSL
+
+**Goal:** A safe, total expression language usable for gateway conditions, simple validations, and edge transforms. Pure Zig implementation. Zero external dependencies. This is Tier 1 of the three-tier execution model.
+
+---
+
+### Parser and Grammar
+
+### DSL-01 — Grammar conformance `[MUST]`
+
+> The DSL parser MUST accept all expressions conforming to the grammar defined in Architecture §5.1 and MUST reject all others with structured error messages including line and column number.
+
+**Acceptance Criteria:**
+- For each grammar production, at least one positive and one negative parser test exists.
+- Rejection messages include the line number, column number, and the offending token.
+
+**See:** DSL-02 (AST determinism), DSL-03 (error recovery), DSL-12 (engine API exposes the parser)
+
+---
+
+### DSL-02 — AST stability `[MUST]`
+
+> The parser MUST produce an AST whose shape is deterministic for a given input. Two parses of the same input MUST yield structurally identical ASTs.
+
+**Acceptance Criteria:**
+- An equality check over the AST after parsing the same input twice confirms structural identity.
+
+**See:** DSL-01 (parser produces the AST), DSL-06 (evaluation is deterministic given the AST)
+
+---
+
+### DSL-03 — Error recovery `[SHOULD]`
+
+> On parse error, the parser SHOULD report all errors in a single pass where possible, not stop at the first error.
+
+**Acceptance Criteria:**
+- A test input with three distinct syntax errors yields a report with three entries.
+
+**See:** DSL-01 (error message format requirements)
+
+---
+
+### Type System
+
+### DSL-04 — Supported types `[MUST]`
+
+> The DSL MUST support exactly these value types: `null`, `bool`, `int64`, `float64`, `string`, `timestamp`. No other types are valid.
+
+**Acceptance Criteria:**
+- Each type has a literal form (where applicable) and round-trips through parse then evaluate.
+- Attempting to use an unsupported type produces a structured parse error.
+
+**See:** DSL-05 (coercion rules between these types), DSL-06 (evaluation produces values of these types)
+
+---
+
+### DSL-05 — Type coercion rules `[MUST]`
+
+> The evaluator MUST implement coercion rules as a documented table: `int64` ↔ `float64` is automatic in arithmetic, never silent in comparison; `string` to/from other types only via explicit built-in functions; `null` compared to anything except `null` returns `null` (three-valued logic).
+
+**Acceptance Criteria:**
+- The coercion table is implemented as a test matrix covering every pair of types and every operator.
+- Silent coercion in comparisons is verified not to occur via dedicated tests.
+
+**See:** DSL-04 (the types subject to these rules), DSL-07 (built-in functions handle explicit string conversion)
+
+---
+
+### DSL-06 — Total evaluation `[MUST]`
+
+> Evaluation of a well-typed expression MUST always terminate and produce one of: a typed value, a typed `null`, or a structured evaluation error. Evaluation MUST NOT crash the host or enter an unbounded loop.
+
+**Acceptance Criteria:**
+- A property-based test generates random valid-grammar expressions; all evaluate within a fixed step bound.
+- No expression evaluation results in a host crash or panic.
+
+**See:** DSL-02 (deterministic AST guarantees total evaluation is well-defined), DSL-04 (all result types are from the supported set)
+
+---
+
+### Built-in Functions
+
+### DSL-07 — Function whitelist `[MUST]`
+
+> The evaluator MUST support exactly the built-in functions listed in Architecture §5.1: `length`, `lower`, `upper`, `trim`, `contains`, `startsWith`, `endsWith`, `coalesce`, `now`, `date_add`, `date_diff`. No other functions are callable. Unknown function names are a parse-time error.
+
+**Acceptance Criteria:**
+- Each built-in has a dedicated test verifying correct output.
+- Calling an unlisted function name fails at parse time with a structured error.
+
+**See:** DSL-08 (all listed functions are pure), DSL-09 (date built-ins have additional UTC constraints)
+
+---
+
+### DSL-08 — Function purity `[MUST]`
+
+> Every built-in function MUST be pure: same inputs yield same outputs, no side effects, no I/O.
+
+**Acceptance Criteria:**
+- Each built-in's tests verify determinism by calling twice with identical inputs and comparing outputs.
+
+**See:** DSL-07 (function whitelist), EE-02 (purity requirement mirrors the pure transition function)
+
+---
+
+### DSL-09 — Date built-ins `[MUST]`
+
+> `now()` MUST return the platform's current time. `date_add(ts, n, unit)` and `date_diff(ts1, ts2, unit)` MUST support units: `second`, `minute`, `hour`, `day`. Time math MUST use UTC; no implicit timezone handling.
+
+**Acceptance Criteria:**
+- A cross-DST boundary test confirms UTC arithmetic produces the correct result.
+- `date_add` and `date_diff` with each supported unit are tested.
+
+**See:** DSL-07 (these are included in the whitelist), DSL-08 (date functions are pure when given an explicit timestamp)
+
+---
+
+### Variable Access
+
+### DSL-10 — Context resolution `[MUST]`
+
+> Identifier expressions (e.g. `order.total`) MUST resolve against a provided context map. Unresolved identifiers MUST evaluate to typed `null`, not crash.
+
+**Acceptance Criteria:**
+- Evaluating an expression against a context with missing fields returns `null` without error.
+- Resolved identifiers return the value at the correct type.
+
+**See:** DSL-11 (dot-path traversal extends this rule to nested paths), EE-05 (execution engine provides the instance variable map as context)
+
+---
+
+### DSL-11 — Dot path traversal `[MUST]`
+
+> Dot paths MUST traverse nested objects. Accessing a field on `null` MUST yield `null` (null-propagation), not an error.
+
+**Acceptance Criteria:**
+- `a.b.c.d` evaluated where `a.b` is `null` returns `null` without error.
+- A deeply nested path where all ancestors exist returns the correct leaf value.
+
+**See:** DSL-10 (root identifier resolution), DSL-05 (null propagation is part of the coercion rules)
+
+---
+
+### Integration
+
+### DSL-12 — Engine API `[MUST]`
+
+> The DSL MUST expose a host API: `parse(source: []const u8) → !ParsedExpr` and `evaluate(expr: *ParsedExpr, ctx: *Context) → EvalResult`. Parsed expressions MUST be cacheable and reusable across evaluations.
+
+**Acceptance Criteria:**
+- The same parsed expression evaluated against different contexts yields different correct results.
+- Caching a `ParsedExpr` and re-evaluating it produces the same result as parsing again.
+
+**See:** EE-05 (engine calls this API for gateway condition evaluation), EXT-04 (variable transformers use the same API)
+
+---
+
+### DSL-13 — Performance target `[SHOULD]`
+
+> A typical expression (5–10 nodes in AST) SHOULD evaluate in under 10 microseconds on commodity hardware.
+
+**Acceptance Criteria:**
+- Benchmark suite measures and reports evaluation latency against this target.
+
+**See:** DSL-12 (the API being benchmarked), NFR-01 (general latency targets)
+
+---
+
+## Stage 8 — Lua Script Execution
+
+**Goal:** Embedded LuaJIT runtime with sandboxing, capability enforcement, and resource limits. Used for moderate-complexity logic generated by the Developer Agent. This is Tier 2 of the three-tier execution model.
+
+---
+
+### Embedding
+
+### LUA-01 — LuaJIT integration `[MUST]`
+
+> The platform MUST embed LuaJIT and expose it through Zig C-interop. Linking MUST be static.
+
+**Acceptance Criteria:**
+- The platform binary depends on no external Lua shared library at runtime.
+- `ldd` or equivalent confirms no Lua dynamic library dependency.
+
+**See:** LUA-02 (state isolation per invocation), LUA-05 (host API registration)
+
+---
+
+### LUA-02 — State isolation `[MUST]`
+
+> Each script execution MUST occur in a fresh `lua_State` or a fully reset state. State MUST NOT leak between script invocations.
+
+**Acceptance Criteria:**
+- Setting a global in one execution does not affect another.
+- A variable written by script A is not visible to script B run in a separate invocation.
+
+**See:** LUA-01 (Lua state is managed by the Zig host), WASM-12 (Wasm host provides equivalent isolation)
+
+---
+
+### Sandboxing
+
+### LUA-03 — Stdlib restriction `[MUST]`
+
+> The Lua sandbox MUST NOT load: `io`, `os`, `package`, `debug`. The sandbox MUST load only: `math`, `string`, `table`. Within loaded modules, MUST remove: `string.dump`, `os.execute` (if reachable), `loadstring`, `load`, `loadfile`, `dofile`.
+<!-- CHANGE: Added os.execute (if reachable) to removal list per source doc LUA-03; security-relevant sandbox escape path, 2026-05-26 -->
+
+**Acceptance Criteria:**
+- Each forbidden function returns `nil` or raises a sandbox error when accessed from a script.
+- Positive tests confirm `math`, `string`, and `table` are available.
+
+**See:** LUA-04 (bytecode loading disabled as a companion restriction), LUA-05 (host API is the only permitted extension)
+
+---
+
+### LUA-04 — Bytecode loading disabled `[MUST]`
+
+> The sandbox MUST refuse to load Lua bytecode; only source text MAY be loaded.
+
+**Acceptance Criteria:**
+- An attempt to load bytecode is rejected with a structured error.
+
+**See:** LUA-03 (companion sandboxing restriction)
+
+---
+
+### LUA-05 — Host API registration `[MUST]`
+
+> The platform MUST register exactly the `platform.*` functions defined in Architecture §5.2 and no others. Each function MUST check the caller's capability grant before executing.
+
+**Acceptance Criteria:**
+- Calling `platform.call_service("X")` without the `service:call:X` capability grant returns a structured error.
+- No undeclared function is accessible from a Lua script.
+
+**See:** LUA-06 (capability check at call site), LUA-11 through LUA-15 (individual host function requirements)
+
+---
+
+### Capability Enforcement
+
+### LUA-06 — Capability check at call site `[MUST]`
+
+> Every host function MUST check the script's declared capabilities before executing. A missing capability MUST raise a Lua error with structured details (function name, capability required, capabilities granted).
+
+**Acceptance Criteria:**
+- A capability denial test exists for every host function listed in Architecture §5.2.
+
+**See:** LUA-05 (host functions registered), LUA-07 (manifest validated at load), WASM-06 (equivalent capability check for Wasm)
+
+---
+
+### LUA-07 — Capability manifest validation `[MUST]`
+
+> On script load, the platform MUST validate the script's manifest against the script artifact. Manifest hash MUST be recorded with each execution.
+
+**Acceptance Criteria:**
+- A modified manifest without re-registration is rejected at load time.
+- The manifest hash appears in the execution audit record.
+
+**See:** LUA-06 (manifest drives capability checks), REPO-05 through REPO-07 (artifacts registered in the repository)
+
+---
+
+### Resource Limits
+
+### LUA-08 — Instruction limit `[MUST]`
+
+> Each script execution MUST have a configurable maximum instruction count. Exceeding the limit MUST terminate the script with a structured timeout error.
+
+**Acceptance Criteria:**
+- An infinite loop terminates within the configured instruction limit.
+- The error returned is structured and identifies the script and the limit exceeded.
+
+**See:** LUA-09 (memory limit companion), LUA-10 (wall clock timeout companion)
+
+---
+
+### LUA-09 — Memory limit `[MUST]`
+
+> Each script execution MUST have a configurable memory limit. Allocations exceeding the limit MUST fail gracefully and terminate the script.
+
+**Acceptance Criteria:**
+- A script attempting to allocate 1 GB with a 16 MB limit fails cleanly without crashing the host.
+
+**See:** LUA-08 (instruction limit companion), LUA-16 (runtime errors captured by host)
+
+---
+
+### LUA-10 — Wall clock timeout `[MUST]`
+
+> Each script execution MUST have a configurable wall clock timeout enforced by the host (not relying on Lua to cooperate).
+
+**Acceptance Criteria:**
+- A script that blocks on a host function is still terminable within the configured timeout.
+- The timeout is enforced from outside the Lua state.
+
+**See:** LUA-08 (instruction limit companion), WASM-11 (equivalent Wasm timeout)
+
+---
+
+### Host API
+
+### LUA-11 — Variable read/write `[MUST]`
+
+> `platform.read_variable(name)` MUST return the current value or `nil`. `platform.write_variable(name, value)` MUST stage a write; writes are applied atomically on script success and discarded on script failure.
+
+**Acceptance Criteria:**
+- A failed script does not leave partial variable writes in instance state.
+- A successful script's writes are visible to subsequent operations on the instance.
+
+**See:** EE-09 (variable merge logic), LUA-06 (var:read and var:write capabilities required)
+
+---
+
+### LUA-12 — Service call `[MUST]`
+
+> `platform.call_service(service_id, payload)` MUST invoke a registered service synchronously. The response MUST be returned as a Lua table. Service call failures MUST return a structured error, not raise a Lua error.
+
+**Acceptance Criteria:**
+- Calling a registered service round-trips through the host and returns the response as a Lua table.
+- A service call failure returns a structured error table the script can inspect.
+
+**See:** REPO-07 (service catalog), LUA-06 (service:call capability required)
+
+---
+
+### LUA-13 — Logging `[MUST]`
+
+> `platform.log(level, message, context)` MUST emit a structured log entry tagged with the script's identity, instance ID, and trace ID.
+
+**Acceptance Criteria:**
+- A log entry produced by `platform.log` appears in structured output (OBS-01) with correct correlation IDs.
+
+**See:** OBS-01 (structured logging), API-09 (trace_id propagation), LUA-06 (log:write capability required)
+
+---
+
+### LUA-14 — Time source `[MUST]`
+
+> `platform.now()` MUST return the platform's authoritative time as ISO 8601 UTC. Lua's `os.time` MUST NOT be available.
+
+**Acceptance Criteria:**
+- `os.time` is `nil` in the sandbox.
+- `platform.now()` returns a valid ISO 8601 UTC timestamp.
+
+**See:** LUA-03 (os module not loaded), DSL-09 (equivalent time source in DSL tier)
+
+---
+
+### Error Handling
+
+### LUA-15 — Structured failure `[MUST]`
+
+> `platform.fail(reason, details)` MUST terminate the script and propagate a structured failure to the engine. The engine MUST record a `SCRIPT_FAILED` event and transition the instance per the node's error policy.
+
+**Acceptance Criteria:**
+- A test confirms that calling `platform.fail` produces a `SCRIPT_FAILED` event and the expected instance routing.
+
+**See:** EE-10 (error handling used when script failure triggers instance error), LUA-16 (uncaught errors also produce structured events)
+
+---
+
+### LUA-16 — Runtime error capture `[MUST]`
+
+> Uncaught Lua errors MUST be captured by the host and converted to structured `SCRIPT_ERROR` events with stack trace, instruction count consumed, and capability state at failure.
+
+**Acceptance Criteria:**
+- Division by zero in a script yields a rich error report including stack trace and instruction count.
+- The `SCRIPT_ERROR` event is appended to the instance event log.
+
+**See:** LUA-15 (explicit failure uses the same event path), EE-10 (instance error state on script failure)
+
+---
+
+## Stage 9 — Wasm Module Execution
+
+**Goal:** Embedded Wasmtime runtime executing compiled Wasm modules with strict capability sandboxing. Used for complex custom node types and integrations. This is Tier 3 of the three-tier execution model.
+
+---
+
+### Embedding
+
+### WASM-01 — Wasmtime integration `[MUST]`
+
+> The platform MUST embed Wasmtime via its C API, linked statically into the platform binary.
+
+**Acceptance Criteria:**
+- No external Wasm runtime dependency exists at deploy time.
+- `ldd` or equivalent confirms no Wasmtime shared library dependency.
+
+**See:** WASM-02 (module ABI enforced by this runtime), WASM-09 (fuel mechanism requires Wasmtime embed)
+
+---
+
+### WASM-02 — Module ABI `[MUST]`
+
+> Every module loaded by the platform MUST export the functions defined in Architecture §5.3: `init`, `execute`, `deinit`, `get_capabilities`. Modules missing required exports MUST be rejected at registration.
+
+**Acceptance Criteria:**
+- Registration of a module without the `execute` export fails with a structured error.
+- All four required exports are validated at registration time.
+
+**See:** WASM-01 (runtime validates exports), WASM-03 (compilation pipeline produces conformant modules)
+
+---
+
+### Compilation Pipeline
+
+### WASM-03 — Source compilation job `[MUST]`
+
+> The platform MUST provide a compilation job that takes Zig source for a Wasm module and produces a validated `.wasm` artifact. The job MUST run out-of-band, not on the execution path.
+
+**Acceptance Criteria:**
+- A compilation request returns a job ID.
+- A completion notification carries the artifact hash.
+- Compilation does not occur synchronously on a request handler thread.
+
+**See:** WASM-04 (compiled artifact cached by hash), WASM-02 (ABI validated post-compile)
+
+---
+
+### WASM-04 — Compile caching `[MUST]`
+
+> Compiled `.wasm` artifacts MUST be cached in the repository keyed by source hash plus toolchain version. Equal sources MUST NOT be recompiled.
+
+**Acceptance Criteria:**
+- Submitting identical source twice produces exactly one compilation job.
+- The second submission returns the cached artifact immediately.
+
+**See:** WASM-03 (compilation produces the artifact), REPO-01 (content addressing in the repository)
+
+---
+
+### WASM-05 — Build reproducibility `[SHOULD]`
+
+> Compilation SHOULD be reproducible: same source plus same toolchain version yields byte-identical `.wasm`.
+
+**Acceptance Criteria:**
+- Two compilations of the same input with the same toolchain produce byte-identical output.
+
+**See:** WASM-04 (caching relies on content identity), REPO-04 (canonical serialisation for content addressing)
+
+---
+
+### Capability Sandboxing
+
+### WASM-06 — Import whitelist `[MUST]`
+
+> The Wasmtime instance MUST provide only the host functions corresponding to capabilities declared in the module manifest. Imports outside the whitelist MUST cause instantiation to fail.
+
+**Acceptance Criteria:**
+- A module declaring `var:read` only cannot import `platform_call_service`; instantiation fails with a structured error.
+
+**See:** WASM-02 (get_capabilities export declares required imports), LUA-06 (equivalent capability check for Lua)
+
+---
+
+### WASM-07 — No filesystem access `[MUST]`
+
+> Wasm modules MUST NOT be granted WASI filesystem capabilities by default. Any future grant MUST be explicit in the capability manifest.
+
+**Acceptance Criteria:**
+- A module attempting to import `wasi:filesystem/types` is rejected at instantiation.
+
+**See:** WASM-06 (import whitelist governs all imports), WASM-08 (memory isolation companion)
+
+---
+
+### WASM-08 — Memory isolation `[MUST]`
+
+> Modules MUST execute in isolated linear memory. The host MUST validate all pointer/length pairs received from the module before dereferencing.
+
+**Acceptance Criteria:**
+- A malformed pointer from a module yields a structured trap, not a host crash.
+- Pointer validation is performed before every host-side dereference.
+
+**See:** WASM-06 (import whitelist restricts what the module can call), WASM-09 (fuel limit companion)
+
+---
+
+### Resource Limits
+
+### WASM-09 — Fuel-based execution limit `[MUST]`
+
+> The host MUST enable Wasmtime's fuel mechanism (or equivalent) and set a per-invocation fuel budget. Exhaustion MUST terminate execution with a structured error.
+
+**Acceptance Criteria:**
+- An infinite loop in a module terminates within the configured fuel budget.
+- The error is structured and identifies the module and the limit exceeded.
+
+**See:** WASM-01 (Wasmtime fuel is a runtime feature), LUA-08 (equivalent instruction limit for Lua)
+
+---
+
+### WASM-10 — Memory cap `[MUST]`
+
+> Linear memory growth MUST be capped per module instance. Attempts to grow beyond the cap MUST trap.
+
+**Acceptance Criteria:**
+- A module attempting to allocate beyond the configured cap traps cleanly without crashing the host.
+
+**See:** WASM-08 (memory isolation), LUA-09 (equivalent memory limit for Lua)
+
+---
+
+### WASM-11 — Wall clock timeout `[MUST]`
+
+> A per-invocation wall clock timeout MUST be enforced. Exceeding the timeout MUST interrupt execution.
+
+**Acceptance Criteria:**
+- A host-blocking call that takes longer than the configured timeout is interrupted.
+- The interruption produces a structured error, not a host crash.
+
+**See:** LUA-10 (equivalent timeout for Lua), WASM-09 (fuel-based limit is complementary)
+
+---
+
+### Host API Parity
+
+### WASM-12 — Parity with Lua host API `[MUST]`
+
+> The semantic behaviour of `platform.read_variable`, `platform.write_variable`, `platform.call_service`, `platform.log`, `platform.now`, `platform.uuid`, `platform.fail` MUST be identical whether called from Lua or Wasm. Differences MUST be limited to ABI (string encoding, return shape).
+
+**Acceptance Criteria:**
+- The same test scenario passes against a Lua implementation and a Wasm implementation of an equivalent script.
+
+**See:** LUA-11 through LUA-15 (Lua host API), WASM-06 (capability enforcement applies equally)
+
+---
+
+### Module Lifecycle
+
+### WASM-13 — Instance pooling `[SHOULD]`
+
+> The host SHOULD pool Wasm instances per module to amortise instantiation cost, while ensuring per-invocation isolation (memory reset between invocations).
+
+**Acceptance Criteria:**
+- Repeated invocation of the same module shows reduced p50 latency compared to cold instantiation.
+- Memory resets between pooled invocations are verified (no state leak per LUA-02 equivalence).
+
+**See:** WASM-01 (Wasmtime instantiation cost this addresses), LUA-02 (state isolation principle)
+
+---
+
+### WASM-14 — Hot reload `[MUST]`
+
+> When a new version of a module is activated, in-flight invocations of the prior version MUST complete normally. New invocations MUST use the new version.
+
+**Acceptance Criteria:**
+- Activating a new module version during execution does not interrupt running invocations.
+- After activation, all new invocations use the new version.
+
+**See:** REPO-08 (atomic activation), WASM-13 (instance pooling must handle version transitions)
+
+---
+
+## Stage 10 — Platform Repository
+
+**Goal:** Versioned, content-addressed artifact store. The source of truth for all platform artifacts (definitions, forms, scripts, modules, projections, tests).
+
+---
+
+### Storage Model
+
+### REPO-01 — Content addressing `[MUST]`
+
+> Every artifact MUST be stored under a SHA-256 hash of its canonical content representation. Equal content MUST deduplicate.
+
+**Acceptance Criteria:**
+- Two uploads of identical content reference the same stored bytes.
+- The hash is returned in the artifact descriptor on creation.
+
+**See:** REPO-04 (canonical serialisation defines "equal content"), REPO-02 (immutability companion)
+
+---
+
+### REPO-02 — Immutability `[MUST]`
+
+> A stored artifact MUST NOT be modifiable. All changes produce new artifacts with new hashes.
+
+**Acceptance Criteria:**
+- An attempt to update an artifact in place returns an error.
+- A PUT with different content returns a new artifact descriptor with a new hash.
+
+**See:** REPO-01 (content addressing enforces immutability naturally), REPO-03 (versioning handles changes via new artifacts)
+
+---
+
+### REPO-03 — Versioning `[MUST]`
+
+> Each named artifact MAY have multiple versions. Versions are ordered. Each version references a specific artifact hash and optionally a parent version (for lineage).
+
+**Acceptance Criteria:**
+- A history query returns an ordered list with parent linkage.
+- Pagination applies to version history per API-06.
+
+**See:** REPO-01 (each version references a hash), REPO-12 (list versions API)
+
+---
+
+### REPO-04 — Canonical serialisation `[MUST]`
+
+> JSON artifacts MUST be hashed after canonical serialisation (sorted keys, no insignificant whitespace, normalised number forms). The canonicaliser MUST be specified and tested.
+
+**Acceptance Criteria:**
+- The same logical content with different whitespace or key order produces the same hash.
+- The canonicalisation algorithm is documented and covered by tests.
+
+**See:** REPO-01 (hash computed from canonical form), WASM-05 (Wasm artifacts are binary; canonical form is byte identity)
+
+---
+
+### Schema Registry
+
+### REPO-05 — Form schema indexing `[MUST]`
+
+> Every form schema artifact MUST be indexed by its field names, types, and labels for queryability by agents.
+
+**Acceptance Criteria:**
+- `schema_registry.search(field_type='currency')` returns all form schemas with currency fields.
+
+**See:** REPO-06 (event type registry companion), REPO-07 (service catalog companion)
+
+---
+
+### REPO-06 — Event type registry `[MUST]`
+
+> Every event type used in any active definition MUST be registered with name, JSON schema, and producing definition(s).
+
+**Acceptance Criteria:**
+- Listing event types returns the full set with schemas.
+- Activating a definition that uses an unregistered event type is rejected.
+
+**See:** ES-05 (event type registry in the event store; this registry extends that), REPO-05 (schema indexing companion)
+
+---
+
+### REPO-07 — Service catalog `[MUST]`
+
+> External services callable by scripts MUST be registered with: `service_id`, endpoint URL, request schema, response schema, required auth method.
+
+**Acceptance Criteria:**
+- A script declaring `service:call:X` is rejected at registration if service X is not in the catalog.
+
+**See:** ADP-08 (service tasks reference catalog entries), LUA-12 (service call uses catalog for routing)
+
+---
+
+### Activation
+
+### REPO-08 — Atomic activation `[MUST]`
+
+> Activating a definition version MUST atomically activate all its dependent artifacts (forms, scripts, projections) in a single transaction. Partial activation MUST NOT be observable.
+
+**Acceptance Criteria:**
+- Concurrent reads during activation see either the old version everywhere or the new version everywhere; no mixed state is observable.
+
+**See:** DB-03 (transactional integrity pattern), REPO-09 (per-tenant scoping of activations)
+
+---
+
+### REPO-09 — Per-tenant activation `[MUST]`
+
+> Activations MUST be scoped per tenant. The same artifact version MAY be active in one tenant and not another.
+
+**Acceptance Criteria:**
+- Activating an artifact in tenant A does not affect tenant B.
+
+**See:** ADP-04 (tenant model), REPO-08 (atomic activation), REPO-10 (activation history is per-tenant)
+
+---
+
+### REPO-10 — Activation history `[MUST]`
+
+> Every activation MUST be recorded with: tenant, artifact version, activator identity, timestamp, rationale (free text from the activator).
+
+**Acceptance Criteria:**
+- An activation history query returns the full chronological record with all required fields.
+
+**See:** REPO-09 (activations are per-tenant), OBS-03 (activations are also audited)
+
+---
+
+### Repository API
+
+### REPO-11 — Create artifact `[MUST]`
+
+> `POST /repository/artifacts` MUST accept content plus kind, compute the hash, deduplicate, and return the artifact descriptor.
+
+**Acceptance Criteria:**
+- A roundtrip of create then get returns equal content.
+- Submitting duplicate content returns the existing descriptor (deduplicated).
+
+**See:** REPO-01 (content addressing), REPO-02 (immutability), API-01 (REST conventions)
+
+---
+
+### REPO-12 — List versions `[MUST]`
+
+> `GET /repository/<kind>/<name>/versions` MUST return all versions in chronological order with metadata.
+
+**Acceptance Criteria:**
+- Versions list is paginated per API-06 and sorted chronologically.
+- Parent version linkage is included in each version's metadata.
+
+**See:** REPO-03 (versioning model), API-06 (pagination)
+
+---
+
+### REPO-13 — Tenant activations `[MUST]`
+
+> `GET /tenants/<id>/activations` MUST return active versions per artifact name for that tenant.
+
+**Acceptance Criteria:**
+- Activations returned are consistent with the `POST .../activate` history.
+
+**See:** REPO-09 (per-tenant activation), REPO-10 (activation history)
+
+---
+
+### REPO-14 — Bulk bundle operations `[SHOULD]`
+
+> The repository SHOULD support creating and activating an "artifact bundle" (multiple related artifacts) in a single transactional operation.
+
+**Acceptance Criteria:**
+- A Developer Agent's artifact bundle activates atomically or not at all.
+
+**See:** REPO-08 (atomic activation), DB-03 (transactional integrity)
+
+---
+
+## Stage 11 — Test Runner and Simulation Mode
+
+**Goal:** Execute test scenarios against process definitions in isolation. Enable the Developer Agent to verify generated artifacts before promotion.
+
+---
+
+### Simulation Mode
+
+### SIM-01 — Simulation tenant `[MUST]`
+
+> Every platform deployment MUST provide an internal simulation execution context that is isolated from all real tenants. Simulation runs MUST NOT produce events visible in any real tenant's event store.
+
+**Acceptance Criteria:**
+- Simulation events are stored separately and are not returned by tenant event queries.
+
+**See:** ADP-04 (tenant isolation model), SIM-02 through SIM-04 (simulation-mode overrides)
+
+---
+
+### SIM-02 — Service mocking `[MUST]`
+
+> In simulation mode, calls to external services MUST be intercepted and answered from a scenario-supplied mock catalog. Real network calls MUST NOT occur during simulation.
+
+**Acceptance Criteria:**
+- A scenario specifying a mock response for service X causes that mock to be returned.
+- No network traffic is generated during simulation execution.
+
+**See:** REPO-07 (service catalog that mocks override), LUA-12 (service call path that is intercepted)
+
+---
+
+### SIM-03 — Time control `[MUST]`
+
+> In simulation mode, `platform.now()` MUST return the scenario-controlled time, not wall clock time. Scenarios MAY advance time programmatically.
+
+**Acceptance Criteria:**
+- A scenario asserting time-dependent behaviour passes deterministically.
+- Programmatic time advancement triggers timer-dependent logic correctly.
+
+**See:** DSL-09 (DSL `now()` must respect simulation time), SCH-02 (scheduler uses platform time; must respect simulation override)
+
+---
+
+### SIM-04 — Deterministic UUIDs `[MUST]`
+
+> In simulation mode, `platform.uuid()` MUST return deterministic UUIDs from a seeded sequence, not random values.
+
+**Acceptance Criteria:**
+- The same scenario produces the same UUID sequence across runs.
+
+**See:** SIM-03 (determinism companion), EE-01 (instance IDs generated during simulation)
+
+---
+
+### Scenario Format
+
+### SIM-05 — Scenario schema `[MUST]`
+
+> Scenarios MUST conform to a stable JSON schema including: definition reference, initial variables, sequence of user actions, mocked service responses, expected events, expected final state.
+
+**Acceptance Criteria:**
+- The scenario schema is versioned and validated on submission.
+- Invalid scenarios are rejected at submission time with structured errors.
+
+**See:** SIM-06 (assertion vocabulary defined by this schema), REPO-05 (scenario schemas registered in schema registry)
+
+---
+
+### SIM-06 — Assertion vocabulary `[MUST]`
+
+> Scenarios MUST support assertions on: event sequence (with wildcards), final variable values, final instance status, task assignments, no-occurrence of forbidden events.
+
+**Acceptance Criteria:**
+- Each assertion type has dedicated tests covering pass and fail cases.
+
+**See:** SIM-05 (assertion vocabulary is part of the scenario schema), SIM-10 (failure diagnostics include which assertion failed)
+
+---
+
+### Test Execution
+
+### SIM-07 — Scenario runner `[MUST]`
+
+> The platform MUST provide an API to run a scenario against a specific definition version and return a structured result (pass/fail per assertion, full event trace, timing).
+
+**Acceptance Criteria:**
+- `POST /test/run` with scenario and definition returns a structured result.
+- The result includes pass/fail status per assertion, the full event trace, and elapsed time.
+
+**See:** SIM-05 (scenario format), SIM-08 (batch execution uses this runner), SIM-10 (failure diagnostics in the result)
+
+---
+
+### SIM-08 — Batch execution `[MUST]`
+
+> The runner MUST support batch execution of all scenarios for a definition version, with configurable parallelism per tenant.
+
+**Acceptance Criteria:**
+- A batch run of 100 scenarios completes in less time than sequential execution of the same 100 scenarios.
+
+**See:** SIM-07 (individual runner), REPO-09 (parallelism is per-tenant)
+
+---
+
+### SIM-09 — Test result storage `[MUST]`
+
+> Test results MUST be stored as artifacts in the repository, linked to the definition version tested. Re-running tests does not delete prior results.
+
+**Acceptance Criteria:**
+- Test result history is retrievable via the repository API.
+- Results accumulate; prior results are not overwritten by re-runs.
+
+**See:** REPO-03 (versioning of test result artifacts), SIM-07 (results produced by this runner)
+
+---
+
+### SIM-10 — Failure diagnostics `[MUST]`
+
+> A failed scenario result MUST include: which assertion failed, expected vs. actual, full event trace up to failure, variable state at failure point.
+
+**Acceptance Criteria:**
+- The failure result contains: which assertion failed (assertion ID/type), expected value, actual value, full event trace up to the failure point, and instance variable state snapshot at that point.
+<!-- CHANGE: Replaced unmeasurable "sufficient information" with explicit field enumeration per REQ-VALIDATOR ISSUE-003, 2026-05-26 -->
+
+**See:** SIM-06 (assertions that can fail), SIM-09 (diagnostics stored as part of the result artifact)
+
+---
+
+## Stage 12 — AI Agent Pipeline (DEFERRED)
+
+**Status:** Specification withdrawn pending implementation of Stages 6.5 and 7–11.
+
+**Rationale:** A prior draft of Stage 12 has been removed pending design direction set by future Stages 13–16. Several Stage 12 design choices would foreclose those future stages or duplicate work they will absorb.
+
+**Constraints preserved for eventual re-specification:**
+- The pipeline agents will be MCP clients of the platform, not architecturally privileged components.
+- The pipeline will operate over the Platform Repository (Stage 10) and Test Runner (Stage 11).
+- Capability discipline, audit chaining, and human checkpoints remain non-negotiable.
+- The Architect Agent's tier assignment must apply the four-tier model from Architecture §5.4, including the irreversibility discriminator.
+
+**For implementing agents:** Do not implement any Stage 12 requirements. Treat the agent pipeline as an out-of-scope concern for current work. When Stages 6.5 and 7–11 are operational, a fresh Stage 12 specification will be written informed by what was learned.
+
+---
+
+## Cross-Cutting Requirements
+
+These requirements apply across all stages.
+
+---
+
+### XC-01 — Trace propagation `[MUST]`
+
+> A `trace_id` originating at the API request boundary (REST entry point, scheduler firing, or future MCP tool call) MUST propagate through every system action including database writes (where supported), script executions, and downstream service calls.
+
+**Acceptance Criteria:**
+- An end-to-end trace query returns a coherent timeline linking all actions from a single originating request.
+
+**See:** API-09 (trace_id in REST requests), LUA-13 (Lua log includes trace_id), OBS-01 (structured log carries trace_id)
+
+---
+
+### XC-02 — Audit immutability `[MUST]`
+
+> Audit entries MUST be append-only and cryptographically chained (each entry includes the hash of the prior entry). Tampering with prior entries MUST be detectable.
+
+**Acceptance Criteria:**
+- An audit chain validation catches simulated tampering at any inserted or modified row.
+
+**See:** ADP-09 (schema migration adds chain_hash columns), OBS-03 (base audit log requirement)
+
+---
+
+### XC-03 — Configuration in repository `[MUST]`
+
+> Platform configuration (capability defaults, tier-selection rules, budget limits, monitoring thresholds) MUST be stored as artifacts in the repository, versioned and activated like any other artifact.
+
+**Acceptance Criteria:**
+- Configuration changes follow the same activation flow as definitions.
+- A configuration artifact is subject to the same immutability and versioning rules as other artifacts.
+
+**See:** REPO-08 (atomic activation), REPO-09 (per-tenant configuration activations), OIDC-03 (identity provider config stored here)
+
+---
+
+### XC-04 — Kernel determinism `[MUST]`
+
+> The platform kernel paths — event append, state transition, scheduler firing, task activation, audit chaining — MUST NOT make LLM calls. The kernel is deterministic by design. LLM execution is permitted only within nodes whose execution tier is explicitly Tier 4 (a future stage). Any future Tier 4 implementation MUST sit alongside Tiers 1–3, not inside the kernel.
+
+**Acceptance Criteria:**
+- Static analysis of kernel modules (event store writer, scheduler, transition engine, audit chain writer) shows no LLM API calls.
+- Tier 4 calls, when introduced, are scoped strictly to node-level execution.
+
+**See:** EE-02 (pure transition function has no I/O), DSL-08 (DSL functions are pure)
+
+---
+
+### XC-05 — Deterministic replay for non-LLM tiers `[SHOULD]`
+
+> Given an instance's event log and the snapshotted definition plus script versions, replaying the instance through Tier 1, 2, and 3 nodes SHOULD produce identical state at every step. Tier 4 nodes, when present, replay from their recorded output (the LLM is not re-invoked); the audit log captures the original LLM response as the canonical result for replay.
+
+**Acceptance Criteria:**
+- A replay test compares state at each event boundary to the original execution.
+- Tier 4 nodes' replay uses recorded outputs, verified not to re-invoke any external model.
+
+**See:** EE-11 (state reconstruction), XC-04 (kernel determinism enables this property)
+
+---
+
+### XC-06 — Backwards compatibility `[MUST]`
+
+> A new platform version MUST be able to load and continue all instances created by the prior platform version. Definition format changes MUST be migration-pathed.
+
+**Acceptance Criteria:**
+- An upgrade test loads pre-upgrade instances and continues them to completion without error.
+- Definition format changes include a migration function that transforms old format to new.
+
+**See:** PD-08 (snapshot stored at instance start), ADP-12 (default-tenant regression suite)
+
+---
+
+## Adaptation Requirements
+
+These requirements extend shipped subsystems (Stages 1–6) additively. No existing behaviour is changed.
+
+---
+
+### Tenancy Additions
+
+### ADP-01 — Tenant column on event store `[MUST]`
+
+> **Extends:** ES-01, ES-02, ES-04. **Preserves:** All existing event append/read semantics for the default tenant.
+
+> The event table MUST gain a `tenant_id UUID NOT NULL` column with default value `00000000-0000-0000-0000-000000000000`. All existing rows are backfilled to the default tenant via schema migration. All new event appends MUST specify a `tenant_id`; if absent in the request, the platform MUST infer it from the authenticated token's tenant binding.
+
+**Acceptance Criteria:**
+- Existing event queries against the default tenant return the same results as before migration.
+- A new tenant's events are not visible from default-tenant queries.
+
+**See:** ES-01 (event append extended), ADP-03 (tenant inferred from token), IR-01 (interpretation rule for tenancy)
+
+---
+
+### ADP-02 — Tenant column on definition, instance, and audit tables `[MUST]`
+
+> **Extends:** PD-01, PD-07, EE-01, OBS-03. **Preserves:** All existing CRUD semantics for the default tenant.
+
+> The definition, instance, task, transition, and audit tables MUST each gain a `tenant_id UUID NOT NULL` column with default value `00000000-0000-0000-0000-000000000000`. All existing rows are backfilled.
+
+**Acceptance Criteria:**
+- Existing endpoints serving the default tenant return identical results pre- and post-migration.
+
+**See:** ADP-01 (event store receives same addition), ADP-12 (regression suite verifies no change for default tenant)
+
+---
+
+### ADP-03 — Tenant context resolution on API `[MUST]`
+
+> **Extends:** API-08. **Preserves:** Token authentication unchanged; existing tokens continue to work and resolve to the default tenant.
+
+> Bearer tokens MUST be extensible with a `tenant_id` claim. Tokens without a `tenant_id` claim MUST resolve to the default tenant. Tokens with a `tenant_id` claim MUST scope all subsequent operations to that tenant. The platform MUST prevent any operation from crossing tenant boundaries within a single request.
+
+**Acceptance Criteria:**
+- A token without `tenant_id` behaves identically to pre-migration.
+- A token with `tenant_id` can only see its tenant's data.
+
+**See:** OIDC-13 (Keycloak injects tenant_id claim), ADP-01 (tenant column on tables that are scoped)
+
+---
+
+### ADP-04 — User tenant binding `[MUST]`
+
+> **Extends:** IDN-01, IDN-02. **Preserves:** Existing users remain valid; they are bound to the default tenant.
+
+> The user table MUST gain `tenant_id UUID NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'`. A user MAY be a member of exactly one tenant.
+
+**Acceptance Criteria:**
+- All pre-existing users remain authenticatable and operate against the default tenant.
+
+**See:** ADP-02 (tenant column pattern), ADP-04a (external identity linkage companion)
+
+---
+
+### ADP-04a — External identity linkage on user `[MUST]`
+
+> **Extends:** IDN-01. **Preserves:** Existing internal users continue to function with NULL external linkage.
+
+> The user table MUST gain: `external_id TEXT NULL` (the OIDC `sub` claim), `external_realm TEXT NULL` (the realm/issuer identifier), `auth_source TEXT NOT NULL DEFAULT 'internal'` (values: `internal`, `oidc`). A unique index over `(external_realm, external_id)` enforces one local user per external identity.
+
+**Acceptance Criteria:**
+- Existing users have `auth_source='internal'` and NULL externals.
+- New OIDC users get `auth_source='oidc'` with populated externals.
+- Lookup by `(realm, sub)` is unique.
+
+**See:** OIDC-09 (JIT provisioning populates these columns), OIDC-11 (sub is the stable identifier)
+
+---
+
+### ADP-04b — Realm binding on tenant `[MUST]`
+
+> **Extends:** ADP-04 (introduces tenant table). **Preserves:** Existing default tenant row remains valid.
+
+> The tenant table MUST gain `idp_realm_id TEXT NULL` for the identity provider realm identifier. The default tenant's value is set to `bpm-default` on migration. Future tenants require this field to be populated at creation time.
+
+**Acceptance Criteria:**
+- The default tenant has `idp_realm_id = 'bpm-default'`.
+- New tenants cannot be created without an `idp_realm_id` once OIDC is in use.
+
+**See:** OIDC-12 (realm-tenant binding), OIDC-14 (realm provisioning sets the realm at the provider)
+
+---
+
+### Artifact and Pipeline Tracking Additions
+
+### ADP-05 — Artifact hash reference on instance `[MUST]`
+
+> **Extends:** PD-08, EE-01. **Preserves:** Definition snapshot copy continues to be stored.
+
+> The instance table MUST gain a nullable `definition_artifact_hash TEXT` column. When a new instance is started after the artifact repository becomes operational, this field MUST be populated with the hash of the definition version artifact. For instances created earlier, the field is `NULL`, and this is valid.
+
+**Acceptance Criteria:**
+- New instances carry the hash.
+- Replay can reconstruct from artifact hash when available.
+- Pre-repository instances with NULL hash replay via the stored snapshot per PD-08.
+
+**See:** PD-08 (snapshot continues to be the safety net), REPO-01 (content hash), IR-02 (interpretation rule for coexistence)
+
+---
+
+### ADP-06 — Pipeline run correlation on audit and events `[SHOULD]`
+
+> **Extends:** OBS-03, ES-08. **Preserves:** Existing audit and event semantics.
+
+> The audit table SHOULD gain a nullable `pipeline_run_id UUID` column. The event metadata (already free-form per ES-08) SHOULD carry `pipeline_run_id` when an event was caused by a pipeline-driven action.
+
+**Acceptance Criteria:**
+- All audit/event records produced by pipeline runs are queryable by `pipeline_run_id`.
+
+**See:** OBS-03 (audit log), ES-08 (event metadata), ADP-09 (audit chain companion)
+
+---
+
+### Identity and Role Additions
+
+### ADP-07 — Agent role and reserved usernames `[MUST]`
+
+> **Extends:** IDN-01, IDN-03. **Preserves:** Existing roles (`PLATFORM_ADMIN`, `PROCESS_DESIGNER`, `PROCESS_OPERATOR`, `TASK_WORKER`) unchanged.
+
+> A new role `AGENT_RUNNER` MUST be added. Usernames prefixed with `agent:` are reserved for AI agent identities. The platform MUST reject creation of `agent:*` usernames by any actor other than `PLATFORM_ADMIN`. Agent users MUST be granted `AGENT_RUNNER` plus any additional roles the pipeline policy requires.
+
+**Acceptance Criteria:**
+- A regular user cannot register a username starting with `agent:`.
+- A PLATFORM_ADMIN can register such a username.
+- `AGENT_RUNNER` is a new, grantable role.
+
+**See:** IDN-03 (role permission matrix extended), OIDC-20 (agent service accounts at the provider)
+
+---
+
+### Service Task Additions
+
+### ADP-08 — Service task catalog reference `[MUST]`
+
+> **Extends:** EXT-01. **Preserves:** Inline URL service task behaviour unchanged.
+
+> The SERVICE_TASK node configuration schema MUST be extended to accept either: `url: string` (legacy, behaviour per EXT-01), OR `service_id: string` (new, references catalog entry per REPO-07). When both are present, `service_id` takes precedence and `url` is ignored with a logged warning. When `service_id` is used, the capability check `service:call:<service_id>` applies.
+
+**Acceptance Criteria:**
+- Legacy definitions using `url` execute unchanged.
+- New definitions using `service_id` obey the capability model and catalog lookup.
+- When both are present, a warning is logged and `service_id` takes precedence.
+
+**See:** EXT-01 (legacy inline URL path), REPO-07 (service catalog), IR-04 (interpretation rule for coexistence)
+
+---
+
+### Audit Chaining Additions
+
+### ADP-09 — Tamper-evident audit chain `[MUST]`
+
+> **Extends:** OBS-03. **Preserves:** All existing audit fields and queries.
+
+> The audit table MUST gain: `chain_hash TEXT NULL` (SHA-256 over the current entry's canonical content plus `prev_chain_hash`), `prev_chain_hash TEXT NULL` (chain_hash of the immediately preceding audit row, per tenant). Chain validation walks the table and verifies each `chain_hash` matches recomputation.
+
+**Acceptance Criteria:**
+- Inserting a tampered audit row anywhere after migration breaks chain validation at that row and forward.
+
+**See:** XC-02 (audit immutability requirement that this implements), OBS-03 (base audit requirement)
+
+---
+
+### ADP-10 — Agent I/O capture in audit `[MUST]`
+
+> **Extends:** OBS-03. **Preserves:** Existing audit fields and queries.
+
+> The audit table MUST gain a nullable `payload_full JSONB` column. For agent invocations, this column MUST contain the full input, output, tool calls, and (where compliance permits) raw LLM messages. For non-agent actions, the column is `NULL`.
+
+**Acceptance Criteria:**
+- Agent invocations appear in audit with full I/O.
+- Non-agent actions are unchanged (payload_full is NULL).
+
+**See:** ADP-09 (audit chain includes these entries), OIDC-19 (provisioning audit also uses this mechanism)
+
+---
+
+### Event Retention Adjustments
+
+### ADP-11 — Replay-safe retention policy `[MUST]`
+
+> **Extends:** ES-07. **Preserves:** Retention configurability per event type.
+
+> Event types belonging to the set `{INSTANCE_*, TASK_*, GATEWAY_*, EXECUTION_*}` MUST have either "retain forever" or "archive and remain queryable" retention. Configuring these event types for hard deletion MUST be rejected at configuration time.
+
+**Acceptance Criteria:**
+- Attempting to set hard deletion on `INSTANCE_STARTED` is rejected with a structured error.
+
+**See:** ES-07 (retention policy), XC-05 (deterministic replay requires event availability), IR-07 (interpretation rule)
+
+---
+
+### Compatibility Verification
+
+### ADP-12 — Default-tenant regression suite `[MUST]`
+
+> **Extends:** All Stages 1–6. **Preserves:** Confidence that adaptation migrations do not regress shipped behaviour.
+
+> Before and after applying the schema migration, the platform MUST pass an automated regression suite exercising every Stage 1–6 endpoint against the default tenant. Diffs in response payloads (status, body, headers excluding new informational fields) MUST be zero.
+
+**Acceptance Criteria:**
+- Regression suite passes pre- and post-migration with byte-equal responses for the default tenant.
+
+**See:** ADP-01 through ADP-11 (the migrations being verified), OIDC-31 (end-to-end OIDC test suite runs after this passes)
+
+---
+
+## Extension Interpretation Rules
+
+These rules resolve apparent conflicts between the original requirements (Stages 1–6) and the extension requirements (Stages 6.5–11) and adaptation requirements (ADP-*). Rules are normative; when they disagree with a lower-priority document, the rule takes precedence.
+
+---
+
+### IR-01 — Tenancy is additive, not retroactive
+
+The original requirements do not mention tenancy. This is not a conflict with the extension's multi-tenant model — it is an extension point.
+
+**Interpretation:**
+- Existing rows in event store, definition, instance, user, and audit tables are treated as belonging to a reserved default tenant with ID `00000000-0000-0000-0000-000000000000`.
+- All shipped API endpoints continue to function unchanged for the default tenant. Clients without tenant context implicitly operate against the default tenant.
+- New tenant-aware endpoints and behaviour are additive (see ADP-01 through ADP-04).
+- Cross-tenant queries are prohibited by construction at the data layer for new tenants; the default tenant is treated as just another tenant in this respect.
+
+**Affected originals:** ES-01, ES-02, ES-04, PD-01, PD-07, EE-01, IDN-01, all `API-*`.
+
+---
+
+### IR-02 — PD-08 snapshot is preserved; artifact hash is added alongside
+
+PD-08 mandates that starting an instance stores a copy of the definition graph. REPO-01/02 introduce content-addressed immutable artifacts.
+
+**Interpretation:**
+- PD-08 remains in force. The platform continues to store the full definition JSON at instance start.
+- Additionally, the platform records the artifact hash of that definition version on the instance row (ADP-05).
+- The snapshot is the safety net; the hash is the audit trail and deduplication anchor. Both coexist.
+- For instances created before the artifact repository existed, the artifact hash field is NULL. This is valid.
+
+**Affected originals:** PD-08.
+
+---
+
+### IR-03 — PD-04 governs global lifecycle; tenant activation is a separate concern
+
+PD-04 specifies the lifecycle states DRAFT → ACTIVE → DEPRECATED → ARCHIVED, and that only one version of a given definition name is ACTIVE at a time.
+
+**Interpretation:**
+- PD-04 governs the global eligibility of a definition version: a version in state ACTIVE is eligible to be activated in any tenant.
+- Per-tenant activation (REPO-09) is a separate state, recorded in the tenant activation table.
+- A definition can be globally ACTIVE without being activated in any tenant; it can be DEPRECATED globally while still active in some tenants (this is permitted but flagged for review).
+- "Only one ACTIVE per name globally" continues to hold.
+- "Only one activated version per name per tenant" is a new, parallel constraint introduced by REPO-09.
+
+**Affected originals:** PD-03, PD-04.
+
+---
+
+### IR-04 — EXT-01 inline URL coexists with the service catalog
+
+EXT-01 specifies that a SERVICE_TASK node configuration carries an HTTP endpoint URL. REPO-07 introduces a registered service catalog, and the capability model requires `service:call:<service_id>` grants.
+
+**Interpretation:**
+- EXT-01 remains in force for SERVICE_TASK nodes that carry inline URLs. These continue to execute as before.
+- The node configuration is extended to optionally carry a `service_id` referencing the catalog (ADP-08).
+- When `service_id` is present, the catalog entry is used and capability check applies.
+- When only an inline URL is present, no capability check applies; the call executes per existing behaviour.
+- The platform MUST log a warning when an inline-URL service task executes, indicating that catalog registration is preferred.
+
+**Affected originals:** EXT-01.
+
+---
+
+### IR-05 — EXT-03 plugin interface is the deep escape hatch; Wasm is the default
+
+EXT-03 specifies a stable internal interface for registering custom node type handlers at startup. Stage 9 (WASM-*) introduces Wasm-based custom node types.
+
+**Interpretation:**
+- EXT-03 remains in force. Compiled-in Zig handlers are the escape hatch for cases Wasm cannot serve (raw socket access, hardware interaction, kernel-level operations).
+- Wasm modules (Stage 9) are the default mechanism for custom node types going forward.
+- EXT-03 handlers are added only by human developers, through the normal platform release process, not by the agent pipeline.
+
+**Affected originals:** EXT-03.
+
+---
+
+### IR-06 — Agent identities use the existing user/token model
+
+API-08 specifies Bearer token authentication. IDN-01 specifies the user registry. IDN-04 specifies API token management.
+
+**Interpretation:**
+- Each AI agent is registered as a user in the IDN-01 registry, with username convention `agent:<role>` (e.g. `agent:architect`, `agent:developer`, `agent:devops`).
+- Each agent has a Bearer token issued via IDN-04, scoped to the roles it needs (the new role `AGENT_RUNNER` per ADP-07).
+- API-08 authentication applies unchanged to agent invocations.
+- The audit log records the agent username as `actor_id` for any agent-initiated action.
+
+**Affected originals:** API-08, IDN-01, IDN-03, IDN-04, OBS-03.
+
+---
+
+### IR-07 — Event retention archives remain queryable; replay uses them when needed
+
+ES-07 specifies configurable retention with "archived, not deleted." XC-05 requires deterministic replay from event log.
+
+**Interpretation:**
+- ES-07 is unchanged. Archived events remain in the archive store and remain queryable.
+- Replay (XC-05) MUST query the archive store transparently when events fall outside the live retention window.
+- The platform MUST guarantee that an instance can always be replayed end-to-end as long as its events exist somewhere (live or archive).
+- Operators MAY configure permanent retention for specific event types where replay is mandatory; this is recommended for all process-instance events.
+
+**Affected originals:** ES-07.
+
+---
+
+### IR-08 — Audit log is extended, not replaced
+
+OBS-03 specifies that state-changing API actions are recorded with actor, action, resource, timestamp, diff. The extension introduces cryptographic chaining (XC-02) and agent I/O capture (ADP-10).
+
+**Interpretation:**
+- OBS-03 remains the minimum audit contract.
+- Additional fields are added to the audit table (ADP-09, ADP-10): `chain_hash`, `prev_chain_hash`, `pipeline_run_id`, `payload_full`.
+- For audit entries written before the chaining extension, `chain_hash` is NULL. Chain validation begins from the first non-null entry forward.
+- Existing OBS-03 consumers continue to read the original columns and behave unchanged.
+
+**Affected originals:** OBS-03.
+
+---
+
+### IR-09 — Webhook dispatch and projection coexist with agent monitoring
+
+EXT-02 specifies outbound webhook dispatch on platform events. The extension adds agent-pipeline monitoring that watches the same events.
+
+**Interpretation:**
+- EXT-02 webhooks fire for external consumers (CRM/ERP/HRM applications subscribing to platform events).
+- Agent pipeline monitoring reads events directly from the event stream or projection; it does not subscribe via the webhook mechanism.
+- Both can be active simultaneously without interference.
+- No change to EXT-02.
+
+**Affected originals:** EXT-02.
+
+---
+
 ## Appendix A — Requirement Count Summary
 
+<!-- CHANGE: Corrected Stage 6.5 (31/3→ was 30/4), Stage 8 (16 → was 14), Stage 9 (12 MUST/2 SHOULD → was 13/1), ADP (14 entries including ADP-04a and ADP-04b → was 12); Grand Total recalculated accordingly, 2026-05-26 -->
 | Stage | MUST | SHOULD | COULD | Total |
 |---|---|---|---|---|
 | Stage 1 — Event Store & Infrastructure | 8 (ES) + 4 (DB) = **12** | 2 | 0 | **14** |
@@ -1436,7 +3186,17 @@ Roles are additive: a user may hold multiple roles; their effective permissions 
 | Stage 4 — REST API & Authentication | **10** | 2 | 0 | **12** |
 | Stage 5 — Scheduler & Identity | **9** | 2 | 0 | **11** |
 | Stage 6 — Observability & Extensions | **7** | 4 | 0 | **11** |
-| **Total** | **58** | **11** | **1** | **70** |
+| **Subtotal (Stages 1–6)** | **58** | **11** | **1** | **70** |
+| Stage 6.5 — Identity Provider Integration | **31** | 3 | 0 | **34** |
+| Stage 7 — Expression DSL | **11** | 2 | 0 | **13** |
+| Stage 8 — Lua Script Execution | **16** | 0 | 0 | **16** |
+| Stage 9 — Wasm Module Execution | **12** | 2 | 0 | **14** |
+| Stage 10 — Platform Repository | **13** | 1 | 0 | **14** |
+| Stage 11 — Test Runner & Simulation | **10** | 0 | 0 | **10** |
+| Stage 12 — Agent Pipeline | — | — | — | (deferred) |
+| Cross-Cutting (XC-01..XC-06) | **5** | 1 | 0 | **6** |
+| Adaptation Requirements (ADP-01..ADP-12 incl. ADP-04a, ADP-04b = 14 entries) | **13** | 1 | 0 | **14** |
+| **Grand Total** | **169** | **21** | **1** | **191** |
 
 NFRs and constraints are not counted in the table above as they are cross-cutting.
 

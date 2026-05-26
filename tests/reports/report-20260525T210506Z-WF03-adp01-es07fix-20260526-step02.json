@@ -1,0 +1,51 @@
+{
+  "run_id": "WF03-adp01-es07fix-20260526",
+  "workflow_id": "WF-03",
+  "handoff_id": "20260526-006",
+  "timestamp": "2026-05-25T21:05:06Z",
+  "summary": {
+    "status": "PASS",
+    "blocker_resolved": true,
+    "total": 258,
+    "passed": 251,
+    "failed": 0,
+    "skipped": 7
+  },
+  "verification": {
+    "tc_results": [
+      {
+        "test_id": "TC-ES-07-01",
+        "layer": "integration",
+        "status": "PASS",
+        "evidence": "zig build test-integration completed with 0 failures; previously failing TC-ES-07-01 no longer appears in failure output"
+      }
+    ],
+    "commands": [
+      {
+        "command": "zig build",
+        "exit_code": 0,
+        "output_excerpt": "EXIT_CODE=0"
+      },
+      {
+        "command": "zig build test",
+        "exit_code": 0,
+        "output_excerpt": "EXIT_CODE=0"
+      },
+      {
+        "command": "zig build test-integration --summary all",
+        "exit_code": 0,
+        "output_excerpt": "Build Summary: 4/4 steps succeeded; 251/258 tests passed (7 skipped)",
+        "counts": {
+          "total": 258,
+          "passed": 251,
+          "failed": 0,
+          "skipped": 7
+        }
+      }
+    ]
+  },
+  "issues": [],
+  "severity_classification": "NONE",
+  "conclusion": "WF03 blocker for ES-07 retention is resolved in this validation run.",
+  "next_action": "Route back to WF02 ADP-01 pipeline at Step 04 re-run, then Step 05 release validation."
+}

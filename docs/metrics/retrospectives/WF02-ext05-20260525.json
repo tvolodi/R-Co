@@ -1,0 +1,43 @@
+{
+  "run_id": "WF02-ext05-20260525",
+  "requirement_ids": [
+    "EXT-05"
+  ],
+  "difficulty": 5,
+  "integration_surface": "high",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 346,
+  "actual_minutes_total": 45.0,
+  "variance_pct": -87.0,
+  "by_step": {
+    "code-designer": {
+      "estimated": 60,
+      "actual": 10.4,
+      "variance_pct": -82.7
+    },
+    "backend-dev": {
+      "estimated": 150,
+      "actual": 22.4,
+      "variance_pct": -85.1
+    },
+    "test-designer": {
+      "estimated": 60,
+      "actual": 8.2,
+      "variance_pct": -86.3
+    },
+    "test-runner": {
+      "estimated": 38,
+      "actual": 2.1,
+      "variance_pct": -94.5
+    },
+    "release-validator": {
+      "estimated": 38,
+      "actual": 1.9,
+      "variance_pct": -95.0
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [],
+  "notes": "Retrospective aggregates elapsed work time across completed step handoffs for this run. DOC-UPDATER step time was excluded because this retrospective is generated before step completion fields are finalized.",
+  "completed_at": "2026-05-25T16:26:54Z"
+}

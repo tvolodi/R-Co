@@ -87,6 +87,7 @@ pub fn list(
         \\  (EXTRACT(EPOCH FROM "timestamp") * 1000000)::bigint
         \\FROM audit_entries
         \\WHERE 1=1
+        \\  AND tenant_id = bpm_effective_tenant_id()
     ) catch return error.OutOfMemory;
 
     var pidx: usize = 1;
