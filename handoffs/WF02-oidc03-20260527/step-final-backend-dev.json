@@ -1,0 +1,52 @@
+{
+  "handoff_id": "20260527-026",
+  "run_id": "WF02-oidc03-20260527",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-oidc03-20260527/step-final-backend-dev.json",
+  "created_at": "2026-05-26T21:31:39Z",
+  "started_at": "2026-05-26T21:32:00Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-03"
+    ],
+    "related_handoff_ids": [
+      "20260527-017",
+      "20260527-018",
+      "20260527-019",
+      "20260527-020",
+      "20260527-021",
+      "20260527-024",
+      "20260527-025"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md",
+      "handoffs/WF02-oidc03-20260527/step-06-doc-updater.json",
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md"
+    ]
+  },
+  "task": {
+    "description": "Execute WF-02 Step Final git wrapper gate for run WF02-oidc03-20260527 by performing fn:git-merge exactly per docs/agents/protocols/GIT_MERGE.md. Rebase feature branch on main, push commits, create/merge PR if available, and provide complete git evidence fields required by AGENT_SYSTEM.md.",
+    "acceptance_criteria": [
+      "Result status is PASS",
+      "result.git_evidence.branch_name is non-empty",
+      "result.git_evidence.commit_sha_list contains at least one commit",
+      "result.git_evidence.push_status is ok",
+      "result.git_evidence.remote_branch is non-empty",
+      "result.git_evidence.pr_url or result.git_evidence.pr_create_error is populated"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

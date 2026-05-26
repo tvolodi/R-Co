@@ -1,0 +1,81 @@
+{
+  "run_id": "WF02-oidc03-20260527",
+  "workflow_id": "WF-02",
+  "date": "2026-05-26T21:31:39Z",
+  "requirement_ids": [
+    "OIDC-03"
+  ],
+  "estimation_file": "handoffs/WF02-oidc03-20260527/estimation.json",
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "steps": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "estimated_minutes": 60,
+      "started_at": "2026-05-26T20:51:30Z",
+      "completed_at": "2026-05-26T20:54:22Z",
+      "actual_minutes": 2,
+      "variance_pct": -96.7
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "estimated_minutes": 7,
+      "started_at": "2026-05-26T20:55:00Z",
+      "completed_at": "2026-05-26T21:05:10Z",
+      "actual_minutes": 10,
+      "variance_pct": 42.9
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "estimated_minutes": 6,
+      "started_at": "2026-05-26T21:05:40Z",
+      "completed_at": "2026-05-26T21:09:54Z",
+      "actual_minutes": 4,
+      "variance_pct": -33.3
+    },
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "estimated_minutes": 9,
+      "started_at": "2026-05-26T21:21:40Z",
+      "completed_at": "2026-05-26T21:25:00Z",
+      "actual_minutes": 3,
+      "variance_pct": -66.7
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "estimated_minutes": 2,
+      "started_at": "2026-05-26T21:25:30Z",
+      "completed_at": "2026-05-26T21:27:45Z",
+      "actual_minutes": 2,
+      "variance_pct": 0.0
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "estimated_minutes": 2,
+      "started_at": "2026-05-26T21:27:50Z",
+      "completed_at": "2026-05-26T21:31:39Z",
+      "actual_minutes": 3,
+      "variance_pct": 50.0
+    }
+  ],
+  "estimated_total_minutes": 86,
+  "actual_total_minutes": 24,
+  "overall_variance_pct": -72.1,
+  "adjustments": [
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "issue": "Variance -66.7% exceeds 25% threshold",
+      "action": "UPDATED - estimation_rules.json adjusted",
+      "rationale": "Observed 2 consecutive D3 runs with matching under-run direction; adjusted D3 test-runner estimate from 5 to 3."
+    }
+  ],
+  "summary": "WF02-oidc03-20260527 completed documentation and release-state updates for OIDC-03 with retrospective capture recorded. One consecutive-run D3 variance trigger updated test-runner estimation calibration.",
+  "completed_at": "2026-05-26T21:31:39Z"
+}

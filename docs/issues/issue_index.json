@@ -1,7 +1,7 @@
 ﻿{
     "schema_version":  "1.0",
-    "last_updated":  "2026-05-26T18:26:08Z",
-    "next_issue_id":  30,
+    "last_updated":  "2026-05-26T21:18:29Z",
+    "next_issue_id":  31,
     "issues":  [
                    {
                        "id":  "ISS-0001",
@@ -410,6 +410,20 @@
                                           ],
                        "created_at":  "2026-05-26T18:26:08Z",
                        "resolved_at":  "2026-05-26T18:26:08Z"
+                   },
+                   {
+                       "id":  "ISS-0030",
+                       "title":  "WF03 OIDC-03 focused test blockers: fake env return-type coercion mismatch and bootstrap standalone idp_config import dependency",
+                       "status":  "RESOLVED",
+                       "severity":  "BLOCKER",
+                       "run_id":  "WF03-oidc03-testfix-20260527",
+                       "handoff_id":  "20260527-022",
+                       "affected_areas":  [
+                                              "src/config/identity_provider.zig",
+                                              "src/identity/provider/bootstrap.zig"
+                                          ],
+                       "created_at":  "2026-05-26T21:18:29Z",
+                       "resolved_at":  "2026-05-26T21:18:29Z"
                    }
                ]
 }

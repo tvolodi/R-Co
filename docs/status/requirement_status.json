@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-26T20:34:15Z",
+  "last_updated": "2026-05-26T21:31:39Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1240,6 +1240,21 @@
       "release_run": "WF02-oidc02-20260527",
       "release_decision": "docs/status/release-OIDC-02-20260526.json",
       "last_updated": "2026-05-26T20:34:15Z"
+    },
+    "OIDC-03": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Configuration source",
+      "implementation_run": "WF02-oidc03-20260527",
+      "implementation_handoff": "handoffs/WF02-oidc03-20260527/step-02-backend-dev.json",
+      "test_spec": "tests/specs/OIDC-03.md",
+      "test_run": "tests/reports/report-20260527-wf02-oidc03-step-04.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T21:27:45Z",
+      "release_run": "WF02-oidc03-20260527",
+      "release_decision": "docs/status/release-OIDC-03-20260526.json",
+      "last_updated": "2026-05-26T21:31:39Z"
     }
   }
 }

@@ -1,0 +1,71 @@
+{
+  "run_id": "WF02-oidc03-20260527",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260527-021",
+  "timestamp": "2026-05-26T21:25:00Z",
+  "requirement_ids": [
+    "OIDC-03"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_cases": 6,
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0
+  },
+  "executed_scope": {
+    "task_description": "Execute OIDC-03 test scope from tests/specs/OIDC-03.md and produce a structured test report under tests/reports/. Verify provider-selection behavior and misconfiguration error-field attribution as specified. REWORK ITERATION 1: previous focused blockers were fixed in WF03 and must be re-verified.",
+    "commands": [
+      {
+        "command": "zig build test",
+        "exit_code": 0,
+        "evidence": "EXIT_CODE=0"
+      },
+      {
+        "command": "zig test src/config/identity_provider.zig",
+        "exit_code": 0,
+        "evidence": "All 3 tests passed."
+      },
+      {
+        "command": "zig test src/identity/provider/bootstrap.zig",
+        "exit_code": 0,
+        "evidence": "All 3 tests passed."
+      }
+    ]
+  },
+  "traceability": [
+    {
+      "test_case_id": "TC-OIDC-03-01",
+      "status": "PASS",
+      "evidence": "Focused config module test path compiles and passes"
+    },
+    {
+      "test_case_id": "TC-OIDC-03-02",
+      "status": "PASS",
+      "evidence": "Covered by zig build test execution from mapped OIDC-03 suite"
+    },
+    {
+      "test_case_id": "TC-OIDC-03-03",
+      "status": "PASS",
+      "evidence": "Focused bootstrap module test path compiles and passes"
+    },
+    {
+      "test_case_id": "TC-OIDC-03-04",
+      "status": "PASS",
+      "evidence": "Covered by zig build test execution from mapped OIDC-03 suite"
+    },
+    {
+      "test_case_id": "TC-OIDC-03-05",
+      "status": "PASS",
+      "evidence": "Covered by zig build test execution and focused bootstrap pass"
+    },
+    {
+      "test_case_id": "TC-OIDC-03-06",
+      "status": "PASS",
+      "evidence": "Covered by zig build test execution and focused bootstrap pass"
+    }
+  ],
+  "failures": [],
+  "issues": [],
+  "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 05)."
+}
