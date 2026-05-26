@@ -89,6 +89,8 @@ const adp06_pipeline_run_correlation_integration = @import("adp06_pipeline_run_c
 const adp07_agent_role_reserved_usernames_integration = @import("adp07_agent_role_reserved_usernames_test.zig");
 // Stage 6.5 — Tamper-evident audit chain (ADP-09)
 const adp09_tamper_evident_audit_chain_integration = @import("adp09_tamper_evident_audit_chain_test.zig");
+// Stage 6.5 — Agent I/O capture in audit (ADP-10)
+const adp10_agent_io_capture_audit_integration = @import("adp10_agent_io_capture_audit_test.zig");
 
 comptime {
     _ = std;
@@ -134,6 +136,7 @@ comptime {
     _ = adp06_pipeline_run_correlation_integration;
     _ = adp07_agent_role_reserved_usernames_integration;
     _ = adp09_tamper_evident_audit_chain_integration;
+    _ = adp10_agent_io_capture_audit_integration;
 }
 
 test "integration placeholder" {
