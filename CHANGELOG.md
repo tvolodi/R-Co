@@ -99,6 +99,15 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260527-wf02-oidc01-step-04.json; release approval is recorded in docs/status/release-OIDC-01-20260526.json.
 - Requirement: OIDC-01 (MUST, Stage 6.5) - RELEASED
 
+### Stage 7 — Expression DSL
+
+### DSL-01 - Grammar conformance (RELEASED 2026-05-26)
+- Implemented the Tier 1 Expression DSL as a new `src/expr/` module comprising a hand-written recursive descent parser with zero external dependencies; grammar covers 9 productions (or_expr, and_expr, not_expr, cmp_expr, add_expr, mul_expr, unary, primary, func_call) with all 11 built-in functions (length, lower, upper, trim, contains, startsWith, endsWith, coalesce, now, date_add, date_diff) whitelisted at lex time.
+- Module includes lexer.zig (single-pass token scan), parser.zig (recursive descent, producing a tagged-union AST), ast.zig (Node union, Value type, CmpOp/AddOp/MulOp enums, Context), error.zig (ParseError struct with line, column, token, message), and mod.zig (public parse() API).
+- All parser rejection messages include the line number, column number, and offending token; evaluate() is a stub returning error.NotImplemented pending DSL-04/06 wiring.
+- Validation evidence passed in tests/reports/report-20260526T213627Z-WF02-dsl01-step04.json (56/56 test cases PASS); release approval is recorded in docs/status/release-DSL-01-20260526.json.
+- Requirement: DSL-01 (MUST, Stage 7) - RELEASED
+
 ### OIDC-02 - Keycloak adapter (RELEASED 2026-05-26)
 - Implemented a concrete Keycloak 26.x adapter under `src/identity/provider/adapters/keycloak/` that satisfies the OIDC-01 IdentityProvider contract while keeping Keycloak-specific URLs, payloads, and behavior adapter-local.
 - Preserved compile isolation by keeping Keycloak references confined to adapter modules and adapter-local tests, so removing the adapter does not affect non-adapter compilation paths.

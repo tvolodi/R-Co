@@ -215,7 +215,7 @@ test "TC-EE-09-U09: mergeVariables fast-path: empty output returns current_vars,
     const output_variables: std.json.ObjectMap = .{};
 
     // Dummy zero UUIDs — not dereferenced on the empty path.
-    const zero_uuid = [_]u8{0} ** 16;
+    const zero_uuid = std.mem.zeroes([16]u8);
 
     var violation_out: ?instance_mod.SchemaViolationDetail = null;
 

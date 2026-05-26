@@ -89,7 +89,7 @@ test "TC-EE-07-05: 3-branch join — all 3 active branches arrive via task_compl
         .{ .node_id = "t3", .branch_id = branch_2 },
     });
     const state0 = InstanceState{
-        .instance_id = [_]u8{0xAB} ** 16,
+        .instance_id = [16]u8{0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB,0xAB},
         .status = .ACTIVE,
         .tokens = init_tokens,
         .variables = std.json.ObjectMap.empty,

@@ -57,7 +57,12 @@ test "TC-PD-10-06: handleSearch — query longer than 512 chars returns HTTP 422
     var dummy_store: store_mod.Store = undefined;
 
     // Build a 513-character query string (comptime repetition).
-    const long_query = "a" ** 513;
+    const long_query_buf: [513]u8 = blk: {
+        var buf: [513]u8 = undefined;
+        @memset(&buf, 'a');
+        break :blk buf;
+    };
+    const long_query: []const u8 = &long_query_buf;
 
     const params = definitions.SearchQueryParams{
         .q = long_query,

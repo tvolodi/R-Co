@@ -1,0 +1,46 @@
+{
+  "report_id": "WF02-dsl01-20260527-doc-updater-INNER-REPORT",
+  "run_id": "WF02-dsl01-20260527",
+  "handoff_id": "20260527-024",
+  "agent": "DOC-UPDATER",
+  "step": "06",
+  "created_at": "2026-05-26T21:51:06Z",
+  "requirement_ids": ["DSL-01"],
+  "summary": "Documentation update for DSL-01 (Grammar conformance) completed. All four acceptance criteria satisfied.",
+  "tasks_completed": [
+    {
+      "task": "Update CHANGELOG.md with DSL-01 entry",
+      "status": "DONE",
+      "detail": "Added Stage 7 — Expression DSL section header and DSL-01 entry before the OIDC-02 section. Entry documents: new src/expr/ module, hand-written recursive descent parser, 9 grammar productions, 11 whitelisted built-ins, zero external dependencies, ParseError with line/column/token/message, evaluate() stub pending DSL-04/06 wiring. References test report and release decision file."
+    },
+    {
+      "task": "Verify DSL-01 status in requirement_status.json",
+      "status": "DONE — no change needed",
+      "detail": "DSL-01 entry verified as status=RELEASED, released_at=2026-05-26T21:46:58Z, release_decision=docs/status/release-DSL-01-20260526.json. RELEASE-VALIDATOR (step-05, handoff 20260527-023) already set this correctly. No modification required."
+    },
+    {
+      "task": "Retrospective for WF02-dsl01-20260527",
+      "status": "DONE",
+      "detail": "Computed actual step durations from started_at/completed_at in each step handoff. Estimated total: 78 min. Actual total: 39.2 min. Overall variance: -49.7%. By-step breakdown: code-designer -95.6%, backend-dev +186.7%, test-designer -12.5%, test-runner +210.0%, release-validator +70.0%, doc-updater +70.0%. One rule adjustment triggered: code-designer D4 estimate reduced from 62 to 32 (2 consecutive D4 runs with >25% under-run: WF02-oidc02-20260527 at -98.4% and this run at -95.6%). estimation_rules.json updated. Note: step-04b (BACKEND-DEV bench-env, 2.3 min) was an unplanned interim step excluded from step actuals."
+    },
+    {
+      "task": "Write inner report",
+      "status": "DONE",
+      "detail": "This file — docs/issue-reports/WF02-dsl01-20260527-doc-updater-INNER-REPORT.json"
+    }
+  ],
+  "artifacts_produced": [
+    "CHANGELOG.md",
+    "docs/metrics/retrospectives/WF02-dsl01-20260527.json",
+    "docs/metrics/estimation_rules.json",
+    "docs/issue-reports/WF02-dsl01-20260527-doc-updater-INNER-REPORT.json"
+  ],
+  "issues": [],
+  "retrospective_highlights": {
+    "code_designer_d4_note": "code-designer step ran in 2.7 min against a 62-min estimate (-95.6%). Third consecutive D4 under-run; second qualifying consecutive pair (oidc02 + dsl01) triggered calibration: D4 estimate reduced 62→32.",
+    "backend_dev_overrun_note": "backend-dev ran 17.2 min against a 6-min estimate (+186.7%). Root cause: fixing 13 pre-existing compilation blockers across src/definition/graph.zig, src/api/pipeline_context.zig, src/obs/metrics.zig and 7 test files was included in the same step. Single-run signal; no rule adjustment triggered (oidc02 at +22.2% did not exceed the 25% threshold, breaking the consecutive chain).",
+    "test_runner_overrun_note": "test-runner ran 12.4 min against a 4-min estimate (+210.0%). Previous D4 runs showed large negative variance (-72.7%, -90.9%), so this run is opposite direction — no consecutive trigger.",
+    "bench_env_step_note": "An unplanned step-04b (BACKEND-DEV bench-env setup) added approximately 2.3 min of elapsed pipeline time between test-runner completion and release-validator start. This step is not counted in step actuals but is documented in the retrospective notes field."
+  },
+  "next_action": "Route to BACKEND-DEV step-final git-merge"
+}

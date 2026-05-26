@@ -35,7 +35,7 @@ const TransitionEvent = transition_mod.TransitionEvent;
 // ---------------------------------------------------------------------------
 fn emptyState() InstanceState {
     return InstanceState{
-        .instance_id = [_]u8{0} ** 16,
+        .instance_id = std.mem.zeroes([16]u8),
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.empty,
@@ -149,7 +149,7 @@ test "TC-EE-03-03: END node activation does NOT add to pending_task_nodes" {
         try alloc.dupe(u8, "task1"),
     });
     const parked_state = InstanceState{
-        .instance_id = [_]u8{0} ** 16,
+        .instance_id = std.mem.zeroes([16]u8),
         .status = .ACTIVE,
         .tokens = try alloc.dupe(Token, &[_]Token{token}),
         .variables = std.json.ObjectMap.empty,

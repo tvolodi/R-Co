@@ -534,6 +534,29 @@ pub fn build(b: *std.Build) void {
     const run_ext03_plugin_unit_tests = b.addRunArtifact(ext03_plugin_unit_tests);
 
     // ---------------------------------------------------------------------------
+    // DSL-01: Expression DSL parser unit tests (pure — no DB, no network)
+    // Tests live in src/expr/parser.zig
+    // ---------------------------------------------------------------------------
+    const expr_mod = b.createModule(.{
+        .root_source_file = b.path("src/expr/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const dsl01_parser_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/expr/parser.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_dsl01_parser_tests = b.addRunArtifact(dsl01_parser_tests);
+    _ = expr_mod; // used to verify the module compiles; tests run via parser.zig
+
+    // `zig build test-expr` — DSL expr tests only
+    const test_expr_step = b.step("test-expr", "Run Expression DSL unit tests");
+    test_expr_step.dependOn(&run_dsl01_parser_tests.step);
+
+    // ---------------------------------------------------------------------------
     // `zig build test-engine` — engine unit tests only
     // ---------------------------------------------------------------------------
     const engine_tests = b.addTest(.{
@@ -585,6 +608,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_sch06_unit_tests.step);
     test_step.dependOn(&run_service_task_unit_tests.step);
     test_step.dependOn(&run_ext03_plugin_unit_tests.step);
+    test_step.dependOn(&run_dsl01_parser_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)

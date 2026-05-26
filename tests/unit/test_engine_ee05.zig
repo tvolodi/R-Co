@@ -23,7 +23,7 @@ const TransitionEvent = transition_mod.TransitionEvent;
 // Helper: an empty InstanceState with no tokens and no variables.
 fn emptyState() InstanceState {
     return InstanceState{
-        .instance_id = [_]u8{0} ** 16,
+        .instance_id = std.mem.zeroes([16]u8),
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.empty,
@@ -257,7 +257,7 @@ test "EXT-04-UT-03: edge transform merges object result into instance variables"
     var pending = [_][]const u8{"task"};
 
     const state = InstanceState{
-        .instance_id = [_]u8{0} ** 16,
+        .instance_id = std.mem.zeroes([16]u8),
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
@@ -295,7 +295,7 @@ test "EXT-04-UT-04: missing transform variable returns CelEvaluationError" {
     var pending = [_][]const u8{"task"};
 
     const state = InstanceState{
-        .instance_id = [_]u8{0} ** 16,
+        .instance_id = std.mem.zeroes([16]u8),
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
@@ -335,7 +335,7 @@ test "EXT-04-UT-05: non-object transform result returns TransformResultNonObject
     var pending = [_][]const u8{"task"};
 
     const state = InstanceState{
-        .instance_id = [_]u8{0} ** 16,
+        .instance_id = std.mem.zeroes([16]u8),
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
@@ -375,7 +375,7 @@ test "EXT-04-UT-06: whitespace-only transform is treated as no-op" {
     var pending = [_][]const u8{"task"};
 
     const state = InstanceState{
-        .instance_id = [_]u8{0} ** 16,
+        .instance_id = std.mem.zeroes([16]u8),
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
