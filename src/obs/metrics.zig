@@ -31,7 +31,7 @@ pub const QueryType = enum {
 const Histogram = struct {
     const finite_buckets = [_]f64{ 0.001, 0.0025, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0 };
 
-    bucket_counts: [finite_buckets.len]u64 = [_]u64{0}**finite_buckets.len,
+    bucket_counts: [finite_buckets.len]u64 = std.mem.zeroes([finite_buckets.len]u64),
     count: u64 = 0,
     sum: f64 = 0.0,
 

@@ -1,0 +1,92 @@
+{
+  "release_id": "release-DSL-01-20260526",
+  "stage": "Stage 7 — Expression DSL",
+  "requirement_ids": ["DSL-01"],
+  "run_id": "WF02-dsl01-20260527",
+  "handoff_id": "20260527-023",
+  "decision": "RELEASE",
+  "decision_timestamp": "2026-05-26T21:46:58Z",
+  "validated_by": "RELEASE-VALIDATOR",
+  "blockers": [],
+  "major_issues": [],
+  "minor_issues": [],
+  "checks": {
+    "zig_build_test": {
+      "command": "zig build test",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    "nfr_benchmarks": {
+      "command": "zig build bench",
+      "env": "BPM_BENCH_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_dev",
+      "overall_passed": true,
+      "run_id": "bench-1779832005517",
+      "results": [
+        {
+          "nfr": "NFR-01",
+          "metric": "p99_read_ms",
+          "target": "<=200",
+          "actual": 0.526,
+          "unit": "ms",
+          "passed": true
+        },
+        {
+          "nfr": "NFR-01",
+          "metric": "p99_write_ms",
+          "target": "<=500",
+          "actual": 1.461,
+          "unit": "ms",
+          "passed": true
+        },
+        {
+          "nfr": "NFR-02",
+          "metric": "append_throughput_eps",
+          "target": ">=1000",
+          "actual": 88948.826,
+          "unit": "events_per_second",
+          "passed": true
+        },
+        {
+          "nfr": "NFR-04",
+          "metric": "replay_10000_ms",
+          "target": "<=5000",
+          "actual": 55.032,
+          "unit": "ms",
+          "passed": true
+        }
+      ]
+    },
+    "test_report_review": {
+      "report": "tests/reports/report-20260526T213627Z-WF02-dsl01-step04.json",
+      "total": 56,
+      "passed": 56,
+      "failed": 0,
+      "blockers": 0,
+      "major_issues": 0,
+      "verdict": "PASS"
+    },
+    "dsl01_acceptance_criteria": {
+      "AC1_positive_and_negative_per_production": {
+        "result": "PASS",
+        "productions_covered": [
+          "or_expr (positive: TC-DSL01-001,002; negative: TC-DSL01-101)",
+          "and_expr (positive: TC-DSL01-003,004; negative: TC-DSL01-102)",
+          "not_expr (positive: TC-DSL01-005,006; negative: TC-DSL01-103)",
+          "cmp_expr (positive: TC-DSL01-007,008; negative: TC-DSL01-104)",
+          "add_expr (positive: TC-DSL01-009,010,011; negative: TC-DSL01-105)",
+          "mul_expr (positive: TC-DSL01-012,013,014; negative: TC-DSL01-106)",
+          "unary (positive: TC-DSL01-015,016; negative: TC-DSL01-107)",
+          "primary (positive: TC-DSL01-017-025; negative: TC-DSL01-108,109,110,111,112)",
+          "func_call (positive: TC-DSL01-026,027,028; negative: TC-DSL01-113,114)"
+        ],
+        "total_productions": 9,
+        "all_covered": true
+      },
+      "AC2_rejection_messages_include_line_column_token": {
+        "result": "PASS",
+        "evidence": "All 18 negative test cases verified ParseError.line, ParseError.column, and ParseError.token. Multi-line tracking confirmed (TC-DSL01-501, line=2). Whitespace column accuracy confirmed (TC-DSL01-502, column=4 for @x with 3 leading spaces)."
+      }
+    }
+  },
+  "recommendation": "DSL-01 (Grammar conformance) meets all acceptance criteria. All 56 test cases pass. All 9 grammar productions have at least one positive and one negative parser test. Rejection messages correctly include line number, column number, and offending token in all cases. All NFR benchmarks exceed targets by wide margins. Approve for RELEASE."
+}

@@ -164,7 +164,9 @@ test "TC-API-09-09: serialise emits empty trace_id when trace_context is clear" 
 
 test "TC-API-09-10: X-Trace-Id longer than MAX_TRACE_ID_LEN is truncated" {
     const alloc = testing.allocator;
-    const long_id = "z" ** (trace.MAX_TRACE_ID_LEN + 50);
+    var long_id_buf: [trace.MAX_TRACE_ID_LEN + 50]u8 = undefined;
+    @memset(&long_id_buf, 'z');
+    const long_id: []const u8 = &long_id_buf;
     const result = try trace.extractOrGenerate(alloc, long_id);
     defer alloc.free(result.trace_id);
 

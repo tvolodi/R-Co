@@ -1,0 +1,49 @@
+{
+  "handoff_id": "20260527-023",
+  "run_id": "WF02-dsl01-20260527",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-dsl01-20260527/step-05-release-validator.json",
+  "created_at": "2026-05-26T21:45:24Z",
+  "started_at": "2026-05-26T21:45:59Z",
+  "completed_at": "2026-05-26T21:47:38Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-01"],
+    "related_handoff_ids": ["20260527-021", "20260527-022"],
+    "artifacts_in": [
+      "tests/reports/report-20260526T213627Z-WF02-dsl01-step04.json",
+      "tests/specs/DSL-01.md",
+      "docs/agents/workflows/WF-04_full_test_run.md"
+    ],
+    "bench_env": "BPM_BENCH_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_dev (container: bpm-dev-db)"
+  },
+  "task": {
+    "description": "Validate DSL-01 (Grammar conformance) for release per WF-04 Steps 6–8.\n\nBench environment: BPM_BENCH_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_dev\nZig: e:/Dev/zig-x86_64-windows-0.17.0-dev.356+3140b375f/zig.exe\n\nSteps:\n1. Read docs/agents/workflows/WF-04_full_test_run.md for the release decision procedure\n2. Verify zig build test exits 0 (all tests including the new expr suite)\n3. Run zig build bench with BPM_BENCH_DB_URL set — verify all NFRs pass\n4. Review the test report at tests/reports/report-20260526T213627Z-WF02-dsl01-step04.json — zero BLOCKER/MAJOR issues required\n5. Verify DSL-01 acceptance criteria are met:\n   a. For each grammar production, at least one positive and one negative parser test exists\n   b. Rejection messages include line number, column number, and offending token\n6. Write the release decision to docs/status/release-DSL-01-20260526.json\n7. Set DSL-01 status to RELEASED in docs/status/requirement_status.json",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build bench exits 0 with all NFRs passing",
+      "Zero BLOCKER or MAJOR issues in test report",
+      "DSL-01 acceptance criteria verified",
+      "docs/status/release-DSL-01-20260526.json written",
+      "DSL-01 status set to RELEASED in requirement_status.json"
+    ],
+    "functions_to_call": ["fn:release-decision"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "DSL-01 (Grammar conformance) validated for release. All checks passed: zig build test exit 0 (56/56 tests pass), all four NFR benchmarks exceeded targets (p99_read=0.526ms, p99_write=1.461ms, throughput=88,948 eps, replay=55ms), zero BLOCKER/MAJOR issues in test report, AC-1 confirmed (all 9 grammar productions have ≥1 positive and ≥1 negative test), AC-2 confirmed (all rejection messages include line, column, and offending token). Release decision: RELEASE.",
+    "artifacts_out": [
+      "docs/status/release-DSL-01-20260526.json",
+      "docs/status/requirement_status.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to update CHANGELOG.md and finalize run metrics"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

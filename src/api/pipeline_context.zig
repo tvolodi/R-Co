@@ -6,7 +6,7 @@
 
 const std = @import("std");
 
-pub threadlocal var _current: [36]u8 = [_]u8{0}**36;
+pub threadlocal var _current: [36]u8 = std.mem.zeroes([36]u8);
 pub threadlocal var _has_value: bool = false;
 
 pub fn get() []const u8 {

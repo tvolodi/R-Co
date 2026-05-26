@@ -1,0 +1,20 @@
+{
+  "run_id": "WF02-dsl01-20260527",
+  "created_at": "2026-05-26T20:54:59Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["DSL-01"],
+  "difficulty": 4,
+  "difficulty_rationale": "Hand-written recursive descent parser with 10 grammar productions, new standalone module from scratch, complex AST + error-type design; no prior pattern in this codebase",
+  "integration_surface": "low",
+  "integration_surface_rationale": "New additive module src/expr/ only; no existing modules modified at parser stage; engine wiring deferred to DSL-12",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 62,
+    "backend-dev": 6,
+    "test-designer": 4,
+    "test-runner": 4,
+    "release-validator": 1,
+    "doc-updater": 1,
+    "total": 78
+  }
+}

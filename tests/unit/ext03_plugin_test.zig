@@ -227,8 +227,8 @@ fn errorHandler(
 fn testContext() plugin_interface.PluginExecutionContext {
     return .{
         .allocator = std.testing.allocator,
-        .instance_id = [_]u8{0} ** 16,
-        .definition_id = [_]u8{1} ** 16,
+        .instance_id = std.mem.zeroes([16]u8),
+        .definition_id = [16]u8{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
         .node_id = "node-1",
         .node_type = "SERVICE_TASK",
         .instance_variables_json = "{}",

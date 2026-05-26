@@ -1,0 +1,87 @@
+{
+  "run_id": "WF02-dsl01-20260527",
+  "requirement_ids": ["DSL-01"],
+  "difficulty": 4,
+  "integration_surface": "low",
+  "integration_surface_rationale": "New additive module src/expr/ only; no existing modules modified at parser stage; engine wiring deferred to DSL-12",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 78,
+  "actual_minutes_total": 39.2,
+  "variance_pct": -49.7,
+  "by_step": {
+    "code-designer": {
+      "estimated": 62,
+      "actual": 2.7,
+      "variance_pct": -95.6
+    },
+    "backend-dev": {
+      "estimated": 6,
+      "actual": 17.2,
+      "variance_pct": 186.7
+    },
+    "test-designer": {
+      "estimated": 4,
+      "actual": 3.5,
+      "variance_pct": -12.5
+    },
+    "test-runner": {
+      "estimated": 4,
+      "actual": 12.4,
+      "variance_pct": 210.0
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 1.7,
+      "variance_pct": 70.0
+    },
+    "doc-updater": {
+      "estimated": 1,
+      "actual": 1.7,
+      "variance_pct": 70.0
+    }
+  },
+  "step_timings": {
+    "code-designer": {
+      "started_at": "2026-05-26T20:58:38Z",
+      "completed_at": "2026-05-26T21:01:19Z",
+      "handoff": "handoffs/WF02-dsl01-20260527/step-01-code-designer.json"
+    },
+    "backend-dev": {
+      "started_at": "2026-05-26T21:02:50Z",
+      "completed_at": "2026-05-26T21:20:04Z",
+      "handoff": "handoffs/WF02-dsl01-20260527/step-02-backend-dev.json"
+    },
+    "test-designer": {
+      "started_at": "2026-05-26T21:21:34Z",
+      "completed_at": "2026-05-26T21:25:04Z",
+      "handoff": "handoffs/WF02-dsl01-20260527/step-03-test-designer.json"
+    },
+    "test-runner": {
+      "started_at": "2026-05-26T21:26:29Z",
+      "completed_at": "2026-05-26T21:38:50Z",
+      "handoff": "handoffs/WF02-dsl01-20260527/step-04-test-runner.json"
+    },
+    "release-validator": {
+      "started_at": "2026-05-26T21:45:59Z",
+      "completed_at": "2026-05-26T21:47:38Z",
+      "handoff": "handoffs/WF02-dsl01-20260527/step-05-release-validator.json"
+    },
+    "doc-updater": {
+      "started_at": "2026-05-26T21:49:27Z",
+      "completed_at": "2026-05-26T21:51:06Z",
+      "handoff": "handoffs/WF02-dsl01-20260527/step-06-doc-updater.json"
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "code-designer",
+      "difficulty": 4,
+      "old_estimate": 62,
+      "new_estimate": 32,
+      "reason": "Observed 2 consecutive D4 runs (WF02-oidc02-20260527 at -98.4%, WF02-dsl01-20260527 at -95.6%) with >25% under-run variance; adjusted by dampening factor 0.5 of observed variance"
+    }
+  ],
+  "notes": "Step-04b (BACKEND-DEV bench-env setup, 2.3 min) was an unplanned interim step not included in estimation; it is excluded from step actuals but contributes to wall-clock elapsed time between test-runner completion and release-validator start.",
+  "completed_at": "2026-05-26T21:51:06Z"
+}

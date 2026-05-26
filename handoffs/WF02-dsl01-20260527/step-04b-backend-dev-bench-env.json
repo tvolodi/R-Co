@@ -1,0 +1,42 @@
+{
+  "handoff_id": "20260527-022",
+  "run_id": "WF02-dsl01-20260527",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-dsl01-20260527/step-04b-backend-dev-bench-env.json",
+  "created_at": "2026-05-26T21:40:46Z",
+  "started_at": "2026-05-26T21:41:19Z",
+  "completed_at": "2026-05-26T21:43:38Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 7 \u0432\u0402\u201d Expression DSL",
+    "requirement_ids": [
+      "DSL-01"
+    ],
+    "related_handoff_ids": [
+      "20260527-021"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Set up the benchmark environment so that `zig build bench` exits 0.\n\nProblem: `zig build bench` currently fails with BENCHMARK_SETUP_ERROR: missing BPM_BENCH_DB_URL/BPM_DB_URL/BPM_TEST_DB_URL.\n\nSteps:\n1. Locate the PostgreSQL test instance connection string (check .env files, docs/guides/backend_developer_guide.md, prior ADHOC-env-check-20260526 handoff for guidance)\n2. Set BPM_DB_URL (and BPM_TEST_DB_URL / BPM_BENCH_DB_URL if required) in the current shell environment\n3. Run: zig build bench\n4. Verify exit code 0 and that benchmark numbers appear in output (no BENCHMARK_SETUP_ERROR)\n\nNote: Do NOT modify any source files. This is environment configuration only. The branch feature/WF02-dsl01-20260527 is already checked out \u0432\u0402\u201d do not switch branches.",
+    "acceptance_criteria": [
+      "zig build bench exits 0",
+      "No BENCHMARK_SETUP_ERROR in output",
+      "Benchmark numbers appear in output"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Benchmark environment configured. Started Docker container bpm-dev-db (postgres:15-alpine, port 5434, user bpm/bpm), applied all 37 migrations. zig build bench exits 0: NFR-01 p99_read=0.472ms, p99_write=1.091ms, NFR-02 throughput=85768 eps, NFR-04 replay=64.654ms. All NFRs pass.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR: bench CLEARED. Set BPM_BENCH_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_dev"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
