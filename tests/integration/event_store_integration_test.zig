@@ -27,6 +27,8 @@ const AppendResult = bpm.store.AppendResult;
 const ReadOpts = bpm.store.ReadOpts;
 const GlobalReadOpts = bpm.store.GlobalReadOpts;
 const StoreError = bpm.store.StoreError;
+const RetentionPolicyMode = bpm.store.RetentionPolicyMode;
+const RetentionPolicyUpsertParams = bpm.store.RetentionPolicyUpsertParams;
 
 const Registry = bpm.registry.Registry;
 const RegisterParams = bpm.registry.RegisterParams;
@@ -806,6 +808,203 @@ test "TC-ES-07-01: archive moves expired events to events_archive" {
             try std.testing.expect(n >= 1);
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// ADP-11: Replay-safe retention policy
+// ---------------------------------------------------------------------------
+
+test "TC-ADP-11-01: protected family rejects hard-delete policy deterministically" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    try std.testing.expectError(
+        StoreError.ProtectedFamilyHardDeleteForbidden,
+        store.upsertRetentionPolicy(alloc, RetentionPolicyUpsertParams{
+            .event_type = "INSTANCE_STARTED",
+            .policy = RetentionPolicyMode.hard_delete_days,
+            .keep_days = 0,
+        }),
+    );
+
+    const violation = bpm.store.retentionPolicyViolation("INSTANCE_STARTED", RetentionPolicyMode.hard_delete_days) orelse {
+        try std.testing.expect(false);
+        return;
+    };
+    try std.testing.expectEqualStrings("RETENTION_POLICY_PROTECTED_FAMILY_HARD_DELETE_FORBIDDEN", violation.code);
+    try std.testing.expectEqualStrings("HARD_DELETE_NOT_ALLOWED_FOR_PROTECTED_FAMILY", violation.reason);
+    try std.testing.expectEqualStrings("INSTANCE_*", violation.event_family);
+    try std.testing.expectEqualStrings("hard_delete_days", violation.requested_mode);
+    try std.testing.expectEqualStrings("keep_forever", violation.allowed_modes[0]);
+    try std.testing.expectEqualStrings("keep_days", violation.allowed_modes[1]);
+    try std.testing.expectEqualStrings("keep_count", violation.allowed_modes[2]);
+
+    const maybe_code = bpm.store.retentionPolicyErrorCode(StoreError.ProtectedFamilyHardDeleteForbidden);
+    try std.testing.expect(maybe_code != null);
+    try std.testing.expectEqualStrings("RETENTION_POLICY_PROTECTED_FAMILY_HARD_DELETE_FORBIDDEN", maybe_code.?);
+}
+
+test "TC-ADP-11-02: non-protected families retain hard-delete configurability" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = "ADP11_AUDIT_EVENT",
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_str = "ad110000-0002-0000-0000-000000000002";
+    const def_str = "defdef00-ad11-0000-0000-000000000002";
+    try insertInstance(&pool, inst_str, def_str);
+    defer cleanupInstance(&pool, inst_str, &.{"adp11-idem-01"});
+    defer {
+        if (pool.acquire()) |c| {
+            c.exec("DELETE FROM event_retention_policies WHERE event_type = $1", &.{"ADP11_AUDIT_EVENT"}) catch {};
+            c.exec("DELETE FROM events_archive WHERE idempotency_key = $1", &.{"adp11-idem-01"}) catch {};
+            c.exec("DELETE FROM events WHERE idempotency_key = $1", &.{"adp11-idem-01"}) catch {};
+            pool.release(c);
+        } else |_| {}
+    }
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000031");
+
+    _ = try store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "ADP11_AUDIT_EVENT",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = "adp11-idem-01",
+        .metadata = null,
+    });
+
+    try store.upsertRetentionPolicy(alloc, RetentionPolicyUpsertParams{
+        .event_type = "ADP11_AUDIT_EVENT",
+        .policy = RetentionPolicyMode.hard_delete_days,
+        .keep_days = 0,
+    });
+
+    _ = try store.archive(alloc, 0);
+
+    const check = try pool.acquire();
+    defer pool.release(check);
+
+    var live_rows = try check.query(alloc, "SELECT COUNT(*) FROM events WHERE idempotency_key = $1", &.{"adp11-idem-01"});
+    defer live_rows.deinit();
+    var archive_rows = try check.query(alloc, "SELECT COUNT(*) FROM events_archive WHERE idempotency_key = $1", &.{"adp11-idem-01"});
+    defer archive_rows.deinit();
+
+    if (live_rows.rows.len == 0 or archive_rows.rows.len == 0) {
+        try std.testing.expect(false);
+        return;
+    }
+
+    const live_count = try std.fmt.parseInt(i64, live_rows.rows[0][0] orelse "-1", 10);
+    const archive_count = try std.fmt.parseInt(i64, archive_rows.rows[0][0] orelse "-1", 10);
+
+    try std.testing.expectEqual(@as(i64, 0), live_count);
+    try std.testing.expectEqual(@as(i64, 0), archive_count);
+}
+
+test "TC-ADP-11-03: protected keep_days policy archives and preserves queryability" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = "INSTANCE_STARTED",
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_str = "ad110000-0003-0000-0000-000000000003";
+    const def_str = "defdef00-ad11-0000-0000-000000000003";
+    try insertInstance(&pool, inst_str, def_str);
+    defer cleanupInstance(&pool, inst_str, &.{"adp11-idem-02"});
+    defer {
+        if (pool.acquire()) |c| {
+            c.exec("DELETE FROM event_retention_policies WHERE event_type = $1", &.{"INSTANCE_STARTED"}) catch {};
+            pool.release(c);
+        } else |_| {}
+    }
+
+    const inst_uuid = try parseUuid(alloc, inst_str);
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000032");
+
+    _ = try store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "INSTANCE_STARTED",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = "adp11-idem-02",
+        .metadata = null,
+    });
+
+    try store.upsertRetentionPolicy(alloc, RetentionPolicyUpsertParams{
+        .event_type = "INSTANCE_STARTED",
+        .policy = RetentionPolicyMode.keep_days,
+        .keep_days = 0,
+    });
+
+    _ = try store.archive(alloc, 0);
+
+    const check = try pool.acquire();
+    defer pool.release(check);
+
+    var live_rows = try check.query(alloc, "SELECT COUNT(*) FROM events WHERE idempotency_key = $1", &.{"adp11-idem-02"});
+    defer live_rows.deinit();
+    var archive_rows = try check.query(alloc, "SELECT COUNT(*) FROM events_archive WHERE idempotency_key = $1", &.{"adp11-idem-02"});
+    defer archive_rows.deinit();
+
+    if (live_rows.rows.len == 0 or archive_rows.rows.len == 0) {
+        try std.testing.expect(false);
+        return;
+    }
+
+    const live_count = try std.fmt.parseInt(i64, live_rows.rows[0][0] orelse "-1", 10);
+    const archive_count = try std.fmt.parseInt(i64, archive_rows.rows[0][0] orelse "-1", 10);
+
+    try std.testing.expectEqual(@as(i64, 0), live_count);
+    try std.testing.expectEqual(@as(i64, 1), archive_count);
 }
 
 // ---------------------------------------------------------------------------

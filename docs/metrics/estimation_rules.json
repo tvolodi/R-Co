@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-26T11:54:24Z",
-  "updated_by": "WF02-adp08-20260526",
-  "update_count": 38,
+  "updated_at": "2026-05-26T16:51:05Z",
+  "updated_by": "WF02-adp11-20260526",
+  "update_count": 39,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
     "2": "Single function or endpoint, no schema change, < 50 LOC",
@@ -49,7 +49,7 @@
     "release-validator": [
       5,
       1,
-      12,
+      8,
       1,
       25
     ],

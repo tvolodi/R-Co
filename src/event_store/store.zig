@@ -55,6 +55,11 @@ pub const StoreError = error{
     ActorIdMissing,
     /// A multi-table transaction failed to commit (DB-03).
     TransactionFailed,
+    /// retention policy upsert is missing required keep_days/keep_count
+    /// or includes a value that does not match policy mode.
+    InvalidRetentionPolicyValue,
+    /// hard-delete retention is forbidden for replay-critical families.
+    ProtectedFamilyHardDeleteForbidden,
 };
 
 // ---------------------------------------------------------------------------
@@ -131,6 +136,32 @@ pub const HistoryReadOpts = struct {
     after_sequence: ?i64,
     /// Maximum number of events to return. 1..200.
     limit: u16,
+};
+
+pub const RetentionPolicyMode = enum {
+    keep_forever,
+    keep_days,
+    keep_count,
+    hard_delete_days,
+    hard_delete_count,
+};
+
+pub const RetentionPolicyUpsertParams = struct {
+    event_type: []const u8,
+    policy: RetentionPolicyMode,
+    keep_days: ?u32 = null,
+    keep_count: ?u32 = null,
+};
+
+pub const RetentionPolicyViolation = struct {
+    code: []const u8,
+    title: []const u8,
+    detail: []const u8,
+    reason: []const u8,
+    event_family: []const u8,
+    allowed_modes: [3][]const u8,
+    requested_mode: []const u8,
+    event_type: []const u8,
 };
 
 // ---------------------------------------------------------------------------
@@ -806,6 +837,66 @@ pub const Store = struct {
     }
 
     // -----------------------------------------------------------------------
+    // retention policy configuration (ES-07, ADP-11)
+    // -----------------------------------------------------------------------
+
+    /// Upsert retention policy with deterministic ADP-11 guardrails.
+    ///
+    /// Protected replay-critical event families ({INSTANCE_*, TASK_*,
+    /// GATEWAY_*, EXECUTION_*}) reject hard-delete modes at configuration
+    /// time using a typed error. Non-protected families preserve ES-07
+    /// configurability, including hard-delete modes.
+    pub fn upsertRetentionPolicy(
+        self: *Store,
+        allocator: std.mem.Allocator,
+        params: RetentionPolicyUpsertParams,
+    ) StoreError!void {
+        if (params.event_type.len == 0) return StoreError.InvalidRetentionPolicyValue;
+
+        const normalized_event_type = normalizeEventType(allocator, params.event_type) catch return StoreError.TransactionFailed;
+        defer allocator.free(normalized_event_type);
+
+        try validateRetentionPolicyUpsert(normalized_event_type, params);
+
+        const conn = self.pool.acquire() catch |err| switch (err) {
+            PoolError.ExhaustedPool => return StoreError.PoolExhausted,
+            else => return StoreError.TransactionFailed,
+        };
+        defer self.pool.release(conn);
+
+        var param_arena = std.heap.ArenaAllocator.init(allocator);
+        defer param_arena.deinit();
+        const param_alloc = param_arena.allocator();
+
+        const keep_days_text: []const u8 = if (params.keep_days) |v|
+            uintToStr(param_alloc, v) catch return StoreError.TransactionFailed
+        else
+            "";
+
+        const keep_count_text: []const u8 = if (params.keep_count) |v|
+            uintToStr(param_alloc, v) catch return StoreError.TransactionFailed
+        else
+            "";
+
+        conn.exec(
+            "INSERT INTO event_retention_policies (event_type, policy, keep_days, keep_count, updated_at) " ++
+                "VALUES ($1, $2, NULLIF($3, '')::integer, NULLIF($4, '')::integer, NOW()) " ++
+                "ON CONFLICT (event_type) DO UPDATE SET " ++
+                "policy = EXCLUDED.policy, keep_days = EXCLUDED.keep_days, " ++
+                "keep_count = EXCLUDED.keep_count, updated_at = NOW()",
+            &.{
+                normalized_event_type,
+                retentionPolicyModeToSql(params.policy),
+                keep_days_text,
+                keep_count_text,
+            },
+        ) catch |err| switch (err) {
+            PoolError.ExhaustedPool => return StoreError.PoolExhausted,
+            else => return StoreError.TransactionFailed,
+        };
+    }
+
+    // -----------------------------------------------------------------------
     // archive (ES-07)
     // -----------------------------------------------------------------------
 
@@ -854,6 +945,12 @@ pub const Store = struct {
 
             if (std.mem.eql(u8, policy, "keep_forever")) continue;
 
+            if (std.mem.eql(u8, policy, "hard_delete_days") or std.mem.eql(u8, policy, "hard_delete_count")) {
+                if (isProtectedEventFamily(event_type)) {
+                    return StoreError.ProtectedFamilyHardDeleteForbidden;
+                }
+            }
+
             if (std.mem.eql(u8, policy, "keep_days")) {
                 const keep_days_str = policy_row[2] orelse continue;
                 const keep_days = std.fmt.parseInt(i64, keep_days_str, 10) catch continue;
@@ -893,6 +990,20 @@ pub const Store = struct {
                     },
                 ) catch continue;
                 total_moved += 1; // real count from DELETE RETURNING not available yet
+            } else if (std.mem.eql(u8, policy, "hard_delete_days")) {
+                const keep_days_str = policy_row[2] orelse continue;
+                const keep_days = std.fmt.parseInt(i64, keep_days_str, 10) catch continue;
+                conn.exec(
+                    \\DELETE FROM events
+                    \\WHERE event_type = $1
+                    \\  AND created_at <= NOW() - ($2 || ' days')::interval
+                ,
+                    &.{
+                        event_type,
+                        intToStr(param_alloc, keep_days) catch continue,
+                    },
+                ) catch continue;
+                total_moved += 1;
             } else if (std.mem.eql(u8, policy, "keep_count")) {
                 const keep_count_str = policy_row[3] orelse continue;
                 const keep_count = std.fmt.parseInt(i64, keep_count_str, 10) catch continue;
@@ -933,6 +1044,25 @@ pub const Store = struct {
                     \\  AND EXISTS (
                     \\    SELECT 1 FROM events_archive ea
                     \\    WHERE ea.idempotency_key = e.idempotency_key
+                    \\  )
+                ,
+                    &.{
+                        event_type,
+                        intToStr(param_alloc, keep_count) catch continue,
+                    },
+                ) catch continue;
+                total_moved += 1;
+            } else if (std.mem.eql(u8, policy, "hard_delete_count")) {
+                const keep_count_str = policy_row[3] orelse continue;
+                const keep_count = std.fmt.parseInt(i64, keep_count_str, 10) catch continue;
+                conn.exec(
+                    \\DELETE FROM events e
+                    \\WHERE e.event_type = $1
+                    \\  AND e.event_id NOT IN (
+                    \\    SELECT event_id FROM events
+                    \\    WHERE event_type = $1
+                    \\    ORDER BY sequence_number DESC
+                    \\    LIMIT $2
                     \\  )
                 ,
                     &.{
@@ -1081,6 +1211,95 @@ fn isJsonObject(bytes: []const u8) bool {
 /// Return true if all 16 bytes of the UUID are zero.
 fn isNilUuid(uuid: Uuid) bool {
     return std.mem.allEqual(u8, &uuid, 0);
+}
+
+pub fn retentionPolicyErrorCode(err: StoreError) ?[]const u8 {
+    return switch (err) {
+        StoreError.ProtectedFamilyHardDeleteForbidden => "RETENTION_POLICY_PROTECTED_FAMILY_HARD_DELETE_FORBIDDEN",
+        StoreError.InvalidRetentionPolicyValue => "RETENTION_POLICY_INPUT_INVALID",
+        else => null,
+    };
+}
+
+pub fn retentionPolicyViolation(event_type: []const u8, policy: RetentionPolicyMode) ?RetentionPolicyViolation {
+    if (!isProtectedEventFamily(event_type)) return null;
+    if (!retentionPolicyModeIsHardDelete(policy)) return null;
+
+    return RetentionPolicyViolation{
+        .code = "RETENTION_POLICY_PROTECTED_FAMILY_HARD_DELETE_FORBIDDEN",
+        .title = "Retention policy rejected",
+        .detail = "Hard-delete retention is forbidden for protected replay-critical event families.",
+        .reason = "HARD_DELETE_NOT_ALLOWED_FOR_PROTECTED_FAMILY",
+        .event_family = protectedFamilyLabel(event_type),
+        .allowed_modes = .{ "keep_forever", "keep_days", "keep_count" },
+        .requested_mode = retentionPolicyModeToSql(policy),
+        .event_type = event_type,
+    };
+}
+
+fn validateRetentionPolicyUpsert(normalized_event_type: []const u8, params: RetentionPolicyUpsertParams) StoreError!void {
+    switch (params.policy) {
+        .keep_forever => {
+            if (params.keep_days != null or params.keep_count != null) {
+                return StoreError.InvalidRetentionPolicyValue;
+            }
+        },
+        .keep_days, .hard_delete_days => {
+            if (params.keep_days == null or params.keep_count != null) {
+                return StoreError.InvalidRetentionPolicyValue;
+            }
+        },
+        .keep_count, .hard_delete_count => {
+            if (params.keep_count == null or params.keep_days != null) {
+                return StoreError.InvalidRetentionPolicyValue;
+            }
+        },
+    }
+
+    if (isProtectedEventFamily(normalized_event_type) and retentionPolicyModeIsHardDelete(params.policy)) {
+        return StoreError.ProtectedFamilyHardDeleteForbidden;
+    }
+}
+
+fn retentionPolicyModeIsHardDelete(policy: RetentionPolicyMode) bool {
+    return switch (policy) {
+        .hard_delete_days, .hard_delete_count => true,
+        else => false,
+    };
+}
+
+fn retentionPolicyModeToSql(policy: RetentionPolicyMode) []const u8 {
+    return switch (policy) {
+        .keep_forever => "keep_forever",
+        .keep_days => "keep_days",
+        .keep_count => "keep_count",
+        .hard_delete_days => "hard_delete_days",
+        .hard_delete_count => "hard_delete_count",
+    };
+}
+
+fn normalizeEventType(allocator: std.mem.Allocator, event_type: []const u8) error{OutOfMemory}![]u8 {
+    const trimmed = std.mem.trim(u8, event_type, &std.ascii.whitespace);
+    var normalized = try allocator.alloc(u8, trimmed.len);
+    for (trimmed, 0..) |ch, i| {
+        normalized[i] = std.ascii.toUpper(ch);
+    }
+    return normalized;
+}
+
+fn isProtectedEventFamily(event_type: []const u8) bool {
+    return std.mem.startsWith(u8, event_type, "INSTANCE_") or
+        std.mem.startsWith(u8, event_type, "TASK_") or
+        std.mem.startsWith(u8, event_type, "GATEWAY_") or
+        std.mem.startsWith(u8, event_type, "EXECUTION_");
+}
+
+fn protectedFamilyLabel(event_type: []const u8) []const u8 {
+    if (std.mem.startsWith(u8, event_type, "INSTANCE_")) return "INSTANCE_*";
+    if (std.mem.startsWith(u8, event_type, "TASK_")) return "TASK_*";
+    if (std.mem.startsWith(u8, event_type, "GATEWAY_")) return "GATEWAY_*";
+    if (std.mem.startsWith(u8, event_type, "EXECUTION_")) return "EXECUTION_*";
+    return "UNKNOWN";
 }
 
 /// Validate metadata JSON object constraints (ES-08).

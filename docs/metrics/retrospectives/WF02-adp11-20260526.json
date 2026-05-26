@@ -1,0 +1,101 @@
+{
+  "run_id": "WF02-adp11-20260526",
+  "workflow_id": "WF-02",
+  "date": "2026-05-26T16:51:05Z",
+  "requirement_ids": [
+    "ADP-11"
+  ],
+  "estimation_file": "handoffs/WF02-adp11-20260526/estimation.json",
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "steps": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "estimated_minutes": 33,
+      "started_at": "2026-05-26T15:27:20Z",
+      "completed_at": "2026-05-26T16:16:46Z",
+      "actual_minutes": 49,
+      "variance_pct": 48.5
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "estimated_minutes": 13,
+      "started_at": "2026-05-26T16:17:20Z",
+      "completed_at": "2026-05-26T16:30:58Z",
+      "actual_minutes": 14,
+      "variance_pct": 7.7
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "estimated_minutes": 8,
+      "started_at": "2026-05-26T16:31:40Z",
+      "completed_at": "2026-05-26T16:37:10Z",
+      "actual_minutes": 6,
+      "variance_pct": -25.0
+    },
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "estimated_minutes": 6,
+      "started_at": "2026-05-26T16:38:00Z",
+      "completed_at": "2026-05-26T16:42:12Z",
+      "actual_minutes": 4,
+      "variance_pct": -33.3
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "estimated_minutes": 15,
+      "started_at": "2026-05-26T16:43:00Z",
+      "completed_at": "2026-05-26T16:47:45Z",
+      "actual_minutes": 5,
+      "variance_pct": -66.7
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "estimated_minutes": 3,
+      "started_at": "2026-05-26T16:48:40Z",
+      "completed_at": "2026-05-26T16:51:05Z",
+      "actual_minutes": 2,
+      "variance_pct": -33.3
+    }
+  ],
+  "estimated_total_minutes": 78,
+  "actual_total_minutes": 80,
+  "overall_variance_pct": 2.6,
+  "adjustments": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "issue": "Variance +48.5% exceeds 25% threshold",
+      "action": "DEFERRED - monitor for pattern across consecutive D3/medium runs before adjusting rules",
+      "rationale": "Insufficient consecutive run evidence for rule adjustment or step key unavailable in estimation rules."
+    },
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "issue": "Variance -33.3% exceeds 25% threshold",
+      "action": "DEFERRED - monitor for pattern across consecutive D3/medium runs before adjusting rules",
+      "rationale": "Insufficient consecutive run evidence for rule adjustment or step key unavailable in estimation rules."
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "issue": "Variance -66.7% exceeds 25% threshold",
+      "action": "UPDATED - adjusted D3/medium estimate from 12 to 8 after 2 consecutive runs beyond threshold",
+      "rationale": "Retrospective rule-adjustment trigger met (>=2 consecutive runs at same difficulty and integration surface with same-direction >25% variance)."
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "issue": "Variance -33.3% exceeds 25% threshold",
+      "action": "UPDATED - adjusted D3/medium estimate from 2 to 2 after 2 consecutive runs beyond threshold",
+      "rationale": "Retrospective rule-adjustment trigger met (>=2 consecutive runs at same difficulty and integration surface with same-direction >25% variance)."
+    }
+  ],
+  "summary": "WF02-adp11-20260526 completed with +2.6% variance against estimate (80 actual vs 78 estimated minutes) for D3/medium run."
+}

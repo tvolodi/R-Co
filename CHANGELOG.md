@@ -81,6 +81,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260526T151827Z-WF02-adp10-20260526-step04.json; release approval is recorded in docs/status/release-ADP-10-20260526.json.
 - Requirement: ADP-10 (MUST, Stage 6.5) - RELEASED
 
+### ADP-11 - Replay-safe retention policy (RELEASED 2026-05-26)
+- Implemented additive replay-safe retention guardrails for protected event families `{INSTANCE_*, TASK_*, GATEWAY_*, EXECUTION_*}` with deterministic hard-delete rejection and explicit structured error semantics for policy upsert validation.
+- Preserved ES-07 hard-delete configurability and behavior for non-protected families while enforcing archive/queryability invariants required for deterministic replay compatibility with IR-07 and XC-05.
+- Validation evidence passed in tests/reports/report-2026-05-26-wf02-adp11-step04.json and tests/reports/WF02-adp11-20260526-step-05-release-validator-bench.log; release approval is recorded in docs/status/release-ADP-11-20260526.json.
+- Requirement: ADP-11 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`
