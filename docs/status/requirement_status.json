@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-26T13:38:17Z",
+  "last_updated": "2026-05-26T16:51:05Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1180,6 +1180,21 @@
       "release_run": "WF02-adp10-20260526",
       "release_decision": "docs/status/release-ADP-10-20260526.json",
       "last_updated": "2026-05-26T15:26:37Z"
+    },
+    "ADP-11": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Replay-safe retention policy",
+      "implementation_run": "WF02-adp11-20260526",
+      "implementation_handoff": "handoffs/WF02-adp11-20260526/step-02-backend-dev.json",
+      "test_spec": "tests/specs/ADP-11.md",
+      "test_run": "tests/reports/report-2026-05-26-wf02-adp11-step04.json",
+      "tested_at": "2026-05-26",
+      "released_at": "2026-05-26T16:47:45Z",
+      "release_run": "WF02-adp11-20260526",
+      "release_decision": "docs/status/release-ADP-11-20260526.json",
+      "last_updated": "2026-05-26T16:51:05Z"
     }
   }
 }

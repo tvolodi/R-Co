@@ -1,0 +1,49 @@
+{
+  "report_id": "WF02-adp11-20260526-step-05-release-validator-INNER-REPORT",
+  "created_at": "2026-05-26T16:47:45Z",
+  "agent": "RELEASE-VALIDATOR",
+  "run_id": "WF02-adp11-20260526",
+  "handoff_id": "20260526-099",
+  "type": "release-validation",
+  "decision": "APPROVED",
+  "summary": "Release validation for ADP-11 passed. Required unit/integration checks are PASS and NFR benchmarks for NFR-01, NFR-02, and NFR-04 are within threshold.",
+  "files_created": [
+    "docs/status/release-ADP-11-20260526.json",
+    "docs/issue-reports/WF02-adp11-20260526-step-05-release-validator-INNER-REPORT.json",
+    "tests/reports/WF02-adp11-20260526-step-05-release-validator-bench.log"
+  ],
+  "files_modified": [
+    "handoffs/WF02-adp11-20260526/step-05-release-validator.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "zig build test",
+      "status": "pass",
+      "detail": "UNIT_EXIT_CODE=0"
+    },
+    {
+      "name": "zig build test-integration",
+      "status": "pass",
+      "detail": "INTEGRATION_EXIT_CODE=0"
+    },
+    {
+      "name": "zig build bench",
+      "status": "pass",
+      "detail": "NFR_BENCH_SUMMARY overall_passed=true; BENCH_EXIT_CODE=0"
+    }
+  ],
+  "artifacts": [
+    "docs/status/release-ADP-11-20260526.json",
+    "docs/issue-reports/WF02-adp11-20260526-step-05-release-validator-INNER-REPORT.json",
+    "tests/reports/WF02-adp11-20260526-step-05-release-validator-bench.log",
+    "tests/reports/report-2026-05-26-wf02-adp11-step04.json",
+    "tests/specs/ADP-11.md",
+    "src/design/adp-11-replay-safe-retention-policy.md",
+    "migrations/037_adp11_replay_safe_retention_policy.sql"
+  ],
+  "issues": [],
+  "next_steps": [
+    "Route to DOC-UPDATER to set ADP-11 requirement status to RELEASED."
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "handoff_id": "20260526-097",
+  "run_id": "WF02-adp11-20260526",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-adp11-20260526/step-03-test-designer.json",
+  "created_at": "2026-05-26T16:31:20Z",
+  "started_at": "2026-05-26T16:31:40Z",
+  "completed_at": "2026-05-26T16:37:10Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 — Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "ADP-11"
+    ],
+    "related_handoff_ids": [
+      "20260526-095",
+      "20260526-096"
+    ],
+    "artifacts_in": [
+      "src/design/adp-11-replay-safe-retention-policy.md",
+      "src/event_store/store.zig",
+      "migrations/037_adp11_replay_safe_retention_policy.sql",
+      "tests/integration/event_store_integration_test.zig",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/03-extension-adaptations.md",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Design and add/adjust ADP-11 test coverage artifacts to ensure acceptance coverage for replay-safe retention policy. Produce/update test spec and any additional tests needed so TEST-RUNNER can validate protected-family hard-delete rejection (including INSTANCE_STARTED), structured error semantics, non-protected hard-delete configurability/behavior, and replay-safe archive/queryability invariants.",
+    "acceptance_criteria": [
+      "tests/specs/ADP-11.md exists and maps ADP-11 acceptance criteria to executable checks",
+      "Test plan covers protected-family rejection and explicit INSTANCE_STARTED hard-delete rejection",
+      "Test plan covers non-protected family hard-delete behavior and ES-07 compatibility",
+      "Any new/updated test files compile in current suite wiring",
+      "Handoff result includes exact artifacts_out for TEST-RUNNER"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-test-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and integration coverage for ADP-11 replay-safe retention policy, including protected-family hard-delete rejection, deterministic structured-error semantics, non-protected hard-delete behavior, and protected archive/queryability invariants.",
+    "artifacts_out": [
+      "tests/specs/ADP-11.md",
+      "tests/integration/event_store_integration_test.zig",
+      "docs/issue-reports/WF02-adp11-20260526-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
