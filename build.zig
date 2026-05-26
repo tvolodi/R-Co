@@ -20,6 +20,11 @@ pub fn build(b: *std.Build) void {
     const pg_mod = pg_dep.module("pg");
     const http_mod = http_dep.module("http");
     const cel_mod = cel_dep.module("cel");
+    const identity_provider_mod = b.createModule(.{
+        .root_source_file = b.path("src/identity/provider/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
 
     const transition_mod = b.createModule(.{
         .root_source_file = b.path("src/engine/transition.zig"),
@@ -33,6 +38,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "cel", .module = cel_mod },
         .{ .name = "transition", .module = transition_mod },
         .{ .name = "build_options", .module = build_options_mod },
+        .{ .name = "identity_provider", .module = identity_provider_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -306,6 +312,7 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
         .imports = &.{
             .{ .name = "pool", .module = pool_module },
+            .{ .name = "identity_provider", .module = identity_provider_mod },
         },
     });
     const api_conventions_tests = b.addTest(.{
@@ -431,6 +438,32 @@ pub fn build(b: *std.Build) void {
     });
     const run_api09_tracing_tests = b.addRunArtifact(api09_tracing_tests);
 
+    // OIDC-01: provider boundary checks (build-level static assertions)
+    const oidc01_provider_boundary_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc01_provider_boundary.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "api", .module = api_mod },
+            },
+        }),
+    });
+    const run_oidc01_provider_boundary_tests = b.addRunArtifact(oidc01_provider_boundary_tests);
+
+    // OIDC-01: provider interface contract checks (runtime-level unit assertions)
+    const oidc01_provider_stub_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc01_provider_stub.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "api", .module = api_mod },
+            },
+        }),
+    });
+    const run_oidc01_provider_stub_tests = b.addRunArtifact(oidc01_provider_stub_tests);
+
     // SCH-05: Missed timer recovery — pure function unit tests (no DB)
     const sch05_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -528,6 +561,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_api07_validation_tests.step);
     test_step.dependOn(&run_api08_auth_tests.step);
     test_step.dependOn(&run_api09_tracing_tests.step);
+    test_step.dependOn(&run_oidc01_provider_boundary_tests.step);
+    test_step.dependOn(&run_oidc01_provider_stub_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
     test_step.dependOn(&run_service_task_unit_tests.step);

@@ -25,6 +25,8 @@ const testing = std.testing;
 const api = @import("api");
 const auth = api.auth;
 const pool = @import("pool");
+const provider_types = api.identity_provider.types;
+const stub_provider = api.identity_provider.adapters.stub;
 
 /// Test bootstrap token used for all bootstrap-auth tests.
 const TEST_BOOTSTRAP_TOKEN = "test-bootstrap-token-12345";
@@ -579,6 +581,71 @@ test "TC-IDN-04-05b: invalid token role claim is rejected with 401" {
             defer freeHandlerBody(alloc, hr.body);
             try testing.expectEqual(@as(u16, 401), hr.status_code);
             try testing.expect(std.mem.indexOf(u8, hr.body, "invalid role claim") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-OIDC-01-01: JWT-like token uses configured IdentityProvider verify path" {
+    const alloc = testing.allocator;
+
+    var provider_roles = [_]provider_types.ProviderRole{.PROCESS_OPERATOR};
+    var stub_ctx = stub_provider.StubContext{
+        .verify_result = .{ .ok = .{
+            .provider_subject = "provider-subject-1",
+            .username = "oidc.user",
+            .display_name = "OIDC User",
+            .email = "oidc.user@example.com",
+            .tenant_id = "11111111-1111-1111-1111-111111111111".*,
+            .roles = provider_roles[0..],
+            .external_realm = "tenant-realm",
+            .token_id_hint = "oidc-token-id-1",
+        } },
+    };
+
+    auth.configureIdentityProviderManager(.{
+        .provider = stub_provider.asIdentityProvider(&stub_ctx),
+        .auth_mode = .dual_accept,
+    });
+    defer auth.resetIdentityProviderManager();
+
+    const result = auth.authenticate(alloc, "Bearer a.b.c", undefined);
+    switch (result) {
+        .authenticated => |ctx| {
+            defer alloc.free(ctx.user_id);
+            defer alloc.free(ctx.token_id);
+
+            try testing.expectEqual(@as(usize, 1), stub_ctx.verify_call_count);
+            try testing.expectEqual(auth.Role.PROCESS_OPERATOR, ctx.role);
+            try testing.expectEqualStrings("provider-subject-1", ctx.user_id);
+            try testing.expectEqualStrings("oidc-token-id-1", ctx.token_id);
+            try testing.expectEqualStrings("11111111-1111-1111-1111-111111111111", ctx.tenant_id[0..]);
+            try testing.expectEqual(auth.TenantContextSource.token_claim, ctx.tenant_source);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-OIDC-01-02: provider token verification failure returns 401" {
+    const alloc = testing.allocator;
+
+    var stub_ctx = stub_provider.StubContext{
+        .verify_result = .{ .err = error.InvalidToken },
+    };
+
+    auth.configureIdentityProviderManager(.{
+        .provider = stub_provider.asIdentityProvider(&stub_ctx),
+        .auth_mode = .dual_accept,
+    });
+    defer auth.resetIdentityProviderManager();
+
+    const result = auth.authenticate(alloc, "Bearer a.b.c", undefined);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(usize, 1), stub_ctx.verify_call_count);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "invalid bearer token") != null);
         },
         else => return error.TestUnexpectedResult,
     }

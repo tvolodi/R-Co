@@ -3,6 +3,10 @@ const builtin = @import("builtin");
 const auth = @import("../api/middleware/auth.zig");
 const pagination = @import("../api/pagination.zig");
 const registry_mod = @import("registry.zig");
+const identity_provider = @import("identity_provider");
+const provider_manager_mod = identity_provider.manager;
+const provider_types = identity_provider.types;
+const provider_errors = identity_provider.errors;
 
 const reserved_username_prefix = "agent:";
 
@@ -210,11 +214,94 @@ pub const IdentityError = error{
     OutOfMemory,
 };
 
+pub const ProviderIntegrationError = provider_errors.ProviderError || IdentityError;
+
 pub const Service = struct {
     registry: *registry_mod.Registry,
 
     pub fn init(registry: *registry_mod.Registry) Service {
         return .{ .registry = registry };
+    }
+
+    pub fn verifyExternalToken(
+        _: *Service,
+        allocator: std.mem.Allocator,
+        manager: provider_manager_mod.Manager,
+        raw_token: []const u8,
+    ) ProviderIntegrationError!provider_types.VerifiedPrincipal {
+        return manager.verifyBearerToken(allocator, raw_token);
+    }
+
+    pub fn lookupExternalUser(
+        _: *Service,
+        allocator: std.mem.Allocator,
+        manager: provider_manager_mod.Manager,
+        input: provider_types.LookupUserInput,
+    ) ProviderIntegrationError!?provider_types.ProviderUser {
+        return manager.lookupUser(allocator, input);
+    }
+
+    pub fn provisionTenantRealm(
+        _: *Service,
+        allocator: std.mem.Allocator,
+        manager: provider_manager_mod.Manager,
+        input: provider_types.ProvisionRealmInput,
+    ) ProviderIntegrationError!provider_types.ProvisionRealmResult {
+        return manager.provisionRealm(allocator, input);
+    }
+
+    pub fn provisionProviderUser(
+        _: *Service,
+        allocator: std.mem.Allocator,
+        manager: provider_manager_mod.Manager,
+        input: provider_types.ProvisionUserInput,
+    ) ProviderIntegrationError!provider_types.ProvisionUserResult {
+        return manager.provisionUser(allocator, input);
+    }
+
+    pub fn grantProviderRoles(
+        _: *Service,
+        allocator: std.mem.Allocator,
+        manager: provider_manager_mod.Manager,
+        input: provider_types.GrantRolesInput,
+    ) ProviderIntegrationError!provider_types.GrantRolesResult {
+        return manager.grantRoles(allocator, input);
+    }
+
+    pub fn provisionProviderClient(
+        _: *Service,
+        allocator: std.mem.Allocator,
+        manager: provider_manager_mod.Manager,
+        input: provider_types.ProvisionClientInput,
+    ) ProviderIntegrationError!provider_types.ProvisionClientResult {
+        return manager.provisionClient(allocator, input);
+    }
+
+    pub fn upsertFederationProvider(
+        _: *Service,
+        allocator: std.mem.Allocator,
+        manager: provider_manager_mod.Manager,
+        input: provider_types.UpsertFederationInput,
+    ) ProviderIntegrationError!provider_types.FederationResult {
+        return manager.upsertFederation(allocator, input);
+    }
+
+    pub fn deleteFederationProvider(
+        _: *Service,
+        allocator: std.mem.Allocator,
+        manager: provider_manager_mod.Manager,
+        input: provider_types.DeleteFederationInput,
+    ) ProviderIntegrationError!void {
+        return manager.deleteFederation(allocator, input);
+    }
+
+    pub fn listProviderAuditEvents(
+        _: *Service,
+        allocator: std.mem.Allocator,
+        manager: provider_manager_mod.Manager,
+        input: provider_types.ListAuditEventsInput,
+    ) ProviderIntegrationError!provider_types.AuditEventPage {
+        return manager.listAuditEvents(allocator, input);
     }
 
     pub fn resolveTenantRealmBinding(input: CreateTenantInput) IdentityError!?[]const u8 {

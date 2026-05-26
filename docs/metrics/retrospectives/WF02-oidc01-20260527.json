@@ -1,0 +1,108 @@
+{
+  "run_id": "WF02-oidc01-20260527",
+  "workflow_id": "WF-02",
+  "date": "2026-05-26T19:47:46Z",
+  "requirement_ids": [
+    "OIDC-01"
+  ],
+  "estimation_file": "handoffs/WF02-oidc01-20260527/estimation.json",
+  "difficulty": 4,
+  "integration_surface": "high",
+  "steps": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "estimated_minutes": 182,
+      "started_at": "2026-05-26T19:09:20Z",
+      "completed_at": "2026-05-26T19:12:20Z",
+      "actual_minutes": 3,
+      "variance_pct": -98.4
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "estimated_minutes": 9,
+      "started_at": "2026-05-26T19:13:00Z",
+      "completed_at": "2026-05-26T19:26:27Z",
+      "actual_minutes": 13,
+      "variance_pct": 44.4
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "estimated_minutes": 6,
+      "started_at": "2026-05-26T19:27:00Z",
+      "completed_at": "2026-05-26T19:34:57Z",
+      "actual_minutes": 7,
+      "variance_pct": 16.7
+    },
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "estimated_minutes": 11,
+      "started_at": "2026-05-27T00:37:00Z",
+      "completed_at": "2026-05-27T00:40:00Z",
+      "actual_minutes": 3,
+      "variance_pct": -72.7
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "estimated_minutes": 2,
+      "started_at": "2026-05-27T00:40:40Z",
+      "completed_at": "2026-05-26T19:43:27Z",
+      "actual_minutes": 3,
+      "variance_pct": 50.0
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "estimated_minutes": 2,
+      "started_at": "2026-05-26T19:44:00Z",
+      "completed_at": "2026-05-26T19:47:46Z",
+      "actual_minutes": 3,
+      "variance_pct": 50.0
+    }
+  ],
+  "estimated_total_minutes": 212,
+  "actual_total_minutes": 32,
+  "overall_variance_pct": -84.9,
+  "adjustments": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "issue": "Variance -98.4% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Insufficient consecutive D4/high timing evidence to recalibrate estimation rules from this run."
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "issue": "Variance +44.4% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Single-run D4/high overrun is not sufficient to satisfy the consecutive-run rule-adjustment trigger."
+    },
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "issue": "Variance -72.7% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Insufficient consecutive D4/high timing evidence to recalibrate estimation rules from this run."
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "issue": "Variance +50.0% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Single-run D4/high variance does not meet the >=2 consecutive run threshold for rule updates."
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "issue": "Variance +50.0% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Single-run D4/high variance does not meet the >=2 consecutive run threshold for rule updates."
+    }
+  ],
+  "summary": "WF02-oidc01-20260527 completed documentation and release-state updates for OIDC-01 with retrospective capture recorded. Overall run timing landed 84.9% under estimate (32 actual vs 212 estimated minutes), and no estimation rule adjustment was applied due to insufficient consecutive D4/high evidence."
+}

@@ -1,0 +1,72 @@
+{
+  "run_id": "WF02-oidc01-20260527",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260527-005",
+  "timestamp": "2026-05-27T00:40:00Z",
+  "requirement_ids": [
+    "OIDC-01"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_cases": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  "layer_results": [
+    {
+      "layer": "unit",
+      "command": "zig build test",
+      "exit_code": 0,
+      "evidence": "UNIT_TEST_EXIT_CODE=0"
+    },
+    {
+      "layer": "integration",
+      "command": "zig build test-integration",
+      "exit_code": 0,
+      "evidence": "Cleaning test database... Test database cleaned. INTEGRATION_TEST_EXIT_CODE=0"
+    },
+    {
+      "layer": "adapter-boundary-scan",
+      "command": "workspace grep search for keycloak in src/**/*.zig",
+      "exit_code": 0,
+      "matches": [
+        {
+          "path": "src/identity/provider/mod.zig",
+          "line": 7,
+          "text": "pub const keycloak = @import(\"adapters/keycloak/provider.zig\");"
+        }
+      ],
+      "assessment": "PASS - matches are confined to adapter module export surface"
+    }
+  ],
+  "oidc01_traceability": [
+    {
+      "test_case_id": "TC-OIDC-01-01",
+      "status": "PASS",
+      "evidence": "Covered by zig build test; suite exit code 0"
+    },
+    {
+      "test_case_id": "TC-OIDC-01-02",
+      "status": "PASS",
+      "evidence": "Covered by zig build test; suite exit code 0"
+    },
+    {
+      "test_case_id": "TC-OIDC-01-03",
+      "status": "PASS",
+      "evidence": "Covered by zig build test; suite exit code 0"
+    },
+    {
+      "test_case_id": "TC-OIDC-01-04",
+      "status": "PASS",
+      "evidence": "Covered by zig build test; suite exit code 0"
+    },
+    {
+      "test_case_id": "TC-OIDC-01-05",
+      "status": "PASS",
+      "evidence": "Covered by zig build test; suite exit code 0"
+    }
+  ],
+  "failures": [],
+  "issues": []
+}

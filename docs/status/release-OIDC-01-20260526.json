@@ -1,0 +1,66 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "date": "2026-05-26T19:43:27Z",
+  "decision": "APPROVED",
+  "requirement_ids": [
+    "OIDC-01"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_error": null,
+    "benchmark_setup_info": "db_url_source=BPM_DB_URL",
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.905,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 5.089,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 39878.106,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 81.064,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "release_checks": {
+    "wf02_step04_status": "PASS",
+    "oidc01_acceptance_evidence_complete": "PASS",
+    "oidc01_required_commands": {
+      "zig_build_test": "PASS",
+      "zig_build_test_integration": "PASS",
+      "zig_build_bench": "PASS"
+    },
+    "unresolved_blocker_or_major_issues": "NONE",
+    "release_gate_conditions": "PASS"
+  },
+  "test_evidence": {
+    "wf02_step04_handoff": "handoffs/WF02-oidc01-20260527/step-04-test-runner.json",
+    "wf02_step04_report": "tests/reports/report-20260527-wf02-oidc01-step-04.json",
+    "bench_log": "tests/reports/WF02-oidc01-20260527-step-05-release-validator-bench.log"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "OIDC-01"
+  ],
+  "non_blocking_issues": [],
+  "residual_risk": {
+    "classification": "LOW",
+    "rationale": "All OIDC-01 validation evidence passed and all mandatory NFR benchmarks met in this run."
+  },
+  "recommendation": "APPROVE OIDC-01 release gate and route to DOC-UPDATER to set requirement status to RELEASED."
+}

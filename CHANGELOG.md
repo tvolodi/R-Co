@@ -93,6 +93,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260526T183724Z-WF02-adp12-20260526-step04b-rework1.json; release approval is recorded in docs/status/release-ADP-12-20260526.json.
 - Requirement: ADP-12 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-01 - Pluggable provider interface (RELEASED 2026-05-26)
+- Implemented a provider-agnostic IdentityProvider boundary for authentication so non-adapter auth paths depend on interface contracts instead of provider-specific APIs.
+- Added provider manager/adapters and auth middleware integration coverage validating successful and failed provider verification behavior through interface-based call paths.
+- Validation evidence passed in tests/reports/report-20260527-wf02-oidc01-step-04.json; release approval is recorded in docs/status/release-OIDC-01-20260526.json.
+- Requirement: OIDC-01 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`
