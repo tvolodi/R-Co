@@ -1,0 +1,51 @@
+{
+  "handoff_id": "20260527-912",
+  "run_id": "WF02-oidc08-20260527",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-oidc08-20260527/step-02-backend-dev.json",
+  "created_at": "2026-05-27T16:25:01Z",
+  "started_at": "2026-05-27T16:25:33Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-08"
+    ],
+    "related_handoff_ids": [
+      "20260527-910",
+      "20260527-911"
+    ],
+    "artifacts_in": [
+      "src/design/oidc-08-standard-claim-mapping.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "docs/agents/protocols/GIT_SETUP.md",
+      "docs/agents/protocols/GIT_MERGE.md"
+    ]
+  },
+  "task": {
+    "description": "Implement OIDC-08 (Standard claim mapping) per the design at src/design/oidc-08-standard-claim-mapping.md. The design covers:\n\n1. Create src/oidc/claim_mapping.zig with:\n   - ClaimMappingConfig struct (realm, tenant_id_claim, roles_claim_paths, email_claim, preferred_username_claim, display_name_claim with defaults)\n   - IdentityContext struct (external_user_id, tenant_id optional, roles list, email, preferred_username, display_name optional)\n   - loadClaimMappingConfig(allocator, pool, realm) \u2014 loads per-realm config from DB, returns null for default\n   - mapVerifiedClaims(allocator, config, standard_claims, raw_claims_json) \u2014 pure mapping: sub \u2192 external_user_id, configurable tenant_id claim, roles via ordered path list, email/preferred_username/name with defaults\n   - Missing optional claims produce concrete defaults: email \u2192 empty string, preferred_username \u2192 sub value, roles \u2192 empty list\n   - identityContextsEquivalent(a, b) \u2014 compare by (external_user_id, realm)\n   - resolveJsonPath(document, path) \u2014 internal helper for dot-separated path resolution\n\n2. Create migration file for realm_claim_mapping_config table:\n   - Columns: id (UUID PK), realm (TEXT UNIQUE NOT NULL), tenant_id_claim (TEXT), roles_claim_paths (JSONB), email_claim (TEXT), preferred_username_claim (TEXT), display_name_claim (TEXT), created_at, updated_at\n\n3. Wire into the existing OIDC module structure under src/oidc/ directory\n\n4. Verify: zig build exits 0, zig build test passes, no 'error set' warnings in stderr\n\n5. Ensure all allocating functions accept std.mem.Allocator\n\n6. Commit and push to feature/WF02-oidc08-20260527",
+    "acceptance_criteria": [
+      "zig build exits 0 with no 'error set' warnings in stderr",
+      "zig build test exits 0",
+      "Migration applies cleanly against fresh DB",
+      "All allocating functions accept an allocator parameter",
+      "No SQL string interpolation of user data",
+      "Feature branch committed and pushed"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:apply-migrations",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

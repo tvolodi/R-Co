@@ -45,6 +45,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         // no named imports needed
     });
+    const provider_errors_mod = b.createModule(.{
+        .root_source_file = b.path("src/identity/provider/errors.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const vendor_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
@@ -52,6 +57,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "transition", .module = transition_mod },
         .{ .name = "build_options", .module = build_options_mod },
         .{ .name = "identity_provider", .module = identity_provider_mod },
+        .{ .name = "provider_errors", .module = provider_errors_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -501,6 +507,19 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc06_jwks_cache_tests = b.addRunArtifact(oidc06_jwks_cache_tests);
 
+    // OIDC-08: Standard claim mapping unit tests (pure functions — no DB)
+    const oidc08_claim_mapping_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/oidc/claim_mapping.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_module },
+            },
+        }),
+    });
+    const run_oidc08_claim_mapping_tests = b.addRunArtifact(oidc08_claim_mapping_tests);
+
     // SCH-05: Missed timer recovery — pure function unit tests (no DB)
     const sch05_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -649,6 +668,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_oidc01_provider_stub_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
     test_step.dependOn(&run_oidc06_jwks_cache_tests.step);
+    test_step.dependOn(&run_oidc08_claim_mapping_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
     test_step.dependOn(&run_service_task_unit_tests.step);
