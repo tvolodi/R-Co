@@ -1,0 +1,131 @@
+{
+  "run_id": "WF02-oidc11-15-20260528",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-27T21:04:50Z",
+  "summary": {
+    "total": 16,
+    "passed": 14,
+    "failed": 2,
+    "skipped": 0,
+    "leaks": 15
+  },
+  "layers": [
+    {
+      "name": "unit",
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS",
+      "total": 34,
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "failures": []
+    },
+    {
+      "name": "integration",
+      "command": "zig build test-integration",
+      "exit_code": 1,
+      "status": "FAIL",
+      "total": 16,
+      "passed": 14,
+      "failed": 2,
+      "skipped": 0,
+      "leaks": 15,
+      "subsuites": [
+        {
+          "name": "oidc11_identity_stability_test",
+          "total": 7,
+          "passed": 6,
+          "failed": 1,
+          "failures": [
+            {
+              "test_id": "TC-OIDC-11-08",
+              "layer": "integration",
+              "file": "tests/integration/oidc11_identity_stability_test.zig",
+              "error_message": "RealmOwnershipMismatch — createOrGetJitOidcUser → assertRealmOwnedByTenant failed. The realm 'kc-oidc11-08' is not owned by the tenant used in the test. Source: src/identity/service.zig:1089:60 in assertRealmOwnedByTenant → src/identity/service.zig:631:9 in createOrGetJitOidcUser → tests/integration/oidc11_identity_stability_test.zig:338:21",
+              "severity": "BLOCKER",
+              "requirement_id": "OIDC-11"
+            }
+          ]
+        },
+        {
+          "name": "oidc15_realm_deletion_test",
+          "total": 9,
+          "passed": 8,
+          "failed": 1,
+          "leaks": 15,
+          "failures": [
+            {
+              "test_id": "TC-OIDC-15-07",
+              "layer": "integration",
+              "file": "tests/integration/oidc15_realm_deletion_test.zig",
+              "error_message": "PgError.ServerError — markUsersInactiveByRealm query failed with PostgreSQL server error. The SQL statement at tests/integration/oidc15_realm_deletion_test.zig:301 failed to execute. Source: vendor/pg/pg.zig:306:36 in readUntilReady → vendor/pg/pg.zig:145:9 in exec → src/db/pool.zig:128:13 in exec → tests/integration/oidc15_realm_deletion_test.zig:301:9",
+              "severity": "BLOCKER",
+              "requirement_id": "OIDC-15"
+            }
+          ],
+          "memory_leaks": [
+            {
+              "test_id": "TC-OIDC-15-03",
+              "layer": "integration",
+              "leak_count": 2,
+              "source": "src/oidc/realm_deletion.zig:229-230 — std.fmt.allocPrint allocations for grace_period_seconds and hard_delete_after are never freed in insertDeletionTracker",
+              "severity": "MAJOR"
+            },
+            {
+              "test_id": "TC-OIDC-15-04",
+              "layer": "integration",
+              "leak_count": 4,
+              "source": "src/oidc/realm_deletion.zig:229-230 — std.fmt.allocPrint allocations never freed in insertDeletionTracker (2 calls × 2 invocations)",
+              "severity": "MAJOR"
+            },
+            {
+              "test_id": "TC-OIDC-15-06",
+              "layer": "integration",
+              "leak_count": 3,
+              "source": "src/oidc/realm_deletion.zig:229-230 — std.fmt.allocPrint allocations never freed in insertDeletionTracker + markTrackerDeleted",
+              "severity": "MAJOR"
+            },
+            {
+              "test_id": "TC-OIDC-15-08",
+              "layer": "integration",
+              "leak_count": 4,
+              "source": "src/oidc/realm_deletion.zig:229-230 — std.fmt.allocPrint allocations never freed in insertDeletionTracker (2 calls × 2 invocations)",
+              "severity": "MAJOR"
+            },
+            {
+              "test_id": "TC-OIDC-15-09",
+              "layer": "integration",
+              "leak_count": 2,
+              "source": "src/oidc/realm_deletion.zig:229-230 — std.fmt.allocPrint allocations never freed in insertDeletionTracker",
+              "severity": "MAJOR"
+            }
+          ]
+        }
+      ],
+      "failures": [
+        {
+          "test_id": "TC-OIDC-11-08",
+          "layer": "integration",
+          "file": "tests/integration/oidc11_identity_stability_test.zig",
+          "error_message": "RealmOwnershipMismatch in createOrGetJitOidcUser → assertRealmOwnedByTenant",
+          "severity": "BLOCKER",
+          "requirement_id": "OIDC-11"
+        },
+        {
+          "test_id": "TC-OIDC-15-07",
+          "layer": "integration",
+          "file": "tests/integration/oidc15_realm_deletion_test.zig",
+          "error_message": "PgError.ServerError in markUsersInactiveByRealm SQL execution",
+          "severity": "BLOCKER",
+          "requirement_id": "OIDC-15"
+        }
+      ]
+    }
+  ],
+  "acceptance_criteria": [
+    { "criterion": "zig build test exits 0", "passed": true },
+    { "criterion": "zig build test-integration exits 0", "passed": false },
+    { "criterion": "Test report written to tests/reports/ with all results captured", "passed": true }
+  ]
+}

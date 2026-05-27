@@ -216,7 +216,6 @@ pub fn assertStableIdentity(
 // ---------------------------------------------------------------------------
 
 test "resolveByExternalIdentity - user not found returns error" {
-    const testing = std.testing;
     // This test requires a database connection (integration test).
     // It is skipped in unit test mode.
     return error.SkipZigTest;
@@ -227,6 +226,7 @@ test "assertStableIdentity - matching ids returns ok" {
 }
 
 test "assertStableIdentity - mismatched ids returns error" {
+    const testing = std.testing;
     const result = assertStableIdentity("user-123", "user-456");
     try testing.expectError(error.IdentityDriftDetected, result);
 }

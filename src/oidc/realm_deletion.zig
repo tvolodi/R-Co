@@ -214,6 +214,11 @@ pub fn insertDeletionTracker(
 
     const hard_delete_after = now_unix_seconds + @as(i64, @intCast(input.grace_period_seconds));
 
+    const grace_str = try std.fmt.allocPrint(allocator, "{d}", .{input.grace_period_seconds});
+    defer allocator.free(grace_str);
+    const hard_delete_str = try std.fmt.allocPrint(allocator, "{d}", .{hard_delete_after});
+    defer allocator.free(hard_delete_str);
+
     _ = conn.exec(
         \\INSERT INTO realm_deletion_tracker
         \\  (realm_id, status, marked_by, reason, grace_period_seconds,
@@ -226,8 +231,8 @@ pub fn insertDeletionTracker(
             input.realm_id,
             input.actor_id,
             input.reason,
-            try std.fmt.allocPrint(allocator, "{d}", .{input.grace_period_seconds}),
-            try std.fmt.allocPrint(allocator, "{d}", .{hard_delete_after}),
+            grace_str,
+            hard_delete_str,
         },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
@@ -280,12 +285,14 @@ pub fn markTrackerDeleted(
     realm_id: []const u8,
     now_unix_seconds: i64,
 ) HardDeleteError!void {
-    _ = allocator;
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
         else => error.PersistenceFailed,
     };
     defer pool.release(conn);
+
+    const now_str = try std.fmt.allocPrint(allocator, "{d}", .{now_unix_seconds});
+    defer allocator.free(now_str);
 
     _ = conn.exec(
         \\UPDATE realm_deletion_tracker
@@ -296,7 +303,7 @@ pub fn markTrackerDeleted(
     ,
         &[_][]const u8{
             realm_id,
-            try std.fmt.allocPrint(allocator, "{d}", .{now_unix_seconds}),
+            now_str,
         },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
@@ -354,7 +361,7 @@ pub fn queryPendingHardDeletions(
     };
     defer pool.release(conn);
 
-    const rows = conn.query(
+    var rows = conn.query(
         allocator,
         \\SELECT realm_id, status, marked_at::text, marked_by::text, reason,
         \\       grace_period_seconds::text, hard_delete_after::text,
@@ -375,23 +382,15 @@ pub fn queryPendingHardDeletions(
         pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
         else => error.PersistenceFailed,
     };
-    errdefer {
-        for (rows) |row| {
-            for (row) |col| {
-                if (col) |c| allocator.free(c);
-            }
-            allocator.free(row);
-        }
-        allocator.free(rows);
-    }
+    defer rows.deinit();
 
-    const result = try allocator.alloc(RealmDeletionTrackerEntry, rows.len);
+    const result = try allocator.alloc(RealmDeletionTrackerEntry, rows.rows.len);
     errdefer {
         for (result) |*entry| entry.deinit(allocator);
         allocator.free(result);
     }
 
-    for (rows, 0..) |row, i| {
+    for (rows.rows, 0..) |row, i| {
         if (row.len < 13) {
             for (result[0..i]) |*entry| entry.deinit(allocator);
             allocator.free(result);

@@ -411,7 +411,8 @@ test "TC-OIDC-09-05: duplicate preferred_username with existing internal user" {
     } else |err| {
         // Accept either DuplicateUsername (when implemented) or PersistenceFailed.
         if (err != identity_service.IdentityError.DuplicateUsername and
-            err != identity_service.IdentityError.PersistenceFailed) {
+            err != identity_service.IdentityError.PersistenceFailed)
+        {
             return err;
         }
     }
