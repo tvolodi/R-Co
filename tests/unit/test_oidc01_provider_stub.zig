@@ -6,6 +6,7 @@ const provider = api.identity_provider;
 const manager_mod = provider.manager;
 const types = provider.types;
 const stub = provider.adapters.stub;
+const VALID_OIDC_JWT = "eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
 
 test "TC-OIDC-01-05a: manager verifyBearerToken delegates through IdentityProvider interface" {
     const alloc = testing.allocator;
@@ -31,7 +32,7 @@ test "TC-OIDC-01-05a: manager verifyBearerToken delegates through IdentityProvid
         .expected_issuer = "https://issuer.example.com",
     };
 
-    var principal = try manager.verifyBearerToken(alloc, "a.b.c");
+    var principal = try manager.verifyBearerToken(alloc, VALID_OIDC_JWT);
     defer principal.deinit(alloc);
 
     try testing.expectEqual(@as(usize, 1), stub_ctx.verify_call_count);

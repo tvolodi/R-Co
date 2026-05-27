@@ -73,9 +73,46 @@ pub const Manager = struct {
 };
 
 fn looksLikeJwt(token: []const u8) bool {
+    var dot_count: usize = 0;
+    for (token) |c| {
+        if (std.ascii.isWhitespace(c) or std.ascii.isControl(c)) return false;
+        const allowed = (c >= 'A' and c <= 'Z') or
+            (c >= 'a' and c <= 'z') or
+            (c >= '0' and c <= '9') or
+            c == '-' or
+            c == '_' or
+            c == '.' or
+            c == '~';
+        if (!allowed) return false;
+        if (c == '.') dot_count += 1;
+    }
+    if (dot_count != 2) return false;
+
     const first_dot = std.mem.indexOfScalar(u8, token, '.') orelse return false;
     const second_dot_rel = std.mem.indexOfScalar(u8, token[first_dot + 1 ..], '.') orelse return false;
-    return second_dot_rel > 0 and first_dot > 0;
+    const second_dot = first_dot + 1 + second_dot_rel;
+
+    const header = token[0..first_dot];
+    const payload = token[first_dot + 1 .. second_dot];
+    const signature = token[second_dot + 1 ..];
+    if (header.len == 0 or payload.len == 0 or signature.len == 0) return false;
+    if (!isJwtSegmentLexicallyDecodable(header)) return false;
+    if (!isJwtSegmentLexicallyDecodable(payload)) return false;
+    return true;
+}
+
+fn isJwtSegmentLexicallyDecodable(segment: []const u8) bool {
+    if (segment.len == 0) return false;
+    if (segment.len % 4 == 1) return false;
+    for (segment) |c| {
+        const valid = (c >= 'A' and c <= 'Z') or
+            (c >= 'a' and c <= 'z') or
+            (c >= '0' and c <= '9') or
+            c == '-' or
+            c == '_';
+        if (!valid) return false;
+    }
+    return true;
 }
 
 pub fn defaultManager() Manager {

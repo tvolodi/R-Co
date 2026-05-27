@@ -1,0 +1,82 @@
+{
+    "run_id":  "WF02-oidc05-20260527",
+    "workflow_id":  "WF-02",
+    "handoff_id":  "20260527-040",
+    "timestamp":  "2026-05-27T03:00:42Z",
+    "requirement_ids":  [
+                            "OIDC-05"
+                        ],
+    "summary":  {
+                    "status":  "PASS",
+                    "total_cases":  7,
+                    "passed":  7,
+                    "failed":  0,
+                    "skipped":  0
+                },
+    "executed_scope":  {
+                           "task_description":  "Execute OIDC-05 validation tests according to tests/specs/OIDC-05.md and produce a structured test report under tests/reports/. Validate coexistence of OIDC JWT and internal token bearer authentication paths, malformed/indeterminate HTTP 401 behavior, and no ambiguous fallback routing.",
+                           "commands":  [
+                                            {
+                                                "evidence":  "PASS (suite exit code 0)",
+                                                "evidence_log":  "tests/reports/WF02-oidc05-20260527-step-04-zig-build-test-20260527T030042Z.log",
+                                                "command":  "zig build test",
+                                                "exit_code":  0
+                                            },
+                                            {
+                                                "evidence":  "TEST_LAYERS_COMPLETED after integration run",
+                                                "evidence_log":  "tests/reports/WF02-oidc05-20260527-step-04-zig-test-integration-20260527T025910Z.log",
+                                                "command":  "zig build test-integration",
+                                                "exit_code":  0
+                                            }
+                                        ]
+                       },
+    "traceability":  [
+                         {
+                             "status":  "PASS",
+                             "evidence":  "Mapped unit test exists in tests/unit/test_api08_auth.zig and suite passed",
+                             "test_case_id":  "TC-OIDC-01-01"
+                         },
+                         {
+                             "status":  "PASS",
+                             "evidence":  "Mapped unit test asserts 401 + token_type_indeterminate + malformed_indeterminate and zero verifier calls; suite passed",
+                             "test_case_id":  "TC-OIDC-05-01"
+                         },
+                         {
+                             "status":  "PASS",
+                             "evidence":  "Mapped unit test asserts opaque token path avoids OIDC verifier; suite passed",
+                             "test_case_id":  "TC-OIDC-05-02"
+                         },
+                         {
+                             "status":  "PASS",
+                             "evidence":  "Mapped unit test asserts deterministic route gate for jwt-like vs malformed vs opaque; suite passed",
+                             "test_case_id":  "TC-OIDC-01-03"
+                         },
+                         {
+                             "status":  "PASS",
+                             "evidence":  "Embedded auth classifier test present and unit suite passed",
+                             "test_case_id":  "inspectBearerToken: opaque token routes to internal verification"
+                         },
+                         {
+                             "status":  "PASS",
+                             "evidence":  "Embedded auth classifier test present and unit suite passed",
+                             "test_case_id":  "inspectBearerToken: valid JWT shape routes to OIDC verification"
+                         },
+                         {
+                             "status":  "PASS",
+                             "evidence":  "Embedded auth classifier test present and unit suite passed",
+                             "test_case_id":  "inspectBearerToken: malformed JWT-like token is indeterminate"
+                         }
+                     ],
+    "no_ambiguous_fallback_assertions":  [
+                                             "Malformed JWT-like token classifies as indeterminate and returns HTTP 401 structured error",
+                                             "Opaque token route does not call OIDC verifier",
+                                             "Route gate excludes malformed JWT-like and opaque tokens from external verifier eligibility"
+                                         ],
+    "failures":  [
+
+                 ],
+    "issues":  [
+
+               ],
+    "next_action":  "Route to RELEASE-VALIDATOR (WF-02 Step 05)."
+}

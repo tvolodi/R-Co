@@ -126,6 +126,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260527-wf02-oidc04-step-04.json; release approval is recorded in docs/status/release-OIDC-04-20260527.json.
 - Requirement: OIDC-04 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-05 - Bearer token acceptance (RELEASED 2026-05-27)
+- Implemented deterministic bearer token type classification in auth middleware so OIDC JWT-shaped tokens and legacy opaque internal tokens follow explicit verification paths without ambiguous fallback behavior.
+- Added validation coverage for malformed JWT-like token rejection (`token_type_indeterminate`) and route-gate assertions confirming opaque internal tokens never invoke external OIDC verification.
+- Validation evidence passed in tests/reports/report-20260527-wf02-oidc05-step-04.json; release approval is recorded in docs/status/release-OIDC-05-20260527.json.
+- Requirement: OIDC-05 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

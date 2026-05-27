@@ -4,6 +4,7 @@ const api = @import("api");
 
 const manager_mod = api.identity_provider.manager;
 const stub = api.identity_provider.adapters.stub;
+const VALID_OIDC_JWT = "eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
 
 test "TC-OIDC-01-03: manager routes only JWT-like tokens to external provider verification" {
     var stub_ctx = stub.StubContext{};
@@ -12,13 +13,14 @@ test "TC-OIDC-01-03: manager routes only JWT-like tokens to external provider ve
         .provider = null,
         .auth_mode = .dual_accept,
     };
-    try testing.expect(!no_provider.shouldVerifyExternalToken("a.b.c"));
+    try testing.expect(!no_provider.shouldVerifyExternalToken(VALID_OIDC_JWT));
 
     const with_provider = manager_mod.Manager{
         .provider = stub.asIdentityProvider(&stub_ctx),
         .auth_mode = .dual_accept,
     };
-    try testing.expect(with_provider.shouldVerifyExternalToken("a.b.c"));
+    try testing.expect(with_provider.shouldVerifyExternalToken(VALID_OIDC_JWT));
+    try testing.expect(!with_provider.shouldVerifyExternalToken("a.b.c"));
     try testing.expect(!with_provider.shouldVerifyExternalToken("opaque-token"));
 }
 
@@ -29,7 +31,7 @@ test "TC-OIDC-01-04: manager local_only mode preserves non-provider auth path" {
         .auth_mode = .local_only,
     };
 
-    try testing.expect(!manager.shouldVerifyExternalToken("a.b.c"));
+    try testing.expect(!manager.shouldVerifyExternalToken(VALID_OIDC_JWT));
     try testing.expect(!manager.shouldVerifyExternalToken("opaque-token"));
 }
 

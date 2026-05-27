@@ -1,0 +1,61 @@
+{
+  "handoff_id": "20260527-038",
+  "run_id": "WF02-oidc05-20260527",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-oidc05-20260527/step-02-backend-dev.json",
+  "created_at": "2026-05-27T02:45:00Z",
+  "started_at": "2026-05-27T02:45:20Z",
+  "completed_at": "2026-05-27T02:53:58Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-05"
+    ],
+    "related_handoff_ids": [
+      "20260527-037"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "docs/status/implementation_order.md",
+      "docs/status/requirement_status.json",
+      "src/design/oidc-05-bearer-token-acceptance.md"
+    ]
+  },
+  "task": {
+    "description": "Implement OIDC-05 Bearer token acceptance in backend code following src/design/oidc-05-bearer-token-acceptance.md. Extend API-08 Bearer authentication flow to deterministically classify token format and route verification to either OIDC JWT verification or internally-issued token verification (IDN-04), with no ambiguous fallback. Malformed or indeterminate tokens must return HTTP 401 with structured error output. Preserve coexistence: requests with either valid token type succeed. Include code, tests, and any required wiring changes.",
+    "acceptance_criteria": [
+      "OIDC JWT bearer token path authenticates via OIDC verifier",
+      "Internal token bearer path authenticates via IDN-04 verifier",
+      "Malformed/indeterminate token returns HTTP 401 structured error",
+      "Token-type detection is deterministic and does not ambiguously fallback",
+      "zig build, zig build test, and zig build migrate exit 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:run-build",
+      "fn:run-tests",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented OIDC-05 deterministic bearer token inspection and route-specific verification in auth middleware, with structured 401 output for indeterminate token formats and updated unit coverage for JWT/internal coexistence routing.",
+    "artifacts_out": [
+      "src/api/middleware/auth.zig",
+      "src/identity/provider/manager.zig",
+      "tests/unit/test_api08_auth.zig",
+      "tests/unit/test_oidc01_provider_boundary.zig",
+      "tests/unit/test_oidc01_provider_stub.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
