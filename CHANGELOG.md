@@ -101,6 +101,15 @@ All notable changes to the BPM Platform are documented here.
 
 ### Stage 7 — Expression DSL
 
+### DSL-04 - Supported types (RELEASED 2026-05-27)
+- **DSL-04**: Supported types — defined the six-value tagged union `Value` type (null, bool, int64, float64, string, timestamp) in `src/expr/ast.zig` with `TypeTag` enum and `typeOf()` helper.
+- Added literal parsing for all supported types: `null` keyword, `true`/`false` booleans, integer and float digit sequences, and `"..."` string literals.
+- Timestamp values are produced via built-in functions rather than direct literals.
+- Unsupported type-like tokens produce structured parse errors with position and description.
+- `evaluate()` now handles all literal node types returning correctly typed `Value` variants; round-trip (parse → evaluate → same Value) verified for every type.
+- Validation evidence passed in tests/reports/report-2026-05-27T07-25-18Z-WF02-dsl04-step04.json; release approval is recorded in docs/status/release-DSL-04-2026-05-27.json.
+- Requirement: DSL-04 (MUST, Stage 7) - RELEASED
+
 ### DSL-03 - Error recovery (RELEASED 2026-05-27)
 - **DSL-03**: Error recovery — parser now reports all errors in a single pass, with synchronize points added after each grammar production to continue parsing past errors.
 - Added three gap fixes: dot-path missing synchronize (Gap A), parsePrimary synchronize too aggressive (Gap B), consumeArgList missing synchronize after missing ')' (Gap C).

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-27T06:49:00Z",
+  "last_updated": "2026-05-27T07:30:05Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1326,6 +1326,20 @@
       "release_run": "WF02-dsl03-20260527",
       "release_decision": "docs/status/release-DSL-03-20260527.json",
       "last_updated": "2026-05-27T06:49:00Z"
+    },
+    "DSL-04": {
+      "status": "RELEASED",
+      "stage": 7,
+      "priority": "MUST",
+      "title": "Supported types",
+      "implementation_run": "WF02-dsl04-20260527",
+      "test_spec": "tests/specs/DSL-04.md",
+      "test_run": "tests/reports/report-2026-05-27T07-25-18Z-WF02-dsl04-step04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T07:30:05Z",
+      "release_run": "WF02-dsl04-20260527",
+      "release_decision": "docs/status/release-DSL-04-2026-05-27.json",
+      "last_updated": "2026-05-27T07:30:05Z"
     }
   }
 }

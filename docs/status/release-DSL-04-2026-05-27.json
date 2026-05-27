@@ -1,0 +1,10 @@
+{
+    "stage": "Stage 7 — Expression DSL",
+    "date": "2026-05-27T07:27:35Z",
+    "decision": "APPROVED",
+    "nfr_results": {
+        "DSL-04_validation": "PASS"
+    },
+    "blocking_issues": [],
+    "approved_requirements": ["DSL-04"]
+}

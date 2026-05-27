@@ -1,0 +1,47 @@
+{
+    "handoff_id": "20260527-008",
+    "run_id": "WF02-dsl04-20260527",
+    "workflow_id": "WF-02",
+    "step": "06",
+    "from_agent": "ORCH",
+    "to_agent": "DOC-UPDATER",
+    "file": "handoffs/WF02-dsl04-20260527/step-06-doc-updater.json",
+    "created_at": "2026-05-27T07:28:30Z",
+    "started_at": "2026-05-27T07:28:47Z",
+    "completed_at": "2026-05-27T07:30:05Z",
+    "status": "COMPLETED",
+    "priority": "HIGH",
+    "context": {
+        "stage": "Stage 7 — Expression DSL",
+        "requirement_ids": ["DSL-04"],
+        "related_handoff_ids": ["20260527-002", "20260527-003", "20260527-004", "20260527-005", "20260527-006", "20260527-007"],
+        "artifacts_in": [
+            "docs/status/release-DSL-04-2026-05-27.json",
+            "CHANGELOG.md"
+        ]
+    },
+    "task": {
+        "description": "Update documentation for DSL-04 release. Per docs/agents/FUNCTIONS.md:\n\n1. **fn:update-requirement-status**: Set DSL-04 status to RELEASED in docs/status/requirement_status.json. Set released_at, release_run, last_updated fields.\n2. **fn:update-changelog**: Add DSL-04 entry to CHANGELOG.md under an appropriate version/section heading for Stage 7 — Expression DSL. Describe the new supported types (null, bool, int64, float64, string, timestamp), the Value tagged union, literal parsing, and structured error rejection.\n3. Write the inner report.\n4. Check if this run has estimation.json and run the retrospective procedure if so.",
+        "acceptance_criteria": [
+            "DSL-04 status set to RELEASED in requirement_status.json",
+            "CHANGELOG.md updated with DSL-04 entry",
+            "Inner report written"
+        ],
+        "functions_to_call": ["fn:update-changelog", "fn:update-requirement-status", "fn:register-inner-report"]
+    },
+    "result": {
+        "status": "PASS",
+        "summary": "DSL-04 status set to RELEASED in requirement_status.json; CHANGELOG.md updated with DSL-04 entry under Stage 7 — Expression DSL; inner report written; retrospective computed and written to docs/metrics/retrospectives/WF02-dsl04-20260527.json with 2 rule adjustments applied to estimation_rules.json (backend-dev D2: 5->4, test-runner D2: 2->1).",
+        "artifacts_out": [
+            "docs/status/requirement_status.json",
+            "CHANGELOG.md",
+            "docs/metrics/retrospectives/WF02-dsl04-20260527.json",
+            "docs/metrics/estimation_rules.json",
+            "docs/issue-reports/WF02-dsl04-20260527-step-06-doc-updater-INNER-REPORT.json"
+        ],
+        "issues": [],
+        "next_action": "Workflow complete for DSL-04 release. No further action required."
+    },
+    "rework_count": 0,
+    "max_rework": 3
+}
