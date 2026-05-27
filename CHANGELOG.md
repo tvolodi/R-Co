@@ -156,6 +156,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-WF02-dsl09-20260527-step04.json; release approval is recorded in docs/status/release-DSL-09-20260527.json.
 - Requirement: DSL-09 (MUST, Stage 7) - RELEASED
 
+### DSL-10 - Context resolution (RELEASED 2026-05-27)
+- **DSL-10**: Context resolution — added context resolution for identifier expressions; unresolved identifiers return typed null instead of evaluation errors.
+- Implemented deterministic context lookup with null fallback for missing variable references in expression evaluation.
+- Validation evidence passed in tests/reports/report-WF02-dsl10-20260527-step04.json; release approval is recorded in docs/status/release-DSL-10-20260527.json.
+- Requirement: DSL-10 (MUST, Stage 7) - RELEASED
+
 ### OIDC-02 - Keycloak adapter (RELEASED 2026-05-26)
 - Implemented a concrete Keycloak 26.x adapter under `src/identity/provider/adapters/keycloak/` that satisfies the OIDC-01 IdentityProvider contract while keeping Keycloak-specific URLs, payloads, and behavior adapter-local.
 - Preserved compile isolation by keeping Keycloak references confined to adapter modules and adapter-local tests, so removing the adapter does not affect non-adapter compilation paths.
