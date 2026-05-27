@@ -1,0 +1,55 @@
+{
+  "handoff_id": "ecab3ae7-8df0-4fbb-a045-9e401823da93",
+  "run_id": "WF02-oidc11-15-20260528",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-oidc11-15-20260528/step-06-doc-updater.json",
+  "created_at": "2026-05-27T21:55:05Z",
+  "started_at": "2026-05-27T21:55:20Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-11",
+      "OIDC-12",
+      "OIDC-13",
+      "OIDC-14",
+      "OIDC-15"
+    ],
+    "related_handoff_ids": [
+      "c194e311-29ee-4546-84c5-3689346f3215",
+      "0b3b27c4-f199-4351-8f06-58d8ab184642",
+      "88977c88-2af3-45c0-b1d5-5828694cfc72",
+      "6a005c01-f91a-4eac-a2f5-c4a8f7821491",
+      "fb976178-968e-421b-9aeb-4036bc97de69",
+      "d0d87904-0d8f-4f3c-8d31-943ef2afc56b",
+      "a73a7220-c8e0-4518-96b9-73fc33a30d51",
+      "b5175f09-426a-46a6-9afd-80d2c9169b43",
+      "b1c0b5b7-1d7e-4363-a652-0489b558aaff"
+    ],
+    "artifacts_in": [
+      "docs/status/release-OIDC-11-15-20260528.json",
+      "CHANGELOG.md",
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "Update documentation after successful release of OIDC-11 through OIDC-15.\n\n1. Update CHANGELOG.md with the new release entries for OIDC-11..15\n2. Verify docs/status/requirement_status.json shows OIDC-11..15 as RELEASED\n3. Update implementation_order.md if needed to reflect release status\n4. Commit changes and push to feature/WF02-oidc11-15-20260528",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with OIDC-11..15 entries",
+      "requirement_status.json confirmed with RELEASED status",
+      "All changes committed and pushed"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:verify-status"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
