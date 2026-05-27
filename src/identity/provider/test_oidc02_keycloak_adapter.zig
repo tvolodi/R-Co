@@ -227,7 +227,7 @@ test "TC-OIDC-04-03: standards claim validation rejects issuer audience exp nbf 
             .payload_json =
             \\{"iss":"https://idp.example.com/tenant-a","sub":"std-user-1","aud":["bpm-api"],"exp":1700000600,"nbf":1700001000,"iat":1699999800}
             ,
-            .expected_error = error.InvalidToken,
+            .expected_error = error.TokenNotYetValid,
             .expected_requests = 0,
         },
         .{

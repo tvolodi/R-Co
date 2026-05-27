@@ -178,7 +178,7 @@ fn verifyToken(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provide
         .expected_audience = audience,
         .expected_issuer = expected_issuer,
         .now_unix_seconds = now_unix_seconds,
-        .allowed_clock_skew_seconds = 30,
+        .allowed_clock_skew_seconds = self.config.clock_skew_seconds,
     });
     defer verified.deinit();
 

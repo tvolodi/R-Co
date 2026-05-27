@@ -1,0 +1,100 @@
+{
+  "run_id": "WF02-oidc07-20260527",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260527-905",
+  "requirement_ids": [
+    "OIDC-07"
+  ],
+  "timestamp": "2026-05-27T15:58:11Z",
+  "commands_executed": [
+    {
+      "command": "zig build",
+      "status": "PASS",
+      "exit_code": 0,
+      "output_excerpt": "Command produced no output"
+    },
+    {
+      "command": "zig build test",
+      "status": "PASS",
+      "exit_code": 0,
+      "output_excerpt": "Command produced no output"
+    },
+    {
+      "command": "zig build test-integration",
+      "status": "PASS",
+      "exit_code": 0,
+      "output_excerpt": "Cleaning test database... Test database cleaned."
+    }
+  ],
+  "summary": {
+    "overall_status": "PASS",
+    "layers": {
+      "build": "PASS",
+      "unit": "PASS",
+      "integration": "PASS"
+    },
+    "notes": [
+      "The required task.functions_to_call commands were executed in listed order.",
+      "Integration run executed with BPM_TEST_DB_URL configured to postgres://bpm:bpm@localhost:5433/bpm_test."
+    ]
+  },
+  "acceptance_evidence": {
+    "wrong_issuer_http_401": {
+      "result": "PASS",
+      "tests": [
+        "TC-OIDC-07-U01 in tests/unit/test_api08_auth.zig",
+        "TC-OIDC-07-I01 in tests/integration/oidc07_claim_validation_auth_test.zig"
+      ],
+      "assertions": [
+        "status_code == 401",
+        "body contains token_invalid_issuer"
+      ]
+    },
+    "wrong_audience_http_401": {
+      "result": "PASS",
+      "tests": [
+        "TC-OIDC-07-U02 in tests/unit/test_api08_auth.zig",
+        "TC-OIDC-07-I02 in tests/integration/oidc07_claim_validation_auth_test.zig"
+      ],
+      "assertions": [
+        "status_code == 401",
+        "body contains token_invalid_audience"
+      ]
+    },
+    "expired_http_401": {
+      "result": "PASS",
+      "tests": [
+        "TC-OIDC-07-U03 in tests/unit/test_api08_auth.zig",
+        "TC-OIDC-07-I03 in tests/integration/oidc07_claim_validation_auth_test.zig"
+      ],
+      "assertions": [
+        "status_code == 401",
+        "body contains token_expired"
+      ]
+    },
+    "not_yet_valid_http_401": {
+      "result": "PASS",
+      "tests": [
+        "TC-OIDC-07-U04 in tests/unit/test_api08_auth.zig",
+        "TC-OIDC-07-I04 in tests/integration/oidc07_claim_validation_auth_test.zig"
+      ],
+      "assertions": [
+        "status_code == 401",
+        "body contains token_not_yet_valid"
+      ]
+    },
+    "bad_signature_http_401": {
+      "result": "PASS",
+      "tests": [
+        "TC-OIDC-07-U05 in tests/unit/test_api08_auth.zig",
+        "TC-OIDC-07-I05 in tests/integration/oidc07_claim_validation_auth_test.zig"
+      ],
+      "assertions": [
+        "status_code == 401",
+        "body contains token_invalid_signature"
+      ]
+    }
+  },
+  "issues": [],
+  "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+}

@@ -118,7 +118,11 @@ pub const Auth401Code = enum {
     token_header_malformed,
     token_type_indeterminate,
     token_invalid,
+    token_invalid_signature,
+    token_invalid_issuer,
+    token_invalid_audience,
     token_expired,
+    token_not_yet_valid,
     token_revoked,
     token_unknown,
     token_claim_invalid,
@@ -416,7 +420,11 @@ fn auth401CodeString(code: Auth401Code) []const u8 {
         .token_header_malformed => "token_header_malformed",
         .token_type_indeterminate => "token_type_indeterminate",
         .token_invalid => "token_invalid",
+        .token_invalid_signature => "token_invalid_signature",
+        .token_invalid_issuer => "token_invalid_issuer",
+        .token_invalid_audience => "token_invalid_audience",
         .token_expired => "token_expired",
+        .token_not_yet_valid => "token_not_yet_valid",
         .token_revoked => "token_revoked",
         .token_unknown => "token_unknown",
         .token_claim_invalid => "token_claim_invalid",
@@ -492,13 +500,17 @@ pub fn buildUnauthorizedAuth(
     detail: []const u8,
     route: ?TokenRoute,
     reason: ?TokenRouteReason,
+    tenant_id: ?[]const u8,
+    auth_reason: ?[]const u8,
 ) HandlerResult {
     const token_route = if (route) |r| tokenRouteString(r) else "n/a";
     const token_reason = if (reason) |r| tokenReasonString(r) else "n/a";
+    const resolved_tenant_id = tenant_id orelse DEFAULT_TENANT_ID;
+    const resolved_auth_reason = auth_reason orelse "n/a";
     const body = std.fmt.allocPrint(
         allocator,
-        "{{\"type\":\"https://bpm.example.com/problems/unauthorized\",\"title\":\"Unauthorized\",\"status\":401,\"detail\":\"{s}\",\"trace_id\":\"{s}\",\"extensions\":{{\"code\":\"{s}\",\"token_route\":\"{s}\",\"token_reason\":\"{s}\"}}}}",
-        .{ detail, trace_context.get(), auth401CodeString(code), token_route, token_reason },
+        "{{\"type\":\"https://bpm.example.com/problems/unauthorized\",\"title\":\"Unauthorized\",\"status\":401,\"detail\":\"{s}\",\"trace_id\":\"{s}\",\"extensions\":{{\"code\":\"{s}\",\"token_route\":\"{s}\",\"token_reason\":\"{s}\",\"tenant_id\":\"{s}\",\"reason\":\"{s}\"}}}}",
+        .{ detail, trace_context.get(), auth401CodeString(code), token_route, token_reason, resolved_tenant_id, resolved_auth_reason },
     ) catch return .{
         .status_code = 500,
         .body = "{\"type\":\"https://bpm.example.com/problems/internal-error\"," ++
@@ -673,6 +685,8 @@ pub fn authenticate(
             "indeterminate bearer token format",
             .malformed_indeterminate,
             inspection.reason,
+            DEFAULT_TENANT_ID,
+            "token_type_indeterminate",
         ) };
     }
 
@@ -680,15 +694,76 @@ pub fn authenticate(
         if (identity_provider_manager.auth_mode == .local_only) {
             return .{ .unauthenticated = buildUnauthorized(allocator, "invalid bearer token") };
         }
+        const tenant_id_for_error = blk: {
+            const resolved = resolveTenantContext(allocator, raw_token) catch break :blk DEFAULT_TENANT_ID.*;
+            break :blk resolved.tenant_id;
+        };
         var principal = identity_provider_manager.verifyBearerToken(allocator, raw_token) catch |err| switch (err) {
+            error.TokenIssuerMismatch => return .{ .unauthenticated = buildUnauthorizedAuth(
+                allocator,
+                .token_invalid_issuer,
+                "invalid token issuer",
+                .oidc_jwt,
+                inspection.reason,
+                tenant_id_for_error[0..],
+                "issuer_mismatch",
+            ) },
+            error.TokenAudienceMismatch => return .{ .unauthenticated = buildUnauthorizedAuth(
+                allocator,
+                .token_invalid_audience,
+                "invalid token audience",
+                .oidc_jwt,
+                inspection.reason,
+                tenant_id_for_error[0..],
+                "audience_mismatch",
+            ) },
+            error.TokenExpired => return .{ .unauthenticated = buildUnauthorizedAuth(
+                allocator,
+                .token_expired,
+                "token expired",
+                .oidc_jwt,
+                inspection.reason,
+                tenant_id_for_error[0..],
+                "token_expired",
+            ) },
+            error.TokenNotYetValid => return .{ .unauthenticated = buildUnauthorizedAuth(
+                allocator,
+                .token_not_yet_valid,
+                "token not yet valid",
+                .oidc_jwt,
+                inspection.reason,
+                tenant_id_for_error[0..],
+                "token_not_yet_valid",
+            ) },
+            error.SignatureVerificationFailed => return .{ .unauthenticated = buildUnauthorizedAuth(
+                allocator,
+                .token_invalid_signature,
+                "invalid token signature",
+                .oidc_jwt,
+                inspection.reason,
+                tenant_id_for_error[0..],
+                "signature_invalid",
+            ) },
+            error.ClaimValidationFailed => return .{ .unauthenticated = buildUnauthorizedAuth(
+                allocator,
+                .token_claim_invalid,
+                "token claim validation failed",
+                .oidc_jwt,
+                inspection.reason,
+                tenant_id_for_error[0..],
+                "claim_invalid",
+            ) },
             error.InvalidToken,
-            error.TokenExpired,
-            error.TokenAudienceMismatch,
-            error.TokenIssuerMismatch,
-            error.SignatureVerificationFailed,
-            error.ClaimValidationFailed,
             error.NotImplemented,
-            => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid bearer token") },
+            => return .{ .unauthenticated = buildUnauthorizedAuth(
+                allocator,
+                .token_invalid,
+                "invalid bearer token",
+                .oidc_jwt,
+                inspection.reason,
+                tenant_id_for_error[0..],
+                "token_invalid",
+            ) },
 
             error.UpstreamUnavailable,
             error.UpstreamTimeout,

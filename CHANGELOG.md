@@ -174,6 +174,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260527-wf02-oidc06-step04.json; release approval is recorded in docs/status/release-OIDC-06-20260527.json.
 - Requirement: OIDC-06 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-07 - Claim validation (RELEASED 2026-05-27)
+- Implemented deterministic OIDC claim validation enforcement for `iss`, `aud`, `exp`, and `nbf`, including strict HTTP 401 failure mapping for invalid issuer, invalid audience, expired token, and not-yet-valid token conditions.
+- Added integration and unit acceptance coverage for OIDC-07 negative verification paths, including invalid signature handling with explicit auth error assertions.
+- Validation evidence passed in tests/reports/report-2026-05-27-wf02-oidc07.json; release approval is recorded in docs/status/release-OIDC-07-20260527.json.
+- Requirement: OIDC-07 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

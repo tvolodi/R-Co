@@ -87,9 +87,9 @@ pub fn verify(allocator: std.mem.Allocator, deps: VerifierDeps, input: VerifyInp
     if (input.now_unix_seconds <= 0) return error.ClaimValidationFailed;
     const skew: i64 = @intCast(input.allowed_clock_skew_seconds);
 
-    if (exp <= input.now_unix_seconds - skew) return error.TokenExpired;
+    if (exp < input.now_unix_seconds - skew) return error.TokenExpired;
     if (nbf) |not_before| {
-        if (not_before > input.now_unix_seconds + skew) return error.InvalidToken;
+        if (not_before > input.now_unix_seconds + skew) return error.TokenNotYetValid;
     }
     if (iat > input.now_unix_seconds + skew) return error.ClaimValidationFailed;
 

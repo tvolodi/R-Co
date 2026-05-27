@@ -706,3 +706,133 @@ test "TC-OIDC-05-02: opaque bearer token never routes to OIDC verifier" {
         else => return error.TestUnexpectedResult,
     }
 }
+
+test "TC-OIDC-07-U01: issuer mismatch maps to 401 token_invalid_issuer" {
+    const alloc = testing.allocator;
+
+    var stub_ctx = stub_provider.StubContext{
+        .verify_result = .{ .err = error.TokenIssuerMismatch },
+    };
+    auth.configureIdentityProviderManager(.{
+        .provider = stub_provider.asIdentityProvider(&stub_ctx),
+        .auth_mode = .dual_accept,
+    });
+    defer auth.resetIdentityProviderManager();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{VALID_OIDC_JWT});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, undefined);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "token_invalid_issuer") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-OIDC-07-U02: audience mismatch maps to 401 token_invalid_audience" {
+    const alloc = testing.allocator;
+
+    var stub_ctx = stub_provider.StubContext{
+        .verify_result = .{ .err = error.TokenAudienceMismatch },
+    };
+    auth.configureIdentityProviderManager(.{
+        .provider = stub_provider.asIdentityProvider(&stub_ctx),
+        .auth_mode = .dual_accept,
+    });
+    defer auth.resetIdentityProviderManager();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{VALID_OIDC_JWT});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, undefined);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "token_invalid_audience") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-OIDC-07-U03: expired token maps to 401 token_expired" {
+    const alloc = testing.allocator;
+
+    var stub_ctx = stub_provider.StubContext{
+        .verify_result = .{ .err = error.TokenExpired },
+    };
+    auth.configureIdentityProviderManager(.{
+        .provider = stub_provider.asIdentityProvider(&stub_ctx),
+        .auth_mode = .dual_accept,
+    });
+    defer auth.resetIdentityProviderManager();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{VALID_OIDC_JWT});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, undefined);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "token_expired") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-OIDC-07-U04: not-yet-valid token maps to 401 token_not_yet_valid" {
+    const alloc = testing.allocator;
+
+    var stub_ctx = stub_provider.StubContext{
+        .verify_result = .{ .err = error.TokenNotYetValid },
+    };
+    auth.configureIdentityProviderManager(.{
+        .provider = stub_provider.asIdentityProvider(&stub_ctx),
+        .auth_mode = .dual_accept,
+    });
+    defer auth.resetIdentityProviderManager();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{VALID_OIDC_JWT});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, undefined);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "token_not_yet_valid") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-OIDC-07-U05: signature verification failure maps to 401 token_invalid_signature" {
+    const alloc = testing.allocator;
+
+    var stub_ctx = stub_provider.StubContext{
+        .verify_result = .{ .err = error.SignatureVerificationFailed },
+    };
+    auth.configureIdentityProviderManager(.{
+        .provider = stub_provider.asIdentityProvider(&stub_ctx),
+        .auth_mode = .dual_accept,
+    });
+    defer auth.resetIdentityProviderManager();
+
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{VALID_OIDC_JWT});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, undefined);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "token_invalid_signature") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
