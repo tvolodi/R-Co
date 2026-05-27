@@ -1,33 +1,42 @@
-{
-    "handoff_id": "1be78j2g-6i8f-8e5d-3g1j-2f5e0h9j6i3g",
-    "run_id": "WF02-dsl12-20260528",
-    "workflow_id": "WF02-dsl12-20260528",
-    "step": "final",
-    "from_agent": "ORCH",
-    "to_agent": "BACKEND-DEV",
-    "created_at": "2026-05-28T02:14:20Z",
-    "status": "PENDING",
-    "priority": "NORMAL",
-    "context": {
-        "stage": "Stage 7 — Expression DSL",
-        "requirement_ids": ["DSL-12"],
-        "related_handoff_ids": ["0ad67i1f-5h7e-7d4c-2f0i-1e4d9g8i5h2f"],
-        "artifacts_in": ["tests/reports/DSL-12-*.md"]
-    },
-    "task": {
-        "description": "Merge feature/WF02-dsl12-20260528 to main. Create a squash-merge PR, merge it, delete the feature branch, and verify DSL-12 requirement is RELEASED on main. Update docs/status/requirement_status.json to mark DSL-12 as RELEASED.",
-        "acceptance_criteria": [
-            "Feature branch merged to main via gh pr merge --squash",
-            "Feature branch deleted",
-            "DSL-12 status RELEASED is visible on main",
-            "Commit includes all artifacts (implementation, design, tests, reports)",
-            "docs/status/requirement_status.json updated with RELEASED status"
-        ],
-        "functions_to_call": ["fn:git-merge", "fn:update-requirement-status"]
-    },
-    "result": null,
-    "rework_count": 0,
-    "max_rework": 2,
-    "started_at": null,
-    "completed_at": null
+﻿{
+    "handoff_id":  "1be78j2g-6i8f-8e5d-3g1j-2f5e0h9j6i3g",
+    "run_id":  "WF02-dsl12-20260528",
+    "workflow_id":  "WF02-dsl12-20260528",
+    "step":  "final",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "created_at":  "2026-05-28T02:14:20Z",
+    "status":  "PENDING",
+    "priority":  "NORMAL",
+    "context":  {
+                    "stage":  "Stage 7 вЂ” Expression DSL",
+                    "requirement_ids":  [
+                                            "DSL-12"
+                                        ],
+                    "related_handoff_ids":  [
+                                                "0ad67i1f-5h7e-7d4c-2f0i-1e4d9g8i5h2f"
+                                            ],
+                    "artifacts_in":  [
+                                         "tests/reports/DSL-12-*.md"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Merge feature/WF02-dsl12-20260528 to main. Create a squash-merge PR, merge it, delete the feature branch, and verify DSL-12 requirement is RELEASED on main. Update docs/status/requirement_status.json to mark DSL-12 as RELEASED.",
+                 "acceptance_criteria":  [
+                                             "Feature branch merged to main via gh pr merge --squash",
+                                             "Feature branch deleted",
+                                             "DSL-12 status RELEASED is visible on main",
+                                             "Commit includes all artifacts (implementation, design, tests, reports)",
+                                             "docs/status/requirement_status.json updated with RELEASED status"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:git-merge",
+                                           "fn:update-requirement-status"
+                                       ]
+             },
+    "result":  null,
+    "rework_count":  0,
+    "max_rework":  2,
+    "started_at":  "2026-05-27T20:32:17Z",
+    "completed_at":  null
 }
