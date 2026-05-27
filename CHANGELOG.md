@@ -145,6 +145,11 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260526T213627Z-WF02-dsl01-step04.json (56/56 test cases PASS); release approval is recorded in docs/status/release-DSL-01-20260526.json.
 - Requirement: DSL-01 (MUST, Stage 7) - RELEASED
 
+### DSL-08 - Function purity (RELEASED 2026-05-27)
+- **DSL-08**: Function purity — added 24 determinism tests and 1 now() type/range test; all 10 pure built-in functions verified for determinism
+- Validation evidence passed in tests/reports/report-WF02-dsl08-20260527-step04.json; release approval is recorded in docs/status/release-DSL-08-20260527.json.
+- Requirement: DSL-08 (MUST, Stage 7) - RELEASED
+
 ### OIDC-02 - Keycloak adapter (RELEASED 2026-05-26)
 - Implemented a concrete Keycloak 26.x adapter under `src/identity/provider/adapters/keycloak/` that satisfies the OIDC-01 IdentityProvider contract while keeping Keycloak-specific URLs, payloads, and behavior adapter-local.
 - Preserved compile isolation by keeping Keycloak references confined to adapter modules and adapter-local tests, so removing the adapter does not affect non-adapter compilation paths.

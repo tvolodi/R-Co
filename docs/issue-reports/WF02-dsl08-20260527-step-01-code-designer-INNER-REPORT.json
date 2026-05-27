@@ -1,0 +1,19 @@
+{
+  "report_id": "WF02-dsl08-20260527-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-dsl08-20260527",
+  "step": "01",
+  "created_at": "2026-05-27T16:56:32Z",
+  "summary": "Designed the function purity contract for DSL-08. The design artefact at src/design/dsl-08-function-purity.md defines the purity contract for all 11 built-in functions, classifies 10 as pure and 1 (now()) as impure (explicitly exempted), provides a determinism test strategy with 24 test cases using a call-twice-compare pattern, details enforcement mechanisms (compile-time and review-time), documents the now() exemption with rationale, and includes a full test matrix, error taxonomy, data flow diagram, and dependency analysis. All 5 acceptance criteria are met.",
+  "files_created": [
+    "src/design/dsl-08-function-purity.md"
+  ],
+  "files_modified": [],
+  "tests_run": [],
+  "issues_found": [],
+  "next_steps": [
+    "Route to BACKEND-DEV (Step 2a) to add DSL-08 determinism tests to src/expr/mod.zig",
+    "After BACKEND-DEV completes, route to TEST-DESIGNER to verify test coverage"
+  ],
+  "blockers": []
+}

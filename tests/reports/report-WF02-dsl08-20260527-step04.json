@@ -1,0 +1,57 @@
+{
+  "run_id": "WF02-dsl08-20260527",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "timestamp": "2026-05-27T17:12:13Z",
+  "summary": {
+    "total": 25,
+    "passed": 25,
+    "failed": 0,
+    "skipped": 0
+  },
+  "failures": [],
+  "coverage": {
+    "backend_unit_line": null,
+    "frontend_unit_line": null
+  },
+  "nfr_results": [],
+  "details": {
+    "layer": "unit",
+    "test_source": "src/expr/mod.zig",
+    "test_spec": "tests/specs/DSL-08.md",
+    "requirement_ids": ["DSL-08"],
+    "verification": {
+      "zig_build_test_exit_code": 0,
+      "all_dsl08_tests_present": true,
+      "dsl08_test_count": 25,
+      "memory_leaks_detected": false,
+      "test_cases": [
+        {"id": "TC-DSL-08-01", "name": "length determinism — normal string", "result": "PASS"},
+        {"id": "TC-DSL-08-02", "name": "length determinism — null propagation", "result": "PASS"},
+        {"id": "TC-DSL-08-03", "name": "lower determinism — uppercase input", "result": "PASS"},
+        {"id": "TC-DSL-08-04", "name": "lower determinism — empty string", "result": "PASS"},
+        {"id": "TC-DSL-08-05", "name": "lower determinism — null propagation", "result": "PASS"},
+        {"id": "TC-DSL-08-06", "name": "upper determinism — lowercase input", "result": "PASS"},
+        {"id": "TC-DSL-08-07", "name": "trim determinism — surrounding whitespace", "result": "PASS"},
+        {"id": "TC-DSL-08-08", "name": "trim determinism — already trimmed", "result": "PASS"},
+        {"id": "TC-DSL-08-09", "name": "trim determinism — null propagation", "result": "PASS"},
+        {"id": "TC-DSL-08-10", "name": "contains determinism — substring found", "result": "PASS"},
+        {"id": "TC-DSL-08-11", "name": "contains determinism — substring not found", "result": "PASS"},
+        {"id": "TC-DSL-08-12", "name": "contains determinism — null propagation", "result": "PASS"},
+        {"id": "TC-DSL-08-13", "name": "startsWith determinism — true", "result": "PASS"},
+        {"id": "TC-DSL-08-14", "name": "startsWith determinism — false", "result": "PASS"},
+        {"id": "TC-DSL-08-15", "name": "endsWith determinism — true", "result": "PASS"},
+        {"id": "TC-DSL-08-16", "name": "endsWith determinism — false", "result": "PASS"},
+        {"id": "TC-DSL-08-17", "name": "coalesce determinism — first non-null", "result": "PASS"},
+        {"id": "TC-DSL-08-18", "name": "coalesce determinism — all null", "result": "PASS"},
+        {"id": "TC-DSL-08-19", "name": "coalesce determinism — single arg", "result": "PASS"},
+        {"id": "TC-DSL-08-20", "name": "date_add determinism — seconds", "result": "PASS"},
+        {"id": "TC-DSL-08-21", "name": "date_add determinism — days", "result": "PASS"},
+        {"id": "TC-DSL-08-22", "name": "date_add determinism — negative offset", "result": "PASS"},
+        {"id": "TC-DSL-08-23", "name": "date_diff determinism — positive difference", "result": "PASS"},
+        {"id": "TC-DSL-08-24", "name": "date_diff determinism — negative difference", "result": "PASS"},
+        {"id": "TC-DSL-08-25", "name": "now returns timestamp in reasonable range (impure — exempted)", "result": "PASS"}
+      ]
+    }
+  }
+}

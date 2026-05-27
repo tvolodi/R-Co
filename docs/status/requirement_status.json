@@ -1414,6 +1414,28 @@
       "release_run": "WF02-oidc08-20260527",
       "release_decision": "docs/status/release-OIDC-08-20260527.json",
       "last_updated": "2026-05-27T17:04:49Z"
+    },
+    "DSL-07": {
+      "status": "RELEASED",
+      "priority": "MUST",
+      "title": "Function whitelist",
+      "test_count": 33,
+      "test_pass": 33,
+      "last_verified": "2026-05-27T14:50:00Z"
+    },
+    "DSL-08": {
+      "status": "RELEASED",
+      "stage": 7,
+      "priority": "MUST",
+      "title": "Function purity",
+      "implementation_run": "WF02-dsl08-20260527",
+      "test_spec": "tests/specs/DSL-08.md",
+      "test_run": "tests/reports/report-WF02-dsl08-20260527-step04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T17:14:40Z",
+      "release_run": "WF02-dsl08-20260527",
+      "release_decision": "docs/status/release-DSL-08-20260527.json",
+      "last_updated": "2026-05-27T17:14:40Z"
     }
   }
 }

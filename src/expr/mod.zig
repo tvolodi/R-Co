@@ -338,13 +338,276 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
             return EvalResult{ .ok = valueNull() };
         },
 
-        // ---- Function call (future DSL-07) ----
-        .func_call => return EvalResult{ .err = EvalError{
-            .message = "evaluator: function calls not yet implemented",
-            .line = 0,
-            .column = 0,
-        } },
+        // ---- Function call — DSL-07 built-in whitelist ----
+        .func_call => |fc| {
+            if (std.mem.eql(u8, fc.name, "now")) {
+                if (fc.args.len != 0) {
+                    return EvalResult{ .err = EvalError{ .message = "now() takes 0 arguments", .line = 0, .column = 0 } };
+                }
+                // NOTE: now() is inherently impure; all other built-ins are pure.
+                const builtin = @import("builtin");
+                const now_ms: i64 = if (builtin.os.tag == .windows) blk: {
+                    const windows = std.os.windows;
+                    const ft: i64 = windows.ntdll.RtlGetSystemTimePrecise();
+                    const unix_100ns: i64 = ft - 116_444_736_000_000_000;
+                    break :blk @divTrunc(unix_100ns, 10000);
+                } else blk: {
+                    const posix = std.posix;
+                    var ts: posix.timespec = undefined;
+                    _ = posix.system.clock_gettime(.REALTIME, &ts);
+                    const sec_ms: i64 = ts.sec * 1000;
+                    const nsec_ms: i64 = @divTrunc(ts.nsec, 1_000_000);
+                    break :blk sec_ms + nsec_ms;
+                };
+                return EvalResult{ .ok = valueTs(now_ms) };
+            }
+
+            if (std.mem.eql(u8, fc.name, "length")) {
+                if (fc.args.len != 1) {
+                    return EvalResult{ .err = EvalError{ .message = "length() takes 1 argument", .line = 0, .column = 0 } };
+                }
+                const arg = switch (evaluateNode(fc.args[0], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                if (arg == .null_val) return EvalResult{ .ok = valueNull() };
+                if (arg == .str_val) return EvalResult{ .ok = valueInt(@as(i64, @intCast(arg.str_val.len))) };
+                return EvalResult{ .err = EvalError{ .message = "length() requires string argument", .line = 0, .column = 0 } };
+            }
+
+            if (std.mem.eql(u8, fc.name, "lower")) {
+                if (fc.args.len != 1) {
+                    return EvalResult{ .err = EvalError{ .message = "lower() takes 1 argument", .line = 0, .column = 0 } };
+                }
+                const arg = switch (evaluateNode(fc.args[0], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                if (arg == .null_val) return EvalResult{ .ok = valueNull() };
+                if (arg == .str_val) {
+                    const buf = allocator.alloc(u8, arg.str_val.len) catch {
+                        return EvalResult{ .err = EvalError{ .message = "allocation error in lower()", .line = 0, .column = 0 } };
+                    };
+                    for (arg.str_val, 0..) |c, i| {
+                        buf[i] = std.ascii.toLower(c);
+                    }
+                    return EvalResult{ .ok = valueStr(buf[0..]) };
+                }
+                return EvalResult{ .err = EvalError{ .message = "lower() requires string argument", .line = 0, .column = 0 } };
+            }
+
+            if (std.mem.eql(u8, fc.name, "upper")) {
+                if (fc.args.len != 1) {
+                    return EvalResult{ .err = EvalError{ .message = "upper() takes 1 argument", .line = 0, .column = 0 } };
+                }
+                const arg = switch (evaluateNode(fc.args[0], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                if (arg == .null_val) return EvalResult{ .ok = valueNull() };
+                if (arg == .str_val) {
+                    const buf = allocator.alloc(u8, arg.str_val.len) catch {
+                        return EvalResult{ .err = EvalError{ .message = "allocation error in upper()", .line = 0, .column = 0 } };
+                    };
+                    for (arg.str_val, 0..) |c, i| {
+                        buf[i] = std.ascii.toUpper(c);
+                    }
+                    return EvalResult{ .ok = valueStr(buf[0..]) };
+                }
+                return EvalResult{ .err = EvalError{ .message = "upper() requires string argument", .line = 0, .column = 0 } };
+            }
+
+            if (std.mem.eql(u8, fc.name, "trim")) {
+                if (fc.args.len != 1) {
+                    return EvalResult{ .err = EvalError{ .message = "trim() takes 1 argument", .line = 0, .column = 0 } };
+                }
+                const arg = switch (evaluateNode(fc.args[0], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                if (arg == .null_val) return EvalResult{ .ok = valueNull() };
+                if (arg == .str_val) {
+                    const s = arg.str_val;
+                    var start: usize = 0;
+                    while (start < s.len and std.ascii.isWhitespace(s[start])) : (start += 1) {}
+                    var end: usize = s.len;
+                    while (end > start and std.ascii.isWhitespace(s[end - 1])) : (end -= 1) {}
+                    return EvalResult{ .ok = valueStr(s[start..end]) };
+                }
+                return EvalResult{ .err = EvalError{ .message = "trim() requires string argument", .line = 0, .column = 0 } };
+            }
+
+            if (std.mem.eql(u8, fc.name, "contains")) {
+                if (fc.args.len != 2) {
+                    return EvalResult{ .err = EvalError{ .message = "contains() takes 2 arguments", .line = 0, .column = 0 } };
+                }
+                const haystack = switch (evaluateNode(fc.args[0], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                const needle = switch (evaluateNode(fc.args[1], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                if (haystack == .null_val or needle == .null_val) return EvalResult{ .ok = valueNull() };
+                if (haystack == .str_val and needle == .str_val) {
+                    return EvalResult{ .ok = valueBool(std.mem.indexOf(u8, haystack.str_val, needle.str_val) != null) };
+                }
+                return EvalResult{ .err = EvalError{ .message = "contains() requires string arguments", .line = 0, .column = 0 } };
+            }
+
+            if (std.mem.eql(u8, fc.name, "startsWith")) {
+                if (fc.args.len != 2) {
+                    return EvalResult{ .err = EvalError{ .message = "startsWith() takes 2 arguments", .line = 0, .column = 0 } };
+                }
+                const haystack = switch (evaluateNode(fc.args[0], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                const prefix = switch (evaluateNode(fc.args[1], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                if (haystack == .null_val or prefix == .null_val) return EvalResult{ .ok = valueNull() };
+                if (haystack == .str_val and prefix == .str_val) {
+                    return EvalResult{ .ok = valueBool(std.mem.startsWith(u8, haystack.str_val, prefix.str_val)) };
+                }
+                return EvalResult{ .err = EvalError{ .message = "startsWith() requires string arguments", .line = 0, .column = 0 } };
+            }
+
+            if (std.mem.eql(u8, fc.name, "endsWith")) {
+                if (fc.args.len != 2) {
+                    return EvalResult{ .err = EvalError{ .message = "endsWith() takes 2 arguments", .line = 0, .column = 0 } };
+                }
+                const haystack = switch (evaluateNode(fc.args[0], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                const suffix = switch (evaluateNode(fc.args[1], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                if (haystack == .null_val or suffix == .null_val) return EvalResult{ .ok = valueNull() };
+                if (haystack == .str_val and suffix == .str_val) {
+                    return EvalResult{ .ok = valueBool(std.mem.endsWith(u8, haystack.str_val, suffix.str_val)) };
+                }
+                return EvalResult{ .err = EvalError{ .message = "endsWith() requires string arguments", .line = 0, .column = 0 } };
+            }
+
+            if (std.mem.eql(u8, fc.name, "coalesce")) {
+                if (fc.args.len == 0) {
+                    return EvalResult{ .err = EvalError{ .message = "coalesce() requires at least 1 argument", .line = 0, .column = 0 } };
+                }
+                for (fc.args) |arg_node| {
+                    const val = switch (evaluateNode(arg_node, ctx, allocator, remaining - 1)) {
+                        .ok => |v| v,
+                        .err => |e| return EvalResult{ .err = e },
+                    };
+                    if (val != .null_val) return EvalResult{ .ok = val };
+                }
+                return EvalResult{ .ok = valueNull() };
+            }
+
+            if (std.mem.eql(u8, fc.name, "date_add")) {
+                if (fc.args.len != 3) {
+                    return EvalResult{ .err = EvalError{ .message = "date_add() takes 3 arguments", .line = 0, .column = 0 } };
+                }
+                const ts_val = switch (evaluateNode(fc.args[0], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                const n_val = switch (evaluateNode(fc.args[1], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                const unit_val = switch (evaluateNode(fc.args[2], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                if (ts_val == .null_val or n_val == .null_val or unit_val == .null_val) {
+                    return EvalResult{ .ok = valueNull() };
+                }
+                const ts_ms: i64 = if (ts_val == .ts_val) ts_val.ts_val else if (ts_val == .int_val) ts_val.int_val else {
+                    return EvalResult{ .err = EvalError{ .message = "date_add(): first argument must be timestamp or integer", .line = 0, .column = 0 } };
+                };
+                if (n_val != .int_val) {
+                    return EvalResult{ .err = EvalError{ .message = "date_add(): second argument must be integer", .line = 0, .column = 0 } };
+                }
+                if (unit_val != .str_val) {
+                    return EvalResult{ .err = EvalError{ .message = "date_add(): third argument must be string (unit)", .line = 0, .column = 0 } };
+                }
+                const n = n_val.int_val;
+                const unit = unit_val.str_val;
+                const multiplier = dateUnitMultiplier(unit) orelse {
+                    return EvalResult{ .err = EvalError{ .message = "date_add(): unknown unit, use: second, minute, hour, day", .line = 0, .column = 0 } };
+                };
+                const delta = std.math.mul(i64, n, multiplier) catch {
+                    return EvalResult{ .err = EvalError{ .message = "date_add(): arithmetic overflow", .line = 0, .column = 0 } };
+                };
+                const result = std.math.add(i64, ts_ms, delta) catch {
+                    return EvalResult{ .ok = if (delta >= 0) valueTs(std.math.maxInt(i64)) else valueTs(std.math.minInt(i64)) };
+                };
+                return EvalResult{ .ok = valueTs(result) };
+            }
+
+            if (std.mem.eql(u8, fc.name, "date_diff")) {
+                if (fc.args.len != 3) {
+                    return EvalResult{ .err = EvalError{ .message = "date_diff() takes 3 arguments", .line = 0, .column = 0 } };
+                }
+                const ts1_val = switch (evaluateNode(fc.args[0], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                const ts2_val = switch (evaluateNode(fc.args[1], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                const unit_val = switch (evaluateNode(fc.args[2], ctx, allocator, remaining - 1)) {
+                    .ok => |v| v,
+                    .err => |e| return EvalResult{ .err = e },
+                };
+                if (ts1_val == .null_val or ts2_val == .null_val or unit_val == .null_val) {
+                    return EvalResult{ .ok = valueNull() };
+                }
+                const ts1_ms: i64 = if (ts1_val == .ts_val) ts1_val.ts_val else if (ts1_val == .int_val) ts1_val.int_val else {
+                    return EvalResult{ .err = EvalError{ .message = "date_diff(): first two arguments must be timestamps or integers", .line = 0, .column = 0 } };
+                };
+                const ts2_ms: i64 = if (ts2_val == .ts_val) ts2_val.ts_val else if (ts2_val == .int_val) ts2_val.int_val else {
+                    return EvalResult{ .err = EvalError{ .message = "date_diff(): first two arguments must be timestamps or integers", .line = 0, .column = 0 } };
+                };
+                if (unit_val != .str_val) {
+                    return EvalResult{ .err = EvalError{ .message = "date_diff(): third argument must be string (unit)", .line = 0, .column = 0 } };
+                }
+                const diff_ms = std.math.sub(i64, ts1_ms, ts2_ms) catch {
+                    return EvalResult{ .err = EvalError{ .message = "date_diff(): arithmetic overflow", .line = 0, .column = 0 } };
+                };
+                const unit = unit_val.str_val;
+                const multiplier = dateUnitMultiplier(unit) orelse {
+                    return EvalResult{ .err = EvalError{ .message = "date_diff(): unknown unit, use: second, minute, hour, day", .line = 0, .column = 0 } };
+                };
+                const result = @divTrunc(diff_ms, multiplier);
+                return EvalResult{ .ok = valueInt(result) };
+            }
+
+            // Unknown function name — should not reach here (lexer whitelist prevents this)
+            return EvalResult{ .err = EvalError{ .message = "unknown function", .line = 0, .column = 0 } };
+        },
     }
+}
+
+// ---------------------------------------------------------------------------
+// Date unit multiplier — DSL-07, DSL-09
+// ---------------------------------------------------------------------------
+
+/// Returns the millisecond multiplier for a date unit string.
+/// Supports: "second" (1000), "minute" (60000), "hour" (3600000), "day" (86400000).
+/// Returns null for unknown unit strings.
+fn dateUnitMultiplier(unit: []const u8) ?i64 {
+    if (std.mem.eql(u8, unit, "second")) return 1000;
+    if (std.mem.eql(u8, unit, "minute")) return 60 * 1000;
+    if (std.mem.eql(u8, unit, "hour")) return 60 * 60 * 1000;
+    if (std.mem.eql(u8, unit, "day")) return 24 * 60 * 60 * 1000;
+    return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -2670,4 +2933,919 @@ fn generateRandomNode(
     }
 
     return node;
+}
+
+// ===========================================================================
+// Tests — DSL-07: Function whitelist
+// ===========================================================================
+
+test "DSL-07: length on string" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "length(\"hello\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .int_val);
+    try testing.expectEqual(@as(i64, 5), ev.ok.int_val);
+}
+
+test "DSL-07: length on null returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "length(null)");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-07: length type error on int" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "length(42)");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "string") != null);
+}
+
+test "DSL-07: lower on string" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "lower(\"HELLO\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .str_val);
+    try testing.expectEqualStrings("hello", ev.ok.str_val);
+    alloc.free(ev.ok.str_val);
+}
+
+test "DSL-07: lower on empty string" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "lower(\"\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .str_val);
+    try testing.expectEqualStrings("", ev.ok.str_val);
+}
+
+test "DSL-07: lower on null returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "lower(null)");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-07: upper on string" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "upper(\"hello\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .str_val);
+    try testing.expectEqualStrings("HELLO", ev.ok.str_val);
+    alloc.free(ev.ok.str_val);
+}
+
+test "DSL-07: trim removes surrounding whitespace" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "trim(\"  hello  \")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .str_val);
+    try testing.expectEqualStrings("hello", ev.ok.str_val);
+}
+
+test "DSL-07: trim on already trimmed string" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "trim(\"hello\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .str_val);
+    try testing.expectEqualStrings("hello", ev.ok.str_val);
+}
+
+test "DSL-07: trim on null returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "trim(null)");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-07: contains substring" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "contains(\"hello world\", \"world\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .bool_val);
+    try testing.expect(ev.ok.bool_val == true);
+}
+
+test "DSL-07: contains missing substring" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "contains(\"hello world\", \"xyz\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .bool_val);
+    try testing.expect(ev.ok.bool_val == false);
+}
+
+test "DSL-07: contains with null returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "contains(null, \"x\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-07: startsWith positive" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "startsWith(\"hello\", \"hel\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .bool_val);
+    try testing.expect(ev.ok.bool_val == true);
+}
+
+test "DSL-07: startsWith negative" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "startsWith(\"hello\", \"world\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .bool_val);
+    try testing.expect(ev.ok.bool_val == false);
+}
+
+test "DSL-07: endsWith positive" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "endsWith(\"hello\", \"llo\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .bool_val);
+    try testing.expect(ev.ok.bool_val == true);
+}
+
+test "DSL-07: endsWith negative" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "endsWith(\"hello\", \"hel\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .bool_val);
+    try testing.expect(ev.ok.bool_val == false);
+}
+
+test "DSL-07: coalesce returns first non-null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "coalesce(null, \"hello\", \"world\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .str_val);
+    try testing.expectEqualStrings("hello", ev.ok.str_val);
+}
+
+test "DSL-07: coalesce all null returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "coalesce(null, null)");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-07: coalesce single arg returns that arg" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "coalesce(42)");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .int_val);
+    try testing.expectEqual(@as(i64, 42), ev.ok.int_val);
+}
+
+test "DSL-07: now returns timestamp" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "now()");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .ts_val);
+    try testing.expect(ev.ok.ts_val > 1_000_000_000_000);
+}
+
+test "DSL-07: date_add adds seconds" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_add(1000, 5, \"second\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .ts_val);
+    try testing.expectEqual(@as(i64, 6000), ev.ok.ts_val);
+}
+
+test "DSL-07: date_add adds days" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_add(0, 1, \"day\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .ts_val);
+    try testing.expectEqual(@as(i64, 86_400_000), ev.ok.ts_val);
+}
+
+test "DSL-07: date_add negative days" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_add(86400000, -1, \"day\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .ts_val);
+    try testing.expectEqual(@as(i64, 0), ev.ok.ts_val);
+}
+
+test "DSL-07: date_add with null returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_add(null, 1, \"day\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-07: date_add unknown unit" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_add(1000, 1, \"week\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+}
+
+test "DSL-07: date_diff seconds" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_diff(5000, 1000, \"second\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .int_val);
+    try testing.expectEqual(@as(i64, 4), ev.ok.int_val);
+}
+
+test "DSL-07: date_diff days" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_diff(172800000, 86400000, \"day\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .int_val);
+    try testing.expectEqual(@as(i64, 1), ev.ok.int_val);
+}
+
+test "DSL-07: date_diff negative result" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_diff(1000, 5000, \"second\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .int_val);
+    try testing.expectEqual(@as(i64, -4), ev.ok.int_val);
+}
+
+test "DSL-07: date_diff with null returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_diff(null, 1000, \"second\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-07: unknown function is parse-time error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "foobar(1)");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .fail);
+}
+
+test "DSL-07: wrong argument count for length" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "length(\"a\", \"b\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "takes") != null);
+}
+
+test "DSL-07: function purity — length gives same result twice" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "length(\"hello\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+    var ast_copy = try parse(alloc, "length(\"hello\")");
+    defer switch (ast_copy) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(ast_copy == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev1 = evaluate(&result.ok, &ctx, alloc);
+    const ev2 = evaluate(&ast_copy.ok, &ctx, alloc);
+    try testing.expect(ev1 == .ok);
+    try testing.expect(ev2 == .ok);
+    try testing.expectEqual(ev1.ok.int_val, ev2.ok.int_val);
+}
+
+// ===========================================================================
+// Tests — DSL-08: Function purity / determinism
+// ===========================================================================
+
+/// Evaluate `expr` twice with the same context (same parsed AST) and assert
+/// that the results are structurally equal. This verifies determinism: the
+/// same inputs always produce the same output.
+///
+/// All pure built-in functions pass this test. `now()` is the only exception.
+fn testDeterminism(alloc: std.mem.Allocator, source: []const u8) !void {
+    const testing = std.testing;
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    var result = try parse(alloc, source);
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    // Evaluate twice using the SAME parsed AST
+    const ev1 = evaluate(&result.ok, &ctx, alloc);
+    const ev2 = evaluate(&result.ok, &ctx, alloc);
+
+    // Both must succeed
+    try testing.expect(ev1 == .ok);
+    try testing.expect(ev2 == .ok);
+
+    // Results must be structurally equal
+    try expectValueEq(ev1.ok, ev2.ok);
+}
+
+/// Assert two Values are structurally equal (compare by payload, not by pointer).
+fn expectValueEq(a: Value, b: Value) !void {
+    const testing = std.testing;
+    try testing.expectEqual(@as(TypeTag, typeOf(a)), typeOf(b));
+    switch (a) {
+        .null_val => {}, // both null — trivially equal
+        .bool_val => try testing.expectEqual(a.bool_val, b.bool_val),
+        .int_val => try testing.expectEqual(a.int_val, b.int_val),
+        .float_val => try testing.expectEqual(a.float_val, b.float_val),
+        .str_val => try testing.expectEqualStrings(a.str_val, b.str_val),
+        .ts_val => try testing.expectEqual(a.ts_val, b.ts_val),
+    }
+}
+
+// ---- Determinism tests (rows 1-24) — each pure function called twice ----
+
+test "DSL-08: length determinism — normal string" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "length(\"hello\")");
+}
+
+test "DSL-08: length determinism — null propagation" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "length(null)");
+}
+
+test "DSL-08: lower determinism — uppercase input" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "lower(\"HELLO\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev1 = evaluate(&result.ok, &ctx, alloc);
+    const ev2 = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev1 == .ok);
+    try testing.expect(ev2 == .ok);
+
+    // lower() allocates a new buffer — must free after comparison
+    try expectValueEq(ev1.ok, ev2.ok);
+    if (ev1.ok == .str_val) alloc.free(ev1.ok.str_val);
+    if (ev2.ok == .str_val) alloc.free(ev2.ok.str_val);
+}
+
+test "DSL-08: lower determinism — empty string" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "lower(\"\")");
+}
+
+test "DSL-08: lower determinism — null propagation" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "lower(null)");
+}
+
+test "DSL-08: upper determinism — lowercase input" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "upper(\"hello\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev1 = evaluate(&result.ok, &ctx, alloc);
+    const ev2 = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev1 == .ok);
+    try testing.expect(ev2 == .ok);
+
+    // upper() allocates a new buffer — must free after comparison
+    try expectValueEq(ev1.ok, ev2.ok);
+    if (ev1.ok == .str_val) alloc.free(ev1.ok.str_val);
+    if (ev2.ok == .str_val) alloc.free(ev2.ok.str_val);
+}
+
+test "DSL-08: trim determinism — surrounding whitespace" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "trim(\"  hello  \")");
+}
+
+test "DSL-08: trim determinism — already trimmed" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "trim(\"hello\")");
+}
+
+test "DSL-08: trim determinism — null propagation" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "trim(null)");
+}
+
+test "DSL-08: contains determinism — substring found" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "contains(\"hello world\", \"world\")");
+}
+
+test "DSL-08: contains determinism — substring not found" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "contains(\"hello world\", \"xyz\")");
+}
+
+test "DSL-08: contains determinism — null propagation" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "contains(null, \"x\")");
+}
+
+test "DSL-08: startsWith determinism — true" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "startsWith(\"hello\", \"hel\")");
+}
+
+test "DSL-08: startsWith determinism — false" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "startsWith(\"hello\", \"world\")");
+}
+
+test "DSL-08: endsWith determinism — true" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "endsWith(\"hello\", \"llo\")");
+}
+
+test "DSL-08: endsWith determinism — false" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "endsWith(\"hello\", \"hel\")");
+}
+
+test "DSL-08: coalesce determinism — first non-null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "coalesce(null, \"hello\", \"world\")");
+}
+
+test "DSL-08: coalesce determinism — all null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "coalesce(null, null)");
+}
+
+test "DSL-08: coalesce determinism — single arg" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "coalesce(42)");
+}
+
+test "DSL-08: date_add determinism — seconds" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "date_add(1000, 5, \"second\")");
+}
+
+test "DSL-08: date_add determinism — days" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "date_add(0, 1, \"day\")");
+}
+
+test "DSL-08: date_add determinism — negative offset" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "date_add(1000, -3, \"hour\")");
+}
+
+test "DSL-08: date_diff determinism — positive difference" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "date_diff(5000, 1000, \"second\")");
+}
+
+test "DSL-08: date_diff determinism — negative difference" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+    try testDeterminism(alloc, "date_diff(1000, 5000, \"second\")");
+}
+
+// ---- now() test — row 25: verifies type and range, NOT determinism ----
+
+test "DSL-08: now returns timestamp in reasonable range (impure — exempted)" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    // NOTE: now() is impure per DSL-08. A determinism test (call twice, compare)
+    // would fail because each call reads the system clock. Only type and range are
+    // verified. No other built-in has this exemption.
+
+    var result = try parse(alloc, "now()");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .ts_val);
+
+    // Must be a timestamp after 2020-01-01 (roughly 1.5T ms since epoch)
+    try testing.expect(ev.ok.ts_val > 1_577_836_800_000);
+    // Must not be absurdly far in the future (before year 3000)
+    try testing.expect(ev.ok.ts_val < 32_506_752_000_000);
 }

@@ -1,0 +1,56 @@
+{
+  "run_id": "WF02-dsl08-20260527",
+  "requirement_ids": [
+    "DSL-08"
+  ],
+  "difficulty": 2,
+  "integration_surface": "low",
+  "integration_surface_rationale": "Additive to src/expr/mod.zig only \u0432\u0402\u201d no caller signatures change, no other modules touched.",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 13,
+  "actual_minutes_total": 16.1,
+  "variance_pct": 23.8,
+  "by_step": {
+    "code-designer": {
+      "estimated": 2,
+      "actual": 3.4,
+      "variance_pct": 70.0
+    },
+    "backend-dev": {
+      "estimated": 4,
+      "actual": 4.8,
+      "variance_pct": 20.0
+    },
+    "test-designer": {
+      "estimated": 3,
+      "actual": 1.1,
+      "variance_pct": -63.3
+    },
+    "test-runner": {
+      "estimated": 1,
+      "actual": 1.9,
+      "variance_pct": 90.0
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 1.1,
+      "variance_pct": 10.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 3.8,
+      "variance_pct": 90.0
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "test-designer",
+      "difficulty": 2,
+      "old_estimate": 1,
+      "new_estimate": 1,
+      "reason": "Observed 3 consecutive runs at D2 with >25% variance"
+    }
+  ],
+  "completed_at": "2026-05-27T17:21:25Z"
+}

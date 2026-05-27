@@ -1,0 +1,43 @@
+{
+  "handoff_id": "20260527-013",
+  "run_id": "WF02-dsl08-20260527",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-dsl08-20260527/step-03-test-designer.json",
+  "created_at": "2026-05-27T16:42:48Z",
+  "started_at": "2026-05-27T17:08:04Z",
+  "completed_at": "2026-05-27T17:09:10Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-08"],
+    "related_handoff_ids": ["20260527-010", "20260527-011", "20260527-012"],
+    "artifacts_in": ["src/design/dsl-08-function-purity.md", "src/expr/mod.zig"],
+    "branch_name": "feature/WF02-dsl08-20260527"
+  },
+  "task": {
+    "description": "Write test spec for DSL-08 (Function Purity).\n\nBACKEND-DEV has already implemented 24 determinism tests + 1 now() type/range test directly in src/expr/mod.zig. Your job is to produce a formal test specification document at tests/specs/DSL-08.md that describes these tests.\n\nThe test spec should document:\n1. Test strategy: determinism verification by calling each pure built-in twice with identical inputs and comparing outputs\n2. Test environment: pure Zig unit tests, no DB required, no I/O\n3. Test matrix (25 entries from the design artefact):\n   - 24 determinism tests for: length, lower, upper, trim, contains, startsWith, endsWith, coalesce, date_add, date_diff\n   - 1 type/range test for now() (the single exempted impure function)\n4. Expected pass criteria for each test\n5. Coverage requirements: every pure built-in must have at least 1 determinism test",
+    "acceptance_criteria": [
+      "Test spec file created at tests/specs/DSL-08.md",
+      "All 25 tests documented with expression, expected behaviour, and purity classification",
+      "Coverage matrix shows every pure built-in has at least 1 determinism test",
+      "now() exemption clearly documented"
+    ],
+    "functions_to_call": ["fn:load-requirements", "fn:register-inner-report"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specification for DSL-08 (Function Purity) completed. Created tests/specs/DSL-08.md documenting all 25 test cases: 24 determinism tests (covering length, lower, upper, trim, contains, startsWith, endsWith, coalesce, date_add, date_diff) and 1 now() type/range exemption test. Coverage matrix confirms every pure built-in has >=1 determinism test. Tests already implemented by BACKEND-DEV in src/expr/mod.zig via testDeterminism helper.",
+    "artifacts_out": [
+      "tests/specs/DSL-08.md",
+      "docs/issue-reports/WF02-dsl08-20260527-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

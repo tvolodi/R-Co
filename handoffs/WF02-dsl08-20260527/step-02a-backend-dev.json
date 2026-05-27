@@ -1,0 +1,71 @@
+{
+    "handoff_id":  "20260527-012",
+    "run_id":  "WF02-dsl08-20260527",
+    "workflow_id":  "WF-02",
+    "step":  "02a",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "file":  "handoffs/WF02-dsl08-20260527/step-02a-backend-dev.json",
+    "created_at":  "2026-05-27T16:42:48Z",
+    "started_at":  "2026-05-27T16:58:18Z",
+    "completed_at":  "2026-05-27T17:03:03Z",
+    "status":  "COMPLETED",
+    "priority":  "HIGH",
+    "context":  {
+                    "stage":  "Stage 7 — Expression DSL",
+                    "requirement_ids":  [
+                                            "DSL-08"
+                                        ],
+                    "related_handoff_ids":  [
+                                                "20260527-010",
+                                                "20260527-011"
+                                            ],
+                    "artifacts_in":  [
+                                         "src/design/dsl-08-function-purity.md",
+                                         "src/expr/mod.zig",
+                                         "src/expr/ast.zig"
+                                     ],
+                    "branch_name":  "feature/WF02-dsl08-20260527"
+                },
+    "task":  {
+                 "description":  "Implement DSL-08 (Function Purity). The built-in functions are already implemented in src/expr/mod.zig and are already pure. The main work is adding determinism verification tests.\n\nFrom the design artefact at src/design/dsl-08-function-purity.md:\n\n1. Add a `testDeterminism` helper function and `expectValueEq` helper in src/expr/mod.zig (in the test block)\n2. Add 24 determinism tests for all pure built-in functions (see test matrix in the design artefact — rows 1-24)\n3. Add 1 type/range test for now() (row 25 — tests that it returns a timestamp in a reasonable range, not determinism)\n4. Ensure purity contract documentation is present in the module doc comment (already says \"No I/O. No DB access. Pure functions.\")\n5. Verify the now() exemption comment is present in the func_call dispatch\n\nThe design artefact provides the exact code for:\n- testDeterminism() helper\n- expectValueEq() helper\n- The full test matrix (25 tests covering all pure built-ins)\n\nAlso verify branch is feature/WF02-dsl08-20260527 before starting.",
+                 "acceptance_criteria":  [
+                                             "zig build exits 0",
+                                             "zig build test exits 0 with all DSL-08 tests passing",
+                                             "24 determinism tests exist for pure built-in functions (call twice, compare outputs)",
+                                             "1 type/range test exists for now()",
+                                             "Error-set validation: zig build 2\u003e\u00261 | grep -i \u0027error set\u0027 produces no output",
+                                             "All helper functions use provided allocator parameter",
+                                             "No SQL string interpolation",
+                                             "No I/O in test helper functions"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:read-backend-conventions",
+                                           "fn:check-zig-build",
+                                           "fn:register-inner-report"
+                                       ]
+             },
+    "result":  {
+                   "summary":  "Implemented DSL-08 function purity contract: added testDeterminism() and expectValueEq() helper functions plus 24 determinism tests and 1 now() type/range test. zig build, zig build test (187 pass, 0 leaks), error-set validation all pass.",
+                   "status":  "PASS",
+                   "issues":  [
+
+                              ],
+                   "artifacts_out":  [
+                                         "src/expr/mod.zig"
+                                     ],
+                   "git_evidence":  {
+                                       "branch_name":  "feature/WF02-dsl08-20260527",
+                                       "commit_sha_list":  [
+                                                                "8c9a838954bc1bdc87bf173a8c819bbd7be9df17"
+                                                            ],
+                                       "remote_branch":  "origin/feature/WF02-dsl08-20260527",
+                                       "push_status":  "ok",
+                                       "pr_url":  null,
+                                       "pr_create_error":  null
+                                   },
+                   "next_action":  "Route to TEST-DESIGNER"
+               },
+    "rework_count":  0,
+    "max_rework":  3
+}
