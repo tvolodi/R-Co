@@ -1,0 +1,108 @@
+{
+  "run_id": "WF02-oidc06-20260527",
+  "workflow_id": "WF-02",
+  "date": "2026-05-27T15:13:27Z",
+  "requirement_ids": [
+    "OIDC-06"
+  ],
+  "estimation_file": "handoffs/WF02-oidc06-20260527/estimation.json",
+  "difficulty": 3,
+  "integration_surface": "low",
+  "steps": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "estimated_minutes": 26,
+      "started_at": "2026-05-27T14:34:47Z",
+      "completed_at": "2026-05-27T14:40:30Z",
+      "actual_minutes": 5.7,
+      "variance_pct": -78.1
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "estimated_minutes": 10,
+      "started_at": "2026-05-27T14:41:05Z",
+      "completed_at": "2026-05-27T14:54:59Z",
+      "actual_minutes": 13.9,
+      "variance_pct": 39.0
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "estimated_minutes": 6,
+      "started_at": "2026-05-27T14:55:34Z",
+      "completed_at": "2026-05-27T14:57:16Z",
+      "actual_minutes": 1.7,
+      "variance_pct": -71.7
+    },
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "estimated_minutes": 3,
+      "started_at": "2026-05-27T14:58:01Z",
+      "completed_at": "2026-05-27T15:03:46Z",
+      "actual_minutes": 5.8,
+      "variance_pct": 93.3
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "estimated_minutes": 8,
+      "started_at": "2026-05-27T15:10:38Z",
+      "completed_at": "2026-05-27T15:11:09Z",
+      "actual_minutes": 0.5,
+      "variance_pct": -93.8
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "estimated_minutes": 2,
+      "started_at": "2026-05-27T15:11:45Z",
+      "completed_at": "2026-05-27T15:13:27Z",
+      "actual_minutes": 1.7,
+      "variance_pct": -15.0
+    }
+  ],
+  "estimated_total_minutes": 55,
+  "actual_total_minutes": 29.3,
+  "overall_variance_pct": -46.7,
+  "adjustments": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "issue": "Variance -78.1% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Prior D3/low consecutive runs not confirmed. Surface differs from oidc04/oidc05 (medium). Single-run evidence insufficient for rule change."
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "issue": "Variance +39.0% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Single run at D3/low. Opposite direction from oidc05 BACKEND-DEV at D3/medium (-30.8%). Surfaces differ; no consecutive confirmation."
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "issue": "Variance -71.7% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Prior D3/low consecutive runs not confirmed. Single-run evidence insufficient for rule change."
+    },
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "issue": "Variance +93.3% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Single run at D3/low. Opposite direction from oidc05 TEST-RUNNER at D3/medium (-25%). Surfaces differ; no consecutive confirmation."
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "issue": "Variance -93.8% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Prior D3/low consecutive runs not confirmed. Single-run evidence insufficient for rule change."
+    }
+  ],
+  "completed_at": "2026-05-27T15:13:27Z"
+}

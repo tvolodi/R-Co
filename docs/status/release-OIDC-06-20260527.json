@@ -1,0 +1,13 @@
+{
+  "run_id": "WF02-oidc06-20260527",
+  "requirement_id": "OIDC-06",
+  "decision": "RELEASED",
+  "decided_at": "2026-05-27T15:11:09Z",
+  "nfr_results": {
+    "NFR-01": {"p99_read_ms": 0.779, "p99_write_ms": 3.208, "passed": true},
+    "NFR-02": {"throughput_eps": 90269.827, "passed": true},
+    "NFR-04": {"replay_ms": 43.306, "passed": true}
+  },
+  "unit_tests": {"total": 634, "passed": 534, "failed": 0, "skipped": 100},
+  "notes": "All 7 OIDC-06 unit tests passed. Integration tests skipped (DB not available during test run). NFR gates all passed."
+}

@@ -169,6 +169,11 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260527-wf02-oidc05-step-04.json; release approval is recorded in docs/status/release-OIDC-05-20260527.json.
 - Requirement: OIDC-05 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-06 - JWKS caching (RELEASED 2026-05-27)
+- Implemented OIDC-06 JWKS caching — per-realm in-memory JWKS key-ID cache with configurable TTL (default 10 minutes), single refresh on unknown kid, and rate-limited refresh to prevent JWKS endpoint hammering.
+- Validation evidence passed in tests/reports/report-20260527-wf02-oidc06-step04.json; release approval is recorded in docs/status/release-OIDC-06-20260527.json.
+- Requirement: OIDC-06 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

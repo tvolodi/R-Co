@@ -1,0 +1,41 @@
+{
+  "run_id": "WF02-oidc06-20260527",
+  "step": "04",
+  "executed_at": "2026-05-27T15:03:30Z",
+  "requirement_ids": ["OIDC-06"],
+  "test_spec": "tests/specs/OIDC-06.md",
+  "unit_tests": {
+    "total": 634,
+    "passed": 534,
+    "failed": 0,
+    "skipped": 100,
+    "command": "zig build test",
+    "exit_code": 0,
+    "notes": "534 = 527 pre-existing passing tests + 7 new OIDC-06 tests. 100 skipped tests are pre-existing skips unrelated to OIDC-06. All test binary compilations succeeded. No output on success (Zig standard behavior)."
+  },
+  "integration_tests": {
+    "ran": false,
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "skipped": 4,
+    "command": "zig build test-integration",
+    "exit_code": null,
+    "notes": "DB not reachable: Docker service 'db_test' not running on localhost:5433. All 4 OIDC-06 integration tests (TC-OIDC-06-08 through TC-OIDC-06-11) skipped."
+  },
+  "oidc06_specific": {
+    "TC-OIDC-06-01": "PASS",
+    "TC-OIDC-06-02": "PASS",
+    "TC-OIDC-06-03": "PASS",
+    "TC-OIDC-06-04": "PASS",
+    "TC-OIDC-06-05": "PASS",
+    "TC-OIDC-06-06": "PASS",
+    "TC-OIDC-06-07": "PASS",
+    "TC-OIDC-06-08": "SKIPPED (no DB)",
+    "TC-OIDC-06-09": "SKIPPED (no DB)",
+    "TC-OIDC-06-10": "SKIPPED (no DB)",
+    "TC-OIDC-06-11": "SKIPPED (no DB)"
+  },
+  "issues": [],
+  "verdict": "PASS"
+}

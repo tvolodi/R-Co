@@ -1286,6 +1286,21 @@
       "release_decision": "docs/status/release-OIDC-05-20260527.json",
       "last_updated": "2026-05-27T03:12:14Z"
     },
+    "OIDC-06": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "JWKS caching",
+      "implementation_run": "WF02-oidc06-20260527",
+      "implementation_handoff": "handoffs/WF02-oidc06-20260527/step-02-backend-dev.json",
+      "test_spec": "tests/specs/OIDC-06.md",
+      "test_run": "tests/reports/report-20260527-wf02-oidc06-step04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T15:11:09Z",
+      "release_run": "WF02-oidc06-20260527",
+      "release_decision": "docs/status/release-OIDC-06-20260527.json",
+      "last_updated": "2026-05-27T15:13:27Z"
+    },
     "DSL-01": {
       "status": "RELEASED",
       "stage": 7,

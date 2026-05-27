@@ -197,6 +197,8 @@ fn buildKeycloakProvider(
         .expected_issuer = cfg.expected_issuer,
         .connect_timeout_ms = cfg.connect_timeout_ms,
         .request_timeout_ms = cfg.request_timeout_ms,
+        .jwks_ttl_seconds = keycloak.Config.defaults.jwks_ttl_seconds,
+        .jwks_min_refresh_seconds = keycloak.Config.defaults.jwks_min_refresh_seconds,
     }, .{
         .transport = .{ .ctx = undefined, .sendFn = noOpTransportSend },
         .clock = .{ .ctx = &clock, .nowUnixSecondsFn = SystemClock.nowUnixSeconds },

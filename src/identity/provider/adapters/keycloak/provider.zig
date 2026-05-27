@@ -5,6 +5,7 @@ const provider_errors = @import("../../errors.zig");
 const keycloak_config = @import("config.zig");
 const keycloak_urls = @import("urls.zig");
 const standards_verifier = @import("../../oidc/standards_verifier.zig");
+const jwks_cache_mod = @import("../../oidc/jwks_cache.zig");
 
 pub const Config = keycloak_config.Config;
 
@@ -96,6 +97,7 @@ pub const Adapter = struct {
     clock: Clock,
     admin_client_secret: []u8,
     cached_admin_token: ?CachedAdminToken = null,
+    jwks_cache: jwks_cache_mod.JwksCache,
 
     pub fn init(allocator: std.mem.Allocator, config: Config, deps: InitDeps) provider_errors.ProviderError!Adapter {
         var owned_config = keycloak_config.Config.clone(allocator, config) catch |err| switch (err) {
@@ -110,18 +112,26 @@ pub const Adapter = struct {
         defer allocator.free(resolved_secret);
         const admin_client_secret = allocator.dupe(u8, resolved_secret) catch return error.OutOfMemory;
 
+        const jwks_cache = jwks_cache_mod.JwksCache.init(
+            allocator,
+            @intCast(owned_config.jwks_ttl_seconds),
+            @intCast(owned_config.jwks_min_refresh_seconds),
+        );
+
         return .{
             .allocator = allocator,
             .config = owned_config,
             .transport = deps.transport,
             .clock = deps.clock,
             .admin_client_secret = admin_client_secret,
+            .jwks_cache = jwks_cache,
         };
     }
 
     pub fn deinit(self: *Adapter) void {
         if (self.cached_admin_token) |cache| self.allocator.free(cache.access_token);
         self.allocator.free(self.admin_client_secret);
+        self.jwks_cache.deinit();
         self.config.deinit(self.allocator);
     }
 
@@ -516,28 +526,37 @@ fn resolveDiscoveryDocument(raw_ctx: *anyopaque, allocator: std.mem.Allocator, d
 
 fn resolveJwksKid(raw_ctx: *anyopaque, allocator: std.mem.Allocator, jwks_uri: []const u8, kid: []const u8) provider_errors.ProviderError!bool {
     const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
-    return jwksContainsKid(self, allocator, jwks_uri, kid);
+    return jwksContainsKidCached(self, allocator, jwks_uri, kid);
 }
 
-fn jwksContainsKid(self: *Adapter, allocator: std.mem.Allocator, jwks_uri: []const u8, kid: []const u8) provider_errors.ProviderError!bool {
+fn fetchJwksBody(self: *Adapter, allocator: std.mem.Allocator, jwks_uri: []const u8) provider_errors.ProviderError![]u8 {
     const response = try sendRequest(self, allocator, .{
         .method = .GET,
         .url = jwks_uri,
     });
     if (response.status != 200) return mapStatus(response.status, .verify_token);
+    return allocator.dupe(u8, response.body) catch return error.OutOfMemory;
+}
 
-    const parsed = std.json.parseFromSlice(std.json.Value, allocator, response.body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
-    defer parsed.deinit();
-    const root = payloadlessObject(parsed.value);
-    const keys_value = root.get("keys") orelse return error.UpstreamProtocolError;
-    if (keys_value != .array) return error.UpstreamProtocolError;
-
-    for (keys_value.array.items) |item| {
-        if (item != .object) continue;
-        const key_kid = valueString(item.object, "kid") orelse continue;
-        if (std.mem.eql(u8, key_kid, kid)) return true;
+fn jwksContainsKidCached(self: *Adapter, allocator: std.mem.Allocator, jwks_uri: []const u8, kid: []const u8) provider_errors.ProviderError!bool {
+    const now = self.clock.nowUnixSeconds();
+    if (self.jwks_cache.lookupKid(jwks_uri, kid, now)) |found| {
+        if (found) return true;
+        // Cache valid but kid not present — try one refresh if not rate-limited
+        if (self.jwks_cache.isRateLimited(now)) return false;
+        const body = try fetchJwksBody(self, allocator, jwks_uri);
+        defer allocator.free(body);
+        self.jwks_cache.store(jwks_uri, body, now) catch return error.UpstreamProtocolError;
+        self.jwks_cache.markRefreshed(now);
+        return self.jwks_cache.lookupKid(jwks_uri, kid, now) orelse false;
+    } else {
+        // No entry or stale — fetch and store
+        const body = try fetchJwksBody(self, allocator, jwks_uri);
+        defer allocator.free(body);
+        self.jwks_cache.store(jwks_uri, body, now) catch return error.UpstreamProtocolError;
+        self.jwks_cache.markRefreshed(now);
+        return self.jwks_cache.lookupKid(jwks_uri, kid, now) orelse false;
     }
-    return false;
 }
 
 fn ensureAdminToken(self: *Adapter, allocator: std.mem.Allocator) provider_errors.ProviderError![]const u8 {
