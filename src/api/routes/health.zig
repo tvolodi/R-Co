@@ -1,5 +1,5 @@
 const std = @import("std");
-const db_pool = @import("../../db/pool.zig");
+const db_pool = @import("pool");
 const errors = @import("../errors.zig");
 const logger = @import("../../obs/logger.zig");
 const metrics = @import("../../obs/metrics.zig");

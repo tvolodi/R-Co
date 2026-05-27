@@ -1,0 +1,45 @@
+{
+  "run_id": "WF02-oidc09-20260527",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260527-017",
+  "timestamp": "2026-05-27T19:31:26Z",
+  "summary": {
+    "total_layers": 3,
+    "layers": {
+      "zig_build": {
+        "status": "PASS",
+        "exit_code": 0,
+        "detail": "zig build exits 0 — main compilation successful"
+      },
+      "zig_build_test": {
+        "status": "PASS",
+        "exit_code": 0,
+        "detail": "zig build test exits 0 — all unit tests compiled and passed"
+      },
+      "zig_build_test_integration_oidc09": {
+        "status": "FAIL",
+        "exit_code": 1,
+        "detail": "zig build test-integration-oidc09 fails with Zig module system conflict — see failures section"
+      }
+    }
+  },
+  "failures": [
+    {
+      "test_id": "INTEGRATION-COMPILE-01",
+      "layer": "integration",
+      "file": "tests/integration/oidc09_jit_provisioning_test.zig",
+      "error_message": "Module system conflict: src/oidc/jit_provisioning.zig exists in modules 'bpm' and 'pool'. Root cause: bpm.zig uses @import(\"db/pool.zig\") (relative import into bpm module) while jit_provisioning_mod uses pool as a named module import. When both modules are compiled as sibling dependencies of the same root module, pool.zig is included in both module trees, triggering Zig's \"file exists in two modules\" error.",
+      "severity": "BLOCKER",
+      "requirement_id": "OIDC-09"
+    }
+  ],
+  "resolution_notes": {
+    "root_cause": "The OIDC-09 integration test needs both bpm_src_mod (for identity_registry, identity_service, pool) and jit_provisioning_mod (for jit_provisioning module). These two modules cannot coexist because bpm_src_mod uses relative imports that include pool.zig in its file tree, while jit_provisioning_mod has pool as a named module dependency. Zig 0.16 does not permit the same file to exist in two modules.",
+    "options": [
+      "Option 1: Restructure bpm_src_mod to use @import(\"pool\") (named import) instead of @import(\"db/pool.zig\") (relative import), and add pool as a named import to bpm_src_mod. Requires similar changes for all files that import pool.zig via relative path within the bpm module tree (~20 files).",
+      "Option 2: Split identity_registry and identity_service into separate named modules with proper named imports, so the OIDC-09 test doesn't need to import bpm_src_mod at all. Requires creating named modules for identity/registry.zig and identity/service.zig and resolving their transitive dependencies (auth.zig, pagination.zig, identity_provider).",
+      "Option 3: Add pool_module to bpm_src_mod named imports without changing bpm.zig's relative import — this requires fixing ~20 files in the bpm tree to use @import(\"pool\") instead of relative paths."
+    ],
+    "current_workaround": "zig build test passes (all unit tests compile), only the OIDC-09 integration test build config has this conflict. The api_mod-based unit tests compile correctly because they import jit_provisioning_mod (with named pool import) without bpm_src_mod."
+  }
+}

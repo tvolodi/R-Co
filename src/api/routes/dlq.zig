@@ -1,5 +1,5 @@
 const std = @import("std");
-const pool_mod = @import("../../db/pool.zig");
+const pool_mod = @import("pool");
 const authorization = @import("../authorization.zig");
 const dlq_store = @import("../../dlq/store.zig");
 

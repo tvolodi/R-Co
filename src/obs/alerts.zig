@@ -1,5 +1,5 @@
 const std = @import("std");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 const logger = @import("logger.zig");
 
 pub const AlertType = enum {

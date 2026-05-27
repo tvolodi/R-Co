@@ -1,5 +1,5 @@
 const std = @import("std");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 const pagination = @import("../api/pagination.zig");
 
 pub const AuditError = error{

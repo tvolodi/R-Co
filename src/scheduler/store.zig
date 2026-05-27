@@ -3,7 +3,7 @@
 //! Owns durable timer row insertion for timer-node arrivals.
 //! Must be called inside an already-open transaction to satisfy DB-03 atomicity.
 const std = @import("std");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 const recurrence_mod = @import("recurrence.zig");
 
 pub const Uuid = [16]u8;

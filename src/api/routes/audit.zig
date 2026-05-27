@@ -1,5 +1,5 @@
 const std = @import("std");
-const pool_mod = @import("../../db/pool.zig");
+const pool_mod = @import("pool");
 const audit_mod = @import("../../obs/audit.zig");
 
 pub const HandlerResult = struct {

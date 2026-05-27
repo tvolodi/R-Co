@@ -3,7 +3,7 @@
 //! Polls due timers, claims them with advisory locks, and appends the matching
 //! instance event in the same transaction as the timer fire.
 const std = @import("std");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 const logger = @import("../obs/logger.zig");
 const store_mod = @import("store.zig");
 const recurrence_mod = @import("recurrence.zig");

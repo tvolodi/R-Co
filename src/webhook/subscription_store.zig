@@ -1,5 +1,5 @@
 const std = @import("std");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 
 pub const WebhookEventType = enum {
     instance_started,
