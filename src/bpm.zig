@@ -32,6 +32,7 @@ pub const api_pipeline_context = @import("api/pipeline_context.zig");
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01
 pub const identity_service = @import("identity/service.zig"); // IDN-01
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01
+pub const oidc_agent_lifecycle = @import("oidc/agent_lifecycle.zig"); // OIDC-16..26
 pub const obs_metrics = @import("obs/metrics.zig"); // OBS-02
 pub const obs_audit = @import("obs/audit.zig"); // OBS-03
 pub const obs_alerts = @import("obs/alerts.zig"); // OBS-06

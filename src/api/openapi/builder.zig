@@ -88,10 +88,11 @@ pub fn defaultRouteModules() []const model.RouteModuleDescriptor {
     return &route_modules;
 }
 
-const route_modules: [5]model.RouteModuleDescriptor = .{
+const route_modules: [6]model.RouteModuleDescriptor = .{
     .{ .module_name = "definitions", .endpoints = &definitions_endpoints },
     .{ .module_name = "instances", .endpoints = &instances_endpoints },
     .{ .module_name = "tasks", .endpoints = &tasks_endpoints },
+    .{ .module_name = "idp", .endpoints = &idp_endpoints },
     .{ .module_name = "health", .endpoints = &health_endpoints },
     .{ .module_name = "openapi", .endpoints = &openapi_endpoints },
 };
@@ -128,6 +129,31 @@ const tasks_endpoints: [5]model.EndpointDescriptor = .{
     endpoint(.POST, "/api/v1/tasks/{id}/complete", "completeTask", "Complete task", "tasks", true, "TaskCompleteRequest", "200", "Task completion result", "Task"),
     endpoint(.POST, "/api/v1/tasks/{id}/assign", "assignTask", "Assign task", "tasks", true, "TaskAssignRequest", "200", "Task", "Task"),
     endpoint(.POST, "/api/v1/tasks/{id}/reassign", "reassignTask", "Reassign task", "tasks", true, "TaskReassignRequest", "200", "Task", "Task"),
+};
+
+const idp_endpoints: [22]model.EndpointDescriptor = .{
+    endpoint(.POST, "/api/v1/idp/realms", "createIdpRealm", "Create identity realm", "idp", true, null, "201", "Realm created", null),
+    endpoint(.GET, "/api/v1/idp/realms", "listIdpRealms", "List identity realms", "idp", true, null, "200", "Realm list", null),
+    endpoint(.GET, "/api/v1/idp/realms/{realmId}", "getIdpRealm", "Get identity realm", "idp", true, null, "200", "Realm", null),
+    endpoint(.PATCH, "/api/v1/idp/realms/{realmId}", "updateIdpRealm", "Update identity realm", "idp", true, null, "200", "Realm updated", null),
+    endpoint(.DELETE, "/api/v1/idp/realms/{realmId}", "deleteIdpRealm", "Delete identity realm", "idp", true, null, "204", "Realm deleted", null),
+    endpoint(.POST, "/api/v1/idp/realms/{realmId}/users", "createIdpUser", "Create user in realm", "idp", true, null, "201", "User created", null),
+    endpoint(.GET, "/api/v1/idp/realms/{realmId}/users", "listIdpUsers", "List users in realm", "idp", true, null, "200", "User list", null),
+    endpoint(.GET, "/api/v1/idp/realms/{realmId}/users/{userId}", "getIdpUser", "Get user in realm", "idp", true, null, "200", "User", null),
+    endpoint(.PATCH, "/api/v1/idp/realms/{realmId}/users/{userId}", "updateIdpUser", "Update user in realm", "idp", true, null, "200", "User updated", null),
+    endpoint(.DELETE, "/api/v1/idp/realms/{realmId}/users/{userId}", "deleteIdpUser", "Delete user in realm", "idp", true, null, "204", "User deleted", null),
+    endpoint(.POST, "/api/v1/idp/realms/{realmId}/users/{userId}/roles:assign", "assignIdpRoles", "Assign user roles", "idp", true, null, "200", "Roles assigned", null),
+    endpoint(.POST, "/api/v1/idp/realms/{realmId}/users/{userId}/roles:revoke", "revokeIdpRoles", "Revoke user roles", "idp", true, null, "200", "Roles revoked", null),
+    endpoint(.POST, "/api/v1/idp/realms/{realmId}/clients", "createIdpClient", "Create OIDC client", "idp", true, null, "201", "Client created", null),
+    endpoint(.GET, "/api/v1/idp/realms/{realmId}/clients", "listIdpClients", "List OIDC clients", "idp", true, null, "200", "Client list", null),
+    endpoint(.PATCH, "/api/v1/idp/realms/{realmId}/clients/{clientId}", "updateIdpClient", "Update OIDC client", "idp", true, null, "200", "Client updated", null),
+    endpoint(.DELETE, "/api/v1/idp/realms/{realmId}/clients/{clientId}", "deleteIdpClient", "Delete OIDC client", "idp", true, null, "204", "Client deleted", null),
+    endpoint(.POST, "/api/v1/idp/realms/{realmId}/clients/{clientId}/secret:rotate", "rotateIdpClientSecret", "Rotate OIDC client secret", "idp", true, null, "200", "Secret rotated", null),
+    endpoint(.POST, "/api/v1/idp/realms/{realmId}/federations", "createIdpFederation", "Create federation", "idp", true, null, "201", "Federation created", null),
+    endpoint(.GET, "/api/v1/idp/realms/{realmId}/federations", "listIdpFederations", "List federations", "idp", true, null, "200", "Federation list", null),
+    endpoint(.DELETE, "/api/v1/idp/realms/{realmId}/federations/{federationId}", "deleteIdpFederation", "Delete federation", "idp", true, null, "204", "Federation deleted", null),
+    endpoint(.PUT, "/api/v1/idp/realms/{realmId}/federations/{federationId}/mapping", "upsertIdpFederationMapping", "Configure federation mapping", "idp", true, null, "200", "Mapping upserted", null),
+    endpoint(.POST, "/api/v1/idp/provisioning:bundle", "provisionIdpBundle", "Provision realm/user/client/federation bundle", "idp", true, null, "200", "Bundle result", null),
 };
 
 const health_endpoints: [2]model.EndpointDescriptor = .{

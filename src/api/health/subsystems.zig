@@ -1,4 +1,5 @@
 const std = @import("std");
+const oidc_agent_lifecycle = @import("../../oidc/agent_lifecycle.zig");
 
 pub const FailingSubsystem = struct {
     subsystem: []const u8,
@@ -21,8 +22,21 @@ fn checkApiRouterReady(_: std.mem.Allocator) !SubsystemCheckResult {
     return .{ .ok = {} };
 }
 
-const default_checkers: [1]SubsystemChecker = .{
+fn checkIdentityProviderReady(allocator: std.mem.Allocator) !SubsystemCheckResult {
+    if (oidc_agent_lifecycle.checkProviderReadiness(allocator)) {
+        return .{ .ok = {} };
+    }
+    return .{ .failed = .{
+        .subsystem = "identity_provider",
+        .code = "IDP_NOT_READY",
+        .detail = "identity provider readiness probe failed",
+        .retryable = true,
+    } };
+}
+
+const default_checkers: [2]SubsystemChecker = .{
     .{ .name = "api_router", .checkFn = checkApiRouterReady },
+    .{ .name = "identity_provider", .checkFn = checkIdentityProviderReady },
 };
 
 pub fn defaultCriticalCheckers() []const SubsystemChecker {

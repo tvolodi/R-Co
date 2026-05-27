@@ -55,6 +55,7 @@ pub const identity_registry = @import("identity/registry.zig"); // IDN-01 user r
 pub const identity_service = @import("identity/service.zig"); // IDN-01 user registry service
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01 user registry HTTP handlers
 pub const identity_provider = @import("identity_provider"); // OIDC provider contract and bootstrap wiring
+pub const oidc_agent_lifecycle = @import("oidc/agent_lifecycle.zig"); // OIDC-16..26 lifecycle/idempotency/audit/metrics helpers
 pub const api_auth = @import("api/middleware/auth.zig"); // API-08 auth middleware provider-manager configuration
 
 const placeholder_health_live = "{\"status\":\"live\"}";
