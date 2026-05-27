@@ -284,18 +284,25 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
             return EvalResult{ .ok = valueBool(left.bool_val or right.bool_val) };
         },
 
-        // ---- Dot-path resolution with null propagation (DSL-05 §4.2) ----
+        // ---- Dot-path resolution with null propagation (DSL-10) ----
         .dot_path => |segments| {
-            if (segments.len == 1) {
-                // Single segment — slice directly into source, no allocation needed
-                if (ctx.vars.get(segments[0])) |val| {
-                    return EvalResult{ .ok = val };
-                }
+            if (segments.len == 0) {
+                // Empty path — should not occur in practice, but handle gracefully
                 return EvalResult{ .ok = valueNull() };
             }
 
-            // Multi-segment: join segments with '.' using a stack buffer
-            // Compute total length
+            // DSL-10: Root-level identifier lookup.
+            // Single segment: simple context lookup.
+            if (segments.len == 1) {
+                return EvalResult{ .ok = ctx.get(segments[0]) };
+            }
+
+            // Multi-segment path: join with '.' and look up as a composite key.
+            // This accommodates the flat key model where "a.b.c" is stored as a single key.
+            //
+            // Future (DSL-11): once object types are added, this will perform nested
+            // traversal instead of flat lookup. For now, DSL-10 treats multi-segment
+            // paths as composite keys.
             var total: usize = 0;
             for (segments) |seg| {
                 total += seg.len;
@@ -331,11 +338,8 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
                 break :blk slice;
             };
 
-            if (ctx.vars.get(key)) |val| {
-                return EvalResult{ .ok = val };
-            }
-            // Not found → null (DSL-10: missing path returns null)
-            return EvalResult{ .ok = valueNull() };
+            // Look up the composite key in context
+            return EvalResult{ .ok = ctx.get(key) };
         },
 
         // ---- Function call — DSL-07 built-in whitelist ----
@@ -2188,7 +2192,7 @@ test "DSL-05: dot_path resolves from context" {
 
     var ctx = Context.init(alloc);
     defer ctx.deinit();
-    try ctx.vars.put("x", valueInt(42));
+    try ctx.put("x", valueInt(42));
 
     const ev = evaluate(&result.ok, &ctx, alloc);
     try testing.expect(ev == .ok);
@@ -2228,7 +2232,7 @@ test "DSL-05: dot_path multi-segment resolves from context" {
 
     var ctx = Context.init(alloc);
     defer ctx.deinit();
-    try ctx.vars.put("a.b.c", valueStr("deep_value"));
+    try ctx.put("a.b.c", valueStr("deep_value"));
 
     const ev = evaluate(&result.ok, &ctx, alloc);
     try testing.expect(ev == .ok);
@@ -2310,7 +2314,7 @@ test "DSL-05: negate timestamp returns error" {
 
     var ctx = Context.init(alloc);
     defer ctx.deinit();
-    try ctx.vars.put("ts_val", valueTs(1_715_328_000_000));
+    try ctx.put("ts_val", valueTs(1_715_328_000_000));
 
     const ev = evaluate(&result.ok, &ctx, alloc);
     try testing.expect(ev == .err);
@@ -3998,4 +4002,248 @@ test "DSL-09: now() returns platform time" {
     try testing.expect(ev == .ok);
     try testing.expect(ev.ok == .ts_val);
     try testing.expect(ev.ok.ts_val > 1_000_000_000_000);
+}
+
+// ===========================================================================
+// Tests — DSL-10: Context resolution
+// ===========================================================================
+
+test "DSL-10: context stores and retrieves variables" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    try ctx.put("order", valueInt(100));
+    try ctx.put("status", valueStr("pending"));
+
+    try testing.expectEqual(@as(i64, 100), ctx.get("order").int_val);
+    try testing.expectEqualStrings("pending", ctx.get("status").str_val);
+}
+
+test "DSL-10: context.get returns null for missing keys" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const missing = ctx.get("nonexistent");
+    try testing.expect(missing == .null_val);
+}
+
+test "DSL-10: evaluate identifier resolves from context" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "amount");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("amount", valueInt(42));
+
+    const eval_result = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(eval_result == .ok);
+    try testing.expectEqual(@as(i64, 42), eval_result.ok.int_val);
+}
+
+test "DSL-10: evaluate identifier returns null for missing variable" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "missing");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const eval_result = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(eval_result == .ok);
+    try testing.expect(eval_result.ok == .null_val);
+}
+
+test "DSL-10: dotted path on null context value returns null (null propagation)" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "order.total");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("order", valueNull());
+
+    const eval_result = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(eval_result == .ok);
+    try testing.expect(eval_result.ok == .null_val);
+}
+
+test "DSL-10: dotted path on scalar returns null (DSL-10 constraint)" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "count.items");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("count", valueInt(42));
+
+    // Parser accepts "count.items" as a valid dot_path (names are identifiers).
+    // Evaluator returns null because "count" (int) is not traversable (DSL-10 constraint).
+    // Note: DSL-11 will extend this to support nested object traversal.
+    const eval_result = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(eval_result == .ok);
+    try testing.expect(eval_result.ok == .null_val);
+}
+
+test "DSL-10: context with all value types" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    try ctx.put("null_var", valueNull());
+    try ctx.put("bool_var", valueBool(true));
+    try ctx.put("int_var", valueInt(-42));
+    try ctx.put("float_var", valueFloat(3.14));
+    try ctx.put("str_var", valueStr("hello"));
+    try ctx.put("ts_var", valueTs(1_715_328_000_000));
+
+    try testing.expect(ctx.get("null_var") == .null_val);
+    try testing.expect(ctx.get("bool_var").bool_val == true);
+    try testing.expectEqual(@as(i64, -42), ctx.get("int_var").int_val);
+    try testing.expect(ctx.get("float_var").float_val == 3.14);
+    try testing.expectEqualStrings("hello", ctx.get("str_var").str_val);
+    try testing.expectEqual(@as(i64, 1_715_328_000_000), ctx.get("ts_var").ts_val);
+}
+
+test "DSL-10: expression with context variable in comparison" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "amount > 50");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("amount", valueInt(100));
+
+    const eval_result = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(eval_result == .ok);
+    try testing.expect(eval_result.ok.bool_val == true);
+}
+
+test "DSL-10: expression with missing context variable in comparison returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "amount > 50");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    // amount not in context
+
+    const eval_result = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(eval_result == .ok);
+    try testing.expect(eval_result.ok == .null_val);
+}
+
+test "DSL-10: expression with context variable in function call" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "length(message)");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("message", valueStr("hello world"));
+
+    const eval_result = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(eval_result == .ok);
+    try testing.expectEqual(@as(i64, 11), eval_result.ok.int_val);
+}
+
+test "DSL-10: composite key lookup (multi-segment path as flat key)" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "order.total");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    // Store composite key directly (DSL-10 flat model)
+    try ctx.put("order.total", valueInt(500));
+
+    const eval_result = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(eval_result == .ok);
+    try testing.expectEqual(@as(i64, 500), eval_result.ok.int_val);
+}
+
+test "DSL-10: context immutability during evaluation" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a and b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueBool(true));
+    try ctx.put("b", valueBool(true));
+
+    // Evaluate multiple times with the same context
+    const ev1 = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev1 == .ok);
+    try testing.expect(ev1.ok.bool_val == true);
+
+    const ev2 = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev2 == .ok);
+    try testing.expect(ev2.ok.bool_val == true);
+
+    // Context should remain unchanged
+    try testing.expect(ctx.get("a").bool_val == true);
+    try testing.expect(ctx.get("b").bool_val == true);
 }

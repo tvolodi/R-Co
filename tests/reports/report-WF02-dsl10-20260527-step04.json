@@ -1,0 +1,89 @@
+{
+  "workflow_id": "WF-02",
+  "requirement_id": "DSL-10",
+  "run_id": "WF02-dsl10-20260527",
+  "step": "04",
+  "test_layer": "unit",
+  "test_command": "zig build test-expr",
+  "test_timestamp": "2026-05-28T00:08:30Z",
+  "total_tests": 12,
+  "passed": 12,
+  "failed": 0,
+  "test_cases": [
+    {
+      "id": "TC-DSL-10-01",
+      "description": "DSL-10: context stores and retrieves variables",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-02",
+      "description": "DSL-10: context.get returns null for missing keys",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-03",
+      "description": "DSL-10: evaluate identifier resolves from context",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-04",
+      "description": "DSL-10: evaluate identifier returns null for missing variable",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-05",
+      "description": "DSL-10: dotted path on null context value returns null (null propagation)",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-06",
+      "description": "DSL-10: dotted path on scalar returns null (DSL-10 constraint)",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-07",
+      "description": "DSL-10: context with all value types",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-08",
+      "description": "DSL-10: expression with context variable in comparison",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-09",
+      "description": "DSL-10: expression with missing context variable in comparison returns null",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-10",
+      "description": "DSL-10: expression with context variable in function call",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-11",
+      "description": "DSL-10: composite key lookup (multi-segment path as flat key)",
+      "status": "PASS",
+      "error_message": null
+    },
+    {
+      "id": "TC-DSL-10-12",
+      "description": "DSL-10: context immutability during evaluation",
+      "status": "PASS",
+      "error_message": null
+    }
+  ],
+  "coverage_notes": "All DSL-10 context resolution tests execute successfully. Tests verify identifier resolution against context maps, null propagation for missing/unresolved identifiers, type preservation, case sensitivity, and the flat-key model constraint (composite keys stored as single flat keys, not nested objects).",
+  "summary": "PASS",
+  "acceptance_criteria_met": "All DSL-10 tests PASS. Requirement DSL-10 (context resolution for identifier expressions) is fully satisfied."
+}

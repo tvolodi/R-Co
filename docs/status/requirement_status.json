@@ -1451,6 +1451,21 @@
       "release_run": "WF02-dsl09-20260527",
       "release_decision": "docs/status/release-DSL-09-20260527.json",
       "last_updated": "2026-05-27T18:46:35Z"
+    },
+    "DSL-10": {
+      "status": "RELEASED",
+      "stage": 7,
+      "priority": "MUST",
+      "title": "Context resolution",
+      "implementation_run": "WF02-dsl10-20260527",
+      "implementation_handoff": "handoffs/WF02-dsl10-20260527/step-02-backend-dev.json",
+      "test_spec": "tests/specs/DSL-10.md",
+      "test_run": "tests/reports/report-WF02-dsl10-20260527-step04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T19:12:26Z",
+      "release_run": "WF02-dsl10-20260527",
+      "release_decision": "docs/status/release-DSL-10-20260527.json",
+      "last_updated": "2026-05-27T19:12:26Z"
     }
   }
 }

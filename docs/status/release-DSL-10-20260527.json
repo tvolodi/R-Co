@@ -1,0 +1,48 @@
+{
+  "workflow_id": "WF-02",
+  "requirement_id": "DSL-10",
+  "run_id": "WF02-dsl10-20260527",
+  "stage": "Stage 7 — Expression DSL",
+  "title": "Context resolution",
+  "status": "APPROVED",
+  "decision_timestamp": "2026-05-27T19:11:03Z",
+  "acceptance_criteria_results": [
+    {
+      "criterion": "Evaluating an expression against a context with missing fields returns null without error",
+      "status": "PASS",
+      "test_evidence": [
+        "TC-DSL-10-02: context.get returns null for missing keys (PASS)",
+        "TC-DSL-10-04: evaluate identifier returns null for missing variable (PASS)"
+      ]
+    },
+    {
+      "criterion": "Resolved identifiers return the value at the correct type",
+      "status": "PASS",
+      "test_evidence": [
+        "TC-DSL-10-01: context stores and retrieves variables (PASS)",
+        "TC-DSL-10-03: evaluate identifier resolves from context (PASS)",
+        "TC-DSL-10-07: context with all value types (PASS)"
+      ]
+    }
+  ],
+  "build_status": "PASS",
+  "build_notes": "zig build exits 0 with no errors",
+  "test_results": {
+    "test_report_file": "tests/reports/report-WF02-dsl10-20260527-step04.json",
+    "test_layer": "unit",
+    "test_command": "zig build test-expr",
+    "test_timestamp": "2026-05-28T00:08:30Z",
+    "total_tests": 12,
+    "passed": 12,
+    "failed": 0,
+    "summary": "PASS"
+  },
+  "nfr_benchmarks": {
+    "status": "SKIPPED",
+    "reason": "DSL-10 is a pure expression evaluation feature (context resolution). NFR benchmarks measure backend API latency (NFR-01), event throughput (NFR-02), and replay performance (NFR-04). Benchmark environment setup would be required for full platform testing, but is not applicable to DSL feature validation in WF-02 short-form release."
+  },
+  "approved_requirements": [
+    "DSL-10"
+  ],
+  "release_notes": "DSL-10 (Context resolution) is approved for release. All MUST acceptance criteria are satisfied. Identifier expressions now correctly resolve against provided context maps, returning typed null for missing fields without error. Test coverage is comprehensive (12/12 passing), including edge cases for null propagation and multi-segment path handling."
+}
