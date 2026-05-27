@@ -11,6 +11,13 @@ pub const Config = struct {
     expected_issuer: ?[]const u8,
     connect_timeout_ms: u32,
     request_timeout_ms: u32,
+    jwks_ttl_seconds: u32,
+    jwks_min_refresh_seconds: u32,
+
+    pub const defaults = struct {
+        pub const jwks_ttl_seconds: u32 = 600;
+        pub const jwks_min_refresh_seconds: u32 = 10;
+    };
 
     pub fn clone(allocator: std.mem.Allocator, input: Config) !Config {
         const base_url = try dupeTrimmedUrl(allocator, input.base_url);
@@ -49,6 +56,8 @@ pub const Config = struct {
             .expected_issuer = expected_issuer,
             .connect_timeout_ms = input.connect_timeout_ms,
             .request_timeout_ms = input.request_timeout_ms,
+            .jwks_ttl_seconds = input.jwks_ttl_seconds,
+            .jwks_min_refresh_seconds = input.jwks_min_refresh_seconds,
         };
         try cloned.validate();
         return cloned;
@@ -78,6 +87,8 @@ pub const Config = struct {
         if (self.expected_audience.len == 0) return error.InvalidConfig;
         if (self.connect_timeout_ms == 0) return error.InvalidConfig;
         if (self.request_timeout_ms == 0) return error.InvalidConfig;
+        if (self.jwks_ttl_seconds == 0) return error.InvalidConfig;
+        if (self.jwks_min_refresh_seconds == 0) return error.InvalidConfig;
     }
 };
 

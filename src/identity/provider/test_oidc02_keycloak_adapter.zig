@@ -102,6 +102,8 @@ test "TC-OIDC-02-02: keycloak adapter verifyToken uses discovery and jwks endpoi
         .expected_issuer = "https://kc.example.com/realms/acme",
         .connect_timeout_ms = 5_000,
         .request_timeout_ms = 10_000,
+        .jwks_ttl_seconds = keycloak.Config.defaults.jwks_ttl_seconds,
+        .jwks_min_refresh_seconds = keycloak.Config.defaults.jwks_min_refresh_seconds,
     }, .{
         .transport = .{ .ctx = &transport, .sendFn = ScriptTransport.send },
         .clock = .{ .ctx = &clock, .nowUnixSecondsFn = FixedClock.nowUnixSeconds },
@@ -170,6 +172,8 @@ test "TC-OIDC-04-02: standards-only token verifies without provider-specific cla
         .expected_issuer = null,
         .connect_timeout_ms = 5_000,
         .request_timeout_ms = 10_000,
+        .jwks_ttl_seconds = keycloak.Config.defaults.jwks_ttl_seconds,
+        .jwks_min_refresh_seconds = keycloak.Config.defaults.jwks_min_refresh_seconds,
     }, .{
         .transport = .{ .ctx = &transport, .sendFn = ScriptTransport.send },
         .clock = .{ .ctx = &clock, .nowUnixSecondsFn = FixedClock.nowUnixSeconds },
@@ -520,6 +524,8 @@ test "TC-OIDC-02-03: keycloak adapter admin contract stays inside adapter-specif
         .expected_issuer = null,
         .connect_timeout_ms = 5_000,
         .request_timeout_ms = 10_000,
+        .jwks_ttl_seconds = keycloak.Config.defaults.jwks_ttl_seconds,
+        .jwks_min_refresh_seconds = keycloak.Config.defaults.jwks_min_refresh_seconds,
     }, .{
         .transport = .{ .ctx = &transport, .sendFn = ScriptTransport.send },
         .clock = .{ .ctx = &clock, .nowUnixSecondsFn = FixedClock.nowUnixSeconds },
@@ -638,6 +644,8 @@ fn initTestAdapter(
         .expected_issuer = expected_issuer,
         .connect_timeout_ms = 5_000,
         .request_timeout_ms = 10_000,
+        .jwks_ttl_seconds = keycloak.Config.defaults.jwks_ttl_seconds,
+        .jwks_min_refresh_seconds = keycloak.Config.defaults.jwks_min_refresh_seconds,
     }, .{
         .transport = .{ .ctx = transport, .sendFn = ScriptTransport.send },
         .clock = .{ .ctx = clock, .nowUnixSecondsFn = FixedClock.nowUnixSeconds },

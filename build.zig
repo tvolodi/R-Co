@@ -25,6 +25,11 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const jwks_cache_mod = b.createModule(.{
+        .root_source_file = b.path("src/identity/provider/oidc/jwks_cache.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const identity_provider_mod = b.createModule(.{
         .root_source_file = b.path("src/identity/provider/mod.zig"),
         .target = target,
@@ -483,6 +488,18 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc02_keycloak_adapter_tests = b.addRunArtifact(oidc02_keycloak_adapter_tests);
 
+    const oidc06_jwks_cache_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc06_jwks_cache.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "jwks_cache", .module = jwks_cache_mod },
+            },
+        }),
+    });
+    const run_oidc06_jwks_cache_tests = b.addRunArtifact(oidc06_jwks_cache_tests);
+
     // SCH-05: Missed timer recovery — pure function unit tests (no DB)
     const sch05_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -630,6 +647,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_oidc01_provider_boundary_tests.step);
     test_step.dependOn(&run_oidc01_provider_stub_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
+    test_step.dependOn(&run_oidc06_jwks_cache_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
     test_step.dependOn(&run_service_task_unit_tests.step);
