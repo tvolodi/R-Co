@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-oidc10-20260527/step-05-release-validator.json",
   "created_at": "2026-05-27T20:29:11Z",
   "started_at": "2026-05-27T20:31:01Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-05-27T20:32:05Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
@@ -32,9 +32,16 @@
     ],
     "functions_to_call": ["fn:validate-release", "fn:check-nfrs"]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for OIDC-10 (Stage 6.5). All tests pass (14/14), all NFR benchmarks pass, release decision written.",
+    "artifacts_out": [
+      "docs/status/release-OIDC-10-20260527.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to set OIDC-10 status to RELEASED"
+  },
   "rework_count": 0,
   "max_rework": 3,
-  "started_at": null,
-  "completed_at": null
+  "completed_at": "2026-05-27T20:32:05Z"
 }

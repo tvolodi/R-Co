@@ -1430,6 +1430,21 @@
       "release_decision": "docs/status/release-OIDC-09-20260527.json",
       "last_updated": "2026-05-27T19:43:33Z"
     },
+    "OIDC-10": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Attribute synchronisation",
+      "implementation_run": "WF02-oidc10-20260527",
+      "implementation_handoff": "handoffs/WF02-oidc10-20260527/step-02-backend-dev.json",
+      "test_spec": "tests/specs/OIDC-10.md",
+      "test_run": "tests/reports/report-WF02-oidc10-20260527-step04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T20:32:05Z",
+      "release_run": "WF02-oidc10-20260527",
+      "release_decision": "docs/status/release-OIDC-10-20260527.json",
+      "last_updated": "2026-05-27T20:33:47Z"
+    },
     "DSL-07": {
       "status": "RELEASED",
       "priority": "MUST",
