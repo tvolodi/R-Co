@@ -1496,6 +1496,19 @@
       "release_run": "WF02-dsl11-20260527",
       "release_decision": "docs/status/release-DSL-11-20260527.json",
       "last_updated": "2026-05-27T19:45:05Z"
+    },
+    "DSL-12": {
+      "status": "RELEASED",
+      "stage": 7,
+      "priority": "MUST",
+      "title": "Engine API for expression caching and reuse",
+      "implementation_run": "WF02-dsl12-20260528",
+      "test_spec": "tests/specs/DSL-12.md",
+      "test_run": "tests/reports/DSL-12-2026-05-27T20-30-47Z.md",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-28T02:50:00Z",
+      "release_run": "WF02-dsl12-20260528",
+      "last_updated": "2026-05-28T02:50:00Z"
     }
   }
 }
