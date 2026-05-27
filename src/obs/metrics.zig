@@ -846,4 +846,7 @@ test "OIDC-26 metrics families are rendered" {
     try std.testing.expect(std.mem.indexOf(u8, body, "idp_adapter_call_total") != null);
     try std.testing.expect(std.mem.indexOf(u8, body, "idp_adapter_error_total") != null);
     try std.testing.expect(std.mem.indexOf(u8, body, "idp_readiness_probe_total") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "realm_id=\"tenant-a\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "method=\"bearer\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "method=\"provisionRealm\"") != null);
 }

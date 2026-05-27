@@ -391,6 +391,57 @@ fn failingStep() !void {
     return error.Fail;
 }
 
+var compensation_order: [4]u8 = undefined;
+var compensation_count: usize = 0;
+
+fn resetCompensationOrder() void {
+    compensation_count = 0;
+}
+
+fn appendCompensationOrder(marker: u8) !void {
+    if (compensation_count >= compensation_order.len) return error.Fail;
+    compensation_order[compensation_count] = marker;
+    compensation_count += 1;
+}
+
+fn execStepOkA() !void {}
+fn execStepOkB() !void {}
+fn execStepFail() !void {
+    return error.Fail;
+}
+fn compStepA() !void {
+    try appendCompensationOrder('A');
+}
+fn compStepB() !void {
+    try appendCompensationOrder('B');
+}
+
+test "OIDC-16 scope gate enforces admin or scoped agent access" {
+    const admin = AgentPrincipal{
+        .actor_id = "admin-1",
+        .role = .platform_admin,
+        .scopes = &.{},
+        .auth_source = .human,
+    };
+    try requireScope(admin, .bundle_write);
+
+    const scoped_agent = AgentPrincipal{
+        .actor_id = "agent-1",
+        .role = .agent_runner,
+        .scopes = &.{.bundle_write},
+        .auth_source = .agent,
+    };
+    try requireScope(scoped_agent, .bundle_write);
+
+    const unscoped_agent = AgentPrincipal{
+        .actor_id = "agent-2",
+        .role = .agent_runner,
+        .scopes = &.{.realm_read},
+        .auth_source = .agent,
+    };
+    try testing.expectError(error.Forbidden, requireScope(unscoped_agent, .bundle_write));
+}
+
 test "OIDC-17 idempotency same hash replays and different hash conflicts" {
     var store = IdempotencyStore.init(testing.allocator);
     defer store.deinit();
@@ -425,6 +476,25 @@ test "OIDC-18 transaction compensates in reverse order on failure" {
     try testing.expectEqual(@as(?usize, 1), result.failed_step);
 }
 
+test "OIDC-18 compensation executes in strict reverse order" {
+    resetCompensationOrder();
+
+    const steps = [_]ForwardStep{
+        .{ .kind = .create_realm, .execute = execStepOkA, .compensate = compStepA },
+        .{ .kind = .create_user, .execute = execStepOkB, .compensate = compStepB },
+        .{ .kind = .assign_role, .execute = execStepFail, .compensate = noopStep },
+    };
+
+    const result = try executeProvisioningTransaction(testing.allocator, "tx-2", &steps);
+    defer testing.allocator.free(result.transaction_id);
+
+    try testing.expectEqual(false, result.committed);
+    try testing.expectEqual(true, result.compensated);
+    try testing.expectEqual(@as(usize, 2), compensation_count);
+    try testing.expectEqual(@as(u8, 'B'), compensation_order[0]);
+    try testing.expectEqual(@as(u8, 'A'), compensation_order[1]);
+}
+
 test "OIDC-19 redaction replaces secret material" {
     const input = "{\"client_secret\":\"abc\",\"password\":\"pw\",\"safe\":\"ok\"}";
     const redacted = try redactSensitiveFields(testing.allocator, input, defaultRedactionPolicy());
@@ -444,6 +514,22 @@ test "OIDC-22 bootstrap disables after first success" {
     try testing.expectEqual(false, state.enabled);
 
     try testing.expectError(error.BootstrapDisabled, bootstrap.bootstrapFirstAgent("boot-2"));
+}
+
+test "OIDC-22 bootstrap can be manually re-enabled" {
+    var bootstrap = BootstrapStore.init(testing.allocator);
+    defer bootstrap.deinit();
+
+    var first = try bootstrap.bootstrapFirstAgent("boot-a");
+    defer first.deinit(testing.allocator);
+    try testing.expectEqual(false, first.enabled);
+
+    bootstrap.setBootstrapEnabled(true);
+    var second = try bootstrap.bootstrapFirstAgent("boot-b");
+    defer second.deinit(testing.allocator);
+
+    try testing.expectEqual(false, second.enabled);
+    try testing.expect(second.last_bootstrap_id != null);
 }
 
 test "OIDC-24 mapping keeps unknown claims without failing" {

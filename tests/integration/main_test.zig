@@ -101,6 +101,8 @@ const adp12_default_tenant_regression_integration = @import("adp12_default_tenan
 const adp02_tenant_scope = @import("adp02_tenant_scope_test.zig");
 // Stage 6.5 — OIDC claim validation auth mapping (OIDC-07)
 const oidc07_claim_validation_auth_integration = @import("oidc07_claim_validation_auth_test.zig");
+// Stage 6.5 — Agent lifecycle foundations (OIDC-16..OIDC-26)
+const oidc16_26_agent_lifecycle_foundations_integration = @import("oidc16_26_agent_lifecycle_foundations_test.zig");
 
 comptime {
     _ = std;
@@ -152,6 +154,7 @@ comptime {
     _ = adp12_default_tenant_regression_integration;
     _ = adp02_tenant_scope;
     _ = oidc07_claim_validation_auth_integration;
+    _ = oidc16_26_agent_lifecycle_foundations_integration;
 }
 
 test "integration placeholder" {

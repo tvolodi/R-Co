@@ -69,3 +69,44 @@ pub fn runCheckers(
 
     return try allocator.dupe(FailingSubsystem, failures.items);
 }
+
+const testing = std.testing;
+
+fn failProbe(_: std.mem.Allocator) !void {
+    return error.TestProbeFailed;
+}
+
+fn okProbe(_: std.mem.Allocator) !void {}
+
+test "OIDC-25 readiness reports identity_provider failure when probe fails" {
+    oidc_agent_lifecycle.configureProviderReadinessProbe(failProbe);
+    defer oidc_agent_lifecycle.configureProviderReadinessProbe(null);
+
+    const failures = try runCheckers(testing.allocator, defaultCriticalCheckers());
+    defer testing.allocator.free(failures);
+
+    var found = false;
+    for (failures) |failure| {
+        if (std.mem.eql(u8, failure.subsystem, "identity_provider")) {
+            found = true;
+            try testing.expectEqualStrings("IDP_NOT_READY", failure.code);
+            try testing.expectEqual(true, failure.retryable);
+        }
+    }
+    try testing.expect(found);
+}
+
+test "OIDC-25 readiness recovers after probe succeeds" {
+    oidc_agent_lifecycle.configureProviderReadinessProbe(failProbe);
+    const degraded = try runCheckers(testing.allocator, defaultCriticalCheckers());
+    defer testing.allocator.free(degraded);
+
+    oidc_agent_lifecycle.configureProviderReadinessProbe(okProbe);
+    defer oidc_agent_lifecycle.configureProviderReadinessProbe(null);
+
+    const recovered = try runCheckers(testing.allocator, defaultCriticalCheckers());
+    defer testing.allocator.free(recovered);
+
+    try testing.expect(degraded.len > 0);
+    try testing.expectEqual(@as(usize, 0), recovered.len);
+}

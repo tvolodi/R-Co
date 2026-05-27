@@ -202,3 +202,34 @@ fn endpoint(
         .include_standard_errors = true,
     };
 }
+
+const testing = std.testing;
+
+fn hasPath(doc: model.OpenApiDocument, method: model.HttpMethod, path: []const u8) bool {
+    for (doc.endpoints) |ep| {
+        if (ep.method == method and std.mem.eql(u8, ep.path, path)) return true;
+    }
+    return false;
+}
+
+test "OIDC-16 OpenAPI declares lifecycle, federation, and bundle endpoints" {
+    var doc = try buildOpenApiDocument(testing.allocator, defaultBuildInput());
+    defer doc.deinit(testing.allocator);
+
+    try testing.expect(hasPath(doc, .POST, "/api/v1/idp/realms"));
+    try testing.expect(hasPath(doc, .GET, "/api/v1/idp/realms"));
+    try testing.expect(hasPath(doc, .DELETE, "/api/v1/idp/realms/{realmId}"));
+
+    try testing.expect(hasPath(doc, .POST, "/api/v1/idp/realms/{realmId}/users"));
+    try testing.expect(hasPath(doc, .POST, "/api/v1/idp/realms/{realmId}/users/{userId}/roles:assign"));
+    try testing.expect(hasPath(doc, .POST, "/api/v1/idp/realms/{realmId}/users/{userId}/roles:revoke"));
+
+    try testing.expect(hasPath(doc, .POST, "/api/v1/idp/realms/{realmId}/clients"));
+    try testing.expect(hasPath(doc, .POST, "/api/v1/idp/realms/{realmId}/clients/{clientId}/secret:rotate"));
+
+    try testing.expect(hasPath(doc, .POST, "/api/v1/idp/realms/{realmId}/federations"));
+    try testing.expect(hasPath(doc, .GET, "/api/v1/idp/realms/{realmId}/federations"));
+    try testing.expect(hasPath(doc, .DELETE, "/api/v1/idp/realms/{realmId}/federations/{federationId}"));
+
+    try testing.expect(hasPath(doc, .POST, "/api/v1/idp/provisioning:bundle"));
+}
