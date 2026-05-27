@@ -150,6 +150,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-WF02-dsl08-20260527-step04.json; release approval is recorded in docs/status/release-DSL-08-20260527.json.
 - Requirement: DSL-08 (MUST, Stage 7) - RELEASED
 
+### DSL-09 - Date built-ins (RELEASED 2026-05-27)
+- **DSL-09**: Date built-ins — implemented now(), date_add(ts, n, unit), date_diff(ts1, ts2, unit) with second/minute/hour/day unit support, UTC-only pure millisecond arithmetic, cross-DST boundary verification, null propagation, and proper error handling for unknown units and wrong argument counts.
+- All 28 acceptance criteria tests pass, including cross-DST boundary test confirming pure UTC arithmetic semantics.
+- Validation evidence passed in tests/reports/report-WF02-dsl09-20260527-step04.json; release approval is recorded in docs/status/release-DSL-09-20260527.json.
+- Requirement: DSL-09 (MUST, Stage 7) - RELEASED
+
 ### OIDC-02 - Keycloak adapter (RELEASED 2026-05-26)
 - Implemented a concrete Keycloak 26.x adapter under `src/identity/provider/adapters/keycloak/` that satisfies the OIDC-01 IdentityProvider contract while keeping Keycloak-specific URLs, payloads, and behavior adapter-local.
 - Preserved compile isolation by keeping Keycloak references confined to adapter modules and adapter-local tests, so removing the adapter does not affect non-adapter compilation paths.

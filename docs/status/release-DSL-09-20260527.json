@@ -1,0 +1,32 @@
+{
+  "stage": "Stage 7 — Expression DSL",
+  "requirement_id": "DSL-09",
+  "priority": "MUST",
+  "date": "2026-05-27",
+  "release_decision": "PASS",
+  "verified_criteria": [
+    "now() returns platform's current time (ms since epoch) — PASS (TC-DSL-09-01)",
+    "date_add(ts, n, unit) supports second unit — PASS (TC-DSL-09-02)",
+    "date_add(ts, n, unit) supports minute unit — PASS (TC-DSL-09-03)",
+    "date_add(ts, n, unit) supports hour unit — PASS (TC-DSL-09-04)",
+    "date_add(ts, n, unit) supports day unit — PASS (TC-DSL-09-05)",
+    "date_diff(ts1, ts2, unit) supports second unit — PASS (TC-DSL-09-06)",
+    "date_diff(ts1, ts2, unit) supports minute unit — PASS (TC-DSL-09-07)",
+    "date_diff(ts1, ts2, unit) supports hour unit — PASS (TC-DSL-09-08)",
+    "date_diff(ts1, ts2, unit) supports day unit — PASS (TC-DSL-09-09)",
+    "Time math uses UTC (ms arithmetic), no implicit timezone handling — PASS (TC-DSL-09-17 cross-DST boundary)",
+    "Cross-DST boundary test confirms UTC arithmetic produces correct result — PASS (TC-DSL-09-17)",
+    "All 28 acceptance criteria tests pass — PASS (zig build test exits 0)"
+  ],
+  "nfr_results": {},
+  "blocking_issues": [],
+  "approved_requirements": ["DSL-09"],
+  "test_result_summary": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0
+  },
+  "tested_at": "2026-05-27T18:44:40Z",
+  "released_at": "2026-05-27T18:45:38Z"
+}
