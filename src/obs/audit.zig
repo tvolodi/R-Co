@@ -84,7 +84,7 @@ pub fn list(
         \\  action,
         \\  resource_type,
         \\  resource_id::text,
-            \\  pipeline_run_id::text,
+        \\  pipeline_run_id::text,
         \\  to_char("timestamp" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  before_state::text,
         \\  after_state::text,

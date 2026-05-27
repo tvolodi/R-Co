@@ -1,0 +1,72 @@
+{
+  "run_id": "WF02-oidc10-20260527",
+  "created_at": "2026-05-27T20:33:47Z",
+  "estimation_rules_version": "1.0",
+  "requirement_ids": ["OIDC-10"],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "steps": {
+    "code-designer": {
+      "estimated_minutes": 33,
+      "actual_minutes": 2.5,
+      "variance_pct": -92.4,
+      "started_at": "2026-05-27T20:04:46Z",
+      "completed_at": "2026-05-27T20:07:16Z"
+    },
+    "backend-dev": {
+      "estimated_minutes": 13,
+      "actual_minutes": 6.5,
+      "variance_pct": -50.0,
+      "started_at": "2026-05-27T20:07:29Z",
+      "completed_at": "2026-05-27T20:13:56Z"
+    },
+    "test-designer": {
+      "estimated_minutes": 8,
+      "actual_minutes": 12.6,
+      "variance_pct": 57.5,
+      "started_at": "2026-05-27T20:14:10Z",
+      "completed_at": "2026-05-27T20:26:46Z"
+    },
+    "test-runner": {
+      "estimated_minutes": 4,
+      "actual_minutes": 1.0,
+      "variance_pct": -75.4,
+      "started_at": "2026-05-27T20:27:16Z",
+      "completed_at": "2026-05-27T20:28:15Z"
+    },
+    "release-validator": {
+      "estimated_minutes": 10,
+      "actual_minutes": 1.1,
+      "variance_pct": -89.3,
+      "started_at": "2026-05-27T20:31:01Z",
+      "completed_at": "2026-05-27T20:32:05Z"
+    },
+    "doc-updater": {
+      "estimated_minutes": 3,
+      "actual_minutes": 0.8,
+      "variance_pct": -72.2,
+      "started_at": "2026-05-27T20:32:57Z",
+      "completed_at": "2026-05-27T20:33:47Z"
+    }
+  },
+  "total": {
+    "estimated_minutes": 71,
+    "actual_minutes": 24.5,
+    "variance_pct": -65.5
+  },
+  "observations": [
+    "code-designer massively overestimated (33min estimated vs 2.5min actual, -92.4%): design was largely derivative of OIDC-09 design doc, minimal new analysis required",
+    "backend-dev overestimated (13min vs 6.5min, -50.0%): implementation was straightforward replacement of stub with real DB queries",
+    "test-designer underestimated (8min vs 12.6min, +57.5%): writing both unit and integration test code with full coverage took longer than estimated",
+    "test-runner overestimated (4min vs 1min, -75.4%): quick execution with zero failures",
+    "release-validator significantly overestimated (10min vs 1min, -89.3%): all NFRs pass, no blocking issues",
+    "doc-updater overestimated (3min vs 0.8min, -72.2%): standard status+changelog update with retrospective",
+    "Overall variance -65.5%: estimate was 71min, actual was 24.5min — the estimation rules significantly overestimate for derivative/replacement work"
+  ],
+  "adjustments": [],
+  "artifacts_out": [
+    "docs/status/requirement_status.json",
+    "CHANGELOG.md",
+    "docs/metrics/retrospectives/WF02-oidc10-20260527.json"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "handoff_id": "20260527-006",
+  "run_id": "WF02-oidc10-20260527",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "file": "handoffs/WF02-oidc10-20260527/step-05-release-validator.json",
+  "created_at": "2026-05-27T20:29:11Z",
+  "started_at": "2026-05-27T20:31:01Z",
+  "completed_at": "2026-05-27T20:32:05Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": ["OIDC-10"],
+    "related_handoff_ids": ["20260527-005"],
+    "artifacts_in": [
+      "tests/reports/report-WF02-oidc10-20260527-step04.json",
+      "docs/agents/workflows/WF-04_full_test_run.md"
+    ],
+    "branch_name": "feature/WF02-oidc10-20260527"
+  },
+  "task": {
+    "description": "Validate OIDC-10 for release.\n\n1. Read the test report at tests/reports/report-WF02-oidc10-20260527-step04.json\n2. Run full build: zig build (must exit 0)\n3. Run unit tests: zig build test (must exit 0)\n4. Run integration tests: zig build test-integration-oidc10 (must exit 0)\n5. Run benchmarks: zig build bench (verify NFR results pass)\n6. Verify all OIDC-10 MUST acceptance criteria are covered and passing\n7. Write release decision to docs/status/release-OIDC-10-20260527.json\n8. Commit and push to feature/WF02-oidc10-20260527",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration-oidc10 exits 0",
+      "All NFR benchmarks pass",
+      "Release decision document created"
+    ],
+    "functions_to_call": ["fn:validate-release", "fn:check-nfrs"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for OIDC-10 (Stage 6.5). All tests pass (14/14), all NFR benchmarks pass, release decision written.",
+    "artifacts_out": [
+      "docs/status/release-OIDC-10-20260527.json"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to set OIDC-10 status to RELEASED"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-27T20:32:05Z"
+}

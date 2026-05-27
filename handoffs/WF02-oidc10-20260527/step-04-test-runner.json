@@ -1,0 +1,49 @@
+{
+  "handoff_id": "20260527-005",
+  "run_id": "WF02-oidc10-20260527",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-oidc10-20260527/step-04-test-runner.json",
+  "created_at": "2026-05-27T20:27:00Z",
+  "started_at": "2026-05-27T20:27:16Z",
+  "completed_at": "2026-05-27T20:28:15Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": ["OIDC-10"],
+    "related_handoff_ids": ["20260527-004"],
+    "artifacts_in": [
+      "tests/specs/OIDC-10.md",
+      "tests/integration/oidc10_attribute_sync_test.zig",
+      "docs/guides/test_developer_guide.md"
+    ],
+    "branch_name": "feature/WF02-oidc10-20260527"
+  },
+  "task": {
+    "description": "Execute the OIDC-10 test suite and produce a structured test report.\n\n1. Run unit tests: zig build test (must exit 0)\n2. Run integration tests: set BPM_TEST_DB_URL and run zig build test-integration-oidc10 (must exit 0)\n3. Write test report to tests/reports/report-WF02-oidc10-20260527-step04.json\n4. Report format per test guide section 8:\n   - Test run metadata (run_id, step, agent, timestamp)\n   - Test summary by layer (unit, integration)\n   - Detailed results per test case\n   - Issues list (severity: BLOCKER/MAJOR/MINOR)\n5. Commit and push to feature/WF02-oidc10-20260527",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-integration-oidc10 exits 0",
+      "Test report written to tests/reports/",
+      "All OIDC-10 MUST acceptance criteria pass",
+      "No skipped tests on MUST requirements"
+    ],
+    "functions_to_call": ["fn:run-unit-tests", "fn:run-integration-tests", "fn:write-test-report"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All OIDC-10 test layers passed — unit (5/5) and integration (9/9), 0 failures, 0 skipped",
+    "artifacts_out": [
+      "tests/reports/report-WF02-oidc10-20260527-step04.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-27T20:27:16Z",
+  "completed_at": "2026-05-27T20:28:15Z"
+}

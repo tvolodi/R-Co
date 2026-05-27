@@ -218,6 +218,17 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-WF02-oidc09-20260527-step04b.json; release approval is recorded in docs/status/release-OIDC-09-20260527.json.
 - Requirement: OIDC-09 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-10 - Attribute synchronisation (RELEASED 2026-05-27)
+- Implemented syncAttributesFromIdentityContext (replaces stub) with profile field update — display_name, email, status synchronised from token claims on every authenticated request.
+- Added role reconciliation: token roles are authoritative for OIDC-sourced role bindings, locally-assigned roles (from IDN-03) preserved across reconciliation cycles.
+- Migration 040_oidc10_role_source.sql adds role_source column to user_roles with values 'oidc' (sourced from OIDC token claims, subject to reconciliation) and 'internal' (assigned locally via IDN-03, preserved).
+- Identity service: updateOidcUserProfile for profile field updates, reconcileOidcRoles for role binding diff computation (insert new OIDC roles, remove stale OIDC roles, skip locally-assigned).
+- Registry: selectUserRoles, insertOidcRoleBinding, deleteOidcRoleBinding for role management queries.
+- Auth pipeline wired with best-effort sync call after JIT provisioning — sync failure logged as warning but does not block authentication.
+- Unit tests (5/5) for pure role reconciliation algorithm; integration tests (9/9) for full flow against real PostgreSQL.
+- Validation evidence passed in tests/reports/report-WF02-oidc10-20260527-step04.json; release approval is recorded in docs/status/release-OIDC-10-20260527.json.
+- Requirement: OIDC-10 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

@@ -1,0 +1,126 @@
+{
+  "run_id": "WF02-oidc10-20260527",
+  "step": "04",
+  "agent": "TEST-RUNNER",
+  "timestamp": "2026-05-27T20:28:15Z",
+  "summary": {
+    "unit": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    "integration": {
+      "total": 9,
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0
+    },
+    "overall": {
+      "total": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "layers": [
+    {
+      "name": "unit",
+      "command": "zig build test",
+      "exit_code": 0,
+      "result": "PASS",
+      "test_cases": [
+        {
+          "test_id": "TC-OIDC-10-11",
+          "description": "Unit — reconciliation algorithm computes correct add_set and remove_set",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-12",
+          "description": "Unit — empty token roles produce removal of all OIDC roles",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-13",
+          "description": "Unit — all roles locally-assigned, token has new roles",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-14",
+          "description": "Unit — role is both OIDC-sourced and locally-assigned",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-15",
+          "description": "Unit — no OIDC-sourced roles at all",
+          "result": "PASS"
+        }
+      ]
+    },
+    {
+      "name": "integration",
+      "command": "zig build test-integration-oidc10",
+      "exit_code": 0,
+      "result": "PASS",
+      "test_cases": [
+        {
+          "test_id": "TC-OIDC-10-01",
+          "description": "Full flow — resolve user, update profile, reconcile roles",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-02",
+          "description": "Profile sync — display_name, email updated when claims differ",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-03",
+          "description": "Profile no-op — no update when claims match stored values",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-04",
+          "description": "Role reconciliation — add new OIDC roles, remove stale OIDC roles",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-05",
+          "description": "Role preservation — locally-assigned roles survive reconciliation",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-06",
+          "description": "Role overlap — OIDC role removed, separate local role preserved",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-07",
+          "description": "Empty token roles — all OIDC-sourced roles removed, local ones preserved",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-08",
+          "description": "Error handling — user not found returns error.UserNotFound",
+          "result": "PASS"
+        },
+        {
+          "test_id": "TC-OIDC-10-10",
+          "description": "No change — identical profile and roles produce empty result",
+          "result": "PASS"
+        }
+      ]
+    }
+  ],
+  "coverage": {},
+  "nfr_results": [],
+  "issues": [],
+  "acceptance_criteria_met": [
+    "zig build test exits 0 — PASS",
+    "zig build test-integration-oidc10 exits 0 — PASS",
+    "Test report written to tests/reports/ — PASS",
+    "All OIDC-10 MUST acceptance criteria pass — PASS",
+    "No skipped tests on MUST requirements — PASS"
+  ]
+}

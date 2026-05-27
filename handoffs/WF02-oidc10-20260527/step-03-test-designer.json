@@ -1,0 +1,58 @@
+{
+  "handoff_id": "20260527-004",
+  "run_id": "WF02-oidc10-20260527",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-oidc10-20260527/step-03-test-designer.json",
+  "created_at": "2026-05-27T20:14:10Z",
+  "started_at": null,
+  "completed_at": "2026-05-27T20:26:46Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-10"
+    ],
+    "related_handoff_ids": [
+      "20260527-003"
+    ],
+    "artifacts_in": [
+      "src/design/oidc-10-attribute-sync.md",
+      "src/oidc/jit_provisioning.zig",
+      "src/identity/service.zig",
+      "src/identity/registry.zig",
+      "docs/guides/test_developer_guide.md"
+    ],
+    "branch_name": "feature/WF02-oidc10-20260527"
+  },
+  "task": {
+    "description": "Design and write test specs and test code for OIDC-10 (Attribute Synchronisation and Role Reconciliation).\n\nPer the design doc at src/design/oidc-10-attribute-sync.md, the test strategy is:\n- Unit tests for the pure role reconciliation algorithm (partition, diff, set operations)\n- Integration tests for the full attribute sync + role reconciliation flow against real PostgreSQL\n\nCreate:\n1. tests/specs/OIDC-10.md \u2014 test specification document covering all test cases\n2. Test source code for OIDC-10 attribute sync:\n   - Unit tests in src/oidc/jit_provisioning.zig (or a dedicated test file) for:\n     * Role reconciliation algorithm: add_set and remove_set computation\n     * Profile comparison logic\n     * Edge cases: empty token roles, no OIDC-sourced roles, all roles locally-assigned\n   - Integration tests in tests/ for:\n     * Full flow: resolve user \u2192 compare profile \u2192 update if changed \u2192 reconcile roles\n     * Profile sync: display_name, email, status updates when claims differ\n     * Profile no-op: no update when claims match stored values\n     * Role reconciliation: add new OIDC roles, remove stale OIDC roles\n     * Role preservation: locally-assigned roles survive reconciliation\n     * Role overlap: role is both OIDC-sourced and locally-assigned (should not be deleted)\n     * Empty token roles: all OIDC-sourced roles removed, local ones preserved\n     * Error handling: user not found returns error.UserNotFound\n     * Best-effort wiring: sync failure does not block auth\n\nIMPORTANT: Per DIRECTIVE T-1, do NOT use mocks, stubs, or in-memory fakes. Integration tests MUST connect to real PostgreSQL via BPM_TEST_DB_URL. Unit tests (pure algorithm) can be in-memory.",
+    "acceptance_criteria": [
+      "tests/specs/OIDC-10.md is created with all test cases documented",
+      "Test code exists for both unit tests (pure algorithm) and integration tests (against real DB)",
+      "All acceptance criteria from OIDC-10 are covered by at least one test",
+      "No mocks, stubs, or in-memory fakes in integration tests"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions",
+      "fn:read-test-guide"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and test code for OIDC-10 attribute sync and role reconciliation",
+    "artifacts_out": [
+      "tests/specs/OIDC-10.md",
+      "tests/integration/oidc10_attribute_sync_test.zig",
+      "src/oidc/jit_provisioning.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

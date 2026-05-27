@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-oidc09-20260527/step-final-backend-dev.json",
   "created_at": "2026-05-27T19:42:58Z",
   "started_at": "2026-05-27T19:45:20Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-05-27T19:50:01Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
@@ -44,7 +44,25 @@
       "fn:register-inner-report"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Executed fn:git-merge: rebased feature/WF02-oidc09-20260527 onto origin/main, created and merged PR into main",
+    "artifacts_out": [
+      "branch: feature/WF02-oidc09-20260527 (squash-merged into main, branch deleted)"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-oidc09-20260527",
+      "commit_sha_list": [
+        "097d620"
+      ],
+      "remote_branch": "origin/main",
+      "push_status": "ok",
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/20",
+      "pr_create_error": null
+    },
+    "next_action": "ORCH marks run COMPLETED and releases owned_modules lock"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
