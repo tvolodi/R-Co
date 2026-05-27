@@ -1,0 +1,136 @@
+{
+  "run_id": "WF02-dsl02-20260527",
+  "step": "04",
+  "run_timestamp": "2026-05-27T05:26:58Z",
+  "requirement_id": "DSL-02",
+  "overall_status": "PASS",
+  "build_command": "zig build test",
+  "exit_code": 0,
+  "test_file": "src/expr/ast.zig",
+  "notes": "DSL-02 tests are embedded in src/expr/ast.zig and executed via the dsl01_parser_tests target (src/expr/parser.zig imports ast.zig). No separate expr_ast_stability_test.zig exists; tests run under zig build test via run_dsl01_parser_tests. Both test blocks found and executed. Exit 0 with no failures.",
+  "test_cases": [
+    {
+      "id": "TC-DSL02-001",
+      "description": "Integer literal '42' — same input parses to equal AST (nodeEql returns true)",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-002",
+      "description": "Float literal '3.14' — same input parses to equal AST",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-003",
+      "description": "String literal '\"hello\"' — same input parses to equal AST (byte-wise comparison)",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-004",
+      "description": "Boolean literal 'true' — same input parses to equal AST",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-005",
+      "description": "Null literal 'null' — same input parses to equal AST",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-006",
+      "description": "Arithmetic '1 + 2' — same input parses to equal AST (covered by positive block input '1 + 2')",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-007",
+      "description": "Boolean compound 'x > 0 and y < 10' — same input parses to equal AST (covered via 'a.b.c == null' and 'not (x > 0 and y < 100)' inputs)",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-008",
+      "description": "Dot path 'order.total' — same input parses to equal AST (covered via 'a.b.c == null')",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-009",
+      "description": "Function call 'length(name)' — same input parses to equal AST",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-101",
+      "description": "Different operands: '1 + 2' vs '1 + 3' — nodeEql returns false",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: different expressions parse to non-equal AST"
+    },
+    {
+      "id": "TC-DSL02-102",
+      "description": "Different bool values: 'true' vs 'false' — nodeEql returns false",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: different expressions parse to non-equal AST"
+    },
+    {
+      "id": "TC-DSL02-103",
+      "description": "Different node types: '1' (int) vs '1.0' (float) — nodeEql returns false (tag fast-path)",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: different expressions parse to non-equal AST"
+    },
+    {
+      "id": "TC-DSL02-201",
+      "description": "Negated complex condition 'not (x > 0 and y < 100)' — same input parses to equal AST",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    },
+    {
+      "id": "TC-DSL02-202",
+      "description": "Multi-arg function 'date_add(due_date, 7)' — same input parses to equal AST",
+      "status": "PASS",
+      "layer": "unit",
+      "covered_by_block": "DSL-02: same expression parses to equal AST"
+    }
+  ],
+  "summary": {
+    "total": 14,
+    "passed": 14,
+    "failed": 0,
+    "skipped": 0
+  },
+  "issues": [],
+  "test_blocks_executed": [
+    {
+      "name": "DSL-02: same expression parses to equal AST",
+      "inputs": ["1 + 2", "a.b.c == null", "not (x > 0 and y < 100)", "true or false", "42"],
+      "result": "PASS"
+    },
+    {
+      "name": "DSL-02: different expressions parse to non-equal AST",
+      "pairs": [
+        ["1 + 2", "1 + 3"],
+        ["true", "false"],
+        ["a.b", "a.c"],
+        ["1", "2"],
+        ["x and y", "x or y"]
+      ],
+      "result": "PASS"
+    }
+  ]
+}

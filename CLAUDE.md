@@ -336,6 +336,14 @@ If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`:
 If output is clean (exits 0 with benchmark numbers): proceed to dispatch RELEASE-VALIDATOR.
 Log: `<ts> | BENCH_ENV_CHECK | <run-id> | --- | ORCH | CLEARED`
 
+### ORCH execution style
+
+**Never explain before acting.** Do not write preamble sentences like "The orchestrator instructions are clear..." or "I'll now create a handoff for...". Just create the handoffs and invoke subagents immediately.
+
+**Never ask the user to invoke an agent.** After creating handoffs, run the pipeline autonomously by calling subagents in sequence. The pipeline is complete only when DOC-UPDATER has set the requirement to RELEASED and Step Final has returned PASS. The user's only valid interaction point is when genuine business-preference ambiguity requires a choice — not for pipeline steps.
+
+**Do not treat unrelated pre-existing workspace changes as blockers or user-facing issues.** Discuss workspace changes only when there is direct file overlap/conflict or they block acceptance criteria.
+
 ### ORCH forbidden actions
 
 ```
@@ -371,7 +379,7 @@ Read the handoff file. Read the design artefact it references under `context.art
 
 ### Implementation workflow
 
-**1. Understand** — read requirement IDs from `docs/BPM_Platform_Functional_Requirements.md` and the design file at `src/design/<module>.md`.
+**1. Understand** — read requirement IDs from `docs/BPM_Platform_Functional_Requirements.md` and the design file at `src/design/<module>.md`. Treat pre-existing unrelated uncommitted files in the workspace as expected context, not an automatic blocker — only stop if there is a direct file conflict with your implementation targets.
 
 **2. Implement** — write Zig source files and SQL migrations per the conventions in the backend guide.
 
@@ -398,14 +406,28 @@ WF-03 dispatches. Do not proceed until this command produces no output.
 - [ ] Error types defined in per-module error sets
 - [ ] If any function signature changed: verify all call sites by running `zig build` and checking zero errors
 - [ ] `zig build` exits 0 with no "error set" output in stderr
+- [ ] No mocks, stubs, in-memory fakes, or stub return values in any test file (DIRECTIVE T-1)
+- [ ] No `error.SkipZigTest` on any test block that covers a MUST requirement (a skipped MUST test = requirement stays PENDING)
+- [ ] All integration tests connect to real PostgreSQL via `BPM_TEST_DB_URL`
 
-**5. Complete the handoff:**
-
-First, get the real current UTC time by running a shell command:
+**6. Commit implementation to the feature branch** (mandatory — do this before completing the handoff):
 ```bash
-python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
+git branch --show-current   # must be feature/<run-id>; STOP and report FAIL if not
+git add -A
+git commit -m "feat(<run-id>): implement <module> (<requirement-ids>)"
+git push origin feature/<run-id>
 ```
-Use the exact printed string as `completed_at`. Never invent or guess a timestamp.
+This makes implementation progress visible on the remote branch immediately. Step Final (`fn:git-merge`) will add any remaining artifacts from downstream agents (test specs, reports, changelogs) in its own commit.
+
+**7. Complete the handoff:**
+
+First, get the real current UTC time by running a shell command — NEVER invent or guess it:
+```powershell
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+Or with Python: `python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"`
+
+Use the exact string printed by the command as `completed_at`.
 
 Then update the handoff file:
 ```python
@@ -429,6 +451,13 @@ Also update the `status` field in `handoffs/registry.json` for this handoff.
 
 > **Note:** Do NOT set `started_at` — ORCH stamps it before dispatching you. Do NOT write `completed_at` from memory — always run the shell command above first.
 
+### Workspace rules
+
+- Do not stop only because the workspace has unrelated pre-existing changes. Continue with your task and keep edits scoped to the handoff's target files.
+- Stop only for true file overlap/conflict on your implementation targets, or a validation blocker that prevents acceptance criteria.
+- Do not spend tokens reporting unrelated pre-existing changes in your result.
+- If unsure about a design decision: write your question in the handoff `result.issues` with severity MINOR and proceed with the most conservative interpretation.
+
 ### Security rules (hard constraints)
 
 1. **No SQL string interpolation.** Use `$1`, `$2` placeholders via `pg.zig`. Any violation is a critical security defect.
@@ -447,7 +476,10 @@ zig build migrate
 zig build bench
 cat, grep, find, ls, head, tail
 python3 -c "import json ..."
-# Git operations — Step 00 and Step Final only (see docs/agents/protocols/GIT_SETUP.md and GIT_MERGE.md)
+# Git operations allowed at three points:
+#   Step 00  (fn:git-setup)   — create and push feature branch
+#   Step N   (implementation) — commit and push implementation after zig build test passes
+#   Step Final (fn:git-merge) — rebase, PR, squash merge, cleanup
 git checkout main
 git pull --ff-only origin main
 git checkout -b feature/<run-id>
@@ -496,6 +528,23 @@ Then find your handoff:
 grep -rl '"to_agent": "FRONTEND-DEV"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
 ```
 
+## Testing Directives — ABSOLUTE RULES
+
+These rules are non-negotiable. Violation of any one makes the handoff FAILED.
+
+### DIRECTIVE T-2 — No mocks, no stubs, real backend always
+
+- MSW (Mock Service Worker) is FORBIDDEN. Do not install, import, or reference it.
+- `axios-mock-adapter`, manual `fetch` intercepts, and any HTTP-level mocking are FORBIDDEN.
+- Every test that involves API data MUST be an E2E test against the real running backend server and real database.
+- The only tests allowed without a backend are pure utility functions (Zod schemas, date formatters, pure helpers with no API dependency).
+
+### DIRECTIVE T-3 — Visual verification; no human UAT
+
+- There is no human UAT step. You (the agent) perform all acceptance testing.
+- After every significant UI action in a test, take a screenshot and visually inspect it.
+- Test verdict must be: _"Screen shows X after action Y"_ — not _"no error was thrown"_.
+
 ### Implementation workflow
 
 **1. Understand** — read requirements from `docs/BPM_Platform_Frontend_Requirements.md` and the design artefact in `context.artifacts_in`.
@@ -505,23 +554,46 @@ grep -rl '"to_agent": "FRONTEND-DEV"' handoffs/ | xargs grep -l '"status": "PEND
 **3. Validate:**
 ```bash
 cd web
-npm run type-check
-npm run lint
-npm run test
-npm run build
+npm run type-check   # must exit 0
+npm run lint         # must exit 0
+npm run test         # pure unit tests (utils/schemas only) — must exit 0
+npm run build        # must exit 0
+npx playwright test  # E2E against real backend — must exit 0
 ```
 All must pass before completing.
 
 **4. Self-review:**
-- [ ] All API calls go through `src/api/client.ts`
+- [ ] All API calls go through `src/api/client.ts` — no raw `fetch` in components
 - [ ] Query keys use the factory in `src/api/queryKeys.ts`
+- [ ] No MSW, no HTTP mocking of any kind
+- [ ] Every MUST requirement test is a Playwright E2E test against real backend
+- [ ] No `test.skip` on any MUST requirement test
+- [ ] Each E2E test verdict is "screen shows X" (visual confirmation taken)
 - [ ] Role-based UI hides elements (does not just disable them)
 - [ ] No secrets or tokens in source files
 - [ ] `npm run type-check` exits 0
 
-**5. Complete the handoff** — same pattern as BACKEND-DEV section above.
+**5. Commit implementation to the feature branch** (mandatory — do this before completing the handoff):
+```bash
+git branch --show-current   # must be feature/<run-id>; STOP and report FAIL if not
+git add -A
+git commit -m "feat(<run-id>): implement <component> (<requirement-ids>)"
+git push origin feature/<run-id>
+```
 
-### Allowed git commands (Step 00 and Step Final only)
+**6. Complete the handoff:**
+
+First, get the real current UTC time — NEVER invent or guess it:
+```powershell
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+Or with Python: `python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"`
+
+Update the handoff JSON and `handoffs/registry.json` (same pattern as BACKEND-DEV section above).
+
+> **Note:** Do NOT set `started_at` — ORCH stamps it. Do NOT write `completed_at` from memory.
+
+### Allowed git commands (Step 00, implementation step, and Step Final)
 
 ```bash
 git checkout main

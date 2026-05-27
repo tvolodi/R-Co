@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-26T21:51:06Z",
-  "updated_by": "WF02-dsl01-20260527",
-  "update_count": 42,
+  "updated_at": "2026-05-27T05:35:18Z",
+  "updated_by": "WF02-dsl02-20260527",
+  "update_count": 45,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
     "2": "Single function or endpoint, no schema change, < 50 LOC",
@@ -13,14 +13,14 @@
   "step_estimates_minutes": {
     "code-designer": [
       5,
-      3,
+      2,
       26,
       32,
       40
     ],
     "backend-dev": [
       10,
-      8,
+      6,
       10,
       6,
       100
@@ -34,7 +34,7 @@
     ],
     "test-designer": [
       5,
-      6,
+      3,
       6,
       4,
       40

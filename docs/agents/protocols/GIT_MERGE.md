@@ -20,17 +20,24 @@ Rebases the feature branch onto current main, creates a PR, merges it, and clean
    git branch --show-current
    Must equal feature/<run-id>. If not: STOP; report FAIL to ORCH.
 
-2. Stage all changes:
+2. Stage any remaining uncommitted files (test specs, reports, changelogs, handoffs written by
+   downstream agents since BACKEND-DEV's implementation commit):
    git add -A
 
-3. Commit (use run-id and summary from the last completed agent's result.summary):
-   git commit -m "feat(<run-id>): <one-line summary>
+   If `git status` shows a clean tree (BACKEND-DEV already committed everything), skip to step 4.
+
+3. Commit remaining artifacts (use run-id and summary from the last completed agent's result.summary):
+   git commit -m "feat(<run-id>): finalize artifacts — test specs, reports, changelog
 
    Requirements: <comma-separated requirement IDs from context.requirement_ids>
    Handoff: <run-id>"
 
    For WF-03 fix branches use prefix "fix" instead of "feat":
    git commit -m "fix(<run-id>): <one-line summary from ISSUE-FIXER result.summary>"
+
+   Note: BACKEND-DEV commits its implementation in step N (the implementation step), so
+   Step Final typically only needs to commit artifacts produced by TEST-DESIGNER, TEST-RUNNER,
+   RELEASE-VALIDATOR, and DOC-UPDATER. Both commits end up squash-merged in step 8.
 
 4. Sync with remote:
    git fetch origin main

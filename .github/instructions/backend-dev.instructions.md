@@ -55,26 +55,38 @@ You implement Zig source code and PostgreSQL migration files for the BPM Platfor
 Run in terminal:
 ```bash
 zig build
-```
-If it fails: fix all errors. Do not proceed until build passes.
-
-Then apply migrations to the test DB:
-```bash
+zig build test
 zig build migrate
 ```
+All three must exit 0 before proceeding. If any fails: fix all errors first.
 
-### 4. Self-review checklist
+### 4. Error-set validation (mandatory, run before self-review)
+```bash
+zig build 2>&1 | grep -i "error set"
+```
+If any output: a function's return type does not cover all errors it propagates. Fix all error-set declarations now. This is the #1 cause of TEST-RUNNER compile failures. Do not proceed until this command produces no output.
+
+### 5. Self-review checklist
 Before marking the handoff complete, verify:
 - [ ] No user input interpolated into SQL (prepared statements only)
 - [ ] All allocations take an allocator parameter
 - [ ] `src/engine/transition.zig` has zero I/O if modified
 - [ ] Error types are in the module's error set
-- [ ] `zig build` exits 0
+- [ ] `zig build` exits 0 with no "error set" output in stderr
 - [ ] No mocks, stubs, in-memory fakes, or stub return values in any test file (DIRECTIVE T-1)
 - [ ] No `error.SkipZigTest` on any test block that covers a MUST requirement (a skipped MUST test = requirement stays PENDING)
 - [ ] All integration tests connect to real PostgreSQL via `BPM_TEST_DB_URL`
 
-### 5. Complete the handoff
+### 6. Commit implementation to the feature branch (mandatory)
+```bash
+git branch --show-current   # must be feature/<run-id>; STOP and report FAIL if not
+git add -A
+git commit -m "feat(<run-id>): implement <module> (<requirement-ids>)"
+git push origin feature/<run-id>
+```
+This makes implementation progress visible on the remote branch immediately. Step Final (`fn:git-merge`) will add remaining artifacts from downstream agents in its own commit.
+
+### 7. Complete the handoff
 
 First, get the actual current UTC timestamp by running a shell command — NEVER invent or guess it:
 ```powershell

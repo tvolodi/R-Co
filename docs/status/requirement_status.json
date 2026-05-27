@@ -1299,6 +1299,20 @@
       "release_run": "WF02-dsl01-20260527",
       "release_decision": "docs/status/release-DSL-01-20260526.json",
       "last_updated": "2026-05-26T21:46:58Z"
+    },
+    "DSL-02": {
+      "status": "RELEASED",
+      "stage": 7,
+      "priority": "MUST",
+      "title": "AST stability",
+      "implementation_run": "WF02-dsl02-20260527",
+      "test_spec": "tests/specs/DSL-02.md",
+      "test_run": "tests/reports/report-2026-05-27T05-26-58Z-WF02-dsl02-step04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T05:33:06Z",
+      "release_run": "WF02-dsl02-20260527",
+      "release_decision": "docs/status/release-DSL-02-20260527.json",
+      "last_updated": "2026-05-27T05:35:18Z"
     }
   }
 }
