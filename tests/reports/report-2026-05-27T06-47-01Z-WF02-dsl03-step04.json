@@ -1,0 +1,156 @@
+{
+  "run_id": "WF02-dsl03-20260527",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "timestamp": "2026-05-27T06:47:01Z",
+  "summary": {
+    "total": 44,
+    "passed": 44,
+    "failed": 0,
+    "skipped": 0
+  },
+  "test_suites": [
+    {
+      "name": "DSL-01 Parser Tests",
+      "file": "src/expr/parser.zig",
+      "total": 29,
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "name": "DSL-03 Error Recovery Tests",
+      "file": "tests/unit/expr_error_recovery_test.zig",
+      "total": 15,
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0
+    }
+  ],
+  "dsl03_results": [
+    {
+      "test_id": "TC-DSL03-001",
+      "description": "Three distinct syntax errors yield three ParseError entries",
+      "test_name": "three distinct errors in one pass: bogus(, ) +",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-002",
+      "description": "Dot-path double-dot yields single non-cascading error",
+      "test_name": "Gap A fix: dot-path double-dot yields single error",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-003",
+      "description": "Binary operator double-operator recovers correctly",
+      "test_name": "Gap B fix: binary operator recovery with double operator",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-004",
+      "description": "Trailing operator after recovery produces second error",
+      "test_name": "Gap B fix: trailing operator after binary expression",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-005",
+      "description": "Missing closing paren after function call argument list",
+      "test_name": "Gap C fix: missing closing paren in func call",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-006",
+      "description": "Comparison operator RHS with invalid operator token",
+      "test_name": "Gap B fix: comparison RHS recovery after invalid operator",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-007",
+      "description": "Keyword where expression expected recovers to outer production",
+      "test_name": "Gap B fix: keyword where expression expected",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-008",
+      "description": "Unclosed grouped expression with synchronize",
+      "test_name": "existing lparen recovery: unclosed paren no regression",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-009",
+      "description": "Multiple unknown functions across and production",
+      "test_name": "existing error recovery: multiple unknown functions",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-010",
+      "description": "Complex valid expression parses to .ok",
+      "test_name": "positive: valid expression parses correctly",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-011",
+      "description": "Integer overflow lexer error combined with missing operator",
+      "test_name": "TC-DSL03-011: integer overflow lexer error combined with missing operator",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-012",
+      "description": "Unterminated string literal produces lexer error",
+      "test_name": "TC-DSL03-012: unterminated string literal produces lexer error",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-013",
+      "description": "Unexpected character lexer error combined with syntax error",
+      "test_name": "TC-DSL03-013: unexpected character lexer error combined with syntax error",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-014",
+      "description": "Double operator then trailing operator at higher production",
+      "test_name": "TC-DSL03-014: double operator then trailing operator at higher production",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    },
+    {
+      "test_id": "TC-DSL03-015",
+      "description": "Recovery through multiple grammar levels",
+      "test_name": "TC-DSL03-015: recovery through multiple grammar levels",
+      "result": "PASS",
+      "layer": "unit",
+      "file": "tests/unit/expr_error_recovery_test.zig"
+    }
+  ],
+  "failures": [],
+  "coverage": {
+    "backend_unit": "N/A — Zig built-in test framework does not report line coverage in dev mode"
+  }
+}

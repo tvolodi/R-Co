@@ -283,8 +283,23 @@ const Parser = struct {
             // Error: unexpected token
             else => {
                 self.recordError(tok, "expected expression");
-                self.synchronize();
-                return self.sentinel();
+                // Skip the offending token. If the next token can start an
+                // expression, recurse to parse it; otherwise return sentinel
+                // so the caller can continue looking for operators.
+                if (self.peek().kind != .eof) {
+                    _ = self.advance();
+                }
+                const next_tok = self.peek();
+                switch (next_tok.kind) {
+                    .int_literal, .float_literal, .string_literal,
+                    .true_kw, .false_kw, .null_kw,
+                    .lparen, .identifier, .builtin_func => {
+                        return self.parsePrimary();
+                    },
+                    else => {
+                        return self.sentinel();
+                    },
+                }
             },
         }
     }
@@ -327,6 +342,7 @@ const Parser = struct {
                 try segments.append(alloc, seg_tok.lexeme);
             } else {
                 self.recordError(seg_tok, "expected identifier after '.'");
+                self.synchronize();
                 break;
             }
         }
@@ -352,7 +368,9 @@ const Parser = struct {
             }
         }
 
-        _ = self.expect(.rparen, "expected ')' after argument list");
+        if (self.expect(.rparen, "expected ')' after argument list") == null) {
+            self.synchronize();
+        }
         return args.toOwnedSlice(alloc);
     }
 };

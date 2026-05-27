@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-27T03:12:14Z",
+  "last_updated": "2026-05-27T06:49:00Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1313,6 +1313,19 @@
       "release_run": "WF02-dsl02-20260527",
       "release_decision": "docs/status/release-DSL-02-20260527.json",
       "last_updated": "2026-05-27T05:35:18Z"
+    },
+    "DSL-03": {
+      "status": "RELEASED",
+      "stage": 7,
+      "priority": "SHOULD",
+      "title": "Error recovery",
+      "implementation_run": "WF02-dsl03-20260527",
+      "test_spec": "tests/specs/DSL-03.md",
+      "test_run": "tests/reports/report-2026-05-27T06-47-01Z-WF02-dsl03-step04.json",
+      "tested_at": "2026-05-27",
+      "release_run": "WF02-dsl03-20260527",
+      "release_decision": "docs/status/release-DSL-03-20260527.json",
+      "last_updated": "2026-05-27T06:49:00Z"
     }
   }
 }
