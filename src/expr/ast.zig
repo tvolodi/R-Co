@@ -157,6 +157,160 @@ pub const Ast = struct {
 };
 
 // ---------------------------------------------------------------------------
+// nodeEql — DSL-02: structural equality over the AST
+// ---------------------------------------------------------------------------
+
+/// Returns true if the trees rooted at `a` and `b` are structurally identical.
+///
+/// - Pure function: no allocation, no I/O.
+/// - Recursive: child nodes are compared depth-first.
+/// - Exhaustive switch: if a new Node variant is added, the compiler will
+///   emit an error here, forcing the implementor to handle it.
+pub fn nodeEql(a: *const Node, b: *const Node) bool {
+    // Fast-path: if the active tags differ, the trees cannot be equal.
+    const a_tag = std.meta.activeTag(a.*);
+    const b_tag = std.meta.activeTag(b.*);
+    if (a_tag != b_tag) return false;
+
+    switch (a.*) {
+        // ---- Binary boolean ----
+        .or_expr => |av| return nodeEql(av.left, b.or_expr.left) and
+            nodeEql(av.right, b.or_expr.right),
+        .and_expr => |av| return nodeEql(av.left, b.and_expr.left) and
+            nodeEql(av.right, b.and_expr.right),
+
+        // ---- Unary boolean ----
+        .not_expr => |av| return nodeEql(av.operand, b.not_expr.operand),
+
+        // ---- Comparison ----
+        .cmp_expr => |av| return av.op == b.cmp_expr.op and
+            nodeEql(av.left, b.cmp_expr.left) and
+            nodeEql(av.right, b.cmp_expr.right),
+
+        // ---- Arithmetic binary ----
+        .add_expr => |av| return av.op == b.add_expr.op and
+            nodeEql(av.left, b.add_expr.left) and
+            nodeEql(av.right, b.add_expr.right),
+        .mul_expr => |av| return av.op == b.mul_expr.op and
+            nodeEql(av.left, b.mul_expr.left) and
+            nodeEql(av.right, b.mul_expr.right),
+
+        // ---- Unary negation ----
+        .unary_neg => |av| return nodeEql(av.operand, b.unary_neg.operand),
+
+        // ---- Scalar literals (leaf nodes) ----
+        .int_literal => |av| return av == b.int_literal,
+        .float_literal => |av| return av == b.float_literal,
+        .bool_literal => |av| return av == b.bool_literal,
+        .null_literal => return true,
+
+        // ---- String literal — slice comparison ----
+        .string_literal => |av| return std.mem.eql(u8, av, b.string_literal),
+
+        // ---- Dot path — segment-by-segment comparison ----
+        .dot_path => |av| {
+            const bv = b.dot_path;
+            if (av.len != bv.len) return false;
+            for (av, 0..) |seg, i| {
+                if (!std.mem.eql(u8, seg, bv[i])) return false;
+            }
+            return true;
+        },
+
+        // ---- Function call — name + recursive argument comparison ----
+        .func_call => |av| {
+            const bv = b.func_call;
+            if (!std.mem.eql(u8, av.name, bv.name)) return false;
+            if (av.args.len != bv.args.len) return false;
+            for (av.args, 0..) |arg, i| {
+                if (!nodeEql(arg, bv.args[i])) return false;
+            }
+            return true;
+        },
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Tests — DSL-02: AST stability
+// ---------------------------------------------------------------------------
+
+test "DSL-02: same expression parses to equal AST" {
+    const parser_mod = @import("parser.zig");
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const inputs = [_][]const u8{
+        "1 + 2",
+        "a.b.c == null",
+        "not (x > 0 and y < 100)",
+        "true or false",
+        "42",
+    };
+
+    for (inputs) |src| {
+        var result1 = try parser_mod.parse(allocator, src);
+        switch (result1) {
+            .fail => |errs| {
+                allocator.free(errs);
+                try testing.expect(false); // unexpected parse failure
+            },
+            .ok => |*ast1| {
+                defer ast1.deinit();
+                var result2 = try parser_mod.parse(allocator, src);
+                switch (result2) {
+                    .fail => |errs| {
+                        allocator.free(errs);
+                        try testing.expect(false);
+                    },
+                    .ok => |*ast2| {
+                        defer ast2.deinit();
+                        try testing.expect(nodeEql(ast1.root, ast2.root));
+                    },
+                }
+            },
+        }
+    }
+}
+
+test "DSL-02: different expressions parse to non-equal AST" {
+    const parser_mod = @import("parser.zig");
+    const testing = std.testing;
+    const allocator = testing.allocator;
+
+    const pairs = [_][2][]const u8{
+        .{ "1 + 2", "1 + 3" },
+        .{ "true", "false" },
+        .{ "a.b", "a.c" },
+        .{ "1", "2" },
+        .{ "x and y", "x or y" },
+    };
+
+    for (pairs) |pair| {
+        var r1 = try parser_mod.parse(allocator, pair[0]);
+        var r2 = try parser_mod.parse(allocator, pair[1]);
+        switch (r1) {
+            .fail => |errs| {
+                allocator.free(errs);
+                try testing.expect(false);
+            },
+            .ok => |*ast1| {
+                defer ast1.deinit();
+                switch (r2) {
+                    .fail => |errs| {
+                        allocator.free(errs);
+                        try testing.expect(false);
+                    },
+                    .ok => |*ast2| {
+                        defer ast2.deinit();
+                        try testing.expect(!nodeEql(ast1.root, ast2.root));
+                    },
+                }
+            },
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Value — the six DSL runtime types (DSL-04)
 // ---------------------------------------------------------------------------
 

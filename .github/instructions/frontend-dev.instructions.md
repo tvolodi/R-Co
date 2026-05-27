@@ -116,7 +116,16 @@ Before marking the handoff complete, verify:
 - [ ] No secrets or tokens in source files
 - [ ] `npm run type-check` exits 0
 
-### 6. Complete the handoff
+### 6. Commit implementation to the feature branch (mandatory)
+```bash
+git branch --show-current   # must be feature/<run-id>; STOP and report FAIL if not
+git add -A
+git commit -m "feat(<run-id>): implement <component> (<requirement-ids>)"
+git push origin feature/<run-id>
+```
+This makes implementation progress visible on the remote branch immediately. Step Final (`fn:git-merge`) will add remaining artifacts from downstream agents in its own commit.
+
+### 7. Complete the handoff
 
 First, get the actual current UTC timestamp by running a shell command — NEVER invent or guess it:
 ```powershell
