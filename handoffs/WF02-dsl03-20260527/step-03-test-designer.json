@@ -1,0 +1,38 @@
+{
+    "handoff_id": "20260527-004",
+    "run_id": "WF02-dsl03-20260527",
+    "workflow_id": "WF-02",
+    "step": "03",
+    "from_agent": "ORCH",
+    "to_agent": "TEST-DESIGNER",
+    "file": "handoffs/WF02-dsl03-20260527/step-03-test-designer.json",
+    "created_at": "2026-05-27T06:17:46Z",
+    "started_at": null,
+    "completed_at": null,
+    "status": "PENDING",
+    "priority": "NORMAL",
+    "context": {
+        "stage": "Stage 7 — Expression DSL",
+        "requirement_ids": ["DSL-03"],
+        "related_handoff_ids": ["20260527-003"],
+        "artifacts_in": [
+            "src/expr/parser.zig",
+            "src/expr/error.zig",
+            "src/design/dsl-03-error-recovery.md",
+            "tests/specs/DSL-01.md"
+        ]
+    },
+    "task": {
+        "description": "Write test spec for DSL-03 (Error Recovery — SHOULD) as tests/specs/DSL-03.md. The test spec must cover:\n1. Acceptance test from the requirement: an input with three distinct syntax errors yields a report with three ParseError entries.\n2. Edge cases: multiple errors across different grammar productions (e.g., missing operand + unexpected token + unmatched paren)\n3. Valid expressions still parse to .ok (regression)\n4. Mixed lexer + parser errors (e.g., invalid number literal + missing operator)\n5. Error after recovery (parser continues past first error and finds more)\n\nAll tests are unit-level (no DB, no I/O). Test file: tests/unit/expr_error_recovery_test.zig.",
+        "acceptance_criteria": [
+            "tests/specs/DSL-03.md exists with at least 5 test cases",
+            "Each test case has Given/When/Then format",
+            "Acceptance test maps to the DSL-03 requirement criterion",
+            "All test cases can be run via zig build test"
+        ],
+        "functions_to_call": []
+    },
+    "result": null,
+    "rework_count": 0,
+    "max_rework": 3
+}

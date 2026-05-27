@@ -550,11 +550,24 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_dsl01_parser_tests = b.addRunArtifact(dsl01_parser_tests);
-    _ = expr_mod; // used to verify the module compiles; tests run via parser.zig
+
+    // DSL-03: Error recovery unit tests (pure — no DB, no network)
+    const expr_error_recovery_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/expr_error_recovery_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "expr", .module = expr_mod },
+            },
+        }),
+    });
+    const run_expr_error_recovery_tests = b.addRunArtifact(expr_error_recovery_tests);
 
     // `zig build test-expr` — DSL expr tests only
     const test_expr_step = b.step("test-expr", "Run Expression DSL unit tests");
     test_expr_step.dependOn(&run_dsl01_parser_tests.step);
+    test_expr_step.dependOn(&run_expr_error_recovery_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-engine` — engine unit tests only
@@ -609,6 +622,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_service_task_unit_tests.step);
     test_step.dependOn(&run_ext03_plugin_unit_tests.step);
     test_step.dependOn(&run_dsl01_parser_tests.step);
+    test_step.dependOn(&run_expr_error_recovery_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)

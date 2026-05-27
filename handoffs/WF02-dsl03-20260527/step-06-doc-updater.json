@@ -1,0 +1,35 @@
+{
+    "handoff_id": "20260527-007",
+    "run_id": "WF02-dsl03-20260527",
+    "workflow_id": "WF-02",
+    "step": "06",
+    "from_agent": "ORCH",
+    "to_agent": "DOC-UPDATER",
+    "file": "handoffs/WF02-dsl03-20260527/step-06-doc-updater.json",
+    "created_at": "2026-05-27T06:17:46Z",
+    "started_at": null,
+    "completed_at": null,
+    "status": "PENDING",
+    "priority": "NORMAL",
+    "context": {
+        "stage": "Stage 7 — Expression DSL",
+        "requirement_ids": ["DSL-03"],
+        "related_handoff_ids": ["20260527-006"],
+        "artifacts_in": [
+            "docs/status/requirement_status.json",
+            "CHANGELOG.md"
+        ]
+    },
+    "task": {
+        "description": "Update documentation for DSL-03 release:\n1. Add DSL-03 entry to docs/status/requirement_status.json with status RELEASED, stage 7, priority SHOULD, title 'Error recovery'\n2. Update CHANGELOG.md with a new entry for DSL-03: 'feat(dsl): add error recovery — parser reports all errors in a single pass (DSL-03)'\n3. Set release_run to WF02-dsl03-20260527",
+        "acceptance_criteria": [
+            "DSL-03 entry exists in requirement_status.json with status RELEASED",
+            "CHANGELOG.md has the new entry",
+            "last_updated timestamp updated"
+        ],
+        "functions_to_call": ["fn:update-changelog", "fn:update-requirement-status"]
+    },
+    "result": null,
+    "rework_count": 0,
+    "max_rework": 3
+}

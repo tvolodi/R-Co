@@ -1,0 +1,32 @@
+{
+    "handoff_id": "20260527-008",
+    "run_id": "WF02-dsl03-20260527",
+    "workflow_id": "WF-02",
+    "step": "final",
+    "from_agent": "ORCH",
+    "to_agent": "BACKEND-DEV",
+    "file": "handoffs/WF02-dsl03-20260527/step-final-backend-dev.json",
+    "created_at": "2026-05-27T06:17:46Z",
+    "started_at": null,
+    "completed_at": null,
+    "status": "PENDING",
+    "priority": "HIGH",
+    "context": {
+        "stage": "Stage 7 — Expression DSL",
+        "requirement_ids": ["DSL-03"],
+        "related_handoff_ids": ["20260527-001", "20260527-007"],
+        "artifacts_in": ["docs/agents/protocols/GIT_MERGE.md"]
+    },
+    "task": {
+        "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md. Rebase feature/WF02-dsl03-20260527 onto origin/main, create a PR, squash-merge it, delete the feature branch locally and remotely.",
+        "acceptance_criteria": [
+            "PR created and merged on origin/main",
+            "Feature branch deleted locally and remotely",
+            "push_status is ok"
+        ],
+        "functions_to_call": ["fn:git-merge"]
+    },
+    "result": null,
+    "rework_count": 0,
+    "max_rework": 3
+}
