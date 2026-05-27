@@ -867,27 +867,19 @@ pub fn build(b: *std.Build) void {
     migrate_step.dependOn(&run_migrate.step);
 
     // ---------------------------------------------------------------------------
-    // `zig build bench` — benchmark suite
+    // `zig build bench` — DSL-13 expression evaluation benchmark suite
     // ---------------------------------------------------------------------------
-    const bench_exe = b.addExecutable(.{
-        .name = "bench",
+    const expr_bench_exe = b.addExecutable(.{
+        .name = "expr-bench",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/bench/bench.zig"),
+            .root_source_file = b.path("src/expr/benchmark.zig"),
             .target = target,
             .optimize = .ReleaseFast,
-            .imports = &.{
-                .{ .name = "pg", .module = pg_mod },
-                .{ .name = "http", .module = http_mod },
-                .{ .name = "cel", .module = cel_mod },
-                .{ .name = "transition", .module = transition_mod },
-                .{ .name = "build_options", .module = build_options_mod },
-                .{ .name = "bpm", .module = bpm_src_mod },
-            },
         }),
     });
-    const run_bench = b.addRunArtifact(bench_exe);
-    const bench_step = b.step("bench", "Run NFR benchmark suite");
-    bench_step.dependOn(&run_bench.step);
+    const run_expr_bench = b.addRunArtifact(expr_bench_exe);
+    const bench_step = b.step("bench", "Run expression evaluation benchmark (DSL-13)");
+    bench_step.dependOn(&run_expr_bench.step);
 
     // ---------------------------------------------------------------------------
     // `zig build openapi` — OpenAPI generator

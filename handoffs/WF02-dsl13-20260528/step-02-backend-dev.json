@@ -1,0 +1,42 @@
+﻿{
+    "run_id":  "WF02-dsl13-20260528",
+    "handoff_id":  "7c475c54-f6b7-4912-84f3-4d12b2f9f436",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "src/expr/benchmark.zig implements all 6 profiles from design",
+                                             "Benchmark measures wall-clock latency in microseconds (min/max/mean/p95/p99)",
+                                             "zig build bench exits 0 with structured JSON and text results",
+                                             "\u0027zig build bench\u0027 completes within 30 seconds",
+                                             "Mean latency for typical expressions (profiles 4-5) is reported",
+                                             "Build system includes benchmark target"
+                                         ],
+                 "description":  "Implement expression evaluation benchmark suite (DSL-13) per design in src/design/expr-benchmark.md. Build benchmarking code in src/expr/benchmark.zig that measures evaluation latency for 6 expression profiles (trivial to complex, 1-10 AST nodes). Integrate with build system via \u0027zig build bench\u0027 target. Run benchmarks and validate against 10 microsecond target for typical expressions.",
+                 "functions_to_call":  [
+
+                                       ]
+             },
+    "started_at":  "2026-05-27T20:46:12Z",
+    "max_rework":  2,
+    "created_at":  "2026-05-27T20:46:12Z",
+    "rework_count":  0,
+    "context":  {
+                    "notes":  "Implement benchmark suite per design. Typical expression (5-10 AST nodes) SHOULD evaluate in \u003c10 microseconds. This is a SHOULD requirement (non-blocking).",
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "DSL-13"
+                                        ],
+                    "stage":  "Stage 7 — Expression DSL",
+                    "artifacts_in":  [
+                                         "src/design/expr-benchmark.md"
+                                     ]
+                },
+    "status":  "PENDING",
+    "from_agent":  "ORCH",
+    "step":  "02",
+    "to_agent":  "BACKEND-DEV",
+    "completed_at":  null,
+    "result":  null,
+    "priority":  "NORMAL"
+}
