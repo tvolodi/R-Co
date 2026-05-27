@@ -1,0 +1,92 @@
+{
+  "handoff_id": "88977c88-2af3-45c0-b1d5-5828694cfc72",
+  "run_id": "WF02-oidc11-15-20260528",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-oidc11-15-20260528/step-02-backend-dev.json",
+  "created_at": "2026-05-27T20:47:43Z",
+  "started_at": "2026-05-27T20:48:01Z",
+  "completed_at": "2026-05-27T20:53:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-11",
+      "OIDC-12",
+      "OIDC-13",
+      "OIDC-14",
+      "OIDC-15"
+    ],
+    "related_handoff_ids": [
+      "c194e311-29ee-4546-84c5-3689346f3215",
+      "0b3b27c4-f199-4351-8f06-58d8ab184642"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/design/oidc-11-external-user-identity-stability.md",
+      "src/design/oidc-12-realm-tenant-binding.md",
+      "src/design/oidc-13-tenant-claim-source.md",
+      "src/design/oidc-14-realm-provisioning.md",
+      "src/design/oidc-15-realm-deletion-safety.md"
+    ],
+    "branch_name": "feature/WF02-oidc11-15-20260528",
+    "owned_modules": [
+      "src/oidc/",
+      "src/api/routes/",
+      "src/idn/",
+      "migrations/"
+    ]
+  },
+  "task": {
+    "description": "Implement OIDC-11 through OIDC-15 on branch feature/WF02-oidc11-15-20260528.\n\nRead the design artefacts in artifacts_in, then implement:\n\n1. **OIDC-11 (External user identity stability):**\n   - Ensure `sub` claim is treated as stable identifier in JIT provisioning (OIDC-09 code)\n   - Add `resolveByExternalIdentity(external_realm, external_id)` function\n   - Ensure renamed/re-emailed users retain same local user_id and all history\n   - Authoritative lookup path is (external_realm, sub)\n\n2. **OIDC-12 (Realm-tenant binding):**\n   - Add `idp_realm_id VARCHAR NOT NULL` column to tenant table (migration)\n   - Tenant creation API requires idp_realm_id\n   - Lookup by realm ID returns tenant\n   - Default tenant has idp_realm_id = 'bpm-default'\n\n3. **OIDC-13 (Tenant claim source):**\n   - Implement protocol mapper configuration in adapter (Keycloak hardcoded-claim-mapper for tenant_id)\n   - Ensure tokens issued contain tenant_id claim\n   - Clients cannot override tenant_id claim\n\n4. **OIDC-14 (Realm provisioning via adapter):**\n   - Extend IdentityProvider interface with realm creation support\n   - ProvisionRealmInput with: name, displayName, tokenLifetimes, passwordPolicy, mfaPolicy, signingKeyAlgorithm\n   - Implement Keycloak adapter's realm creation via Admin REST API\n   - Include tenant_id protocol mapper in provisioned realm\n\n5. **OIDC-15 (Realm deletion safety):**\n   - Two-step deletion: mark for deletion (no new tokens, existing accepted until expiry) -> hard delete after configurable grace period (default 7 days)\n   - realm_deletion_tracker table schema\n   - Grace period scheduler integration\n   - Hard deletion audit-logged\n\nThen validate:\n   - zig build exits 0 with no 'error set' warnings\n   - zig build test exits 0\n   - All migrations apply cleanly\n   - Commit and push to feature/WF02-oidc11-15-20260528",
+    "acceptance_criteria": [
+      "zig build exits 0 with no 'error set' warnings in stderr",
+      "zig build test exits 0",
+      "All migrations apply cleanly against fresh DB",
+      "No SQL string interpolation of user data",
+      "All allocating functions accept std.mem.Allocator",
+      "No I/O in src/engine/transition.zig if modified"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:apply-migrations"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented OIDC-11 through OIDC-15: identity_stability (sub is stable identifier, resolveByExternalIdentity), realm_tenant_binding (one-to-one realm-tenant mapping), tenant_claim_source (protocol mapper creation, claim validation), realm_provisioning (extended provisioning with token lifetimes/password policy/signing config), realm_deletion (two-phase deletion lifecycle, grace period scheduler)",
+    "artifacts_out": [
+      "src/oidc/identity_stability.zig",
+      "src/oidc/realm_tenant_binding.zig",
+      "src/oidc/tenant_claim_source.zig",
+      "src/oidc/realm_provisioning.zig",
+      "src/oidc/realm_deletion.zig",
+      "migrations/041_oidc15_realm_deletion_tracker.sql",
+      "src/identity/provider/types.zig",
+      "src/identity/provider/interface.zig",
+      "src/identity/provider/manager.zig",
+      "src/identity/provider/adapters/keycloak/urls.zig",
+      "src/identity/provider/adapters/keycloak/provider.zig",
+      "src/identity/provider/adapters/stub/provider.zig",
+      "src/identity/provider/test_oidc02_keycloak_adapter.zig"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-oidc11-15-20260528",
+      "commit_sha_list": [
+        "517b20525842e3ba1b161ed31f98ce1b27b18a17"
+      ],
+      "remote_branch": "origin/feature/WF02-oidc11-15-20260528",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-DESIGNER for Step 3"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

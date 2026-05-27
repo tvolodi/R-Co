@@ -25,6 +25,9 @@ pub fn asIdentityProvider(ctx: *StubContext) provider_interface.IdentityProvider
         .upsertFederationFn = upsertFederation,
         .deleteFederationFn = deleteFederation,
         .listAuditEventsFn = listAuditEvents,
+        .createProtocolMapperFn = createProtocolMapper,
+        .toggleRealmFn = toggleRealm,
+        .deleteRealmFn = deleteRealmStub,
     };
 }
 
@@ -107,5 +110,17 @@ fn deleteFederation(_: *anyopaque, _: std.mem.Allocator, _: provider_types.Delet
 }
 
 fn listAuditEvents(_: *anyopaque, _: std.mem.Allocator, _: provider_types.ListAuditEventsInput) provider_errors.ProviderError!provider_types.AuditEventPage {
+    return error.NotImplemented;
+}
+
+fn createProtocolMapper(_: *anyopaque, _: std.mem.Allocator, _: provider_types.CreateProtocolMapperInput) provider_errors.ProviderError!provider_types.CreateProtocolMapperResult {
+    return error.NotImplemented;
+}
+
+fn toggleRealm(_: *anyopaque, _: std.mem.Allocator, _: provider_types.ToggleRealmInput) provider_errors.ProviderError!provider_types.RealmLifecycleResult {
+    return error.NotImplemented;
+}
+
+fn deleteRealmStub(_: *anyopaque, _: std.mem.Allocator, _: provider_types.DeleteRealmInput) provider_errors.ProviderError!void {
     return error.NotImplemented;
 }

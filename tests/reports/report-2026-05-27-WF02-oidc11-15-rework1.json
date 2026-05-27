@@ -1,0 +1,45 @@
+{
+  "run_id": "WF02-oidc11-15-20260528",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-27T21:23:52Z",
+  "summary": {
+    "total": 395,
+    "passed": 385,
+    "failed": 3,
+    "skipped": 7
+  },
+  "failures": [
+    {
+      "test_id": "TC-OIDC-09-02",
+      "layer": "integration",
+      "file": "tests/integration/oidc09_jit_provisioning_test.zig",
+      "test_name": "oidc09_jit_provisioning_test.test.TC-OIDC-09-02: subsequent auth returns existing user no duplicate",
+      "error_message": "RealmOwnershipMismatch in assertRealmOwnedByTenant at src/identity/service.zig:1089 — called from createOrGetJitOidcUser at service.zig:631. This was an intended fix target in rework iteration 1 but the error persists.",
+      "severity": "BLOCKER",
+      "requirement_id": "OIDC-09"
+    },
+    {
+      "test_id": "TC-OIDC-15-07",
+      "layer": "integration",
+      "file": "tests/integration/oidc15_realm_deletion_test.zig",
+      "test_name": "oidc15_realm_deletion_test.test.TC-OIDC-15-07: markUsersInactiveByRealm updates affected OIDC users",
+      "error_message": "PgError.ServerError in pg.zig:306 readUntilReady → pool.zig:128 exec — PostgreSQL server error on UPDATE during markUsersInactiveByRealm. This was an intended fix target in rework iteration 1 (test isolation fix) but the error persists.",
+      "severity": "BLOCKER",
+      "requirement_id": "OIDC-15"
+    },
+    {
+      "test_id": "TC-DB-01-01",
+      "layer": "integration",
+      "file": "tests/integration/db_integration_test.zig",
+      "test_name": "db_integration_test.test.TC-DB-01-01: migrations apply all schemas and populate schema_migrations",
+      "error_message": "runMigrations failed with error.ServerError at helpers.zig:89 (simpleQuery) and helpers.zig:143 (init). Database migration failure prevents test database setup.",
+      "severity": "BLOCKER",
+      "requirement_id": "DB-01"
+    }
+  ],
+  "coverage": {
+    "backend_unit_line": null,
+    "frontend_unit_line": null
+  },
+  "nfr_results": []
+}

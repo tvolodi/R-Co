@@ -69,11 +69,36 @@ pub const ProviderUser = struct {
     }
 };
 
+pub const SigningAlgorithm = enum {
+    RS256,
+    RS384,
+    RS512,
+    ES256,
+    ES384,
+    ES512,
+    PS256,
+    PS384,
+    PS512,
+};
+
 pub const ProvisionRealmInput = struct {
     tenant_id: []const u8,
     tenant_slug: []const u8,
     display_name: []const u8,
     desired_realm_id: ?[]const u8,
+
+    // --- Extended OIDC-14 fields (with defaults for backwards compatibility) ---
+    default_token_lifetime_seconds: u32 = 900,
+    default_id_token_lifetime_seconds: u32 = 900,
+    default_refresh_token_lifetime_seconds: u32 = 3600,
+    session_max_lifetime_seconds: u32 = 28800,
+    min_password_length: u8 = 8,
+    require_uppercase: bool = true,
+    require_digit: bool = true,
+    require_special_char: bool = false,
+    password_history_count: u8 = 5,
+    signing_key_algorithm: SigningAlgorithm = .RS256,
+    regenerate_keys: bool = true,
 };
 
 pub const ProvisionRealmResult = struct {
@@ -81,6 +106,44 @@ pub const ProvisionRealmResult = struct {
     created: bool,
 
     pub fn deinit(self: ProvisionRealmResult, allocator: std.mem.Allocator) void {
+        allocator.free(self.realm_id);
+    }
+};
+
+// --- OIDC-13: Protocol mapper types ---
+
+pub const CreateProtocolMapperInput = struct {
+    realm_id: []const u8,
+    mapper_name: []const u8,
+    mapper_type: []const u8,
+    config_json: []const u8,
+};
+
+pub const CreateProtocolMapperResult = struct {
+    mapper_id: []const u8,
+    created: bool,
+
+    pub fn deinit(self: CreateProtocolMapperResult, allocator: std.mem.Allocator) void {
+        allocator.free(self.mapper_id);
+    }
+};
+
+// --- OIDC-15: Realm lifecycle types ---
+
+pub const ToggleRealmInput = struct {
+    realm_id: []const u8,
+    enabled: bool,
+};
+
+pub const DeleteRealmInput = struct {
+    realm_id: []const u8,
+};
+
+pub const RealmLifecycleResult = struct {
+    realm_id: []const u8,
+    success: bool,
+
+    pub fn deinit(self: RealmLifecycleResult, allocator: std.mem.Allocator) void {
         allocator.free(self.realm_id);
     }
 };

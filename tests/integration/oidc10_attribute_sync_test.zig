@@ -288,7 +288,6 @@ test "TC-OIDC-10-01: full flow — resolve user, update profile, reconcile roles
         .display_name = "Updated Name",
     };
 
-
     var sync_result = try jit_provisioning.syncAttributesFromIdentityContext(
         alloc,
         &pool,

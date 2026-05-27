@@ -23,8 +23,13 @@ const identity_service = bpm.identity_service;
 // Test constants
 // ---------------------------------------------------------------------------
 
-const tenant_a = "11111111-1111-1111-1111-111111111111";
-const tenant_b = "22222222-2222-2222-2222-222222222222";
+// Per-test unique tenant UUIDs to avoid cross-test data pollution
+// from shared DB state (tenant table persists across test binaries).
+const tenant_01 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa01";
+const tenant_02 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa02";
+const tenant_05 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa05";
+const tenant_06 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa06";
+const tenant_07 = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa07";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -157,7 +162,7 @@ test "TC-OIDC-09-01: first auth creates new user record with auth_source=oidc" {
     defer cleanupUserByUsername(&pool, username);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
 
-    try ensureTenantBinding(&pool, tenant_a, "oidc09-tenant-a", "OIDC09 Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_01, "oidc09-tenant-01", "OIDC09 Tenant 01", realm);
 
     // Step 1: Load JIT config — should return defaults since no explicit row.
     var config = try jit_provisioning.loadJitConfig(alloc, &pool, realm);
@@ -171,7 +176,7 @@ test "TC-OIDC-09-01: first auth creates new user record with auth_source=oidc" {
     var service = identity_service.Service.init(&registry);
 
     const result = try service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_01,
         .external_realm = realm,
         .external_id = external_id,
         .preferred_username = username,
@@ -234,14 +239,14 @@ test "TC-OIDC-09-02: subsequent auth returns existing user no duplicate" {
     defer cleanupUserByUsername(&pool, username);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
 
-    try ensureTenantBinding(&pool, tenant_a, "oidc09-tenant-a", "OIDC09 Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_02, "oidc09-tenant-02", "OIDC09 Tenant 02", realm);
 
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
 
     // First call — creates the user.
     const first = try service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_02,
         .external_realm = realm,
         .external_id = external_id,
         .preferred_username = username,
@@ -254,7 +259,7 @@ test "TC-OIDC-09-02: subsequent auth returns existing user no duplicate" {
 
     // Second call — should return existing user with created=false.
     const second = try service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_02,
         .external_realm = realm,
         .external_id = external_id,
         .preferred_username = username,
@@ -278,7 +283,7 @@ test "TC-OIDC-09-02: subsequent auth returns existing user no duplicate" {
         \\  AND external_realm = $2
         \\  AND external_id = $3
     ,
-        &[_][]const u8{ tenant_a, realm, external_id },
+        &[_][]const u8{ tenant_02, realm, external_id },
     )) orelse return error.TestUnexpectedResult;
     defer freeRow(alloc, count_row);
 
@@ -369,7 +374,7 @@ test "TC-OIDC-09-05: duplicate preferred_username with existing internal user" {
     defer cleanupUserByUsername(&pool, existing_username);
     defer cleanupUserByExternalIdentity(&pool, realm, oidc_external_id);
 
-    try ensureTenantBinding(&pool, tenant_a, "oidc09-tenant-a", "OIDC09 Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_05, "oidc09-tenant-05", "OIDC09 Tenant 05", realm);
 
     // Create an internal user with the target username.
     const conn = try pool.acquire();
@@ -380,7 +385,7 @@ test "TC-OIDC-09-05: duplicate preferred_username with existing internal user" {
         \\VALUES ($1::uuid, $2, $3, '', TRUE, $4, 'ACTIVE')
     ,
         &[_][]const u8{
-            tenant_a,
+            tenant_05,
             "tc-oidc-09-05-internal@example.com",
             "OIDC09 Existing Internal",
             existing_username,
@@ -392,7 +397,7 @@ test "TC-OIDC-09-05: duplicate preferred_username with existing internal user" {
     var service = identity_service.Service.init(&registry);
 
     const result = service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_05,
         .external_realm = realm,
         .external_id = oidc_external_id,
         .preferred_username = existing_username,
@@ -411,7 +416,8 @@ test "TC-OIDC-09-05: duplicate preferred_username with existing internal user" {
     } else |err| {
         // Accept either DuplicateUsername (when implemented) or PersistenceFailed.
         if (err != identity_service.IdentityError.DuplicateUsername and
-            err != identity_service.IdentityError.PersistenceFailed) {
+            err != identity_service.IdentityError.PersistenceFailed)
+        {
             return err;
         }
     }
@@ -437,14 +443,13 @@ test "TC-OIDC-09-06: JIT provisioning emits audit event on creation" {
     cleanupUserByExternalIdentity(&pool, realm, external_id);
     defer cleanupUserByUsername(&pool, username);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
-
-    try ensureTenantBinding(&pool, tenant_a, "oidc09-tenant-a", "OIDC09 Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_06, "oidc09-tenant-06", "OIDC09 Tenant 06", realm);
 
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
 
     const result = try service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_06,
         .external_realm = realm,
         .external_id = external_id,
         .preferred_username = username,
@@ -512,13 +517,13 @@ test "TC-OIDC-09-07: attributes map correctly from input to user record" {
     defer cleanupUserByUsername(&pool, username);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
 
-    try ensureTenantBinding(&pool, tenant_a, "oidc09-tenant-a", "OIDC09 Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_07, "oidc09-tenant-07", "OIDC09 Tenant 07", realm);
 
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
 
     const result = try service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_07,
         .external_realm = realm,
         .external_id = external_id,
         .preferred_username = username,
