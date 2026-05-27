@@ -1354,6 +1354,21 @@
       "release_run": "WF02-dsl05-20260527",
       "release_decision": "docs/status/release-DSL-05-20260527.json",
       "last_updated": "2026-05-27T08:18:04Z"
+    },
+    "DSL-06": {
+      "status": "RELEASED",
+      "stage": 7,
+      "priority": "MUST",
+      "title": "Total evaluation",
+      "implemented_in": ["src/expr/mod.zig"],
+      "test_spec": "tests/specs/DSL-06.md",
+      "test_run": "tests/reports/report-WF02-dsl06-20260527-step04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T14:59:19Z",
+      "implementation_run": "WF02-dsl06-20260527",
+      "release_run": "WF02-dsl06-20260527",
+      "release_decision": "docs/status/release-DSL-06-20260527.json",
+      "last_updated": "2026-05-27T14:59:19Z"
     }
   }
 }

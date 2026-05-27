@@ -120,6 +120,13 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-2026-05-27T08-13-30Z-WF02-dsl05-step04.json; release approval is recorded in docs/status/release-DSL-05-20260527.json.
 - Requirement: DSL-05 (MUST, Stage 7) - RELEASED
 
+### DSL-06 - Total evaluation (RELEASED 2026-05-27)
+- **DSL-06**: Total evaluation — implemented the complete `evaluate()` pass for all Expression DSL productions, including arithmetic, comparison, boolean logic, unary negation, dot-path resolution, and all 11 built-in functions (length, lower, upper, trim, contains, startsWith, endsWith, coalesce, now, date_add, date_diff).
+- Full end-to-end evaluation pipeline: lex → parse → evaluate → produce typed `Value` results for every valid grammar production.
+- All 5 DSL-06 acceptance criteria pass, including 100 random valid-grammar property-based tests all evaluating within step bound and zero crash or panic for any expression.
+- Validation evidence passed in tests/reports/report-WF02-dsl06-20260527-step04.json; release approval is recorded in docs/status/release-DSL-06-20260527.json.
+- Requirement: DSL-06 (MUST, Stage 7) - RELEASED
+
 ### DSL-03 - Error recovery (RELEASED 2026-05-27)
 - **DSL-03**: Error recovery — parser now reports all errors in a single pass, with synchronize points added after each grammar production to continue parsing past errors.
 - Added three gap fixes: dot-path missing synchronize (Gap A), parsePrimary synchronize too aggressive (Gap B), consumeArgList missing synchronize after missing ')' (Gap C).

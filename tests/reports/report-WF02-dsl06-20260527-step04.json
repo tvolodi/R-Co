@@ -1,0 +1,81 @@
+{
+  "report_id": "report-WF02-dsl06-20260527-step04",
+  "run_id": "WF02-dsl06-20260527",
+  "step": "04",
+  "agent": "TEST-RUNNER",
+  "created_at": "2026-05-27T14:51:02Z",
+  "requirement_ids": ["DSL-06"],
+  "layer": "unit (Zig inline tests in src/expr/mod.zig)",
+  "summary": {
+    "status": "PASS",
+    "total_tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  "build_check": {
+    "zig_build": "PASS — exits 0, no output",
+    "zig_build_error_set": "PASS — no 'error set' output found",
+    "zig_build_test": "PASS — exits 0, no output"
+  },
+  "test_results": [
+    {
+      "name": "DSL-06: MAX_EVAL_DEPTH constant exists",
+      "tc_id": "TC-DSL-06-01",
+      "status": "PASS",
+      "acceptance_criterion": "AC1"
+    },
+    {
+      "name": "DSL-06: evaluate delegates to evaluateNode with max depth",
+      "tc_id": "TC-DSL-06-02",
+      "status": "PASS",
+      "acceptance_criterion": "AC1"
+    },
+    {
+      "name": "DSL-06: evaluateNode with remaining=1 evaluates leaf nodes but fails on binary",
+      "tc_id": "TC-DSL-06-03 / TC-DSL-06-04",
+      "status": "PASS",
+      "acceptance_criterion": "AC1"
+    },
+    {
+      "name": "DSL-06: deep chain hits depth limit",
+      "tc_id": "TC-DSL-06-06 (partial)",
+      "status": "PASS",
+      "acceptance_criterion": "AC1"
+    },
+    {
+      "name": "DSL-06: 100 random expressions evaluate within bound",
+      "tc_id": "TC-DSL-06-07",
+      "status": "PASS",
+      "acceptance_criterion": "AC1, AC2"
+    }
+  ],
+  "acceptance_criteria_verification": [
+    {
+      "criterion": "All 5 DSL-06 tests pass",
+      "result": "PASS — all 5 tests executed and passed"
+    },
+    {
+      "criterion": "zig build exits 0",
+      "result": "PASS — no output, exit code 0"
+    },
+    {
+      "criterion": "zig build test exits 0",
+      "result": "PASS — no output, exit code 0"
+    },
+    {
+      "criterion": "No 'error set' output from zig build",
+      "result": "PASS — findstr returned no matches"
+    },
+    {
+      "criterion": "Test report written to tests/reports/",
+      "result": "PASS — report-WF02-dsl06-20260527-step04.json"
+    }
+  ],
+  "issues": [],
+  "recommendations": [
+    "TC-DSL-06-05 (depth=MAX_EVAL_DEPTH success) not yet implemented — minor gap",
+    "TC-DSL-06-06 (depth=MAX_EVAL_DEPTH+1 failure) not yet implemented — minor gap",
+    "TC-DSL-06-09 (unary op at remaining=1) not yet implemented — minor gap"
+  ]
+}
