@@ -1,0 +1,24 @@
+{
+  "stage": "Stage 7 — Expression DSL",
+  "run_id": "WF02-dsl05-20260527",
+  "date": "2026-05-27T08:16:15Z",
+  "decision": "APPROVED",
+  "requirement": "DSL-05",
+  "nfr_results": [],
+  "build_results": {
+    "zig_build": "PASS",
+    "zig_build_test": "PASS"
+  },
+  "test_summary": {
+    "total": 124,
+    "passed": 124,
+    "failed": 0,
+    "skipped": 0,
+    "dsl05_total": 78,
+    "dsl05_passed": 78,
+    "dsl05_failed": 0
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["DSL-05"],
+  "notes": "All 78 DSL-05 type coercion tests pass. Arithmetic coercion (int64↔float64) works correctly in arithmetic operations. Cross-type comparisons correctly return type mismatch errors — no silent coercion in comparisons. Three-valued logic for null (Kleene K3) is correctly implemented for all comparison and boolean operators. Null propagation in dot-path resolution works as specified."
+}

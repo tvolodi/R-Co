@@ -1991,3 +1991,380 @@ test "DSL-05: string == string works (no coercion needed)" {
     try testing.expect(ev == .ok);
     try testing.expect(ev.ok.bool_val == true);
 }
+
+// ---- Additional negation tests (DSL-05 §2.4) ----
+
+test "DSL-05: negate string returns error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "-\"hello\"");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "cannot negate string") != null);
+}
+
+test "DSL-05: negate timestamp returns error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "-ts_val");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.vars.put("ts_val", valueTs(1_715_328_000_000));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "cannot negate timestamp") != null);
+}
+
+// ---- Additional null comparison tests (DSL-05 §2.2, §3.5) ----
+
+test "DSL-05: null > null returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "null > null");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-05: null >= null returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "null >= null");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-05: null <= 42 returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "null <= 42");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-05: null >= 42 returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "null >= 42");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-05: null == true returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "null == true");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-05: null == \"hello\" returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "null == \"hello\"");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+// ---- Additional cross-type comparison tests (DSL-05 §2.2 rule 4) ----
+
+test "DSL-05: int64 != float64 returns type mismatch error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "1 != 1.0");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "type mismatch") != null);
+}
+
+test "DSL-05: float64 == int64 returns type mismatch error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "1.0 == 1");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "type mismatch") != null);
+}
+
+test "DSL-05: string == int64 returns type mismatch error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "\"42\" == 42");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "type mismatch") != null);
+}
+
+test "DSL-05: bool == string returns type mismatch error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "true == \"true\"");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "type mismatch") != null);
+}
+
+// ---- Additional short-circuit tests (DSL-05 §3.2, §3.3) ----
+
+test "DSL-05: false and null short-circuits to false" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "false and null");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok.bool_val == false);
+}
+
+test "DSL-05: true or null short-circuits to true" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "true or null");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok.bool_val == true);
+}
+
+// ---- Additional non-boolean left operand tests (DSL-05 §3.2, §3.3) ----
+
+test "DSL-05: and with non-boolean left operand returns error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "5 and true");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "boolean operator requires boolean") != null);
+}
+
+test "DSL-05: or with non-boolean left operand returns error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "5 or false");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "boolean operator requires boolean") != null);
+}
+
+// ---- Additional no-string-coercion tests (DSL-05 §2.1) ----
+
+test "DSL-05: int64 + string returns type mismatch error (no auto coercion)" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "1 + \"1\"");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "type mismatch") != null);
+}
+
+test "DSL-05: string + string returns type mismatch error (no concatenation)" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "\"a\" + \"b\"");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "type mismatch") != null);
+}
+
+// ---- Arithmetic edge case: float division by zero (DSL-05 §2.1) ----
+
+test "DSL-05: float64 / 0.0 returns infinity (IEEE 754, not error)" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "5.0 / 0.0");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .float_val);
+    try testing.expect(std.math.isInf(ev.ok.float_val));
+}

@@ -1,0 +1,97 @@
+{
+  "run_id": "WF02-dsl05-20260527",
+  "created_at": "2026-05-27T08:18:04Z",
+  "requirement_ids": ["DSL-05"],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Additive changes to src/expr/mod.zig evaluator; no schema changes, no cross-module dependencies beyond the DSL module",
+  "rules_version_used": "1.0",
+  "estimated_minutes": {
+    "code-designer": 33,
+    "backend-dev": 13,
+    "test-designer": 8,
+    "test-runner": 4,
+    "release-validator": 10,
+    "doc-updater": 3,
+    "total": 71
+  },
+  "actual_minutes": {
+    "code-designer": 2.35,
+    "backend-dev": 8.95,
+    "test-designer": 3.68,
+    "test-runner": 13.12,
+    "release-validator": 1.35,
+    "doc-updater": 1.12,
+    "total": 30.57
+  },
+  "estimated_minutes_total": 71,
+  "actual_minutes_total": 30.57,
+  "variance_pct": -56.9,
+  "by_step": {
+    "code-designer": {
+      "estimated": 33,
+      "actual": 2.35,
+      "variance_pct": -92.9
+    },
+    "backend-dev": {
+      "estimated": 13,
+      "actual": 8.95,
+      "variance_pct": -31.2
+    },
+    "test-designer": {
+      "estimated": 8,
+      "actual": 3.68,
+      "variance_pct": -54.0
+    },
+    "test-runner": {
+      "estimated": 4,
+      "actual": 13.12,
+      "variance_pct": 228.0
+    },
+    "release-validator": {
+      "estimated": 10,
+      "actual": 1.35,
+      "variance_pct": -86.5
+    },
+    "doc-updater": {
+      "estimated": 3,
+      "actual": 1.12,
+      "variance_pct": -62.7
+    }
+  },
+  "step_timings": {
+    "code-designer": {
+      "started_at": "2026-05-27T07:43:29Z",
+      "completed_at": "2026-05-27T07:45:50Z",
+      "handoff": "handoffs/WF02-dsl05-20260527/step-01-code-designer.json"
+    },
+    "backend-dev": {
+      "started_at": "2026-05-27T07:46:34Z",
+      "completed_at": "2026-05-27T07:55:31Z",
+      "handoff": "handoffs/WF02-dsl05-20260527/step-02-backend-dev.json"
+    },
+    "test-designer": {
+      "started_at": "2026-05-27T07:56:06Z",
+      "completed_at": "2026-05-27T07:59:47Z",
+      "handoff": "handoffs/WF02-dsl05-20260527/step-03-test-designer.json"
+    },
+    "test-runner": {
+      "started_at": "2026-05-27T08:00:23Z",
+      "completed_at": "2026-05-27T08:13:30Z",
+      "handoff": "handoffs/WF02-dsl05-20260527/step-04-test-runner.json"
+    },
+    "release-validator": {
+      "started_at": "2026-05-27T08:14:54Z",
+      "completed_at": "2026-05-27T08:16:15Z",
+      "handoff": "handoffs/WF02-dsl05-20260527/step-05-release-validator.json"
+    },
+    "doc-updater": {
+      "started_at": "2026-05-27T08:16:57Z",
+      "completed_at": "2026-05-27T08:18:04Z",
+      "handoff": "handoffs/WF02-dsl05-20260527/step-06-doc-updater.json"
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [],
+  "notes": "DSL-05 (type coercion) — first run at difficulty 3 for the DSL track. Test-runner variance (+228%) inflated by unplanned Zig 0.16.0 installation fix (broken WinGet lib/ extraction) that was required to unblock test execution. No rule adjustments triggered: no prior consecutive runs at difficulty 3 for any step. Code-designer (-92.9%) over-estimated because the design had already been substantially pre-worked during DSL-01–04. Release-validator (-86.5%) over-estimated because acceptance checks are fast when test-runner already validated all 124 tests."
+}

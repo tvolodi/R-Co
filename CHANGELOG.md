@@ -110,6 +110,16 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-2026-05-27T07-25-18Z-WF02-dsl04-step04.json; release approval is recorded in docs/status/release-DSL-04-2026-05-27.json.
 - Requirement: DSL-04 (MUST, Stage 7) - RELEASED
 
+### DSL-05 - Type coercion (RELEASED 2026-05-27)
+- **DSL-05**: Type coercion — implemented the 6×6 type coercion matrix for the Expression DSL evaluator: arithmetic operators (add_expr, mul_expr, unary_neg) with automatic int64↔float64 promotion (int64 promoted to float64 when mixed) and structured EvalError for non-numeric types in arithmetic.
+- Comparison operators (cmp_expr) with no silent cross-type coercion: same-type direct comparison; int64 vs float64 returns explicit EvalError; other mixed-type comparisons return EvalError.
+- Three-valued Kleene K3 logic for null in comparisons (null == non-null → null) and boolean operators (null AND/OR/NOT) with deterministic truth tables.
+- Null propagation in dot-path resolution — field access on null returns null, not an error.
+- No automatic string coercion — string↔other-type conversion requires explicit built-in functions.
+- All 78 DSL-05 type coercion unit tests pass; 124 total unit tests pass with zero regressions across DSL-01 through DSL-04.
+- Validation evidence passed in tests/reports/report-2026-05-27T08-13-30Z-WF02-dsl05-step04.json; release approval is recorded in docs/status/release-DSL-05-20260527.json.
+- Requirement: DSL-05 (MUST, Stage 7) - RELEASED
+
 ### DSL-03 - Error recovery (RELEASED 2026-05-27)
 - **DSL-03**: Error recovery — parser now reports all errors in a single pass, with synchronize points added after each grammar production to continue parsing past errors.
 - Added three gap fixes: dot-path missing synchronize (Gap A), parsePrimary synchronize too aggressive (Gap B), consumeArgList missing synchronize after missing ')' (Gap C).
