@@ -1,0 +1,37 @@
+{
+  "handoff_id": "20260527-dsl09-004",
+  "run_id": "WF02-dsl09-20260527",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-dsl09-20260527/step-03-test-designer.json",
+  "created_at": "2026-05-27T18:35:13Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-09"],
+    "related_handoff_ids": ["20260527-dsl09-003"],
+    "artifacts_in": [
+      "src/design/dsl-09-date-builtins.md",
+      "docs/BPM_Platform_Functional_Requirements.md (DSL-09 section)",
+      "src/expr/mod.zig"
+    ]
+  },
+  "task": {
+    "description": "Write test spec file at tests/specs/DSL-09.md covering:\n\n1. now() returns platform's current time (value > 1_000_000_000_000 ms since epoch)\n2. date_add(ts, n, unit) with each supported unit: second, minute, hour, day\n3. date_diff(ts1, ts2, unit) with each supported unit: second, minute, hour, day\n4. Null propagation: any null argument returns null\n5. Unknown unit returns evaluation error\n6. Cross-DST boundary test: timestamp just before US DST spring-forward (e.g. 2026-03-08T01:59:00Z) + 1 day = +86400000ms exactly (pure UTC arithmetic)\n7. Negative n values for date_add\n8. Negative diff for date_diff (ts1 < ts2)\n9. Wrong argument count returns evaluation error\n10. Overflow handling (extreme values)\n\nFormat: per the test guide — standard Gherkin-style Given/When/Then for each test case.\n\nThe test implementation (Zig test code) is handled by BACKEND-DEV in src/expr/mod.zig. This spec is the human-readable test specification.",
+    "acceptance_criteria": [
+      "File written to tests/specs/DSL-09.md",
+      "Covers all 10 test categories listed above",
+      "Cross-DST boundary test explicitly included",
+      "Format follows test developer guide conventions"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,35 @@
+{
+  "handoff_id": "20260527-dsl09-005",
+  "run_id": "WF02-dsl09-20260527",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-dsl09-20260527/step-04-test-runner.json",
+  "created_at": "2026-05-27T18:35:13Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-09"],
+    "related_handoff_ids": ["20260527-dsl09-004"],
+    "artifacts_in": [
+      "tests/specs/DSL-09.md",
+      "src/expr/mod.zig"
+    ]
+  },
+  "task": {
+    "description": "Run the DSL-09 test suite and report results.\n\nCommands:\n  zig build test 2>&1\n\nFilter output for DSL-09-related tests (DSL-09: and DSL-07: date_add/date_diff tests).\n\nWrite report to tests/reports/report-WF02-dsl09-20260527-step04.json\n\nFormat per test developer guide §8.",
+    "acceptance_criteria": [
+      "All DSL-09 tests pass",
+      "All DSL-07 date_add/date_diff tests pass",
+      "Report written to tests/reports/report-WF02-dsl09-20260527-step04.json"
+    ],
+    "functions_to_call": ["fn:run-unit-tests"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -3849,3 +3849,153 @@ test "DSL-08: now returns timestamp in reasonable range (impure — exempted)" {
     // Must not be absurdly far in the future (before year 3000)
     try testing.expect(ev.ok.ts_val < 32_506_752_000_000);
 }
+
+// ===========================================================================
+// Tests — DSL-09: Date built-ins (minute, hour, DST boundary)
+// ===========================================================================
+
+test "DSL-09: date_add with minute unit" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_add(0, 5, \"minute\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .ts_val);
+    try testing.expectEqual(@as(i64, 300_000), ev.ok.ts_val);
+}
+
+test "DSL-09: date_add with hour unit" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_add(0, 2, \"hour\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .ts_val);
+    try testing.expectEqual(@as(i64, 7_200_000), ev.ok.ts_val);
+}
+
+test "DSL-09: date_diff with minute unit" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_diff(300000, 0, \"minute\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .int_val);
+    try testing.expectEqual(@as(i64, 5), ev.ok.int_val);
+}
+
+test "DSL-09: date_diff with hour unit" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "date_diff(7200000, 0, \"hour\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .int_val);
+    try testing.expectEqual(@as(i64, 2), ev.ok.int_val);
+}
+
+test "DSL-09: date_add cross-DST boundary" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    // 2026-03-08T01:59:00Z = 1772589540000 ms (just before US DST spring-forward)
+    // date_add +1 day must produce exactly +86400000 ms (pure UTC arithmetic, no DST adjustment)
+    var result = try parse(alloc, "date_add(1772589540000, 1, \"day\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .ts_val);
+    try testing.expectEqual(@as(i64, 1_772_675_940_000), ev.ok.ts_val);
+}
+
+test "DSL-09: date_diff across DST boundary" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    // Two timestamps 1 day apart across US DST spring-forward:
+    // ts1 = 2026-03-08T01:59:00Z = 1772589540000 ms
+    // ts2 = 2026-03-07T01:59:00Z = 1772503140000 ms   (ts1 - 86400000)
+    // diff in "day" units must equal 1 (pure ms arithmetic)
+    var result = try parse(alloc, "date_diff(1772589540000, 1772503140000, \"day\")");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .int_val);
+    try testing.expectEqual(@as(i64, 1), ev.ok.int_val);
+}
+
+test "DSL-09: now() returns platform time" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "now()");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .ts_val);
+    try testing.expect(ev.ok.ts_val > 1_000_000_000_000);
+}

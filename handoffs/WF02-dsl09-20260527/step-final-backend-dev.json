@@ -1,0 +1,33 @@
+{
+  "handoff_id": "20260527-dsl09-008",
+  "run_id": "WF02-dsl09-20260527",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-dsl09-20260527/step-final-backend-dev.json",
+  "created_at": "2026-05-27T18:35:13Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-09"],
+    "related_handoff_ids": ["20260527-dsl09-007"],
+    "artifacts_in": ["docs/agents/protocols/GIT_MERGE.md"]
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md.\n\nBranch: feature/WF02-dsl09-20260527\nTarget: main\n\n1. git checkout main\n2. git pull --ff-only origin main\n3. git fetch origin main\n4. git rebase origin/main on the feature branch\n5. gh pr create --base main --head feature/WF02-dsl09-20260527 --title \"feat(WF02-dsl09-20260527): implement DSL-09 date built-ins\" --body \"DSL-09: now(), date_add(), date_diff() with cross-DST boundary test\"\n6. gh pr merge --squash --delete-branch\n7. git branch -d feature/WF02-dsl09-20260527 (local cleanup)\n\nRecord branch_name, commit_sha_list, pr_url (or pr_create_error), push_status in result.",
+    "acceptance_criteria": [
+      "PR created and merged successfully",
+      "Feature branch deleted remotely",
+      "push_status: ok",
+      "pr_url recorded (or pr_create_error if gh auth unavailable)"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
