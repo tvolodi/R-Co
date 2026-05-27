@@ -384,20 +384,47 @@ pub fn valueTs(ms: i64) Value {
 }
 
 // ---------------------------------------------------------------------------
-// Context — variable map for evaluation
+// Context — variable map for evaluation (DSL-10)
 // ---------------------------------------------------------------------------
 
+/// Context maps variable names to runtime values.
+/// Used during evaluation to resolve identifier expressions (dot_path nodes).
+///
+/// Lifecycle:
+/// - Creation: caller creates via Context.init(allocator)
+/// - Population: caller populates via context.put(key, value)
+/// - Evaluation: context passed as read-only pointer to evaluate()
+/// - Deallocation: caller calls context.deinit()
+/// - Mutability: immutable during evaluation (no concurrent modifications)
 pub const Context = struct {
-    vars: std.StringHashMap(Value),
+    /// String → Value map. Keys are variable names (e.g., "order", "total").
+    /// Values are arbitrary DSL Values.
+    variables: std.StringHashMap(Value),
 
+    /// Initialize a Context with an empty variable map.
+    /// Caller owns the allocator; caller is responsible for Context.deinit().
     pub fn init(allocator: std.mem.Allocator) Context {
         return Context{
-            .vars = std.StringHashMap(Value).init(allocator),
+            .variables = std.StringHashMap(Value).init(allocator),
         };
     }
 
+    /// Deallocate the variable map. Does not deallocate Value payloads
+    /// (caller is responsible for arena that owns Value string/slice data).
     pub fn deinit(self: *Context) void {
-        self.vars.deinit();
+        self.variables.deinit();
+    }
+
+    /// Insert or update a variable binding.
+    /// Returns error if allocation fails.
+    pub fn put(self: *Context, key: []const u8, value: Value) !void {
+        try self.variables.put(key, value);
+    }
+
+    /// Retrieve a variable by name. Returns null_val if not found.
+    /// This is a pure function with no allocation or I/O.
+    pub fn get(self: *const Context, key: []const u8) Value {
+        return self.variables.get(key) orelse Value{ .null_val = {} };
     }
 };
 
