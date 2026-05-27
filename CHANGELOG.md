@@ -101,6 +101,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Stage 7 — Expression DSL
 
+### DSL-03 - Error recovery (RELEASED 2026-05-27)
+- **DSL-03**: Error recovery — parser now reports all errors in a single pass, with synchronize points added after each grammar production to continue parsing past errors.
+- Added three gap fixes: dot-path missing synchronize (Gap A), parsePrimary synchronize too aggressive (Gap B), consumeArgList missing synchronize after missing ')' (Gap C).
+- Validation evidence passed in tests/reports/report-2026-05-27T06-47-01Z-WF02-dsl03-step04.json; release approval is recorded in docs/status/release-DSL-03-20260527.json.
+- Requirement: DSL-03 (SHOULD, Stage 7) - RELEASED
+
 ### DSL-02 - AST stability (RELEASED 2026-05-27)
 - **DSL-02**: AST stability — `nodeEql` function added to `src/expr/ast.zig`; deterministic AST equality verified for all 14 Node variants.
 - Validation evidence passed in tests/reports/report-2026-05-27T05-26-58Z-WF02-dsl02-step04.json; release approval is recorded in docs/status/release-DSL-02-20260527.json.

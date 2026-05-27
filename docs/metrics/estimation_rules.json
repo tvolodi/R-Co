@@ -1,8 +1,8 @@
 {
   "version": "1.0",
-  "updated_at": "2026-05-27T05:35:18Z",
-  "updated_by": "WF02-dsl02-20260527",
-  "update_count": 45,
+  "updated_at": "2026-05-27T06:52:41Z",
+  "updated_by": "WF02-dsl03-20260527",
+  "update_count": 46,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
     "2": "Single function or endpoint, no schema change, < 50 LOC",
@@ -41,7 +41,7 @@
     ],
     "test-runner": [
       5,
-      4,
+      3,
       3,
       4,
       25

@@ -170,3 +170,110 @@ test "existing error recovery: multiple unknown functions" {
     try std.testing.expect(result == .fail);
     try std.testing.expect(result.fail.len >= 2);
 }
+
+// ---------------------------------------------------------------------------
+// Section 4: Mixed lexer + parser errors (TC-DSL03-011 through TC-DSL03-013)
+// ---------------------------------------------------------------------------
+
+test "TC-DSL03-011: integer overflow lexer error combined with missing operator" {
+    // Input with an integer overflow (lexer error) followed by a second
+    // expression with no operator between them (parser error).
+    // Expect both errors to appear.
+    const alloc = std.testing.allocator;
+
+    var result = try expr.parse(alloc, "99999999999999999999 42");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+
+    try std.testing.expect(result == .fail);
+    try std.testing.expectEqual(@as(usize, 2), result.fail.len);
+    // Lexer error: integer overflow
+    try std.testing.expectEqualStrings("integer literal out of i64 range", result.fail[0].message);
+    // Parser error: unexpected second expression
+    try std.testing.expectEqualStrings("unexpected token after expression", result.fail[1].message);
+}
+
+test "TC-DSL03-012: unterminated string literal produces lexer error" {
+    // Input with an unterminated string literal (lexer error).
+    // The unterminated string consumes all remaining input up to EOF,
+    // so there is no trailing token for a parser error — only the
+    // lexer error is expected.
+    const alloc = std.testing.allocator;
+
+    var result = try expr.parse(alloc, "\"hello + 1");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+
+    try std.testing.expect(result == .fail);
+    try std.testing.expectEqual(@as(usize, 1), result.fail.len);
+    try std.testing.expectEqualStrings("unterminated string literal", result.fail[0].message);
+}
+
+test "TC-DSL03-013: unexpected character lexer error combined with syntax error" {
+    // Input with @ (unexpected character, lexer error) followed by + 1
+    // (parser error — expected expression for +).
+    // The lexer emits @ as an identifier with error; parser tries to parse it
+    // as a dot-path, then hits + which is unexpected.
+    const alloc = std.testing.allocator;
+
+    var result = try expr.parse(alloc, "@ + 1");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+
+    try std.testing.expect(result == .fail);
+    // Should have at least 2 errors: 1 lexer + 1 parser
+    try std.testing.expect(result.fail.len >= 1);
+    // At least one lexer error should mention "unexpected character"
+    const has_lex_error = blk: {
+        for (result.fail) |e| {
+            if (std.mem.eql(u8, e.message, "unexpected character")) break :blk true;
+        }
+        break :blk false;
+    };
+    try std.testing.expect(has_lex_error);
+}
+
+// ---------------------------------------------------------------------------
+// Section 5: Error after recovery (TC-DSL03-014 through TC-DSL03-015)
+// ---------------------------------------------------------------------------
+
+test "TC-DSL03-014: double operator then trailing operator at higher production" {
+    // "1 + + 3 or" — parser recovers past double-'+' (Gap B), parses '3',
+    // matches 'or', then finds EOF with no RHS — second error.
+    const alloc = std.testing.allocator;
+
+    var result = try expr.parse(alloc, "1 + + 3 or");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+
+    try std.testing.expect(result == .fail);
+    try std.testing.expectEqual(@as(usize, 2), result.fail.len);
+    try std.testing.expectEqualStrings("expected expression", result.fail[0].message);
+    try std.testing.expectEqualStrings("expected expression", result.fail[1].message);
+}
+
+test "TC-DSL03-015: recovery through multiple grammar levels" {
+    // "true and or false or + 42" — two errors at different grammar levels:
+    //   1. "expected expression" for 'or' after 'and' (and_expr level)
+    //   2. "expected expression" for '+' after second 'or' (or_expr level)
+    const alloc = std.testing.allocator;
+
+    var result = try expr.parse(alloc, "true and or false or + 42");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+
+    try std.testing.expect(result == .fail);
+    try std.testing.expectEqual(@as(usize, 2), result.fail.len);
+    try std.testing.expectEqualStrings("expected expression", result.fail[0].message);
+    try std.testing.expectEqualStrings("expected expression", result.fail[1].message);
+}

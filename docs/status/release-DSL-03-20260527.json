@@ -1,0 +1,10 @@
+{
+  "stage": "Stage 7 — Expression DSL",
+  "date": "2026-05-27T06:48:32Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "note": "DSL-03 is SHOULD (not MUST) — no NFR benchmarks required per task description"
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["DSL-03"]
+}
