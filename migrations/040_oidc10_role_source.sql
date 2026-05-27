@@ -13,8 +13,8 @@ ADD COLUMN IF NOT EXISTS role_source TEXT NOT NULL DEFAULT 'internal'
 CHECK (role_source IN ('internal', 'oidc'));
 
 COMMENT ON COLUMN user_roles.role_source IS
-  E'\'oidc\' = sourced from OIDC token claims and subject to reconciliation;'
-  E' \'internal\' = assigned locally via IDN-03, preserved across reconciliation';
+  'oidc = sourced from OIDC token claims and subject to reconciliation;'
+  ' internal = assigned locally via IDN-03, preserved across reconciliation';
 
 -- Ensure unique constraint exists for idempotent inserts.
 -- Uses a DO block for PG < 14 compatibility (ALTER TABLE ... ADD CONSTRAINT

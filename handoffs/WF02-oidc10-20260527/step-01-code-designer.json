@@ -1,0 +1,63 @@
+{
+  "handoff_id": "20260527-002",
+  "run_id": "WF02-oidc10-20260527",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-oidc10-20260527/step-01-code-designer.json",
+  "created_at": "2026-05-27T20:04:46Z",
+  "started_at": null,
+  "completed_at": "2026-05-27T20:07:16Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-10"
+    ],
+    "related_handoff_ids": [
+      "20260527-001"
+    ],
+    "artifacts_in": [
+      "docs/design/oidc-09-jit-provisioning.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md"
+    ],
+    "branch_name": "feature/WF02-oidc10-20260527"
+  },
+  "task": {
+    "description": "Design the OIDC-10 (Attribute Synchronisation) implementation. The existing OIDC-09 design at src/design/oidc-09-jit-provisioning.md already defines the syncAttributesFromIdentityContext function signature and the high-level OIDC-10 requirements. Your job is to produce a focused design document at src/design/oidc-10-attribute-sync.md that covers:\n\n1. Replace the stub syncAttributesFromIdentityContext function in src/oidc/jit_provisioning.zig with a real implementation that:\n   - Updates display_name, email, status from token claims on every auth\n   - Calls identity_service to update the local user record\n   - Returns the updated User record\n\n2. Role reconciliation design:\n   - Token roles from IdentityContext.roles are authoritative for OIDC-sourced role bindings\n   - Locally-assigned roles (from IDN-03) must be preserved\n   - Define the reconciliation algorithm: read current user_roles, diff against token roles, insert/delete as needed, skip locally-assigned roles\n   - Specify the identity_service function(s) needed for role reconciliation\n\n3. Wiring into auth.zig:\n   - After JIT provisioning, call syncAttributesFromIdentityContext on every auth\n   - When to reconcile roles (after attribute sync)\n   - Error handling: attribute sync failure should not block auth (best-effort but logged)\n\n4. Any new DB queries or schema needed:\n   - Query to read user profile fields for comparison\n   - Query to update user profile fields\n   - Query to manage role bindings (insert/delete OIDC-sourced roles)\n\n5. Test strategy:\n   - Unit tests for the sync function (in-memory)\n   - Integration tests for the full attribute sync + role reconciliation flow\n\n6. Open questions or risks\n\nReference: the OIDC-10 requirement text in docs/BPM_Platform_Functional_Requirements.md (lines ~1561-1578).",
+    "acceptance_criteria": [
+      "src/design/oidc-10-attribute-sync.md is created with all sections above",
+      "Every acceptance criterion from OIDC-10 maps to a concrete design element",
+      "Role reconciliation algorithm is clearly specified",
+      "Error handling strategy for sync failure is documented",
+      "Test strategy is described"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for OIDC-10 Attribute Synchronisation and Role Reconciliation",
+    "artifacts_out": [
+      "src/design/oidc-10-attribute-sync.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "OQ-1: Role slug to role_id resolution uses subquery per slug; batch lookup may be needed for 100+ roles"
+      },
+      {
+        "severity": "MINOR",
+        "description": "OQ-4: IdentityContext does not carry status from token claims; status sync limited to default_status for now"
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a) for implementation and FRONTEND-DEV (Step 2b) \u2014 no frontend changes expected"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

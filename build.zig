@@ -822,6 +822,24 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc09_integration_tests = b.addRunArtifact(oidc09_integration_tests);
 
+    // OIDC-10: Attribute sync and role reconciliation integration tests (requires DB)
+    // Provides jit_provisioning, claim_mapping, and bpm as named modules.
+    // bpm provides pool, identity_registry, identity_service via relative imports.
+    const oidc10_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc10_attribute_sync_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "jit_provisioning", .module = jit_provisioning_mod },
+                .{ .name = "claim_mapping", .module = claim_mapping_mod },
+            },
+        }),
+    });
+    const run_oidc10_integration_tests = b.addRunArtifact(oidc10_integration_tests);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python3", "tools/clean_test_db.py" });
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
@@ -832,6 +850,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_integration_tests.step);
     test_integration_step.dependOn(&run_oidc08_integration_tests.step);
     test_integration_step.dependOn(&run_oidc09_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc10_integration_tests.step);
 
     const test_integration_obs03_step = b.step("test-integration-obs03", "Run OBS-03 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs03_step.dependOn(&clean_test_db.step);
@@ -848,6 +867,10 @@ pub fn build(b: *std.Build) void {
     const test_oidc09_step = b.step("test-integration-oidc09", "Run OIDC-09 JIT provisioning integration tests only (requires BPM_TEST_DB_URL)");
     test_oidc09_step.dependOn(&clean_test_db.step);
     test_oidc09_step.dependOn(&run_oidc09_integration_tests.step);
+
+    const test_oidc10_step = b.step("test-integration-oidc10", "Run OIDC-10 attribute sync integration tests only (requires BPM_TEST_DB_URL)");
+    test_oidc10_step.dependOn(&clean_test_db.step);
+    test_oidc10_step.dependOn(&run_oidc10_integration_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

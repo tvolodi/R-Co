@@ -354,7 +354,6 @@ pub fn syncAttributesFromIdentityContext(
         else => return error.PersistenceFailed,
     };
     const user = user_opt orelse return error.UserNotFound;
-    errdefer user.deinit(allocator);
 
     // Step 2: Compare token claims against stored profile fields.
     const claims_display_name = identity_ctx.display_name orelse identity_ctx.preferred_username;
@@ -368,6 +367,8 @@ pub fn syncAttributesFromIdentityContext(
 
     // Step 3: If profile fields differ, update via direct query.
     var updated_user = user;
+    // On error paths, free whichever user is currently active.
+    errdefer updated_user.deinit(allocator);
     if (profile_changed) {
         const new_display_name = if (display_name_changed) claims_display_name else user.display_name;
         const new_email = if (email_changed) claims_email else user.email;
@@ -379,6 +380,8 @@ pub fn syncAttributesFromIdentityContext(
             error.OutOfMemory => return error.OutOfMemory,
             else => return error.PersistenceFailed,
         };
+        // Free the old user record since updated_user now owns new allocations.
+        user.deinit(allocator);
     }
 
     // Step 4: Reconcile role bindings.
@@ -442,7 +445,8 @@ fn selectUserByExternalIdentity(
     };
 
     if (row == null) return null;
-    return materializeUserFromRow(allocator, row.?);
+    const found = try materializeUserFromRow(allocator, row.?);
+    return found;
 }
 
 /// Update display_name, email, and status for a user.
@@ -511,7 +515,7 @@ fn reconcileOidcRoles(
     defer pool.release(conn);
 
     // 1. Read current role bindings with their source.
-    const rows = conn.query(
+    var rows = conn.query(
         allocator,
         \\SELECT r.name AS role_slug, ur.role_source
         \\FROM user_roles ur
@@ -527,31 +531,23 @@ fn reconcileOidcRoles(
         pool_mod.PoolError.ExhaustedPool => return error.PoolExhausted,
         else => return error.PersistenceFailed,
     };
-    defer {
-        for (rows) |r| {
-            for (r) |col| {
-                if (col) |v| allocator.free(v);
-            }
-            allocator.free(r);
-        }
-        allocator.free(rows);
-    }
+    defer rows.deinit();
 
     // 2. Partition into OIDC-sourced vs locally-assigned.
-    var oidc_slugs = std.StringArrayHashMap(void).empty;
-    defer oidc_slugs.deinit(allocator);
-    var local_slugs = std.StringArrayHashMap(void).empty;
-    defer local_slugs.deinit(allocator);
+    var oidc_slugs = std.StringHashMap(void).init(allocator);
+    defer oidc_slugs.deinit();
+    var local_slugs = std.StringHashMap(void).init(allocator);
+    defer local_slugs.deinit();
 
-    for (rows) |r| {
+    for (rows.rows) |r| {
         if (r.len < 2) return error.PersistenceFailed;
         const slug = r[0] orelse return error.PersistenceFailed;
         const source = r[1] orelse return error.PersistenceFailed;
 
         if (std.mem.eql(u8, source, "oidc")) {
-            oidc_slugs.put(allocator, slug, {}) catch return error.OutOfMemory;
+            oidc_slugs.put(slug, {}) catch return error.OutOfMemory;
         } else {
-            local_slugs.put(allocator, slug, {}) catch return error.OutOfMemory;
+            local_slugs.put(slug, {}) catch return error.OutOfMemory;
         }
     }
 
@@ -777,6 +773,218 @@ test "parseRolesJson: multiple roles" {
 
 test "parseRolesJson: invalid JSON returns ConfigParseFailed" {
     try std.testing.expectError(error.ConfigParseFailed, parseRolesJson(std.testing.allocator, "not-json"));
+}
+
+// ---------------------------------------------------------------------------
+// OIDC-10: Pure reconciliation algorithm tests (set logic, no I/O)
+// ---------------------------------------------------------------------------
+
+/// Pure function: compute the add_set and remove_set for role reconciliation.
+///
+/// Parameters:
+///   oidc_slugs  — set of role slugs currently bound with role_source='oidc'
+///   local_slugs — set of role slugs currently bound with role_source='internal'
+///   token_roles — role slugs from the IdentityContext
+///
+/// Returns:
+///   .added   = token_roles ∖ (oidc_slugs ∪ local_slugs)
+///   .removed = oidc_slugs ∖ token_roles
+const ReconcileSets = struct {
+    added: []const []const u8,
+    removed: []const []const u8,
+};
+
+fn computeReconcileSets(
+    allocator: std.mem.Allocator,
+    oidc_slugs: []const []const u8,
+    local_slugs: []const []const u8,
+    token_roles: []const []const u8,
+) !ReconcileSets {
+    // Build hash sets for O(log n) membership tests.
+    var oidc_set = std.StringHashMap(void).init(allocator);
+    defer oidc_set.deinit();
+    for (oidc_slugs) |s| try oidc_set.put(s, {});
+
+    var local_set = std.StringHashMap(void).init(allocator);
+    defer local_set.deinit();
+    for (local_slugs) |s| try local_set.put(s, {});
+
+    var all_existing = std.StringHashMap(void).init(allocator);
+    defer all_existing.deinit();
+    for (oidc_slugs) |s| try all_existing.put(s, {});
+    for (local_slugs) |s| try all_existing.put(s, {});
+
+    // add_set = token_roles ∖ (oidc_slugs ∪ local_slugs)
+    var add_list = std.ArrayList([]const u8).init(allocator);
+    defer add_list.deinit();
+    for (token_roles) |slug| {
+        if (!all_existing.contains(slug)) {
+            try add_list.append(slug);
+        }
+    }
+
+    // remove_set = oidc_slugs ∖ token_roles
+    var token_set = std.StringHashMap(void).init(allocator);
+    defer token_set.deinit();
+    for (token_roles) |s| try token_set.put(s, {});
+
+    var remove_list = std.ArrayList([]const u8).init(allocator);
+    defer remove_list.deinit();
+    for (oidc_slugs) |slug| {
+        if (!token_set.contains(slug)) {
+            try remove_list.append(slug);
+        }
+    }
+
+    // Duplicate results to owned memory.
+    const added = try allocator.alloc([]const u8, add_list.items.len);
+    errdefer { for (added) |r| allocator.free(r); allocator.free(added); }
+    for (add_list.items, 0..) |slug, i| added[i] = try allocator.dupe(u8, slug);
+
+    const removed = try allocator.alloc([]const u8, remove_list.items.len);
+    errdefer { for (removed) |r| allocator.free(r); allocator.free(removed); }
+    for (remove_list.items, 0..) |slug, i| removed[i] = try allocator.dupe(u8, slug);
+
+    return .{ .added = added, .removed = removed };
+}
+
+test "TC-OIDC-10-11: reconciliation algorithm adds new role, removes no roles" {
+    const alloc = std.testing.allocator;
+    const oidc_slugs = &[_][]const u8{"TASK_WORKER"};
+    const local_slugs = &[_][]const u8{"VIEWER"};
+    const token_roles = &[_][]const u8{"TASK_WORKER", "PROCESS_OPERATOR"};
+
+    const result = try computeReconcileSets(alloc, oidc_slugs, local_slugs, token_roles);
+    defer {
+        for (result.added) |r| alloc.free(r);
+        alloc.free(result.added);
+        for (result.removed) |r| alloc.free(r);
+        alloc.free(result.removed);
+    }
+
+    try std.testing.expectEqual(@as(usize, 1), result.added.len);
+    try std.testing.expectEqualStrings("PROCESS_OPERATOR", result.added[0]);
+    try std.testing.expectEqual(@as(usize, 0), result.removed.len);
+}
+
+test "TC-OIDC-10-12: empty token roles removes all OIDC roles" {
+    const alloc = std.testing.allocator;
+    const oidc_slugs = &[_][]const u8{"TASK_WORKER", "PROCESS_OPERATOR"};
+    const local_slugs = &[_][]const u8{};
+    const token_roles = &[_][]const u8{};
+
+    const result = try computeReconcileSets(alloc, oidc_slugs, local_slugs, token_roles);
+    defer {
+        for (result.added) |r| alloc.free(r);
+        alloc.free(result.added);
+        for (result.removed) |r| alloc.free(r);
+        alloc.free(result.removed);
+    }
+
+    try std.testing.expectEqual(@as(usize, 0), result.added.len);
+    try std.testing.expectEqual(@as(usize, 2), result.removed.len);
+
+    // Sort removed for deterministic comparison.
+    std.sort.block([]const u8, result.removed, {}, struct {
+        fn lessThan(_: void, a: []const u8, b: []const u8) bool {
+            return std.mem.lessThan(u8, a, b);
+        }
+    }.lessThan);
+
+    try std.testing.expectEqualStrings("PROCESS_OPERATOR", result.removed[0]);
+    try std.testing.expectEqualStrings("TASK_WORKER", result.removed[1]);
+}
+
+test "TC-OIDC-10-13: all roles locally-assigned, token has new roles — adds new" {
+    const alloc = std.testing.allocator;
+    const oidc_slugs = &[_][]const u8{};
+    const local_slugs = &[_][]const u8{"VIEWER"};
+    const token_roles = &[_][]const u8{"PROCESS_OPERATOR"};
+
+    const result = try computeReconcileSets(alloc, oidc_slugs, local_slugs, token_roles);
+    defer {
+        for (result.added) |r| alloc.free(r);
+        alloc.free(result.added);
+        for (result.removed) |r| alloc.free(r);
+        alloc.free(result.removed);
+    }
+
+    try std.testing.expectEqual(@as(usize, 1), result.added.len);
+    try std.testing.expectEqualStrings("PROCESS_OPERATOR", result.added[0]);
+    try std.testing.expectEqual(@as(usize, 0), result.removed.len);
+}
+
+test "TC-OIDC-10-14: role is both OIDC-sourced and locally-assigned — removes only OIDC" {
+    const alloc = std.testing.allocator;
+    const oidc_slugs = &[_][]const u8{"PROCESS_DESIGNER"};
+    const local_slugs = &[_][]const u8{"PROCESS_DESIGNER"};
+    const token_roles = &[_][]const u8{};
+
+    const result = try computeReconcileSets(alloc, oidc_slugs, local_slugs, token_roles);
+    defer {
+        for (result.added) |r| alloc.free(r);
+        alloc.free(result.added);
+        for (result.removed) |r| alloc.free(r);
+        alloc.free(result.removed);
+    }
+
+    try std.testing.expectEqual(@as(usize, 0), result.added.len);
+    try std.testing.expectEqual(@as(usize, 1), result.removed.len);
+    try std.testing.expectEqualStrings("PROCESS_DESIGNER", result.removed[0]);
+}
+
+test "TC-OIDC-10-15: no OIDC-sourced roles at all — nothing to do" {
+    const alloc = std.testing.allocator;
+    const oidc_slugs = &[_][]const u8{};
+    const local_slugs = &[_][]const u8{"VIEWER"};
+    const token_roles = &[_][]const u8{};
+
+    const result = try computeReconcileSets(alloc, oidc_slugs, local_slugs, token_roles);
+    defer {
+        for (result.added) |r| alloc.free(r);
+        alloc.free(result.added);
+        for (result.removed) |r| alloc.free(r);
+        alloc.free(result.removed);
+    }
+
+    try std.testing.expectEqual(@as(usize, 0), result.added.len);
+    try std.testing.expectEqual(@as(usize, 0), result.removed.len);
+}
+
+test "TC-OIDC-10-additional: existing OIDC role in token — no change" {
+    const alloc = std.testing.allocator;
+    const oidc_slugs = &[_][]const u8{"TASK_WORKER"};
+    const local_slugs = &[_][]const u8{};
+    const token_roles = &[_][]const u8{"TASK_WORKER"};
+
+    const result = try computeReconcileSets(alloc, oidc_slugs, local_slugs, token_roles);
+    defer {
+        for (result.added) |r| alloc.free(r);
+        alloc.free(result.added);
+        for (result.removed) |r| alloc.free(r);
+        alloc.free(result.removed);
+    }
+
+    try std.testing.expectEqual(@as(usize, 0), result.added.len);
+    try std.testing.expectEqual(@as(usize, 0), result.removed.len);
+}
+
+test "TC-OIDC-10-additional: local role also in token — no add, no remove" {
+    const alloc = std.testing.allocator;
+    const oidc_slugs = &[_][]const u8{};
+    const local_slugs = &[_][]const u8{"VIEWER"};
+    const token_roles = &[_][]const u8{"VIEWER"};
+
+    const result = try computeReconcileSets(alloc, oidc_slugs, local_slugs, token_roles);
+    defer {
+        for (result.added) |r| alloc.free(r);
+        alloc.free(result.added);
+        for (result.removed) |r| alloc.free(r);
+        alloc.free(result.removed);
+    }
+
+    try std.testing.expectEqual(@as(usize, 0), result.added.len);
+    try std.testing.expectEqual(@as(usize, 0), result.removed.len);
 }
 
 test "parseRolesJson: non-array JSON returns ConfigParseFailed" {
