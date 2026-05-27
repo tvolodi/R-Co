@@ -130,6 +130,17 @@ pub const CreateTenantInput = struct {
     idp_realm_id: ?[]const u8,
 };
 
+/// A single role binding row from user_roles joined with roles.
+pub const UserRoleBinding = struct {
+    role_slug: []const u8,
+    role_source: []const u8, // "oidc" or "internal"
+
+    pub fn deinit(self: *UserRoleBinding, allocator: std.mem.Allocator) void {
+        allocator.free(self.role_slug);
+        allocator.free(self.role_source);
+    }
+};
+
 pub const RegistryError = error{
     DuplicateUsername,
     DuplicateTenantSlug,
@@ -545,6 +556,174 @@ pub const Registry = struct {
         }
 
         return error.ExternalIdentityCollision;
+    }
+
+    /// Update display_name, email, and status for a user.
+    /// Returns the updated User record.
+    /// Returns error.NotFound if the user does not exist.
+    pub fn updateUserProfile(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        user_id: []const u8,
+        tenant_id: []const u8,
+        display_name: []const u8,
+        email: []const u8,
+        status: UserStatus,
+    ) RegistryError!User {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const status_str = status.asString();
+        const active_str: []const u8 = switch (status) {
+            .ACTIVE => "true",
+            .INACTIVE => "false",
+        };
+
+        const row = conn.queryRow(
+            allocator,
+            \\UPDATE users
+            \\SET display_name = $3, email = $4, status = $5,
+            \\    is_active = $6::boolean, updated_at = NOW()
+            \\WHERE id::text = $1 AND tenant_id = $2::uuid
+            \\RETURNING id::text, username, display_name, email, status, created_at::text
+        ,
+            &[_][]const u8{ user_id, tenant_id, display_name, email, status_str, active_str },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (row == null) return error.NotFound;
+        return materializeUser(allocator, row.?);
+    }
+
+    /// Read all role bindings for a user, including the source column.
+    pub fn selectUserRoles(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        user_id: []const u8,
+    ) RegistryError![]UserRoleBinding {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const rows = conn.query(
+            allocator,
+            \\SELECT r.name AS role_slug, ur.role_source
+            \\FROM user_roles ur
+            \\JOIN roles r ON r.id = ur.role_id
+            \\WHERE ur.user_id = $1::uuid
+        ,
+            &[_][]const u8{user_id},
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        errdefer {
+            for (rows) |row| freeRow(allocator, row);
+            allocator.free(rows);
+        }
+
+        const result = try allocator.alloc(UserRoleBinding, rows.len);
+        errdefer {
+            for (result) |*b| b.deinit(allocator);
+            allocator.free(result);
+        }
+
+        for (rows, 0..) |row, i| {
+            const role_slug = row[0] orelse return error.PersistenceFailed;
+            const role_source = row[1] orelse return error.PersistenceFailed;
+            result[i] = .{
+                .role_slug = try allocator.dupe(u8, role_slug),
+                .role_source = try allocator.dupe(u8, role_source),
+            };
+        }
+
+        return result;
+    }
+
+    /// Insert an OIDC-sourced role binding for a user.
+    /// Looks up the role_id from the `roles` table by slug.
+    /// Idempotent: ON CONFLICT DO NOTHING.
+    pub fn insertOidcRoleBinding(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        user_id: []const u8,
+        role_slug: []const u8,
+    ) RegistryError!void {
+        _ = allocator;
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        _ = conn.exec(
+            \\INSERT INTO user_roles (user_id, role_id, role_source)
+            \\SELECT $1::uuid, r.id, 'oidc'
+            \\FROM roles r
+            \\WHERE r.name = $2
+            \\  AND NOT EXISTS (
+            \\    SELECT 1 FROM user_roles ur
+            \\    WHERE ur.user_id = $1::uuid AND ur.role_id = r.id
+            \\  )
+            \\ON CONFLICT (user_id, role_id) DO NOTHING
+        ,
+            &[_][]const u8{ user_id, role_slug },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+    }
+
+    /// Delete an OIDC-sourced role binding for a user.
+    /// Only deletes rows where role_source = 'oidc'.
+    /// Idempotent: no-op if the binding does not exist or is not OIDC-sourced.
+    pub fn deleteOidcRoleBinding(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        user_id: []const u8,
+        role_slug: []const u8,
+    ) RegistryError!void {
+        _ = allocator;
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        _ = conn.exec(
+            \\DELETE FROM user_roles
+            \\WHERE user_id = $1::uuid
+            \\  AND role_id = (SELECT id FROM roles WHERE name = $2)
+            \\  AND role_source = 'oidc'
+        ,
+            &[_][]const u8{ user_id, role_slug },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
     }
 
     pub fn createGroup(
