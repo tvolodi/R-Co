@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2026-05-23T18:08:12Z",
-  "last_updated": "2026-05-27T21:55:20Z",
+  "last_updated": "2026-05-27T21:58:48Z",
   "entries": [
     {
       "handoff_id": "20260527-911",
@@ -5750,6 +5750,20 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-05-27T21:55:05Z",
       "started_at": "2026-05-27T21:55:20Z",
+      "completed_at": "2026-05-27T21:58:32Z",
+      "status": "COMPLETED",
+      "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
+    },
+    {
+      "handoff_id": "5eba3045-d988-45ff-a242-65f18bd337e4",
+      "file": "handoffs/WF02-oidc11-15-20260528/step-final-backend-dev.json",
+      "run_id": "WF02-oidc11-15-20260528",
+      "workflow_id": "WF-02",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-27T21:58:32Z",
+      "started_at": "2026-05-27T21:58:48Z",
       "completed_at": null,
       "status": "IN_PROGRESS",
       "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
