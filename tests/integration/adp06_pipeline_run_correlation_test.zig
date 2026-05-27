@@ -207,7 +207,14 @@ test "TC-ADP-06-02: trusted pipeline context propagates to event metadata and au
         .pipeline_run_id = run_id,
         .limit = 20,
     });
-    defer alloc.free(global);
+    defer {
+        for (global) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(global);
+    }
     try testing.expect(global.len >= 1);
 }
 
@@ -296,7 +303,14 @@ test "TC-ADP-06-03: non-pipeline paths preserve null/absent compatibility and qu
         .after_sequence = null,
         .limit = 20,
     });
-    defer alloc.free(filtered_history);
+    defer {
+        for (filtered_history) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(filtered_history);
+    }
     try testing.expectEqual(@as(usize, 0), filtered_history.len);
 
     const audit_result = bpm.audit_routes.handleList(&pool, alloc, .{

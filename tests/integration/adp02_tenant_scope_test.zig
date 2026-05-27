@@ -172,8 +172,8 @@ test "TC-ADP-02-02: definition uniqueness is tenant-partitioned and reads are te
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
     var a_rows = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = $2",
-        &.{ name, version },
+        "SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = $2 AND tenant_id = $3::uuid",
+        &.{ name, version, tenant_a },
     );
     defer a_rows.deinit();
     const a_count = std.fmt.parseInt(i64, a_rows.rows[0][0] orelse "0", 10) catch 0;
@@ -181,8 +181,8 @@ test "TC-ADP-02-02: definition uniqueness is tenant-partitioned and reads are te
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
     var b_rows = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = $2",
-        &.{ name, version },
+        "SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = $2 AND tenant_id = $3::uuid",
+        &.{ name, version, tenant_b },
     );
     defer b_rows.deinit();
     const b_count = std.fmt.parseInt(i64, b_rows.rows[0][0] orelse "0", 10) catch 0;
@@ -257,8 +257,8 @@ test "TC-ADP-02-03: instance persistence is tenant-scoped with default-tenant fa
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
     var a_rows = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM instance_projections WHERE correlation_key = $1",
-        &.{corr},
+        "SELECT COUNT(*) FROM instance_projections WHERE correlation_key = $1 AND tenant_id = $2::uuid",
+        &.{ corr, tenant_a },
     );
     defer a_rows.deinit();
     const a_count = std.fmt.parseInt(i64, a_rows.rows[0][0] orelse "0", 10) catch 0;
@@ -274,8 +274,8 @@ test "TC-ADP-02-03: instance persistence is tenant-scoped with default-tenant fa
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
     var b_rows = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM instance_projections WHERE correlation_key = $1",
-        &.{corr},
+        "SELECT COUNT(*) FROM instance_projections WHERE correlation_key = $1 AND tenant_id = $2::uuid",
+        &.{ corr, tenant_b },
     );
     defer b_rows.deinit();
     const b_count = std.fmt.parseInt(i64, b_rows.rows[0][0] orelse "0", 10) catch 0;
@@ -375,24 +375,24 @@ test "TC-ADP-02-04: task and transition persistence are isolated across tenants"
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
     var token_rows_a = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM tokens WHERE current_node = 'node-adp02'",
-        &.{},
+        "SELECT COUNT(*) FROM tokens WHERE current_node = 'node-adp02' AND tenant_id = $1::uuid",
+        &.{tenant_a},
     );
     defer token_rows_a.deinit();
     const token_count_a = std.fmt.parseInt(i64, token_rows_a.rows[0][0] orelse "0", 10) catch 0;
 
     var task_rows_a = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM tasks WHERE node_id = 'node-adp02'",
-        &.{},
+        "SELECT COUNT(*) FROM tasks WHERE node_id = 'node-adp02' AND tenant_id = $1::uuid",
+        &.{tenant_a},
     );
     defer task_rows_a.deinit();
     const task_count_a = std.fmt.parseInt(i64, task_rows_a.rows[0][0] orelse "0", 10) catch 0;
 
     var hidden_b_from_a = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM tasks WHERE id = $1::uuid",
-        &.{task_b},
+        "SELECT COUNT(*) FROM tasks WHERE id = $1::uuid AND tenant_id = $2::uuid",
+        &.{ task_b, tenant_a },
     );
     defer hidden_b_from_a.deinit();
     const hidden_b_count = std.fmt.parseInt(i64, hidden_b_from_a.rows[0][0] orelse "0", 10) catch 0;
@@ -400,16 +400,16 @@ test "TC-ADP-02-04: task and transition persistence are isolated across tenants"
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
     var token_rows_b = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM tokens WHERE current_node = 'node-adp02'",
-        &.{},
+        "SELECT COUNT(*) FROM tokens WHERE current_node = 'node-adp02' AND tenant_id = $1::uuid",
+        &.{tenant_b},
     );
     defer token_rows_b.deinit();
     const token_count_b = std.fmt.parseInt(i64, token_rows_b.rows[0][0] orelse "0", 10) catch 0;
 
     var task_rows_b = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM tasks WHERE node_id = 'node-adp02'",
-        &.{},
+        "SELECT COUNT(*) FROM tasks WHERE node_id = 'node-adp02' AND tenant_id = $1::uuid",
+        &.{tenant_b},
     );
     defer task_rows_b.deinit();
     const task_count_b = std.fmt.parseInt(i64, task_rows_b.rows[0][0] orelse "0", 10) catch 0;
@@ -489,16 +489,16 @@ test "TC-ADP-02-05: audit persistence is tenant-scoped for audit_entries and aud
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
     var entry_rows_a = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update'",
-        &.{},
+        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update' AND resource_id = $1::uuid AND tenant_id = $2::uuid",
+        &.{ audit_target_a, tenant_a },
     );
     defer entry_rows_a.deinit();
     const entry_count_a = std.fmt.parseInt(i64, entry_rows_a.rows[0][0] orelse "0", 10) catch 0;
 
     var log_rows_a = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM audit_log WHERE action = 'INSTANCE_START'",
-        &.{},
+        "SELECT COUNT(*) FROM audit_log WHERE action = 'INSTANCE_START' AND entity_id = $1::uuid AND tenant_id = $2::uuid",
+        &.{ audit_target_a, tenant_a },
     );
     defer log_rows_a.deinit();
     const log_count_a = std.fmt.parseInt(i64, log_rows_a.rows[0][0] orelse "0", 10) catch 0;
@@ -506,16 +506,16 @@ test "TC-ADP-02-05: audit persistence is tenant-scoped for audit_entries and aud
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
     var entry_rows_b = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update'",
-        &.{},
+        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update' AND resource_id = $1::uuid AND tenant_id = $2::uuid",
+        &.{ audit_target_b, tenant_b },
     );
     defer entry_rows_b.deinit();
     const entry_count_b = std.fmt.parseInt(i64, entry_rows_b.rows[0][0] orelse "0", 10) catch 0;
 
     var log_rows_b = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM audit_log WHERE action = 'INSTANCE_START'",
-        &.{},
+        "SELECT COUNT(*) FROM audit_log WHERE action = 'INSTANCE_START' AND entity_id = $1::uuid AND tenant_id = $2::uuid",
+        &.{ audit_target_b, tenant_b },
     );
     defer log_rows_b.deinit();
     const log_count_b = std.fmt.parseInt(i64, log_rows_b.rows[0][0] orelse "0", 10) catch 0;
