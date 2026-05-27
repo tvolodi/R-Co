@@ -9,13 +9,10 @@
 //!   DB-03 → TC-DB-03-01 … TC-DB-03-02  (integration layer; stubs here for catalog)
 //!   DB-04 → TC-DB-04-01 … TC-DB-04-02
 const std = @import("std");
-
-// Source modules (pool.zig, migrations.zig) are not imported here because Zig
-// does not allow cross-module relative @import paths from a standalone root file.
-// TEST-RUNNER must wire the module imports via build.zig when implementing logic.
-comptime {
-    _ = std;
-}
+const bpm = @import("bpm");
+const Pool = bpm.pool.Pool;
+const PoolConfig = bpm.pool.PoolConfig;
+const PoolError = bpm.pool.PoolError;
 
 // ---------------------------------------------------------------------------
 // DB-01: Schema initialisation
@@ -46,11 +43,19 @@ test "TC-DB-01-05: PostgreSQL version below 15 returns UnsupportedPgVersion" {
 // ---------------------------------------------------------------------------
 
 test "TC-DB-02-01: pool_size below lower bound returns InvalidPoolSize" {
-    return error.SkipZigTest;
+    const result = Pool.init(std.testing.io, std.testing.allocator, PoolConfig{
+        .url = "postgres://fake:fake@localhost/fake",
+        .pool_size = 1,
+    });
+    try std.testing.expectError(PoolError.InvalidPoolSize, result);
 }
 
 test "TC-DB-02-02: pool_size above upper bound returns InvalidPoolSize" {
-    return error.SkipZigTest;
+    const result = Pool.init(std.testing.io, std.testing.allocator, PoolConfig{
+        .url = "postgres://fake:fake@localhost/fake",
+        .pool_size = 201,
+    });
+    try std.testing.expectError(PoolError.InvalidPoolSize, result);
 }
 
 test "TC-DB-02-03: fully exhausted pool returns ExhaustedPool immediately" {

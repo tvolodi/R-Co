@@ -1259,7 +1259,7 @@ pub const Store = struct {
 // Row parsing helpers
 // ---------------------------------------------------------------------------
 
-fn freeDefinitionGraph(allocator: std.mem.Allocator, graph: DefinitionGraph) void {
+pub fn freeDefinitionGraph(allocator: std.mem.Allocator, graph: DefinitionGraph) void {
     for (graph.nodes) |n| {
         allocator.free(n.id);
         if (n.label) |l| allocator.free(l);
@@ -1346,8 +1346,7 @@ fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !Definit
 ///   8  updated_at   bigint (µs)
 ///   9  archived_at  bigint or NULL
 ///
-/// NOTE: When pg.zig is fully implemented, real row data will be present.
-/// Currently all DB calls return QueryFailed so this path is never reached.
+/// Parses a DB row into a Definition. Column index layout documented above.
 fn rowToDefinition(
     allocator: std.mem.Allocator,
     row: []?[]u8,
@@ -1378,9 +1377,11 @@ fn rowToDefinition(
 
     const status = parseDefinitionStatus(col.get(row, 4)) catch .DRAFT;
 
-    // Stub: graph column not parsed until pg.zig delivers real rows.
-    // TODO: parse JSONB text into DefinitionGraph when pg.zig is complete.
-    const graph = fallback.graph;
+    const graph_json_str = col.get(row, 5);
+    const graph = if (graph_json_str.len > 0)
+        parseGraphJson(allocator, graph_json_str) catch fallback.graph
+    else
+        fallback.graph;
 
     const created_by_str = col.get(row, 6);
     const created_by = parseUuid(created_by_str) catch fallback.created_by;

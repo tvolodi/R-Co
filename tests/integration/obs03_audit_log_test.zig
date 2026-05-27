@@ -217,6 +217,7 @@ test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fi
         alloc.free(def.version);
         if (def.description) |d| alloc.free(d);
         if (def.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, def.graph);
     }
 
     const updated_def = try store.update(alloc, def.id, .{
@@ -231,6 +232,7 @@ test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fi
         alloc.free(updated_def.version);
         if (updated_def.description) |d| alloc.free(d);
         if (updated_def.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, updated_def.graph);
     }
 
     const def_id = try uuidToString(alloc, def.id);
@@ -347,6 +349,7 @@ test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" 
         alloc.free(def.version);
         if (def.description) |d| alloc.free(d);
         if (def.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, def.graph);
     }
 
     const def_id = try uuidToString(alloc, def.id);
@@ -368,6 +371,7 @@ test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" 
         alloc.free(fetched.version);
         if (fetched.description) |d| alloc.free(d);
         if (fetched.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, fetched.graph);
     }
 
     const list_result = bpm.audit_routes.handleList(&pool, alloc, .{

@@ -124,6 +124,7 @@ fn freeDefinition(allocator: std.mem.Allocator, d: Definition) void {
     allocator.free(d.version);
     if (d.description) |desc| allocator.free(desc);
     if (d.stage) |st| allocator.free(st);
+    bpm.definition.freeDefinitionGraph(allocator, d.graph);
 }
 
 /// Free heap-allocated fields of an Instance.

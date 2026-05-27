@@ -27,6 +27,10 @@ const test_export_import_integration = @import("test_export_import_integration.z
 const pd10_search_integration = @import("pd10_search_test.zig");
 // Stage 3 — Start instance (EE-01)
 const ee01_start_instance_integration = @import("ee01_start_instance_test.zig");
+// Stage 3 — Task store integration (EE-03)
+const ee03_task_store_integration = @import("ee03_task_store_test.zig");
+// Stage 3 — Tasks API integration (EE-03/EE-04)
+const ee03_ee04_tasks_api_integration = @import("ee03_ee04_tasks_api_test.zig");
 // Stage 3 — Instance cancellation (EE-08)
 const ee08_cancel_instance_integration = @import("ee08_cancel_instance_test.zig");
 // Stage 3 — Variable scoping and merge (EE-09)
@@ -93,6 +97,8 @@ const adp09_tamper_evident_audit_chain_integration = @import("adp09_tamper_evide
 const adp10_agent_io_capture_audit_integration = @import("adp10_agent_io_capture_audit_test.zig");
 // Stage 6.5 — Default-tenant migration-boundary regression suite (ADP-12)
 const adp12_default_tenant_regression_integration = @import("adp12_default_tenant_regression_test.zig");
+// Stage 6.5 — Tenant column and policy schema (ADP-02)
+const adp02_tenant_scope = @import("adp02_tenant_scope_test.zig");
 
 comptime {
     _ = std;
@@ -107,6 +113,8 @@ comptime {
     _ = test_export_import_integration;
     _ = pd10_search_integration;
     _ = ee01_start_instance_integration;
+    _ = ee03_task_store_integration;
+    _ = ee03_ee04_tasks_api_integration;
     _ = ee08_cancel_instance_integration;
     _ = ee09_merge_variables_integration;
     _ = ee10_instance_error_integration;
@@ -140,6 +148,7 @@ comptime {
     _ = adp09_tamper_evident_audit_chain_integration;
     _ = adp10_agent_io_capture_audit_integration;
     _ = adp12_default_tenant_regression_integration;
+    _ = adp02_tenant_scope;
 }
 
 test "integration placeholder" {

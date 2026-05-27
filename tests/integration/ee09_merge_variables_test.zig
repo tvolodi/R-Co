@@ -97,6 +97,7 @@ fn freeDefinition(allocator: std.mem.Allocator, d: Definition) void {
     allocator.free(d.version);
     if (d.description) |desc| allocator.free(desc);
     if (d.stage) |st| allocator.free(st);
+    bpm.definition.freeDefinitionGraph(allocator, d.graph);
 }
 
 // ---------------------------------------------------------------------------
@@ -141,6 +142,7 @@ test "TC-EE-09-01: new key insert — key inserted, no VARIABLE_OVERWRITTEN even
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;
@@ -253,6 +255,7 @@ test "TC-EE-09-02: existing key overwrite (no schema) — VARIABLE_OVERWRITTEN e
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;
@@ -361,6 +364,7 @@ test "TC-EE-09-04: schema violation — merge aborted, instance transitions to E
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;
@@ -521,6 +525,7 @@ test "TC-EE-09-05: empty output_variables — no events, variables unchanged" {
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;

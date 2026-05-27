@@ -154,7 +154,14 @@ test "TC-ES-01-01: valid append returns AppendResult with is_duplicate=false and
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
-    defer alloc.free(events);
+    defer {
+        for (events) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(events);
+    }
     try std.testing.expect(events.len >= 1);
 }
 
@@ -278,7 +285,14 @@ test "TC-ES-02-02: Store.read returns events sorted by ascending sequence_number
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
-    defer alloc.free(events);
+    defer {
+        for (events) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(events);
+    }
 
     try std.testing.expectEqual(@as(usize, 3), events.len);
     try std.testing.expectEqual(@as(i64, 1), events[0].sequence_number);
@@ -433,7 +447,14 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
         .after_global_seq = after,
         .limit = 100,
     });
-    defer alloc.free(events);
+    defer {
+        for (events) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(events);
+    }
 
     // Must contain at least our 3 appended events.
     try std.testing.expect(events.len >= 3);
@@ -506,7 +527,14 @@ test "TC-ES-04-02: readGlobal with after_global_seq cursor returns only later ev
         .after_global_seq = cursor,
         .limit = 100,
     });
-    defer alloc.free(events);
+    defer {
+        for (events) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(events);
+    }
 
     // Must include at least 2 events (the 4th and 5th we just appended).
     try std.testing.expect(events.len >= 2);
@@ -660,7 +688,14 @@ test "TC-ES-06-01: pointInTime filters out events created after the timestamp" {
     });
 
     const events = try store.pointInTime(alloc, inst_uuid, cutoff);
-    defer alloc.free(events);
+    defer {
+        for (events) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(events);
+    }
 
     // Only events 1 and 2 should appear (event 3 was appended after cutoff).
     try std.testing.expect(events.len <= 2);
@@ -724,7 +759,14 @@ test "TC-ES-06-02: read with up_to_sequence returns exactly events 1..K" {
         .up_to_sequence = 3,
         .up_to_timestamp = null,
     });
-    defer alloc.free(events);
+    defer {
+        for (events) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(events);
+    }
 
     try std.testing.expectEqual(@as(usize, 3), events.len);
     for (events, 0..) |ev, i| {
@@ -1105,14 +1147,28 @@ test "TC-ADP-01-01: default-tenant behavior remains backward compatible" {
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
-    defer alloc.free(legacy_read);
+    defer {
+        for (legacy_read) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(legacy_read);
+    }
 
     const explicit_default = try store.read(alloc, inst_uuid, ReadOpts{
         .tenant_id = bpm.store.DEFAULT_TENANT_ID,
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
-    defer alloc.free(explicit_default);
+    defer {
+        for (explicit_default) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(explicit_default);
+    }
 
     try std.testing.expectEqual(@as(usize, 1), legacy_read.len);
     try std.testing.expectEqual(@as(usize, 1), explicit_default.len);
@@ -1174,14 +1230,28 @@ test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
-    defer alloc.free(default_events);
+    defer {
+        for (default_events) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(default_events);
+    }
 
     const alt_events = try store.read(alloc, inst_uuid, ReadOpts{
         .tenant_id = alt_tenant,
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
-    defer alloc.free(alt_events);
+    defer {
+        for (alt_events) |rec| {
+            alloc.free(rec.event_type);
+            alloc.free(rec.payload);
+            alloc.free(rec.metadata);
+        }
+        alloc.free(alt_events);
+    }
 
     try std.testing.expectEqual(@as(usize, 1), default_events.len);
     try std.testing.expectEqual(@as(usize, 1), alt_events.len);
@@ -1314,4 +1384,143 @@ test "TC-ADP-01-04: append rejects empty tenant context deterministically" {
     defer arc.deinit();
     const archive_count = std.fmt.parseInt(i64, arc.rows[0][0] orelse "0", 10) catch 0;
     try std.testing.expectEqual(@as(i64, 0), archive_count);
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-01-05: append with nil actor_id returns ActorIdMissing
+// ---------------------------------------------------------------------------
+
+test "TC-ES-01-05: append with nil actor_id returns ActorIdMissing" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_uuid = try parseUuid(alloc, "e5010500-0000-0000-0000-000000000001");
+    const nil_actor: [16]u8 = [_]u8{0} ** 16;
+
+    try std.testing.expectError(StoreError.ActorIdMissing, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "SOME_TYPE",
+        .payload = "{}",
+        .actor_id = nil_actor,
+        .idempotency_key = "es01-05-idem",
+        .metadata = null,
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-01-06: append with array payload returns PayloadInvalid
+// ---------------------------------------------------------------------------
+
+test "TC-ES-01-06: append with array payload returns PayloadInvalid" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_uuid = try parseUuid(alloc, "e5010600-0000-0000-0000-000000000001");
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000025");
+
+    try std.testing.expectError(StoreError.PayloadInvalid, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "SOME_TYPE",
+        .payload = "[1,2,3]",
+        .actor_id = actor_uuid,
+        .idempotency_key = "es01-06-idem",
+        .metadata = null,
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-03-02: append with empty idempotency_key returns IdempotencyKeyMissing
+// ---------------------------------------------------------------------------
+
+test "TC-ES-03-02: append with empty idempotency_key returns IdempotencyKeyMissing" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_uuid = try parseUuid(alloc, "e5030200-0000-0000-0000-000000000001");
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000026");
+
+    try std.testing.expectError(StoreError.IdempotencyKeyMissing, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "SOME_TYPE",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = "",
+        .metadata = null,
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-03-03: append with 256-char idempotency_key returns IdempotencyKeyTooLong
+// ---------------------------------------------------------------------------
+
+test "TC-ES-03-03: append with 256-char idempotency_key returns IdempotencyKeyTooLong" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_uuid = try parseUuid(alloc, "e5030300-0000-0000-0000-000000000001");
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000027");
+
+    const long_key_arr = [_]u8{'x'} ** 256;
+    const long_key: []const u8 = &long_key_arr;
+
+    try std.testing.expectError(StoreError.IdempotencyKeyTooLong, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "SOME_TYPE",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = long_key,
+        .metadata = null,
+    }));
 }

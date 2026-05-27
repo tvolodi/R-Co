@@ -1122,11 +1122,12 @@ fn rowToEventRecord(
     row: []?[]u8,
     idempotency_key: []const u8,
 ) error{OutOfMemory}!EventRecord {
-    _ = allocator;
     // Columns: event_id, instance_id, event_type, payload, actor_id,
     //          created_at_us, sequence_number, idempotency_key, metadata, global_seq
-    const event_type = if (row.len > 2) row[2] orelse "unknown" else "unknown";
-    const payload = if (row.len > 3) row[3] orelse "{}" else "{}";
+    const event_type = try allocator.dupe(u8, if (row.len > 2) row[2] orelse "unknown" else "unknown");
+    errdefer allocator.free(event_type);
+    const payload = try allocator.dupe(u8, if (row.len > 3) row[3] orelse "{}" else "{}");
+    errdefer allocator.free(payload);
     const seq = if (row.len > 6) blk: {
         const s = row[6] orelse "0";
         break :blk std.fmt.parseInt(i64, s, 10) catch 0;
@@ -1135,7 +1136,7 @@ fn rowToEventRecord(
         const s = row[5] orelse "0";
         break :blk std.fmt.parseInt(i64, s, 10) catch 0;
     } else 0;
-    const metadata = if (row.len > 8) row[8] orelse "{}" else "{}";
+    const metadata = try allocator.dupe(u8, if (row.len > 8) row[8] orelse "{}" else "{}");
     const global_seq = if (row.len > 9) blk: {
         const s = row[9] orelse "0";
         break :blk std.fmt.parseInt(i64, s, 10) catch 0;
@@ -1189,11 +1190,17 @@ fn metadataPipelineRunId(allocator: std.mem.Allocator, metadata: []const u8) !?[
 
 fn rowsToEventRecords(allocator: std.mem.Allocator, rows: [][]?[]u8) StoreError![]EventRecord {
     const records = allocator.alloc(EventRecord, rows.len) catch return StoreError.TransactionFailed;
-    for (rows, 0..) |row, i| {
-        records[i] = rowToEventRecord(allocator, row, "") catch {
-            allocator.free(records);
-            return StoreError.TransactionFailed;
-        };
+    var i: usize = 0;
+    errdefer {
+        for (records[0..i]) |rec| {
+            allocator.free(rec.event_type);
+            allocator.free(rec.payload);
+            allocator.free(rec.metadata);
+        }
+        allocator.free(records);
+    }
+    while (i < rows.len) : (i += 1) {
+        records[i] = rowToEventRecord(allocator, rows[i], "") catch return StoreError.TransactionFailed;
     }
     return records;
 }

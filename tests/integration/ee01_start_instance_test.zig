@@ -126,6 +126,7 @@ fn freeDefinition(allocator: std.mem.Allocator, d: Definition) void {
     allocator.free(d.version);
     if (d.description) |desc| allocator.free(desc);
     if (d.stage) |st| allocator.free(st);
+    bpm.definition.freeDefinitionGraph(allocator, d.graph);
 }
 
 /// Delete instance_definition_snapshots and instance_projections rows for one instance.

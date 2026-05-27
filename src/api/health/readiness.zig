@@ -59,7 +59,7 @@ pub const ReadinessService = struct {
         self: *ReadinessService,
         allocator: std.mem.Allocator,
     ) ReadinessError!ReadyCheckResult {
-        const started_ms: i64 = std.time.milliTimestamp();
+        const started_ms: i64 = std.Io.Clock.real.now(self.pool.io).toMilliseconds();
 
         const db_health = self.health_check_fn(self.pool) catch |err| {
             return .{ .not_ready = .{ .failing_subsystems = try allocator.dupe(FailingSubsystem, &.{mapPoolErrorToFailure(err)}) } };
@@ -71,7 +71,7 @@ pub const ReadinessService = struct {
         }
         allocator.free(failures);
 
-        const elapsed_ms: i64 = std.time.milliTimestamp() - started_ms;
+        const elapsed_ms: i64 = std.Io.Clock.real.now(self.pool.io).toMilliseconds() - started_ms;
         if (elapsed_ms >= @as(i64, @intCast(self.max_ready_ms))) {
             return .{ .not_ready = .{ .failing_subsystems = try allocator.dupe(FailingSubsystem, &.{.{
                 .subsystem = "readiness",

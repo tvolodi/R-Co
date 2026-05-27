@@ -147,6 +147,7 @@ test "TC-PD-01-01: create valid definition returns Definition with UUID and stat
         alloc.free(def.name);
         alloc.free(def.version);
         if (def.description) |d| alloc.free(d);
+        bpm.definition.freeDefinitionGraph(alloc, def.graph);
     }
 
     // UUID must be non-zero (platform assigned).
@@ -197,6 +198,7 @@ test "TC-PD-01-02: duplicate name+version returns DuplicateNameVersion" {
     alloc.free(def.name);
     alloc.free(def.version);
     if (def.description) |d| alloc.free(d);
+    bpm.definition.freeDefinitionGraph(alloc, def.graph);
 
     // Second create with the same name + version must fail.
     const err = def_store.create(alloc, CreateParams{
@@ -285,6 +287,7 @@ test "TC-PD-01-04: create with description omitted is allowed" {
         alloc.free(def.name);
         alloc.free(def.version);
         if (def.description) |d| alloc.free(d);
+        bpm.definition.freeDefinitionGraph(alloc, def.graph);
     }
 
     // Must succeed with status DRAFT.
@@ -327,6 +330,7 @@ test "TC-PD-02-01: valid graph passes validation and returns Definition" {
         alloc.free(def.name);
         alloc.free(def.version);
         if (def.description) |d| alloc.free(d);
+        bpm.definition.freeDefinitionGraph(alloc, def.graph);
     }
 
     try std.testing.expectEqual(bpm.definition.DefinitionStatus.DRAFT, def.status);
@@ -676,6 +680,7 @@ test "TC-PD-02-09: cycle through EXCLUSIVE_GATEWAY is permitted" {
         alloc.free(def.name);
         alloc.free(def.version);
         if (def.description) |d| alloc.free(d);
+        bpm.definition.freeDefinitionGraph(alloc, def.graph);
     }
 
     // Must succeed — no CYCLE_WITHOUT_GATEWAY violation.

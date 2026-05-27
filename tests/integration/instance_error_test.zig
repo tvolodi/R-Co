@@ -109,6 +109,7 @@ fn freeDefinition(allocator: std.mem.Allocator, d: Definition) void {
     allocator.free(d.version);
     if (d.description) |desc| allocator.free(desc);
     if (d.stage) |st| allocator.free(st);
+    bpm.definition.freeDefinitionGraph(allocator, d.graph);
 }
 
 // ---------------------------------------------------------------------------
@@ -163,6 +164,7 @@ test "TC-EE-10-01: gateway no-match triggers ERROR; EXECUTION_ERROR event append
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;
@@ -292,6 +294,7 @@ test "TC-EE-10-02: schema violation triggers ERROR; merge not applied" {
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;
@@ -434,6 +437,7 @@ test "TC-EE-10-03: ERROR instance rejects task completion with InstanceInError" 
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;
@@ -576,6 +580,7 @@ test "TC-EE-10-04: ERROR transition is atomic — both event and projection visi
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;
@@ -683,6 +688,7 @@ test "TC-EE-10-05: concurrent ERROR race — exactly one EXECUTION_ERROR event" 
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;
@@ -825,6 +831,7 @@ test "TC-EE-10-06: EXECUTION_ERROR payload contains all required fields" {
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
     defer cleanup: {
         const conn = pool.acquire() catch break :cleanup;

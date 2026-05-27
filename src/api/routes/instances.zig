@@ -927,6 +927,11 @@ pub fn handleHistory(
         ),
     };
     defer {
+        for (records) |rec| {
+            allocator.free(rec.event_type);
+            allocator.free(rec.payload);
+            allocator.free(rec.metadata);
+        }
         allocator.free(records);
     }
 

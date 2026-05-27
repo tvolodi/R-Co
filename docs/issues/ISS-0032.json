@@ -1,0 +1,30 @@
+{
+  "issue_id": "ISS-0032",
+  "title": "DefinitionStore.rowToDefinition() never deserializes the graph JSONB column; handleActivate always returns HTTP 422",
+  "status": "OPEN",
+  "severity": "CRITICAL",
+  "category": "B_INCOMPLETE_IMPLEMENTATION",
+  "run_id": "AUDIT-test-20260527",
+  "workflow_id": null,
+  "handoff_id": null,
+  "requirement_ids": [
+    "PD-04", "PD-07", "API-02"
+  ],
+  "summary": "src/definition/store.zig rowToDefinition() reads column index 5 (the graph JSONB column) from every SELECT/RETURNING result but silently discards it, returning DefinitionGraph{.nodes=&.{}, .edges=&.{}} as a stub fallback. This affects every store read operation: getById(), list(), search(), update(), activate(), deprecate(), archive(), patch(), getByNameVersion(). Cascading defect: handleActivate in src/api/routes/definitions.zig calls getById() to re-validate the stored graph before activating. It receives an empty graph, calls validateGraph({0 nodes, 0 edges}), which returns valid=false (MISSING_START_NODE, MISSING_END_NODE violations), and therefore always returns HTTP 422 — making it impossible to activate any definition via the HTTP API. The comment in the handler acknowledges this stub explicitly. Integration tests bypass this bug by calling def_store.activate(id) directly, skipping the HTTP handler's re-validation path.",
+  "root_cause": {
+    "type": "deferred_jsonb_deserialization_never_completed",
+    "details": "The TODO comment at line 1381-1382 of definition/store.zig reads: 'Stub: graph column not parsed until pg.zig delivers real rows. TODO: parse JSONB text into DefinitionGraph when pg.zig is complete.' pg.zig is now fully implemented and the integration tests prove real DB round-trips work. The graph deserialization was never implemented. src/definition/snapshot.zig rowToSnapshot() contains a working reference implementation of parseGraphJson() that parses the same JSONB structure."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [
+    "src/definition/store.zig",
+    "src/api/routes/definitions.zig"
+  ],
+  "created_at": "2026-05-27T12:00:00Z",
+  "resolved_at": null,
+  "prevention": [
+    "Any 'stub until library X is complete' comment must be tracked as an open issue at the time it is written.",
+    "Integration test TC-API-02-09 should assert fetched.graph.nodes.len > 0 and fetched.graph.edges.len > 0 after creating a definition with a non-empty graph — this would have caught the regression immediately."
+  ]
+}

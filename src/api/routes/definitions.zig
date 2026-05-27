@@ -799,6 +799,7 @@ fn freeDefinition(allocator: std.mem.Allocator, def: definition_store.Definition
     allocator.free(def.version);
     if (def.description) |d| allocator.free(d);
     if (def.stage) |s| allocator.free(s);
+    definition_store.freeDefinitionGraph(allocator, def.graph);
 }
 
 /// Append a JSON-encoded string (double-quoted, with escaping) to buf.
@@ -1129,7 +1130,7 @@ fn duplicateImportGraph(
     allocator: std.mem.Allocator,
     src: export_import.DefinitionGraph,
 ) error{OutOfMemory}!export_import.DefinitionGraph {
-    const nodes = try allocator.alloc(export_import.DefinitionGraph.nodes.child, src.nodes.len);
+    const nodes = try allocator.alloc(graph_mod.GraphNode, src.nodes.len);
     errdefer allocator.free(nodes);
 
     for (src.nodes, 0..) |n, i| {
@@ -1141,7 +1142,7 @@ fn duplicateImportGraph(
         };
     }
 
-    const edges = try allocator.alloc(export_import.DefinitionGraph.edges.child, src.edges.len);
+    const edges = try allocator.alloc(graph_mod.GraphEdge, src.edges.len);
     errdefer allocator.free(edges);
 
     for (src.edges, 0..) |e, i| {
