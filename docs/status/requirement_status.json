@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-27T19:44:39Z",
+  "last_updated": "2026-05-27T21:54:15Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1444,6 +1444,67 @@
       "release_run": "WF02-oidc10-20260527",
       "release_decision": "docs/status/release-OIDC-10-20260527.json",
       "last_updated": "2026-05-27T20:33:47Z"
+    },
+    "OIDC-11": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "External user identity stability",
+      "implementation_run": "WF02-oidc11-15-20260528",
+      "test_spec": "tests/specs/OIDC-11.md",
+      "test_run": "tests/reports/report-2026-05-27-WF02-oidc11-15-rework1.json",
+      "released_at": "2026-05-27T21:54:15Z",
+      "release_run": "WF02-oidc11-15-20260528",
+      "release_decision": "docs/status/release-OIDC-11-15-20260528.json",
+      "last_updated": "2026-05-27T21:54:15Z"
+    },
+    "OIDC-12": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Realm-tenant binding",
+      "implementation_run": "WF02-oidc11-15-20260528",
+      "test_spec": "tests/specs/",
+      "released_at": "2026-05-27T21:54:15Z",
+      "release_run": "WF02-oidc11-15-20260528",
+      "release_decision": "docs/status/release-OIDC-11-15-20260528.json",
+      "last_updated": "2026-05-27T21:54:15Z"
+    },
+    "OIDC-13": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Tenant claim source",
+      "implementation_run": "WF02-oidc11-15-20260528",
+      "test_spec": "tests/specs/",
+      "released_at": "2026-05-27T21:54:15Z",
+      "release_run": "WF02-oidc11-15-20260528",
+      "release_decision": "docs/status/release-OIDC-11-15-20260528.json",
+      "last_updated": "2026-05-27T21:54:15Z"
+    },
+    "OIDC-14": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Realm provisioning via adapter",
+      "implementation_run": "WF02-oidc11-15-20260528",
+      "test_spec": "tests/specs/",
+      "released_at": "2026-05-27T21:54:15Z",
+      "release_run": "WF02-oidc11-15-20260528",
+      "release_decision": "docs/status/release-OIDC-11-15-20260528.json",
+      "last_updated": "2026-05-27T21:54:15Z"
+    },
+    "OIDC-15": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Realm deletion safety",
+      "implementation_run": "WF02-oidc11-15-20260528",
+      "test_spec": "tests/specs/",
+      "released_at": "2026-05-27T21:54:15Z",
+      "release_run": "WF02-oidc11-15-20260528",
+      "release_decision": "docs/status/release-OIDC-11-15-20260528.json",
+      "last_updated": "2026-05-27T21:54:15Z"
     },
     "DSL-07": {
       "status": "RELEASED",
