@@ -46,6 +46,13 @@ const GetByIdError = bpm.engine.GetByIdError;
 const ListParams = bpm.engine.ListParams;
 const Instance = bpm.engine.Instance;
 
+const EventRegistry = bpm.registry.Registry;
+const EventRegisterParams = bpm.registry.RegisterParams;
+const AppendParams = bpm.store.AppendParams;
+const EventStore = bpm.store.Store;
+const handleHistory = bpm.instance_routes.handleHistory;
+const HistoryParams = bpm.instance_routes.HistoryParams;
+
 // ---------------------------------------------------------------------------
 // Fixed test UUIDs and constants
 // ---------------------------------------------------------------------------
@@ -916,4 +923,180 @@ test "TC-API-03-20: getById returns null correlation_key when not set at create 
     }
 
     try testing.expect(data.correlation_key == null);
+}
+
+// ---------------------------------------------------------------------------
+// TC-API-05-01: handleHistory returns 200 with events for an instance
+// ---------------------------------------------------------------------------
+
+test "TC-API-05-01: handleHistory returns 200 with event items for instance with appended event" {
+    const alloc = testing.allocator;
+
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const def_name = "TC-API-05-01 Proc";
+    const def_version = "1.0.0";
+    defer cleanupDefinition(&pool, def_name, def_version);
+
+    var def_store = DefinitionStore.init(alloc, &pool);
+    defer def_store.deinit();
+
+    var snapshot_store = SnapshotStore.init(&pool);
+    var instance_store = InstanceStore.init(&pool, &snapshot_store);
+    defer instance_store.deinit();
+
+    const def_id = try createActiveDefinition(alloc, &def_store, def_name, def_version);
+
+    const inst = try instance_store.create(alloc, def_id, null, "{}");
+    const inst_id = inst.instance_id;
+    const inst_id_hex = try uuidToHexStr(alloc, inst_id);
+    defer alloc.free(inst_id_hex);
+    defer cleanupInstance(&pool, inst_id_hex);
+    freeInstance(alloc, inst);
+
+    // Register an event type and append one event.
+    var ev_registry = EventRegistry.init(alloc, &pool);
+    defer ev_registry.deinit();
+    _ = ev_registry.registerType(alloc, EventRegisterParams{
+        .name = "API05_TEST_TYPE",
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
+
+    var ev_store = EventStore.init(alloc, &pool, &ev_registry);
+    defer ev_store.deinit();
+
+    const actor_uuid = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    _ = try ev_store.append(alloc, AppendParams{
+        .instance_id = inst_id,
+        .event_type = "API05_TEST_TYPE",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = "api05-01-idem-01",
+        .metadata = null,
+    });
+
+    const result = handleHistory(&ev_store, alloc, inst_id_hex, HistoryParams{});
+    defer alloc.free(result.body);
+
+    try testing.expectEqual(@as(u16, 200), result.status_code);
+    try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"items\""));
+}
+
+// ---------------------------------------------------------------------------
+// TC-API-05-02: handleHistory with nonexistent instance UUID returns 404
+// ---------------------------------------------------------------------------
+
+test "TC-API-05-02: handleHistory with nonexistent instance UUID returns 404" {
+    const alloc = testing.allocator;
+
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var ev_registry = EventRegistry.init(alloc, &pool);
+    defer ev_registry.deinit();
+
+    var ev_store = EventStore.init(alloc, &pool, &ev_registry);
+    defer ev_store.deinit();
+
+    const result = handleHistory(
+        &ev_store,
+        alloc,
+        "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        HistoryParams{},
+    );
+    defer alloc.free(result.body);
+
+    try testing.expectEqual(@as(u16, 404), result.status_code);
+}
+
+// ---------------------------------------------------------------------------
+// TC-API-05-03: handleHistory with invalid UUID string returns 422
+// ---------------------------------------------------------------------------
+
+test "TC-API-05-03: handleHistory with invalid instance_id string returns 422" {
+    const alloc = testing.allocator;
+
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var ev_registry = EventRegistry.init(alloc, &pool);
+    defer ev_registry.deinit();
+
+    var ev_store = EventStore.init(alloc, &pool, &ev_registry);
+    defer ev_store.deinit();
+
+    const result = handleHistory(&ev_store, alloc, "bad-uuid", HistoryParams{});
+    defer alloc.free(result.body);
+
+    try testing.expectEqual(@as(u16, 422), result.status_code);
+}
+
+// ---------------------------------------------------------------------------
+// TC-API-05-04: handleHistory with existing instance and no events returns 200
+// ---------------------------------------------------------------------------
+
+test "TC-API-05-04: handleHistory returns 200 with empty items for instance with no appended events" {
+    const alloc = testing.allocator;
+
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const def_name = "TC-API-05-04 Proc";
+    const def_version = "1.0.0";
+    defer cleanupDefinition(&pool, def_name, def_version);
+
+    var def_store = DefinitionStore.init(alloc, &pool);
+    defer def_store.deinit();
+
+    var snapshot_store = SnapshotStore.init(&pool);
+    var instance_store = InstanceStore.init(&pool, &snapshot_store);
+    defer instance_store.deinit();
+
+    const def_id = try createActiveDefinition(alloc, &def_store, def_name, def_version);
+
+    const inst = try instance_store.create(alloc, def_id, null, "{}");
+    const inst_id = inst.instance_id;
+    const inst_id_hex = try uuidToHexStr(alloc, inst_id);
+    defer alloc.free(inst_id_hex);
+    defer cleanupInstance(&pool, inst_id_hex);
+    freeInstance(alloc, inst);
+
+    var ev_registry = EventRegistry.init(alloc, &pool);
+    defer ev_registry.deinit();
+
+    var ev_store = EventStore.init(alloc, &pool, &ev_registry);
+    defer ev_store.deinit();
+
+    const result = handleHistory(&ev_store, alloc, inst_id_hex, HistoryParams{});
+    defer alloc.free(result.body);
+
+    try testing.expectEqual(@as(u16, 200), result.status_code);
+    try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"items\""));
 }

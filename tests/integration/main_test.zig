@@ -27,6 +27,10 @@ const test_export_import_integration = @import("test_export_import_integration.z
 const pd10_search_integration = @import("pd10_search_test.zig");
 // Stage 3 — Start instance (EE-01)
 const ee01_start_instance_integration = @import("ee01_start_instance_test.zig");
+// Stage 3 — Task store integration (EE-03)
+const ee03_task_store_integration = @import("ee03_task_store_test.zig");
+// Stage 3 — Tasks API integration (EE-03/EE-04)
+const ee03_ee04_tasks_api_integration = @import("ee03_ee04_tasks_api_test.zig");
 // Stage 3 — Instance cancellation (EE-08)
 const ee08_cancel_instance_integration = @import("ee08_cancel_instance_test.zig");
 // Stage 3 — Variable scoping and merge (EE-09)
@@ -109,6 +113,8 @@ comptime {
     _ = test_export_import_integration;
     _ = pd10_search_integration;
     _ = ee01_start_instance_integration;
+    _ = ee03_task_store_integration;
+    _ = ee03_ee04_tasks_api_integration;
     _ = ee08_cancel_instance_integration;
     _ = ee09_merge_variables_integration;
     _ = ee10_instance_error_integration;

@@ -85,16 +85,6 @@ pub fn build(b: *std.Build) void {
     });
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
-    const db_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/db_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = vendor_imports,
-        }),
-    });
-    const run_db_tests = b.addRunArtifact(db_tests);
-
     const event_store_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/unit/event_store_test.zig"),
@@ -164,6 +154,18 @@ pub fn build(b: *std.Build) void {
             .{ .name = "cel", .module = cel_mod },
         },
     });
+
+    const db_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/db_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_db_tests = b.addRunArtifact(db_tests);
 
     const definition_retrieval_tests = b.addTest(.{
         .root_module = b.createModule(.{

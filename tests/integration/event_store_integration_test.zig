@@ -1315,3 +1315,142 @@ test "TC-ADP-01-04: append rejects empty tenant context deterministically" {
     const archive_count = std.fmt.parseInt(i64, arc.rows[0][0] orelse "0", 10) catch 0;
     try std.testing.expectEqual(@as(i64, 0), archive_count);
 }
+
+// ---------------------------------------------------------------------------
+// TC-ES-01-05: append with nil actor_id returns ActorIdMissing
+// ---------------------------------------------------------------------------
+
+test "TC-ES-01-05: append with nil actor_id returns ActorIdMissing" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_uuid = try parseUuid(alloc, "es0105-0000-0000-0000-000000000001");
+    const nil_actor: [16]u8 = [_]u8{0} ** 16;
+
+    try std.testing.expectError(StoreError.ActorIdMissing, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "SOME_TYPE",
+        .payload = "{}",
+        .actor_id = nil_actor,
+        .idempotency_key = "es01-05-idem",
+        .metadata = null,
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-01-06: append with array payload returns PayloadInvalid
+// ---------------------------------------------------------------------------
+
+test "TC-ES-01-06: append with array payload returns PayloadInvalid" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_uuid = try parseUuid(alloc, "es0106-0000-0000-0000-000000000001");
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000025");
+
+    try std.testing.expectError(StoreError.PayloadInvalid, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "SOME_TYPE",
+        .payload = "[1,2,3]",
+        .actor_id = actor_uuid,
+        .idempotency_key = "es01-06-idem",
+        .metadata = null,
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-03-02: append with empty idempotency_key returns IdempotencyKeyMissing
+// ---------------------------------------------------------------------------
+
+test "TC-ES-03-02: append with empty idempotency_key returns IdempotencyKeyMissing" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_uuid = try parseUuid(alloc, "es0302-0000-0000-0000-000000000001");
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000026");
+
+    try std.testing.expectError(StoreError.IdempotencyKeyMissing, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "SOME_TYPE",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = "",
+        .metadata = null,
+    }));
+}
+
+// ---------------------------------------------------------------------------
+// TC-ES-03-03: append with 256-char idempotency_key returns IdempotencyKeyTooLong
+// ---------------------------------------------------------------------------
+
+test "TC-ES-03-03: append with 256-char idempotency_key returns IdempotencyKeyTooLong" {
+    const alloc = std.testing.allocator;
+    var h = try TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+
+    var store = Store.init(alloc, &pool, &registry);
+    defer store.deinit();
+
+    const inst_uuid = try parseUuid(alloc, "es0303-0000-0000-0000-000000000001");
+    const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000027");
+
+    const long_key_arr = [_]u8{'x'} ** 256;
+    const long_key: []const u8 = &long_key_arr;
+
+    try std.testing.expectError(StoreError.IdempotencyKeyTooLong, store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "SOME_TYPE",
+        .payload = "{}",
+        .actor_id = actor_uuid,
+        .idempotency_key = long_key,
+        .metadata = null,
+    }));
+}
