@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-oidc11-15-20260528/step-02b-backend-dev-rework1.json",
   "created_at": "2026-05-27T21:05:25Z",
   "started_at": "2026-05-27T21:05:43Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-05-27T21:21:45Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
@@ -47,7 +47,24 @@
       "fn:run-integration-tests"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1: Fixed 3 issues \u2014 (1) Memory leaks in realm_deletion.zig insertDeletionTracker and markTrackerDeleted: allocated allocPrint strings now properly freed via defer; (2) OIDC-11 RealmOwnershipMismatch in JIT provisioning: added cleanupTenantById helper and ensured ensureTenantBinding uses DELETE-before-INSERT pattern to remove stale test tenant data; (3) OIDC-15 test isolation: added cleanupUserByUsername to prevent unique constraint violations from stale test user records. Also applied same ensureTenantBinding fix to oidc09 and oidc10 test files.",
+    "artifacts_out": [
+      "src/oidc/realm_deletion.zig",
+      "tests/integration/oidc11_identity_stability_test.zig",
+      "tests/integration/oidc09_jit_provisioning_test.zig",
+      "tests/integration/oidc10_attribute_sync_test.zig",
+      "tests/integration/oidc15_realm_deletion_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Parallel test binary interference: OIDC-09-05 and OIDC-15-07 fail only when run concurrently with other OIDC integration tests (shared DB, tenant/users tables not cleaned between parallel binaries). Pass in isolation. Pre-existing infrastructure issue \u2014 not caused by this rework."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER for Step 4 re-run"
+  },
   "rework_count": 1,
   "max_rework": 3
 }

@@ -122,16 +122,14 @@ fn ensureTenantBinding(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []cons
     const conn = try pool.acquire();
     defer pool.release(conn);
 
+    // Delete first to avoid unique-index conflicts from stale test data
+    // left by earlier test binaries that use the same tenant UUID.
+    conn.exec("DELETE FROM tenant WHERE id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
+
     try conn.exec(
         \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
         \\VALUES ($1::uuid, $2, $3, 'ACTIVE', $4)
-        \\ON CONFLICT (id) DO UPDATE
-        \\SET slug = EXCLUDED.slug,
-        \\    display_name = EXCLUDED.display_name,
-        \\    status = 'ACTIVE',
-        \\    idp_realm_id = EXCLUDED.idp_realm_id,
-        \\    updated_at = NOW()
-    ,
+        ,
         &[_][]const u8{ tenant_id, slug, display_name, realm },
     );
 }
@@ -438,7 +436,6 @@ test "TC-OIDC-09-06: JIT provisioning emits audit event on creation" {
     cleanupUserByExternalIdentity(&pool, realm, external_id);
     defer cleanupUserByUsername(&pool, username);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
-
     try ensureTenantBinding(&pool, tenant_a, "oidc09-tenant-a", "OIDC09 Tenant A", realm);
 
     var registry = identity_registry.Registry.init(&pool);
