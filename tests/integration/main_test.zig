@@ -99,6 +99,8 @@ const adp10_agent_io_capture_audit_integration = @import("adp10_agent_io_capture
 const adp12_default_tenant_regression_integration = @import("adp12_default_tenant_regression_test.zig");
 // Stage 6.5 — Tenant column and policy schema (ADP-02)
 const adp02_tenant_scope = @import("adp02_tenant_scope_test.zig");
+// Stage 6.5 — OIDC claim validation auth mapping (OIDC-07)
+const oidc07_claim_validation_auth_integration = @import("oidc07_claim_validation_auth_test.zig");
 
 comptime {
     _ = std;
@@ -149,6 +151,7 @@ comptime {
     _ = adp10_agent_io_capture_audit_integration;
     _ = adp12_default_tenant_regression_integration;
     _ = adp02_tenant_scope;
+    _ = oidc07_claim_validation_auth_integration;
 }
 
 test "integration placeholder" {

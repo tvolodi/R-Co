@@ -9,12 +9,14 @@ pub const Config = struct {
     admin_client_secret_ref: []const u8,
     expected_audience: []const u8,
     expected_issuer: ?[]const u8,
+    clock_skew_seconds: u32 = defaults.clock_skew_seconds,
     connect_timeout_ms: u32,
     request_timeout_ms: u32,
     jwks_ttl_seconds: u32,
     jwks_min_refresh_seconds: u32,
 
     pub const defaults = struct {
+        pub const clock_skew_seconds: u32 = 30;
         pub const jwks_ttl_seconds: u32 = 600;
         pub const jwks_min_refresh_seconds: u32 = 10;
     };
@@ -54,6 +56,7 @@ pub const Config = struct {
             .admin_client_secret_ref = admin_client_secret_ref,
             .expected_audience = expected_audience,
             .expected_issuer = expected_issuer,
+            .clock_skew_seconds = input.clock_skew_seconds,
             .connect_timeout_ms = input.connect_timeout_ms,
             .request_timeout_ms = input.request_timeout_ms,
             .jwks_ttl_seconds = input.jwks_ttl_seconds,

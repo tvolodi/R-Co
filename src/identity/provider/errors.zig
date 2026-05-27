@@ -1,6 +1,7 @@
 pub const ProviderError = error{
     InvalidToken,
     TokenExpired,
+    TokenNotYetValid,
     TokenAudienceMismatch,
     TokenIssuerMismatch,
     SignatureVerificationFailed,

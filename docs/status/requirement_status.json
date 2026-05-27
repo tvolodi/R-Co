@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-27T07:30:05Z",
+  "last_updated": "2026-05-27T16:05:47Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1300,6 +1300,21 @@
       "release_run": "WF02-oidc06-20260527",
       "release_decision": "docs/status/release-OIDC-06-20260527.json",
       "last_updated": "2026-05-27T15:13:27Z"
+    },
+    "OIDC-07": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Claim validation",
+      "implementation_run": "WF02-oidc07-20260527",
+      "implementation_handoff": "handoffs/WF02-oidc07-20260527/step-02-backend-dev.json",
+      "test_spec": "tests/specs/OIDC-07.md",
+      "test_run": "tests/reports/report-2026-05-27-wf02-oidc07.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T16:03:26Z",
+      "release_run": "WF02-oidc07-20260527",
+      "release_decision": "docs/status/release-OIDC-07-20260527.json",
+      "last_updated": "2026-05-27T16:05:47Z"
     },
     "DSL-01": {
       "status": "RELEASED",

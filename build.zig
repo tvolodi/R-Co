@@ -157,6 +157,7 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             .{ .name = "pg", .module = pg_mod },
             .{ .name = "cel", .module = cel_mod },
+            .{ .name = "identity_provider", .module = identity_provider_mod },
         },
     });
 
@@ -668,6 +669,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "cel", .module = cel_mod },
         .{ .name = "bpm", .module = bpm_src_mod },
         .{ .name = "build_options", .module = build_options_mod },
+        .{ .name = "identity_provider", .module = identity_provider_mod },
     };
 
     const integration_tests = b.addTest(.{
