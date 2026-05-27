@@ -1,0 +1,37 @@
+{
+  "handoff_id": "20260527-035",
+  "run_id": "WF02-dsl06-20260527",
+  "workflow_id": "WF-02",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-dsl06-20260527/step-04b-backend-dev-bench-env.json",
+  "created_at": "2026-05-27T14:52:06Z",
+  "started_at": "2026-05-27T14:52:40Z",
+  "completed_at": "2026-05-27T14:53:42Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-06"],
+    "related_handoff_ids": ["20260527-034"],
+    "artifacts_in": [],
+    "branch_name": "feature/WF02-dsl06-20260527"
+  },
+  "task": {
+    "description": "Set up benchmark environment so `zig build bench` exits 0.\n\nThe benchmark requires BPM_DB_URL pointing to a test PostgreSQL instance. Currently `zig build bench` fails with 'MissingDbUrl'.\n\nFix options:\n1. Check if a PostgreSQL test container is defined in docker-compose.yml. If so, start it with `docker-compose up -d postgres` (or equivalent).\n2. Export BPM_DB_URL in the terminal: `$env:BPM_DB_URL='postgresql://bpm:bpm@localhost:5433/bpm_test'` or similar.\n3. If the existing database setup uses a different URL pattern, check docker-compose.yml for the correct credentials.\n\nAfter setup, verify: `zig build bench` exits 0.\nDo NOT change any bench source code — only fix the environment.",
+    "acceptance_criteria": [
+      "zig build bench exits 0"
+    ],
+    "functions_to_call": ["fn:check-zig-build"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Set up benchmark environment: started my-fab-db_test-1 PostgreSQL container on port 5433, set BPM_DB_URL and BPM_TEST_DB_URL. All NFR benchmarks passed.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,0 +1,23 @@
+{
+  "stage": "Stage 7 — Expression DSL",
+  "date": "2026-05-27T14:57:37Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01_p99_read_ms": 0.676,
+    "NFR-01_p99_write_ms": 1.704,
+    "NFR-02_append_throughput_eps": 88414.57,
+    "NFR-04_replay_10000_ms": 48.896
+  },
+  "nfr_summary": "overall_passed=true",
+  "blocking_issues": [],
+  "approved_requirements": ["DSL-06"],
+  "verification_summary": {
+    "zig_build": "PASS — exits 0",
+    "zig_build_test": "PASS — 632/632 tests passed (0 failed, 0 skipped)",
+    "zig_build_bench": "PASS — overall_passed=true",
+    "test_report": "tests/reports/report-WF02-dsl06-20260527-step04.json",
+    "dsl06_tests": "5/5 passed",
+    "ac1_property_based_tests": "PASS — 100 random valid-grammar expressions all evaluate within step bound",
+    "ac2_no_crash": "PASS — no expression evaluation results in host crash or panic"
+  }
+}
