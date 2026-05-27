@@ -1,0 +1,88 @@
+{
+  "run_id": "WF02-dsl02-20260527",
+  "created_at": "2026-05-27T05:35:18Z",
+  "requirement_ids": ["DSL-02"],
+  "difficulty": 2,
+  "integration_surface": "low",
+  "integration_surface_rationale": "Additive to src/expr only; no callers or signatures change.",
+  "rules_version_used": "1.0",
+  "estimated_minutes": {
+    "code-designer": 3,
+    "backend-dev": 8,
+    "test-designer": 6,
+    "test-runner": 4,
+    "release-validator": 1,
+    "doc-updater": 2,
+    "total": 24
+  },
+  "actual_minutes": {
+    "code-designer": 0.43,
+    "backend-dev": 4.83,
+    "test-designer": 0.57,
+    "test-runner": 3.9,
+    "release-validator": 1.22,
+    "doc-updater": 0.75,
+    "total": 11.7
+  },
+  "estimated_minutes_total": 24,
+  "actual_minutes_total": 11.7,
+  "variance_pct": -51.25,
+  "by_step": {
+    "code-designer": {
+      "estimated": 3,
+      "actual": 0.43,
+      "variance_pct": -85.67
+    },
+    "backend-dev": {
+      "estimated": 8,
+      "actual": 4.83,
+      "variance_pct": -39.63
+    },
+    "test-designer": {
+      "estimated": 6,
+      "actual": 0.57,
+      "variance_pct": -90.5
+    },
+    "test-runner": {
+      "estimated": 4,
+      "actual": 3.9,
+      "variance_pct": -2.5
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 1.22,
+      "variance_pct": 22.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 0.75,
+      "variance_pct": -62.5
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [
+    {
+      "step": "code-designer",
+      "difficulty": 2,
+      "old_estimate": 3,
+      "new_estimate": 2,
+      "reason": "Observed 3 consecutive runs at D2 (WF02-sch05 at -84.0%, WF02-sch06 at -68.0%, WF02-dsl02 at -85.67%) with >25% under-run variance; adjusted by dampening factor 0.5 of observed variance"
+    },
+    {
+      "step": "backend-dev",
+      "difficulty": 2,
+      "old_estimate": 8,
+      "new_estimate": 6,
+      "reason": "Observed 3 consecutive runs at D2 (WF02-sch05 at -88.0%, WF02-sch06 at -38.0%, WF02-dsl02 at -39.63%) with >25% under-run variance; adjusted by dampening factor 0.5 of observed variance"
+    },
+    {
+      "step": "test-designer",
+      "difficulty": 2,
+      "old_estimate": 6,
+      "new_estimate": 3,
+      "reason": "Observed 3 consecutive runs at D2 (WF02-sch05 at -63.0%, WF02-sch06 at -81.0%, WF02-dsl02 at -90.5%) with >25% under-run variance; adjusted by dampening factor 0.5 of observed variance"
+    }
+  ],
+  "notes": "DSL-02 was faster than estimated — simple additive function to existing module.",
+  "completed_at": "2026-05-27T05:35:18Z"
+}

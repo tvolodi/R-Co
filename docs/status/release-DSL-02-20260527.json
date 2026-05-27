@@ -1,0 +1,16 @@
+{
+  "run_id": "WF02-dsl02-20260527",
+  "requirement_ids": ["DSL-02"],
+  "decision": "RELEASED",
+  "timestamp": "2026-05-27T05:32:40Z",
+  "test_report": "tests/reports/report-2026-05-27T05-26-58Z-WF02-dsl02-step04.json",
+  "bench_results": {
+    "NFR-01_p99_read_ms": 0.742,
+    "NFR-01_p99_write_ms": 3.235,
+    "NFR-02_append_throughput_eps": 83103.129,
+    "NFR-04_replay_10000_ms": 49.151,
+    "overall_passed": true,
+    "bench_run_id": "bench-1779859944331"
+  },
+  "issues": []
+}

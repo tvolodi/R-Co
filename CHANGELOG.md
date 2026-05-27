@@ -101,6 +101,11 @@ All notable changes to the BPM Platform are documented here.
 
 ### Stage 7 — Expression DSL
 
+### DSL-02 - AST stability (RELEASED 2026-05-27)
+- **DSL-02**: AST stability — `nodeEql` function added to `src/expr/ast.zig`; deterministic AST equality verified for all 14 Node variants.
+- Validation evidence passed in tests/reports/report-2026-05-27T05-26-58Z-WF02-dsl02-step04.json; release approval is recorded in docs/status/release-DSL-02-20260527.json.
+- Requirement: DSL-02 (MUST, Stage 7) - RELEASED
+
 ### DSL-01 - Grammar conformance (RELEASED 2026-05-26)
 - Implemented the Tier 1 Expression DSL as a new `src/expr/` module comprising a hand-written recursive descent parser with zero external dependencies; grammar covers 9 productions (or_expr, and_expr, not_expr, cmp_expr, add_expr, mul_expr, unary, primary, func_call) with all 11 built-in functions (length, lower, upper, trim, contains, startsWith, endsWith, coalesce, now, date_add, date_diff) whitelisted at lex time.
 - Module includes lexer.zig (single-pass token scan), parser.zig (recursive descent, producing a tagged-union AST), ast.zig (Node union, Value type, CmpOp/AddOp/MulOp enums, Context), error.zig (ParseError struct with line, column, token, message), and mod.zig (public parse() API).
