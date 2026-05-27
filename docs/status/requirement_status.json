@@ -1340,6 +1340,20 @@
       "release_run": "WF02-dsl04-20260527",
       "release_decision": "docs/status/release-DSL-04-2026-05-27.json",
       "last_updated": "2026-05-27T07:30:05Z"
+    },
+    "DSL-05": {
+      "status": "RELEASED",
+      "stage": 7,
+      "priority": "MUST",
+      "title": "Type coercion",
+      "implementation_run": "WF02-dsl05-20260527",
+      "test_spec": "tests/specs/DSL-05.md",
+      "test_run": "tests/reports/report-2026-05-27T08-13-30Z-WF02-dsl05-step04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T08:16:15Z",
+      "release_run": "WF02-dsl05-20260527",
+      "release_decision": "docs/status/release-DSL-05-20260527.json",
+      "last_updated": "2026-05-27T08:18:04Z"
     }
   }
 }
