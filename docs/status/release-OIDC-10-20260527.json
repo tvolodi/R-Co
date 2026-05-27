@@ -1,0 +1,13 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "date": "2026-05-28",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01_p99_read_ms": 0.850,
+    "NFR-01_p99_write_ms": 1.791,
+    "NFR-02_append_throughput_eps": 95825.783,
+    "NFR-04_replay_10000_ms": 30.281
+  },
+  "blocking_issues": [],
+  "approved_requirements": ["OIDC-10"]
+}

@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-oidc10-20260527/step-04-test-runner.json",
   "created_at": "2026-05-27T20:27:00Z",
   "started_at": "2026-05-27T20:27:16Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-05-27T20:28:15Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
@@ -33,9 +33,17 @@
     ],
     "functions_to_call": ["fn:run-unit-tests", "fn:run-integration-tests", "fn:write-test-report"]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "All OIDC-10 test layers passed — unit (5/5) and integration (9/9), 0 failures, 0 skipped",
+    "artifacts_out": [
+      "tests/reports/report-WF02-oidc10-20260527-step04.json"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
   "rework_count": 0,
   "max_rework": 3,
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-05-27T20:27:16Z",
+  "completed_at": "2026-05-27T20:28:15Z"
 }
