@@ -49,7 +49,7 @@ pub fn handleReady(
             const log_fields = [_]logger.LogField{
                 .{ .key = "endpoint", .value = .{ .string = "/health/ready" } },
                 .{ .key = "status_code", .value = .{ .integer = 200 } },
-                .{ .key = "db_latency_ms", .value = .{ .integer = ready.db_latency_ms } },
+                .{ .key = "db_latency_ms", .value = .{ .integer = @intCast(ready.db_latency_ms) } },
             };
             logger.log(allocator, .INFO, "api.health", "health readiness request completed", &log_fields) catch {};
 
@@ -102,15 +102,16 @@ fn buildNotReadyBody(
     try out.appendSlice(allocator, "{\"status\":\"degraded\",\"failing_subsystems\":[");
     for (failing_subsystems, 0..) |failure, i| {
         if (i > 0) try out.append(allocator, ',');
-        try out.writer(allocator).print(
+        const entry = try std.fmt.allocPrint(allocator,
             "{{\"subsystem\":\"{s}\",\"code\":\"{s}\",\"detail\":\"{s}\",\"retryable\":{s}}}",
             .{
                 failure.subsystem,
                 failure.code,
                 failure.detail,
                 if (failure.retryable) "true" else "false",
-            },
-        );
+            });
+        defer allocator.free(entry);
+        try out.appendSlice(allocator, entry);
     }
     try out.appendSlice(allocator, "]}");
 

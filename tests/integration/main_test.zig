@@ -93,6 +93,8 @@ const adp09_tamper_evident_audit_chain_integration = @import("adp09_tamper_evide
 const adp10_agent_io_capture_audit_integration = @import("adp10_agent_io_capture_audit_test.zig");
 // Stage 6.5 — Default-tenant migration-boundary regression suite (ADP-12)
 const adp12_default_tenant_regression_integration = @import("adp12_default_tenant_regression_test.zig");
+// Stage 6.5 — Tenant column and policy schema (ADP-02)
+const adp02_tenant_scope = @import("adp02_tenant_scope_test.zig");
 
 comptime {
     _ = std;
@@ -140,6 +142,7 @@ comptime {
     _ = adp09_tamper_evident_audit_chain_integration;
     _ = adp10_agent_io_capture_audit_integration;
     _ = adp12_default_tenant_regression_integration;
+    _ = adp02_tenant_scope;
 }
 
 test "integration placeholder" {

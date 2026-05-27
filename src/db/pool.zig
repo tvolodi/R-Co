@@ -1,8 +1,8 @@
 //! Database connection pool — DB-01, DB-02, DB-03, DB-04
 //!
-//! Wraps the pg vendor module (vendor/pg/pg.zig).  The pg module is currently a
-//! stub; all connections are held as placeholder state and actual SQL execution
-//! returns QueryFailed until pg.zig is fully implemented.
+//! Wraps the pg vendor module (vendor/pg/pg.zig).  Provides acquire/release
+//! semantics over a fixed-size connection pool.  All SQL execution goes through
+//! pg.zig which delivers real query results against a live PostgreSQL database.
 //!
 //! Design artefact: src/design/db.md
 const std = @import("std");

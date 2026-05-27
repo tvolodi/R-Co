@@ -135,9 +135,25 @@ pub const ExportImportStore = struct {
         const graph = parseGraphJson(allocator, graph_json_str) catch
             graph_mod.DefinitionGraph{ .nodes = &.{}, .edges = &.{} };
 
-        // TODO: real timestamp — generate from std.time.timestamp() as ISO8601
-        const exported_at = allocator.dupe(u8, "2026-05-21T00:00:00Z") catch
-            return ExportImportError.DatabaseError;
+        const now_secs = std.Io.Clock.real.now(self.pool.io).toSeconds();
+        const epoch_secs: u64 = @intCast(now_secs);
+        const epoch = std.time.epoch.EpochSeconds{ .secs = epoch_secs };
+        const day = epoch.getEpochDay();
+        const year_day = day.calculateYearDay();
+        const month_day = year_day.calculateMonthDay();
+        const day_secs = epoch.getDaySeconds();
+        const exported_at = std.fmt.allocPrint(
+            allocator,
+            "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}Z",
+            .{
+                year_day.year,
+                month_day.month.numeric(),
+                month_day.day_index + 1,
+                day_secs.getHoursIntoDay(),
+                day_secs.getMinutesIntoHour(),
+                day_secs.getSecondsIntoMinute(),
+            },
+        ) catch return ExportImportError.DatabaseError;
         errdefer allocator.free(exported_at);
 
         return ExportDocument{

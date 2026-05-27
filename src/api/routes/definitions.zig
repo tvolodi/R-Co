@@ -1129,7 +1129,7 @@ fn duplicateImportGraph(
     allocator: std.mem.Allocator,
     src: export_import.DefinitionGraph,
 ) error{OutOfMemory}!export_import.DefinitionGraph {
-    const nodes = try allocator.alloc(export_import.DefinitionGraph.nodes.child, src.nodes.len);
+    const nodes = try allocator.alloc(graph_mod.GraphNode, src.nodes.len);
     errdefer allocator.free(nodes);
 
     for (src.nodes, 0..) |n, i| {
@@ -1141,7 +1141,7 @@ fn duplicateImportGraph(
         };
     }
 
-    const edges = try allocator.alloc(export_import.DefinitionGraph.edges.child, src.edges.len);
+    const edges = try allocator.alloc(graph_mod.GraphEdge, src.edges.len);
     errdefer allocator.free(edges);
 
     for (src.edges, 0..) |e, i| {

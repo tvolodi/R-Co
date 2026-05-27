@@ -1,0 +1,42 @@
+{
+  "handoff_id": "20260527-048",
+  "run_id": "WF03-prod-audit-20260527",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-05-27T06:06:39Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolution — Verify",
+    "requirement_ids": ["PD-07", "PD-09", "DB-02", "EE-03", "EE-04", "API-04", "API-05", "ES-01", "ES-03"],
+    "related_handoff_ids": ["20260527-046", "20260527-047"],
+    "artifacts_in": [
+      "docs/guides/test_developer_guide.md",
+      "tests/integration/main_test.zig",
+      "tests/unit/db_test.zig",
+      "tests/unit/event_store_test.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 03 — Verify all changes on branch feature/WF03-prod-audit-20260527.\n\nPrerequisite: steps 01 and 02 must both be COMPLETED before running this step.\nConfirm you are on branch feature/WF03-prod-audit-20260527.\n\n## Run unit tests\n\n```bash\nzig build test 2>&1\n```\n\nExpected outcomes:\n- TC-DB-02-01 and TC-DB-02-02 PASS (no longer SkipZigTest)\n- All other unit tests pass or skip as before\n- Exit code 0\n\n## Run integration tests\n\n```bash\n$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration 2>&1\n```\n(PowerShell syntax)\n\nExpected outcomes:\n- TC-ADP-02-01 (adp02_tenant_scope_test.zig) PASSES — it was previously orphaned\n- TC-EE-03-01 through TC-EE-03-06 (ee03_task_store_test.zig) PASS\n- TC-EE-04-01 through TC-EE-04-05 (ee03_ee04_tasks_api_test.zig) PASS\n- TC-API-05-01 through TC-API-05-04 (api03_instance_read_test.zig additions) PASS\n- TC-ES-01-05, TC-ES-01-06, TC-ES-03-02, TC-ES-03-03 PASS (in event_store_integration_test.zig)\n- All previously passing integration tests continue to PASS\n- Exit code 0\n\n## Write test report\n\nWrite a test report to `tests/reports/WF03-prod-audit-20260527-step03.md` with:\n- Date/time of test run\n- Unit test results (pass/fail/skip counts)\n- Integration test results (pass/fail/skip counts)\n- List of tests that were PREVIOUSLY skipped but now PASS\n- List of any failures with full error messages\n- Exit codes of all commands\n\n## Success criteria\n\nThis handoff PASSES if:\n1. `zig build test` exits 0\n2. `zig build test-integration` exits 0\n3. TC-DB-02-01 and TC-DB-02-02 no longer skip\n4. TC-ADP-02-01, TC-EE-03-01..06, TC-EE-04-01..05, TC-API-05-01..04, TC-ES-01-05, TC-ES-01-06, TC-ES-03-02, TC-ES-03-03 all run and pass\n5. No previously-passing tests now fail\n\nThis handoff FAILS if ANY of the above criteria are not met. Record all failures in the result issues list.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "zig build test-integration exits 0",
+      "TC-DB-02-01 and TC-DB-02-02 pass (not skipped)",
+      "TC-ADP-02-01 passes (not skipped)",
+      "TC-EE-03-01 through TC-EE-03-06 all pass",
+      "TC-EE-04-01 through TC-EE-04-05 all pass",
+      "TC-API-05-01 through TC-API-05-04 all pass",
+      "TC-ES-01-05, TC-ES-01-06, TC-ES-03-02, TC-ES-03-03 all pass",
+      "No previously-passing tests regress",
+      "Test report written to tests/reports/WF03-prod-audit-20260527-step03.md"
+    ],
+    "functions_to_call": ["fn:check-zig-build", "fn:run-integration-tests"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}

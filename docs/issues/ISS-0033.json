@@ -1,0 +1,29 @@
+{
+  "issue_id": "ISS-0033",
+  "title": "ExportDocument.exported_at is a hardcoded constant string instead of the actual export timestamp",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "A_LOGIC_ERROR",
+  "run_id": "AUDIT-test-20260527",
+  "workflow_id": null,
+  "handoff_id": null,
+  "requirement_ids": [
+    "PD-09"
+  ],
+  "summary": "src/definition/export_import.zig line 138-139 sets exported_at to the hardcoded string '2026-05-21T00:00:00Z' for every export document. Every export produced by the system reports the same false timestamp regardless of when the export actually occurs. The TODO comment at that line reads: 'TODO: real timestamp — generate from std.time.timestamp() as ISO8601'.",
+  "root_cause": {
+    "type": "hardcoded_placeholder_value",
+    "details": "exported_at was written as a placeholder constant during initial implementation. std.time.timestamp() is available in the Zig standard library and can be used to obtain the real UTC timestamp at the time of the export call. The value was never updated."
+  },
+  "resolution": null,
+  "verification": null,
+  "files_changed": [
+    "src/definition/export_import.zig"
+  ],
+  "created_at": "2026-05-27T12:00:00Z",
+  "resolved_at": null,
+  "prevention": [
+    "Hardcoded date strings in non-test production code should be caught during code review as a policy violation.",
+    "PD-09 export integration test should assert exported_at is within a reasonable window (e.g. within 60 seconds of the test start time) rather than accepting any string."
+  ]
+}

@@ -314,7 +314,7 @@ pub fn collectGlobalPrometheusText(allocator: std.mem.Allocator) error{OutOfMemo
 }
 
 pub fn classifyQueryType(sql: []const u8) QueryType {
-    const trimmed = std.mem.trimLeft(u8, sql, " \t\r\n");
+    const trimmed = std.mem.trimStart(u8, sql, " \t\r\n");
     if (trimmed.len == 0) return .other;
 
     const token = firstToken(trimmed);
