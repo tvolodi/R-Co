@@ -1,0 +1,49 @@
+{
+  "run_id": "WF02-oidc09-20260527",
+  "requirement_ids": [
+    "OIDC-09"
+  ],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 68,
+  "actual_minutes_total": 62.1,
+  "variance_pct": -8.7,
+  "by_step": {
+    "code-designer": {
+      "estimated": 32,
+      "actual": 1.8,
+      "variance_pct": -94.4
+    },
+    "backend-dev": {
+      "estimated": 12,
+      "actual": 29.6,
+      "variance_pct": 146.7
+    },
+    "test-designer": {
+      "estimated": 8,
+      "actual": 15.3,
+      "variance_pct": 91.3
+    },
+    "test-runner": {
+      "estimated": 4,
+      "actual": 12.3,
+      "variance_pct": 207.5
+    },
+    "release-validator": {
+      "estimated": 10,
+      "actual": 1.1,
+      "variance_pct": -89.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 2.0,
+      "variance_pct": 0.0
+    }
+  },
+  "rework_steps": [
+    "backend-dev"
+  ],
+  "rule_adjustments": [],
+  "completed_at": "2026-05-27T19:43:33Z"
+}

@@ -1,0 +1,50 @@
+{
+  "handoff_id": "20260527-022",
+  "run_id": "WF02-oidc09-20260527",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-oidc09-20260527/step-final-backend-dev.json",
+  "created_at": "2026-05-27T19:42:58Z",
+  "started_at": "2026-05-27T19:45:20Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-09"
+    ],
+    "related_handoff_ids": [
+      "20260527-013",
+      "20260527-014",
+      "20260527-015",
+      "20260527-016",
+      "20260527-017",
+      "20260527-018",
+      "20260527-019",
+      "20260527-020",
+      "20260527-021"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md"
+    ]
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md:\n1. git fetch origin main\n2. git rebase origin/main\n3. gh pr create (with proper title and body referencing OIDC-09)\n4. gh pr merge --squash --delete-branch\n5. Record branch_name, commit_sha_list, pr_url, and push_status in git_evidence.\n\nThe feature branch is feature/WF02-oidc09-20260527.\n\nPR title: 'feat(OIDC-09): JIT user provisioning after OIDC auth'\nPR body: 'Implements OIDC-09 JIT user creation. On first successful authentication of an external user, creates a local user record per IDN-01 schema with auth_source=oidc, external_id (sub), and external_realm populated. Subsequent logins do not create duplicates.'",
+    "acceptance_criteria": [
+      "PR created and merged (squash) into main",
+      "Feature branch deleted",
+      "push_status = ok",
+      "pr_url recorded"
+    ],
+    "functions_to_call": [
+      "fn:git-merge",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

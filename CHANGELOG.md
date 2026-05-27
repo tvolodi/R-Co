@@ -203,6 +203,13 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-2026-05-27-WF02-oidc08-step04.json; release approval is recorded in docs/status/release-OIDC-08-20260527.json.
 - Requirement: OIDC-08 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-09 - JIT user provisioning (RELEASED 2026-05-27)
+- Implemented JIT user provisioning orchestration layer (src/oidc/jit_provisioning.zig) with per-realm configuration, identity context mapping from OIDC-08 claim mapping results, and createOrGetJitOidcUser integration for first-login user creation and subsequent-login deduplication.
+- Added migration 039_jit_provisioning_config.sql with seed row for bpm-default realm and wired postAuthJitProvision into auth middleware for deterministic JIT behavior after OIDC token verification.
+- Fixed Zig module pool conflict (step-02a build fix) to enable test-integration-oidc09 compilation, then validated via rework test run.
+- Validation evidence passed in tests/reports/report-WF02-oidc09-20260527-step04b.json; release approval is recorded in docs/status/release-OIDC-09-20260527.json.
+- Requirement: OIDC-09 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

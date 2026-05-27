@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2026-05-23T18:08:12Z",
-  "last_updated": "2026-05-27T19:31:26Z",
+  "last_updated": "2026-05-27T19:42:58Z",
   "entries": [
     {
       "handoff_id": "20260527-911",
@@ -335,7 +335,7 @@
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-05-26T21:25:58Z",
       "started_at": "2026-05-26T21:26:29Z",
-      "completed_at": "2026-05-26T21:38:50Z",
+      "completed_at": "2026-05-27T19:42:58Z",
       "status": "COMPLETED",
       "stage": "Stage 7 \u2014 Expression DSL"
     },
@@ -349,7 +349,7 @@
       "to_agent": "TEST-DESIGNER",
       "created_at": "2026-05-26T21:21:00Z",
       "started_at": "2026-05-26T21:21:34Z",
-      "completed_at": "2026-05-26T21:25:04Z",
+      "completed_at": "2026-05-27T19:41:16Z",
       "status": "COMPLETED",
       "stage": "Stage 7 \u2014 Expression DSL"
     },
@@ -363,7 +363,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-05-26T21:02:07Z",
       "started_at": "2026-05-26T21:02:50Z",
-      "completed_at": "2026-05-26T21:20:04Z",
+      "completed_at": "2026-05-27T19:39:15Z",
       "status": "COMPLETED",
       "stage": "Stage 7 \u0432\u0402\u201d Expression DSL"
     },
@@ -377,7 +377,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-05-26T20:57:56Z",
       "started_at": "2026-05-26T20:58:38Z",
-      "completed_at": "2026-05-27T19:38:22Z",
+      "completed_at": "2026-05-27T19:32:37Z",
       "status": "COMPLETED",
       "stage": "Stage 7 \u0432\u0402\u201d Expression DSL"
     },
@@ -5470,8 +5470,64 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-05-27T19:31:26Z",
       "started_at": null,
-      "completed_at": "2026-05-27T19:38:22Z",
+      "completed_at": "2026-05-27T19:32:37Z",
       "status": "COMPLETED",
+      "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
+    },
+    {
+      "handoff_id": "20260527-019",
+      "file": "handoffs/WF02-oidc09-20260527/step-04b-test-runner-rework.json",
+      "run_id": "WF02-oidc09-20260527",
+      "workflow_id": "WF-02",
+      "step": "04b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-27T19:32:37Z",
+      "started_at": null,
+      "completed_at": "2026-05-27T19:39:15Z",
+      "status": "COMPLETED",
+      "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
+    },
+    {
+      "handoff_id": "20260527-020",
+      "file": "handoffs/WF02-oidc09-20260527/step-05-release-validator.json",
+      "run_id": "WF02-oidc09-20260527",
+      "workflow_id": "WF-02",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-05-27T19:39:15Z",
+      "started_at": "2026-05-27T19:41:16Z",
+      "completed_at": "2026-05-27T19:41:16Z",
+      "status": "COMPLETED",
+      "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
+    },
+    {
+      "handoff_id": "20260527-021",
+      "file": "handoffs/WF02-oidc09-20260527/step-06-doc-updater.json",
+      "run_id": "WF02-oidc09-20260527",
+      "workflow_id": "WF-02",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-05-27T19:41:16Z",
+      "started_at": "2026-05-27T19:42:58Z",
+      "completed_at": "2026-05-27T19:42:58Z",
+      "status": "COMPLETED",
+      "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
+    },
+    {
+      "handoff_id": "20260527-022",
+      "file": "handoffs/WF02-oidc09-20260527/step-final-backend-dev.json",
+      "run_id": "WF02-oidc09-20260527",
+      "workflow_id": "WF-02",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-27T19:42:58Z",
+      "started_at": null,
+      "completed_at": null,
+      "status": "PENDING",
       "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
     }
   ]
