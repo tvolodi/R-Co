@@ -291,21 +291,79 @@ test "DSL-04: hex literal produces parse error" {
     try testing.expect(result == .fail);
 }
 
-test "DSL-04: round-trip — parse then evaluate returns same value" {
+test "DSL-04: round-trip — parse then evaluate returns same value (tag + payload)" {
     const testing = std.testing;
     const alloc = testing.allocator;
 
     const cases = [_]struct {
         source: []const u8,
         expected_tag: TypeTag,
+        // Payload verification: null payload is always void
+        checkPayload: *const fn (Value) anyerror!void,
     }{
-        .{ .source = "null", .expected_tag = .null },
-        .{ .source = "true", .expected_tag = .bool },
-        .{ .source = "false", .expected_tag = .bool },
-        .{ .source = "42", .expected_tag = .int64 },
-        .{ .source = "3.14", .expected_tag = .float64 },
-        .{ .source = "\"hello\"", .expected_tag = .string },
-        .{ .source = "\"\"", .expected_tag = .string },
+        .{
+            .source = "null",
+            .expected_tag = .null,
+            .checkPayload = struct {
+                fn check(v: Value) anyerror!void {
+                    _ = v.null_val;
+                }
+            }.check,
+        },
+        .{
+            .source = "true",
+            .expected_tag = .bool,
+            .checkPayload = struct {
+                fn check(v: Value) anyerror!void {
+                    try testing.expect(v.bool_val == true);
+                }
+            }.check,
+        },
+        .{
+            .source = "false",
+            .expected_tag = .bool,
+            .checkPayload = struct {
+                fn check(v: Value) anyerror!void {
+                    try testing.expect(v.bool_val == false);
+                }
+            }.check,
+        },
+        .{
+            .source = "42",
+            .expected_tag = .int64,
+            .checkPayload = struct {
+                fn check(v: Value) anyerror!void {
+                    try testing.expectEqual(@as(i64, 42), v.int_val);
+                }
+            }.check,
+        },
+        .{
+            .source = "3.14",
+            .expected_tag = .float64,
+            .checkPayload = struct {
+                fn check(v: Value) anyerror!void {
+                    try testing.expect(v.float_val == 3.14);
+                }
+            }.check,
+        },
+        .{
+            .source = "\"hello\"",
+            .expected_tag = .string,
+            .checkPayload = struct {
+                fn check(v: Value) anyerror!void {
+                    try testing.expectEqualStrings("hello", v.str_val);
+                }
+            }.check,
+        },
+        .{
+            .source = "\"\"",
+            .expected_tag = .string,
+            .checkPayload = struct {
+                fn check(v: Value) anyerror!void {
+                    try testing.expectEqualStrings("", v.str_val);
+                }
+            }.check,
+        },
     };
 
     for (cases) |c| {
@@ -322,5 +380,38 @@ test "DSL-04: round-trip — parse then evaluate returns same value" {
         const eval_result = evaluate(&parse_result.ok, &ctx, alloc);
         try testing.expect(eval_result == .ok);
         try testing.expect(typeOf(eval_result.ok) == c.expected_tag);
+        try c.checkPayload(eval_result.ok);
     }
+}
+
+test "DSL-04: timestamp type verified via construction and typeOf" {
+    const testing = std.testing;
+
+    // Timestamp has no literal form (DSL-04 §3.3). Verify the type exists
+    // correctly through construction and typeOf — full round-trip through
+    // evaluate() requires DSL-06 (dot_path resolution).
+    const v = valueTs(1_715_328_000_000);
+    try testing.expect(v == .ts_val);
+    try testing.expectEqual(@as(i64, 1_715_328_000_000), v.ts_val);
+    try testing.expect(typeOf(v) == .timestamp);
+}
+
+test "DSL-04: integer literal out of i64 range produces structured parse error" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    // Value exceeds i64::MAX (9_223_372_036_854_775_807)
+    var result = try parse(alloc, "99999999999999999999");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .fail);
+    try testing.expect(result.fail.len > 0);
+
+    // Verify the error message mentions the range limit
+    const found = for (result.fail) |err| {
+        if (std.mem.indexOf(u8, err.message, "i64 range") != null) break true;
+    } else false;
+    try testing.expect(found);
 }

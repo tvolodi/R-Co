@@ -1,0 +1,43 @@
+{
+  "run_id": "WF02-dsl04-20260527",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "timestamp": "2026-05-27T07:25:18Z",
+  "summary": {
+    "total": 46,
+    "passed": 46,
+    "failed": 0,
+    "skipped": 0
+  },
+  "dsl04_results": {
+    "total_tests": 17,
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0,
+    "test_cases": [
+      { "id": "TC-DSL-04-01", "name": "Value tagged union has exactly 6 variants", "status": "PASS", "layer": "unit", "file": "src/expr/ast.zig" },
+      { "id": "TC-DSL-04-02", "name": "TypeTag enum mirrors the 6 types", "status": "PASS", "layer": "unit", "file": "src/expr/ast.zig" },
+      { "id": "TC-DSL-04-03", "name": "typeOf returns correct tag for each variant", "status": "PASS", "layer": "unit", "file": "src/expr/ast.zig" },
+      { "id": "TC-DSL-04-04", "name": "Value construction helpers produce correct payloads", "status": "PASS", "layer": "unit", "file": "src/expr/ast.zig" },
+      { "id": "TC-DSL-04-05", "name": "Evaluate null literal", "status": "PASS", "layer": "unit", "file": "src/expr/mod.zig" },
+      { "id": "TC-DSL-04-06", "name": "Evaluate bool literal true", "status": "PASS", "layer": "unit", "file": "src/expr/mod.zig" },
+      { "id": "TC-DSL-04-07", "name": "Evaluate bool literal false", "status": "PASS", "layer": "unit", "file": "src/expr/mod.zig" },
+      { "id": "TC-DSL-04-08", "name": "Evaluate int literal 42", "status": "PASS", "layer": "unit", "file": "src/expr/mod.zig" },
+      { "id": "TC-DSL-04-09", "name": "Evaluate float literal 3.14", "status": "PASS", "layer": "unit", "file": "src/expr/mod.zig" },
+      { "id": "TC-DSL-04-10", "name": "Evaluate string literal \"hello\"", "status": "PASS", "layer": "unit", "file": "src/expr/mod.zig" },
+      { "id": "TC-DSL-04-11", "name": "Evaluate empty string literal", "status": "PASS", "layer": "unit", "file": "src/expr/mod.zig" },
+      { "id": "TC-DSL-04-12", "name": "Round-trip payload verification for all literal types", "status": "PASS", "layer": "unit", "file": "src/expr/mod.zig" },
+      { "id": "TC-DSL-04-13", "name": "Timestamp type verified via construction and typeOf", "status": "PASS", "layer": "unit", "file": "src/expr/mod.zig" }
+    ]
+  },
+  "compile_status": {
+    "zig_build": "PASS",
+    "zig_build_test": "PASS",
+    "error_set_check": "PASS"
+  },
+  "failures": [],
+  "coverage": {
+    "backend_unit_line": null
+  },
+  "nfr_results": []
+}
