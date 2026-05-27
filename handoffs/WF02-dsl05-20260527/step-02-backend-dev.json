@@ -1,0 +1,45 @@
+{
+  "handoff_id": "20260527-012",
+  "run_id": "WF02-dsl05-20260527",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-dsl05-20260527/step-02-backend-dev.json",
+  "created_at": "2026-05-27T07:40:31Z",
+  "started_at": "2026-05-27T07:46:34Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-05"],
+    "related_handoff_ids": ["20260527-011"],
+    "artifacts_in": [
+      "src/design/dsl-05-coercion.md",
+      "src/design/expr.md",
+      "src/design/expr-types.md",
+      "src/expr/ast.zig",
+      "src/expr/mod.zig",
+      "src/expr/error.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement type coercion rules in the DSL evaluator per DSL-05 and the design in src/design/dsl-05-coercion.md. Modify src/expr/mod.zig evaluateNode() to implement:\n\n1. Coercion logic for arithmetic operators (add_expr, mul_expr, unary_neg):\n   - int64 ↔ float64 automatic promotion (int64 → float64 when mixed)\n   - Both operands same type → no coercion needed\n   - Non-numeric types in arithmetic → structured EvalError\n\n2. Comparison operators (cmp_expr):\n   - Same-type comparison → direct comparison\n   - int64 vs float64 → explicit error (no silent coercion)\n   - Other mixed-type comparisons → explicit error\n   - null compared to anything except null → returns null (three-valued logic)\n   - null == null → true\n   - null != null → false\n\n3. Boolean operators (and_expr, or_expr, not_expr) with three-valued logic:\n   - null AND x → if x is false → false, else null\n   - null OR x → if x is true → true, else null\n   - NOT null → null\n\n4. Dot path resolution with null propagation:\n   - Accessing a field on null → null (not an error)\n\n5. No automatic string coercion — string to/from other types only via built-in functions\n\nValidate: zig build exits 0, zig build test passes.",
+    "acceptance_criteria": [
+      "zig build exits 0 with no 'error set' warnings",
+      "zig build test passes all existing and new tests",
+      "Arithmetic with mixed int64/float64 promotes int64 to float64",
+      "Comparison between int64 and float64 returns EvalError (no silent coercion)",
+      "null == null returns true; null != null returns false",
+      "null == any-non-null returns null; null != any-non-null returns null",
+      "null AND/OR/NOT follows three-valued logic",
+      "Dot-path access on failing intermediate returns null, not error",
+      "String coercion never automatic — explicit built-in functions only"
+    ],
+    "functions_to_call": ["fn:read-backend-conventions", "fn:check-zig-build"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

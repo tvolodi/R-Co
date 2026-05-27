@@ -1,0 +1,38 @@
+{
+  "handoff_id": "20260527-013",
+  "run_id": "WF02-dsl05-20260527",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-dsl05-20260527/step-03-test-designer.json",
+  "created_at": "2026-05-27T07:40:31Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-05"],
+    "related_handoff_ids": ["20260527-012"],
+    "artifacts_in": [
+      "src/design/dsl-05-coercion.md",
+      "src/expr/mod.zig",
+      "src/expr/ast.zig",
+      "tests/specs/DSL-04.md"
+    ]
+  },
+  "task": {
+    "description": "Write test spec at tests/specs/DSL-05.md covering the coercion test matrix as a comprehensive set of unit tests for src/expr/mod.zig evaluateNode(). The spec must cover:\n\n1. Arithmetic coercion (add_expr, mul_expr, unary_neg):\n   - int64 + int64 → int64\n   - float64 + float64 → float64\n   - int64 + float64 → float64 (promotion)\n   - float64 + int64 → float64 (promotion)\n   - Non-numeric + numeric → EvalError\n   - null in arithmetic → EvalError\n\n2. Comparison with no silent coercion:\n   - int64 == int64 → bool\n   - float64 < float64 → bool\n   - int64 == float64 → EvalError (different types)\n   - string == string → bool\n   - bool != bool → bool\n   - Different types compared → EvalError\n\n3. Three-valued null comparison:\n   - null == null → true\n   - null != null → false\n   - null == 42 → null\n   - null != 42 → null\n   - null < 42 → null\n   - null <= 42 → null\n   - null > 42 → null\n   - null >= 42 → null\n   - null == true → null\n   - null == \"hello\" → null\n\n4. Three-valued boolean logic:\n   - null AND true → null\n   - null AND false → false\n   - null OR true → true\n   - null OR false → null\n   - true AND null → null\n   - false OR null → null\n   - NOT null → null\n   - null AND null → null\n   - null OR null → null\n\n5. No automatic string coercion:\n   - \"42\" + 1 → EvalError\n   - \"42\" == 42 → EvalError\n   - 1 + \"1\" → EvalError\n\nWrite the test source code into src/expr/mod.zig as additional test blocks (DSL-05 section).",
+    "acceptance_criteria": [
+      "All type pairs × operator categories have a dedicated test",
+      "Three-valued null logic tested for all operators",
+      "No silent coercion in comparisons verified by tests expecting EvalError",
+      "All tests are unit tests (no I/O, no DB, no external dependencies)"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
