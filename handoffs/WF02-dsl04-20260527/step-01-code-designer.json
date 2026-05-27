@@ -1,0 +1,40 @@
+{
+    "handoff_id": "20260527-003",
+    "run_id": "WF02-dsl04-20260527",
+    "workflow_id": "WF-02",
+    "step": "01",
+    "from_agent": "ORCH",
+    "to_agent": "CODE-DESIGNER",
+    "file": "handoffs/WF02-dsl04-20260527/step-01-code-designer.json",
+    "created_at": "2026-05-27T07:10:24Z",
+    "started_at": "2026-05-27T07:11:12Z",
+    "completed_at": "2026-05-27T07:13:14Z",
+    "status": "COMPLETED",
+    "priority": "HIGH",
+    "context": {
+        "stage": "Stage 7 — Expression DSL",
+        "requirement_ids": ["DSL-04"],
+        "related_handoff_ids": ["20260527-002"],
+        "artifacts_in": ["docs/BPM_Platform_Functional_Requirements.md", "src/design/expr.md", "src/expr/"]
+    },
+    "task": {
+        "description": "Design the type system for the Expression DSL. DSL-04 requires exactly six value types: null, bool, int64, float64, string, timestamp. Produce a design artefact at src/design/expr-types.md covering:\n\n1. Type representation (Zig type definitions for a tagged union Value type)\n2. Literal syntax for each type (null literal, bool literals, integer literals, float literals, string literals, timestamp literals)\n3. Parse-time rejection of unsupported types with structured error\n4. How the Value type integrates with the existing AST in src/expr/ and the evaluate() signature\n5. Round-trip guarantee: parse -> evaluate of a literal produces the same value\n\nRead the existing src/expr/ module and src/design/expr.md for context before designing.",
+        "acceptance_criteria": [
+            "src/design/expr-types.md exists with the design",
+            "All six types are covered with their literal forms",
+            "Rejection of unsupported types is addressed",
+            "Integration with existing AST and evaluator is described",
+            "Round-trip (parse literal -> evaluate -> same value) is addressed"
+        ],
+        "functions_to_call": ["fn:register-inner-report"]
+    },
+    "result": {
+        "status": "PASS",
+        "summary": "Designed type system for DSL-04: Zig Value tagged union, literal syntax for 5 types (timestamp via built-ins), parse-time rejection of unsupported types, integration with existing AST/evaluator, round-trip guarantee. Artefact at src/design/expr-types.md.",
+        "artifacts_out": ["src/design/expr-types.md", "docs/issue-reports/WF02-dsl04-20260527-code-designer.md"],
+        "issues": [],
+        "next_action": "Route to BACKEND-DEV (Step 02a) and FRONTEND-DEV (Step 02b)"
+    },
+    "rework_count": 0,
+    "max_rework": 3
+}

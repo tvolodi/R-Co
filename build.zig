@@ -564,10 +564,21 @@ pub fn build(b: *std.Build) void {
     });
     const run_expr_error_recovery_tests = b.addRunArtifact(expr_error_recovery_tests);
 
+    // DSL-04: Expression value/evaluation unit tests (pure — no DB, no network)
+    const dsl04_eval_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/expr/mod.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_dsl04_eval_tests = b.addRunArtifact(dsl04_eval_tests);
+
     // `zig build test-expr` — DSL expr tests only
     const test_expr_step = b.step("test-expr", "Run Expression DSL unit tests");
     test_expr_step.dependOn(&run_dsl01_parser_tests.step);
     test_expr_step.dependOn(&run_expr_error_recovery_tests.step);
+    test_expr_step.dependOn(&run_dsl04_eval_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-engine` — engine unit tests only
@@ -623,6 +634,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_ext03_plugin_unit_tests.step);
     test_step.dependOn(&run_dsl01_parser_tests.step);
     test_step.dependOn(&run_expr_error_recovery_tests.step);
+    test_step.dependOn(&run_dsl04_eval_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)

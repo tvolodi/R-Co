@@ -326,6 +326,64 @@ pub const Value = union(enum) {
 };
 
 // ---------------------------------------------------------------------------
+// TypeTag — mirrors the active tags of Value
+// ---------------------------------------------------------------------------
+
+/// Mirrors the six DSL runtime types for dispatch and coercion decisions.
+pub const TypeTag = enum {
+    null,
+    bool,
+    int64,
+    float64,
+    string,
+    timestamp,
+};
+
+// ---------------------------------------------------------------------------
+// typeOf — tag dispatch helper
+// ---------------------------------------------------------------------------
+
+/// Returns the TypeTag for a given Value, without inspecting the payload.
+pub fn typeOf(value: Value) TypeTag {
+    return switch (value) {
+        .null_val => .null,
+        .bool_val => .bool,
+        .int_val => .int64,
+        .float_val => .float64,
+        .str_val => .string,
+        .ts_val => .timestamp,
+    };
+}
+
+// ---------------------------------------------------------------------------
+// Value construction helpers
+// ---------------------------------------------------------------------------
+
+pub fn valueNull() Value {
+    return .{ .null_val = {} };
+}
+
+pub fn valueBool(b: bool) Value {
+    return .{ .bool_val = b };
+}
+
+pub fn valueInt(n: i64) Value {
+    return .{ .int_val = n };
+}
+
+pub fn valueFloat(f: f64) Value {
+    return .{ .float_val = f };
+}
+
+pub fn valueStr(s: []const u8) Value {
+    return .{ .str_val = s };
+}
+
+pub fn valueTs(ms: i64) Value {
+    return .{ .ts_val = ms };
+}
+
+// ---------------------------------------------------------------------------
 // Context — variable map for evaluation
 // ---------------------------------------------------------------------------
 
@@ -342,3 +400,47 @@ pub const Context = struct {
         self.vars.deinit();
     }
 };
+
+// ---------------------------------------------------------------------------
+// Tests — DSL-04: Value type, TypeTag, and construction helpers
+// ---------------------------------------------------------------------------
+
+test "DSL-04: Value tagged union has exactly 6 variants" {
+    const testing = std.testing;
+
+    // Compile-time check: Value must have exactly 6 fields.
+    const field_count = @typeInfo(Value).@"union".fields.len;
+    try testing.expectEqual(@as(usize, 6), field_count);
+}
+
+test "DSL-04: TypeTag enum mirrors the 6 types" {
+    const testing = std.testing;
+
+    const tag_count = @typeInfo(TypeTag).@"enum".fields.len;
+    try testing.expectEqual(@as(usize, 6), tag_count);
+}
+
+test "DSL-04: typeOf returns correct tag for each variant" {
+    const testing = std.testing;
+
+    try testing.expect(typeOf(valueNull()) == .null);
+    try testing.expect(typeOf(valueBool(true)) == .bool);
+    try testing.expect(typeOf(valueInt(42)) == .int64);
+    try testing.expect(typeOf(valueFloat(3.14)) == .float64);
+    try testing.expect(typeOf(valueStr("hello")) == .string);
+    try testing.expect(typeOf(valueTs(1_234_567_890)) == .timestamp);
+}
+
+test "DSL-04: value construction helpers produce correct payloads" {
+    const testing = std.testing;
+
+    try testing.expect(valueNull().null_val == {});
+    try testing.expect(valueBool(true).bool_val == true);
+    try testing.expect(valueBool(false).bool_val == false);
+    try testing.expectEqual(@as(i64, 42), valueInt(42).int_val);
+    try testing.expectEqual(@as(i64, -7), valueInt(-7).int_val);
+    try testing.expect(valueFloat(3.14).float_val == 3.14);
+    try testing.expectEqualStrings("hello", valueStr("hello").str_val);
+    try testing.expectEqualStrings("", valueStr("").str_val);
+    try testing.expectEqual(@as(i64, 1_234_567_890), valueTs(1_234_567_890).ts_val);
+}
