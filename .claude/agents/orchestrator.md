@@ -44,8 +44,20 @@ After reading, determine the current workflow state and the next action needed.
 ## Creating a handoff
 
 Get the actual current UTC timestamp first — NEVER invent it:
+
+**On Windows (preferred):**
+```powershell
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+
+**On Linux/macOS:**
 ```bash
 python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
+```
+
+**On Windows with Python (fallback):**
+```cmd
+python -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
 ```
 
 Then create the handoff file and register it:

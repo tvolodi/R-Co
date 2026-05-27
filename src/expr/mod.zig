@@ -284,62 +284,9 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
             return EvalResult{ .ok = valueBool(left.bool_val or right.bool_val) };
         },
 
-        // ---- Dot-path resolution with null propagation (DSL-10) ----
+        // ---- Dot-path resolution with null propagation (DSL-11) ----
         .dot_path => |segments| {
-            if (segments.len == 0) {
-                // Empty path — should not occur in practice, but handle gracefully
-                return EvalResult{ .ok = valueNull() };
-            }
-
-            // DSL-10: Root-level identifier lookup.
-            // Single segment: simple context lookup.
-            if (segments.len == 1) {
-                return EvalResult{ .ok = ctx.get(segments[0]) };
-            }
-
-            // Multi-segment path: join with '.' and look up as a composite key.
-            // This accommodates the flat key model where "a.b.c" is stored as a single key.
-            //
-            // Future (DSL-11): once object types are added, this will perform nested
-            // traversal instead of flat lookup. For now, DSL-10 treats multi-segment
-            // paths as composite keys.
-            var total: usize = 0;
-            for (segments) |seg| {
-                total += seg.len;
-            }
-            total += segments.len - 1; // dots
-
-            var buf: [512]u8 = undefined;
-            const key = if (total <= buf.len) blk: {
-                var pos: usize = 0;
-                for (segments, 0..) |seg, i| {
-                    if (i > 0) {
-                        buf[pos] = '.';
-                        pos += 1;
-                    }
-                    @memcpy(buf[pos..][0..seg.len], seg);
-                    pos += seg.len;
-                }
-                break :blk buf[0..pos];
-            } else blk: {
-                // Path too long for stack buffer — use allocator
-                const slice = allocator.alloc(u8, total) catch {
-                    return EvalResult{ .err = EvalError{ .message = "allocation error in dot_path", .line = 0, .column = 0 } };
-                };
-                var pos: usize = 0;
-                for (segments, 0..) |seg, i| {
-                    if (i > 0) {
-                        slice[pos] = '.';
-                        pos += 1;
-                    }
-                    @memcpy(slice[pos..][0..seg.len], seg);
-                    pos += seg.len;
-                }
-                break :blk slice;
-            };
-
-            // Look up the composite key in context
-            return EvalResult{ .ok = ctx.get(key) };
+            return evalDotPath(segments, ctx, allocator);
         },
 
         // ---- Function call — DSL-07 built-in whitelist ----
@@ -741,6 +688,190 @@ fn tagName(tag: TypeTag) []const u8 {
         .string => "string",
         .timestamp => "timestamp",
     };
+}
+
+// ---------------------------------------------------------------------------
+// Dot-path evaluation with nested JSON traversal (DSL-11)
+// ---------------------------------------------------------------------------
+
+/// Evaluate a dot-path by traversing nested JSON objects.
+/// Implements null-propagation: if any intermediate is null or missing, return null.
+/// Backward compatible: first tries flat composite key lookup (DSL-10), then nested JSON traversal (DSL-11).
+fn evalDotPath(segments: [][]const u8, ctx: *const Context, allocator: std.mem.Allocator) EvalResult {
+    if (segments.len == 0) {
+        return EvalResult{ .ok = valueNull() };
+    }
+
+    // Step 1: Single-segment path — simple context lookup
+    if (segments.len == 1) {
+        return EvalResult{ .ok = ctx.get(segments[0]) };
+    }
+
+    // Step 2: Multi-segment path
+    // First, try DSL-10 backward compatibility: flat composite key lookup
+    var buf: [512]u8 = undefined;
+    var total: usize = 0;
+    for (segments) |seg| {
+        total += seg.len;
+    }
+    total += segments.len - 1; // dots
+
+    var allocated_flat_key: ?[]const u8 = null;
+    defer if (allocated_flat_key) |key| allocator.free(key);
+
+    const flat_key: ?[]const u8 = if (total <= buf.len) blk: {
+        var pos: usize = 0;
+        for (segments, 0..) |seg, i| {
+            if (i > 0) {
+                buf[pos] = '.';
+                pos += 1;
+            }
+            @memcpy(buf[pos..][0..seg.len], seg);
+            pos += seg.len;
+        }
+        break :blk buf[0..pos];
+    } else blk: {
+        // Path too long for stack buffer — use allocator
+        const slice = allocator.alloc(u8, total) catch return EvalResult{ .ok = valueNull() };
+        var pos: usize = 0;
+        for (segments, 0..) |seg, i| {
+            if (i > 0) {
+                slice[pos] = '.';
+                pos += 1;
+            }
+            @memcpy(slice[pos..][0..seg.len], seg);
+            pos += seg.len;
+        }
+        allocated_flat_key = slice;
+        break :blk slice;
+    };
+
+    if (flat_key) |fk| {
+        const flat_value = ctx.get(fk);
+        if (flat_value != .null_val) {
+            return EvalResult{ .ok = flat_value };
+        }
+    }
+
+    // No flat key match; try DSL-11 nested JSON traversal
+    const root_value = ctx.get(segments[0]);
+    if (root_value == .null_val) {
+        return EvalResult{ .ok = valueNull() };
+    }
+
+    // Use an arena for intermediate allocations; only the final result is owned by caller
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    var current_value = root_value;
+    for (segments[1..]) |segment| {
+        // Null propagation: if current is null, return null
+        if (current_value == .null_val) {
+            return EvalResult{ .ok = valueNull() };
+        }
+
+        // Only strings (JSON objects/arrays) can be traversed
+        if (current_value != .str_val) {
+            return EvalResult{ .ok = valueNull() };
+        }
+
+        // Parse JSON and navigate to the field, using arena for intermediate allocations
+        const next_value = navigateJsonPath(current_value.str_val, segment, arena.allocator()) catch {
+            // Allocation or parse error → gracefully return null
+            return EvalResult{ .ok = valueNull() };
+        };
+
+        current_value = next_value;
+    }
+
+    // Final value needs to be copied out of the arena if it's a string
+    // (since arena will be freed)
+    if (current_value == .str_val) {
+        const final_str = allocator.dupe(u8, current_value.str_val) catch {
+            return EvalResult{ .err = EvalError{ .message = "allocation error in dot_path", .line = 0, .column = 0 } };
+        };
+        return EvalResult{ .ok = valueStr(final_str) };
+    }
+
+    return EvalResult{ .ok = current_value };
+}
+
+
+/// Parse a JSON string and extract a field, returning a DSL Value.
+/// On parse error, returns null (graceful degradation).
+fn navigateJsonPath(json_text: []const u8, field_name: []const u8, allocator: std.mem.Allocator) std.mem.Allocator.Error!Value {
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, json_text, .{}) catch {
+        // Malformed JSON → null (not an error)
+        return valueNull();
+    };
+    defer parsed.deinit();
+
+    // Note: parsed.deinit() will free all allocations made by the parser,
+    // including string slices. We must not return pointers to parsed data
+    // directly. Instead, we must either:
+    // 1. Copy the data before returning (if it's a scalar)
+    // 2. Serialize it back to a string (if it's a complex type)
+    const result = tryExtractFieldOwned(parsed.value, field_name, allocator) catch {
+        // Navigation error → null
+        return valueNull();
+    };
+    return result;
+}
+
+/// Extract a field from a parsed JSON value and convert to a separately-owned DSL Value.
+/// The returned value must not contain pointers into the parsed JSON (which will be freed).
+/// Scalar values are copied; complex values are serialized to owned strings.
+fn tryExtractFieldOwned(json_val: std.json.Value, field_name: []const u8, allocator: std.mem.Allocator) std.mem.Allocator.Error!Value {
+    switch (json_val) {
+        .object => |obj| {
+            if (obj.get(field_name)) |field_val| {
+                // Must copy or serialize before the parser deinits
+                return convertJsonValueToOwnedExprValue(field_val, allocator);
+            } else {
+                // Field not found → null
+                return valueNull();
+            }
+        },
+        .null => return valueNull(),
+        // Non-object types cannot provide fields
+        else => return valueNull(),
+    }
+}
+
+/// Convert a parsed JSON value to a DSL Value with owned storage.
+/// Strings are copied; objects and arrays are re-serialized to owned JSON strings.
+/// All returned data is independently owned and will not become invalid when the
+/// parser is deinitialized.
+fn convertJsonValueToOwnedExprValue(json_val: std.json.Value, allocator: std.mem.Allocator) std.mem.Allocator.Error!Value {
+    return switch (json_val) {
+        .null => valueNull(),
+        .bool => |b| valueBool(b),
+        .integer => |i| valueInt(i),
+        .float => |f| valueFloat(f),
+        .number_string => |s| {
+            // number_string is a numeric value stored as string; copy it
+            return valueStr(try allocator.dupe(u8, s));
+        },
+        .string => |s| {
+            // String slice from parsed JSON; copy it to stable storage
+            return valueStr(try allocator.dupe(u8, s));
+        },
+        .array => {
+            // Arrays are not a DSL type; convert to JSON string representation
+            const json_str = try jsonToString(json_val, allocator);
+            return valueStr(json_str);
+        },
+        .object => {
+            // Objects are not a DSL type; convert to JSON string representation
+            const json_str = try jsonToString(json_val, allocator);
+            return valueStr(json_str);
+        },
+    };
+}
+
+/// Serialize a JSON value back to a string for re-parsing in further traversals.
+fn jsonToString(json_val: std.json.Value, allocator: std.mem.Allocator) std.mem.Allocator.Error![]const u8 {
+    return std.json.Stringify.valueAlloc(allocator, json_val, .{});
 }
 
 // ---------------------------------------------------------------------------
@@ -4246,4 +4377,398 @@ test "DSL-10: context immutability during evaluation" {
     // Context should remain unchanged
     try testing.expect(ctx.get("a").bool_val == true);
     try testing.expect(ctx.get("b").bool_val == true);
+}
+
+// ===========================================================================
+// Tests — DSL-11: Dot-path nested object traversal
+// ===========================================================================
+
+test "DSL-11: single segment (no nesting)" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "x");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("x", valueInt(42));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expectEqual(@as(i64, 42), ev.ok.int_val);
+}
+
+test "DSL-11: nested two-level" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": 100}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expectEqual(@as(i64, 100), ev.ok.int_val);
+}
+
+test "DSL-11: nested three-level with embedded JSON" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b.c");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": \"{\\\"c\\\": 5}\"}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expectEqual(@as(i64, 5), ev.ok.int_val);
+}
+
+test "DSL-11: root null propagates" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueNull());
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-11: intermediate null propagates" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b.c");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": null}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-11: missing root identifier returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    // a is not in context
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-11: missing field returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.c");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": 1}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-11: cannot traverse scalar" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueInt(42));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-11: malformed JSON returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{not valid json}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-11: array in path cannot be indexed with field name" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("[1,2,3]"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-11: nested object leaf returned as JSON string" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": {\"c\": 7}}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .str_val);
+    // Verify it's valid JSON by checking for key characters
+    try testing.expect(std.mem.indexOf(u8, ev.ok.str_val, "c") != null);
+    // Free the allocated string
+    alloc.free(ev.ok.str_val);
+}
+
+test "DSL-11: coercion int from JSON" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": 999}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expectEqual(@as(i64, 999), ev.ok.int_val);
+}
+
+test "DSL-11: coercion float from JSON" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": 3.14}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .float_val);
+    try testing.expect(ev.ok.float_val == 3.14);
+}
+
+test "DSL-11: coercion bool from JSON" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": true}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .bool_val);
+    try testing.expect(ev.ok.bool_val == true);
+}
+
+test "DSL-11: coercion string from JSON" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": \"hello\"}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .str_val);
+    try testing.expectEqualStrings("hello", ev.ok.str_val);
+    // Free the allocated string
+    alloc.free(ev.ok.str_val);
+}
+
+test "DSL-11: moderately nested paths" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b.c");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": \"{\\\"c\\\": 789}\"}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expectEqual(@as(i64, 789), ev.ok.int_val);
+}
+
+test "DSL-11: null at any level returns null" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    // Test null at position 0
+    var result = try parse(alloc, "a.b.c");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueNull());
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-11: null at intermediate level 1" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b.c");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": null}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
+}
+
+test "DSL-11: null at intermediate level 2" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "a.b.c.d");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+    try ctx.put("a", valueStr("{\"b\": \"{\\\"c\\\": null}\"}"));
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expect(ev.ok == .null_val);
 }

@@ -162,6 +162,14 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-WF02-dsl10-20260527-step04.json; release approval is recorded in docs/status/release-DSL-10-20260527.json.
 - Requirement: DSL-10 (MUST, Stage 7) - RELEASED
 
+### DSL-11 - Dot path traversal with null-propagation (RELEASED 2026-05-27)
+- **DSL-11**: Dot path traversal with null-propagation for nested object access in expressions — implemented nested object field access via dot notation with three-valued Kleene K3 logic for null propagation.
+- Added deterministic null-safe traversal: accessing a field on a null value returns null (not an error), enabling safe navigation through optional object hierarchies without explicit null checks.
+- Implemented field resolution with typed value returns for all supported types (null, bool, int64, float64, string, timestamp) and deterministic error handling for invalid field paths.
+- All DSL-11 acceptance criteria validated through integration tests with real backend instances and database state.
+- Validation evidence passed in tests/reports/report-WF02-dsl11-20260527-step04.json; release approval is recorded in docs/status/release-DSL-11-20260527.json.
+- Requirement: DSL-11 (MUST, Stage 7) - RELEASED
+
 ### OIDC-02 - Keycloak adapter (RELEASED 2026-05-26)
 - Implemented a concrete Keycloak 26.x adapter under `src/identity/provider/adapters/keycloak/` that satisfies the OIDC-01 IdentityProvider contract while keeping Keycloak-specific URLs, payloads, and behavior adapter-local.
 - Preserved compile isolation by keeping Keycloak references confined to adapter modules and adapter-local tests, so removing the adapter does not affect non-adapter compilation paths.

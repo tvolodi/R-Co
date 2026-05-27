@@ -73,9 +73,30 @@ Verify before completing:
 
 ### 5. Complete the handoff
 
+**On Windows (preferred):**
+```powershell
+# FIRST: get the actual current UTC time — do NOT invent a timestamp
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+# Use the exact printed string as completed_at in the handoff file
+# Set: status = "COMPLETED", result.status = "PASS"|"FAIL"
+# Do NOT set started_at — ORCH stamps that before dispatch
+# List all changed files in result.artifacts_out
+```
+
+**On Linux/macOS:**
 ```bash
 # FIRST: get the actual current UTC time — do NOT invent a timestamp
 python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
+# Use the exact printed string as completed_at in the handoff file
+# Set: status = "COMPLETED", result.status = "PASS"|"FAIL"
+# Do NOT set started_at — ORCH stamps that before dispatch
+# List all changed files in result.artifacts_out
+```
+
+**On Windows with Python (fallback):**
+```cmd
+# FIRST: get the actual current UTC time — do NOT invent a timestamp
+python -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
 # Use the exact printed string as completed_at in the handoff file
 # Set: status = "COMPLETED", result.status = "PASS"|"FAIL"
 # Do NOT set started_at — ORCH stamps that before dispatch
