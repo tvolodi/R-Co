@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2026-05-23T18:08:12Z",
-  "last_updated": "2026-05-27T20:31:09Z",
+  "last_updated": "2026-05-27T20:48:01Z",
   "entries": [
     {
       "handoff_id": "20260527-911",
@@ -5599,6 +5599,62 @@
       "handoff_id": "1be78j2g-6i8f-8e5d-3g1j-2f5e0h9j6i3g",
       "stage": "Stage 7 \ufffd Expression DSL",
       "file": "handoffs/WF02-dsl12-20260528/step-final-backend-dev.json"
+    },
+    {
+      "handoff_id": "20260527-008",
+      "file": "handoffs/WF02-oidc10-20260527/step-final-backend-dev.json",
+      "run_id": "WF02-oidc10-20260527",
+      "workflow_id": "WF-02",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-27T20:35:02Z",
+      "started_at": "2026-05-27T20:35:17Z",
+      "completed_at": "2026-05-27T20:40:14Z",
+      "status": "COMPLETED",
+      "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
+    },
+    {
+      "handoff_id": "c194e311-29ee-4546-84c5-3689346f3215",
+      "file": "handoffs/WF02-oidc11-15-20260528/step-00-backend-dev.json",
+      "run_id": "WF02-oidc11-15-20260528",
+      "workflow_id": "WF-02",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-27T20:43:33Z",
+      "started_at": "2026-05-27T20:44:06Z",
+      "completed_at": "2026-05-27T20:44:54Z",
+      "status": "COMPLETED",
+      "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
+    },
+    {
+      "handoff_id": "0b3b27c4-f199-4351-8f06-58d8ab184642",
+      "file": "handoffs/WF02-oidc11-15-20260528/step-01-code-designer.json",
+      "run_id": "WF02-oidc11-15-20260528",
+      "workflow_id": "WF-02",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-05-27T20:44:54Z",
+      "started_at": "2026-05-27T20:45:10Z",
+      "completed_at": "2026-05-27T20:47:43Z",
+      "status": "COMPLETED",
+      "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
+    },
+    {
+      "handoff_id": "88977c88-2af3-45c0-b1d5-5828694cfc72",
+      "file": "handoffs/WF02-oidc11-15-20260528/step-02-backend-dev.json",
+      "run_id": "WF02-oidc11-15-20260528",
+      "workflow_id": "WF-02",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-27T20:47:43Z",
+      "started_at": "2026-05-27T20:48:01Z",
+      "completed_at": null,
+      "status": "IN_PROGRESS",
+      "stage": "Stage 6.5 - Schema adaptations + OIDC foundations"
     }
   ]
 }

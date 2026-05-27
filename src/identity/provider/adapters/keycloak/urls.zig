@@ -64,3 +64,24 @@ pub fn auditEvents(allocator: std.mem.Allocator, config: keycloak_config.Config,
         .{ config.adminBase(), realm_id, first, max, from_timestamp_ms, to_timestamp_ms },
     );
 }
+
+// --- OIDC-13: Protocol mapper URLs ---
+
+pub fn protocolMappersCollection(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8) ![]u8 {
+    return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/protocol-mappers/models", .{ config.adminBase(), realm_id });
+}
+
+pub fn protocolMapperById(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8, mapper_id: []const u8) ![]u8 {
+    return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/protocol-mappers/models/{s}", .{ config.adminBase(), realm_id, mapper_id });
+}
+
+// --- OIDC-15: Realm lifecycle URLs ---
+
+pub fn toggleRealm(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8) ![]u8 {
+    // The same URL as realm() — enable/disable is a PUT update.
+    return realm(allocator, config, realm_id);
+}
+
+pub fn keysCollection(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8) ![]u8 {
+    return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/keys", .{ config.adminBase(), realm_id });
+}

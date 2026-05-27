@@ -70,6 +70,23 @@ pub const Manager = struct {
         const provider = self.provider orelse return error.NotImplemented;
         return provider.listAuditEvents(allocator, input);
     }
+
+    // --- OIDC-13 ---
+    pub fn createProtocolMapper(self: Manager, allocator: std.mem.Allocator, input: types.CreateProtocolMapperInput) errors.ProviderError!types.CreateProtocolMapperResult {
+        const provider = self.provider orelse return error.NotImplemented;
+        return provider.createProtocolMapper(allocator, input);
+    }
+
+    // --- OIDC-15 ---
+    pub fn toggleRealm(self: Manager, allocator: std.mem.Allocator, input: types.ToggleRealmInput) errors.ProviderError!types.RealmLifecycleResult {
+        const provider = self.provider orelse return error.NotImplemented;
+        return provider.toggleRealm(allocator, input);
+    }
+
+    pub fn deleteRealm(self: Manager, allocator: std.mem.Allocator, input: types.DeleteRealmInput) errors.ProviderError!void {
+        const provider = self.provider orelse return error.NotImplemented;
+        return provider.deleteRealm(allocator, input);
+    }
 };
 
 fn looksLikeJwt(token: []const u8) bool {
