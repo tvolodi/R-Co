@@ -6,7 +6,7 @@
 //!
 //! Design artefact: src/design/definition.md
 const std = @import("std");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
 const graph_mod = @import("graph.zig");

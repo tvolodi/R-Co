@@ -1,5 +1,5 @@
 const std = @import("std");
-const pool_mod = @import("../db/pool.zig");
+const pool_mod = @import("pool");
 
 pub const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 

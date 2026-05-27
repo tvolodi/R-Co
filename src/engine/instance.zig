@@ -7,7 +7,7 @@
 //! Design artefact: src/design/engine.md §EE-01, §EE-03
 const std = @import("std");
 const builtin = @import("builtin");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
 const snapshot_mod = @import("../definition/snapshot.zig");

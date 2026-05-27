@@ -50,6 +50,18 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    // pool_module: wraps src/db/pool.zig so that @import("pool") resolves
+    // inside claim_mapping.zig, auth.zig, etc.
+    const pool_module = b.createModule(.{
+        .root_source_file = b.path("src/db/pool.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pg", .module = pg_mod },
+        },
+    });
+
     const vendor_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
@@ -58,6 +70,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "build_options", .module = build_options_mod },
         .{ .name = "identity_provider", .module = identity_provider_mod },
         .{ .name = "provider_errors", .module = provider_errors_mod },
+        .{ .name = "pool", .module = pool_module },
     };
 
     // ---------------------------------------------------------------------------
@@ -156,25 +169,42 @@ pub fn build(b: *std.Build) void {
         .imports = vendor_imports,
     });
 
-    // pool_module: wraps src/db/pool.zig so that @import("pool") resolves
-    // inside claim_mapping.zig, auth.zig, etc.
-    const pool_module = b.createModule(.{
-        .root_source_file = b.path("src/db/pool.zig"),
+    // claim_mapping_mod: wraps src/oidc/claim_mapping.zig so that
+    // jit_provisioning_mod can import it as a named module.
+    const claim_mapping_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/claim_mapping.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
-            .{ .name = "pg", .module = pg_mod },
+            .{ .name = "pool", .module = pool_module },
+        },
+    });
+
+    // jit_provisioning_mod: wraps src/oidc/jit_provisioning.zig for
+    // api_mod unit tests. Uses named module imports to avoid "file exists
+    // in two modules" errors in test compilation.
+    const jit_provisioning_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/jit_provisioning.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_module },
+            .{ .name = "claim_mapping", .module = claim_mapping_mod },
         },
     });
 
     // bpm_src_mod: src/bpm.zig re-export shim used by engine unit tests and
     // integration tests.  Exports .engine, .tasks, .pool, .definition, etc.
+    // Uses named module import for pool so that jit_provisioning_mod can
+    // coexist as a sibling module dependency (both resolve pool via
+    // the same pool_module, avoiding "file exists in two modules").
     const bpm_src_mod = b.createModule(.{
         .root_source_file = b.path("src/bpm.zig"),
         .imports = &.{
             .{ .name = "pg", .module = pg_mod },
             .{ .name = "cel", .module = cel_mod },
             .{ .name = "identity_provider", .module = identity_provider_mod },
+            .{ .name = "pool", .module = pool_module },
         },
     });
 
@@ -325,7 +355,8 @@ pub fn build(b: *std.Build) void {
     const run_engine_ee11_tests = b.addRunArtifact(engine_ee11_tests);
 
     // api_mod: single module root for API unit test imports.
-    // pool_module is defined earlier (before bpm_src_mod) so it is reused here.
+    // claim_mapping_mod and jit_provisioning_mod are defined earlier
+    // (before bpm_src_mod) and reused here.
     const api_mod = b.createModule(.{
         .root_source_file = b.path("src/api/api_mod.zig"),
         .target = target,
@@ -334,6 +365,8 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             .{ .name = "pool", .module = pool_module },
             .{ .name = "identity_provider", .module = identity_provider_mod },
+            .{ .name = "claim_mapping", .module = claim_mapping_mod },
+            .{ .name = "jit_provisioning", .module = jit_provisioning_mod },
         },
     });
     const api_conventions_tests = b.addTest(.{
@@ -754,14 +787,7 @@ pub fn build(b: *std.Build) void {
     const run_adp12_regression_tests = b.addRunArtifact(adp12_regression_tests);
 
     // OIDC-08: Claim mapping config loading integration tests (requires DB)
-    const oidc08_claim_mapping_mod = b.createModule(.{
-        .root_source_file = b.path("src/oidc/claim_mapping.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "pool", .module = pool_module },
-        },
-    });
+    // Reuses claim_mapping_mod defined earlier (before bpm_src_mod).
     const oidc08_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/oidc08_claim_mapping_config_test.zig"),
@@ -769,12 +795,32 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "pg", .module = pg_mod },
-                .{ .name = "claim_mapping", .module = oidc08_claim_mapping_mod },
+                .{ .name = "claim_mapping", .module = claim_mapping_mod },
                 .{ .name = "pool", .module = pool_module },
             },
         }),
     });
     const run_oidc08_integration_tests = b.addRunArtifact(oidc08_integration_tests);
+
+    // OIDC-09: JIT user provisioning integration tests (requires DB)
+    // Provides jit_provisioning as a separate named module alongside bpm.
+    // bpm_src_mod provides pool, identity_registry, identity_service via
+    // relative imports; jit_provisioning_mod uses named imports for pool.
+    // These coexist because bpm and jit_provisioning are sibling deps,
+    // each resolving pool.zig in its own module context.
+    const oidc09_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc09_jit_provisioning_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "jit_provisioning", .module = jit_provisioning_mod },
+            },
+        }),
+    });
+    const run_oidc09_integration_tests = b.addRunArtifact(oidc09_integration_tests);
 
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python3", "tools/clean_test_db.py" });
@@ -785,6 +831,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&clean_test_db.step);
     test_integration_step.dependOn(&run_integration_tests.step);
     test_integration_step.dependOn(&run_oidc08_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc09_integration_tests.step);
 
     const test_integration_obs03_step = b.step("test-integration-obs03", "Run OBS-03 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs03_step.dependOn(&clean_test_db.step);
@@ -797,6 +844,10 @@ pub fn build(b: *std.Build) void {
     const test_adp12_regression_step = b.step("test-adp12-regression", "Run ADP-12 default-tenant pre/post regression suite");
     test_adp12_regression_step.dependOn(&clean_test_db.step);
     test_adp12_regression_step.dependOn(&run_adp12_regression_tests.step);
+
+    const test_oidc09_step = b.step("test-integration-oidc09", "Run OIDC-09 JIT provisioning integration tests only (requires BPM_TEST_DB_URL)");
+    test_oidc09_step.dependOn(&clean_test_db.step);
+    test_oidc09_step.dependOn(&run_oidc09_integration_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

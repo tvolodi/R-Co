@@ -2,7 +2,7 @@ const std = @import("std");
 const auth = @import("../middleware/auth.zig");
 const identity_service = @import("../../identity/service.zig");
 const identity_registry = @import("../../identity/registry.zig");
-const pool_mod = @import("../../db/pool.zig");
+const pool_mod = @import("pool");
 
 pub const HandlerResult = struct {
     status_code: u16,

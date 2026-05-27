@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-27T18:46:35Z",
+  "last_updated": "2026-05-27T19:44:39Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1414,6 +1414,21 @@
       "release_run": "WF02-oidc08-20260527",
       "release_decision": "docs/status/release-OIDC-08-20260527.json",
       "last_updated": "2026-05-27T17:04:49Z"
+    },
+    "OIDC-09": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "JIT user provisioning",
+      "implementation_run": "WF02-oidc09-20260527",
+      "implementation_handoff": "handoffs/WF02-oidc09-20260527/step-02-backend-dev.json",
+      "test_spec": "tests/specs/OIDC-09.md",
+      "test_run": "tests/reports/report-WF02-oidc09-20260527-step04b.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T19:42:22Z",
+      "release_run": "WF02-oidc09-20260527",
+      "release_decision": "docs/status/release-OIDC-09-20260527.json",
+      "last_updated": "2026-05-27T19:43:33Z"
     },
     "DSL-07": {
       "status": "RELEASED",

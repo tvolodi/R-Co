@@ -6,7 +6,7 @@
 //!
 //! Design artefact: src/design/engine.md §EE-11
 const std = @import("std");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
 const transition_mod = @import("transition.zig");

@@ -1,5 +1,5 @@
 const std = @import("std");
-const db_pool = @import("../../db/pool.zig");
+const db_pool = @import("pool");
 const subsystems = @import("subsystems.zig");
 
 pub const FailingSubsystem = subsystems.FailingSubsystem;

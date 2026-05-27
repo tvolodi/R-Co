@@ -1,6 +1,6 @@
 const std = @import("std");
 const auth = @import("../middleware/auth.zig");
-const pool_mod = @import("../../db/pool.zig");
+const pool_mod = @import("pool");
 const store = @import("../../webhook/subscription_store.zig");
 
 pub const HandlerResult = struct {

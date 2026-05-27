@@ -1,0 +1,63 @@
+{
+  "handoff_id": "20260527-017",
+  "run_id": "WF02-oidc09-20260527",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-oidc09-20260527/step-04-test-runner.json",
+  "created_at": "2026-05-27T19:03:21Z",
+  "started_at": "2026-05-27T19:19:39Z",
+  "completed_at": "2026-05-27T19:31:26Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-09"
+    ],
+    "related_handoff_ids": [
+      "20260527-013",
+      "20260527-014",
+      "20260527-015",
+      "20260527-016"
+    ],
+    "artifacts_in": [
+      "tests/specs/OIDC-09.md",
+      "tests/integration/oidc09_jit_provisioning_test.zig",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Run the OIDC-09 integration tests and produce a structured test report.\n\nCommands to run:\n1. zig build (must exit 0)\n2. zig build test (must exit 0) \u2014 unit tests\n3. zig build test-integration-oidc09 (must exit 0) \u2014 integration tests against real PostgreSQL via BPM_TEST_DB_URL\n\nWrite the test report to tests/reports/report-WF02-oidc09-20260527-step04.json with:\n- All test names and pass/fail status\n- Any issues found with severity classification (BLOCKER/MAJOR/MINOR)\n- Execution times\n\nIMPORTANT: No mocks, no stubs. Integration tests MUST connect to real PostgreSQL.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration-oidc09 exits 0",
+      "Test report written to tests/reports/"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Integration test compilation fails due to Zig module system conflict: pool.zig exists in both bpm_src_mod (relative import) and jit_provisioning_mod (named import). zig build test exits 0, zig build exits 0. Test report written to tests/reports/report-WF02-oidc09-20260527-step04.json",
+    "artifacts_out": [
+      "tests/reports/report-WF02-oidc09-20260527-step04.json"
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-OIDC09-002",
+        "severity": "BLOCKER",
+        "description": "Zig module conflict: pool.zig exists in both bpm_src_mod and jit_provisioning_mod. Need to either add pool as named import to bpm_src_mod or restructure module dependencies.",
+        "affected_requirement": "OIDC-09"
+      }
+    ],
+    "next_action": "REWORK to BACKEND-DEV: fix build.zig module conflict so test-integration-oidc09 compiles"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

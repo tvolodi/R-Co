@@ -2,7 +2,7 @@ const std = @import("std");
 
 // Module references — imported here so that `zig build` and `zig build test`
 // compile and validate all Stage 1 modules.
-pub const db_pool = @import("db/pool.zig");
+pub const db_pool = @import("pool");
 pub const db_migrations = @import("db/migrations.zig");
 pub const config_mod = @import("config.zig");
 pub const event_store = @import("event_store/store.zig");

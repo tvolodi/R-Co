@@ -715,7 +715,7 @@ pub const Service = struct {
         if (user_status == null) return error.UserNotFound;
 
         const conn = self.registry.pool.acquire() catch |err| return switch (err) {
-            @import("../db/pool.zig").PoolError.ExhaustedPool => error.PoolExhausted,
+            @import("pool").PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
         };
         defer self.registry.pool.release(conn);
@@ -755,7 +755,7 @@ pub const Service = struct {
         ,
             &[_][]const u8{ input.user_id, token_name, token_hash, roles_json, expires_at },
         ) catch |err| switch (err) {
-            @import("../db/pool.zig").PoolError.ExhaustedPool => return error.PoolExhausted,
+            @import("pool").PoolError.ExhaustedPool => return error.PoolExhausted,
             else => return error.PersistenceFailed,
         } else conn.queryRow(
             allocator,
@@ -765,7 +765,7 @@ pub const Service = struct {
         ,
             &[_][]const u8{ input.user_id, token_name, token_hash, roles_json },
         ) catch |err| switch (err) {
-            @import("../db/pool.zig").PoolError.ExhaustedPool => return error.PoolExhausted,
+            @import("pool").PoolError.ExhaustedPool => return error.PoolExhausted,
             else => return error.PersistenceFailed,
         };
 
@@ -798,7 +798,7 @@ pub const Service = struct {
         if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
 
         const conn = self.registry.pool.acquire() catch |err| return switch (err) {
-            @import("../db/pool.zig").PoolError.ExhaustedPool => error.PoolExhausted,
+            @import("pool").PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
         };
         defer self.registry.pool.release(conn);
@@ -823,7 +823,7 @@ pub const Service = struct {
         ,
             &[_][]const u8{},
         ) catch |err| switch (err) {
-            @import("../db/pool.zig").PoolError.ExhaustedPool => return error.PoolExhausted,
+            @import("pool").PoolError.ExhaustedPool => return error.PoolExhausted,
             else => return error.PersistenceFailed,
         };
         defer rows.deinit();
@@ -877,7 +877,7 @@ pub const Service = struct {
         if (token_id.len == 0) return error.ValidationFailed;
 
         const conn = self.registry.pool.acquire() catch |err| return switch (err) {
-            @import("../db/pool.zig").PoolError.ExhaustedPool => error.PoolExhausted,
+            @import("pool").PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
         };
         defer self.registry.pool.release(conn);
@@ -891,7 +891,7 @@ pub const Service = struct {
         ,
             &[_][]const u8{token_id},
         ) catch |err| switch (err) {
-            @import("../db/pool.zig").PoolError.ExhaustedPool => return error.PoolExhausted,
+            @import("pool").PoolError.ExhaustedPool => return error.PoolExhausted,
             else => return error.PersistenceFailed,
         };
 

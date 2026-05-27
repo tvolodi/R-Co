@@ -25,6 +25,8 @@ const pool_mod = @import("pool");
 const identity_provider = @import("identity_provider");
 const provider_manager_mod = identity_provider.manager;
 const provider_types = identity_provider.types;
+const claim_mapping = @import("claim_mapping");
+const jit_provisioning = @import("jit_provisioning");
 
 // ── Module-level state ────────────────────────────────────────────────────────
 
@@ -38,6 +40,22 @@ var bootstrap_hash_allocator: ?std.mem.Allocator = null;
 /// Provider-agnostic identity manager for JWT-like token verification.
 /// Default is unconfigured and preserves legacy local token behavior.
 var identity_provider_manager: provider_manager_mod.Manager = provider_manager_mod.defaultManager();
+
+/// Callback for JIT user creation during OIDC auth.
+/// Set via configureJitCreateUserCallback. When null, JIT provisioning
+/// is disabled and the legacy path (principal.provider_subject as user_id)
+/// is used for all realms.
+var jit_create_user_callback: ?*const fn (
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    tenant_id: []const u8,
+    external_realm: []const u8,
+    external_id: []const u8,
+    preferred_username: []const u8,
+    display_name: []const u8,
+    email: []const u8,
+    default_status: []const u8,
+) anyerror!jit_provisioning.JitProvisioningResult = null;
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -547,6 +565,186 @@ fn buildForbidden(allocator: std.mem.Allocator, detail: []const u8) HandlerResul
     return .{ .status_code = pd.status, .body = body };
 }
 
+// ── JIT provisioning helpers ──────────────────────────────────────────────────
+
+/// Decode the JWT payload segment (2nd segment) from a raw bearer token.
+pub const JwtDecodeError = error{
+    InvalidTokenPayload,
+    OutOfMemory,
+};
+
+fn decodeJwtPayload(allocator: std.mem.Allocator, raw_token: []const u8) JwtDecodeError![]const u8 {
+    const first_dot = std.mem.indexOfScalar(u8, raw_token, '.') orelse return error.InvalidTokenPayload;
+    const second_dot_rel = std.mem.indexOfScalar(u8, raw_token[first_dot + 1 ..], '.') orelse return error.InvalidTokenPayload;
+    const payload_b64 = raw_token[first_dot + 1 .. first_dot + 1 + second_dot_rel];
+    if (payload_b64.len == 0) return error.InvalidTokenPayload;
+
+    const decoder = std.base64.url_safe_no_pad.Decoder;
+    const decoded_len = decoder.calcSizeForSlice(payload_b64) catch return error.InvalidTokenPayload;
+    const decoded = try allocator.alloc(u8, decoded_len);
+    errdefer allocator.free(decoded);
+    decoder.decode(decoded, payload_b64) catch return error.InvalidTokenPayload;
+    return decoded;
+}
+
+/// Load the highest-priority role assigned to a user from the user_roles table.
+/// Returns VIEWER when no roles are assigned.
+fn loadUserRole(
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    user_id: []const u8,
+) (error{ PoolExhausted, PersistenceFailed, OutOfMemory } || pool_mod.PoolError)!Role {
+    const conn = pool.acquire() catch |err| switch (err) {
+        pool_mod.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    const row = conn.queryRow(
+        allocator,
+        \\SELECT r.name FROM roles r
+        \\JOIN user_roles ur ON ur.role_id = r.id
+        \\WHERE ur.user_id = $1::uuid
+        \\ORDER BY CASE r.name
+        \\  WHEN 'PLATFORM_ADMIN'   THEN 0
+        \\  WHEN 'PROCESS_DESIGNER' THEN 1
+        \\  WHEN 'PROCESS_OPERATOR' THEN 2
+        \\  WHEN 'TASK_WORKER'      THEN 3
+        \\  WHEN 'VIEWER'           THEN 4
+        \\  WHEN 'AGENT_RUNNER'     THEN 5
+        \\END
+        \\LIMIT 1
+    ,
+        &[_][]const u8{user_id},
+    ) catch |err| switch (err) {
+        pool_mod.PoolError.StaleConnection,
+        pool_mod.PoolError.ConnectionFailed,
+        pool_mod.PoolError.QueryFailed,
+        => return error.PersistenceFailed,
+        pool_mod.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+
+    if (row) |rr| {
+        defer {
+            if (rr[0]) |v| allocator.free(v);
+            allocator.free(rr);
+        }
+        if (rr[0]) |role_name| {
+            if (Role.fromString(role_name)) |r| return r;
+        }
+    }
+    return .VIEWER;
+}
+
+/// Post-authentication JIT provisioning.
+///
+/// Called after authenticate() succeeds for OIDC tokens.  Attempts to
+/// provision a local user from the verified identity.  On success, returns
+/// an AuthContext with the local user's ID and role bindings.
+/// On failure (e.g. provisioning unavailable), returns the original context.
+pub fn postAuthJitProvision(
+    allocator: std.mem.Allocator,
+    db_pool: *pool_mod.Pool,
+    auth_ctx: AuthContext,
+    raw_token: []const u8,
+    principal: provider_types.VerifiedPrincipal,
+) AuthResult {
+    // Decode JWT payload for claim mapping.
+    const raw_claims_json = decodeJwtPayload(allocator, raw_token) catch {
+        return .{ .authenticated = auth_ctx };
+    };
+    defer allocator.free(raw_claims_json);
+
+    // Determine realm from provider or default.
+    const realm = principal.external_realm orelse "bpm-default";
+
+    // Load claim mapping config (or use defaults).
+    const claim_config = (claim_mapping.loadClaimMappingConfig(allocator, db_pool, realm) catch null) orelse
+        claim_mapping.DEFAULT_CLAIM_MAPPING_CONFIG;
+
+    // Build IdentityContext from verified claims.
+    var identity_ctx = claim_mapping.mapVerifiedClaims(
+        allocator,
+        claim_config,
+        principal.provider_subject,
+        raw_claims_json,
+    ) catch |err| switch (err) {
+        error.SubClaimMissing,
+        error.ClaimPathMalformed,
+        error.ClaimTypeMismatch,
+        => return .{ .authenticated = auth_ctx },
+
+        error.OutOfMemory => return .{ .authenticated = auth_ctx },
+    };
+    defer identity_ctx.deinit(allocator);
+
+    // Load JIT config to check if provisioning is enabled.
+    var jit_config = jit_provisioning.loadJitConfig(allocator, db_pool, realm) catch |err| switch (err) {
+        error.PoolExhausted => return .{ .authenticated = auth_ctx },
+        error.ConfigParseFailed => return .{ .authenticated = auth_ctx },
+        error.OutOfMemory => return .{ .authenticated = auth_ctx },
+    };
+    defer jit_config.deinit(allocator);
+
+    if (!jit_config.enabled) return .{ .authenticated = auth_ctx };
+
+    const create_user_fn = jit_create_user_callback orelse return .{ .authenticated = auth_ctx };
+
+    const user_status_str = jit_config.default_status.asString();
+
+    const jit_result = create_user_fn(
+        allocator,
+        db_pool,
+        auth_ctx.tenant_id[0..],
+        realm,
+        identity_ctx.external_user_id,
+        identity_ctx.preferred_username,
+        identity_ctx.display_name orelse identity_ctx.preferred_username,
+        identity_ctx.email,
+        user_status_str,
+    ) catch |err| switch (err) {
+        error.OutOfMemory => return .{ .authenticated = auth_ctx },
+        else => return .{ .authenticated = auth_ctx },
+    };
+
+    const provision_result = jit_provisioning.processProvisionResult(
+        allocator,
+        db_pool,
+        jit_result.user,
+        jit_result.created,
+    ) catch |err| switch (err) {
+        error.PoolExhausted => return .{ .authenticated = auth_ctx },
+        error.PersistenceFailed => return .{ .authenticated = auth_ctx },
+        error.OutOfMemory => return .{ .authenticated = auth_ctx },
+        else => return .{ .authenticated = auth_ctx },
+    };
+
+    // Load local role bindings from user_roles.
+    const role = loadUserRole(allocator, db_pool, provision_result.user.user_id) catch |err| switch (err) {
+        error.PoolExhausted => return .{ .authenticated = auth_ctx },
+        error.PersistenceFailed => return .{ .authenticated = auth_ctx },
+        error.OutOfMemory => return .{ .authenticated = auth_ctx },
+        else => return .{ .authenticated = auth_ctx },
+    };
+
+    const new_user_id = allocator.dupe(u8, provision_result.user.user_id) catch
+        return .{ .authenticated = auth_ctx };
+    const new_token_id = allocator.dupe(u8, principal.token_id_hint orelse "oidc") catch {
+        allocator.free(new_user_id);
+        return .{ .authenticated = auth_ctx };
+    };
+
+    return .{ .authenticated = .{
+        .user_id = new_user_id,
+        .role = role,
+        .is_bootstrap = auth_ctx.is_bootstrap,
+        .token_id = new_token_id,
+        .tenant_id = auth_ctx.tenant_id,
+        .tenant_source = auth_ctx.tenant_source,
+    } };
+}
+
 // ── Public functions ──────────────────────────────────────────────────────────
 
 /// Initialise the auth module.  MUST be called once at startup, before the HTTP
@@ -621,6 +819,23 @@ pub fn configureIdentityProviderManager(manager: provider_manager_mod.Manager) v
 
 pub fn resetIdentityProviderManager() void {
     identity_provider_manager = provider_manager_mod.defaultManager();
+}
+
+/// Configure the JIT user creation callback.
+/// When set, OIDC auth tokens will trigger JIT provisioning via this callback.
+/// Pass null to disable JIT provisioning.
+pub fn configureJitCreateUserCallback(callback: ?*const fn (
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    tenant_id: []const u8,
+    external_realm: []const u8,
+    external_id: []const u8,
+    preferred_username: []const u8,
+    display_name: []const u8,
+    email: []const u8,
+    default_status: []const u8,
+) anyerror!jit_provisioning.JitProvisioningResult) void {
+    jit_create_user_callback = callback;
 }
 
 /// Authenticate a single HTTP request.  Called by the HTTP server in the

@@ -1,5 +1,5 @@
 const std = @import("std");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 const sub_store = @import("subscription_store.zig");
 const signing = @import("signing.zig");
 const alerts = @import("../obs/alerts.zig");

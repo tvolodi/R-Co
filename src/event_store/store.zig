@@ -7,7 +7,7 @@
 //!
 //! Design artefact: src/design/event_store.md
 const std = @import("std");
-const db = @import("../db/pool.zig");
+const db = @import("pool");
 const root = @import("root");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
