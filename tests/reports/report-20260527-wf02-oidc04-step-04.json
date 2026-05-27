@@ -1,0 +1,61 @@
+{
+  "run_id": "WF02-oidc04-20260527",
+  "workflow_id": "WF-02",
+  "handoff_id": "20260527-031",
+  "timestamp": "2026-05-27T02:15:03Z",
+  "requirement_ids": [
+    "OIDC-04"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_cases": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  "executed_scope": {
+    "task_description": "Execute OIDC-04 test scope from tests/specs/OIDC-04.md and produce a structured test report under tests/reports/. Verify standards-only verification behavior, discovery and JWKS boundary checks, and standard-claim validation outcomes as specified.",
+    "commands": [
+      {
+        "command": "zig build test",
+        "exit_code": 0,
+        "evidence": "EXIT_CODE=0"
+      },
+      {
+        "command": "zig test src/identity/provider/test_oidc02_keycloak_adapter.zig",
+        "exit_code": 0,
+        "evidence": "All 7 tests passed."
+      }
+    ]
+  },
+  "traceability": [
+    {
+      "test_case_id": "TC-OIDC-04-02",
+      "status": "PASS",
+      "evidence": "Focused adapter suite passed; standards-only token path validated in mapped test"
+    },
+    {
+      "test_case_id": "TC-OIDC-04-03",
+      "status": "PASS",
+      "evidence": "Focused adapter suite passed; standard claim violation matrix validated"
+    },
+    {
+      "test_case_id": "TC-OIDC-04-04",
+      "status": "PASS",
+      "evidence": "Focused adapter suite passed; discovery contract failure path validated"
+    },
+    {
+      "test_case_id": "TC-OIDC-04-05",
+      "status": "PASS",
+      "evidence": "Focused adapter suite passed; JWKS kid mismatch failure path validated"
+    },
+    {
+      "test_case_id": "TC-OIDC-04-06",
+      "status": "PASS",
+      "evidence": "Focused adapter suite passed; explicit issuer mismatch validation path validated"
+    }
+  ],
+  "failures": [],
+  "issues": [],
+  "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 05)."
+}
