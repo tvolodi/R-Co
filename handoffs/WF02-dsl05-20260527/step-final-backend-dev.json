@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-dsl05-20260527/step-final-backend-dev.json",
   "created_at": "2026-05-27T07:40:31Z",
   "started_at": "2026-05-27T08:19:46Z",
-  "completed_at": null,
-  "status": "IN_PROGRESS",
+  "completed_at": "2026-05-27T08:30:25Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "Stage 7 — Expression DSL",
@@ -28,7 +28,26 @@
     ],
     "functions_to_call": ["fn:git-merge"]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Executed fn:git-merge for WF02-dsl05-20260527: rebased onto origin/main, created and squash-merged PR #12, cleaned up local and remote branches.",
+    "artifacts_out": [
+      "branch: feature/WF02-dsl05-20260527 (squash-merged into main, branch deleted)",
+      "PR: https://github.com/tvolodi/My-Fab/pull/12"
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF02-dsl05-20260527",
+      "commit_sha_list": ["f680a7e"],
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/12",
+      "push_status": "ok",
+      "rebase_status": "up-to-date",
+      "merge_status": "squash-merged",
+      "local_branch_cleaned": true,
+      "remote_branch_cleaned": true
+    },
+    "issues": [],
+    "next_action": "ORCH marks run COMPLETED and releases owned_modules lock"
+  },
   "rework_count": 0,
   "max_rework": 3
 }

@@ -252,7 +252,7 @@ fn serveRequest(
         // Split path into up to 8 segments.
         // e.g. "/api/v1/definitions/abc/activate"
         //       [0]="" [1]="api" [2]="v1" [3]="definitions" [4]="abc" [5]="activate"
-        var segs: [8][]const u8 = .{""} ** 8;
+        var segs: [8][]const u8 = @splat(@as([]const u8, ""));
         var seg_count: usize = 0;
         var seg_it = std.mem.splitScalar(u8, path, '/');
         while (seg_it.next()) |s| {

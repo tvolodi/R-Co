@@ -40,6 +40,22 @@ pub const ExprError = err_mod.ExprError;
 pub const ParseResult = parser_mod.ParseResult;
 
 // ---------------------------------------------------------------------------
+// MAX_EVAL_DEPTH — DSL-06: total evaluation guard
+// ---------------------------------------------------------------------------
+
+/// Maximum recursion depth for expression evaluation.
+///
+/// Rationale: typical expression depth from the grammar is logarithmic in
+/// expression length. A well-typed expression of ~500 tokens rarely exceeds
+/// depth 50. 1024 provides a 20x safety margin while being small enough to
+/// prevent stack overflow with standard Zig stack sizes (~1 MiB default,
+/// each frame ~200 bytes -> ~5000 frames before overflow risk).
+///
+/// This is a safe upper bound for all expected use cases. If a real expression
+/// exceeds this depth, it is likely a malicious input or a parser bug.
+pub const MAX_EVAL_DEPTH: usize = 1024;
+
+// ---------------------------------------------------------------------------
 // EvalResult
 // ---------------------------------------------------------------------------
 
@@ -69,7 +85,12 @@ pub fn parse(allocator: std.mem.Allocator, source: []const u8) std.mem.Allocator
 /// Recursively evaluates sub-expressions. Implements type coercion per DSL-05.
 ///
 /// `allocator` is used for intermediate allocations (string concatenation, etc.).
-pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.Allocator) EvalResult {
+pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.Allocator, remaining: usize) EvalResult {
+    // Depth guard — DSL-06: if remaining is 0, return error immediately
+    if (remaining == 0) {
+        return EvalResult{ .err = EvalError{ .message = "evaluation depth exceeded", .line = 0, .column = 0 } };
+    }
+
     switch (node.*) {
         // ---- Literals (DSL-04) ----
         .null_literal => return EvalResult{ .ok = valueNull() },
@@ -80,7 +101,7 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
 
         // ---- Unary negation (DSL-05 §2.4) ----
         .unary_neg => |u| {
-            const operand = switch (evaluateNode(u.operand, ctx, allocator)) {
+            const operand = switch (evaluateNode(u.operand, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
@@ -96,7 +117,7 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
 
         // ---- Boolean NOT (DSL-05 §2.5) ----
         .not_expr => |n| {
-            const operand = switch (evaluateNode(n.operand, ctx, allocator)) {
+            const operand = switch (evaluateNode(n.operand, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
@@ -109,11 +130,11 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
 
         // ---- Arithmetic: add_expr (DSL-05 §2.1, §4.6) ----
         .add_expr => |bin| {
-            const left = switch (evaluateNode(bin.left, ctx, allocator)) {
+            const left = switch (evaluateNode(bin.left, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
-            const right = switch (evaluateNode(bin.right, ctx, allocator)) {
+            const right = switch (evaluateNode(bin.right, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
@@ -122,11 +143,11 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
 
         // ---- Arithmetic: mul_expr (DSL-05 §2.1, §4.6) ----
         .mul_expr => |bin| {
-            const left = switch (evaluateNode(bin.left, ctx, allocator)) {
+            const left = switch (evaluateNode(bin.left, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
-            const right = switch (evaluateNode(bin.right, ctx, allocator)) {
+            const right = switch (evaluateNode(bin.right, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
@@ -135,11 +156,11 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
 
         // ---- Comparison (DSL-05 §2.2, §4.7) ----
         .cmp_expr => |cmp| {
-            const left = switch (evaluateNode(cmp.left, ctx, allocator)) {
+            const left = switch (evaluateNode(cmp.left, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
-            const right = switch (evaluateNode(cmp.right, ctx, allocator)) {
+            const right = switch (evaluateNode(cmp.right, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
@@ -183,7 +204,7 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
 
         // ---- Logical AND (DSL-05 §3.2, §4.9) ----
         .and_expr => |bin| {
-            const left = switch (evaluateNode(bin.left, ctx, allocator)) {
+            const left = switch (evaluateNode(bin.left, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
@@ -198,7 +219,7 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
                 return EvalResult{ .err = EvalError{ .message = "type mismatch: boolean operator requires boolean operands", .line = 0, .column = 0 } };
             }
 
-            const right = switch (evaluateNode(bin.right, ctx, allocator)) {
+            const right = switch (evaluateNode(bin.right, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
@@ -222,7 +243,7 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
 
         // ---- Logical OR (DSL-05 §3.3, §4.8) ----
         .or_expr => |bin| {
-            const left = switch (evaluateNode(bin.left, ctx, allocator)) {
+            const left = switch (evaluateNode(bin.left, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
@@ -237,7 +258,7 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
                 return EvalResult{ .err = EvalError{ .message = "type mismatch: boolean operator requires boolean operands", .line = 0, .column = 0 } };
             }
 
-            const right = switch (evaluateNode(bin.right, ctx, allocator)) {
+            const right = switch (evaluateNode(bin.right, ctx, allocator, remaining - 1)) {
                 .ok => |v| v,
                 .err => |e| return EvalResult{ .err = e },
             };
@@ -513,7 +534,7 @@ pub fn evaluate(
     ctx: *const Context,
     allocator: std.mem.Allocator,
 ) EvalResult {
-    return evaluateNode(ast_in.root, ctx, allocator);
+    return evaluateNode(ast_in.root, ctx, allocator, MAX_EVAL_DEPTH);
 }
 
 // ===========================================================================
@@ -2367,4 +2388,286 @@ test "DSL-05: float64 / 0.0 returns infinity (IEEE 754, not error)" {
     try testing.expect(ev == .ok);
     try testing.expect(ev.ok == .float_val);
     try testing.expect(std.math.isInf(ev.ok.float_val));
+}
+
+// ===========================================================================
+// Tests — DSL-06: Total evaluation with depth guard
+// ===========================================================================
+
+test "DSL-06: MAX_EVAL_DEPTH constant exists" {
+    const testing = std.testing;
+    try testing.expect(MAX_EVAL_DEPTH == 1024);
+    try testing.expect(@TypeOf(MAX_EVAL_DEPTH) == usize);
+}
+
+test "DSL-06: evaluate delegates to evaluateNode with max depth" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var result = try parse(alloc, "42");
+    defer switch (result) {
+        .ok => |*a| a.deinit(),
+        .fail => |e| alloc.free(e),
+    };
+    try testing.expect(result == .ok);
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    const ev = evaluate(&result.ok, &ctx, alloc);
+    try testing.expect(ev == .ok);
+    try testing.expectEqual(@as(i64, 42), ev.ok.int_val);
+}
+
+test "DSL-06: evaluateNode with remaining=1 evaluates leaf nodes but fails on binary" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    // Leaf nodes: null_literal, bool_literal, int_literal, float_literal, string_literal
+    // These should succeed with remaining=1 since they don't recurse
+    {
+        const node_null = Node{ .null_literal = {} };
+        const r1 = evaluateNode(&node_null, &ctx, alloc, 1);
+        try testing.expect(r1 == .ok);
+        try testing.expect(r1.ok == .null_val);
+    }
+    {
+        const node_true = Node{ .bool_literal = true };
+        const r2 = evaluateNode(&node_true, &ctx, alloc, 1);
+        try testing.expect(r2 == .ok);
+        try testing.expect(r2.ok.bool_val == true);
+    }
+    {
+        const node_int = Node{ .int_literal = 42 };
+        const r3 = evaluateNode(&node_int, &ctx, alloc, 1);
+        try testing.expect(r3 == .ok);
+        try testing.expectEqual(@as(i64, 42), r3.ok.int_val);
+    }
+    {
+        const node_float = Node{ .float_literal = 3.14 };
+        const r4 = evaluateNode(&node_float, &ctx, alloc, 1);
+        try testing.expect(r4 == .ok);
+        try testing.expect(r4.ok.float_val == 3.14);
+    }
+    {
+        const node_str = Node{ .string_literal = "hello" };
+        const r5 = evaluateNode(&node_str, &ctx, alloc, 1);
+        try testing.expect(r5 == .ok);
+        try testing.expectEqualStrings("hello", r5.ok.str_val);
+    }
+
+    // Binary node with remaining=1 should fail because the depth guard
+    // catches the recursive call (1 - 1 = 0, triggers depth exceeded)
+    // Build an add_expr node with remaining=1
+    const left_int = alloc.create(Node) catch @panic("OOM");
+    const right_int = alloc.create(Node) catch @panic("OOM");
+    defer {
+        alloc.destroy(left_int);
+        alloc.destroy(right_int);
+    }
+    left_int.* = Node{ .int_literal = 1 };
+    right_int.* = Node{ .int_literal = 2 };
+    const bin_node = Node{ .add_expr = .{
+        .op = .add,
+        .left = left_int,
+        .right = right_int,
+    } };
+    const r6 = evaluateNode(&bin_node, &ctx, alloc, 1);
+    try testing.expect(r6 == .err);
+    try testing.expect(std.mem.indexOf(u8, r6.err.message, "evaluation depth exceeded") != null);
+}
+
+test "DSL-06: deep chain hits depth limit" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    // Build a deeply nested binary tree of depth 2048:
+    // (((...(1 + 2) + 3) + 4) ... + N)
+    // This exceeds MAX_EVAL_DEPTH (1024) so should trigger depth error.
+    const depth: usize = 2048;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const a_alloc = arena.allocator();
+
+    // Build from bottom up: start with int literal 1, then wrap in (prev + i) for i = 2..depth
+    var current = try a_alloc.create(Node);
+    current.* = Node{ .int_literal = 1 };
+
+    var i: i64 = 2;
+    while (i <= @as(i64, @intCast(depth))) : (i += 1) {
+        const left = current;
+        const right = try a_alloc.create(Node);
+        right.* = Node{ .int_literal = i };
+        const new_node = try a_alloc.create(Node);
+        new_node.* = Node{ .add_expr = .{
+            .op = .add,
+            .left = left,
+            .right = right,
+        } };
+        current = new_node;
+    }
+
+    const ev = evaluateNode(current, &ctx, alloc, MAX_EVAL_DEPTH);
+    try testing.expect(ev == .err);
+    try testing.expect(std.mem.indexOf(u8, ev.err.message, "evaluation depth exceeded") != null);
+}
+
+test "DSL-06: 100 random expressions evaluate within bound" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var ctx = Context.init(alloc);
+    defer ctx.deinit();
+
+    // Set up a seeded PRNG for reproducibility
+    var prng = std.Random.DefaultPrng.init(42);
+    const rng = prng.random();
+
+    // Pre-create shared leaf nodes for efficiency
+    const null_node = Node{ .null_literal = {} };
+    const true_node = Node{ .bool_literal = true };
+    const false_node = Node{ .bool_literal = false };
+    const int_node = Node{ .int_literal = 7 };
+    const float_node = Node{ .float_literal = 2.5 };
+    const str_node = Node{ .string_literal = "test" };
+
+    // Generate random expressions with max generation depth of 6
+    const gen_depth: usize = 6;
+
+    var expr_alloc = std.heap.ArenaAllocator.init(alloc);
+    defer expr_alloc.deinit();
+    const e_alloc = expr_alloc.allocator();
+
+    var j: usize = 0;
+    while (j < 100) : (j += 1) {
+        // Generate a random expression via recursion
+        const root = generateRandomNode(rng, e_alloc, gen_depth, &null_node, &true_node, &false_node, &int_node, &float_node, &str_node);
+
+        const ev = evaluateNode(root, &ctx, alloc, MAX_EVAL_DEPTH);
+        // The evaluation should always complete (either ok or err) — never panic/crash
+        // We accept both ok and err outcomes as valid for property-based testing
+        _ = ev;
+    }
+}
+
+/// Recursively generate a random AST node for property-based testing.
+fn generateRandomNode(
+    rng: std.Random,
+    allocator: std.mem.Allocator,
+    remaining_depth: usize,
+    null_node: *const Node,
+    true_node: *const Node,
+    false_node: *const Node,
+    int_node: *const Node,
+    float_node: *const Node,
+    str_node: *const Node,
+) *Node {
+    const node = allocator.create(Node) catch @panic("OOM");
+
+    // If remaining_depth == 0, generate only leaf nodes
+    if (remaining_depth == 0) {
+        const leaf_kind = rng.intRangeLessThan(u8, 0, 6);
+        switch (leaf_kind) {
+            0 => node.* = Node{ .null_literal = {} },
+            1 => node.* = Node{ .bool_literal = rng.boolean() },
+            2 => node.* = Node{ .int_literal = @as(i64, rng.intRangeLessThan(i64, -100, 101)) },
+            3 => node.* = Node{ .float_literal = @as(f64, @floatFromInt(rng.intRangeLessThan(i64, -100, 101))) + rng.float(f64) },
+            4 => node.* = Node{ .string_literal = "rand" },
+            5 => node.* = Node{ .null_literal = {} },
+            else => unreachable,
+        }
+        return node;
+    }
+
+    const kind = rng.intRangeLessThan(u8, 0, 14);
+    const next_depth = remaining_depth - 1;
+
+    switch (kind) {
+        // Leaf nodes (0-5)
+        0 => node.* = Node{ .null_literal = {} },
+        1 => node.* = Node{ .bool_literal = rng.boolean() },
+        2 => node.* = Node{ .int_literal = @as(i64, rng.intRangeLessThan(i64, -100, 101)) },
+        3 => node.* = Node{ .float_literal = @as(f64, @floatFromInt(rng.intRangeLessThan(i64, -100, 101))) + rng.float(f64) },
+        4 => node.* = Node{ .string_literal = "rand" },
+
+        // Unary nodes (5-6)
+        5 => {
+            const operand = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            node.* = Node{ .unary_neg = .{ .operand = operand } };
+        },
+        6 => {
+            const operand = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            node.* = Node{ .not_expr = .{ .operand = operand } };
+        },
+
+        // Comparison (7)
+        7 => {
+            const left = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            const right = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            const op: CmpOp = switch (rng.intRangeLessThan(u8, 0, 6)) {
+                0 => .eq,
+                1 => .neq,
+                2 => .lt,
+                3 => .lte,
+                4 => .gt,
+                5 => .gte,
+                else => unreachable,
+            };
+            node.* = Node{ .cmp_expr = .{ .op = op, .left = left, .right = right } };
+        },
+
+        // Binary arithmetic (8-11)
+        8 => {
+            const left = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            const right = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            const op: AddOp = if (rng.boolean()) .add else .sub;
+            node.* = Node{ .add_expr = .{ .op = op, .left = left, .right = right } };
+        },
+        9 => {
+            const left = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            const right = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            const op: MulOp = switch (rng.intRangeLessThan(u8, 0, 3)) {
+                0 => .mul,
+                1 => .div,
+                2 => .mod,
+                else => unreachable,
+            };
+            node.* = Node{ .mul_expr = .{ .op = op, .left = left, .right = right } };
+        },
+
+        // Logical (12-13)
+        10 => {
+            const left = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            const right = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            node.* = Node{ .and_expr = .{ .left = left, .right = right } };
+        },
+        11 => {
+            const left = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            const right = generateRandomNode(rng, allocator, next_depth, null_node, true_node, false_node, int_node, float_node, str_node);
+            node.* = Node{ .or_expr = .{ .left = left, .right = right } };
+        },
+
+        // Dot path (12)
+        12 => {
+            const segments = allocator.alloc([]const u8, 1) catch @panic("OOM");
+            segments[0] = "x";
+            node.* = Node{ .dot_path = segments };
+        },
+
+        // Func call (13) — returns error "not yet implemented"
+        13 => {
+            const args = allocator.alloc(*Node, 0) catch @panic("OOM");
+            node.* = Node{ .func_call = .{ .name = "now", .args = args } };
+        },
+
+        else => unreachable,
+    }
+
+    return node;
 }

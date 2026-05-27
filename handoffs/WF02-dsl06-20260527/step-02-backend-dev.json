@@ -1,0 +1,38 @@
+{
+  "handoff_id": "20260527-032",
+  "run_id": "WF02-dsl06-20260527",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-dsl06-20260527/step-02-backend-dev.json",
+  "created_at": "2026-05-27T14:39:07Z",
+  "started_at": "2026-05-27T14:39:41Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 7 — Expression DSL",
+    "requirement_ids": ["DSL-06"],
+    "related_handoff_ids": ["20260527-031"],
+    "artifacts_in": ["src/design/dsl-06-total-evaluation.md", "src/expr/mod.zig", "src/expr/ast.zig", "src/expr/error.zig"],
+    "branch_name": "feature/WF02-dsl06-20260527",
+    "owned_modules": ["src/expr/"]
+  },
+  "task": {
+    "description": "Implement DSL-06 — Total evaluation in src/expr/mod.zig.\n\nChanges required per design at src/design/dsl-06-total-evaluation.md:\n\n1. Add `MAX_EVAL_DEPTH: usize = 1024` pub const with doc comment.\n\n2. Add `remaining: usize` parameter to `evaluateNode()`. At entry, check if `remaining == 0` and return EvalError with message \"evaluation depth exceeded\", line=0, column=0. All recursive calls within evaluateNode must pass `remaining - 1`.\n\n3. Update helpers called by evaluateNode that themselves call evaluateNode recursively (evalArithmetic etc. in mod.zig) to pass the decremented depth. Note: evalArithmetic, evalIntArithmetic, evalFloatArithmetic are NOT recursive — they call evaluateNode only via the main evaluateNode switch. Only the main evaluateNode body needs the `remaining` parameter propagation.\n\n4. Update the public `evaluate()` function to pass `MAX_EVAL_DEPTH` as the initial `remaining` value.\n\n5. Update all internal recursive call sites within evaluateNode's switch body to pass `remaining - 1`.\n\n6. Add property-based tests in the test section of mod.zig:\n   - test \"DSL-06: MAX_EVAL_DEPTH constant exists\"\n   - test \"DSL-06: evaluate delegates to evaluateNode with max depth\"\n   - test \"DSL-06: 100 random expressions evaluate within bound\" — generate random ASTs covering all Node variants, evaluate each, verify they never crash\n   - test \"DSL-06: deep chain hits depth limit\" — construct a deeply nested expression, verify it returns EvalError\n   - test \"DSL-06: evaluateNode with remaining=1 evaluates leaf nodes but fails on binary\"\n\nFor the random expression generation: use a seeded PRNG (std.rand.DefaultPrng) to build ASTs with a max generation depth of 6. Cover all 14 Node variants. Each expression must be valid for the grammar.\n\nThe `scope` helper function (add_expr, mul_expr, cmp_expr, and_expr, or_expr arms) currently calls evaluateNode twice. Pass `remaining - 1` to both calls. For short-circuit operators (.and_expr, .or_expr), only the left call is guaranteed — pass `remaining - 1` to left, and if right is evaluated (no short-circuit), pass `remaining - 1` again.\n\nValidation:\n- zig build must exit 0\n- zig build test (specifically the expr test step) must exit 0\n- Run: zig build 2>&1 | grep -i \"error set\" — must produce no output",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0 with all DSL-06 tests passing",
+      "MAX_EVAL_DEPTH constant defined as pub const",
+      "evaluateNode accepts remaining: usize parameter",
+      "Depth-exceeded expressions return EvalError instead of crashing",
+      "Property-based random expression tests pass (100+ expressions)",
+      "No changes outside src/expr/"
+    ],
+    "functions_to_call": ["fn:read-backend-conventions", "fn:check-zig-build"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
