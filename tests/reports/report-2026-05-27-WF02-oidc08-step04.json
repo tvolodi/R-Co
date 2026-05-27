@@ -1,0 +1,71 @@
+{
+  "run_id": "WF02-oidc08-20260527",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "handoff_id": "20260527-914",
+  "timestamp": "2026-05-27T16:57:39Z",
+  "summary": {
+    "unit_tests": {
+      "status": "PASS",
+      "exit_code": 0,
+      "note": "zig build test exited 0. OIDC-08 claim mapping unit tests all pass (TC-OIDC-08-U01 through U20 inclusive)."
+    },
+    "error_set_check": {
+      "status": "PASS",
+      "exit_code": 0,
+      "note": "zig build 2>&1 | grep -i 'error set' produced no output. No error-set mismatches."
+    },
+    "integration_tests": {
+      "status": "PASS",
+      "exit_code": 0,
+      "note": "zig build test-integration exited 0 against real PostgreSQL (db_test:5433). All integration tests pass including TC-OIDC-08-I01, I02, I03."
+    }
+  },
+  "test_cases": {
+    "unit": {
+      "mapped_spec": "tests/specs/OIDC-08.md",
+      "cases": [
+        "TC-OIDC-08-U01: basic mapping with all standard claims present",
+        "TC-OIDC-08-U02: sub claim missing returns error",
+        "TC-OIDC-08-U03: missing email defaults to empty string",
+        "TC-OIDC-08-U04: missing preferred_username defaults to sub value",
+        "TC-OIDC-08-U05: missing roles defaults to empty list",
+        "TC-OIDC-08-U06: missing display_name defaults to null",
+        "TC-OIDC-08-U07: missing tenant_id defaults to null",
+        "TC-OIDC-08-U08: roles from nested realm_access.roles path",
+        "TC-OIDC-08-U09: roles path fallback when first path missing",
+        "TC-OIDC-08-U10: email non-string defaults to empty string",
+        "TC-OIDC-08-U11: preferred_username non-string defaults to sub",
+        "TC-OIDC-08-U12: display_name non-string defaults to null",
+        "TC-OIDC-08-U13: identityContextsEquivalent same (external_user_id, realm)",
+        "TC-OIDC-08-U14: identityContextsEquivalent different external_user_id",
+        "TC-OIDC-08-U15: identityContextsEquivalent different realm",
+        "TC-OIDC-08-U16: resolveJsonPath nested path returns value",
+        "TC-OIDC-08-U17: resolveJsonPath nonexistent path returns null",
+        "TC-OIDC-08-U18: non-JSON input returns ClaimPathMalformed",
+        "TC-OIDC-08-U19: tenant_id extracted from configured path",
+        "TC-OIDC-08-U20: all optional claims missing simultaneously"
+      ]
+    },
+    "integration": {
+      "mapped_spec": "tests/specs/OIDC-08.md",
+      "cases": [
+        "TC-OIDC-08-I01: config loaded from DB when row exists",
+        "TC-OIDC-08-I02: config returns null when no row exists",
+        "TC-OIDC-08-I03: config with custom non-default claim paths"
+      ]
+    }
+  },
+  "coverage": {
+    "spec_coverage": "100% — all 23 test cases in tests/specs/OIDC-08.md have corresponding passing tests",
+    "note": "All MUST acceptance criteria have ≥1 passing non-skipped test"
+  },
+  "fixes_applied": [
+    {
+      "file": "src/oidc/claim_mapping.zig",
+      "description": "Fixed error set mismatch: pool.acquire() and conn.queryRow() use error.ExhaustedPool, not error.PoolExhausted. Changed error.PoolExhausted to error.ExhaustedPool in both catch blocks (lines 109 and 118).",
+      "severity": "COMPILE_BLOCKER"
+    }
+  ],
+  "failures": []
+}

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-27T16:05:47Z",
+  "last_updated": "2026-05-27T17:04:49Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1399,6 +1399,21 @@
       "release_run": "WF02-dsl06-20260527",
       "release_decision": "docs/status/release-DSL-06-20260527.json",
       "last_updated": "2026-05-27T14:59:19Z"
+    },
+    "OIDC-08": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Standard claim mapping",
+      "implementation_run": "WF02-oidc08-20260527",
+      "implementation_handoff": "handoffs/WF02-oidc08-20260527/step-02-backend-dev.json",
+      "test_spec": "tests/specs/OIDC-08.md",
+      "test_run": "tests/reports/report-2026-05-27-WF02-oidc08-step04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T17:04:49Z",
+      "release_run": "WF02-oidc08-20260527",
+      "release_decision": "docs/status/release-OIDC-08-20260527.json",
+      "last_updated": "2026-05-27T17:04:49Z"
     }
   }
 }

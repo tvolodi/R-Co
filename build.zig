@@ -45,6 +45,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         // no named imports needed
     });
+    const provider_errors_mod = b.createModule(.{
+        .root_source_file = b.path("src/identity/provider/errors.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const vendor_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
@@ -52,6 +57,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "transition", .module = transition_mod },
         .{ .name = "build_options", .module = build_options_mod },
         .{ .name = "identity_provider", .module = identity_provider_mod },
+        .{ .name = "provider_errors", .module = provider_errors_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -148,6 +154,17 @@ pub fn build(b: *std.Build) void {
     const bpm_main_mod = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .imports = vendor_imports,
+    });
+
+    // pool_module: wraps src/db/pool.zig so that @import("pool") resolves
+    // inside claim_mapping.zig, auth.zig, etc.
+    const pool_module = b.createModule(.{
+        .root_source_file = b.path("src/db/pool.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pg", .module = pg_mod },
+        },
     });
 
     // bpm_src_mod: src/bpm.zig re-export shim used by engine unit tests and
@@ -307,20 +324,8 @@ pub fn build(b: *std.Build) void {
     });
     const run_engine_ee11_tests = b.addRunArtifact(engine_ee11_tests);
 
-    // API-01: REST conventions unit tests (pure functions — no DB, no network)
-    // Single-module root avoids "file exists in two modules" conflicts
-    // (errors.zig is imported by relative path in both content_type.zig and response.zig).
-    //
-    // pool.zig is provided as a named import so that auth.zig (inside the api
-    // module) can reference the Pool type without escaping the module root.
-    const pool_module = b.createModule(.{
-        .root_source_file = b.path("src/db/pool.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "pg", .module = pg_mod },
-        },
-    });
+    // api_mod: single module root for API unit test imports.
+    // pool_module is defined earlier (before bpm_src_mod) so it is reused here.
     const api_mod = b.createModule(.{
         .root_source_file = b.path("src/api/api_mod.zig"),
         .target = target,
@@ -501,6 +506,40 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc06_jwks_cache_tests = b.addRunArtifact(oidc06_jwks_cache_tests);
 
+    // OIDC-08: Standard claim mapping unit tests (pure functions — no DB)
+    const oidc08_claim_mapping_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/oidc/claim_mapping.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_module },
+            },
+        }),
+    });
+    const run_oidc08_claim_mapping_tests = b.addRunArtifact(oidc08_claim_mapping_tests);
+
+    // OIDC-08: Additional claim mapping unit tests (dedicated test file)
+    // Tests pure functions — does NOT import bpm to avoid pool-module conflicts.
+    const oidc08_claim_mapping_ex_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc08_claim_mapping.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "claim_mapping", .module = b.createModule(.{
+                    .root_source_file = b.path("src/oidc/claim_mapping.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                    .imports = &.{
+                        .{ .name = "pool", .module = pool_module },
+                    },
+                }) },
+            },
+        }),
+    });
+    const run_oidc08_claim_mapping_ex_tests = b.addRunArtifact(oidc08_claim_mapping_ex_tests);
+
     // SCH-05: Missed timer recovery — pure function unit tests (no DB)
     const sch05_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -649,6 +688,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_oidc01_provider_stub_tests.step);
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
     test_step.dependOn(&run_oidc06_jwks_cache_tests.step);
+    test_step.dependOn(&run_oidc08_claim_mapping_tests.step);
+    test_step.dependOn(&run_oidc08_claim_mapping_ex_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
     test_step.dependOn(&run_service_task_unit_tests.step);
@@ -712,6 +753,29 @@ pub fn build(b: *std.Build) void {
     });
     const run_adp12_regression_tests = b.addRunArtifact(adp12_regression_tests);
 
+    // OIDC-08: Claim mapping config loading integration tests (requires DB)
+    const oidc08_claim_mapping_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/claim_mapping.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_module },
+        },
+    });
+    const oidc08_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc08_claim_mapping_config_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "claim_mapping", .module = oidc08_claim_mapping_mod },
+                .{ .name = "pool", .module = pool_module },
+            },
+        }),
+    });
+    const run_oidc08_integration_tests = b.addRunArtifact(oidc08_integration_tests);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python3", "tools/clean_test_db.py" });
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
@@ -720,6 +784,7 @@ pub fn build(b: *std.Build) void {
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL)");
     test_integration_step.dependOn(&clean_test_db.step);
     test_integration_step.dependOn(&run_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc08_integration_tests.step);
 
     const test_integration_obs03_step = b.step("test-integration-obs03", "Run OBS-03 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs03_step.dependOn(&clean_test_db.step);

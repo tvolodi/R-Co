@@ -180,6 +180,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-2026-05-27-wf02-oidc07.json; release approval is recorded in docs/status/release-OIDC-07-20260527.json.
 - Requirement: OIDC-07 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-08 - Standard claim mapping (RELEASED 2026-05-27)
+- Implemented deterministic standard claim mapping for OIDC tokens, supporting configurable claim-to-user-field mapping (sub, email, preferred_username) with default-tenant realm binding and JIT provisioning integration.
+- Added validation coverage for mapped claim extraction, missing-claim fallback behavior, and mapped-claim-to-identity-field assignment within the OIDC authentication path.
+- Validation evidence passed in tests/reports/report-2026-05-27-WF02-oidc08-step04.json; release approval is recorded in docs/status/release-OIDC-08-20260527.json.
+- Requirement: OIDC-08 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`
