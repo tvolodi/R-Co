@@ -30,6 +30,7 @@ const stub_provider = api.identity_provider.adapters.stub;
 
 /// Test bootstrap token used for all bootstrap-auth tests.
 const TEST_BOOTSTRAP_TOKEN = "test-bootstrap-token-12345";
+const VALID_OIDC_JWT = "eyJhbGciOiJub25lIn0.eyJzdWIiOiIxMjM0NTY3ODkwIn0.signature";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -609,7 +610,10 @@ test "TC-OIDC-01-01: JWT-like token uses configured IdentityProvider verify path
     });
     defer auth.resetIdentityProviderManager();
 
-    const result = auth.authenticate(alloc, "Bearer a.b.c", undefined);
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{VALID_OIDC_JWT});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, undefined);
     switch (result) {
         .authenticated => |ctx| {
             defer alloc.free(ctx.user_id);
@@ -639,13 +643,65 @@ test "TC-OIDC-01-02: provider token verification failure returns 401" {
     });
     defer auth.resetIdentityProviderManager();
 
-    const result = auth.authenticate(alloc, "Bearer a.b.c", undefined);
+    const header = try std.fmt.allocPrint(alloc, "Bearer {s}", .{VALID_OIDC_JWT});
+    defer alloc.free(header);
+
+    const result = auth.authenticate(alloc, header, undefined);
     switch (result) {
         .unauthenticated => |hr| {
             defer freeHandlerBody(alloc, hr.body);
             try testing.expectEqual(@as(usize, 1), stub_ctx.verify_call_count);
             try testing.expectEqual(@as(u16, 401), hr.status_code);
             try testing.expect(std.mem.indexOf(u8, hr.body, "invalid bearer token") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-OIDC-05-01: malformed JWT-like bearer token returns deterministic indeterminate 401" {
+    const alloc = testing.allocator;
+
+    var stub_ctx = stub_provider.StubContext{};
+    auth.configureIdentityProviderManager(.{
+        .provider = stub_provider.asIdentityProvider(&stub_ctx),
+        .auth_mode = .dual_accept,
+    });
+    defer auth.resetIdentityProviderManager();
+
+    const result = auth.authenticate(alloc, "Bearer a.b.c", undefined);
+    switch (result) {
+        .unauthenticated => |hr| {
+            defer freeHandlerBody(alloc, hr.body);
+            try testing.expectEqual(@as(u16, 401), hr.status_code);
+            try testing.expectEqual(@as(usize, 0), stub_ctx.verify_call_count);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "token_type_indeterminate") != null);
+            try testing.expect(std.mem.indexOf(u8, hr.body, "malformed_indeterminate") != null);
+        },
+        else => return error.TestUnexpectedResult,
+    }
+}
+
+test "TC-OIDC-05-02: opaque bearer token never routes to OIDC verifier" {
+    const alloc = testing.allocator;
+
+    var stub_ctx = stub_provider.StubContext{};
+    auth.configureIdentityProviderManager(.{
+        .provider = stub_provider.asIdentityProvider(&stub_ctx),
+        .auth_mode = .dual_accept,
+    });
+    defer auth.resetIdentityProviderManager();
+
+    try auth.init(alloc, "legacy-opaque-token");
+    defer auth.deinit();
+
+    const result = auth.authenticate(alloc, "Bearer legacy-opaque-token", undefined);
+    switch (result) {
+        .authenticated => |ctx| {
+            defer alloc.free(ctx.user_id);
+            defer alloc.free(ctx.token_id);
+
+            try testing.expectEqual(@as(usize, 0), stub_ctx.verify_call_count);
+            try testing.expect(ctx.is_bootstrap);
         },
         else => return error.TestUnexpectedResult,
     }

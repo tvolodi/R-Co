@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-27T02:25:17Z",
+  "last_updated": "2026-05-27T03:12:14Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1270,6 +1270,21 @@
       "release_run": "WF02-oidc04-20260527",
       "release_decision": "docs/status/release-OIDC-04-20260527.json",
       "last_updated": "2026-05-27T02:25:17Z"
+    },
+    "OIDC-05": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Bearer token acceptance",
+      "implementation_run": "WF02-oidc05-20260527",
+      "implementation_handoff": "handoffs/WF02-oidc05-20260527/step-02-backend-dev.json",
+      "test_spec": "tests/specs/OIDC-05.md",
+      "test_run": "tests/reports/report-20260527-wf02-oidc05-step-04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T03:09:08Z",
+      "release_run": "WF02-oidc05-20260527",
+      "release_decision": "docs/status/release-OIDC-05-20260527.json",
+      "last_updated": "2026-05-27T03:12:14Z"
     },
     "DSL-01": {
       "status": "RELEASED",

@@ -1,0 +1,110 @@
+{
+  "run_id": "WF02-oidc05-20260527",
+  "workflow_id": "WF-02",
+  "date": "2026-05-27T03:12:14Z",
+  "requirement_ids": [
+    "OIDC-05"
+  ],
+  "estimation_file": "handoffs/WF02-oidc05-20260527/estimation.json",
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "steps": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "estimated_minutes": 33,
+      "started_at": "2026-05-27T02:42:00Z",
+      "completed_at": "2026-05-27T02:44:47Z",
+      "actual_minutes": 3,
+      "variance_pct": -90.9
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "estimated_minutes": 13,
+      "started_at": "2026-05-27T02:45:20Z",
+      "completed_at": "2026-05-27T02:53:58Z",
+      "actual_minutes": 9,
+      "variance_pct": -30.8
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "estimated_minutes": 8,
+      "started_at": "2026-05-27T02:54:40Z",
+      "completed_at": "2026-05-27T02:56:49Z",
+      "actual_minutes": 2,
+      "variance_pct": -75.0
+    },
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "estimated_minutes": 4,
+      "started_at": "2026-05-27T02:57:40Z",
+      "completed_at": "2026-05-27T03:00:42Z",
+      "actual_minutes": 3,
+      "variance_pct": -25.0
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "estimated_minutes": 10,
+      "started_at": "2026-05-27T03:06:20Z",
+      "completed_at": "2026-05-27T03:09:08Z",
+      "actual_minutes": 3,
+      "variance_pct": -70.0
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "estimated_minutes": 3,
+      "started_at": "2026-05-27T03:09:50Z",
+      "completed_at": "2026-05-27T03:12:14Z",
+      "actual_minutes": 2,
+      "variance_pct": -33.3
+    }
+  ],
+  "estimated_total_minutes": 71,
+  "actual_total_minutes": 22,
+  "overall_variance_pct": -69.0,
+  "adjustments": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "issue": "Variance -90.9% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Consecutive D3 evidence above threshold was not met under current retrospective ordering and step-shape matching."
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "issue": "Variance -30.8% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Consecutive D3 evidence above threshold was not met under current retrospective ordering and step-shape matching."
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "issue": "Variance -75.0% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Consecutive D3 evidence above threshold was not met under current retrospective ordering and step-shape matching."
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "issue": "Variance -70.0% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Consecutive D3 evidence above threshold was not met under current retrospective ordering and step-shape matching."
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "issue": "Variance -33.3% exceeds 25% threshold",
+      "action": "DEFERRED - no rule update applied",
+      "rationale": "Consecutive D3 evidence above threshold was not met under current retrospective ordering and step-shape matching."
+    }
+  ],
+  "summary": "WF02-oidc05-20260527 completed release documentation updates for OIDC-05 with retrospective capture. Estimated 71 minutes versus 22 actual minutes (69.0% under estimate), with no estimation-rule adjustments applied for this run.",
+  "notes": "Step-04b (BACKEND-DEV bench-env setup, 4 minutes) is an unplanned interim step not represented in estimation.json and is excluded from estimated-vs-actual step totals.",
+  "completed_at": "2026-05-27T03:12:14Z"
+}

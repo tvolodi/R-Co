@@ -1,0 +1,58 @@
+{
+  "handoff_id": "20260527-043",
+  "run_id": "WF02-oidc05-20260527",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-oidc05-20260527/step-06-doc-updater.json",
+  "created_at": "2026-05-27T03:09:30Z",
+  "started_at": "2026-05-27T03:09:50Z",
+  "completed_at": "2026-05-27T03:12:14Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-05"
+    ],
+    "related_handoff_ids": [
+      "20260527-042"
+    ],
+    "artifacts_in": [
+      "docs/status/release-OIDC-05-20260527.json",
+      "handoffs/WF02-oidc05-20260527/step-05-release-validator.json",
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md",
+      "handoffs/WF02-oidc05-20260527/estimation.json"
+    ]
+  },
+  "task": {
+    "description": "Update documentation after OIDC-05 release validation PASS. Apply fn:update-changelog and fn:update-requirement-status to mark OIDC-05 as RELEASED with correct implementation/test/release references. Execute retrospective workflow for this run because estimation.json exists, and write docs/metrics/retrospectives/WF02-oidc05-20260527.json.",
+    "acceptance_criteria": [
+      "CHANGELOG includes OIDC-05 entry",
+      "docs/status/requirement_status.json has OIDC-05 status RELEASED with release metadata",
+      "Retrospective file created at docs/metrics/retrospectives/WF02-oidc05-20260527.json",
+      "Handoff result artifacts_out lists all updated docs files"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-requirement-status",
+      "fn:write-retrospective"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated OIDC-05 to RELEASED in requirement status with implementation/test/release evidence, appended OIDC-05 changelog release entry, generated retrospective artifact for WF02-oidc05-20260527, and registered DOC-UPDATER inner report.",
+    "artifacts_out": [
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md",
+      "docs/metrics/retrospectives/WF02-oidc05-20260527.json",
+      "docs/issue-reports/WF02-oidc05-20260527-step-06-doc-updater-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV Step final (git-merge gate)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

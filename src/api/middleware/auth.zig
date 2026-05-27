@@ -18,6 +18,7 @@
 
 const std = @import("std");
 const errors = @import("../errors.zig");
+const trace_context = @import("../trace_context.zig");
 const tenant_context = @import("../tenant_context.zig");
 const pipeline_context = @import("../pipeline_context.zig");
 const pool_mod = @import("pool");
@@ -91,6 +92,36 @@ pub const ResolvedTenantContext = struct {
 pub const PipelineResolutionError = error{
     InvalidPipelineRunIdClaimFormat,
     OutOfMemory,
+};
+
+pub const TokenRoute = enum {
+    oidc_jwt,
+    internal_token,
+    malformed_indeterminate,
+};
+
+pub const TokenRouteReason = enum {
+    jwt_three_segments,
+    opaque_no_dots,
+    jwt_shape_invalid,
+    illegal_character,
+    empty_segment,
+};
+
+pub const TokenInspectionResult = struct {
+    route: TokenRoute,
+    reason: TokenRouteReason,
+};
+
+pub const Auth401Code = enum {
+    token_missing,
+    token_header_malformed,
+    token_type_indeterminate,
+    token_invalid,
+    token_expired,
+    token_revoked,
+    token_unknown,
+    token_claim_invalid,
 };
 
 /// The authenticated caller's identity and permissions.
@@ -361,6 +392,122 @@ fn hashToken(allocator: std.mem.Allocator, token: []const u8) ![]const u8 {
     return hex;
 }
 
+fn tokenRouteString(route: TokenRoute) []const u8 {
+    return switch (route) {
+        .oidc_jwt => "oidc_jwt",
+        .internal_token => "internal_token",
+        .malformed_indeterminate => "malformed_indeterminate",
+    };
+}
+
+fn tokenReasonString(reason: TokenRouteReason) []const u8 {
+    return switch (reason) {
+        .jwt_three_segments => "jwt_three_segments",
+        .opaque_no_dots => "opaque_no_dots",
+        .jwt_shape_invalid => "jwt_shape_invalid",
+        .illegal_character => "illegal_character",
+        .empty_segment => "empty_segment",
+    };
+}
+
+fn auth401CodeString(code: Auth401Code) []const u8 {
+    return switch (code) {
+        .token_missing => "token_missing",
+        .token_header_malformed => "token_header_malformed",
+        .token_type_indeterminate => "token_type_indeterminate",
+        .token_invalid => "token_invalid",
+        .token_expired => "token_expired",
+        .token_revoked => "token_revoked",
+        .token_unknown => "token_unknown",
+        .token_claim_invalid => "token_claim_invalid",
+    };
+}
+
+fn isJwtSegmentLexicallyDecodable(segment: []const u8) bool {
+    if (segment.len == 0) return false;
+    if (segment.len % 4 == 1) return false;
+    for (segment) |c| {
+        const valid = (c >= 'A' and c <= 'Z') or
+            (c >= 'a' and c <= 'z') or
+            (c >= '0' and c <= '9') or
+            c == '-' or
+            c == '_';
+        if (!valid) return false;
+    }
+    return true;
+}
+
+pub fn inspectBearerToken(raw_token: []const u8) TokenInspectionResult {
+    if (raw_token.len == 0) {
+        return .{ .route = .malformed_indeterminate, .reason = .empty_segment };
+    }
+
+    var dot_count: usize = 0;
+    for (raw_token) |c| {
+        if (std.ascii.isWhitespace(c) or std.ascii.isControl(c)) {
+            return .{ .route = .malformed_indeterminate, .reason = .illegal_character };
+        }
+        const allowed = (c >= 'A' and c <= 'Z') or
+            (c >= 'a' and c <= 'z') or
+            (c >= '0' and c <= '9') or
+            c == '-' or
+            c == '_' or
+            c == '.' or
+            c == '~';
+        if (!allowed) {
+            return .{ .route = .malformed_indeterminate, .reason = .illegal_character };
+        }
+        if (c == '.') dot_count += 1;
+    }
+
+    if (dot_count == 0) {
+        return .{ .route = .internal_token, .reason = .opaque_no_dots };
+    }
+    if (dot_count != 2) {
+        return .{ .route = .malformed_indeterminate, .reason = .jwt_shape_invalid };
+    }
+
+    const first_dot = std.mem.indexOfScalar(u8, raw_token, '.') orelse
+        return .{ .route = .malformed_indeterminate, .reason = .jwt_shape_invalid };
+    const second_dot_rel = std.mem.indexOfScalar(u8, raw_token[first_dot + 1 ..], '.') orelse
+        return .{ .route = .malformed_indeterminate, .reason = .jwt_shape_invalid };
+    const second_dot = first_dot + 1 + second_dot_rel;
+
+    const header = raw_token[0..first_dot];
+    const payload = raw_token[first_dot + 1 .. second_dot];
+    const signature = raw_token[second_dot + 1 ..];
+    if (header.len == 0 or payload.len == 0 or signature.len == 0) {
+        return .{ .route = .malformed_indeterminate, .reason = .empty_segment };
+    }
+    if (!isJwtSegmentLexicallyDecodable(header) or !isJwtSegmentLexicallyDecodable(payload)) {
+        return .{ .route = .malformed_indeterminate, .reason = .jwt_shape_invalid };
+    }
+
+    return .{ .route = .oidc_jwt, .reason = .jwt_three_segments };
+}
+
+pub fn buildUnauthorizedAuth(
+    allocator: std.mem.Allocator,
+    code: Auth401Code,
+    detail: []const u8,
+    route: ?TokenRoute,
+    reason: ?TokenRouteReason,
+) HandlerResult {
+    const token_route = if (route) |r| tokenRouteString(r) else "n/a";
+    const token_reason = if (reason) |r| tokenReasonString(r) else "n/a";
+    const body = std.fmt.allocPrint(
+        allocator,
+        "{{\"type\":\"https://bpm.example.com/problems/unauthorized\",\"title\":\"Unauthorized\",\"status\":401,\"detail\":\"{s}\",\"trace_id\":\"{s}\",\"extensions\":{{\"code\":\"{s}\",\"token_route\":\"{s}\",\"token_reason\":\"{s}\"}}}}",
+        .{ detail, trace_context.get(), auth401CodeString(code), token_route, token_reason },
+    ) catch return .{
+        .status_code = 500,
+        .body = "{\"type\":\"https://bpm.example.com/problems/internal-error\"," ++
+            "\"title\":\"Internal Server Error\",\"status\":500," ++
+            "\"detail\":\"serialization failed\"}",
+    };
+    return .{ .status_code = 401, .body = body };
+}
+
 /// Build a 401 Unauthorized HandlerResult.
 /// Allocates the Problem Details JSON body; caller owns it.
 fn buildUnauthorized(allocator: std.mem.Allocator, detail: []const u8) HandlerResult {
@@ -518,7 +665,21 @@ pub fn authenticate(
         return .{ .unauthenticated = buildUnauthorized(allocator, "empty Bearer token") };
     }
 
-    if (identity_provider_manager.shouldVerifyExternalToken(raw_token)) {
+    const inspection = inspectBearerToken(raw_token);
+    if (inspection.route == .malformed_indeterminate) {
+        return .{ .unauthenticated = buildUnauthorizedAuth(
+            allocator,
+            .token_type_indeterminate,
+            "indeterminate bearer token format",
+            .malformed_indeterminate,
+            inspection.reason,
+        ) };
+    }
+
+    if (inspection.route == .oidc_jwt) {
+        if (identity_provider_manager.auth_mode == .local_only) {
+            return .{ .unauthenticated = buildUnauthorized(allocator, "invalid bearer token") };
+        }
         var principal = identity_provider_manager.verifyBearerToken(allocator, raw_token) catch |err| switch (err) {
             error.InvalidToken,
             error.TokenExpired,
@@ -526,6 +687,7 @@ pub fn authenticate(
             error.TokenIssuerMismatch,
             error.SignatureVerificationFailed,
             error.ClaimValidationFailed,
+            error.NotImplemented,
             => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid bearer token") },
 
             error.UpstreamUnavailable,
@@ -893,6 +1055,24 @@ test "buildForbidden: produces 403 with correct Problem Details" {
     try std.testing.expectEqual(@as(u16, 403), result.status_code);
     try std.testing.expect(std.mem.indexOf(u8, result.body, "forbidden") != null);
     try std.testing.expect(std.mem.indexOf(u8, result.body, "insufficient permissions") != null);
+}
+
+test "inspectBearerToken: opaque token routes to internal verification" {
+    const inspected = inspectBearerToken("opaque-token");
+    try std.testing.expectEqual(TokenRoute.internal_token, inspected.route);
+    try std.testing.expectEqual(TokenRouteReason.opaque_no_dots, inspected.reason);
+}
+
+test "inspectBearerToken: valid JWT shape routes to OIDC verification" {
+    const inspected = inspectBearerToken("eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.signature");
+    try std.testing.expectEqual(TokenRoute.oidc_jwt, inspected.route);
+    try std.testing.expectEqual(TokenRouteReason.jwt_three_segments, inspected.reason);
+}
+
+test "inspectBearerToken: malformed JWT-like token is indeterminate" {
+    const inspected = inspectBearerToken("a.b.c");
+    try std.testing.expectEqual(TokenRoute.malformed_indeterminate, inspected.route);
+    try std.testing.expectEqual(TokenRouteReason.jwt_shape_invalid, inspected.reason);
 }
 
 fn makeJwtLikeToken(allocator: std.mem.Allocator, payload_json: []const u8) ![]u8 {
