@@ -68,8 +68,20 @@ Fix all errors before proceeding. Do not mark a handoff PASS if any command fail
 ### 5. Complete the handoff
 
 First, get the actual current UTC time — NEVER invent a timestamp:
+
+**On Windows (preferred):**
+```powershell
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+
+**On Linux/macOS:**
 ```bash
 python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
+```
+
+**On Windows with Python (fallback):**
+```cmd
+python -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
 ```
 
 Then update the handoff file:

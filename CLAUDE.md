@@ -422,10 +422,21 @@ This makes implementation progress visible on the remote branch immediately. Ste
 **7. Complete the handoff:**
 
 First, get the real current UTC time by running a shell command — NEVER invent or guess it:
+
+**On Windows:**
 ```powershell
 (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 ```
-Or with Python: `python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"`
+
+**On Linux/macOS (if Python available):**
+```bash
+python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
+```
+
+**On Windows with Python (fallback):**
+```cmd
+python -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
+```
 
 Use the exact string printed by the command as `completed_at`.
 

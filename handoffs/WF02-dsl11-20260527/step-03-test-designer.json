@@ -1,0 +1,39 @@
+﻿{
+    "run_id":  "WF02-dsl11-20260527",
+    "handoff_id":  "9db0fa8f-0ece-4b79-9d33-0901f6c76144",
+    "workflow_id":  "WF02-dsl11-20260527",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "Test spec exists at tests/specs/DSL-11.md",
+                                             "Minimum 15 test cases covering null-propagation scenarios",
+                                             "Test cases align with acceptance criteria in DSL-11 requirement"
+                                         ],
+                 "description":  "Create comprehensive test specification for DSL-11 (dot-path traversal) at tests/specs/DSL-11.md. Cover: simple two-level paths, deeply nested paths (3-5 levels), null at each nesting level, null-propagation with mixed types, error cases (invalid syntax, unsupported operators on null), and integration with existing DSL features (type coercion, function calls on path results).",
+                 "functions_to_call":  [
+
+                                       ]
+             },
+    "max_rework":  3,
+    "created_at":  "2026-05-27T19:26:36Z",
+    "result":  null,
+    "rework_count":  0,
+    "started_at":  null,
+    "status":  "PENDING",
+    "from_agent":  "ORCH",
+    "step":  "03",
+    "to_agent":  "TEST-DESIGNER",
+    "completed_at":  null,
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "DSL-11"
+                                        ],
+                    "stage":  "Stage 7",
+                    "artifacts_in":  [
+                                         "src/design/dsl-dot-path.md"
+                                     ]
+                },
+    "priority":  "NORMAL"
+}

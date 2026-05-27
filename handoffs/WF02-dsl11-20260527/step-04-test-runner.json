@@ -1,0 +1,40 @@
+﻿{
+    "run_id":  "WF02-dsl11-20260527",
+    "handoff_id":  "22656d6a-ac5e-437c-9b5e-574d340d385d",
+    "workflow_id":  "WF02-dsl11-20260527",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "All DSL-11 test cases pass",
+                                             "Test report generated in tests/reports/",
+                                             "No test skips on MUST requirement coverage"
+                                         ],
+                 "description":  "Run all DSL-11 test cases and generate a structured test report. Execute: zig build test-dsl and related integration tests. Report results in tests/reports/ directory.",
+                 "functions_to_call":  [
+                                           "fn:run-dsl-tests",
+                                           "fn:generate-test-report"
+                                       ]
+             },
+    "max_rework":  3,
+    "created_at":  "2026-05-27T19:26:36Z",
+    "result":  null,
+    "rework_count":  0,
+    "started_at":  null,
+    "status":  "PENDING",
+    "from_agent":  "ORCH",
+    "step":  "04",
+    "to_agent":  "TEST-RUNNER",
+    "completed_at":  null,
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "DSL-11"
+                                        ],
+                    "stage":  "Stage 7",
+                    "artifacts_in":  [
+                                         "tests/specs/DSL-11.md"
+                                     ]
+                },
+    "priority":  "NORMAL"
+}

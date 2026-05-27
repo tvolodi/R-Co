@@ -1,0 +1,40 @@
+﻿{
+    "run_id":  "WF02-dsl11-20260527",
+    "handoff_id":  "56e8bea4-3332-431f-a055-43621877b213",
+    "workflow_id":  "WF02-dsl11-20260527",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "DSL-11 status in requirement_status.json is RELEASED",
+                                             "CHANGELOG.md updated with DSL-11 entry",
+                                             "released_at timestamp recorded"
+                                         ],
+                 "description":  "Update requirement status for DSL-11 to RELEASED in docs/status/requirement_status.json. Update CHANGELOG.md with implementation summary. Mark DSL-11 as complete.",
+                 "functions_to_call":  [
+                                           "fn:update-requirement-status",
+                                           "fn:update-changelog"
+                                       ]
+             },
+    "max_rework":  3,
+    "created_at":  "2026-05-27T19:26:36Z",
+    "result":  null,
+    "rework_count":  0,
+    "started_at":  null,
+    "status":  "PENDING",
+    "from_agent":  "ORCH",
+    "step":  "06",
+    "to_agent":  "DOC-UPDATER",
+    "completed_at":  null,
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "DSL-11"
+                                        ],
+                    "stage":  "Stage 7",
+                    "artifacts_in":  [
+
+                                     ]
+                },
+    "priority":  "NORMAL"
+}

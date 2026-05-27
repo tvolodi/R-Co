@@ -1,0 +1,39 @@
+﻿{
+    "run_id":  "WF02-dsl11-20260527",
+    "handoff_id":  "15a4bd27-dcc6-4159-96ef-24b98a3a84dc",
+    "workflow_id":  "WF02-dsl11-20260527",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "All tests pass",
+                                             "Release decision document created",
+                                             "Ready-for-release status confirmed"
+                                         ],
+                 "description":  "Validate that DSL-11 (dot-path traversal) is ready for release. Verify all test cases pass, acceptance criteria met, and no blocking issues exist. Issue release decision to docs/status/release-DSL-11-*.json.",
+                 "functions_to_call":  [
+                                           "fn:validate-release"
+                                       ]
+             },
+    "max_rework":  3,
+    "created_at":  "2026-05-27T19:26:36Z",
+    "result":  null,
+    "rework_count":  0,
+    "started_at":  null,
+    "status":  "PENDING",
+    "from_agent":  "ORCH",
+    "step":  "05",
+    "to_agent":  "RELEASE-VALIDATOR",
+    "completed_at":  null,
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "DSL-11"
+                                        ],
+                    "stage":  "Stage 7",
+                    "artifacts_in":  [
+                                         "tests/reports/report-WF02-dsl11-*.json"
+                                     ]
+                },
+    "priority":  "NORMAL"
+}
