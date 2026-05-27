@@ -1,0 +1,55 @@
+{
+  "run_id": "WF02-dsl09-20260527",
+  "created_at": "2026-05-27T18:46:35Z",
+  "requirement_ids": ["DSL-09"],
+  "difficulty": 2,
+  "difficulty_rationale": "All three date built-ins (now, date_add, date_diff) are already implemented as part of DSL-07. Work is adding cross-DST boundary test, minute/hour unit tests, and formalizing the requirement. < 50 LOC net new.",
+  "integration_surface": "low",
+  "integration_surface_rationale": "Touches only src/expr/mod.zig — pure additive, no schema or API changes.",
+  "estimation_rules_version": "1.0",
+  "estimated_minutes": {
+    "code-designer": 2,
+    "backend-dev": 4,
+    "test-designer": 1,
+    "test-runner": 1,
+    "release-validator": 1,
+    "doc-updater": 2,
+    "total": 11
+  },
+  "actual_minutes": {
+    "code-designer": 0.82,
+    "backend-dev": 1.18,
+    "test-designer": 0.93,
+    "test-runner": 3.12,
+    "release-validator": 0.37,
+    "doc-updater": 0.52,
+    "total": 6.94
+  },
+  "variance_pct": {
+    "code-designer": -59.0,
+    "backend-dev": -70.5,
+    "test-designer": -7.0,
+    "test-runner": 212.0,
+    "release-validator": -63.0,
+    "doc-updater": -74.0,
+    "total": -36.9
+  },
+  "exceeds_threshold": {
+    "code-designer": true,
+    "backend-dev": true,
+    "test-designer": false,
+    "test-runner": true,
+    "release-validator": true,
+    "doc-updater": true
+  },
+  "threshold_adjustment_needed": false,
+  "threshold_adjustment_rationale": "First run for DSL-09 at difficulty 2 (Simple). |variance_pct| > 25% for 5 of 6 steps, but no prior run at same difficulty to form a consecutive-pair pattern. Adjustment deferred until ≥2 runs at difficulty 2 show consistent over/under-estimation.",
+  "step_notes": {
+    "code-designer": "Estimated 2 min, actual 0.82 min (-59%). Design work was minimal since code already existed.",
+    "backend-dev": "Estimated 4 min, actual 1.18 min (-70.5%). Code was already implemented as part of DSL-07; only test additions needed.",
+    "test-designer": "Estimated 1 min, actual 0.93 min (-7%). Close estimate.",
+    "test-runner": "Estimated 1 min, actual 3.12 min (+212%). Test execution took longer than expected, probably due to full test suite compilation.",
+    "release-validator": "Estimated 1 min, actual 0.37 min (-63%). Quick validation since tests already passed.",
+    "doc-updater": "Estimated 2 min, actual 0.52 min (-74%). Straightforward documentation update."
+  }
+}

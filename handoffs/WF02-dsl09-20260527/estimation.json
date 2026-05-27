@@ -1,0 +1,20 @@
+{
+  "run_id": "WF02-dsl09-20260527",
+  "created_at": "2026-05-27T18:35:13Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["DSL-09"],
+  "difficulty": 2,
+  "difficulty_rationale": "All three date built-ins (now, date_add, date_diff) are already implemented as part of DSL-07. Work is adding cross-DST boundary test, minute/hour unit tests, and formalizing the requirement. < 50 LOC net new.",
+  "integration_surface": "low",
+  "integration_surface_rationale": "Touches only src/expr/mod.zig — pure additive, no schema or API changes.",
+  "steps": ["code-designer", "backend-dev", "test-designer", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 2,
+    "backend-dev": 4,
+    "test-designer": 1,
+    "test-runner": 1,
+    "release-validator": 1,
+    "doc-updater": 2,
+    "total": 11
+  }
+}

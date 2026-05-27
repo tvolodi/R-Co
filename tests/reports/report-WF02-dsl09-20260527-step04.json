@@ -1,0 +1,142 @@
+{
+  "run_id": "WF02-dsl09-20260527",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-27T18:44:40Z",
+  "summary": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0
+  },
+  "test_results": [
+    {
+      "name": "DSL-07: date_add adds seconds",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-07"
+    },
+    {
+      "name": "DSL-07: date_add adds days",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-07"
+    },
+    {
+      "name": "DSL-07: date_add negative days",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-07"
+    },
+    {
+      "name": "DSL-07: date_add with null returns null",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-07"
+    },
+    {
+      "name": "DSL-07: date_add unknown unit",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-07"
+    },
+    {
+      "name": "DSL-07: date_diff seconds",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-07"
+    },
+    {
+      "name": "DSL-07: date_diff days",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-07"
+    },
+    {
+      "name": "DSL-07: date_diff negative result",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-07"
+    },
+    {
+      "name": "DSL-07: date_diff with null returns null",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-07"
+    },
+    {
+      "name": "DSL-08: date_add determinism — seconds",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-08"
+    },
+    {
+      "name": "DSL-08: date_add determinism — days",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-08"
+    },
+    {
+      "name": "DSL-08: date_add determinism — negative offset",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-08"
+    },
+    {
+      "name": "DSL-08: date_diff determinism — positive difference",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-08"
+    },
+    {
+      "name": "DSL-08: date_diff determinism — negative difference",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-08"
+    },
+    {
+      "name": "DSL-09: date_add with minute unit",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-09"
+    },
+    {
+      "name": "DSL-09: date_add with hour unit",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-09"
+    },
+    {
+      "name": "DSL-09: date_diff with minute unit",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-09"
+    },
+    {
+      "name": "DSL-09: date_diff with hour unit",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-09"
+    },
+    {
+      "name": "DSL-09: date_add cross-DST boundary",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-09"
+    },
+    {
+      "name": "DSL-09: date_diff across DST boundary",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-09"
+    },
+    {
+      "name": "DSL-09: now() returns platform time",
+      "status": "PASS",
+      "message": null,
+      "requirement_id": "DSL-09"
+    }
+  ],
+  "failures": [],
+  "layer": "unit",
+  "source_file": "src/expr/mod.zig"
+}
