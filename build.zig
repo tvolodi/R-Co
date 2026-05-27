@@ -326,6 +326,25 @@ pub fn build(b: *std.Build) void {
 
     // api_mod: single module root for API unit test imports.
     // pool_module is defined earlier (before bpm_src_mod) so it is reused here.
+    const claim_mapping_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/claim_mapping.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_module },
+        },
+    });
+
+    const jit_provisioning_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/jit_provisioning.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_module },
+            .{ .name = "claim_mapping", .module = claim_mapping_mod },
+        },
+    });
+
     const api_mod = b.createModule(.{
         .root_source_file = b.path("src/api/api_mod.zig"),
         .target = target,
@@ -334,6 +353,8 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             .{ .name = "pool", .module = pool_module },
             .{ .name = "identity_provider", .module = identity_provider_mod },
+            .{ .name = "claim_mapping", .module = claim_mapping_mod },
+            .{ .name = "jit_provisioning", .module = jit_provisioning_mod },
         },
     });
     const api_conventions_tests = b.addTest(.{
