@@ -799,6 +799,7 @@ fn freeDefinition(allocator: std.mem.Allocator, def: definition_store.Definition
     allocator.free(def.version);
     if (def.description) |d| allocator.free(d);
     if (def.stage) |s| allocator.free(s);
+    definition_store.freeDefinitionGraph(allocator, def.graph);
 }
 
 /// Append a JSON-encoded string (double-quoted, with escaping) to buf.

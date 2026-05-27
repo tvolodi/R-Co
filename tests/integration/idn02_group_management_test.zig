@@ -218,6 +218,7 @@ fn makeGroupTaskFixture(
     defer {
         allocator.free(def.name);
         allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
     }
 
     const activated = try def_store.activate(allocator, def.id);
@@ -226,6 +227,7 @@ fn makeGroupTaskFixture(
         allocator.free(activated.version);
         if (activated.description) |desc| allocator.free(desc);
         if (activated.stage) |stage| allocator.free(stage);
+        bpm.definition.freeDefinitionGraph(allocator, activated.graph);
     }
 
     const inst = try inst_store.create(allocator, def.id, null, "{}");

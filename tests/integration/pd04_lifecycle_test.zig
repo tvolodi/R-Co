@@ -85,6 +85,7 @@ fn freeDefinition(allocator: std.mem.Allocator, def: Definition) void {
     allocator.free(def.name);
     allocator.free(def.version);
     if (def.description) |d| allocator.free(d);
+    bpm.definition.freeDefinitionGraph(allocator, def.graph);
 }
 
 /// Fixed creator UUID used in all tests — no FK constraint on created_by.

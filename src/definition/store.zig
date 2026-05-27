@@ -1259,7 +1259,7 @@ pub const Store = struct {
 // Row parsing helpers
 // ---------------------------------------------------------------------------
 
-fn freeDefinitionGraph(allocator: std.mem.Allocator, graph: DefinitionGraph) void {
+pub fn freeDefinitionGraph(allocator: std.mem.Allocator, graph: DefinitionGraph) void {
     for (graph.nodes) |n| {
         allocator.free(n.id);
         if (n.label) |l| allocator.free(l);

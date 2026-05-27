@@ -87,6 +87,7 @@ fn freeDefinition(allocator: std.mem.Allocator, def: bpm.definition.Definition) 
     allocator.free(def.name);
     allocator.free(def.version);
     if (def.description) |d| allocator.free(d);
+    bpm.definition.freeDefinitionGraph(allocator, def.graph);
 }
 
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";

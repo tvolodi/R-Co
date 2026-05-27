@@ -155,12 +155,14 @@ fn createActiveDefinition(
     allocator.free(created.version);
     if (created.description) |d| allocator.free(d);
     if (created.stage) |s| allocator.free(s);
+    bpm.definition.freeDefinitionGraph(allocator, created.graph);
 
     const activated = try def_store.activate(allocator, def_id);
     allocator.free(activated.name);
     allocator.free(activated.version);
     if (activated.description) |d| allocator.free(d);
     if (activated.stage) |s| allocator.free(s);
+    bpm.definition.freeDefinitionGraph(allocator, activated.graph);
 
     return def_id;
 }

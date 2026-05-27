@@ -95,6 +95,7 @@ fn freeDefinition(allocator: std.mem.Allocator, def: Definition) void {
     allocator.free(def.name);
     allocator.free(def.version);
     if (def.description) |d| allocator.free(d);
+    bpm.definition.freeDefinitionGraph(allocator, def.graph);
 }
 
 /// Free all Definitions in a slice and the slice itself.

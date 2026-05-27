@@ -185,6 +185,7 @@ test "TC-API-02-01: Store.create with valid body returns Definition with status 
         alloc.free(def.version);
         if (def.description) |d| alloc.free(d);
         if (def.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, def.graph);
     }
 
     // Acceptance: status must be DRAFT, id must be non-zero.
@@ -232,6 +233,7 @@ test "TC-API-02-02: Store.create with duplicate name+version returns DuplicateNa
     alloc.free(def.version);
     if (def.description) |d| alloc.free(d);
     if (def.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, def.graph);
 
     // Second create with same name+version must fail.
     const err = def_store.create(alloc, CreateParams{
@@ -310,6 +312,7 @@ test "TC-API-02-05: Store.list returns a valid (possibly empty) slice without er
             alloc.free(d.version);
             if (d.description) |desc| alloc.free(desc);
             if (d.stage) |s| alloc.free(s);
+            bpm.definition.freeDefinitionGraph(alloc, d.graph);
         }
         alloc.free(defs);
     }
@@ -356,6 +359,7 @@ test "TC-API-02-09: Store.getById returns the created definition" {
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     const fetched = try def_store.getById(alloc, created_id);
     defer {
@@ -363,6 +367,7 @@ test "TC-API-02-09: Store.getById returns the created definition" {
         alloc.free(fetched.version);
         if (fetched.description) |d| alloc.free(d);
         if (fetched.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, fetched.graph);
     }
 
     try testing.expectEqual(DefinitionStatus.DRAFT, fetched.status);
@@ -433,6 +438,7 @@ test "TC-API-02-12: Store.update on DRAFT definition returns updated Definition"
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     // Full replacement via PUT (all fields set).
     const updated = try def_store.update(alloc, created_id, UpdateParams{
@@ -447,6 +453,7 @@ test "TC-API-02-12: Store.update on DRAFT definition returns updated Definition"
         alloc.free(updated.version);
         if (updated.description) |d| alloc.free(d);
         if (updated.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, updated.graph);
     }
 
     // Status must remain DRAFT after update.
@@ -492,12 +499,14 @@ test "TC-API-02-13: Store.update on ACTIVE definition returns NotDraft" {
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     const activated = try def_store.activate(alloc, created_id);
     alloc.free(activated.name);
     alloc.free(activated.version);
     if (activated.description) |d| alloc.free(d);
     if (activated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, activated.graph);
 
     // PUT on ACTIVE must fail with NotDraft.
     const err = def_store.update(alloc, created_id, UpdateParams{
@@ -578,6 +587,7 @@ test "TC-API-02-15: Store.update with invalid graph on DRAFT returns GraphValida
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     const err = def_store.update(alloc, created_id, UpdateParams{
         .name = name,
@@ -627,6 +637,7 @@ test "TC-API-02-17: Store.update with only description set updates description o
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     // PATCH: only description supplied (graph=null means no graph change, no re-validation).
     const patched = try def_store.update(alloc, created_id, UpdateParams{
@@ -641,6 +652,7 @@ test "TC-API-02-17: Store.update with only description set updates description o
         alloc.free(patched.version);
         if (patched.description) |d| alloc.free(d);
         if (patched.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, patched.graph);
     }
 
     try testing.expectEqual(DefinitionStatus.DRAFT, patched.status);
@@ -687,12 +699,14 @@ test "TC-API-02-18: Store.update (PATCH) on ACTIVE definition returns NotDraft" 
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     const activated = try def_store.activate(alloc, created_id);
     alloc.free(activated.name);
     alloc.free(activated.version);
     if (activated.description) |d| alloc.free(d);
     if (activated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, activated.graph);
 
     // PATCH on ACTIVE must fail.
     const err = def_store.update(alloc, created_id, UpdateParams{
@@ -773,6 +787,7 @@ test "TC-API-02-21: Store.update (PATCH) with invalid graph supplied returns Gra
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     // PATCH with invalid graph: validation must run and fail.
     const err = def_store.update(alloc, created_id, UpdateParams{
@@ -823,6 +838,7 @@ test "TC-API-02-22: Store.hardDelete on never-activated DRAFT succeeds" {
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     // Hard-delete must succeed (returns void).
     try def_store.hardDelete(alloc, created_id);
@@ -871,12 +887,14 @@ test "TC-API-02-23: deprecate+archive on ACTIVE definition produces ARCHIVED sta
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     const activated = try def_store.activate(alloc, created_id);
     alloc.free(activated.name);
     alloc.free(activated.version);
     if (activated.description) |d| alloc.free(d);
     if (activated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, activated.graph);
 
     // handleDelete on ACTIVE: deprecate → archive (OQ-1 two-step path).
     const deprecated = try def_store.deprecate(alloc, created_id);
@@ -884,6 +902,7 @@ test "TC-API-02-23: deprecate+archive on ACTIVE definition produces ARCHIVED sta
     alloc.free(deprecated.version);
     if (deprecated.description) |d| alloc.free(d);
     if (deprecated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, deprecated.graph);
 
     const archived = try def_store.archive(alloc, created_id);
     defer {
@@ -891,6 +910,7 @@ test "TC-API-02-23: deprecate+archive on ACTIVE definition produces ARCHIVED sta
         alloc.free(archived.version);
         if (archived.description) |d| alloc.free(d);
         if (archived.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, archived.graph);
     }
 
     try testing.expectEqual(DefinitionStatus.ARCHIVED, archived.status);
@@ -934,18 +954,21 @@ test "TC-API-02-24: Store.archive on DEPRECATED definition produces ARCHIVED sta
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     const activated = try def_store.activate(alloc, created_id);
     alloc.free(activated.name);
     alloc.free(activated.version);
     if (activated.description) |d| alloc.free(d);
     if (activated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, activated.graph);
 
     const deprecated = try def_store.deprecate(alloc, created_id);
     alloc.free(deprecated.name);
     alloc.free(deprecated.version);
     if (deprecated.description) |d| alloc.free(d);
     if (deprecated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, deprecated.graph);
 
     // Archive the DEPRECATED definition (handleDelete path).
     const archived = try def_store.archive(alloc, created_id);
@@ -954,6 +977,7 @@ test "TC-API-02-24: Store.archive on DEPRECATED definition produces ARCHIVED sta
         alloc.free(archived.version);
         if (archived.description) |d| alloc.free(d);
         if (archived.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, archived.graph);
     }
 
     try testing.expectEqual(DefinitionStatus.ARCHIVED, archived.status);
@@ -999,24 +1023,28 @@ test "TC-API-02-25: Store.archive on ARCHIVED definition returns InvalidStatusTr
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     const activated = try def_store.activate(alloc, created_id);
     alloc.free(activated.name);
     alloc.free(activated.version);
     if (activated.description) |d| alloc.free(d);
     if (activated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, activated.graph);
 
     const deprecated = try def_store.deprecate(alloc, created_id);
     alloc.free(deprecated.name);
     alloc.free(deprecated.version);
     if (deprecated.description) |d| alloc.free(d);
     if (deprecated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, deprecated.graph);
 
     const archived_first = try def_store.archive(alloc, created_id);
     alloc.free(archived_first.name);
     alloc.free(archived_first.version);
     if (archived_first.description) |d| alloc.free(d);
     if (archived_first.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, archived_first.graph);
 
     // Attempting to archive again: the store must return an error.
     // handleDelete surfaces this as HTTP 409 "already_archived".
@@ -1087,6 +1115,7 @@ test "TC-API-02-28: Store.activate on DRAFT definition returns ACTIVE Definition
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     const activated = try def_store.activate(alloc, created_id);
     defer {
@@ -1094,6 +1123,7 @@ test "TC-API-02-28: Store.activate on DRAFT definition returns ACTIVE Definition
         alloc.free(activated.version);
         if (activated.description) |d| alloc.free(d);
         if (activated.stage) |s| alloc.free(s);
+        bpm.definition.freeDefinitionGraph(alloc, activated.graph);
     }
 
     try testing.expectEqual(DefinitionStatus.ACTIVE, activated.status);
@@ -1137,6 +1167,7 @@ test "TC-API-02-29: Store.activate on already-ACTIVE definition returns AlreadyA
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     // First activation.
     const activated = try def_store.activate(alloc, created_id);
@@ -1144,6 +1175,7 @@ test "TC-API-02-29: Store.activate on already-ACTIVE definition returns AlreadyA
     alloc.free(activated.version);
     if (activated.description) |d| alloc.free(d);
     if (activated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, activated.graph);
 
     // Second activation: AlreadyActive is returned (handler re-fetches to return HTTP 200).
     const err = def_store.activate(alloc, created_id);
@@ -1188,18 +1220,21 @@ test "TC-API-02-30: Store.activate on DEPRECATED definition returns NotDraft" {
     alloc.free(created.version);
     if (created.description) |d| alloc.free(d);
     if (created.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, created.graph);
 
     const activated = try def_store.activate(alloc, created_id);
     alloc.free(activated.name);
     alloc.free(activated.version);
     if (activated.description) |d| alloc.free(d);
     if (activated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, activated.graph);
 
     const deprecated = try def_store.deprecate(alloc, created_id);
     alloc.free(deprecated.name);
     alloc.free(deprecated.version);
     if (deprecated.description) |d| alloc.free(d);
     if (deprecated.stage) |s| alloc.free(s);
+    bpm.definition.freeDefinitionGraph(alloc, deprecated.graph);
 
     // Activating a DEPRECATED definition must return NotDraft.
     const err = def_store.activate(alloc, created_id);
