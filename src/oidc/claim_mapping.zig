@@ -106,7 +106,7 @@ pub fn loadClaimMappingConfig(
     realm: []const u8,
 ) ClaimMappingError!?ClaimMappingConfig {
     const conn = pool.acquire() catch |err| switch (err) {
-        error.PoolExhausted => return error.PoolExhausted,
+        error.ExhaustedPool => return error.PoolExhausted,
         error.StaleConnection => return error.PoolExhausted,
         else => return error.PoolExhausted,
     };
@@ -121,7 +121,7 @@ pub fn loadClaimMappingConfig(
     ,
         &[_][]const u8{realm},
     ) catch |err| switch (err) {
-        error.PoolExhausted => return error.PoolExhausted,
+        error.ExhaustedPool => return error.PoolExhausted,
         error.StaleConnection => return error.PoolExhausted,
         error.QueryFailed => return error.ConfigParseFailed,
         else => return error.ConfigParseFailed,

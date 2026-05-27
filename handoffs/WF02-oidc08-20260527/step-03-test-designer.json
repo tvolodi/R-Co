@@ -1,0 +1,62 @@
+{
+  "handoff_id": "20260527-913",
+  "run_id": "WF02-oidc08-20260527",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-oidc08-20260527/step-03-test-designer.json",
+  "created_at": "2026-05-27T16:39:07Z",
+  "started_at": "2026-05-27T16:39:21Z",
+  "completed_at": "2026-05-27T16:44:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-08"
+    ],
+    "related_handoff_ids": [
+      "20260527-912",
+      "20260527-911",
+      "20260527-910"
+    ],
+    "artifacts_in": [
+      "src/design/oidc-08-standard-claim-mapping.md",
+      "src/oidc/claim_mapping.zig",
+      "migrations/038_oidc_claim_mapping_config.sql",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Design tests for OIDC-08 (Standard claim mapping). Read the requirement at docs/BPM_Platform_Functional_Requirements.md around line 1532, the design at src/design/oidc-08-standard-claim-mapping.md, and the implementation at src/oidc/claim_mapping.zig.\n\nWrite test spec at tests/specs/OIDC-08.md and test code covering the following acceptance criteria:\n\nAC1: Tokens from different configured providers produce equivalent internal user contexts.\n- Write unit tests using identityContextsEquivalent() to verify that two IdentityContext values with the same (external_user_id, realm) are equivalent even if display_name or email differ\n- Write integration tests storing per-realm configs via the migration and loading via loadClaimMappingConfig()\n\nAC2: Claim mapping rules are configurable per realm and stored in platform configuration.\n- Write integration test inserting a row into realm_claim_mapping_config, loading it, verifying non-default paths are used\n- Write integration test with no config row (null returned), verifying defaults apply\n\nAC3: Missing optional claims produce concrete defaults, not errors.\n- Write unit tests for missing email \u2192 empty string\n- Write unit tests for missing preferred_username \u2192 sub value\n- Write unit tests for missing roles \u2192 empty list\n- Write unit tests for sub claim missing \u2192 error (not default)\n- Write unit tests for nested role paths (realm_access.roles)\n\nAll integration tests connect to real PostgreSQL via BPM_TEST_DB_URL. No mocks, no stubs. Every MUST requirement has at least one test case.",
+    "acceptance_criteria": [
+      "Test spec tests/specs/OIDC-08.md written with full coverage analysis",
+      "Unit tests in tests/unit/ covering pure mapping function (mapVerifiedClaims) with all default variants and edge cases",
+      "Integration tests in tests/integration/ covering config load from DB",
+      "Every MUST acceptance criterion mapped to \u22651 test case",
+      "No mocks, no stubs, no in-memory fakes \u2014 real PostgreSQL for integration tests",
+      "No error.SkipZigTest on any test covering a MUST requirement"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:load-test-specs",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed and implemented test suite for OIDC-08 (Standard claim mapping). Created test spec (tests/specs/OIDC-08.md), 21 unit tests (tests/unit/test_oidc08_claim_mapping.zig) covering mapVerifiedClaims, identityContextsEquivalent, resolveJsonPath with all default variants and edge cases, and 3 integration tests (tests/integration/oidc08_claim_mapping_config_test.zig) for DB-backed config loading via real PostgreSQL.",
+    "artifacts_out": [
+      "tests/specs/OIDC-08.md",
+      "tests/unit/test_oidc08_claim_mapping.zig",
+      "tests/integration/oidc08_claim_mapping_config_test.zig",
+      "docs/issue-reports/oidc08-test-designer-20260527.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

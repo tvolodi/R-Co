@@ -1,0 +1,51 @@
+{
+  "handoff_id": "20260527-916",
+  "run_id": "WF02-oidc08-20260527",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-oidc08-20260527/step-06-doc-updater.json",
+  "created_at": "2026-05-27T17:04:10Z",
+  "started_at": "2026-05-27T17:04:20Z",
+  "completed_at": "2026-05-27T17:04:49Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": ["OIDC-08"],
+    "related_handoff_ids": ["20260527-915", "20260527-914", "20260527-913", "20260527-912", "20260527-911", "20260527-910"],
+    "artifacts_in": [
+      "docs/status/release-OIDC-08-20260527.json",
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md"
+    ]
+  },
+  "task": {
+    "description": "Update OIDC-08 status to RELEASED and update changelog.\n\n1. fn:update-requirement-status — set OIDC-08 status to RELEASED in docs/status/requirement_status.json with:\n   - status: RELEASED\n   - stage: 6.5\n   - priority: MUST\n   - title: Standard claim mapping\n   - implementation_run: WF02-oidc08-20260527\n   - test_spec: tests/specs/OIDC-08.md\n   - test_run: tests/reports/report-2026-05-27-WF02-oidc08-step04.json\n   - released_at: <current UTC timestamp>\n   - release_run: WF02-oidc08-20260527\n   - release_decision: docs/status/release-OIDC-08-20260527.json\n   - implementation_handoff: handoffs/WF02-oidc08-20260527/step-02-backend-dev.json\n\n2. fn:update-changelog — append entry to CHANGELOG.md for OIDC-08 release\n\n3. fn:check-doc-freshness — verify all documentation is current",
+    "acceptance_criteria": [
+      "OIDC-08 status set to RELEASED in requirement_status.json",
+      "CHANGELOG.md updated with OIDC-08 entry",
+      "All related documentation is current"
+    ],
+    "functions_to_call": [
+      "fn:update-requirement-status",
+      "fn:update-changelog",
+      "fn:check-doc-freshness",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated OIDC-08 status to RELEASED in requirement_status.json; appended changelog entry under Stage 6.5; verified all documentation is current",
+    "artifacts_out": [
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md",
+      "docs/issue-reports/oidc08-doc-updater-20260527.md"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete for WF02-oidc08-20260527"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

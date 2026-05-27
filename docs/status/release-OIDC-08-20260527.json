@@ -1,0 +1,19 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "requirement_id": "OIDC-08",
+  "run_id": "WF02-oidc08-20260527",
+  "date": "2026-05-27",
+  "timestamp": "2026-05-27T17:03:40Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01_p99_read_ms": {"target": "<=200", "actual": 0.855, "unit": "ms", "passed": true},
+    "NFR-01_p99_write_ms": {"target": "<=500", "actual": 2.342, "unit": "ms", "passed": true},
+    "NFR-02_append_throughput_eps": {"target": ">=1000", "actual": 81751.714, "unit": "events_per_second", "passed": true},
+    "NFR-04_replay_10000_ms": {"target": "<=5000", "actual": 36.162, "unit": "ms", "passed": true}
+  },
+  "unit_tests": {"status": "PASS", "exit_code": 0},
+  "integration_tests": {"status": "PASS", "exit_code": 0},
+  "blocking_issues": [],
+  "approved_requirements": ["OIDC-08"],
+  "validator_notes": "All NFR benchmarks pass (well within thresholds). Unit tests and integration tests exit 0. Test report from TEST-RUNNER (step-04) confirms all 23 OIDC-08 test cases pass. Design doc and test spec are current. No blocking issues."
+}
