@@ -1,0 +1,64 @@
+{
+  "run_id": "WF02-oidc16-26-20260528",
+  "handoff_id": "f2e0f367-9d52-4368-a17c-e2d86e99c8f8",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "timestamp": "2026-05-27T22:33:37Z",
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0
+  },
+  "layers": [
+    {
+      "name": "backend_unit",
+      "command": "zig build test",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "backend_integration",
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "exit_code": 0,
+      "status": "PASS",
+      "db_url_source": "BPM_TEST_DB_URL"
+    }
+  ],
+  "requirement_coverage": {
+    "must": [
+      "OIDC-16",
+      "OIDC-17",
+      "OIDC-18",
+      "OIDC-19",
+      "OIDC-20",
+      "OIDC-21",
+      "OIDC-22",
+      "OIDC-23",
+      "OIDC-25",
+      "OIDC-26"
+    ],
+    "should": [
+      "OIDC-24"
+    ],
+    "artifacts_validated": [
+      "tests/specs/OIDC-16.md",
+      "tests/specs/OIDC-17.md",
+      "tests/specs/OIDC-18.md",
+      "tests/specs/OIDC-19.md",
+      "tests/specs/OIDC-20.md",
+      "tests/specs/OIDC-21.md",
+      "tests/specs/OIDC-22.md",
+      "tests/specs/OIDC-23.md",
+      "tests/specs/OIDC-24.md",
+      "tests/specs/OIDC-25.md",
+      "tests/specs/OIDC-26.md",
+      "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig"
+    ]
+  },
+  "failures": [],
+  "issues": [],
+  "notes": [
+    "Initial VS Code task shell: zig-test-integration has quoting issues in BPM_TEST_DB_URL assignment; authoritative run evidence for this handoff uses direct PowerShell environment assignment shown in layers[1]."
+  ]
+}

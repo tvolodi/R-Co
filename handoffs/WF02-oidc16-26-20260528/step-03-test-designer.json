@@ -1,0 +1,94 @@
+{
+  "handoff_id": "405271cc-2fdb-49a9-a182-d15f6dd8b6a9",
+  "run_id": "WF02-oidc16-26-20260528",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-oidc16-26-20260528/step-03-test-designer.json",
+  "created_at": "2026-05-28T00:16:20Z",
+  "started_at": "2026-05-28T00:16:40Z",
+  "completed_at": "2026-05-27T22:29:25Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-16",
+      "OIDC-17",
+      "OIDC-18",
+      "OIDC-19",
+      "OIDC-20",
+      "OIDC-21",
+      "OIDC-22",
+      "OIDC-23",
+      "OIDC-24",
+      "OIDC-25",
+      "OIDC-26"
+    ],
+    "related_handoff_ids": [
+      "7bcdb840-18f1-4d49-9f35-01d88f686f57",
+      "5f16cff0-44f8-4791-a8f6-9135d2e3647a",
+      "f6030d4a-facd-4fa2-8916-95de58e4b9f6"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/design/oidc-16-full-lifecycle-agent-api.md",
+      "src/design/oidc-17-provisioning-idempotency.md",
+      "src/design/oidc-18-provisioning-transactional-semantics.md",
+      "src/design/oidc-19-provisioning-audit-redaction.md",
+      "src/design/oidc-20-agent-service-account-clients.md",
+      "src/design/oidc-21-zero-downtime-secret-rotation.md",
+      "src/design/oidc-22-bootstrap-agent-identity.md",
+      "src/design/oidc-23-idp-federation-support.md",
+      "src/design/oidc-24-federated-attribute-mapping.md",
+      "src/design/oidc-25-provider-readiness-health-check.md",
+      "src/design/oidc-26-provider-metrics.md",
+      "src/oidc/agent_lifecycle.zig",
+      "src/obs/metrics.zig",
+      "src/api/health/subsystems.zig",
+      "src/api/openapi/builder.zig",
+      "migrations/042_oidc16_26_agent_lifecycle_foundations.sql"
+    ]
+  },
+  "task": {
+    "description": "Design comprehensive test specs and test source coverage for OIDC-16 through OIDC-26 based on implemented backend changes. Include:\n- happy-path and failure-path cases for lifecycle APIs\n- idempotency retry/dedup cases\n- transactional compensation rollback ordering cases\n- audit redaction assertions for secrets/passwords/MFA seeds\n- service-account isolation and token rotation grace-window behavior\n- bootstrap one-time enable/disable and manual re-enable path\n- federation + attribute mapping behavior\n- readiness degraded/recovered behavior\n- provider metrics presence and label expectations\n\nWrite requirement-linked specs under tests/specs/ and any required concrete test files in the appropriate backend test locations according to test guide conventions.",
+    "acceptance_criteria": [
+      "Each OIDC-16..26 requirement has at least one explicit test case mapping",
+      "MUST requirements have executable test coverage, no skipped MUST tests",
+      "Integration tests target real PostgreSQL and real platform surfaces (no fake subsystem for MUST coverage)",
+      "Specs clearly identify expected pass/fail evidence"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and executable test coverage for OIDC-16 through OIDC-26 were added across unit and real-PostgreSQL integration layers, including lifecycle API surfaces, idempotency, transactional rollback ordering, audit redaction persistence, service-account isolation schema constraints, secret-rotation overlap/finalization, bootstrap disable/re-enable, federation alias behavior, readiness degraded/recovered checks, and provider metric label assertions.",
+    "artifacts_out": [
+      "tests/specs/OIDC-16.md",
+      "tests/specs/OIDC-17.md",
+      "tests/specs/OIDC-18.md",
+      "tests/specs/OIDC-19.md",
+      "tests/specs/OIDC-20.md",
+      "tests/specs/OIDC-21.md",
+      "tests/specs/OIDC-22.md",
+      "tests/specs/OIDC-23.md",
+      "tests/specs/OIDC-24.md",
+      "tests/specs/OIDC-25.md",
+      "tests/specs/OIDC-26.md",
+      "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
+      "tests/integration/main_test.zig",
+      "src/oidc/agent_lifecycle.zig",
+      "src/api/health/subsystems.zig",
+      "src/api/openapi/builder.zig",
+      "src/obs/metrics.zig",
+      "docs/issue-reports/WF02-oidc16-26-20260528-step-03-test-designer-INNER-REPORT.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

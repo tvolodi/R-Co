@@ -66,6 +66,15 @@ pub const MetricsRegistry = struct {
 
     http_errors: std.StringHashMap(u64),
 
+    idp_token_verification_total: std.StringHashMap(u64),
+    idp_token_verification_duration: std.StringHashMap(Histogram),
+    idp_jwks_cache_access_total: std.StringHashMap(u64),
+    idp_adapter_call_total: std.StringHashMap(u64),
+    idp_adapter_call_duration: std.StringHashMap(Histogram),
+    idp_adapter_error_total: std.StringHashMap(u64),
+    idp_readiness_probe_total: std.StringHashMap(u64),
+    idp_readiness_probe_duration: Histogram = .{},
+
     pub fn init(allocator: std.mem.Allocator) MetricsRegistry {
         return .{
             .allocator = allocator,
@@ -73,6 +82,13 @@ pub const MetricsRegistry = struct {
             .db_query_duration = std.StringHashMap(Histogram).init(allocator),
             .http_requests = std.StringHashMap(u64).init(allocator),
             .http_errors = std.StringHashMap(u64).init(allocator),
+            .idp_token_verification_total = std.StringHashMap(u64).init(allocator),
+            .idp_token_verification_duration = std.StringHashMap(Histogram).init(allocator),
+            .idp_jwks_cache_access_total = std.StringHashMap(u64).init(allocator),
+            .idp_adapter_call_total = std.StringHashMap(u64).init(allocator),
+            .idp_adapter_call_duration = std.StringHashMap(Histogram).init(allocator),
+            .idp_adapter_error_total = std.StringHashMap(u64).init(allocator),
+            .idp_readiness_probe_total = std.StringHashMap(u64).init(allocator),
         };
     }
 
@@ -81,6 +97,120 @@ pub const MetricsRegistry = struct {
         freeKeys(Histogram, self.allocator, &self.db_query_duration);
         freeKeys(u64, self.allocator, &self.http_requests);
         freeKeys(u64, self.allocator, &self.http_errors);
+        freeKeys(u64, self.allocator, &self.idp_token_verification_total);
+        freeKeys(Histogram, self.allocator, &self.idp_token_verification_duration);
+        freeKeys(u64, self.allocator, &self.idp_jwks_cache_access_total);
+        freeKeys(u64, self.allocator, &self.idp_adapter_call_total);
+        freeKeys(Histogram, self.allocator, &self.idp_adapter_call_duration);
+        freeKeys(u64, self.allocator, &self.idp_adapter_error_total);
+        freeKeys(u64, self.allocator, &self.idp_readiness_probe_total);
+    }
+
+    pub fn incIdpTokenVerification(self: *MetricsRegistry, realm_id: []const u8, method: []const u8, outcome: []const u8) void {
+        const key = std.fmt.allocPrint(self.allocator, "{s}|{s}|{s}", .{ realm_id, method, outcome }) catch return;
+        defer self.allocator.free(key);
+        const gop = self.idp_token_verification_total.getOrPut(key) catch return;
+        if (!gop.found_existing) {
+            const key_copy = self.allocator.dupe(u8, key) catch {
+                _ = self.idp_token_verification_total.remove(key);
+                return;
+            };
+            gop.key_ptr.* = key_copy;
+            gop.value_ptr.* = 0;
+        }
+        gop.value_ptr.* += 1;
+    }
+
+    pub fn observeIdpTokenVerificationDuration(self: *MetricsRegistry, realm_id: []const u8, method: []const u8, duration_seconds: f64) void {
+        const key = std.fmt.allocPrint(self.allocator, "{s}|{s}", .{ realm_id, method }) catch return;
+        defer self.allocator.free(key);
+        const gop = self.idp_token_verification_duration.getOrPut(key) catch return;
+        if (!gop.found_existing) {
+            const key_copy = self.allocator.dupe(u8, key) catch {
+                _ = self.idp_token_verification_duration.remove(key);
+                return;
+            };
+            gop.key_ptr.* = key_copy;
+            gop.value_ptr.* = Histogram{};
+        }
+        gop.value_ptr.observe(duration_seconds);
+    }
+
+    pub fn incIdpJwksCacheAccess(self: *MetricsRegistry, realm_id: []const u8, outcome: []const u8) void {
+        const key = std.fmt.allocPrint(self.allocator, "{s}|{s}", .{ realm_id, outcome }) catch return;
+        defer self.allocator.free(key);
+        const gop = self.idp_jwks_cache_access_total.getOrPut(key) catch return;
+        if (!gop.found_existing) {
+            const key_copy = self.allocator.dupe(u8, key) catch {
+                _ = self.idp_jwks_cache_access_total.remove(key);
+                return;
+            };
+            gop.key_ptr.* = key_copy;
+            gop.value_ptr.* = 0;
+        }
+        gop.value_ptr.* += 1;
+    }
+
+    pub fn incIdpAdapterCall(self: *MetricsRegistry, realm_id: []const u8, method: []const u8, status_class: []const u8) void {
+        const key = std.fmt.allocPrint(self.allocator, "{s}|{s}|{s}", .{ realm_id, method, status_class }) catch return;
+        defer self.allocator.free(key);
+        const gop = self.idp_adapter_call_total.getOrPut(key) catch return;
+        if (!gop.found_existing) {
+            const key_copy = self.allocator.dupe(u8, key) catch {
+                _ = self.idp_adapter_call_total.remove(key);
+                return;
+            };
+            gop.key_ptr.* = key_copy;
+            gop.value_ptr.* = 0;
+        }
+        gop.value_ptr.* += 1;
+    }
+
+    pub fn observeIdpAdapterCallDuration(self: *MetricsRegistry, realm_id: []const u8, method: []const u8, duration_seconds: f64) void {
+        const key = std.fmt.allocPrint(self.allocator, "{s}|{s}", .{ realm_id, method }) catch return;
+        defer self.allocator.free(key);
+        const gop = self.idp_adapter_call_duration.getOrPut(key) catch return;
+        if (!gop.found_existing) {
+            const key_copy = self.allocator.dupe(u8, key) catch {
+                _ = self.idp_adapter_call_duration.remove(key);
+                return;
+            };
+            gop.key_ptr.* = key_copy;
+            gop.value_ptr.* = Histogram{};
+        }
+        gop.value_ptr.observe(duration_seconds);
+    }
+
+    pub fn incIdpAdapterError(self: *MetricsRegistry, realm_id: []const u8, method: []const u8, error_code: []const u8) void {
+        const key = std.fmt.allocPrint(self.allocator, "{s}|{s}|{s}", .{ realm_id, method, error_code }) catch return;
+        defer self.allocator.free(key);
+        const gop = self.idp_adapter_error_total.getOrPut(key) catch return;
+        if (!gop.found_existing) {
+            const key_copy = self.allocator.dupe(u8, key) catch {
+                _ = self.idp_adapter_error_total.remove(key);
+                return;
+            };
+            gop.key_ptr.* = key_copy;
+            gop.value_ptr.* = 0;
+        }
+        gop.value_ptr.* += 1;
+    }
+
+    pub fn incIdpReadinessProbe(self: *MetricsRegistry, outcome: []const u8) void {
+        const gop = self.idp_readiness_probe_total.getOrPut(outcome) catch return;
+        if (!gop.found_existing) {
+            const key_copy = self.allocator.dupe(u8, outcome) catch {
+                _ = self.idp_readiness_probe_total.remove(outcome);
+                return;
+            };
+            gop.key_ptr.* = key_copy;
+            gop.value_ptr.* = 0;
+        }
+        gop.value_ptr.* += 1;
+    }
+
+    pub fn observeIdpReadinessProbeDuration(self: *MetricsRegistry, duration_seconds: f64) void {
+        self.idp_readiness_probe_duration.observe(duration_seconds);
     }
 
     pub fn observeEventAppendDurationSeconds(self: *MetricsRegistry, duration_seconds: f64) void {
@@ -231,6 +361,123 @@ pub const MetricsRegistry = struct {
             }
         }
 
+        try out.appendSlice(allocator, "# HELP idp_token_verification_total Identity-provider token verification attempts by outcome.\n");
+        try out.appendSlice(allocator, "# TYPE idp_token_verification_total counter\n");
+        {
+            var it = self.idp_token_verification_total.iterator();
+            while (it.next()) |entry| {
+                var parts = std.mem.splitScalar(u8, entry.key_ptr.*, '|');
+                const realm_id = parts.next() orelse "";
+                const method = parts.next() orelse "";
+                const outcome = parts.next() orelse "unknown";
+                try appendFmt(
+                    allocator,
+                    &out,
+                    "idp_token_verification_total{{realm_id=\"{s}\",method=\"{s}\",outcome=\"{s}\"}} {d}\n",
+                    .{ realm_id, method, outcome, entry.value_ptr.* },
+                );
+            }
+        }
+
+        try out.appendSlice(allocator, "# HELP idp_token_verification_duration_seconds Identity-provider token verification latency in seconds.\n");
+        try out.appendSlice(allocator, "# TYPE idp_token_verification_duration_seconds histogram\n");
+        {
+            var it = self.idp_token_verification_duration.iterator();
+            while (it.next()) |entry| {
+                var parts = std.mem.splitScalar(u8, entry.key_ptr.*, '|');
+                const realm_id = parts.next() orelse "";
+                const method = parts.next() orelse "";
+                const label = std.fmt.allocPrint(allocator, "realm_id=\"{s}\",method=\"{s}\"", .{ realm_id, method }) catch return error.OutOfMemory;
+                defer allocator.free(label);
+                try renderHistogram(allocator, &out, "idp_token_verification_duration_seconds", label, entry.value_ptr.*);
+            }
+        }
+
+        try out.appendSlice(allocator, "# HELP idp_jwks_cache_access_total JWKS cache accesses by realm and outcome.\n");
+        try out.appendSlice(allocator, "# TYPE idp_jwks_cache_access_total counter\n");
+        {
+            var it = self.idp_jwks_cache_access_total.iterator();
+            while (it.next()) |entry| {
+                var parts = std.mem.splitScalar(u8, entry.key_ptr.*, '|');
+                const realm_id = parts.next() orelse "";
+                const outcome = parts.next() orelse "unknown";
+                try appendFmt(
+                    allocator,
+                    &out,
+                    "idp_jwks_cache_access_total{{realm_id=\"{s}\",outcome=\"{s}\"}} {d}\n",
+                    .{ realm_id, outcome, entry.value_ptr.* },
+                );
+            }
+        }
+
+        try out.appendSlice(allocator, "# HELP idp_adapter_call_total Identity-provider adapter calls by method and status class.\n");
+        try out.appendSlice(allocator, "# TYPE idp_adapter_call_total counter\n");
+        {
+            var it = self.idp_adapter_call_total.iterator();
+            while (it.next()) |entry| {
+                var parts = std.mem.splitScalar(u8, entry.key_ptr.*, '|');
+                const realm_id = parts.next() orelse "";
+                const method = parts.next() orelse "";
+                const status_class = parts.next() orelse "unknown";
+                try appendFmt(
+                    allocator,
+                    &out,
+                    "idp_adapter_call_total{{realm_id=\"{s}\",method=\"{s}\",status_class=\"{s}\"}} {d}\n",
+                    .{ realm_id, method, status_class, entry.value_ptr.* },
+                );
+            }
+        }
+
+        try out.appendSlice(allocator, "# HELP idp_adapter_call_duration_seconds Identity-provider adapter call latency in seconds.\n");
+        try out.appendSlice(allocator, "# TYPE idp_adapter_call_duration_seconds histogram\n");
+        {
+            var it = self.idp_adapter_call_duration.iterator();
+            while (it.next()) |entry| {
+                var parts = std.mem.splitScalar(u8, entry.key_ptr.*, '|');
+                const realm_id = parts.next() orelse "";
+                const method = parts.next() orelse "";
+                const label = std.fmt.allocPrint(allocator, "realm_id=\"{s}\",method=\"{s}\"", .{ realm_id, method }) catch return error.OutOfMemory;
+                defer allocator.free(label);
+                try renderHistogram(allocator, &out, "idp_adapter_call_duration_seconds", label, entry.value_ptr.*);
+            }
+        }
+
+        try out.appendSlice(allocator, "# HELP idp_adapter_error_total Identity-provider adapter errors by method and code.\n");
+        try out.appendSlice(allocator, "# TYPE idp_adapter_error_total counter\n");
+        {
+            var it = self.idp_adapter_error_total.iterator();
+            while (it.next()) |entry| {
+                var parts = std.mem.splitScalar(u8, entry.key_ptr.*, '|');
+                const realm_id = parts.next() orelse "";
+                const method = parts.next() orelse "";
+                const error_code = parts.next() orelse "unknown";
+                try appendFmt(
+                    allocator,
+                    &out,
+                    "idp_adapter_error_total{{realm_id=\"{s}\",method=\"{s}\",error_code=\"{s}\"}} {d}\n",
+                    .{ realm_id, method, error_code, entry.value_ptr.* },
+                );
+            }
+        }
+
+        try out.appendSlice(allocator, "# HELP idp_readiness_probe_total Identity-provider readiness probe outcomes.\n");
+        try out.appendSlice(allocator, "# TYPE idp_readiness_probe_total counter\n");
+        {
+            var it = self.idp_readiness_probe_total.iterator();
+            while (it.next()) |entry| {
+                try appendFmt(
+                    allocator,
+                    &out,
+                    "idp_readiness_probe_total{{outcome=\"{s}\"}} {d}\n",
+                    .{ entry.key_ptr.*, entry.value_ptr.* },
+                );
+            }
+        }
+
+        try out.appendSlice(allocator, "# HELP idp_readiness_probe_duration_seconds Identity-provider readiness probe latency in seconds.\n");
+        try out.appendSlice(allocator, "# TYPE idp_readiness_probe_duration_seconds histogram\n");
+        try renderHistogram(allocator, &out, "idp_readiness_probe_duration_seconds", null, self.idp_readiness_probe_duration);
+
         return out.toOwnedSlice(allocator);
     }
 };
@@ -283,6 +530,51 @@ pub fn recordHttpError5xx(path: []const u8) void {
             registry.incHttpError5xx(value);
         }
     }.call, path);
+}
+
+pub fn recordIdpTokenVerification(realm_id: []const u8, method: []const u8, success: bool, duration_seconds: f64) void {
+    const outcome = if (success) "success" else "failure";
+    withGlobal(struct {
+        fn call(registry: *MetricsRegistry, args: struct { []const u8, []const u8, []const u8, f64 }) void {
+            registry.incIdpTokenVerification(args[0], args[1], args[2]);
+            registry.observeIdpTokenVerificationDuration(args[0], args[1], args[3]);
+        }
+    }.call, .{ realm_id, method, outcome, duration_seconds });
+}
+
+pub fn recordIdpJwksCacheAccess(realm_id: []const u8, hit: bool) void {
+    const outcome = if (hit) "hit" else "miss";
+    withGlobal(struct {
+        fn call(registry: *MetricsRegistry, args: struct { []const u8, []const u8 }) void {
+            registry.incIdpJwksCacheAccess(args[0], args[1]);
+        }
+    }.call, .{ realm_id, outcome });
+}
+
+pub fn recordIdpAdapterCall(realm_id: []const u8, method: []const u8, status_class: []const u8, duration_seconds: f64) void {
+    withGlobal(struct {
+        fn call(registry: *MetricsRegistry, args: struct { []const u8, []const u8, []const u8, f64 }) void {
+            registry.incIdpAdapterCall(args[0], args[1], args[2]);
+            registry.observeIdpAdapterCallDuration(args[0], args[1], args[3]);
+        }
+    }.call, .{ realm_id, method, status_class, duration_seconds });
+}
+
+pub fn recordIdpAdapterError(realm_id: []const u8, method: []const u8, error_code: []const u8) void {
+    withGlobal(struct {
+        fn call(registry: *MetricsRegistry, args: struct { []const u8, []const u8, []const u8 }) void {
+            registry.incIdpAdapterError(args[0], args[1], args[2]);
+        }
+    }.call, .{ realm_id, method, error_code });
+}
+
+pub fn recordIdpReadinessProbe(outcome: []const u8, duration_seconds: f64) void {
+    withGlobal(struct {
+        fn call(registry: *MetricsRegistry, args: struct { []const u8, f64 }) void {
+            registry.incIdpReadinessProbe(args[0]);
+            registry.observeIdpReadinessProbeDuration(args[1]);
+        }
+    }.call, .{ outcome, duration_seconds });
 }
 
 pub fn setActiveInstances(count: u64) void {
@@ -376,16 +668,26 @@ fn renderHistogram(
     query_type: ?[]const u8,
     hist: Histogram,
 ) error{OutOfMemory}!void {
+    const has_eq = if (query_type) |qt| (std.mem.indexOfScalar(u8, qt, '=') != null) else false;
     var cumulative: u64 = 0;
     for (Histogram.finite_buckets, 0..) |le, idx| {
         cumulative += hist.bucket_counts[idx];
         if (query_type) |qt| {
-            try appendFmt(
-                allocator,
-                out,
-                "{s}_bucket{{query_type=\"{s}\",le=\"{d:.4}\"}} {d}\n",
-                .{ metric_name, qt, le, cumulative },
-            );
+            if (has_eq) {
+                try appendFmt(
+                    allocator,
+                    out,
+                    "{s}_bucket{{{s},le=\"{d:.4}\"}} {d}\n",
+                    .{ metric_name, qt, le, cumulative },
+                );
+            } else {
+                try appendFmt(
+                    allocator,
+                    out,
+                    "{s}_bucket{{query_type=\"{s}\",le=\"{d:.4}\"}} {d}\n",
+                    .{ metric_name, qt, le, cumulative },
+                );
+            }
         } else {
             try appendFmt(
                 allocator,
@@ -397,14 +699,15 @@ fn renderHistogram(
     }
 
     if (query_type) |qt| {
-        try appendFmt(
-            allocator,
-            out,
-            "{s}_bucket{{query_type=\"{s}\",le=\"+Inf\"}} {d}\n",
-            .{ metric_name, qt, hist.count },
-        );
-        try appendFmt(allocator, out, "{s}_sum{{query_type=\"{s}\"}} {d:.6}\n", .{ metric_name, qt, hist.sum });
-        try appendFmt(allocator, out, "{s}_count{{query_type=\"{s}\"}} {d}\n", .{ metric_name, qt, hist.count });
+        if (has_eq) {
+            try appendFmt(allocator, out, "{s}_bucket{{{s},le=\"+Inf\"}} {d}\n", .{ metric_name, qt, hist.count });
+            try appendFmt(allocator, out, "{s}_sum{{{s}}} {d:.6}\n", .{ metric_name, qt, hist.sum });
+            try appendFmt(allocator, out, "{s}_count{{{s}}} {d}\n", .{ metric_name, qt, hist.count });
+        } else {
+            try appendFmt(allocator, out, "{s}_bucket{{query_type=\"{s}\",le=\"+Inf\"}} {d}\n", .{ metric_name, qt, hist.count });
+            try appendFmt(allocator, out, "{s}_sum{{query_type=\"{s}\"}} {d:.6}\n", .{ metric_name, qt, hist.sum });
+            try appendFmt(allocator, out, "{s}_count{{query_type=\"{s}\"}} {d}\n", .{ metric_name, qt, hist.count });
+        }
     } else {
         try appendFmt(allocator, out, "{s}_bucket{{le=\"+Inf\"}} {d}\n", .{ metric_name, hist.count });
         try appendFmt(allocator, out, "{s}_sum {d:.6}\n", .{ metric_name, hist.sum });
@@ -520,4 +823,30 @@ test "TC-OBS-02-06: stale active instance gauge retains last in-memory value" {
     defer std.testing.allocator.free(body);
 
     try std.testing.expect(std.mem.indexOf(u8, body, "bpm_active_instances_total 13") != null);
+}
+
+test "OIDC-26 metrics families are rendered" {
+    var registry = MetricsRegistry.init(std.testing.allocator);
+    defer registry.deinit();
+
+    registry.incIdpTokenVerification("tenant-a", "bearer", "success");
+    registry.observeIdpTokenVerificationDuration("tenant-a", "bearer", 0.001);
+    registry.incIdpJwksCacheAccess("tenant-a", "hit");
+    registry.incIdpAdapterCall("tenant-a", "provisionRealm", "2xx");
+    registry.observeIdpAdapterCallDuration("tenant-a", "provisionRealm", 0.02);
+    registry.incIdpAdapterError("tenant-a", "provisionRealm", "UpstreamTimeout");
+    registry.incIdpReadinessProbe("ok");
+    registry.observeIdpReadinessProbeDuration(0.005);
+
+    const body = try registry.collectPrometheusText(std.testing.allocator);
+    defer std.testing.allocator.free(body);
+
+    try std.testing.expect(std.mem.indexOf(u8, body, "idp_token_verification_total") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "idp_jwks_cache_access_total") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "idp_adapter_call_total") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "idp_adapter_error_total") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "idp_readiness_probe_total") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "realm_id=\"tenant-a\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "method=\"bearer\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, body, "method=\"provisionRealm\"") != null);
 }

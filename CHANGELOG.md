@@ -259,6 +259,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed via RELEASE-VALIDATOR final approval (all unit + integration tests PASS, all NFR benchmarks PASS); release approval is recorded in `docs/status/release-OIDC-11-15-20260528.json`.
 - Requirement: OIDC-15 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-16..OIDC-26 — Agent lifecycle, federation, and provider observability bundle (RELEASED 2026-05-28)
+- Implemented OIDC-16 through OIDC-26 backend capabilities in one Stage 6.5 release bundle: full lifecycle provisioning APIs, idempotency handling, transactional compensation behavior, audited/redacted adapter operations, agent service-account flows, rotation/bootstrap controls, federation flows, readiness integration, and provider metrics exposure.
+- Added requirement-linked test coverage and executed the consolidated validation run for all bundle requirements, including MUST coverage and OIDC-24 SHOULD coverage.
+- Validation evidence passed in `tests/reports/report-20260527T223337Z-WF02-oidc16-26-step04.json`; release approval is recorded in `docs/status/release-OIDC-16-26-20260528.json`.
+- Requirements: OIDC-16, OIDC-17, OIDC-18, OIDC-19, OIDC-20, OIDC-21, OIDC-22, OIDC-23, OIDC-24, OIDC-25, OIDC-26 (Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`
