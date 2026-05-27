@@ -22,16 +22,27 @@
     "from_agent":  "ORCH",
     "step":  "02",
     "to_agent":  "BACKEND-DEV",
-    "completed_at":  "2026-05-27T19:38:29Z",
+    "completed_at":  "2026-05-27T19:39:28Z",
     "result":  {
-        "status":  "PASS",
-        "summary":  "Implemented DSL-11: nested dot-path traversal with null-propagation",
-        "artifacts_out":  [
-            "src/expr/mod.zig"
-        ],
-        "issues":  [],
-        "next_action":  "Route to TEST-DESIGNER"
-    },
+                   "next_action":  "Route to TEST-DESIGNER",
+                   "issues":  [
+
+                              ],
+                   "summary":  "Implemented DSL-11 dot-path traversal with null-propagation. Added evalDotPath(), navigateJsonPath(), and supporting functions to handle nested object access. 23 comprehensive tests added and passing. zig build, zig build test, and error-set validation all pass. Committed to feature/WF02-dsl11-20260527 and pushed to origin.",
+                   "git_evidence":  {
+                                        "push_status":  "ok",
+                                        "commit_sha_list":  [
+                                                                "78e8798",
+                                                                "f3e94ff"
+                                                            ],
+                                        "remote_branch":  "origin/feature/WF02-dsl11-20260527",
+                                        "branch_name":  "feature/WF02-dsl11-20260527"
+                                    },
+                   "status":  "PASS",
+                   "artifacts_out":  [
+                                         "src/expr/mod.zig"
+                                     ]
+               },
     "context":  {
                     "related_handoff_ids":  [
 
