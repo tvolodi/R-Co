@@ -120,6 +120,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260527-wf02-oidc03-step-04.json; release approval is recorded in docs/status/release-OIDC-03-20260526.json.
 - Requirement: OIDC-03 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-04 - Standards-compliance boundary (RELEASED 2026-05-27)
+- Implemented standards-only OIDC verification boundaries so authentication paths rely on discovery metadata, JWKS signature verification, and required standard claims (`iss`, `sub`, `aud`, `exp`, `nbf`, `iat`) without requiring provider-specific extension claims.
+- Added OIDC-04 acceptance coverage for standards-only positive verification plus deterministic negative cases for invalid claims, invalid signature material, and discovery/JWKS boundary failures.
+- Validation evidence passed in tests/reports/report-20260527-wf02-oidc04-step-04.json; release approval is recorded in docs/status/release-OIDC-04-20260527.json.
+- Requirement: OIDC-04 (MUST, Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

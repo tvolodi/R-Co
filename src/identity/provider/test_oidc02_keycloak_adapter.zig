@@ -112,7 +112,7 @@ test "TC-OIDC-02-02: keycloak adapter verifyToken uses discovery and jwks endpoi
     const token = try makeUnsignedJwt(allocator,
         \\{"alg":"RS256","kid":"kid-1"}
     ,
-        \\{"iss":"https://kc.example.com/realms/acme","sub":"user-123","aud":["bpm-api"],"exp":1700000600,"nbf":1699999900,"tenant_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","preferred_username":"alice","name":"Alice Adams","email":"alice@example.com","realm_access":{"roles":["PROCESS_OPERATOR","VIEWER"]},"jti":"jwt-123"}
+        \\{"iss":"https://kc.example.com/realms/acme","sub":"user-123","aud":["bpm-api"],"exp":1700000600,"nbf":1699999900,"iat":1699999800,"tenant_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","preferred_username":"alice","name":"Alice Adams","email":"alice@example.com","realm_access":{"roles":["PROCESS_OPERATOR","VIEWER"]},"jti":"jwt-123"}
     );
     defer allocator.free(token);
 
@@ -134,6 +134,262 @@ test "TC-OIDC-02-02: keycloak adapter verifyToken uses discovery and jwks endpoi
     try testing.expectEqual(provider_types.ProviderRole.PROCESS_OPERATOR, principal.roles[0]);
     try testing.expectEqual(provider_types.ProviderRole.VIEWER, principal.roles[1]);
     try testing.expectEqual(@as(usize, 2), transport.index);
+}
+
+test "TC-OIDC-04-02: standards-only token verifies without provider-specific claim extensions" {
+    const allocator = testing.allocator;
+    var transport = ScriptTransport{
+        .steps = &.{
+            .{
+                .method = .GET,
+                .url = "https://idp.example.com/tenant-a/.well-known/openid-configuration",
+                .response = .{ .status = 200, .body =
+                    \\{"issuer":"https://idp.example.com/tenant-a","jwks_uri":"https://idp.example.com/tenant-a/keys"}
+                },
+            },
+            .{
+                .method = .GET,
+                .url = "https://idp.example.com/tenant-a/keys",
+                .response = .{ .status = 200, .body =
+                    \\{"keys":[{"kid":"std-kid-1","kty":"RSA"}]}
+                },
+            },
+        },
+    };
+    var resolver = StaticSecretResolver{ .secret = "super-secret" };
+    var clock = FixedClock{ .now = 1_700_000_000 };
+
+    var adapter = try keycloak.Adapter.init(allocator, .{
+        .base_url = "https://kc.example.com",
+        .admin_base_url = null,
+        .admin_realm = "master",
+        .bootstrap_realm = "master",
+        .admin_client_id = "bpm-admin",
+        .admin_client_secret_ref = "secret://keycloak/admin",
+        .expected_audience = "bpm-api",
+        .expected_issuer = null,
+        .connect_timeout_ms = 5_000,
+        .request_timeout_ms = 10_000,
+    }, .{
+        .transport = .{ .ctx = &transport, .sendFn = ScriptTransport.send },
+        .clock = .{ .ctx = &clock, .nowUnixSecondsFn = FixedClock.nowUnixSeconds },
+        .secret_resolver = .{ .ctx = &resolver, .resolveFn = StaticSecretResolver.resolve },
+    });
+    defer adapter.deinit();
+
+    const token = try makeUnsignedJwt(allocator,
+        \\{"alg":"RS256","kid":"std-kid-1"}
+    ,
+        \\{"iss":"https://idp.example.com/tenant-a","sub":"std-user-1","aud":["bpm-api"],"exp":1700000600,"nbf":1699999900,"iat":1699999800,"preferred_username":"standards-user"}
+    );
+    defer allocator.free(token);
+
+    var principal = try adapter.asIdentityProvider().verifyToken(allocator, .{
+        .raw_token = token,
+        .expected_audience = "bpm-api",
+        .expected_issuer = null,
+        .now_unix_seconds = clock.now,
+    });
+    defer principal.deinit(allocator);
+
+    try testing.expectEqualStrings("std-user-1", principal.provider_subject);
+    try testing.expectEqualStrings("standards-user", principal.username);
+    try testing.expectEqual(@as(usize, 0), principal.roles.len);
+    try testing.expectEqual(transport.steps.len, transport.index);
+}
+
+test "TC-OIDC-04-03: standards claim validation rejects issuer audience exp nbf and iat violations" {
+    const allocator = testing.allocator;
+    const cases = [_]struct {
+        payload_json: []const u8,
+        expected_error: anyerror,
+        expected_requests: usize,
+    }{
+        .{
+            .payload_json =
+            \\{"iss":"https://idp.example.com/tenant-a","sub":"std-user-1","aud":["wrong-api"],"exp":1700000600,"nbf":1699999900,"iat":1699999800}
+            ,
+            .expected_error = error.TokenAudienceMismatch,
+            .expected_requests = 1,
+        },
+        .{
+            .payload_json =
+            \\{"iss":"https://idp.example.com/tenant-a","sub":"std-user-1","aud":["bpm-api"],"exp":1699990000,"nbf":1699989900,"iat":1699989800}
+            ,
+            .expected_error = error.TokenExpired,
+            .expected_requests = 0,
+        },
+        .{
+            .payload_json =
+            \\{"iss":"https://idp.example.com/tenant-a","sub":"std-user-1","aud":["bpm-api"],"exp":1700000600,"nbf":1700001000,"iat":1699999800}
+            ,
+            .expected_error = error.InvalidToken,
+            .expected_requests = 0,
+        },
+        .{
+            .payload_json =
+            \\{"iss":"https://idp.example.com/tenant-a","sub":"std-user-1","aud":["bpm-api"],"exp":1700000600,"nbf":1699999900,"iat":1700001000}
+            ,
+            .expected_error = error.ClaimValidationFailed,
+            .expected_requests = 0,
+        },
+    };
+
+    for (cases) |case| {
+        var transport = ScriptTransport{
+            .steps = &.{
+                .{
+                    .method = .GET,
+                    .url = "https://idp.example.com/tenant-a/.well-known/openid-configuration",
+                    .response = .{ .status = 200, .body =
+                        \\{"issuer":"https://idp.example.com/tenant-a","jwks_uri":"https://idp.example.com/tenant-a/keys"}
+                    },
+                },
+                .{
+                    .method = .GET,
+                    .url = "https://idp.example.com/tenant-a/keys",
+                    .response = .{ .status = 200, .body =
+                        \\{"keys":[{"kid":"std-kid-1","kty":"RSA"}]}
+                    },
+                },
+            },
+        };
+        var resolver = StaticSecretResolver{ .secret = "super-secret" };
+        var clock = FixedClock{ .now = 1_700_000_000 };
+        var adapter = try initTestAdapter(allocator, &transport, &clock, &resolver, null);
+        defer adapter.deinit();
+
+        const token = try makeUnsignedJwt(allocator,
+            \\{"alg":"RS256","kid":"std-kid-1"}
+        ,
+            case.payload_json
+        );
+        defer allocator.free(token);
+
+        try testing.expectError(case.expected_error, adapter.asIdentityProvider().verifyToken(allocator, .{
+            .raw_token = token,
+            .expected_audience = "bpm-api",
+            .expected_issuer = null,
+            .now_unix_seconds = clock.now,
+        }));
+        try testing.expectEqual(case.expected_requests, transport.index);
+    }
+}
+
+test "TC-OIDC-04-06: explicit issuer override rejects mismatched iss claim" {
+    const allocator = testing.allocator;
+    var transport = ScriptTransport{
+        .steps = &.{
+            .{
+                .method = .GET,
+                .url = "https://idp.example.com/tenant-b/.well-known/openid-configuration",
+                .response = .{ .status = 200, .body =
+                    \\{"issuer":"https://idp.example.com/tenant-b","jwks_uri":"https://idp.example.com/tenant-b/keys"}
+                },
+            },
+            .{
+                .method = .GET,
+                .url = "https://idp.example.com/tenant-b/keys",
+                .response = .{ .status = 200, .body =
+                    \\{"keys":[{"kid":"std-kid-1","kty":"RSA"}]}
+                },
+            },
+        },
+    };
+    var resolver = StaticSecretResolver{ .secret = "super-secret" };
+    var clock = FixedClock{ .now = 1_700_000_000 };
+    var adapter = try initTestAdapter(allocator, &transport, &clock, &resolver, null);
+    defer adapter.deinit();
+
+    const token = try makeUnsignedJwt(allocator,
+        \\{"alg":"RS256","kid":"std-kid-1"}
+    ,
+        \\{"iss":"https://idp.example.com/tenant-b","sub":"std-user-1","aud":["bpm-api"],"exp":1700000600,"nbf":1699999900,"iat":1699999800}
+    );
+    defer allocator.free(token);
+
+    try testing.expectError(error.TokenIssuerMismatch, adapter.asIdentityProvider().verifyToken(allocator, .{
+        .raw_token = token,
+        .expected_audience = "bpm-api",
+        .expected_issuer = "https://idp.example.com/tenant-a",
+        .now_unix_seconds = clock.now,
+    }));
+    try testing.expectEqual(@as(usize, 1), transport.index);
+}
+
+test "TC-OIDC-04-04: discovery contract failure rejects verification before JWKS resolution" {
+    const allocator = testing.allocator;
+    var transport = ScriptTransport{
+        .steps = &.{
+            .{
+                .method = .GET,
+                .url = "https://idp.example.com/tenant-a/.well-known/openid-configuration",
+                .response = .{ .status = 200, .body =
+                    \\{"issuer":"https://idp.example.com/tenant-a"}
+                },
+            },
+        },
+    };
+    var resolver = StaticSecretResolver{ .secret = "super-secret" };
+    var clock = FixedClock{ .now = 1_700_000_000 };
+    var adapter = try initTestAdapter(allocator, &transport, &clock, &resolver, null);
+    defer adapter.deinit();
+
+    const token = try makeUnsignedJwt(allocator,
+        \\{"alg":"RS256","kid":"std-kid-1"}
+    ,
+        \\{"iss":"https://idp.example.com/tenant-a","sub":"std-user-1","aud":["bpm-api"],"exp":1700000600,"nbf":1699999900,"iat":1699999800}
+    );
+    defer allocator.free(token);
+
+    try testing.expectError(error.UpstreamProtocolError, adapter.asIdentityProvider().verifyToken(allocator, .{
+        .raw_token = token,
+        .expected_audience = "bpm-api",
+        .expected_issuer = null,
+        .now_unix_seconds = clock.now,
+    }));
+    try testing.expectEqual(transport.steps.len, transport.index);
+}
+
+test "TC-OIDC-04-05: signature verification fails when JWKS has no matching kid" {
+    const allocator = testing.allocator;
+    var transport = ScriptTransport{
+        .steps = &.{
+            .{
+                .method = .GET,
+                .url = "https://idp.example.com/tenant-a/.well-known/openid-configuration",
+                .response = .{ .status = 200, .body =
+                    \\{"issuer":"https://idp.example.com/tenant-a","jwks_uri":"https://idp.example.com/tenant-a/keys"}
+                },
+            },
+            .{
+                .method = .GET,
+                .url = "https://idp.example.com/tenant-a/keys",
+                .response = .{ .status = 200, .body =
+                    \\{"keys":[{"kid":"different-kid","kty":"RSA"}]}
+                },
+            },
+        },
+    };
+    var resolver = StaticSecretResolver{ .secret = "super-secret" };
+    var clock = FixedClock{ .now = 1_700_000_000 };
+    var adapter = try initTestAdapter(allocator, &transport, &clock, &resolver, null);
+    defer adapter.deinit();
+
+    const token = try makeUnsignedJwt(allocator,
+        \\{"alg":"RS256","kid":"std-kid-1"}
+    ,
+        \\{"iss":"https://idp.example.com/tenant-a","sub":"std-user-1","aud":["bpm-api"],"exp":1700000600,"nbf":1699999900,"iat":1699999800}
+    );
+    defer allocator.free(token);
+
+    try testing.expectError(error.SignatureVerificationFailed, adapter.asIdentityProvider().verifyToken(allocator, .{
+        .raw_token = token,
+        .expected_audience = "bpm-api",
+        .expected_issuer = null,
+        .now_unix_seconds = clock.now,
+    }));
+    try testing.expectEqual(transport.steps.len, transport.index);
 }
 
 test "TC-OIDC-02-03: keycloak adapter admin contract stays inside adapter-specific routes and payloads" {
@@ -362,4 +618,29 @@ fn encodeBase64Url(allocator: std.mem.Allocator, input: []const u8) ![]u8 {
     const out = try allocator.alloc(u8, out_len);
     _ = encoder.encode(out, input);
     return out;
+}
+
+fn initTestAdapter(
+    allocator: std.mem.Allocator,
+    transport: *ScriptTransport,
+    clock: *FixedClock,
+    resolver: *StaticSecretResolver,
+    expected_issuer: ?[]const u8,
+) !keycloak.Adapter {
+    return keycloak.Adapter.init(allocator, .{
+        .base_url = "https://kc.example.com",
+        .admin_base_url = null,
+        .admin_realm = "master",
+        .bootstrap_realm = "master",
+        .admin_client_id = "bpm-admin",
+        .admin_client_secret_ref = "secret://keycloak/admin",
+        .expected_audience = "bpm-api",
+        .expected_issuer = expected_issuer,
+        .connect_timeout_ms = 5_000,
+        .request_timeout_ms = 10_000,
+    }, .{
+        .transport = .{ .ctx = transport, .sendFn = ScriptTransport.send },
+        .clock = .{ .ctx = clock, .nowUnixSecondsFn = FixedClock.nowUnixSeconds },
+        .secret_resolver = .{ .ctx = resolver, .resolveFn = StaticSecretResolver.resolve },
+    });
 }

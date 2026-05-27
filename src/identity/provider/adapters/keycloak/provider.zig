@@ -4,6 +4,7 @@ const provider_types = @import("../../types.zig");
 const provider_errors = @import("../../errors.zig");
 const keycloak_config = @import("config.zig");
 const keycloak_urls = @import("urls.zig");
+const standards_verifier = @import("../../oidc/standards_verifier.zig");
 
 pub const Config = keycloak_config.Config;
 
@@ -143,55 +144,52 @@ pub const Adapter = struct {
 fn verifyToken(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.VerifyTokenInput) provider_errors.ProviderError!provider_types.VerifiedPrincipal {
     const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
 
-    const header = try parseJwtSegment(allocator, input.raw_token, 0);
-    defer header.deinit();
-    const payload = try parseJwtSegment(allocator, input.raw_token, 1);
-    defer payload.deinit();
+    const preview_payload = try parseJwtSegment(allocator, input.raw_token, 1);
+    defer preview_payload.deinit();
+    const preview_payload_obj = payloadlessObject(preview_payload.value);
+    const issuer_hint = valueString(preview_payload_obj, "iss");
+    const realm_name = if (issuer_hint) |issuer| realmFromIssuer(issuer) orelse self.config.bootstrap_realm else self.config.bootstrap_realm;
+    const discovery_url = if (issuer_hint) |issuer|
+        try deriveDiscoveryUrlFromIssuer(allocator, issuer)
+    else
+        keycloak_urls.discovery(allocator, self.config, realm_name) catch return error.OutOfMemory;
+    defer allocator.free(discovery_url);
 
-    const kid = valueString(payloadlessObject(header.value), "kid") orelse return error.SignatureVerificationFailed;
-    const issuer_claim = valueString(payloadlessObject(payload.value), "iss") orelse return error.ClaimValidationFailed;
-    const subject = valueString(payloadlessObject(payload.value), "sub") orelse return error.ClaimValidationFailed;
-    const realm_name = realmFromIssuer(issuer_claim) orelse self.config.bootstrap_realm;
-
-    const discovery_doc = try fetchDiscovery(self, allocator, realm_name);
-    defer {
-        allocator.free(discovery_doc.issuer);
-        allocator.free(discovery_doc.jwks_uri);
-    }
-
-    if (!std.mem.eql(u8, issuer_claim, discovery_doc.issuer)) return error.TokenIssuerMismatch;
-    if (input.expected_issuer) |expected_issuer| {
-        if (!std.mem.eql(u8, issuer_claim, expected_issuer)) return error.TokenIssuerMismatch;
-    } else if (self.config.expected_issuer) |expected_issuer| {
-        if (!std.mem.eql(u8, issuer_claim, expected_issuer)) return error.TokenIssuerMismatch;
-    }
-
+    const expected_issuer = input.expected_issuer orelse self.config.expected_issuer;
     const audience = if (input.expected_audience.len != 0) input.expected_audience else self.config.expected_audience;
-    try ensureAudience(payload.value, audience);
-
     const now_unix_seconds = if (input.now_unix_seconds > 0) input.now_unix_seconds else self.clock.nowUnixSeconds();
-    try ensureTokenWindow(payload.value, now_unix_seconds);
 
-    const has_kid = try jwksContainsKid(self, allocator, discovery_doc.jwks_uri, kid);
-    if (!has_kid) return error.SignatureVerificationFailed;
+    var verified = try standards_verifier.verify(allocator, .{
+        .discovery_resolver = .{ .ctx = self, .resolveFn = resolveDiscoveryDocument },
+        .jwks_resolver = .{ .ctx = self, .containsKidFn = resolveJwksKid },
+    }, .{
+        .discovery_url = discovery_url,
+        .raw_token = input.raw_token,
+        .expected_audience = audience,
+        .expected_issuer = expected_issuer,
+        .now_unix_seconds = now_unix_seconds,
+        .allowed_clock_skew_seconds = 30,
+    });
+    defer verified.deinit();
 
-    const roles = try extractRoles(allocator, payload.value);
+    const payload_obj = payloadlessObject(verified.payload.value);
+    const roles = try extractRoles(allocator, verified.payload.value);
     errdefer allocator.free(roles);
 
-    const username_claim = valueString(payloadlessObject(payload.value), "preferred_username") orelse subject;
-    const display_name_claim = valueString(payloadlessObject(payload.value), "name") orelse username_claim;
+    const username_claim = valueString(payload_obj, "preferred_username") orelse verified.subject;
+    const display_name_claim = valueString(payload_obj, "name") orelse username_claim;
 
-    const provider_subject = allocator.dupe(u8, subject) catch return error.OutOfMemory;
+    const provider_subject = allocator.dupe(u8, verified.subject) catch return error.OutOfMemory;
     errdefer allocator.free(provider_subject);
     const username = allocator.dupe(u8, username_claim) catch return error.OutOfMemory;
     errdefer allocator.free(username);
     const display_name = allocator.dupe(u8, display_name_claim) catch return error.OutOfMemory;
     errdefer allocator.free(display_name);
-    const email = try dupeOptional(allocator, valueString(payloadlessObject(payload.value), "email"));
+    const email = try dupeOptional(allocator, valueString(payload_obj, "email"));
     errdefer if (email) |value| allocator.free(value);
     const external_realm = allocator.dupe(u8, realm_name) catch return error.OutOfMemory;
     errdefer allocator.free(external_realm);
-    const token_id_hint = try dupeOptional(allocator, valueString(payloadlessObject(payload.value), "jti"));
+    const token_id_hint = try dupeOptional(allocator, verified.token_id);
     errdefer if (token_id_hint) |value| allocator.free(value);
 
     return .{
@@ -199,7 +197,7 @@ fn verifyToken(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provide
         .username = username,
         .display_name = display_name,
         .email = email,
-        .tenant_id = extractTenantId(payload.value),
+        .tenant_id = extractTenantId(verified.payload.value),
         .roles = roles,
         .external_realm = external_realm,
         .token_id_hint = token_id_hint,
@@ -494,13 +492,12 @@ fn findUser(self: *Adapter, allocator: std.mem.Allocator, bearer: []const u8, re
     return try firstUserIdFromSearch(allocator, response.body);
 }
 
-fn fetchDiscovery(self: *Adapter, allocator: std.mem.Allocator, realm_name: []const u8) provider_errors.ProviderError!DiscoveryDocument {
-    const url = keycloak_urls.discovery(allocator, self.config, realm_name) catch return error.OutOfMemory;
-    defer allocator.free(url);
+fn resolveDiscoveryDocument(raw_ctx: *anyopaque, allocator: std.mem.Allocator, discovery_url: []const u8) provider_errors.ProviderError!standards_verifier.DiscoveryDocument {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
 
     const response = try sendRequest(self, allocator, .{
         .method = .GET,
-        .url = url,
+        .url = discovery_url,
     });
     if (response.status == 404) return error.RealmNotFound;
     if (response.status != 200) return mapStatus(response.status, .verify_token);
@@ -515,6 +512,11 @@ fn fetchDiscovery(self: *Adapter, allocator: std.mem.Allocator, realm_name: []co
         .issuer = allocator.dupe(u8, issuer) catch return error.OutOfMemory,
         .jwks_uri = allocator.dupe(u8, jwks_uri) catch return error.OutOfMemory,
     };
+}
+
+fn resolveJwksKid(raw_ctx: *anyopaque, allocator: std.mem.Allocator, jwks_uri: []const u8, kid: []const u8) provider_errors.ProviderError!bool {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    return jwksContainsKid(self, allocator, jwks_uri, kid);
 }
 
 fn jwksContainsKid(self: *Adapter, allocator: std.mem.Allocator, jwks_uri: []const u8, kid: []const u8) provider_errors.ProviderError!bool {
@@ -986,4 +988,9 @@ fn mapExternalError(err: anyerror) provider_errors.ProviderError {
         error.OutOfMemory => error.OutOfMemory,
         else => error.UpstreamUnavailable,
     };
+}
+
+fn deriveDiscoveryUrlFromIssuer(allocator: std.mem.Allocator, issuer: []const u8) provider_errors.ProviderError![]u8 {
+    const trimmed = trimRightSlashes(issuer);
+    return std.fmt.allocPrint(allocator, "{s}/.well-known/openid-configuration", .{trimmed}) catch return error.OutOfMemory;
 }

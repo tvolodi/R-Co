@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-26T21:31:39Z",
+  "last_updated": "2026-05-27T02:25:17Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1255,6 +1255,21 @@
       "release_run": "WF02-oidc03-20260527",
       "release_decision": "docs/status/release-OIDC-03-20260526.json",
       "last_updated": "2026-05-26T21:31:39Z"
+    },
+    "OIDC-04": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Standards-compliance boundary",
+      "implementation_run": "WF02-oidc04-20260527",
+      "implementation_handoff": "handoffs/WF02-oidc04-20260527/step-02-backend-dev.json",
+      "test_spec": "tests/specs/OIDC-04.md",
+      "test_run": "tests/reports/report-20260527-wf02-oidc04-step-04.json",
+      "tested_at": "2026-05-27",
+      "released_at": "2026-05-27T02:21:30Z",
+      "release_run": "WF02-oidc04-20260527",
+      "release_decision": "docs/status/release-OIDC-04-20260527.json",
+      "last_updated": "2026-05-27T02:25:17Z"
     },
     "DSL-01": {
       "status": "RELEASED",
