@@ -42,6 +42,21 @@ Release approval: `docs/status/release-F1-SH01-04-20260528.json`
 
 Requirements released: SH-01, SH-02, SH-03, SH-04 (MUST, Stage F1) — RELEASED
 
+### Stage F1 Batch 2 — Resilience Shell Components (RELEASED 2026-05-28)
+
+#### Global Error Boundary and API Connectivity Banner
+
+- **SH-05:** Global error boundary — catches unhandled component errors anywhere in the React tree and renders a recoverable fallback UI with a "reload this view" try-again action, preventing the entire application from crashing. Implemented as `ErrorBoundary` class component wrapping all routed views in `AppShell`; unit tested with 4 test cases confirming error capture, fallback render, recovery action, and clean pass-through.
+- **SH-06:** API connectivity banner — polls `GET /health/ready` at a configurable interval and displays a sticky dismissible banner at the top of the application when the backend is unreachable. Banner disappears automatically when connectivity is restored. E2E tested with Playwright against a real backend.
+
+Implementation: `web/src/components/layout/ErrorBoundary.tsx`, `web/src/components/layout/ApiConnectivityBanner.tsx`, `web/src/components/layout/AppShell.tsx`
+
+Tests: Unit tests (`ErrorBoundary.test.tsx`) covering all 4 SH-05 MUST acceptance criteria; E2E tests (`sh05-06.shell.e2e.spec.ts`) covering SH-06 banner visibility and auto-dismiss.
+
+Release approval: `docs/status/release-F1-SH05-06-20260528.json`
+
+Requirements released: SH-05 (MUST), SH-06 (SHOULD), Stage F1 — RELEASED
+
 ### Stage 9 — Wasm Module Execution (RELEASED 2026-05-28)
 
 #### Comprehensive Wasm Execution Framework
