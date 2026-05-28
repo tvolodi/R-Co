@@ -4,6 +4,23 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage 9 — Wasm Module Execution (RELEASED 2026-05-28)
+
+#### Comprehensive Wasm Execution Framework
+- **WASM-01:** Wasmtime integration with C FFI bindings and capability-based sandboxing. Engine can load and instantiate Wasm modules with proper resource isolation and memory bounds.
+- **WASM-02:** Module ABI contract (init/execute/deinit/get_capabilities) with validation framework for stable interface enforcement.
+- **WASM-03/04/05:** Compilation pipeline framework for source compilation jobs with caching and reproducibility design (integration testing deferred to Stage 10).
+- **WASM-06/07:** Capability-based import whitelist enforcement and filesystem access prevention through WASI sandbox configuration.
+- **WASM-08:** Memory isolation with pointer validation framework for safe cross-boundary access.
+- **WASM-09/10/11:** Resource limits via fuel-based execution accounting, memory cap enforcement, and wall-clock timeout context with interrupt mechanism.
+- **WASM-12:** Host API parity with Lua runtime (variable access, service calls, logging, structured error handling).
+- **WASM-13:** Instance pooling with per-invocation reset and version management for efficient reuse.
+- **WASM-14:** Hot reload with version management, zero-downtime module replacement, and concurrent safe instance updates.
+
+Framework complete with unit test coverage for core modules. Integration testing deferred to Stage 10 pending compilation pipeline implementation and test fixture generation. All 14 requirements approved for release with documented Stage 10 blockers and remediation plan.
+
+Status: Framework complete, integration testing deferred to Stage 10. Release approval: docs/status/release-stage9-wasm-20260528.json
+
 ### Stage 8 — Lua Script Execution (RELEASED 2026-05-28)
 
 #### Phase 1: Lua Integration Foundations
