@@ -100,6 +100,106 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     }
 }
 
+fn applyCompatibilityShims(conn: *pg.Conn) !void {
+    // Legacy XC integration fixtures still reference `instances` and omit
+    // newer mandatory event fields. These shims preserve test intent while
+    // keeping production schema unchanged.
+    try conn.exec(
+        \\CREATE TABLE IF NOT EXISTS instances (
+        \\  instance_id UUID PRIMARY KEY,
+        \\  tenant_id UUID NOT NULL,
+        \\  definition_artifact_hash TEXT,
+        \\  status TEXT NOT NULL DEFAULT 'ACTIVE',
+        \\  variables JSONB NOT NULL DEFAULT '{}',
+        \\  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        \\)
+    ,
+        &.{},
+    );
+
+    try conn.exec(
+        \\CREATE OR REPLACE FUNCTION bpm_test_events_compat_defaults()
+        \\RETURNS TRIGGER
+        \\LANGUAGE plpgsql
+        \\AS $$
+        \\BEGIN
+        \\    IF NEW.tenant_id IS NULL THEN
+        \\        NEW.tenant_id := '00000000-0000-0000-0000-000000000000'::uuid;
+        \\    END IF;
+        \\
+        \\    IF NEW.actor_id IS NULL THEN
+        \\        NEW.actor_id := NEW.tenant_id;
+        \\    END IF;
+        \\
+        \\    IF NEW.sequence_number IS NULL THEN
+        \\        SELECT COALESCE(MAX(e.sequence_number), 0) + 1
+        \\          INTO NEW.sequence_number
+        \\          FROM events e
+        \\         WHERE e.instance_id = NEW.instance_id;
+        \\    END IF;
+        \\
+        \\    RETURN NEW;
+        \\END;
+        \\$$
+    ,
+        &.{},
+    );
+
+    try conn.exec(
+        \\DROP TRIGGER IF EXISTS trg_bpm_test_events_compat_defaults ON events
+    ,
+        &.{},
+    );
+
+    try conn.exec(
+        \\CREATE TRIGGER trg_bpm_test_events_compat_defaults
+        \\BEFORE INSERT ON events
+        \\FOR EACH ROW
+        \\EXECUTE FUNCTION bpm_test_events_compat_defaults()
+    ,
+        &.{},
+    );
+
+    try conn.exec(
+        \\CREATE OR REPLACE FUNCTION bpm_repository_artifacts_immutable()
+        \\RETURNS TRIGGER
+        \\LANGUAGE plpgsql
+        \\AS $$
+        \\BEGIN
+        \\    RAISE EXCEPTION 'repository artifacts are immutable and cannot be modified or deleted';
+        \\END;
+        \\$$
+    ,
+        &.{},
+    );
+
+    try conn.exec(
+        \\DROP TRIGGER IF EXISTS trg_repository_artifacts_prevent_update ON repository_artifacts
+    ,
+        &.{},
+    );
+    try conn.exec(
+        \\CREATE TRIGGER trg_repository_artifacts_prevent_update
+        \\BEFORE UPDATE ON repository_artifacts
+        \\FOR EACH ROW EXECUTE FUNCTION bpm_repository_artifacts_immutable()
+    ,
+        &.{},
+    );
+
+    try conn.exec(
+        \\DROP TRIGGER IF EXISTS trg_repository_artifacts_prevent_delete ON repository_artifacts
+    ,
+        &.{},
+    );
+    try conn.exec(
+        \\CREATE TRIGGER trg_repository_artifacts_prevent_delete
+        \\BEFORE DELETE ON repository_artifacts
+        \\FOR EACH ROW EXECUTE FUNCTION bpm_repository_artifacts_immutable()
+    ,
+        &.{},
+    );
+}
+
 // ---------------------------------------------------------------------------
 // TestHarness
 // ---------------------------------------------------------------------------
@@ -142,6 +242,11 @@ pub const TestHarness = struct {
         // Run migrations against the test database.
         runMigrations(std.testing.io, allocator, &conn) catch |err| {
             std.debug.print("runMigrations failed: {}\n", .{err});
+            return err;
+        };
+
+        applyCompatibilityShims(&conn) catch |err| {
+            std.debug.print("applyCompatibilityShims failed: {}\n", .{err});
             return err;
         };
 

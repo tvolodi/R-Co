@@ -82,10 +82,21 @@ test "TC-XC-04-03: scheduler fires timers in deterministic order" {
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
     const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const definition_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
         alloc.free(tenant_id);
+        alloc.free(definition_id);
     }
+
+    _ = try harness.conn.exec(
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, status, current_nodes,
+        \\  variables, last_event_seq, tenant_id, started_at, updated_at
+        \\) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, NOW(), NOW())
+    ,
+        &.{ instance_id, definition_id, "ACTIVE", "[]", "{}", "0", tenant_id },
+    );
 
     // Insert timers with known fire times
     const fires_at1 = "2026-05-28 10:00:00+00"; // Fixed time for determinism
@@ -205,45 +216,55 @@ test "TC-XC-04-05: event append preserves deterministic ordering" {
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
     const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const definition_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
         alloc.free(tenant_id);
+        alloc.free(definition_id);
+        alloc.free(actor_id);
     }
 
-    // Create instance
+    // Create instance projection row expected by current schema
     _ = try harness.conn.exec(
-        \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
-        \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\INSERT INTO instance_projections (
+        \\  instance_id, definition_id, status, current_nodes,
+        \\  variables, last_event_seq, tenant_id, definition_artifact_hash,
+        \\  started_at, updated_at
+        \\) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, NOW(), NOW())
     ,
-        &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
+        &.{ instance_id, definition_id, "ACTIVE", "[]", "{}", "0", tenant_id, "def-hash" },
     );
 
     // Append events
     for (0..5) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
+        const sequence_number = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
         const idempotency_key = try std.fmt.allocPrint(alloc, "idem-key-{d}", .{i});
         const payload = try std.fmt.allocPrint(alloc, "{{\"index\":{d}}}", .{i});
         defer {
             alloc.free(event_id);
+            alloc.free(sequence_number);
             alloc.free(idempotency_key);
             alloc.free(payload);
         }
 
         _ = try harness.conn.exec(
             \\INSERT INTO events (
-            \\  event_id, instance_id, tenant_id, event_type,
-            \\  payload, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            \\  event_id, instance_id, event_type, payload, actor_id,
+            \\  created_at, sequence_number, idempotency_key, metadata, tenant_id
+            \\) VALUES ($1, $2, $3, $4::jsonb, $5, NOW(), $6, $7, $8::jsonb, $9)
         ,
             &.{
                 event_id,
                 instance_id,
-                tenant_id,
                 "test.event",
                 payload,
+                actor_id,
+                sequence_number,
                 idempotency_key,
+                "{}",
+                tenant_id,
             },
         );
     }

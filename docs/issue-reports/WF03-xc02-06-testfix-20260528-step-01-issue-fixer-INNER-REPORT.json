@@ -1,0 +1,62 @@
+{
+  "run_id": "WF03-xc02-06-testfix-20260528",
+  "handoff_id": "87a3f494-a3be-4d36-9aa8-4c2c9f9a27cd",
+  "agent": "ISSUE-FIXER",
+  "step": "01-diagnosis",
+  "generated_at": "2026-05-28T12:58:52Z",
+  "diagnosis": [
+    {
+      "cluster": "XC-02",
+      "category": "E",
+      "root_cause": "Test expectations and fixture behavior drift: expects error.UnexpectedRow while DB immutability triggers return ServerError; ordering assertions assume insertion order under timestamp+UUID ordering; inline UUID generation leaks allocator memory.",
+      "files_to_change": [
+        "tests/integration/xc02_audit_immutability_test.zig"
+      ],
+      "is_blocker": true
+    },
+    {
+      "cluster": "XC-03",
+      "category": "B",
+      "root_cause": "Integration/schema mismatch: xc03 tests target repository_artifacts/activation shape not guaranteed by current migration chain and XC-03 loader/repository path is still stubbed/incomplete for those expectations.",
+      "files_to_change": [
+        "migrations/052_xc03_configuration_repository.sql",
+        "src/config/loader.zig",
+        "src/repository/artifacts.zig",
+        "tests/integration/xc03_configuration_repository_test.zig"
+      ],
+      "is_blocker": true
+    },
+    {
+      "cluster": "XC-04",
+      "category": "E",
+      "root_cause": "Integration test SQL targets columns/relations that do not match current event/timer contracts (for example events inserts missing required actor_id and include tenant_id not present in schema).",
+      "files_to_change": [
+        "tests/integration/xc04_kernel_determinism_test.zig"
+      ],
+      "is_blocker": true
+    },
+    {
+      "cluster": "XC-05",
+      "category": "E",
+      "root_cause": "Replay tests are schema-drifted (direct inserts into instances/events shapes inconsistent with current DB model), producing broad ServerError failures before replay assertions execute.",
+      "files_to_change": [
+        "tests/integration/xc05_deterministic_replay_test.zig"
+      ],
+      "is_blocker": true
+    },
+    {
+      "cluster": "XC-06",
+      "category": "E",
+      "root_cause": "Backward-compat tests depend on legacy table/column assumptions (instances and audit ordering assumptions) not aligned with present schema/migration state, causing immediate query/insert failures.",
+      "files_to_change": [
+        "tests/integration/xc06_backwards_compatibility_test.zig"
+      ],
+      "is_blocker": true
+    }
+  ],
+  "step2_scope_decision": {
+    "can_proceed_within_5_files": false,
+    "reason": "Minimum combined fix scope exceeds WF-03 Step-02 cap (>=6 files with XC-03 requiring source+migration work in addition to test files).",
+    "recommended_action": "Escalate to ORCH to split into multiple WF-03 rework handoffs (test-alignment batch and XC-03 schema/source batch)."
+  }
+}
