@@ -87,16 +87,13 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         try conn.begin();
         conn.simpleQuery(sql_bytes) catch |err| {
             conn.rollback() catch {};
-            std.debug.print("Migration '{s}' failed with error: {}\n", .{filename, err});
             return err;
         };
-
         conn.exec(
             "INSERT INTO schema_migrations (version) VALUES ($1)",
             &.{filename},
         ) catch |err| {
             conn.rollback() catch {};
-            std.debug.print("Failed to record migration '{s}' in schema_migrations: {}\n", .{filename, err});
             return err;
         };
         try conn.commit();
