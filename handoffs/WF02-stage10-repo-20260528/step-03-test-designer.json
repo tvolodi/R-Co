@@ -1,0 +1,57 @@
+{
+  "handoff_id": "step-03-wf02-stage10-repo-20260528",
+  "run_id": "WF02-stage10-repo-20260528",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-28T04:35:00Z",
+  "started_at": "2026-05-28T06:19:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 10 — Platform Repository",
+    "requirement_ids": [
+      "REPO-01",
+      "REPO-02",
+      "REPO-03",
+      "REPO-04",
+      "REPO-05",
+      "REPO-06",
+      "REPO-07",
+      "REPO-08",
+      "REPO-09",
+      "REPO-10",
+      "REPO-11",
+      "REPO-12",
+      "REPO-13",
+      "REPO-14"
+    ]
+  },
+  "task": {
+    "description": "Design integration tests for Stage 10. Every MUST requirement (REPO-01 through REPO-13) MUST have a runnable integration test. No deferred work. Tests must verify: content addressing deduplication, immutability enforcement, version history with parent linkage, canonical serialisation consistency, form schema indexing queryability, event type registry validation, service catalog enforcement, atomic activation of bundles, per-tenant activation isolation, activation history audit trail, create-artifact API roundtrip, version list pagination, and tenant activation consistency. All tests use real PostgreSQL via BPM_TEST_DB_URL.",
+    "acceptance_criteria": [
+      "Test spec exists at tests/specs/REPO-01-13.md",
+      "Every MUST requirement has integration test",
+      "No error.SkipZigTest on MUST requirements",
+      "All fixtures use per-test UUIDs",
+      "Tests clean up after themselves",
+      "Tests fail clearly if BPM_TEST_DB_URL absent",
+      "Test files created under tests/ or web/src/ per convention"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Completed test design for Stage 10 (REPO-01-13): created comprehensive test specification with 26 test cases and corresponding Zig integration tests for all 13 MUST requirements. All tests use real PostgreSQL via BPM_TEST_DB_URL, employ per-test UUIDs for isolation, and clean up via transaction rollback. No deferred work; all MUST requirements have executable tests.",
+    "artifacts_out": [
+      "tests/specs/REPO-01-13.md",
+      "tests/integration/repository_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-28T06:55:17Z"
+}

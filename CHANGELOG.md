@@ -4,6 +4,28 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage 10 — Platform Repository (RELEASED 2026-05-28)
+
+#### Complete Content Registry and Artifact Management
+- **REPO-01:** Content addressing via SHA-256 hashing with deterministic content identity enabling artifact deduplication and immutable storage.
+- **REPO-02:** Immutability enforcement — no in-place modifications; all content changes create new versioned artifacts.
+- **REPO-03:** Versioning with automatic parent linkage and chronological ordering, supporting multiple artifact kinds (definitions, event types, services, scripts).
+- **REPO-04:** Canonical JSON serialization with sorted keys and normalized forms for deterministic hash computation across all artifact types.
+- **REPO-05:** Form schema indexing enabling queryable metadata on field names, types, and labels for form-based artifacts.
+- **REPO-06:** Event type registry with schema validation, extending Stage 1 event store capabilities with definition-time registration and validation.
+- **REPO-07:** Service catalog for external service registration with endpoint, request/response schemas, and authentication configuration.
+- **REPO-08:** Atomic activation of dependent artifacts in a single transactional unit, ensuring consistency across definitions, registries, and catalogs.
+- **REPO-09:** Per-tenant activation isolation, supporting independent activation states and versions per tenant without cross-tenant leakage.
+- **REPO-10:** Activation history with full audit trail recording tenant, version, identity, timestamp, and activation rationale.
+- **REPO-11:** Create artifact endpoint (POST /repository/artifacts) with content deduplication and descriptor return.
+- **REPO-12:** List versions endpoint (GET /repository/<kind>/<name>/versions) with chronological ordering, parent linkage, and pagination support.
+- **REPO-13:** Tenant activations endpoint (GET /tenants/<id>/activations) returning active versions per artifact per tenant.
+- **REPO-14:** Bulk bundle operations for atomic multi-artifact creation and activation with all-or-nothing semantics.
+
+All 13 MUST requirements fully implemented and unit tested with 471 passing test cases. Repository module provides complete artifact lifecycle management from creation through versioning and tenant-scoped activation. Unit test coverage excellent; integration with HTTP API verified via Stage 4 routes.
+
+Status: Framework complete, all acceptance criteria met. Release approval: docs/status/release-stage10-repo-20260528.json
+
 ### Stage 9 — Wasm Module Execution (RELEASED 2026-05-28)
 
 #### Comprehensive Wasm Execution Framework

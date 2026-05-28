@@ -1,0 +1,31 @@
+{
+  "handoff_id": "step-final-wf02-stage10-repo-20260528",
+  "run_id": "WF02-stage10-repo-20260528",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-28T04:35:00Z",
+  "started_at": "2026-05-28T07:08:10Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 10 — Platform Repository"
+  },
+  "task": {
+    "description": "Merge feature branch to main. (1) Create GitHub PR via 'gh pr create --base main'. (2) Ensure all CI checks pass. (3) Merge via 'gh pr merge --squash --delete-branch'. (4) Verify feature branch deleted from GitHub. (5) Record merge commit SHA and PR number in result.",
+    "acceptance_criteria": [
+      "GitHub PR created and merged",
+      "All CI checks passed",
+      "Feature branch deleted from GitHub",
+      "Merge commit recorded in result"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": null
+}
