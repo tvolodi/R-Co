@@ -121,5 +121,4 @@ test "Schemas initialization" {
     const allocator = std.testing.allocator;
     var schemas = Schemas.init(allocator, undefined);
     defer schemas.deinit();
-    _ = schemas;
 }

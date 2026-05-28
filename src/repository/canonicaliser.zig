@@ -47,7 +47,7 @@ pub fn canonicaliseJson(
     ) catch return CanonicaliserError.InvalidJson;
     defer parser.deinit();
 
-    var output = std.ArrayList(u8).init(allocator);
+    var output = try std.ArrayList(u8).initCapacity(allocator, 256);
     errdefer output.deinit();
 
     try serializeValue(parser.value, &output, allocator);
@@ -96,66 +96,81 @@ pub fn verifyHash(
 // Private serialization helpers
 // ---------------------------------------------------------------------------
 
-fn serializeValue(value: std.json.Value, output: *std.ArrayList(u8), allocator: std.mem.Allocator) !void {
+fn serializeValue(value: std.json.Value, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
     switch (value) {
-        .null => try output.appendSlice("null"),
-        .bool => |b| try output.appendSlice(if (b) "true" else "false"),
-        .integer => |i| try std.fmt.format(output.writer(), "{}", .{i}),
-        .float => |f| try serializeFloat(f, output),
-        .string => |s| try serializeString(s, output),
+        .null => try output.appendSlice(allocator, "null"),
+        .bool => |b| try output.appendSlice(allocator, if (b) "true" else "false"),
+        .integer => |i| try serializeInteger(i, output, allocator),
+        .float => |f| try serializeFloat(f, output, allocator),
+        .number_string => |s| try output.appendSlice(allocator, s),
+        .string => |s| try serializeString(s, output, allocator),
         .array => |arr| try serializeArray(arr, output, allocator),
         .object => |obj| try serializeObject(obj, output, allocator),
     }
 }
 
-fn serializeFloat(f: f64, output: *std.ArrayList(u8)) !void {
-    // Normalize floats: no unnecessary decimals, compact representation
-    if (f == std.math.floor(f) and f >= -9007199254740992 and f <= 9007199254740992) {
-        // Integer-valued float
-        try std.fmt.format(output.writer(), "{d:.0}", .{f});
-    } else {
-        // Use compact representation
-        try std.fmt.format(output.writer(), "{}", .{f});
-    }
+fn serializeInteger(i: i64, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+    var buf: [32]u8 = undefined;
+    const str = try std.fmt.bufPrint(&buf, "{}", .{i});
+    try output.appendSlice(allocator, str);
 }
 
-fn serializeString(s: []const u8, output: *std.ArrayList(u8)) !void {
-    try output.append('"');
+fn serializeFloat(f: f64, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+    var buf: [64]u8 = undefined;
+    // Normalize floats: no unnecessary decimals, compact representation
+    const str = if (f == std.math.floor(f) and f >= -9007199254740992 and f <= 9007199254740992) blk: {
+        // Integer-valued float
+        break :blk try std.fmt.bufPrint(&buf, "{d:.0}", .{f});
+    } else blk: {
+        // Use compact representation
+        break :blk try std.fmt.bufPrint(&buf, "{}", .{f});
+    };
+    try output.appendSlice(allocator, str);
+}
+
+fn serializeString(s: []const u8, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+    try output.append(allocator, '"');
     for (s) |byte| {
         switch (byte) {
-            '"' => try output.appendSlice("\\\""),
-            '\\' => try output.appendSlice("\\\\"),
-            '\b' => try output.appendSlice("\\b"),
-            '\t' => try output.appendSlice("\\t"),
-            '\n' => try output.appendSlice("\\n"),
-            '\r' => try output.appendSlice("\\r"),
-            '\x0c' => try output.appendSlice("\\f"),
-            0x00...0x1f => try std.fmt.format(output.writer(), "\\u{:0>4x}", .{byte}),
-            else => try output.append(byte),
+            '"' => try output.appendSlice(allocator, "\\\""),
+            '\\' => try output.appendSlice(allocator, "\\\\"),
+            0x08 => try output.appendSlice(allocator, "\\b"),
+            0x09 => try output.appendSlice(allocator, "\\t"),
+            0x0a => try output.appendSlice(allocator, "\\n"),
+            0x0d => try output.appendSlice(allocator, "\\r"),
+            0x0c => try output.appendSlice(allocator, "\\f"),
+            0x00...0x07, 0x0b, 0x0e...0x1f => try serializeControlChar(byte, output, allocator),
+            else => try output.append(allocator, byte),
         }
     }
-    try output.append('"');
+    try output.append(allocator, '"');
 }
 
-fn serializeArray(arr: std.json.Array, output: *std.ArrayList(u8), allocator: std.mem.Allocator) !void {
-    try output.append('[');
+fn serializeControlChar(byte: u8, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+    var buf: [8]u8 = undefined;
+    const str = try std.fmt.bufPrint(&buf, "\\u{:0>4x}", .{byte});
+    try output.appendSlice(allocator, str);
+}
+
+fn serializeArray(arr: std.json.Array, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+    try output.append(allocator, '[');
     for (arr.items, 0..) |item, i| {
-        if (i > 0) try output.append(',');
+        if (i > 0) try output.append(allocator, ',');
         try serializeValue(item, output, allocator);
     }
-    try output.append(']');
+    try output.append(allocator, ']');
 }
 
-fn serializeObject(obj: std.json.ObjectMap, output: *std.ArrayList(u8), allocator: std.mem.Allocator) !void {
-    try output.append('{');
+fn serializeObject(obj: std.json.ObjectMap, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+    try output.append(allocator, '{');
 
     // Collect and sort keys
-    var keys = std.ArrayList([]const u8).init(allocator);
+    var keys = try std.ArrayList([]const u8).initCapacity(allocator, 16);
     defer keys.deinit();
 
     var it = obj.iterator();
     while (it.next()) |entry| {
-        try keys.append(entry.key_ptr.*);
+        try keys.append(allocator, entry.key_ptr.*);
     }
 
     std.sort.insertion([]const u8, keys.items, {}, struct {
@@ -165,16 +180,16 @@ fn serializeObject(obj: std.json.ObjectMap, output: *std.ArrayList(u8), allocato
     }.lessThan);
 
     for (keys.items, 0..) |key, i| {
-        if (i > 0) try output.append(',');
+        if (i > 0) try output.append(allocator, ',');
 
-        try serializeString(key, output);
-        try output.append(':');
+        try serializeString(key, output, allocator);
+        try output.append(allocator, ':');
 
         const value = obj.get(key) orelse unreachable;
         try serializeValue(value, output, allocator);
     }
 
-    try output.append('}');
+    try output.append(allocator, '}');
 }
 
 // ---------------------------------------------------------------------------

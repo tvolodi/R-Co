@@ -3,7 +3,8 @@
 //! Tests deterministic JSON canonicalisation and SHA-256 hashing.
 
 const std = @import("std");
-const canonicaliser = @import("../../src/repository/canonicaliser.zig");
+const repository = @import("repository");
+const canonicaliser = repository.canonicaliser;
 
 test "canonicaliser: sorts object keys" {
     const allocator = std.testing.allocator;

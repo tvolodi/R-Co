@@ -147,7 +147,6 @@ test "ServiceCatalog initialization" {
     const allocator = std.testing.allocator;
     var catalog = ServiceCatalog.init(allocator, undefined);
     defer catalog.deinit();
-    _ = catalog;
 }
 
 test "AuthMethod enum values" {

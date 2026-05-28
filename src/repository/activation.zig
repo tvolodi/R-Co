@@ -189,5 +189,4 @@ test "Activation initialization" {
     const allocator = std.testing.allocator;
     var activation = Activation.init(allocator, undefined, undefined);
     defer activation.deinit();
-    _ = activation;
 }
