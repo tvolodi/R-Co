@@ -109,14 +109,35 @@ pub fn loadConfigArtifact(
     kind: ConfigKind,
     artifact_name: []const u8,
 ) ConfigError!?[]const u8 {
-    _ = allocator;
-    _ = pool;
-    _ = tenant_id;
-    _ = kind;
-    _ = artifact_name;
+    const kind_name: []const u8 = switch (kind) {
+        .capabilities => "config",
+        .tier_rules => "config",
+        .budget_limits => "config",
+        .monitoring_config => "config",
+        .oidc_config => "config",
+    };
 
-    // TODO: Implement per-artifact loading
-    return null;
+    const conn = pool.acquire() catch return ConfigError.DatabaseError;
+    defer pool.release(conn);
+
+    var rows = conn.query(
+        allocator,
+        \\SELECT ra.content_json::text
+        \\FROM tenant_artifact_activations taa
+        \\JOIN repository_artifacts ra ON ra.version_id = taa.active_version_id
+        \\WHERE taa.tenant_id = $1
+        \\  AND taa.artifact_kind = $2
+        \\  AND taa.artifact_name = $3
+        \\LIMIT 1
+    ,
+        &.{ tenant_id, kind_name, artifact_name },
+    ) catch return ConfigError.DatabaseError;
+    defer rows.deinit();
+
+    if (rows.rows.len == 0) return null;
+
+    const content_json = rows.rows[0][0] orelse return null;
+    return allocator.dupe(u8, content_json) catch ConfigError.OutOfMemory;
 }
 
 /// Validate a configuration artifact JSON against schema.

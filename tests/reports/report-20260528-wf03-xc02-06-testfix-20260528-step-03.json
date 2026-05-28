@@ -1,0 +1,97 @@
+{
+  "run_id": "WF03-xc02-06-testfix-20260528",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "agent": "TEST-RUNNER",
+  "timestamp": "2026-05-28T13:48:57Z",
+  "branch": "feature/WF03-xc02-06-testfix-20260528",
+  "commands": [
+    "zig build bench 2>&1 | Select-Object -First 5 | Out-String",
+    "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration"
+  ],
+  "benchmark_precheck": {
+    "status": "PASS",
+    "note": "Benchmark output contained benchmark names and did not contain BPM_DB_URL, BENCHMARK_SETUP_ERROR, or missing."
+  },
+  "summary": {
+    "scope": "XC-03..XC-06 integration suites observed during broader test-integration validation",
+    "total": 31,
+    "passed": 4,
+    "failed": 27,
+    "skipped": 0
+  },
+  "requirement_status": {
+    "XC-03": {
+      "status": "REGRESSION",
+      "suite": "tests/integration/xc03_configuration_repository_test.zig",
+      "run_summary": "1 pass, 8 fail (9 total)",
+      "failed_cases": [
+        "TC-XC-03-01",
+        "TC-XC-03-02",
+        "TC-XC-03-03",
+        "TC-XC-03-04",
+        "TC-XC-03-05",
+        "TC-XC-03-07",
+        "TC-XC-03-08",
+        "TC-XC-03-09"
+      ],
+      "dominant_error": "PgError.ServerError via conn.exec at tests/integration/xc03_configuration_repository_test.zig:21"
+    },
+    "XC-04": {
+      "status": "FAIL",
+      "suite": "tests/integration/xc04_kernel_determinism_test.zig",
+      "run_summary": "3 pass, 2 fail (5 total)",
+      "failed_cases": [
+        "TC-XC-04-03",
+        "TC-XC-04-05"
+      ],
+      "dominant_error": "PgError.ServerError via conn.exec"
+    },
+    "XC-05": {
+      "status": "FAIL",
+      "suite": "tests/integration/xc05_deterministic_replay_test.zig",
+      "run_summary": "0 pass, 8 fail (8 total)",
+      "failed_cases": [
+        "TC-XC-05-01",
+        "TC-XC-05-02",
+        "TC-XC-05-03",
+        "TC-XC-05-04",
+        "TC-XC-05-05",
+        "TC-XC-05-06",
+        "TC-XC-05-07",
+        "TC-XC-05-08"
+      ],
+      "dominant_error": "PgError.ServerError/Pg query failures in reconstruction paths"
+    },
+    "XC-06": {
+      "status": "FAIL",
+      "suite": "tests/integration/xc06_backwards_compatibility_test.zig",
+      "run_summary": "0 pass, 9 fail (9 total)",
+      "failed_cases": [
+        "TC-XC-06-01",
+        "TC-XC-06-02",
+        "TC-XC-06-03",
+        "TC-XC-06-04",
+        "TC-XC-06-05",
+        "TC-XC-06-06",
+        "TC-XC-06-07",
+        "TC-XC-06-08",
+        "TC-XC-06-09"
+      ],
+      "dominant_error": "Mix of assertion failures and PgError.ServerError in migration/compatibility setup"
+    }
+  },
+  "regressions": [
+    {
+      "requirement_id": "XC-03",
+      "description": "XC-03 does not remain resolved; 8 of 9 test cases failed in current verification run."
+    },
+    {
+      "requirement_id": "XC-01",
+      "description": "Observed integration leak regression: xc01_trace_propagation_test TC-XC-01-03 leaked 1 allocation."
+    }
+  ],
+  "artifacts": [
+    "tests/reports/wf03-xc02-06-testfix-20260528-integration-output.txt"
+  ]
+}

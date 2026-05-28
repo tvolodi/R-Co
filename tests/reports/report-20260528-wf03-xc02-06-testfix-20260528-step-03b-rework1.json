@@ -1,0 +1,57 @@
+{
+  "run_id": "WF03-xc02-06-testfix-20260528",
+  "workflow_id": "WF-03",
+  "step": "03b",
+  "agent": "TEST-RUNNER",
+  "timestamp": "2026-05-28T14:31:28Z",
+  "branch": "feature/WF03-xc02-06-testfix-20260528",
+  "commands": [
+    "zig build bench 2>&1 | Select-Object -First 5 | Out-String",
+    "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-xc03",
+    "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-xc04",
+    "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-xc05",
+    "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-xc06"
+  ],
+  "benchmark_precheck": {
+    "status": "PASS",
+    "exit_code": 0,
+    "note": "Benchmark output showed benchmark execution lines and did not contain BPM_DB_URL, BENCHMARK_SETUP_ERROR, or missing."
+  },
+  "summary": {
+    "scope": "XC blocker slice integration verification (XC-03..XC-06)",
+    "total": 31,
+    "passed": 31,
+    "failed": 0,
+    "skipped": 0
+  },
+  "requirement_status": {
+    "XC-03": {
+      "status": "PASS",
+      "suite": "tests/integration/xc03_configuration_repository_test.zig",
+      "run_summary": "9 pass, 0 fail (9 total)",
+      "failed_cases": []
+    },
+    "XC-04": {
+      "status": "PASS",
+      "suite": "tests/integration/xc04_kernel_determinism_test.zig",
+      "run_summary": "5 pass, 0 fail (5 total)",
+      "failed_cases": []
+    },
+    "XC-05": {
+      "status": "PASS",
+      "suite": "tests/integration/xc05_deterministic_replay_test.zig",
+      "run_summary": "8 pass, 0 fail (8 total)",
+      "failed_cases": []
+    },
+    "XC-06": {
+      "status": "PASS",
+      "suite": "tests/integration/xc06_backwards_compatibility_test.zig",
+      "run_summary": "9 pass, 0 fail (9 total)",
+      "failed_cases": []
+    }
+  },
+  "regressions": [],
+  "artifacts": [
+    "tests/reports/wf03-xc02-06-testfix-20260528-step-03b-xc-integration-output.txt"
+  ]
+}
