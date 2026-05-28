@@ -1,0 +1,72 @@
+{
+  "issue_id": "ISS-0041",
+  "title": "WF03 OIDC-27..34 validation blockers: Zig 0.16 test API drift, OIDC-34 query-result mutability mismatch, OIDC-31 stale pool API, and Windows integration env task fragility",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "MIXED_D_A_E",
+  "run_id": "WF03-oidc27-34-testfix-20260528",
+  "workflow_id": "WF-03",
+  "handoff_id": "7df9dd9a-7c1e-4439-87e2-b1697f6f0115",
+  "requirement_ids": [
+    "OIDC-27",
+    "OIDC-28",
+    "OIDC-31",
+    "OIDC-32",
+    "OIDC-34"
+  ],
+  "summary": "Resolved all reported WF03 blockers for OIDC-27..34 validation by updating two unit tests to Zig 0.16 filesystem APIs, fixing OIDC-34 migration helper QueryResult mutability, updating OIDC-31 preflight test from stale pg.Pool usage to the workspace pool module API, and replacing fragile inline PowerShell task quoting with a script-based integration runner that reliably injects BPM_TEST_DB_URL.",
+  "root_cause": {
+    "type": "test_and_env_compatibility_drift",
+    "details": "Multiple artifacts were authored against older assumptions: std.fs.cwd API in unit tests, pg.Pool symbol usage in focused integration preflight, const QueryResult deinit in migration helper, and a VS Code task command string that broke PowerShell URL assignment under nested quoting."
+  },
+  "resolution": {
+    "strategy": "MINIMAL_COMPATIBILITY_ALIGNMENT",
+    "changes": [
+      "Updated tests/unit/test_oidc28_local_dev_realm.zig and tests/unit/test_oidc32_agent_test_identities.zig to use std.Io.Dir.cwd().readFileAlloc with std.Io.Limit.",
+      "Changed src/oidc/migration_helper.zig listUnlinkedInternalUsers rows binding from const to var so deinit receives mutable QueryResult.",
+      "Reworked tests/integration/oidc31_end_to_end_auth_suite_test.zig to use @import(\"pool\") and pool_mod.Pool.init/queryRow semantics.",
+      "Updated build.zig OIDC-31 focused test target imports to provide the pool module.",
+      "Reworked .vscode/tasks.json zig-test-integration to execute .vscode/run-zig-test-integration.ps1, ensuring deterministic BPM_TEST_DB_URL injection on Windows PowerShell."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS",
+        "evidence": "Command completed with no compile output."
+      },
+      {
+        "command": "zig build test",
+        "result": "PASS",
+        "evidence": "Command completed with no compile/test failure output."
+      },
+      {
+        "command": ".vscode/run-zig-test-integration.ps1",
+        "result": "PASS",
+        "evidence": "MISSING_ENV=false and INTEGRATION_EXIT=0."
+      },
+      {
+        "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration-oidc31",
+        "result": "PASS",
+        "evidence": "OIDC31_EXIT=0 after clean-test-db pre-step."
+      }
+    ]
+  },
+  "files_changed": [
+    "tests/unit/test_oidc28_local_dev_realm.zig",
+    "tests/unit/test_oidc32_agent_test_identities.zig",
+    "src/oidc/migration_helper.zig",
+    "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+    "build.zig",
+    ".vscode/tasks.json",
+    ".vscode/run-zig-test-integration.ps1"
+  ],
+  "created_at": "2026-05-28T02:35:43Z",
+  "resolved_at": "2026-05-28T02:35:43Z",
+  "prevention": [
+    "For Zig 0.16-targeted tests, mirror the repository's std.Io.Dir.cwd patterns instead of std.fs.cwd.",
+    "Use the local pool module abstraction in integration tests; do not depend directly on vendor pg symbols unless verified in the current vendor API.",
+    "Avoid inline PowerShell environment setup with URL literals inside task command strings; prefer script-file execution for deterministic quoting behavior."
+  ]
+}

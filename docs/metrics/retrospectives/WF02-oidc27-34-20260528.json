@@ -1,0 +1,66 @@
+{
+  "run_id": "WF02-oidc27-34-20260528",
+  "requirement_ids": [
+    "OIDC-27",
+    "OIDC-28",
+    "OIDC-29",
+    "OIDC-30",
+    "OIDC-31",
+    "OIDC-32",
+    "OIDC-33",
+    "OIDC-34"
+  ],
+  "difficulty": 4,
+  "integration_surface": "high",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 31,
+  "actual_minutes_total": 80.0,
+  "variance_pct": 158.1,
+  "by_step": {
+    "code-designer": {
+      "estimated": 8,
+      "actual": 3.7,
+      "variance_pct": -53.8
+    },
+    "backend-dev": {
+      "estimated": 9,
+      "actual": 72.6,
+      "variance_pct": 706.7
+    },
+    "test-designer": {
+      "estimated": 6,
+      "actual": 0.5,
+      "variance_pct": -91.7
+    },
+    "test-runner": {
+      "estimated": 6,
+      "actual": 2.0,
+      "variance_pct": -66.7
+    },
+    "release-validator": {
+      "estimated": 2,
+      "actual": 1.2,
+      "variance_pct": -40.0
+    }
+  },
+  "rework_steps": [
+    "test-runner"
+  ],
+  "rule_adjustments": [
+    {
+      "step": "test-designer",
+      "difficulty": 4,
+      "old_estimate": 4,
+      "new_estimate": 2,
+      "reason": "Observed 3 consecutive runs at D4 with >25% variance"
+    },
+    {
+      "step": "release-validator",
+      "difficulty": 4,
+      "old_estimate": 1,
+      "new_estimate": 1,
+      "reason": "Observed 2 consecutive runs at D4 with >25% variance"
+    }
+  ],
+  "completed_at": "2026-05-28T03:57:20Z"
+}
