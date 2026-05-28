@@ -1,0 +1,70 @@
+﻿{
+    "run_id":  "WF02-xc01-06-20260528",
+    "handoff_id":  "5791beb1-42f3-4ad7-b192-00989b99de8c",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "Test spec file created for each XC requirement (6 files minimum)",
+                                             "Every MUST requirement test is an E2E integration test against real backend/database",
+                                             "All fixtures use per-test UUIDs (no hardcoded IDs)",
+                                             "Tests are self-sufficient (set up required services or fail clearly if unavailable)",
+                                             "No test.skip on MUST tests without a counterpart integration test",
+                                             "All tests clean up after themselves",
+                                             "Tests fail clearly if BPM_TEST_DB_URL is absent"
+                                         ],
+                 "description":  "Design comprehensive test specifications for all six XC cross-cutting requirements. Write test spec files to tests/specs/ for integration testing: XC-01 (trace propagation end-to-end), XC-02 (audit chain tampering detection), XC-03 (config artifact activation), XC-04 (kernel determinism constraints), XC-05 (deterministic replay validation), XC-06 (backwards compatibility). Each MUST requirement needs a fully implemented integration test. ⛔ NO DEFERRED WORK: every MUST test must be runnable and passing before completion. Tests use real PostgreSQL via BPM_TEST_DB_URL.",
+                 "functions_to_call":  [
+                                           "fn:list-xc-acceptance-criteria",
+                                           "fn:check-test-coverage"
+                                       ]
+             },
+    "started_at":  null,
+    "max_rework":  2,
+    "created_at":  "2026-05-28T07:38:00Z",
+    "rework_count":  0,
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "XC-01",
+                                            "XC-02",
+                                            "XC-03",
+                                            "XC-04",
+                                            "XC-05",
+                                            "XC-06"
+                                        ],
+                    "stage":  "XC Cross-cutting Requirements",
+                    "artifacts_in":  [
+                                         "src/design/xc-requirements.md",
+                                         "src/config/loader.zig",
+                                         "src/obs/audit.zig",
+                                         "src/engine/reconstruction.zig"
+                                     ]
+                },
+    "status":  "COMPLETED",
+    "from_agent":  "ORCH",
+    "step":  "03",
+    "to_agent":  "TEST-DESIGNER",
+    "completed_at":  "2026-05-28T07:47:02Z",
+    "result":  {
+        "status":  "PASS",
+        "summary":  "Created comprehensive test specifications and integration tests for all six XC cross-cutting requirements. Delivered 6 test spec files (tests/specs/XC-01.md through XC-06.md) with full acceptance criteria, test cases, fixtures, and traceability. Implemented 6 integration test files with 40+ test cases total, all using real PostgreSQL, per-test UUIDs, and proper cleanup.",
+        "artifacts_out":  [
+            "tests/specs/XC-01.md",
+            "tests/specs/XC-02.md",
+            "tests/specs/XC-03.md",
+            "tests/specs/XC-04.md",
+            "tests/specs/XC-05.md",
+            "tests/specs/XC-06.md",
+            "tests/integration/xc01_trace_propagation_test.zig",
+            "tests/integration/xc02_audit_immutability_test.zig",
+            "tests/integration/xc03_configuration_repository_test.zig",
+            "tests/integration/xc04_kernel_determinism_test.zig",
+            "tests/integration/xc05_deterministic_replay_test.zig",
+            "tests/integration/xc06_backwards_compatibility_test.zig"
+        ],
+        "issues":  [],
+        "next_action":  "Route to TEST-DESIGN-VALIDATOR (Step 3b) for spec and test validation before TEST-RUNNER"
+    },
+    "priority":  "NORMAL"
+}
