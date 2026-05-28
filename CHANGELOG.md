@@ -25,6 +25,22 @@ All notable changes to the BPM Platform are documented here.
 All 13 MUST requirements fully implemented and unit tested with 471 passing test cases. Repository module provides complete artifact lifecycle management from creation through versioning and tenant-scoped activation. Unit test coverage excellent; integration with HTTP API verified via Stage 4 routes.
 
 Status: Framework complete, all acceptance criteria met. Release approval: docs/status/release-stage10-repo-20260528.json
+### Stage F1 Batch 1 — Application Shell and Authentication (RELEASED 2026-05-28)
+
+#### Frontend Shell Rewrite — JWT Auth, Role Nav, Session Expiry, User Identity
+
+- **SH-01:** Login screen with JWT token input. Dedicated `/login` page with token input field; JWT stored in `sessionStorage` (XSS-safe, no `localStorage`); redirects to originally requested URL on success; displays clear error on invalid/expired token.
+- **SH-02:** Session expiry detection with redirect and banner. Axios response interceptor intercepts HTTP 401 responses; clears session token; redirects to `/login`; shows persistent banner message explaining session expiry.
+- **SH-03:** Role-filtered navigation (PLATFORM_ADMIN, PROCESS_DESIGNER, TASK_WORKER/OPERATOR). `AppShell` sidebar renders only routes permitted for the authenticated user's role; non-permitted routes are hidden (not merely disabled); role derived from JWT claims.
+- **SH-04:** Active user identity indicator with logout. Header displays authenticated user's display name or email from JWT claims; logout button clears session and redirects to `/login`.
+
+Implementation: `web/src/auth/`, `web/src/components/layout/AppShell.tsx`, `web/src/pages/LoginPage.tsx`, `web/src/api/client.ts`, `web/src/router.tsx`
+
+E2E tests: Playwright suite covering all four requirements with visual confirmation screenshots. All tests pass against real backend.
+
+Release approval: `docs/status/release-F1-SH01-04-20260528.json`
+
+Requirements released: SH-01, SH-02, SH-03, SH-04 (MUST, Stage F1) — RELEASED
 
 ### Stage 9 — Wasm Module Execution (RELEASED 2026-05-28)
 

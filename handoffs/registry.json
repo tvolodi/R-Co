@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2026-05-23T18:08:12Z",
-  "last_updated": "2026-05-28T07:00:00Z",
+  "last_updated": "2026-05-28T07:23:33Z",
   "entries": [
     {
       "handoff_id": "3f6f5088-3f90-4f42-bf55-aa05f6f89192",
@@ -6361,7 +6361,67 @@
       "to_agent": "FRONTEND-DEV",
       "created_at": "2026-05-28T07:00:00Z",
       "started_at": "2026-05-28T07:00:10Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
+      "stage": "Stage F1 - Application Shell and Authentication"
+    },
+    {
+      "handoff_id": "1893476d-07fa-4631-9b76-dadbe25a5179",
+      "file": "handoffs/WF02-shf1a-20260528/step-03-test-designer.json",
+      "run_id": "WF02-shf1a-20260528",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-05-28T07:10:00Z",
+      "started_at": "2026-05-28T07:10:10Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1 - Application Shell and Authentication"
+    },
+    {
+      "handoff_id": "f8b8287a-97c3-4de0-964b-e0f006905031",
+      "file": "handoffs/WF02-shf1a-20260528/step-03b-test-design-validator.json",
+      "run_id": "WF02-shf1a-20260528",
+      "step": "03b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-05-28T07:20:00Z",
+      "started_at": "2026-05-28T07:20:10Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1 - Application Shell and Authentication"
+    },
+    {
+      "handoff_id": "6fdee0cb-15bc-4ecb-80d1-3e9e949b0bdc",
+      "file": "handoffs/WF02-shf1a-20260528/step-04-test-runner.json",
+      "run_id": "WF02-shf1a-20260528",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-28T07:22:00Z",
+      "started_at": "2026-05-28T07:22:10Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1 - Application Shell and Authentication"
+    },
+    {
+      "handoff_id": "e9627ea6-99b2-45c4-99a0-496edcc3d2f9",
+      "file": "handoffs/WF02-shf1a-20260528/step-05-release-validator.json",
+      "run_id": "WF02-shf1a-20260528",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-05-28T07:30:00Z",
+      "started_at": "2026-05-28T07:30:10Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1 - Application Shell and Authentication"
+    },
+    {
+      "handoff_id": "3180f2f9-dfa7-48d7-af36-43b4a1d889f6",
+      "file": "handoffs/WF02-shf1a-20260528/step-06-doc-updater.json",
+      "run_id": "WF02-shf1a-20260528",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-05-28T07:35:00Z",
+      "started_at": "2026-05-28T07:35:10Z",
+      "status": "COMPLETED",
       "stage": "Stage F1 - Application Shell and Authentication"
     }
   ]
