@@ -77,6 +77,50 @@ WF-01 (requirement drafting) may skip git wrapper steps because it writes only t
 
 ---
 
+## 2a. Batch Cap — Mandatory
+
+A single WF-02 run MUST cover **at most 4 requirements**. If more are ready, split them into multiple sequential WF-02 runs. Large batches are the strongest predictor of WF-03 rework loops (observed in IDN-01: 8 reqs, 3 WF-03 cycles; SCH-07: 11 reqs, 4 WF-03 cycles).
+
+Splitting is cheap. Re-running one requirement due to blast radius from an unrelated failure in the same batch is expensive.
+
+---
+
+## 2b. WF-02 Pipeline Step Routing Table
+
+| Step | Agent | Gate | ORCH action on FAIL |
+|---|---|---|---|
+| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not proceed |
+| 1 | CODE-DESIGNER | — | Rework |
+| **1b** | **CODE-DESIGN-VALIDATOR** | **Hard gate** | Rework CODE-DESIGNER |
+| 2a | BACKEND-DEV | — | Rework |
+| 2b | FRONTEND-DEV | — | Rework |
+| 3 | TEST-DESIGNER | — | Rework |
+| **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate** | Rework TEST-DESIGNER; if infra → ADHOC BACKEND-DEV first |
+| 4 | TEST-RUNNER | — | Route to WF-03; after fix, restart from Step 3b |
+| 5 | RELEASE-VALIDATOR | — | Route to blocking agent |
+| 6 | DOC-UPDATER | — | Rework |
+| Final | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not write DONE log |
+
+---
+
+## 3. Orchestrator Decision Tree
+
+| ID | Name | Entry trigger | Document |
+|---|---|---|---|
+| WF-01 | Requirement Development & Validation | New feature request or stage begins | `docs/agents/workflows/WF-01_requirement_development.md` |
+| WF-02 | Requirement Implementation | Requirement status = VALIDATED | `docs/agents/workflows/WF-02_requirement_implementation.md` |
+| WF-03 | Issue Resolving | Test failure or bug report | `docs/agents/workflows/WF-03_issue_resolving.md` |
+| WF-04 | Full Test Run | Pre-release or full-suite validation | `docs/agents/workflows/WF-04_full_test_run.md` |
+
+**Git protocols** (not workflows — referenced by WF-02, WF-03, WF-04):
+
+| Protocol | Function | Document |
+|---|---|---|
+| GIT_SETUP | `fn:git-setup` — pull, branch, push | `docs/agents/protocols/GIT_SETUP.md` |
+| GIT_MERGE | `fn:git-merge` — rebase, PR, merge, cleanup | `docs/agents/protocols/GIT_MERGE.md` |
+
+---
+
 ## 3. Orchestrator Decision Tree
 
 ```
@@ -278,28 +322,35 @@ If any check fails, the Orchestrator blocks the Stage N+1 launch and reports the
 
 ---
 
-## 8a. Pre-Dispatch Benchmark Environment Check
+## 8a. Benchmark Environment Check — BEFORE Dispatching TEST-RUNNER
 
-Before dispatching RELEASE-VALIDATOR for any WF-02 Step 5, the Orchestrator MUST verify the
-benchmark environment is usable. This avoids multi-cycle rework loops caused solely by a
-missing `BPM_DB_URL` (the most expensive class of RELEASE-VALIDATOR failure observed in
-Stage 5 — SCH-01 required 4 extra handoffs, IDN-01 and SCH-07 each required 1 extra).
+Before dispatching TEST-RUNNER for any WF-02 Step 4, the Orchestrator MUST verify the
+benchmark environment is usable. **Do not dispatch TEST-RUNNER first and check afterwards.**
+This check eliminates the BENCH_ENV_BLOCK loop (observed in SCH-01, IDN-01, SCH-07 — each
+costing 1-4 extra handoffs).
 
 ```bash
-zig build bench 2>&1 | head -5 | grep -qiE "BPM_DB_URL|BENCHMARK_SETUP_ERROR|missing.*URL" \
-  && echo "BLOCKED" || echo "CLEARED"
+zig build bench 2>&1 | head -5
 ```
 
-- If `CLEARED`: dispatch RELEASE-VALIDATOR normally.
-- If `BLOCKED`: create an interim BACKEND-DEV handoff with task = "Set up benchmark
-  environment: export BPM_DB_URL pointing to the test PostgreSQL instance and verify
-  `zig build bench` exits 0". Re-run the check before dispatching RELEASE-VALIDATOR.
+- If output is clean (exits 0 with benchmark numbers): log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
+- If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: create an ADHOC BACKEND-DEV handoff with task = "Set up benchmark environment: export BPM_DB_URL pointing to the test PostgreSQL instance and verify `zig build bench` exits 0". Only dispatch TEST-RUNNER after the ADHOC returns PASS.
 
 Log result in `handoffs/orchestrator.log` with action `BENCH_ENV_CHECK`:
 ```
 <ISO8601> | BENCH_ENV_CHECK | <RUN-ID> | --- | ORCH | CLEARED
 <ISO8601> | BENCH_ENV_BLOCK | <RUN-ID> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for env setup
 ```
+
+## 8b. Infrastructure Problems — ADHOC Handoff, Not Deferral
+
+If ANY infrastructure dependency is unavailable at any pipeline step (test database, Keycloak, S3, bench DB, etc.):
+
+1. Do **NOT** defer the blocked step or approve partial results.
+2. Create an ADHOC BACKEND-DEV handoff immediately: "Resolve infrastructure blocker: `<describe>`"
+3. Acceptance criterion: target service passes health check.
+4. Only advance the blocked step after the ADHOC returns PASS.
+5. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for <service> setup`
 
 ---
 

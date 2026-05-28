@@ -1,0 +1,84 @@
+{
+  "test_run_id": "WF02-ext02-20260528-integration",
+  "run_id": "WF02-ext02-20260528",
+  "requirement_ids": ["EXT-02"],
+  "layer": "integration",
+  "executed_at": "2026-05-28T05:40:34Z",
+  "environment": {
+    "db_url": "postgres://bpm:bpm@localhost:5433/bpm_test",
+    "zig_version": "0.16.0"
+  },
+  "summary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0
+  },
+  "results": [
+    {
+      "test_id": "TC-EXT-02-INT-01",
+      "name": "Admin create subscription returns 201 and persists normalized row",
+      "status": "PASS",
+      "notes": null
+    },
+    {
+      "test_id": "TC-EXT-02-INT-02",
+      "name": "GET subscriptions is admin-only and redacts secret value",
+      "status": "PASS",
+      "notes": null
+    },
+    {
+      "test_id": "TC-EXT-02-INT-03",
+      "name": "DELETE subscription is admin-only and removes row",
+      "status": "PASS",
+      "notes": null
+    },
+    {
+      "test_id": "TC-EXT-02-INT-04",
+      "name": "Matching lifecycle event fans out and emits contract-compliant request body/headers",
+      "status": "PASS",
+      "notes": null
+    },
+    {
+      "test_id": "TC-EXT-02-INT-05",
+      "name": "Signature header is present only for secret-configured subscription and matches body HMAC",
+      "status": "PASS",
+      "notes": null
+    },
+    {
+      "test_id": "TC-EXT-02-INT-06",
+      "name": "Non-2xx and timeout failures retry with at-least-once semantics through attempt 5 budget",
+      "status": "PASS",
+      "notes": null
+    },
+    {
+      "test_id": "TC-EXT-02-INT-07",
+      "name": "Fifth consecutive failure pauses subscription and emits OBS-06 alert event",
+      "status": "PASS",
+      "notes": null
+    },
+    {
+      "test_id": "TC-EXT-02-INT-08",
+      "name": "Create/delete operations write OBS-03 audit rows atomically",
+      "status": "PASS",
+      "notes": null
+    },
+    {
+      "test_id": "TC-EXT-02-INT-09",
+      "name": "2xx with invalid/non-JSON response body is success without retry",
+      "status": "PASS",
+      "notes": null
+    },
+    {
+      "test_id": "TC-EXT-02-INT-10",
+      "name": "Same source event with multiple subscriptions keeps retry counters independent",
+      "status": "PASS",
+      "notes": null
+    }
+  ],
+  "unrelated_failures_observed": {
+    "count": 162,
+    "description": "Pre-existing DefinitionError.TransactionFailed failures in api02, api03, obs03, adp05 integration suites — unrelated to EXT-02 (no overlap with webhook modules)",
+    "impact_on_ext02": "none"
+  }
+}

@@ -427,7 +427,7 @@ fn reportResults(
     std.debug.print("  \"metadata\": {{\n", .{});
     std.debug.print("    \"timestamp\": \"{s}\",\n", .{timestamp});
     std.debug.print("    \"platform\": \"commodity x86_64/ARM64\",\n", .{});
-    std.debug.print("    \"compiler\": \"zig 0.17.0\",\n", .{});
+    std.debug.print("    \"compiler\": \"zig 0.16.0\",\n", .{});
     std.debug.print("    \"build_mode\": \"ReleaseFast\",\n", .{});
     std.debug.print("    \"iterations_per_profile\": {},\n", .{MEASUREMENT_ITERATIONS});
     std.debug.print("    \"warmup_iterations\": {}\n", .{WARMUP_ITERATIONS});

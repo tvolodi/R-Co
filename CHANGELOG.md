@@ -366,6 +366,12 @@ Requirements released: LUA-06 through LUA-16 (MUST, Stage 8) - RELEASED
 - Validation evidence passed in tests/reports/report-20260525-wf02-ext01-step-04d-test-runner-rework3.json; release gate approval is recorded in docs/status/release-EXT-01-20260525.json.
 - Requirement: EXT-01 (MUST, Stage 6) - RELEASED
 
+### EXT-02 - Webhook event dispatch (RELEASED 2026-05-28)
+- Implemented outbound webhook calls on lifecycle events with at-least-once delivery semantics, exponential backoff retry, and HMAC-SHA256 payload signing.
+- Added subscription management API restricted to PLATFORM_ADMIN, supporting create/list/delete operations on webhook subscriptions per tenant.
+- Release approval is recorded in docs/status/release-stage6-ext02-20260528.json.
+- Requirement: EXT-02 (MUST, Stage 6) - RELEASED
+
 ### EXT-03 - Plugin interface (RELEASED 2026-05-25)
 - Implemented a stable startup-only plugin registration surface for custom node handlers, including post-bootstrap registry freeze enforcement.
 - Added plugin execution integration with explicit plugin-over-built-in precedence, COMPLETE output variable merge semantics, and ERROR routing through existing EE-10 handling.

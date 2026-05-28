@@ -79,9 +79,44 @@ If `has_estimation` is `True`, execute the full retrospective procedure from `do
 5. Write `docs/metrics/retrospectives/<run_id>.json`
 6. Include `docs/metrics/retrospectives/<run_id>.json` in `artifacts_out`
 
-## Complete the handoff
+## Registry cleanup (mandatory, runs after changelog + status update)
 
-First, get the actual current UTC time — NEVER invent a timestamp:
+After updating the changelog and requirement status, archive terminal entries from the active registry:
+
+```python
+import json, os
+
+with open("handoffs/registry.json") as f:
+    reg = json.load(f)
+
+run_id = "<current-run-id>"  # from your handoff
+terminal = [e for e in reg["entries"]
+            if e.get("run_id") == run_id and e["status"] in ("COMPLETED", "FAILED", "ESCALATED", "CANCELLED")]
+active   = [e for e in reg["entries"]
+            if not (e.get("run_id") == run_id and e["status"] in ("COMPLETED", "FAILED", "ESCALATED", "CANCELLED"))]
+
+# Save per-run registry snapshot (for history)
+run_registry_path = f"handoffs/{run_id}/registry.json"
+if os.path.exists(run_registry_path):
+    with open(run_registry_path) as f:
+        run_reg = json.load(f)
+else:
+    run_reg = {"schema_version": 1, "run_id": run_id, "entries": []}
+run_reg["entries"] = terminal
+with open(run_registry_path, "w") as f:
+    json.dump(run_reg, f, indent=2)
+
+# Remove terminal entries from active registry
+reg["entries"] = active
+with open("handoffs/registry.json", "w") as f:
+    json.dump(reg, f, indent=2)
+
+print(f"Archived {len(terminal)} terminal entries for {run_id}; {len(active)} active entries remain")
+```
+
+Include `handoffs/registry.json` and `handoffs/<run_id>/registry.json` in `artifacts_out`.
+
+## Complete the handoff
 
 **On Windows (preferred):**
 ```powershell

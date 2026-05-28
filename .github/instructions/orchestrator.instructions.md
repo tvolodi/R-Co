@@ -44,10 +44,27 @@ AGENT_ID: ORCH
 5. Determine which workflow applies (see ORCHESTRATOR.md §3)
 6. Create the first handoff for the appropriate workflow
 
+## Timestamp rule — HARD REQUIREMENT
+
+**NEVER write a timestamp from memory or from the session context date.** Every `created_at` and `started_at` value MUST come from running the shell command below. Copy the exact printed string — no editing.
+
+**On Windows (preferred):**
+```powershell
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+**On Linux/macOS or Python fallback:**
+```bash
+python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"
+```
+
+Round numbers like `T18:30:00Z` are a red flag that the timestamp was invented. If you see one in your output, stop and re-run the command. Using the session context date ("The current date is...") is **forbidden**.
+
+**`started_at` stamping:** Run the shell command immediately before spawning each subagent and write its output as `started_at`. Do NOT reuse `created_at` for `started_at`.
+
 ## Creating a handoff
 
-1. Generate a unique ID (use format: timestamp + sequence, e.g. `20260520-001`)
-2. Create file: `handoffs/<WF-ID>-<SEQ>-<FROM>-to-<TO>-<description>.json`
+1. Run the timestamp command above and save its output as `<NOW>`
+2. Create file: `handoffs/<run-id>/step-<NN>-<agent-slug>.json` with `created_at: <NOW>`
 3. Fill all fields per the schema in `AGENT_SYSTEM.md §4.3`
 4. **For WF-02 and WF-04 runs:** also create `handoffs/<run_id>/estimation.json` per `docs/agents/ORCHESTRATOR.md §7` (difficulty 1–5, estimated minutes per step, log `ESTIMATE` entry to orchestrator.log)
 5. Append to `handoffs/registry.json`
@@ -55,7 +72,8 @@ AGENT_ID: ORCH
    ```
    <ISO8601> | ROUTE | <WF-ID> | <handoff_id> | ORCH → <TO_AGENT> | PENDING
    ```
-7. Tell the user which agent should now be invoked and with which handoff ID
+7. Run the timestamp command again and write as `started_at` before spawning the subagent
+8. Tell the user which agent should now be invoked and with which handoff ID
 
 ## Git protocol wrapping — MANDATORY BLOCKING GATES
 
@@ -79,6 +97,37 @@ AGENT_ID: ORCH
 **Exception:** WF-01 (requirement drafting) can skip git steps since it only modifies docs.
 
 See protocols: `docs/agents/protocols/GIT_SETUP.md` and `docs/agents/protocols/GIT_MERGE.md`.
+
+## WF-02 pipeline — step routing table
+
+| Step | Agent | Gate | ORCH action on FAIL |
+|---|---|---|---|
+| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not proceed |
+| 1 | CODE-DESIGNER | — | Rework |
+| **1b** | **CODE-DESIGN-VALIDATOR** | **Hard gate** | Rework CODE-DESIGNER; status → DESIGN-REVIEWED on PASS |
+| 2a | BACKEND-DEV | — | Rework |
+| 2b | FRONTEND-DEV | — | Rework |
+| 3 | TEST-DESIGNER | — | Rework |
+| **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate** | Rework TEST-DESIGNER; if infra problem → ADHOC BACKEND-DEV first; status → TEST-DESIGN-REVIEWED on PASS |
+| 4 | TEST-RUNNER | — | Route to WF-03; after fix restart from Step 3b |
+| 5 | RELEASE-VALIDATOR | — | Route to blocking agent |
+| 6 | DOC-UPDATER | — | Rework |
+| Final | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not write DONE log |
+
+## Benchmark environment check — BEFORE dispatching TEST-RUNNER (Step 4)
+
+Before dispatching TEST-RUNNER, run:
+```bash
+zig build bench 2>&1 | head -5
+```
+- If exits 0 with benchmark numbers: log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
+- If shows `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: do NOT dispatch TEST-RUNNER yet. Create an ADHOC BACKEND-DEV handoff. Re-run this check after the ADHOC returns PASS.
+
+Log:
+```
+<ts> | BENCH_ENV_CHECK | <run-id> | --- | ORCH | CLEARED
+<ts> | BENCH_ENV_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for env setup
+```
 
 ## Routing decisions
 
@@ -106,6 +155,18 @@ If not: tell the user which requirements are blocking and why.
 - You MUST escalate (not silently continue) when `rework_count >= max_rework`
 - Do not treat unrelated pre-existing workspace changes as blockers or user-facing issues by default.
 - Discuss workspace changes only for direct file overlap/conflict or when they block acceptance criteria.
+
+## Batch cap — MANDATORY
+
+A single WF-02 run MUST contain **at most 4 requirements**. If a feature group has more, split it into multiple sequential WF-02 runs. Larger batches increase blast radius when WF-03 rework is needed and corrupt retrospective timing data.
+
+## Infrastructure problems — ADHOC handoff, not deferral
+
+If the benchmark environment, test database, Keycloak, or any other infrastructure is unavailable:
+- **Do NOT defer** the problem or skip validation steps.
+- Immediately create an ADHOC BACKEND-DEV handoff titled "Resolve infrastructure blocker: `<describe problem>`" with acceptance criteria that the target service passes a health check.
+- Only advance to the blocked pipeline step after the ADHOC handoff returns PASS.
+- Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for <service> setup`
 
 ## Execution style
 

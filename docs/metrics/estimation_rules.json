@@ -1,7 +1,7 @@
 {
-  "version": "1.0",
-  "updated_at": "2026-05-28T03:57:20Z",
-  "updated_by": "WF02-oidc27-34-20260528",
+  "version": "1.1",
+  "updated_at": "2026-06-02T00:00:00Z",
+  "updated_by": "ORCH-optimization-phase3",
   "update_count": 53,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
@@ -59,6 +59,20 @@
       2,
       1,
       20
+    ],
+    "code-design-validator": [
+      5,
+      8,
+      12,
+      15,
+      20
+    ],
+    "test-design-validator": [
+      8,
+      12,
+      18,
+      25,
+      35
     ]
   },
   "rework_surcharge_pct": 50,

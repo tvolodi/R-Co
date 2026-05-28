@@ -25,9 +25,11 @@ This document is the root reference for the multi-agent system that develops and
 | `REQ-ANALYST` | **Requirement Analyst** | Drafts, refines, and structures requirements | `docs/`, `handoffs/` |
 | `REQ-VALIDATOR` | **Requirement Validator** | Validates requirements for completeness, consistency, testability, and traceability | `handoffs/` |
 | `CODE-DESIGNER` | **Code Designer** | Produces module interfaces, type definitions, data-flow diagrams, and implementation plans before any code is written | `src/design/`, `handoffs/` |
+| `CODE-DESIGN-VALIDATOR` | **Code Design Validator** | Reviews design artefact produced by CODE-DESIGNER; ensures all requirement acceptance criteria are covered, design is implementation-code-free, and is complete enough for BACKEND-DEV/FRONTEND-DEV to proceed without ambiguity. **Hard gate — implementation must not start until this returns PASS.** | `handoffs/` |
 | `BACKEND-DEV` | **Backend Developer** | Implements Zig source code per design artefacts | `src/`, `migrations/`, `handoffs/` |
 | `FRONTEND-DEV` | **Frontend Developer** | Implements React/TypeScript source code per design artefacts | `web/`, `handoffs/` |
 | `TEST-DESIGNER` | **Test Designer** | Produces test plans, test case specifications, and test data factories | `tests/specs/`, `handoffs/` |
+| `TEST-DESIGN-VALIDATOR` | **Test Design Validator** | Reviews test design produced by TEST-DESIGNER; verifies every MUST requirement has a runnable integration test, no SkipZigTest on MUST tests without a counterpart, fixtures are isolated, and tests are self-sufficient. **Hard gate — TEST-RUNNER must not start until this returns PASS.** | `handoffs/` |
 | `TEST-RUNNER` | **Test Runner** | Executes test suites, collects results, produces a structured test report | `tests/reports/`, `handoffs/` |
 | `ISSUE-FIXER` | **Issue Fixer** | Diagnoses and corrects failing tests or runtime errors | `src/`, `web/`, `tests/`, `handoffs/` |
 | `RELEASE-VALIDATOR` | **Release Validator** | Validates that a stage increment meets all MUST requirements and all NFRs before release | `handoffs/`, `docs/status/` |
@@ -41,9 +43,11 @@ This document is the root reference for the multi-agent system that develops and
 | `REQ-ANALYST` | ✓ | ✓ | ✗ | ✗ | ✗ |
 | `REQ-VALIDATOR` | ✓ | ✓ (handoffs) | ✗ | ✗ | ✗ |
 | `CODE-DESIGNER` | ✓ | ✓ | ✗ | ✗ | ✗ |
+| `CODE-DESIGN-VALIDATOR` | ✓ | ✓ (handoffs) | ✗ | ✗ | ✗ |
 | `BACKEND-DEV` | ✓ | ✓ | ✓ (build, migrate, git, gh) | ✗ | ✗ |
 | `FRONTEND-DEV` | ✓ | ✓ | ✓ (build, lint, git, gh) | ✗ | ✗ |
 | `TEST-DESIGNER` | ✓ | ✓ | ✗ | ✗ | ✗ |
+| `TEST-DESIGN-VALIDATOR` | ✓ | ✓ (handoffs) | ✗ | ✗ | ✗ |
 | `TEST-RUNNER` | ✓ | ✓ (reports) | ✓ (tests only) | ✗ | ✗ |
 | `ISSUE-FIXER` | ✓ | ✓ | ✓ (build, tests) | ✗ | ✗ |
 | `RELEASE-VALIDATOR` | ✓ | ✓ (status) | ✓ (tests, benchmarks) | ✗ | ✗ |
@@ -233,9 +237,9 @@ All requirement IDs from the functional requirements spec carry a status tracked
 **Status lifecycle:**
 
 ```
-DRAFT → DESIGNED → IMPLEMENTED → TESTED → RELEASED
-                ↑                ↑
-          (rework loop)    (rework loop)
+DRAFT → VALIDATED → DESIGNED → DESIGN-REVIEWED → IMPLEMENTED → TEST-DESIGNED → TEST-DESIGN-REVIEWED → TESTED → RELEASED
+                   ↑                               ↑                                    ↑
+             (rework loop)                   (rework loop)                       (rework loop)
 ```
 
 | Status | Set by agent | Meaning |
@@ -243,7 +247,10 @@ DRAFT → DESIGNED → IMPLEMENTED → TESTED → RELEASED
 | `DRAFT` | `REQ-ANALYST` | Requirement written, not yet validated |
 | `VALIDATED` | `REQ-VALIDATOR` | Requirement complete, consistent, testable |
 | `DESIGNED` | `CODE-DESIGNER` | Code design artefact exists |
+| `DESIGN-REVIEWED` | `CODE-DESIGN-VALIDATOR` | Design artefact verified — all acceptance criteria covered; BACKEND-DEV may now start |
 | `IMPLEMENTED` | `BACKEND-DEV` / `FRONTEND-DEV` | Code merged, compiles |
+| `TEST-DESIGNED` | `TEST-DESIGNER` | Test spec and source files exist |
+| `TEST-DESIGN-REVIEWED` | `TEST-DESIGN-VALIDATOR` | Test design verified — every MUST req has integration test, no deferred coverage; TEST-RUNNER may now start |
 | `TESTED` | `TEST-RUNNER` | All test cases for this requirement pass |
 | `RELEASED` | `RELEASE-VALIDATOR` | Included in a released stage increment |
 

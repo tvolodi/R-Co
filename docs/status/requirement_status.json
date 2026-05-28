@@ -958,10 +958,23 @@
       "last_updated": "2026-05-25T10:22:34Z"
     },
     "EXT-02": {
-      "status": "VALIDATED",
+      "status": "RELEASED",
       "stage": 6,
       "priority": "MUST",
-      "title": "Webhook event dispatch"
+      "title": "Webhook event dispatch",
+      "test_spec": "tests/specs/EXT-02.md",
+      "test_run": "WF02-ext02-20260528-integration",
+      "tested_at": "2026-05-28",
+      "released_at": "2026-05-28",
+      "release_run": "WF02-ext02-20260528",
+      "implemented_in": [
+        "src/webhook/subscription_store.zig",
+        "src/webhook/dispatcher.zig",
+        "src/webhook/signing.zig",
+        "src/api/routes/webhooks.zig",
+        "migrations/023_ext02_webhook_event_dispatch.sql"
+      ],
+      "last_updated": "2026-05-28T05:43:14Z"
     },
     "EXT-03": {
       "status": "RELEASED",

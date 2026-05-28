@@ -198,6 +198,49 @@ with open("handoffs/escalations.json", "w") as f:
 print("ESCALATED — human review required. See handoffs/escalations.json.")
 ```
 
+## Batch cap — MANDATORY
+
+A single WF-02 run MUST contain **at most 4 requirements**. If more are ready, split into multiple sequential WF-02 runs. Large batches amplify WF-03 blast radius and corrupt timing metrics.
+
+## WF-02 pipeline — step routing table
+
+| Step | Agent | Gate | ORCH action on FAIL |
+|---|---|---|---|
+| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not proceed |
+| 1 | CODE-DESIGNER | — | Rework |
+| **1b** | **CODE-DESIGN-VALIDATOR** | **Hard gate** | Rework CODE-DESIGNER; status → DESIGN-REVIEWED on PASS |
+| 2a | BACKEND-DEV | — | Rework |
+| 2b | FRONTEND-DEV | — | Rework |
+| 3 | TEST-DESIGNER | — | Rework |
+| **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate** | Rework TEST-DESIGNER; if infra problem → ADHOC BACKEND-DEV first; status → TEST-DESIGN-REVIEWED on PASS |
+| 4 | TEST-RUNNER | — | Route to WF-03; after fix restart from Step 3b |
+| 5 | RELEASE-VALIDATOR | — | Route to blocking agent |
+| 6 | DOC-UPDATER | — | Rework |
+| Final | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not write DONE log |
+
+## Benchmark environment check — BEFORE dispatching TEST-RUNNER (Step 4)
+
+Before dispatching TEST-RUNNER, run:
+```bash
+zig build bench 2>&1 | head -5
+```
+- If exits 0 with benchmark numbers: log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
+- If shows `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: **do NOT dispatch TEST-RUNNER yet**. Create an ADHOC BACKEND-DEV handoff: "Set up benchmark environment so `zig build bench` exits 0." Re-run this check after the ADHOC returns PASS.
+
+Log:
+```
+<ts> | BENCH_ENV_CHECK | <run-id> | --- | ORCH | CLEARED
+<ts> | BENCH_ENV_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for env setup
+```
+
+## Infrastructure problems — ADHOC handoff, not deferral
+
+If any infrastructure dependency is unavailable at any pipeline step:
+1. Do **NOT** defer the blocked step or approve partial results.
+2. Create an ADHOC BACKEND-DEV handoff: "Resolve infrastructure blocker: `<describe>`" with acceptance criterion that the target service passes a health check.
+3. Only advance the blocked step after the ADHOC returns PASS.
+4. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for <service> setup`
+
 ## Stage gate check
 
 Before launching WF-02 for Stage N+1:

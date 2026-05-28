@@ -1,0 +1,48 @@
+{
+  "handoff_id": "91ac9e6b-b9e3-45de-baf6-ea649baba0a9",
+  "run_id": "WF02-ext02-20260528",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-05-28T05:31:38Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6",
+    "requirement_ids": [
+      "EXT-02"
+    ],
+    "related_handoff_ids": [
+      "c1032468-237d-41f5-9695-f0373f251f36"
+    ],
+    "artifacts_in": [
+      "docs/status/release-stage6-ext02-20260528.json"
+    ]
+  },
+  "task": {
+    "description": "Set EXT-02 status to RELEASED in requirement_status.json (released_at=2026-05-28, release_run=WF02-ext02-20260528). Add CHANGELOG entry. Archive run entries in registry.",
+    "acceptance_criteria": [
+      "EXT-02 status=RELEASED",
+      "CHANGELOG updated"
+    ],
+    "functions_to_call": [
+      "fn:update-requirement-status",
+      "fn:update-changelog"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated EXT-02 to RELEASED in requirement_status.json; added CHANGELOG entry under Stage 6 EXT-02 section.",
+    "artifacts_out": [
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md",
+      "handoffs/registry.json"
+    ],
+    "issues": [],
+    "next_action": "Workflow complete for WF02-ext02-20260528"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": null,
+  "completed_at": "2026-05-28T05:43:14Z"
+}

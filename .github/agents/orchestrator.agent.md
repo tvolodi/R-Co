@@ -49,15 +49,27 @@ AGENT_ID: ORCH
 
 ## Creating a handoff
 
-1. Generate a unique ID (format: `timestamp + sequence`, e.g. `20260520-001`)
-2. Create file: `handoffs/<WF-ID>-<SEQ>-<FROM>-to-<TO>-<description>.json`
+**Step 0 — get a real timestamp.** NEVER invent a timestamp or use the session context date. Run the command below and use its exact output:
+
+```powershell
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+On Linux/macOS: `python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"`
+
+A round value like `T18:30:00Z` means the timestamp was fabricated. Stop and rerun the command.
+
+**Step 1 — stamp `started_at` immediately before spawning the subagent** by running the same command again. Do NOT reuse `created_at`.
+
+1. Run the timestamp command; save as `<NOW>`
+2. Create file: `handoffs/<run-id>/step-<NN>-<agent-slug>.json` with `created_at: <NOW>`
 3. Fill all fields per the schema in `AGENT_SYSTEM.md §4.3`
 4. Append to `handoffs/registry.json`
 5. Log to `handoffs/orchestrator.log`:
    ```
    <ISO8601> | ROUTE | <WF-ID> | <handoff_id> | ORCH → <TO_AGENT> | PENDING
    ```
-6. Tell the user which agent should now be invoked and with which handoff ID
+6. Run the timestamp command again; write output as `started_at` in the handoff file
+7. Spawn the subagent
 
 ## Routing decisions
 
@@ -69,6 +81,26 @@ After an agent completes a handoff, read `result.status`:
 | `FAIL` with `rework_count < max_rework` | Increment rework count; re-route to same agent |
 | `FAIL` with `rework_count >= max_rework` | Write to `handoffs/escalations.json`; stop; inform user |
 | `PARTIAL` | Read which criteria failed; decide whether to advance or rework |
+
+## Batch cap — MANDATORY
+
+A single WF-02 run MUST contain **at most 4 requirements**. Split larger groups into sequential runs. Large batches increase WF-03 blast radius and corrupt timing metrics.
+
+## Infrastructure problems — ADHOC handoff, never deferral
+
+If any infrastructure (bench DB, test DB, Keycloak, etc.) is unavailable at any pipeline step:
+- Create an ADHOC BACKEND-DEV handoff to fix the infrastructure immediately
+- Only advance the blocked pipeline step after the ADHOC returns PASS
+- Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for <service> setup`
+
+## Benchmark environment check — BEFORE dispatching TEST-RUNNER
+
+Before dispatching TEST-RUNNER (step 04), run:
+```bash
+zig build bench 2>&1 | head -5
+```
+If output shows `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: create an ADHOC BACKEND-DEV handoff first (do not dispatch TEST-RUNNER yet).
+If output is clean (exits 0 with numbers): log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
 
 ## Stage gate check
 

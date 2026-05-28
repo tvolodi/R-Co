@@ -1,0 +1,29 @@
+{
+  "run_id": "WF02-ext02-20260528",
+  "stage": "Stage 6",
+  "requirement_ids": ["EXT-02"],
+  "decision": "APPROVED",
+  "rationale": "All 10 integration tests for EXT-02 (webhook subscription fan-out, HMAC signing, retry/pause, audit) passed with zero skips. NFR benchmark confirmed PASS by ORCH (all 6 profiles under 10µs threshold). No blocking issues found.",
+  "test_results_summary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "skipped": 0,
+    "test_ids_passed": [
+      "TC-EXT-02-INT-01",
+      "TC-EXT-02-INT-02",
+      "TC-EXT-02-INT-03",
+      "TC-EXT-02-INT-04",
+      "TC-EXT-02-INT-05",
+      "TC-EXT-02-INT-06",
+      "TC-EXT-02-INT-07",
+      "TC-EXT-02-INT-08",
+      "TC-EXT-02-INT-09",
+      "TC-EXT-02-INT-10"
+    ]
+  },
+  "nfr_bench_status": "PASS",
+  "blocking_issues": [],
+  "approved_requirements": ["EXT-02"],
+  "decided_at": "2026-05-28T05:42:12Z"
+}

@@ -154,7 +154,7 @@ handoff = {
     "step": step,
     "from_agent": "ORCH",
     "to_agent": to_agent,
-    "created_at": datetime.datetime.utcnow().isoformat() + "Z",
+    "created_at": "<exact output of: (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')>",
     "status": "PENDING",
     "priority": "NORMAL",
     "context": {
@@ -196,12 +196,19 @@ with open("handoffs/orchestrator.log", "a") as f:
 print(f"Handoff created: {filename}\nID: {handoff_id}")
 ```
 
-**Stamp `started_at` at dispatch** — run this immediately before invoking the subagent. This records the actual wall-clock start time; do NOT let the agent invent it:
+**Stamp `started_at` immediately before dispatching you.** This records the actual wall-clock start time. Run the shell command now and use its exact output:
+```powershell
+(Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+```
+Or: `python3 -c "import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))"`
+
+Then write the exact output as `started_at`:
 ```python
-import json, datetime
+import json, subprocess
 with open(filename) as f:
     h = json.load(f)
-h["started_at"] = datetime.datetime.utcnow().isoformat() + "Z"
+# Use exact output of the shell command above — do NOT use datetime.utcnow() here
+h["started_at"] = "<exact output of the shell command>"
 with open(filename, "w") as f:
     json.dump(h, f, indent=2)
 ```
@@ -221,8 +228,8 @@ surface      = "medium"   # low | medium | high
 surface_why  = "<one sentence: which modules are touched>"
 surcharge    = {"low": 0.0, "medium": 0.25, "high": 0.50}[surface]
 
-steps = ["code-designer", "backend-dev", "test-designer",
-         "test-runner", "release-validator", "doc-updater"]
+steps = ["code-designer", "code-design-validator", "backend-dev", "test-designer",
+         "test-design-validator", "test-runner", "release-validator", "doc-updater"]
 
 with open("docs/metrics/estimation_rules.json") as f:
     rules = json.load(f)
@@ -323,18 +330,35 @@ print("BLOCKED:" if blocking else "CLEARED")
 for b in blocking: print(f"  {b}")
 ```
 
-**Benchmark environment pre-check** before dispatching RELEASE-VALIDATOR (run every time):
+**Benchmark environment pre-check** BEFORE dispatching TEST-RUNNER (Step 4) — run every time, NOT after TEST-RUNNER completes:
 ```bash
 zig build bench 2>&1 | head -5
 ```
 If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`:
-- Do NOT dispatch RELEASE-VALIDATOR yet.
+- Do NOT dispatch TEST-RUNNER yet.
 - Create an interim BACKEND-DEV handoff: "Set up benchmark environment so `zig build bench` exits 0."
 - Log: `<ts> | BENCH_ENV_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for env setup`
 - Re-run this check after BACKEND-DEV completes.
 
-If output is clean (exits 0 with benchmark numbers): proceed to dispatch RELEASE-VALIDATOR.
+If output is clean (exits 0 with benchmark numbers): proceed to dispatch TEST-RUNNER.
 Log: `<ts> | BENCH_ENV_CHECK | <run-id> | --- | ORCH | CLEARED`
+
+**Batch cap:** A single WF-02 run MUST contain **at most 4 requirements**. Split larger groups into sequential runs.
+
+**WF-02 pipeline with new validator gates:**
+
+| Step | Agent | Gate |
+|---|---|---|
+| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate |
+| 1 | CODE-DESIGNER | — |
+| **1b** | **CODE-DESIGN-VALIDATOR** | **Hard gate — BACKEND-DEV cannot start until PASS** |
+| 2a/2b | BACKEND-DEV / FRONTEND-DEV | — |
+| 3 | TEST-DESIGNER | — |
+| **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate — TEST-RUNNER cannot start until PASS** |
+| 4 | TEST-RUNNER | bench env checked before dispatch |
+| 5 | RELEASE-VALIDATOR | — |
+| 6 | DOC-UPDATER | — |
+| Final | BACKEND-DEV / FRONTEND-DEV | Hard gate |
 
 ### ORCH execution style
 
@@ -667,6 +691,7 @@ AGENT_ID: TEST-DESIGNER
 Also read:
 ```bash
 cat docs/guides/test_developer_guide.md
+cat docs/anti-patterns.md
 ```
 
 Find your handoff:
@@ -674,7 +699,37 @@ Find your handoff:
 grep -rl '"to_agent": "TEST-DESIGNER"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
 ```
 
-Write test spec files to `tests/specs/<REQ-ID>.md` and test source files to the appropriate layer under `tests/` or `web/src/` per the test guide. Complete your handoff using the same pattern as BACKEND-DEV.
+Write test spec files to `tests/specs/<REQ-ID>.md` and test source files to the appropriate layer under `tests/` or `web/src/` per the test guide. **⛔ NO DEFERRED WORK.** Every MUST requirement must have a fully implemented integration test. No `error.SkipZigTest` on MUST tests without a separately passing integration test. All integration test fixtures use per-test UUIDs. Tests are self-sufficient (start required services or fail clearly if unavailable). Complete your handoff using the same pattern as BACKEND-DEV. Set `next_action: "Route to TEST-DESIGN-VALIDATOR (Step 3b)"`.
+
+---
+
+## AGENT: CODE-DESIGN-VALIDATOR
+
+```
+AGENT_ID: CODE-DESIGN-VALIDATOR
+```
+
+Find your handoff:
+```bash
+grep -rl '"to_agent": "CODE-DESIGN-VALIDATOR"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
+```
+
+Read the design artefact in `context.artifacts_in`. Verify: (1) every acceptance criterion in every MUST requirement has a design element, (2) no implementation code is present, (3) all public function signatures are listed, (4) error taxonomy exists, (5) dependencies documented. FAIL if any check fails. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to BACKEND-DEV (Step 2a)"`.
+
+---
+
+## AGENT: TEST-DESIGN-VALIDATOR
+
+```
+AGENT_ID: TEST-DESIGN-VALIDATOR
+```
+
+Find your handoff:
+```bash
+grep -rl '"to_agent": "TEST-DESIGN-VALIDATOR"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
+```
+
+Read the test spec files and test source files listed in `context.artifacts_in`. **⛔ HARD GATE — any failure = FAIL result.** Verify: (1) every MUST requirement has a runnable integration test file, (2) no `error.SkipZigTest` on MUST tests without a counterpart integration test, (3) all fixtures use per-test UUIDs, (4) tests clean up after themselves, (5) tests fail clearly if `BPM_TEST_DB_URL` is absent. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to TEST-RUNNER (Step 4)"`.
 
 ---
 
@@ -689,7 +744,7 @@ Also read:
 cat docs/guides/test_developer_guide.md
 ```
 
-Find your handoff, then run the test commands specified in `task.functions_to_call`. Write results to `tests/reports/` per the test guide §8 format. Complete your handoff with a full issue list and severity classification.
+Find your handoff, then run the test commands specified in `task.functions_to_call`. **First run `zig build bench 2>&1 | head -5`** — if bench env is broken, STOP and return FAIL with severity BLOCKER. Write results to `tests/reports/` per the test guide §8 format. Complete your handoff with a full issue list and severity classification.
 
 ---
 

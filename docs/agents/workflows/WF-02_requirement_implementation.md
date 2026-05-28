@@ -20,7 +20,7 @@ Step workflow chain template:
 ## Overview
 
 ```
-[INPUT: VALIDATED requirement IDs]
+[INPUT: VALIDATED requirement IDs — max 4 per run. Split larger batches into sequential WF-02 runs.]
            │
            ▼
 ┌──────────────────────────┐
@@ -39,6 +39,14 @@ Step workflow chain template:
            │
           YES
            │
+           ▼
+┌──────────────────────┐
+│  STEP 1b: DESIGN     │ ← CODE-DESIGN-VALIDATOR ⛔ HARD GATE
+│  GATE                │   FAIL → rework CODE-DESIGNER (max 3)
+│  All criteria?       │   req status → DESIGN-REVIEWED on PASS
+│  No impl code?       │
+└──────────┬───────────┘
+           │ PASS
            ▼
 ┌──────────────────────┐        ┌──────────────────────┐
 │  STEP 2a: BACKEND    │        │  STEP 2b: FRONTEND   │
@@ -67,7 +75,15 @@ Step workflow chain template:
                       │
                       ▼
            ┌──────────────────────┐
-           │  STEP 4: TEST RUN    │ ← TEST-RUNNER
+           │  STEP 3b: TEST GATE  │ ← TEST-DESIGN-VALIDATOR ⛔ HARD GATE
+           │  Every MUST req has  │   FAIL → rework TEST-DESIGNER (max 3)
+           │  integration test?   │   No SkipZigTest on MUST?
+           │  Fixtures isolated?  │   req status → TEST-DESIGN-REVIEWED on PASS
+           └──────────┬───────────┘
+                      │ PASS
+                      ▼
+           ┌──────────────────────┐
+           │  STEP 4: TEST RUN    │ ← TEST-RUNNER (bench env verified BEFORE dispatch)
            │  Execute test suite  │
            └──────────┬───────────┘
                       │
@@ -155,6 +171,38 @@ Follow GIT_SETUP.md exactly. On PASS, ORCH routes to Step 1.
 - [ ] No circular module dependencies introduced
 - [ ] DB schema changes described (table name, columns, indexes, constraints)
 - [ ] Open questions listed (not silently ignored)
+
+---
+
+## Step 1b — Code Design Gate ⛔ HARD GATE
+
+**Agent:** `CODE-DESIGN-VALIDATOR`  
+**Functions:** `fn:load-requirements`, `fn:read-design-artefact`
+
+### Procedure
+
+```
+1. Read the design artefact(s) in context.artifacts_in
+2. → fn:load-requirements (filter to context.requirement_ids)
+3. For each MUST requirement, verify:
+   a. Every acceptance criterion has a corresponding design element (function, component, or schema)
+   b. No acceptance criterion is addressed by "TBD", "to be implemented", or similar deferral
+   c. Public function signatures are fully specified (name, inputs, outputs, errors)
+   d. Error taxonomy is present (named error sets or error types)
+   e. Cross-module dependencies are listed
+   f. Security validation rules present for any user-input-handling function
+   g. No implementation code present in the design (no Zig, SQL, or TypeScript code blocks)
+4. Check that a data flow or sequence diagram exists for any non-trivial multi-step operation
+5. FAIL immediately if any check fails — do not attempt partial approval
+6. → fn:complete-handoff (status: PASS | FAIL,
+                           issues: [list of failed checks with requirement ID],
+                           next_action: "Route to BACKEND-DEV (Step 2a)" | "Rework CODE-DESIGNER")
+```
+
+### Gate rule
+
+- **PASS** → ORCH may dispatch BACKEND-DEV (Step 2a) and/or FRONTEND-DEV (Step 2b)
+- **FAIL** → ORCH increments `rework_count` on the CODE-DESIGNER handoff and re-routes; BACKEND-DEV does NOT start until this gate is PASS
 
 ---
 
@@ -275,6 +323,45 @@ Follow GIT_SETUP.md exactly. On PASS, ORCH routes to Step 1.
 - [ ] Every MUST requirement in context.requirement_ids has at least one test case
 - [ ] Test specs are written before test code (spec file present for each test file)
 - [ ] No test depends on wall-clock time or random values without a fixed seed
+
+---
+
+## Step 3b — Test Design Gate ⛔ HARD GATE
+
+**Agent:** `TEST-DESIGN-VALIDATOR`  
+**Functions:** `fn:load-requirements`, `fn:load-test-specs`
+
+### Procedure
+
+```
+1. Read test spec files and test source files in context.artifacts_in
+2. → fn:load-requirements (context.requirement_ids)
+3. For each MUST requirement, verify ALL of:
+   a. At least one runnable integration test file exists targeting that requirement
+   b. No `error.SkipZigTest` on test blocks covering MUST criteria without a counterpart
+      separately-passing integration test
+   c. No "TODO: implement test" or deferred spec cases in the spec file
+   d. Count of spec cases in .md matches count of test functions in .zig (within ±1)
+   e. Every integration test fixture uses a per-test UUID (not shared mutable state)
+   f. Every integration test has a `defer cleanup()` or equivalent teardown
+   g. Tests fail clearly (non-zero exit, meaningful error) if BPM_TEST_DB_URL is absent
+      (silent skip or exit-0 on missing env is NOT acceptable)
+   h. Tests are self-sufficient — they do not depend on other tests running first
+   i. No hardcoded secrets or connection strings in test files
+   j. Parameterised SQL used for all DB operations (no string interpolation of test data)
+4. FAIL immediately on any check failure — do not attempt partial approval
+5. If the failure is infrastructure-related (e.g., BPM_TEST_DB_URL missing from CI env):
+   FAIL with severity BLOCKER and note: "ORCH must route ADHOC BACKEND-DEV handoff to
+   set up test environment before TEST-RUNNER can run"
+6. → fn:complete-handoff (status: PASS | FAIL,
+                           issues: [list of failed checks with requirement ID and test file],
+                           next_action: "Route to TEST-RUNNER (Step 4)" | "Rework TEST-DESIGNER")
+```
+
+### Gate rule
+
+- **PASS** → ORCH verifies bench env (`zig build bench 2>&1 | head -5`), then dispatches TEST-RUNNER
+- **FAIL** → ORCH increments `rework_count` on TEST-DESIGNER handoff and re-routes; TEST-RUNNER does NOT start until this gate is PASS
 
 ---
 
