@@ -738,6 +738,20 @@ pub fn build(b: *std.Build) void {
     const test_engine_step = b.step("test-engine", "Run engine unit tests");
     test_engine_step.dependOn(&run_engine_tests.step);
 
+    // Lua integration module tests
+    const lua_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/lua_test.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    // Link LuaJIT (if available on system)
+    // lua_tests.linkSystemLibrary("luajit");
+    const run_lua_tests = b.addRunArtifact(lua_tests);
+    const test_lua_step = b.step("test-lua", "Run Lua integration unit tests");
+    test_lua_step.dependOn(&run_lua_tests.step);
+
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_db_tests.step);
@@ -779,6 +793,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_dsl01_parser_tests.step);
     test_step.dependOn(&run_expr_error_recovery_tests.step);
     test_step.dependOn(&run_dsl04_eval_tests.step);
+    test_step.dependOn(&run_lua_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
