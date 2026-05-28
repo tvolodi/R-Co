@@ -866,6 +866,24 @@ pub fn build(b: *std.Build) void {
     const test_wasm_step = b.step("test-wasm", "Run Wasm execution unit tests");
     test_wasm_step.dependOn(&run_wasm_tests.step);
 
+    const repository_canonicaliser_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/repository_canonicaliser_test.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_repository_canonicaliser_tests = b.addRunArtifact(repository_canonicaliser_tests);
+
+    const repository_artifacts_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/repository_artifacts_test.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_repository_artifacts_tests = b.addRunArtifact(repository_artifacts_tests);
+
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_db_tests.step);
@@ -915,6 +933,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_dsl04_eval_tests.step);
     test_step.dependOn(&run_lua_tests.step);
     test_step.dependOn(&run_wasm_tests.step);
+    test_step.dependOn(&run_repository_canonicaliser_tests.step);
+    test_step.dependOn(&run_repository_artifacts_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
