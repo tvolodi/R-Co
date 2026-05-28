@@ -1,0 +1,20 @@
+{
+  "id": "ISS-0044",
+  "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
+  "status": "RESOLVED",
+  "severity": "CRITICAL",
+  "run_id": "WF03-def-store-regression-20260528",
+  "handoff_id": "7e73f75d-77a1-4f0f-b934-25c8f868f66c",
+  "category": "A",
+  "root_cause": "Migration 028 was retroactively modified in DSL-13 to create a named constraint (uq_definition_tenant_version) instead of a unique index. Databases that had migration 028 applied before DSL-13 still carry only a unique index. store.zig was simultaneously updated to use ON CONFLICT ON CONSTRAINT uq_definition_tenant_version, which requires a named constraint — not an index. The INSERT failed with a PostgreSQL error (constraint does not exist), caught as DefinitionError.TransactionFailed.",
+  "resolution": "Added migration 044_fix_definition_conflict_constraint.sql that idempotently drops the unique index form and creates the named constraint. ON CONFLICT ON CONSTRAINT now resolves correctly.",
+  "prevention": "When retroactively modifying an already-applied migration to change a schema object type (index → constraint), always add a companion forward migration that upgrades existing databases. Never rely on a modified old migration to fix databases that already ran the original version.",
+  "affected_areas": [
+    "src/definition/store.zig",
+    "migrations/028_adp02_tenant_scope_persistence.sql",
+    "migrations/044_fix_definition_conflict_constraint.sql"
+  ],
+  "requirement_ids": ["API-02", "API-03", "OBS-03", "ADP-05"],
+  "created_at": "2026-05-28T05:55:26Z",
+  "resolved_at": "2026-05-28T05:55:26Z"
+}

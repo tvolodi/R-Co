@@ -27,7 +27,7 @@ Calling `fn:complete-handoff` without first calling `fn:register-inner-report` i
    - `to_agent = "TEST-DESIGNER"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/guides/test_developer_guide.md` (full)
 3. Read the design artefact and requirement IDs listed in `context.artifacts_in`
-4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
+4. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
 
 If no PENDING handoff exists: report to user and wait.
 
@@ -44,12 +44,36 @@ For each requirement ID in the handoff:
    - Frontend unit tests: `web/src/**/__tests__/<name>.test.tsx`
    - E2E tests: `tests/e2e/<feature>.spec.ts`
 
-## Test quality rules
+## Test quality rules — ABSOLUTE REQUIREMENTS
 
-- Tests must be deterministic: no wall-clock time, no random IDs, no live network
-- Each test creates and cleans up its own data
-- Every MUST requirement has at least one failing-if-violated test case
-- Pure functions (transition.zig, validator.zig) get ≥ 90% branch coverage
+**⛔ NO DEFERRED WORK.** Every MUST requirement listed in your handoff MUST have a fully implemented, runnable integration test before you complete this handoff. There are no exceptions for infrastructure availability, time constraints, or phased delivery plans. If infrastructure is unavailable, record the infrastructure problem in your handoff issues (severity BLOCKER) and ORCH will create an ADHOC handoff to resolve it. You do not skip coverage.
+
+**Fixture isolation (mandatory for every integration test):**
+- All fixtures use per-test UUIDs (not static IDs, not sequential integers)
+- No fixture state is shared across test blocks within the same test run
+- Every test cleans up its fixtures even when the test fails (use `defer cleanup` or equivalent)
+
+**Self-sufficiency (mandatory for every integration test):**
+- Integration tests connect to the database via `BPM_TEST_DB_URL`; the test MUST fail with a clear error message if the env var is absent — NOT silently skip
+- Tests that require the HTTP server must start it themselves or call a health-check function (not assume an external runner)
+- Tests that require external services (Keycloak, S3, etc.) call a documented setup helper — no silent skip on unavailability
+
+**No SkipZigTest on MUST requirements:**
+- `error.SkipZigTest` is FORBIDDEN on any test block that covers a MUST requirement, unless a separately passing integration test for that requirement already exists — verify before claiming coverage
+- A skipped MUST test = requirement stays at TEST-DESIGNED, never reaches TEST-DESIGN-REVIEWED
+
+**Coverage completeness:**
+- Test spec case count must match implemented test count (count `test "..."` blocks — no gap)
+- Every spec case is implemented. No spec case labelled "deferred", "future", or "phase 2".
+- Pure functions (transition.zig, validator.zig) get ≥ 90% branch coverage in unit tests
+- Tests must be deterministic: no wall-clock time, no random IDs, no live network in unit tests
+- No mocks, stubs, or in-memory fakes for integration tests — use a real PostgreSQL connection via `BPM_TEST_DB_URL`
+
+**Security:**
+- No credentials, secrets, or real production URLs hardcoded in any test file
+- SQL in test files uses parameterised queries only (no string concatenation into SQL)
+
+> Note: Your output will be reviewed by **TEST-DESIGN-VALIDATOR** (Step 3b) before TEST-RUNNER executes. Pass only complete work — the validator checks every item in this list.
 
 ## Complete the handoff
 
@@ -64,7 +88,7 @@ fn:validate-completeness → fn:register-inner-report → fn:complete-handoff
     "summary": "Test specs and test code for <REQ-IDs>",
     "artifacts_out": ["tests/specs/...", "src/.../..._test.zig"],
     "issues": [],
-    "next_action": "Route to TEST-RUNNER (WF-02 Step 4)"
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
   }
 }
 ```

@@ -27,7 +27,18 @@ You MUST NOT skip layers or mark a step PASS before running all required command
    - `to_agent = "TEST-RUNNER"` and `status = "PENDING"` in `handoffs/`
 2. Read `docs/guides/test_developer_guide.md` (full)
 3. Read `task.functions_to_call` in the handoff — these are the commands to run
-4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
+4. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
+
+## Benchmark environment pre-check (mandatory before running any test)
+
+Before executing any test commands, verify the benchmark environment is reachable:
+```bash
+zig build bench 2>&1 | head -5
+```
+- If output shows benchmark numbers and exits 0: proceed.
+- If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: STOP. Complete handoff with `status: FAIL`, issue severity BLOCKER, description: "Benchmark environment unavailable: `<exact error line>`". ORCH will create an ADHOC BACKEND-DEV handoff to fix the environment, then redispatch you.
+
+Do NOT proceed past this check if it fails.
 
 ## Test commands by layer
 

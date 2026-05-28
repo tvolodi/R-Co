@@ -1,8 +1,23 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-28T03:39:57Z",
-  "next_issue_id": 44,
+  "last_updated": "2026-05-28T05:55:26Z",
+  "next_issue_id": 45,
   "issues": [
+    {
+      "id": "ISS-0044",
+      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
+      "status": "RESOLVED",
+      "severity": "CRITICAL",
+      "run_id": "WF03-def-store-regression-20260528",
+      "handoff_id": "7e73f75d-77a1-4f0f-b934-25c8f868f66c",
+      "affected_areas": [
+        "src/definition/store.zig",
+        "migrations/028_adp02_tenant_scope_persistence.sql",
+        "migrations/044_fix_definition_conflict_constraint.sql"
+      ],
+      "created_at": "2026-05-28T05:55:26Z",
+      "resolved_at": "2026-05-28T05:55:26Z"
+    },
     {
       "id": "ISS-0001",
       "title": "WF04 rerun regression: API-03 integration leak and frontend no-tests failure",
