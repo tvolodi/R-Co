@@ -1,0 +1,211 @@
+{
+  "run_id": "WF02-xc01-06-20260528",
+  "test_suite": "XC Cross-Cutting Requirements",
+  "timestamp": "2026-05-28T13:34:46Z",
+  "summary": {
+    "total_tests": 46,
+    "passed": 4,
+    "failed": 42,
+    "errors": 42,
+    "compilation_errors": 0,
+    "pass_rate": "8.7%"
+  },
+  "issues": [
+    {
+      "severity": "BLOCKER",
+      "category": "database_migration",
+      "description": "Test database migrations failing with ServerError during test initialization",
+      "affected_requirements": ["XC-01", "XC-02", "XC-03", "XC-04", "XC-05", "XC-06"],
+      "root_cause": "Migration system attempts to re-run all migrations on each test, but database state conflicts prevent successful re-application after TRUNCATE. The test harness runMigrations() function in helpers.zig is trying to idempotently apply migrations but encountering SQL constraint violations.",
+      "impact": "Integration tests cannot proceed because TestHarness.init() fails during migration application",
+      "resolution_required": true,
+      "notes": [
+        "Database tables exist and are properly structured",
+        "2 out of 7 XC-01 tests passed (TC-XC-01-05 and TC-XC-01-06) before migration failures began",
+        "This indicates that some migrations succeed but others fail on subsequent test runs",
+        "Root cause is likely in the migration tracking or constraint handling in helpers.zig"
+      ]
+    },
+    {
+      "severity": "HIGH",
+      "category": "test_code_quality",
+      "description": "XC-04 kernel determinism test had compilation errors that were fixed",
+      "affected_requirements": ["XC-04"],
+      "issues_fixed": [
+        "Unused variable 'alloc' - marked with '_'",
+        "Invalid std.time.microTimestamp() API call - replaced with fixed timestamp constant",
+        "Invalid std.fmt.fmt() string concatenation - replaced with std.fmt.allocPrint()"
+      ],
+      "status": "RESOLVED"
+    },
+    {
+      "severity": "HIGH",
+      "category": "test_code_quality",
+      "description": "XC-05 deterministic replay test had string formatting compilation errors",
+      "affected_requirements": ["XC-05"],
+      "issues_fixed": [
+        "4 instances of invalid string concatenation with try std.fmt.allocPrint() in compile-time context",
+        "All fixed by allocating payload strings separately before SQL insert"
+      ],
+      "status": "RESOLVED"
+    }
+  ],
+  "test_results_by_requirement": {
+    "XC-01": {
+      "name": "Trace Propagation",
+      "tests": [
+        {
+          "name": "TC-XC-01-01: missing X-Trace-Id header generates UUID v4",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        },
+        {
+          "name": "TC-XC-01-02: supplied X-Trace-Id header is propagated",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        },
+        {
+          "name": "TC-XC-01-03: trace ID flows through audit entries",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        },
+        {
+          "name": "TC-XC-01-04: scheduler tasks generate distinct trace IDs",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        },
+        {
+          "name": "TC-XC-01-05: X-Trace-Id header influences database audit trail",
+          "status": "PASSED",
+          "duration_ms": "~500"
+        },
+        {
+          "name": "TC-XC-01-06: trace ID rotation on token refresh is recorded",
+          "status": "PASSED",
+          "duration_ms": "~500"
+        },
+        {
+          "name": "TC-XC-01-07: trace ID is included in error responses",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        }
+      ],
+      "summary": "2 PASS, 5 FAIL"
+    },
+    "XC-02": {
+      "name": "Audit Immutability",
+      "tests": [
+        {
+          "name": "TC-XC-02-01 through TC-XC-02-08",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        }
+      ],
+      "summary": "0 PASS, 8 FAIL"
+    },
+    "XC-03": {
+      "name": "Configuration Repository",
+      "tests": [
+        {
+          "name": "TC-XC-03-01 through TC-XC-03-09",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        }
+      ],
+      "summary": "0 PASS, 9 FAIL"
+    },
+    "XC-04": {
+      "name": "Kernel Determinism",
+      "tests": [
+        {
+          "name": "TC-XC-04-01: static analysis verifies kernel module determinism",
+          "status": "PASSED",
+          "duration_ms": "~300"
+        },
+        {
+          "name": "TC-XC-04-02: pure transition function produces deterministic output",
+          "status": "PASSED",
+          "duration_ms": "~300"
+        },
+        {
+          "name": "TC-XC-04-03: scheduler fires timers in deterministic order",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        },
+        {
+          "name": "TC-XC-04-04: audit chain hash computation is deterministic",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        },
+        {
+          "name": "TC-XC-04-05: event append preserves deterministic ordering",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        }
+      ],
+      "summary": "2 PASS, 3 FAIL"
+    },
+    "XC-05": {
+      "name": "Deterministic Replay",
+      "tests": [
+        {
+          "name": "TC-XC-05-01 through TC-XC-05-08",
+          "status": "FAILED",
+          "error": "Compilation fixed; runtime testing blocked by migration blocker",
+          "error_type": "database_migration"
+        }
+      ],
+      "summary": "0 PASS, 8 FAIL"
+    },
+    "XC-06": {
+      "name": "Backwards Compatibility",
+      "tests": [
+        {
+          "name": "TC-XC-06-01 through TC-XC-06-09",
+          "status": "FAILED",
+          "error": "runMigrations failed: error.ServerError",
+          "error_type": "database_migration"
+        }
+      ],
+      "summary": "0 PASS, 9 FAIL"
+    }
+  },
+  "environment": {
+    "database_url": "postgres://bpm:bpm@localhost:5433/bpm_test",
+    "database_status": "RUNNING",
+    "zig_version": "0.16.0",
+    "platform": "Windows"
+  },
+  "action_items": [
+    {
+      "priority": "CRITICAL",
+      "title": "Fix migration system race condition",
+      "description": "The test harness runMigrations() function needs to be modified to handle already-applied migrations gracefully. The issue appears to be that migrations are re-run on each test and failing on subsequent attempts due to constraint violations or state conflicts.",
+      "assignee": "BACKEND-DEV",
+      "required_for": "All integration tests"
+    },
+    {
+      "priority": "HIGH",
+      "title": "Investigate specific migration failure",
+      "description": "Enable detailed error logging in pg.zig's simpleQuery() to understand which exact SQL statement is causing 'error.ServerError'. The error occurs in readUntilReady() but the actual query is not logged.",
+      "assignee": "BACKEND-DEV"
+    },
+    {
+      "priority": "MEDIUM",
+      "title": "Review test isolation strategy",
+      "description": "Consider whether each test should run migrations at all, or whether a single setup phase should prepare the database once per test run. Current design leads to repeated migration attempts which is causing failures.",
+      "assignee": "TEST-DESIGNER"
+    }
+  ],
+  "next_steps": "This test run must be marked as FAILED. The BLOCKER-level database migration issue prevents any integration tests from executing. REWORK is recommended to fix the migration system before TEST-RUNNER can succeed."
+}

@@ -135,9 +135,11 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
     for (0..20) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
         const idem_key = try std.fmt.allocPrint(alloc, "event-{d}", .{i});
+        const payload = try std.fmt.allocPrint(alloc, "{{\"value\":{d}}}", .{i});
         defer {
             alloc.free(event_id);
             alloc.free(idem_key);
+            alloc.free(payload);
         }
 
         _ = try harness.conn.exec(
@@ -151,7 +153,7 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
                 instance_id,
                 tenant_id,
                 "state.updated",
-                "{\"value\":" ++ try std.fmt.allocPrint(alloc, "{d}", .{i}) ++ "}",
+                payload,
                 idem_key,
             },
         );
@@ -220,9 +222,11 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
     for (0..5) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
         const idem_key = try std.fmt.allocPrint(alloc, "event-{d}", .{i});
+        const payload = try std.fmt.allocPrint(alloc, "{{\"index\":{d}}}", .{i});
         defer {
             alloc.free(event_id);
             alloc.free(idem_key);
+            alloc.free(payload);
         }
 
         // Generate a unique timestamp per event
@@ -245,7 +249,7 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
                 instance_id,
                 tenant_id,
                 "test.event",
-                "{\"index\":" ++ try std.fmt.allocPrint(alloc, "{d}", .{i}) ++ "}",
+                payload,
                 idem_key,
                 ts,
             },
@@ -300,9 +304,11 @@ test "TC-XC-05-04: archived events are included in reconstruction" {
     for (0..100) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
         const idem_key = try std.fmt.allocPrint(alloc, "event-{d}", .{i});
+        const payload = try std.fmt.allocPrint(alloc, "{{\"index\":{d}}}", .{i});
         defer {
             alloc.free(event_id);
             alloc.free(idem_key);
+            alloc.free(payload);
         }
 
         _ = try harness.conn.exec(
@@ -316,7 +322,7 @@ test "TC-XC-05-04: archived events are included in reconstruction" {
                 instance_id,
                 tenant_id,
                 "test.event",
-                "{\"index\":" ++ try std.fmt.allocPrint(alloc, "{d}", .{i}) ++ "}",
+                payload,
                 idem_key,
             },
         );
@@ -499,9 +505,11 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
     // Create service task invocation event
     const task_event_id = try uuid_mod.newUuidV4(alloc);
     const task_idem_key = try std.fmt.allocPrint(alloc, "task-call-{s}", .{task_id[0..8]});
+    const task_payload = try std.fmt.allocPrint(alloc, "{{\"task_id\":\"{s}\",\"params\":{{\"x\":10}}}}", .{task_id});
     defer {
         alloc.free(task_event_id);
         alloc.free(task_idem_key);
+        alloc.free(task_payload);
     }
 
     _ = try harness.conn.exec(
@@ -515,7 +523,7 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
             instance_id,
             tenant_id,
             "service_task.invoked",
-            "{\"task_id\":\"" ++ task_id ++ "\",\"params\":{\"x\":10}}",
+            task_payload,
             task_idem_key,
         },
     );
@@ -523,9 +531,11 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
     // Record service task output (captured result)
     const output_event_id = try uuid_mod.newUuidV4(alloc);
     const output_idem_key = try std.fmt.allocPrint(alloc, "task-output-{s}", .{task_id[0..8]});
+    const output_payload = try std.fmt.allocPrint(alloc, "{{\"task_id\":\"{s}\",\"output\":{{\"result\":42}}}}", .{task_id});
     defer {
         alloc.free(output_event_id);
         alloc.free(output_idem_key);
+        alloc.free(output_payload);
     }
 
     _ = try harness.conn.exec(
@@ -539,7 +549,7 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
             instance_id,
             tenant_id,
             "service_task.completed",
-            "{\"task_id\":\"" ++ task_id ++ "\",\"output\":{\"result\":42}}",
+            output_payload,
             output_idem_key,
         },
     );

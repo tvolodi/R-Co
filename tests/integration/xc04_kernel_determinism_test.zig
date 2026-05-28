@@ -67,6 +67,8 @@ test "TC-XC-04-02: pure transition function produces deterministic output" {
 
     // Both hashes should be identical (deterministic)
     try testing.expectEqualSlices(u8, &hash1, &hash2);
+
+    _ = alloc; // Mark as used
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -85,50 +87,49 @@ test "TC-XC-04-03: scheduler fires timers in deterministic order" {
         alloc.free(tenant_id);
     }
 
-    // Insert timers with known due times
-    const now = std.time.microTimestamp();
-    const timer1_due = now + 1_000_000; // 1 second from now
-    const timer2_due = now + 2_000_000; // 2 seconds from now
-    const timer3_due = now + 1_000_000; // Same as timer1
+    // Insert timers with known fire times
+    const fires_at1 = "2026-05-28 10:00:00+00"; // Fixed time for determinism
+    const fires_at2 = "2026-05-28 11:00:00+00"; // 1 hour later
+    const fires_at3 = "2026-05-28 10:00:00+00"; // Same as fires_at1
 
     for (0..3) |i| {
         const timer_id = try uuid_mod.newUuidV4(alloc);
         defer alloc.free(timer_id);
 
-        const due_at = switch (i) {
-            0 => timer1_due,
-            1 => timer2_due,
-            else => timer3_due,
+        const fires_at = switch (i) {
+            0 => fires_at1,
+            1 => fires_at2,
+            else => fires_at3,
         };
 
         _ = try harness.conn.exec(
             \\INSERT INTO timers (
-            \\  timer_id, instance_id, tenant_id, timer_type, due_at_us,
-            \\  sequence_number, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            \\  id, instance_id, timer_type, step_name, fires_at,
+            \\  action_type, status
+            \\) VALUES ($1, $2, $3, $4, $5::timestamptz, $6, $7)
         ,
-            &.{ timer_id, instance_id, tenant_id, "event_timer", due_at, @as(i64, @intCast(i)) },
+            &.{ timer_id, instance_id, "scheduled_transition", "test_step", fires_at, "auto_transition", "pending" },
         );
     }
 
-    // Query due timers twice (should return in identical order)
+    // Query pending timers twice (should return in identical order)
     var query1 = try harness.conn.query(
         alloc,
-        \\SELECT timer_id FROM timers
-        \\WHERE instance_id = $1 AND due_at_us <= $2
-        \\ORDER BY due_at_us, sequence_number
+        \\SELECT id FROM timers
+        \\WHERE instance_id = $1 AND status = 'pending'
+        \\ORDER BY fires_at, id
     ,
-        &.{ instance_id, now + 3_000_000 },
+        &.{instance_id},
     );
     defer query1.deinit();
 
     var query2 = try harness.conn.query(
         alloc,
-        \\SELECT timer_id FROM timers
-        \\WHERE instance_id = $1 AND due_at_us <= $2
-        \\ORDER BY due_at_us, sequence_number
+        \\SELECT id FROM timers
+        \\WHERE instance_id = $1 AND status = 'pending'
+        \\ORDER BY fires_at, id
     ,
-        &.{ instance_id, now + 3_000_000 },
+        &.{instance_id},
     );
     defer query2.deinit();
 
@@ -223,9 +224,11 @@ test "TC-XC-04-05: event append preserves deterministic ordering" {
     for (0..5) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
         const idempotency_key = try std.fmt.allocPrint(alloc, "idem-key-{d}", .{i});
+        const payload = try std.fmt.allocPrint(alloc, "{{\"index\":{d}}}", .{i});
         defer {
             alloc.free(event_id);
             alloc.free(idempotency_key);
+            alloc.free(payload);
         }
 
         _ = try harness.conn.exec(
@@ -239,7 +242,7 @@ test "TC-XC-04-05: event append preserves deterministic ordering" {
                 instance_id,
                 tenant_id,
                 "test.event",
-                "{\"index\":" ++ std.fmt.fmt("{d}", .{i}) ++ "}",
+                payload,
                 idempotency_key,
             },
         );

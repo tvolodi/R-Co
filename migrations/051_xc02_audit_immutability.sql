@@ -23,7 +23,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_entries_tenant_chain
     WHERE tenant_id IS NOT NULL;
 
 -- Function to compute chain hash deterministically using SHA-256
-CREATE OR REPLACE FUNCTION bpm_audit_compute_chain_hash(
+DROP FUNCTION IF EXISTS bpm_audit_compute_chain_hash(UUID,UUID,UUID,TEXT,TEXT,UUID,TIMESTAMPTZ,JSONB,JSONB,UUID,TEXT,TEXT,TEXT);
+CREATE FUNCTION bpm_audit_compute_chain_hash(
     p_tenant_id UUID,
     p_actor_id UUID,
     p_audit_id UUID,
@@ -65,8 +66,12 @@ AS $$
     );
 $$;
 
+-- Drop the trigger first (it depends on the function)
+DROP TRIGGER IF EXISTS trg_bpm_audit_apply_chain_hash ON audit_entries;
+
 -- Function to apply chain hash on INSERT
-CREATE OR REPLACE FUNCTION bpm_audit_apply_chain_hash()
+DROP FUNCTION IF EXISTS bpm_audit_apply_chain_hash();
+CREATE FUNCTION bpm_audit_apply_chain_hash()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
@@ -106,14 +111,14 @@ BEGIN
 END;
 $$;
 
--- Create the trigger for chain hashing
-DROP TRIGGER IF EXISTS trg_bpm_audit_apply_chain_hash ON audit_entries;
+-- Recreate the trigger for chain hashing
 CREATE TRIGGER trg_bpm_audit_apply_chain_hash
 BEFORE INSERT ON audit_entries
 FOR EACH ROW EXECUTE FUNCTION bpm_audit_apply_chain_hash();
 
 -- Function to validate an audit chain for tampering
-CREATE OR REPLACE FUNCTION bpm_audit_validate_chain(p_tenant_id UUID)
+DROP FUNCTION IF EXISTS bpm_audit_validate_chain(UUID);
+CREATE FUNCTION bpm_audit_validate_chain(p_tenant_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 AS $$

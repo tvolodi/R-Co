@@ -5,6 +5,28 @@
     "entries":  [
                     {
                         "to_agent":  "BACKEND-DEV",
+                        "step":  "02-rework2",
+                        "from_agent":  "ORCH",
+                        "created_at":  "2026-05-28T08:34:46Z",
+                        "status":  "PENDING",
+                        "run_id":  "WF02-xc01-06-20260528",
+                        "handoff_id":  "f1fb0821-0860-445b-8f6c-96e59fdaa69f",
+                        "stage":  "XC Cross-cutting Requirements",
+                        "file":  "handoffs/WF02-xc01-06-20260528/step-02-rework2-backend-dev.json"
+                    },
+                    {
+                        "to_agent":  "TEST-RUNNER",
+                        "step":  "04-rework1",
+                        "from_agent":  "ORCH",
+                        "created_at":  "2026-05-28T08:28:00Z",
+                        "status":  "COMPLETED",
+                        "run_id":  "WF02-xc01-06-20260528",
+                        "handoff_id":  "2bfaa373-f9ee-431c-83a4-157b2c172a25",
+                        "stage":  "XC Cross-cutting Requirements",
+                        "file":  "handoffs/WF02-xc01-06-20260528/step-04-rework1-test-runner.json"
+                    },
+                    {
+                        "to_agent":  "BACKEND-DEV",
                         "step":  "02-rework1",
                         "from_agent":  "ORCH",
                         "created_at":  "2026-05-28T08:24:06Z",

@@ -1,6 +1,6 @@
 -- 055_xc06_backwards_compatibility.sql
 -- XC-06: Backwards Compatibility
--- New platform versions load and continue instances created by prior versions.
+-- New platform versions load and continue instance_projections created by prior versions.
 -- Schema migrations are additive and idempotent.
 --
 -- This migration demonstrates additive-only schema design:
@@ -17,12 +17,12 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Verify instances table is backward-compatible
--- Old instances without new columns should still be queryable
-ALTER TABLE instances
+-- Verify instance_projections table is backward-compatible
+-- Old instance_projections without new columns should still be queryable
+ALTER TABLE instance_projections
     ADD COLUMN IF NOT EXISTS trace_id TEXT NULL;
 
-ALTER TABLE instances
+ALTER TABLE instance_projections
     ADD COLUMN IF NOT EXISTS definition_artifact_hash TEXT NULL;
 
 -- Verify events table is backward-compatible
@@ -33,22 +33,23 @@ ALTER TABLE events
 -- (Already verified in earlier migrations)
 
 -- Create function to validate backward compatibility
-CREATE OR REPLACE FUNCTION bpm_check_backward_compatibility()
+DROP FUNCTION IF EXISTS bpm_check_backward_compatibility();
+CREATE FUNCTION bpm_check_backward_compatibility()
 RETURNS TABLE (
     table_name TEXT,
     status TEXT,
     message TEXT
 ) AS $$
 BEGIN
-    -- Check instances table
+    -- Check instance_projections table
     RETURN QUERY SELECT
-        'instances'::TEXT,
+        'instance_projections'::TEXT,
         'OK'::TEXT,
-        'instances table has required columns'::TEXT
+        'instance_projections table has required columns'::TEXT
     WHERE EXISTS (
         SELECT 1 FROM information_schema.tables
         WHERE table_schema = 'public'
-        AND table_name = 'instances'
+        AND table_name = 'instance_projections'
     );
 
     -- Check events table
