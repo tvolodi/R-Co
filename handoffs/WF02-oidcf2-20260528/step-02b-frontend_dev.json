@@ -1,0 +1,53 @@
+{
+  "handoff_id": "9b53f853-59f7-49f0-bbf1-df272f1702d5",
+  "run_id": "WF02-oidcf2-20260528",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-28T10:20:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F1.6 - Subdomain Tenant Routing",
+    "requirement_ids": [
+      "OIDC-F-05",
+      "OIDC-F-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/oidcf2-subdomain-routing.md",
+      "web/src/auth/OidcManager.ts",
+      "web/src/pages/LoginPage.tsx",
+      "web/src/pages/OidcCallbackPage.tsx",
+      "web/src/auth/AuthProvider.tsx"
+    ]
+  },
+  "task": {
+    "description": "Implement OIDC-F-06: dynamic OIDC config from hostname. (1) Create web/src/auth/tenantConfig.ts: exports async function fetchTenantConfig(hostname: string): Promise<{oidc_authority: string; client_id: string}>. Calls GET /api/tenant-config?host={hostname}, returns result or falls back to env vars on error. Caches result in module-level variable. (2) Refactor web/src/auth/OidcManager.ts: instead of creating UserManager at module load, export getOidcManager(): Promise<UserManager> that calls fetchTenantConfig first and lazy-inits (or re-inits) UserManager. Or: export a resolved promise. Keep the existing export oidcManager for backward compat if possible. (3) Update web/src/pages/OidcCallbackPage.tsx and LoginPage.tsx to use await getOidcManager() instead of the sync oidcManager import if needed. (4) npm run type-check, npm run lint, npm run build must exit 0.",
+    "acceptance_criteria": [
+      "npm run type-check exits 0",
+      "npm run build exits 0",
+      "OidcManager initializes from /api/tenant-config response",
+      "Fallback to env vars on API failure"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented OIDC-F-06: dynamic tenant OIDC config from hostname. Created tenantConfig.ts with fetchTenantConfig/getCachedTenantConfig. Refactored OidcManager.ts to add getOidcManager() async factory. Updated LoginPage, OidcCallbackPage, AuthProvider to use getOidcManager(). Added pre-warm call in main.tsx. type-check, lint, build all exit 0.",
+    "artifacts_out": [
+      "web/src/auth/tenantConfig.ts",
+      "web/src/auth/OidcManager.ts",
+      "web/src/pages/LoginPage.tsx",
+      "web/src/pages/OidcCallbackPage.tsx",
+      "web/src/auth/AuthProvider.tsx",
+      "web/src/main.tsx"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 03)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-28T10:40:09Z",
+  "completed_at": "2026-05-28T10:43:13Z"
+}

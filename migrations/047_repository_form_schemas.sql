@@ -21,6 +21,13 @@ CREATE TABLE IF NOT EXISTS form_schema_registry (
     CONSTRAINT fk_form_schema_version FOREIGN KEY (version_id) REFERENCES artifact_versions(version_id) ON DELETE CASCADE
 );
 
+-- Indexes for searchability
+CREATE INDEX IF NOT EXISTS idx_form_schema_version ON form_schema_registry (version_id);
+CREATE INDEX IF NOT EXISTS idx_form_schema_field_type ON form_schema_registry (field_type);
+CREATE INDEX IF NOT EXISTS idx_form_schema_field_name ON form_schema_registry (field_name);
+-- Full-text search on labels (GIN index)
+CREATE INDEX IF NOT EXISTS idx_form_schema_field_label ON form_schema_registry USING GIN (to_tsvector('english', COALESCE(field_label, '')));
+
 COMMENT ON TABLE form_schema_registry IS 'Index of form schema fields for agent-driven discovery (REPO-05).';
 COMMENT ON COLUMN form_schema_registry.registry_id IS 'Unique identifier for this schema field entry.';
 COMMENT ON COLUMN form_schema_registry.version_id IS 'Reference to artifact_versions; form this index entry belongs to.';

@@ -1,0 +1,51 @@
+{
+  "run_id": "WF02-shf1b-20260528",
+  "created_at": "2026-05-28T07:56:40Z",
+  "requirement_ids": ["SH-05", "SH-06"],
+  "benchmark_env_check": "CLEARED",
+  "summary": {
+    "unit_tests": {
+      "total": 22,
+      "passed": 22,
+      "failed": 0,
+      "files": [
+        "src/pages/instances/timelineUtils.test.ts (6 tests)",
+        "src/auth/__tests__/tokenUtils.test.ts (12 tests)",
+        "src/components/layout/__tests__/ErrorBoundary.test.tsx (4 tests)"
+      ]
+    },
+    "e2e_tests": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0,
+      "tests": [
+        {
+          "id": "TC-SH06-01",
+          "name": "/health/ready returns 200 → connectivity-banner NOT visible",
+          "status": "PASS",
+          "verdict": "Screen shows no connectivity-banner when /health/ready returns 200",
+          "screenshot": "web/tests/screenshots/SH06-01-no-banner-when-healthy.png"
+        },
+        {
+          "id": "TC-SH06-02",
+          "name": "/health/ready returns 503 → connectivity-banner visible",
+          "status": "PASS",
+          "verdict": "Screen shows connectivity-banner with 'Platform is currently unavailable' text after /health/ready returns 503 on mount",
+          "screenshot": "web/tests/screenshots/SH06-02-banner-visible-on-503.png"
+        },
+        {
+          "id": "TC-SH06-03",
+          "name": "banner disappears when health recovers (re-mount after 200)",
+          "status": "PASS",
+          "verdict": "Screen shows no connectivity-banner after health recovers to 200 and the component re-mounts",
+          "screenshots": [
+            "web/tests/screenshots/SH06-03-banner-visible-before-recovery.png",
+            "web/tests/screenshots/SH06-03-banner-gone-after-recovery.png"
+          ]
+        }
+      ]
+    }
+  },
+  "issues": [],
+  "overall_status": "PASS"
+}

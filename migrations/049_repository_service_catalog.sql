@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS service_catalog (
     CONSTRAINT ck_service_auth_method CHECK (required_auth IN ('NONE', 'API_KEY', 'OAUTH2', 'MUTUAL_TLS'))
 );
 
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_service_catalog_created ON service_catalog (created_at);
+CREATE INDEX IF NOT EXISTS idx_service_catalog_updated ON service_catalog (updated_at);
+
 COMMENT ON TABLE service_catalog IS 'Service registry for SERVICE_TASK nodes and Lua service.call() (REPO-07).';
 COMMENT ON COLUMN service_catalog.service_id IS 'Stable, unique identifier (e.g., "crm.customer_lookup").';
 COMMENT ON COLUMN service_catalog.endpoint_url IS 'HTTPS endpoint URL to invoke.';

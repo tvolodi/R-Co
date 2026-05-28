@@ -165,6 +165,26 @@ export interface AppendEventRequest {
 
 // ── Identity (Stage 4/5) ──────────────────────────────────────────────────────
 
+// ── Auth (Stage F1) ───────────────────────────────────────────────────────────
+
+export interface JwtPayload {
+  sub: string
+  display_name?: string
+  name?: string
+  preferred_username?: string
+  roles: string[]
+  exp?: number
+  iat?: number
+  iss?: string
+}
+
+export interface UserSession {
+  token: string
+  display_name: string
+  roles: string[]
+  loginSource: 'token' | 'oidc' | null
+}
+
 export interface User {
   id: string
   email: string

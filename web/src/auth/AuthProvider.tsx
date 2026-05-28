@@ -1,94 +1,109 @@
-/** Auth provider — adapted from ai-dala-forge/frontend/src/core/auth/AuthProvider.tsx
- *  Manages session restoration, login, logout, and token rotation event listening.
- */
+/** Auth provider — Stage F1: token-based login, in-memory session, role-aware navigation */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  client,
-  clearRefreshToken,
-  clearToken,
-  getToken,
-  setRefreshToken,
-  setToken,
-} from '@/api/client'
-import type { User } from '@/types/api'
+import { clearToken, setToken } from '@/api/client'
+import { decodeTokenPayload, resolveDisplayName } from './tokenUtils'
+import type { UserSession } from '@/types/api'
 import { AuthContext, type AuthContextValue } from './AuthContext'
+import { getOidcManager } from './OidcManager'
 
-interface LoginResponse {
-  access_token: string
-  refresh_token: string
-  user: User
-}
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [session, setSessionState] = useState<UserSession | null>(null)
+  const isLoading = false
   const navigate = useNavigate()
 
-  // Restore session on mount
-  useEffect(() => {
-    let cancelled = false
-    async function restore() {
-      if (!getToken()) {
-        if (!cancelled) setIsLoading(false)
-        return
-      }
-      try {
-        const me = await client.get<User>('/api/v1/auth/me')
-        if (!cancelled) setUser(me)
-      } catch {
-        clearToken()
-        clearRefreshToken()
-      } finally {
-        if (!cancelled) setIsLoading(false)
-      }
-    }
-    restore()
-    return () => { cancelled = true }
-  }, [])
-
-  // React to session-expired events dispatched by the API client
+  // React to session-expired events dispatched by the API client.
+  // Use window.location.replace to avoid a React Router ProtectedRoute re-render
+  // race that would strip the ?reason=session-expired query parameter.
   useEffect(() => {
     const handle = () => {
       clearToken()
-      clearRefreshToken()
-      setUser(null)
-      navigate('/login')
+      setSessionState(null)
+      window.location.replace('/login?reason=session-expired')
     }
     window.addEventListener('auth:session-expired', handle)
     return () => window.removeEventListener('auth:session-expired', handle)
-  }, [navigate])
-
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await client.post<LoginResponse>('/api/v1/auth/login', { email, password })
-    setToken(res.access_token)
-    setRefreshToken(res.refresh_token)
-    setUser(res.user)
   }, [])
 
-  const logout = useCallback(async () => {
-    try { await client.post('/api/v1/auth/logout') } catch { /* best-effort */ }
-    clearToken()
-    clearRefreshToken()
-    setUser(null)
-    navigate('/login')
-  }, [navigate])
-
-  const refreshUser = useCallback(async () => {
-    try {
-      const me = await client.get<User>('/api/v1/auth/me')
-      setUser(me)
-    } catch {
-      clearToken()
-      setUser(null)
+  // Start OIDC silent renew if OIDC authority is configured.
+  // On token-expiring event, perform silent renew and update the in-memory token.
+  useEffect(() => {
+    if (!import.meta.env.VITE_OIDC_AUTHORITY) return
+    const handler = async () => {
+      try {
+        const m = await getOidcManager()
+        const newUser = await m.signinSilent()
+        if (newUser?.access_token) {
+          const newToken = newUser.access_token
+          setToken(newToken)
+          setSessionState(prev => (prev ? { ...prev, token: newToken } : null))
+        }
+      } catch {
+        // silent renew failed; session-expired event will handle logout
+      }
+    }
+    let cleanup: (() => void) | undefined
+    void getOidcManager().then(m => {
+      m.events.addAccessTokenExpiring(handler)
+      m.startSilentRenew()
+      cleanup = () => m.events.removeAccessTokenExpiring(handler)
+    })
+    return () => {
+      if (cleanup) cleanup()
     }
   }, [])
 
+  const login = useCallback(async (token: string) => {
+    // Validate token against the health endpoint
+    const res = await fetch(`${BASE_URL}/health/ready`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) {
+      const err = { status: res.status, message: 'Invalid token or access denied.', code: 'LOGIN_HEALTH_CHECK_FAILED', details: undefined }
+      throw err
+    }
+
+    const payload = decodeTokenPayload(token)
+    if (payload === null) {
+      throw { status: 400, message: 'Token format is invalid.', code: 'TOKEN_DECODE_INVALID', details: undefined }
+    }
+    if (!payload.roles || payload.roles.length === 0) {
+      throw { status: 400, message: 'Token does not contain role assignments. Contact your administrator.', code: 'TOKEN_MISSING_ROLES', details: undefined }
+    }
+
+    setToken(token)
+    setSessionState({ token, display_name: resolveDisplayName(payload), roles: payload.roles, loginSource: 'token' })
+  }, [])
+
+  const logout = useCallback(() => {
+    clearToken()
+    setSessionState(null)
+    if (session?.loginSource === 'oidc') {
+      void getOidcManager().then(m => m.signoutRedirect())
+      return
+    }
+    navigate('/login')
+  }, [navigate, session])
+
+  const setSession = useCallback((s: UserSession) => {
+    setSessionState(s)
+  }, [])
+
   const value: AuthContextValue = useMemo(
-    () => ({ user, isAuthenticated: user !== null, isLoading, login, logout, refreshUser }),
-    [user, isLoading, login, logout, refreshUser],
+    () => ({
+      session,
+      isAuthenticated: session !== null,
+      isLoading,
+      loginSource: session?.loginSource ?? null,
+      login,
+      logout,
+      setSession,
+    }),
+    [session, isLoading, login, logout, setSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

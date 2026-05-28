@@ -1,0 +1,43 @@
+{
+  "run_id": "WF02-shf1a-20260528",
+  "created_at": "2026-05-28T07:16:27Z",
+  "requirement_ids": ["SH-01", "SH-02", "SH-03", "SH-04"],
+  "summary": {
+    "unit_tests": {
+      "total": 18,
+      "passed": 18,
+      "failed": 0,
+      "files": [
+        "web/src/pages/instances/timelineUtils.test.ts (6 tests)",
+        "web/src/auth/__tests__/tokenUtils.test.ts (12 tests)"
+      ]
+    },
+    "e2e_tests": {
+      "total": 12,
+      "passed": 12,
+      "failed": 0,
+      "tests": [
+        "TC-SH01-01: login page renders token input and submit button - PASS",
+        "TC-SH01-02: valid token login navigates to workspace - PASS",
+        "TC-SH01-03: invalid token (health 401) shows error message - PASS",
+        "TC-SH01-04: empty token submission shows validation error - PASS",
+        "TC-SH02-01: auth:session-expired event navigates to /login?reason=session-expired - PASS",
+        "TC-SH02-02: navigating to /login?reason=session-expired shows expiry banner - PASS",
+        "TC-SH03-01: TASK_WORKER sees only My Tasks - PASS",
+        "TC-SH03-02: PLATFORM_ADMIN sees all 11 nav items - PASS",
+        "TC-SH03-03: PROCESS_DESIGNER sees Instances and Definitions only - PASS",
+        "TC-SH04-01: sidebar header shows display_name from JWT - PASS",
+        "TC-SH04-02: sidebar header shows roles from JWT - PASS",
+        "TC-SH04-03: logout button clears session and navigates to /login - PASS"
+      ]
+    }
+  },
+  "bug_fixes": [
+    {
+      "file": "web/src/auth/AuthProvider.tsx",
+      "description": "TC-SH02-01 initially failed. The auth:session-expired handler called setSession(null) then navigate('/login?reason=session-expired'). ProtectedRoute re-rendered with isAuthenticated=false while the React Router location had not yet updated, firing a Navigate to /login (no query params) that overwrote the reason param. Fix: replaced navigate() with window.location.replace('/login?reason=session-expired') which is a synchronous hard navigation that completes before any React render cycle can interfere.",
+      "severity": "MINOR"
+    }
+  ],
+  "issues": []
+}

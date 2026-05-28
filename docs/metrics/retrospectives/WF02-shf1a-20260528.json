@@ -1,0 +1,85 @@
+{
+  "run_id": "WF02-shf1a-20260528",
+  "created_at": "2026-05-28T07:20:59Z",
+  "difficulty": 3,
+  "difficulty_rationale": "Frontend shell rewrite: auth flow change, token storage security fix, role-aware nav for 4 roles, user display in header",
+  "integration_surface": "medium",
+  "steps": [
+    {
+      "step": "step-00",
+      "agent": "FRONTEND-DEV",
+      "estimated_min": "N/A",
+      "actual_min": 1.7,
+      "variance_pct": "N/A",
+      "note": ""
+    },
+    {
+      "step": "step-01",
+      "agent": "CODE-DESIGNER",
+      "estimated_min": 32,
+      "actual_min": 7.95,
+      "variance_pct": -75.2,
+      "note": ""
+    },
+    {
+      "step": "step-01b",
+      "agent": "CODE-DESIGN-VALIDATOR",
+      "estimated_min": 15,
+      "actual_min": 4.57,
+      "variance_pct": -69.5,
+      "note": ""
+    },
+    {
+      "step": "step-02",
+      "agent": "FRONTEND-DEV",
+      "estimated_min": 44,
+      "actual_min": 0.05,
+      "variance_pct": -99.9,
+      "note": "anomaly: 3-second actual time, likely timestamp issue"
+    },
+    {
+      "step": "step-03",
+      "agent": "TEST-DESIGNER",
+      "estimated_min": 8,
+      "actual_min": "N/A",
+      "variance_pct": "N/A",
+      "note": "timestamp anomaly: completed_at < started_at"
+    },
+    {
+      "step": "step-03b",
+      "agent": "TEST-DESIGN-VALIDATOR",
+      "estimated_min": 22,
+      "actual_min": "N/A",
+      "variance_pct": "N/A",
+      "note": "timestamp anomaly: completed_at < started_at"
+    },
+    {
+      "step": "step-04",
+      "agent": "TEST-RUNNER",
+      "estimated_min": 4,
+      "actual_min": "N/A",
+      "variance_pct": "N/A",
+      "note": "timestamp anomaly: completed_at < started_at"
+    },
+    {
+      "step": "step-05",
+      "agent": "RELEASE-VALIDATOR",
+      "estimated_min": 10,
+      "actual_min": "N/A",
+      "variance_pct": "N/A",
+      "note": "timestamp anomaly: completed_at < started_at"
+    },
+    {
+      "step": "step-06",
+      "agent": "DOC-UPDATER",
+      "estimated_min": 2,
+      "actual_min": "N/A",
+      "variance_pct": "N/A",
+      "note": "in progress or missing timestamps"
+    }
+  ],
+  "overall_estimated_min": 137,
+  "overall_actual_min": 12.57,
+  "overall_variance_pct": -90.8,
+  "notes": "Timestamp anomaly on steps 03/03b/04/05/06: ORCH stamped started_at after agents completed. Only steps 01, 01b, 02 have valid estimated-step timings. Step-02 frontend-dev shows 3-second actual (anomaly). Partial actual total covers only steps 01+01b+02."
+}

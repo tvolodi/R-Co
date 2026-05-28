@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS event_type_registry_producers (
     CONSTRAINT fk_event_type_registry_definition FOREIGN KEY (definition_version_id) REFERENCES artifact_versions(version_id) ON DELETE CASCADE
 );
 
+-- Indexes for efficient queries
+CREATE INDEX IF NOT EXISTS idx_event_type_registry_event_type ON event_type_registry_producers (event_type_id);
+CREATE INDEX IF NOT EXISTS idx_event_type_registry_definition ON event_type_registry_producers (definition_version_id);
+
 COMMENT ON TABLE event_type_registry_producers IS 'Extension of ES-05: links event types to definitions that produce them (REPO-06).';
 COMMENT ON COLUMN event_type_registry_producers.id IS 'Unique identifier for this producer registration.';
 COMMENT ON COLUMN event_type_registry_producers.event_type_id IS 'Reference to event_store.event_type_registry(id).';

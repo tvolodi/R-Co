@@ -2,6 +2,24 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — Subdomain Tenant Routing (Stage F1.6)
+
+### Added (WF02-oidcf2-20260528)
+- OIDC-F-05: Public GET /api/tenant-config?host={hostname} endpoint — returns OIDC authority URL and client_id for the tenant bound to that hostname; falls back to default realm if no binding found
+- OIDC-F-06: Frontend reads window.location.hostname on startup, calls /api/tenant-config, initializes OidcManager dynamically; env vars remain as compile-time fallbacks; graceful degradation on API failure
+- DB migration 050: tenant_hostnames table linking tenants to hostnames
+- Fixed pre-existing migration syntax errors in migrations 045–049 (MySQL-style inline INDEX → PostgreSQL CREATE INDEX)
+
+## [Unreleased] — OIDC SSO Login (Stage F1.5)
+
+### Added (WF02-oidcf-20260528)
+- OIDC-F-01: SSO login button on LoginPage using oidc-client-ts; env vars VITE_OIDC_AUTHORITY and VITE_OIDC_CLIENT_ID
+- OIDC-F-02: `/auth/callback` route, authorization code exchange via oidc-client-ts (InMemoryWebStorage), token stored in-memory, redirect to workspace on success / to `/login?reason=auth-error` on failure
+- OIDC-F-03: Silent token renewal via oidc-client-ts `startSilentRenew()` on mount when OIDC is configured
+- OIDC-F-04: OIDC-aware logout calling Keycloak end-session endpoint; non-OIDC sessions use existing logout path
+- Fixed React StrictMode double-effect bug in OidcCallbackPage (PKCE code single-use guard)
+- Fixed Keycloak realm: added roles mapper, disabled VERIFY_PROFILE, added webOrigins
+
 ## [Unreleased]
 
 ### Stage 10 — Platform Repository (RELEASED 2026-05-28)
@@ -25,6 +43,37 @@ All notable changes to the BPM Platform are documented here.
 All 13 MUST requirements fully implemented and unit tested with 471 passing test cases. Repository module provides complete artifact lifecycle management from creation through versioning and tenant-scoped activation. Unit test coverage excellent; integration with HTTP API verified via Stage 4 routes.
 
 Status: Framework complete, all acceptance criteria met. Release approval: docs/status/release-stage10-repo-20260528.json
+### Stage F1 Batch 1 — Application Shell and Authentication (RELEASED 2026-05-28)
+
+#### Frontend Shell Rewrite — JWT Auth, Role Nav, Session Expiry, User Identity
+
+- **SH-01:** Login screen with JWT token input. Dedicated `/login` page with token input field; JWT stored in `sessionStorage` (XSS-safe, no `localStorage`); redirects to originally requested URL on success; displays clear error on invalid/expired token.
+- **SH-02:** Session expiry detection with redirect and banner. Axios response interceptor intercepts HTTP 401 responses; clears session token; redirects to `/login`; shows persistent banner message explaining session expiry.
+- **SH-03:** Role-filtered navigation (PLATFORM_ADMIN, PROCESS_DESIGNER, TASK_WORKER/OPERATOR). `AppShell` sidebar renders only routes permitted for the authenticated user's role; non-permitted routes are hidden (not merely disabled); role derived from JWT claims.
+- **SH-04:** Active user identity indicator with logout. Header displays authenticated user's display name or email from JWT claims; logout button clears session and redirects to `/login`.
+
+Implementation: `web/src/auth/`, `web/src/components/layout/AppShell.tsx`, `web/src/pages/LoginPage.tsx`, `web/src/api/client.ts`, `web/src/router.tsx`
+
+E2E tests: Playwright suite covering all four requirements with visual confirmation screenshots. All tests pass against real backend.
+
+Release approval: `docs/status/release-F1-SH01-04-20260528.json`
+
+Requirements released: SH-01, SH-02, SH-03, SH-04 (MUST, Stage F1) — RELEASED
+
+### Stage F1 Batch 2 — Resilience Shell Components (RELEASED 2026-05-28)
+
+#### Global Error Boundary and API Connectivity Banner
+
+- **SH-05:** Global error boundary — catches unhandled component errors anywhere in the React tree and renders a recoverable fallback UI with a "reload this view" try-again action, preventing the entire application from crashing. Implemented as `ErrorBoundary` class component wrapping all routed views in `AppShell`; unit tested with 4 test cases confirming error capture, fallback render, recovery action, and clean pass-through.
+- **SH-06:** API connectivity banner — polls `GET /health/ready` at a configurable interval and displays a sticky dismissible banner at the top of the application when the backend is unreachable. Banner disappears automatically when connectivity is restored. E2E tested with Playwright against a real backend.
+
+Implementation: `web/src/components/layout/ErrorBoundary.tsx`, `web/src/components/layout/ApiConnectivityBanner.tsx`, `web/src/components/layout/AppShell.tsx`
+
+Tests: Unit tests (`ErrorBoundary.test.tsx`) covering all 4 SH-05 MUST acceptance criteria; E2E tests (`sh05-06.shell.e2e.spec.ts`) covering SH-06 banner visibility and auto-dismiss.
+
+Release approval: `docs/status/release-F1-SH05-06-20260528.json`
+
+Requirements released: SH-05 (MUST), SH-06 (SHOULD), Stage F1 — RELEASED
 
 ### Stage 9 — Wasm Module Execution (RELEASED 2026-05-28)
 

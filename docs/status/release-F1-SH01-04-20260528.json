@@ -1,0 +1,40 @@
+{
+  "run_id": "WF02-shf1a-20260528",
+  "decision": "RELEASED",
+  "released_at": "2026-05-28T07:18:50Z",
+  "requirement_ids": ["SH-01", "SH-02", "SH-03", "SH-04"],
+  "build_checks": {
+    "type-check": "PASS",
+    "lint": "PASS",
+    "build": "PASS"
+  },
+  "test_summary": {
+    "unit_tests": { "total": 18, "passed": 18 },
+    "e2e_tests": { "total": 12, "passed": 12 }
+  },
+  "acceptance_criteria_coverage": {
+    "SH-01": {
+      "description": "Login screen accepts bearer token, validates via GET /health/ready, decodes JWT, navigates on success, shows error on failure",
+      "tests": ["TC-SH01-01", "TC-SH01-02", "TC-SH01-03", "TC-SH01-04"],
+      "status": "PASS"
+    },
+    "SH-02": {
+      "description": "Session expiry triggers redirect to /login?reason=session-expired with banner",
+      "tests": ["TC-SH02-01", "TC-SH02-02"],
+      "status": "PASS"
+    },
+    "SH-03": {
+      "description": "Role-filtered navigation: items outside user's permissions hidden entirely",
+      "tests": ["TC-SH03-01", "TC-SH03-02", "TC-SH03-03"],
+      "status": "PASS"
+    },
+    "SH-04": {
+      "description": "User display_name and roles shown in shell header; logout clears session and redirects to /login",
+      "tests": ["TC-SH04-01", "TC-SH04-02", "TC-SH04-03"],
+      "status": "PASS"
+    }
+  },
+  "acceptance_criteria_met": true,
+  "blocking_issues": [],
+  "notes": "TC-SH02-01 required a MINOR bug fix during test-runner phase: ProtectedRoute re-render race condition in AuthProvider fixed by replacing navigate() with window.location.replace() for session-expired redirect. Fix is in web/src/auth/AuthProvider.tsx. No BLOCKER or CRITICAL issues. ESLint emitted a TypeScript version advisory warning (TS 5.9.3 vs supported <5.6.0) but exit code was 0 and no lint errors found."
+}

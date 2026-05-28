@@ -1,0 +1,50 @@
+{
+  "handoff_id": "6b858dd9-eabf-4438-b2ee-142ea6652dde",
+  "run_id": "WF02-shf1b-20260528",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-28T07:50:00Z",
+  "started_at": "2026-05-28T07:50:10Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F1 - Application Shell and Authentication (Batch 2)",
+    "requirement_ids": [
+      "SH-05",
+      "SH-06"
+    ],
+    "related_handoff_ids": [
+      "4f31a39c-c31a-45c0-b21d-f53032a04450"
+    ],
+    "artifacts_in": [
+      "src/design/shell-f1.md",
+      "docs/BPM_Platform_Frontend_Requirements.md",
+      "web/src/components/layout/AppShell.tsx"
+    ]
+  },
+  "task": {
+    "description": "Design implementation plan for SH-05 (global error boundary) and SH-06 (API connectivity banner). Write design artefact to src/design/shell-f1-batch2.md. Include: component interfaces, prop types, hook designs, where in the component tree each component sits, error state management for SH-05, connectivity detection strategy for SH-06 (polling /health/ready endpoint).",
+    "acceptance_criteria": [
+      "src/design/shell-f1-batch2.md created",
+      "SH-05: ErrorBoundary component design with fallback UI spec",
+      "SH-06: ApiConnectivityBanner component design with polling strategy",
+      "All public component/hook interfaces documented",
+      "No implementation code in design doc"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for shell-f1-batch2 (SH-05 ErrorBoundary + SH-06 ApiConnectivityBanner): component interfaces, hook signatures, integration points, error taxonomy, and open constraints documented.",
+    "artifacts_out": [
+      "src/design/shell-f1-batch2.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-28T07:37:21Z"
+}

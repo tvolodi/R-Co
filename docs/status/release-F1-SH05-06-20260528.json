@@ -1,0 +1,38 @@
+{
+  "run_id": "WF02-shf1b-20260528",
+  "decision": "APPROVED",
+  "released_at": "2026-05-28T08:01:20Z",
+  "requirement_ids": ["SH-05", "SH-06"],
+  "build_checks": {
+    "type-check": "PASS",
+    "lint": "PASS",
+    "build": "PASS"
+  },
+  "test_summary": {
+    "unit_tests": { "total": 22, "passed": 22, "failed": 0 },
+    "e2e_tests": { "total": 3, "passed": 3, "failed": 0 }
+  },
+  "sh05_coverage": {
+    "priority": "MUST",
+    "acceptance_criteria_met": true,
+    "tests": [
+      "TC-SH05-01: child throws → error-boundary-panel visible",
+      "TC-SH05-02: clicking error-boundary-reset → panel gone, normal content visible",
+      "TC-SH05-03: after reset child throws again → panel shown again",
+      "TC-SH05-04: ErrorBoundary resets correctly across multiple cycles"
+    ],
+    "test_file": "src/components/layout/__tests__/ErrorBoundary.test.tsx (4 tests)"
+  },
+  "sh06_coverage": {
+    "priority": "SHOULD",
+    "acceptance_criteria_met": true,
+    "tests": [
+      "TC-SH06-01: /health/ready 200 → connectivity-banner NOT visible (PASS)",
+      "TC-SH06-02: /health/ready 503 → connectivity-banner visible (PASS)",
+      "TC-SH06-03: banner disappears when health recovers (PASS)"
+    ]
+  },
+  "blocking_issues": [],
+  "notes": "Build blocker fixed: added web/src/vitest.d.ts to augment Vitest Assertion interface with @testing-library/jest-dom matchers. tsc -b now exits 0.",
+  "approved_requirements": ["SH-05", "SH-06"]
+}

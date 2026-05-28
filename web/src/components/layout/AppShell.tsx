@@ -1,30 +1,35 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
+import { ApiConnectivityBanner } from './ApiConnectivityBanner'
 
-const NAV: { to: string; label: string; adminOnly?: boolean }[] = [
-  { to: '/instances',      label: 'Instances' },
-  { to: '/tasks',          label: 'My Tasks' },
-  { to: '/definitions',   label: 'Definitions' },
-  { to: '/dlq',            label: 'DLQ' },
-  { to: '/webhooks',       label: 'Webhooks' },
-  { to: '/admin/users',    label: 'Users',   adminOnly: true },
-  { to: '/admin/groups',   label: 'Groups',  adminOnly: true },
-  { to: '/admin/tokens',   label: 'Tokens',  adminOnly: true },
-  { to: '/admin/audit',    label: 'Audit',   adminOnly: true },
-  { to: '/admin/health',   label: 'Health',  adminOnly: true },
-  { to: '/admin/metrics',  label: 'Metrics', adminOnly: true },
+type Role = 'PLATFORM_ADMIN' | 'PROCESS_DESIGNER' | 'PROCESS_OPERATOR' | 'TASK_WORKER'
+
+interface NavItem {
+  to: string
+  label: string
+  roles: Role[]
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { to: '/instances',     label: 'Instances',   roles: ['PLATFORM_ADMIN', 'PROCESS_DESIGNER', 'PROCESS_OPERATOR'] },
+  { to: '/tasks',         label: 'My Tasks',    roles: ['PLATFORM_ADMIN', 'PROCESS_OPERATOR', 'TASK_WORKER'] },
+  { to: '/definitions',  label: 'Definitions', roles: ['PLATFORM_ADMIN', 'PROCESS_DESIGNER'] },
+  { to: '/dlq',           label: 'DLQ',         roles: ['PLATFORM_ADMIN', 'PROCESS_OPERATOR'] },
+  { to: '/webhooks',      label: 'Webhooks',    roles: ['PLATFORM_ADMIN', 'PROCESS_OPERATOR'] },
+  { to: '/admin/users',   label: 'Users',       roles: ['PLATFORM_ADMIN'] },
+  { to: '/admin/groups',  label: 'Groups',      roles: ['PLATFORM_ADMIN'] },
+  { to: '/admin/tokens',  label: 'Tokens',      roles: ['PLATFORM_ADMIN'] },
+  { to: '/admin/audit',   label: 'Audit',       roles: ['PLATFORM_ADMIN'] },
+  { to: '/admin/health',  label: 'Health',      roles: ['PLATFORM_ADMIN'] },
+  { to: '/admin/metrics', label: 'Metrics',     roles: ['PLATFORM_ADMIN'] },
 ]
 
 export function AppShell() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { session, logout } = useAuth()
 
-  const isAdmin = user?.roles?.includes('PLATFORM_ADMIN') ?? false
-
-  async function handleLogout() {
-    await logout()
-    navigate('/login')
-  }
+  const visibleNav = NAV_ITEMS.filter((n) =>
+    n.roles.some((r) => session?.roles.includes(r)),
+  )
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
@@ -45,7 +50,7 @@ export function AppShell() {
         </div>
 
         <nav style={{ flex: 1 }}>
-          {NAV.filter((n) => !n.adminOnly || isAdmin).map((n) => (
+          {visibleNav.map((n) => (
             <NavLink
               key={n.to}
               to={n.to}
@@ -65,9 +70,21 @@ export function AppShell() {
         </nav>
 
         <div style={{ padding: '.75rem 1.25rem', borderTop: '1px solid #334155', fontSize: '.8rem', color: '#64748b' }}>
-          <div style={{ marginBottom: '.5rem', color: '#94a3b8' }}>{user?.email}</div>
+          <div
+            data-testid="user-display-name"
+            style={{ marginBottom: '.25rem', color: '#94a3b8' }}
+          >
+            {session?.display_name}
+          </div>
+          <div
+            data-testid="user-roles"
+            style={{ marginBottom: '.5rem', color: '#64748b', fontSize: '.75rem' }}
+          >
+            {session?.roles.join(', ')}
+          </div>
           <button
-            onClick={handleLogout}
+            data-testid="logout-button"
+            onClick={logout}
             style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0, fontSize: '.8rem' }}
           >
             Sign out
@@ -77,6 +94,7 @@ export function AppShell() {
 
       {/* Main content */}
       <main style={{ flex: 1, overflow: 'auto', background: '#f8fafc' }}>
+        <ApiConnectivityBanner />
         <Outlet />
       </main>
     </div>

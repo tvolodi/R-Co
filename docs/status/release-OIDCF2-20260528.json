@@ -1,0 +1,15 @@
+{
+  "run_id": "WF02-oidcf2-20260528",
+  "release_date": "2026-05-28",
+  "stage": "F1.6",
+  "requirements": ["OIDC-F-05", "OIDC-F-06"],
+  "decision": "RELEASE",
+  "decision_rationale": "All 4 MUST test cases (TC-OIDCF2-01 through TC-OIDCF2-04) passed against real backend and Keycloak. Build passed (tsc --noEmit and vite build both exit 0). No BLOCKER issues. OIDC-F-05 (subdomain tenant-config resolution) and OIDC-F-06 (SSO button routes to tenant-specific realm) are verified end-to-end.",
+  "test_report": "tests/reports/WF02-oidcf2-20260528-test-report.json",
+  "checks": {
+    "must_tests_pass": true,
+    "overall_pass": true,
+    "build_pass": true,
+    "no_blockers": true
+  }
+}
