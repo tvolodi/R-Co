@@ -846,6 +846,26 @@ pub fn build(b: *std.Build) void {
     const test_lua_step = b.step("test-lua", "Run Lua integration unit tests");
     test_lua_step.dependOn(&run_lua_tests.step);
 
+    // Wasm integration module tests
+    const wasm_mod = b.createModule(.{
+        .root_source_file = b.path("src/wasm/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const wasm_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/wasm_executor_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "wasm", .module = wasm_mod },
+            },
+        }),
+    });
+    const run_wasm_tests = b.addRunArtifact(wasm_tests);
+    const test_wasm_step = b.step("test-wasm", "Run Wasm execution unit tests");
+    test_wasm_step.dependOn(&run_wasm_tests.step);
+
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_db_tests.step);
@@ -894,6 +914,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_expr_error_recovery_tests.step);
     test_step.dependOn(&run_dsl04_eval_tests.step);
     test_step.dependOn(&run_lua_tests.step);
+    test_step.dependOn(&run_wasm_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
