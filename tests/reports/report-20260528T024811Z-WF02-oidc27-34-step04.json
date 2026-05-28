@@ -1,0 +1,114 @@
+{
+  "run_id": "WF02-oidc27-34-20260528",
+  "workflow_id": "WF-02",
+  "handoff_id": "bc2e115f-c230-46e9-9652-b945206c9563",
+  "timestamp": "2026-05-28T02:48:11Z",
+  "requirement_ids": [
+    "OIDC-27",
+    "OIDC-28",
+    "OIDC-29",
+    "OIDC-30",
+    "OIDC-31",
+    "OIDC-32",
+    "OIDC-33",
+    "OIDC-34"
+  ],
+  "summary": {
+    "overall_status": "FAIL",
+    "commands_executed": 4,
+    "commands_passed": 2,
+    "commands_failed": 2
+  },
+  "command_results": [
+    {
+      "command": "zig build",
+      "status": "PASS",
+      "exit_code": 0,
+      "evidence": "Command completed successfully with no build errors emitted."
+    },
+    {
+      "command": "zig build test",
+      "status": "PASS",
+      "exit_code": 0,
+      "evidence": "Command completed successfully with no unit test failures emitted."
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "status": "FAIL",
+      "exit_code": 1,
+      "evidence": "Aggregate integration run cleaned the test database, then failed in oidc10_attribute_sync_test.TC-OIDC-10-10 with PoolError.QueryFailed via createOrGetJitOidcUser and in db_integration_test TC-DB-01-01 and TC-DB-01-02 with runMigrations failed: error.ServerError. Build summary: 395 passed, 7 skipped, 3 failed."
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://127.0.0.1:8081'; zig build test-integration-oidc31",
+      "status": "FAIL",
+      "exit_code": 1,
+      "evidence": "Focused OIDC-31 preflight cleaned the test database, then failed TC-OIDC-31-01 with error.Unexpected CONNECTION_REFUSED while requesting the discovery URL under BPM_IDP_BASE_URL. TC-OIDC-31-02 skipped because optional role tokens were not provided."
+    }
+  ],
+  "requirement_verdicts": [
+    {
+      "requirement_id": "OIDC-27",
+      "status": "PASS",
+      "evidence": "OIDC-27 is covered by tests/unit/test_oidc27_verification_benchmark.zig, and the full zig build test command exited 0."
+    },
+    {
+      "requirement_id": "OIDC-28",
+      "status": "FAIL",
+      "evidence": "Unit coverage compiled and passed in zig build test, but the required live realm verification path remained blocked because zig build test-integration-oidc31 failed before the Keycloak discovery and backend-health preflight could complete."
+    },
+    {
+      "requirement_id": "OIDC-29",
+      "status": "PASS",
+      "evidence": "OIDC-29 is covered by tests/unit/test_oidc29_realm_seed.zig, and the full zig build test command exited 0."
+    },
+    {
+      "requirement_id": "OIDC-30",
+      "status": "FAIL",
+      "evidence": "Unit coverage compiled and passed in zig build test, but the non-production token-helper integration path depends on the OIDC-31 live-environment preflight, which failed with CONNECTION_REFUSED before protected-route verification could complete."
+    },
+    {
+      "requirement_id": "OIDC-31",
+      "status": "FAIL",
+      "evidence": "The dedicated zig build test-integration-oidc31 target failed in TC-OIDC-31-01 because the configured BPM_IDP_BASE_URL endpoint refused the connection, so real backend + IDP preflight evidence was not established."
+    },
+    {
+      "requirement_id": "OIDC-32",
+      "status": "FAIL",
+      "evidence": "Unit coverage compiled and passed in zig build test, but the integration verifier path for seeded agent identities is routed through the OIDC-31 preflight surface and could not be closed while that focused command failed."
+    },
+    {
+      "requirement_id": "OIDC-33",
+      "status": "FAIL",
+      "evidence": "OIDC-33 unit coverage compiled and passed in zig build test, but coexistence-path integration evidence remains open because the OIDC-31 real-environment validation path failed before authenticated-route equivalence checks could run."
+    },
+    {
+      "requirement_id": "OIDC-34",
+      "status": "FAIL",
+      "evidence": "OIDC-34 relies on aggregate integration execution, and zig build test-integration exited 1 due unrelated OIDC-10 and DB migration failures, so this WF-02 validation step cannot close OIDC-34 integration evidence."
+    }
+  ],
+  "issues": [
+    {
+      "severity": "BLOCKER",
+      "requirement_id": "OIDC-31",
+      "layer": "integration",
+      "file": "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+      "description": "TC-OIDC-31-01 failed with CONNECTION_REFUSED against the configured live IDP/backend preflight path, so the required real-environment OIDC validation could not execute."
+    },
+    {
+      "severity": "BLOCKER",
+      "requirement_id": "OIDC-34",
+      "layer": "integration",
+      "file": "tests/integration/db_integration_test.zig",
+      "description": "The aggregate integration suite remains red because TC-DB-01-01 and TC-DB-01-02 failed with runMigrations failed: error.ServerError during TestHarness.init, which blocks closing OIDC-34 integration evidence in WF-02 step 04."
+    },
+    {
+      "severity": "MAJOR",
+      "requirement_id": "OIDC-34",
+      "layer": "integration",
+      "file": "tests/integration/oidc10_attribute_sync_test.zig",
+      "description": "The aggregate integration suite also failed in TC-OIDC-10-10 due createOrGetJitOidcUser returning PoolError.QueryFailed, adding a second non-OIDC-27..34 blocker that keeps the required integration command red."
+    }
+  ],
+  "next_action": "Route to ORCH for WF-03 follow-up to restore live OIDC preflight connectivity and clear the unrelated aggregate integration blockers, then rerun WF02 step-04."
+}

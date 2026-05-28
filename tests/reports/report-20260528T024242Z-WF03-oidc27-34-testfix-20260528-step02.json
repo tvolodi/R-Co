@@ -1,0 +1,73 @@
+{
+  "run_id": "WF03-oidc27-34-testfix-20260528",
+  "workflow_id": "WF-03",
+  "handoff_id": "768cc051-4894-44e1-80ec-182f3296883f",
+  "timestamp": "2026-05-28T02:42:42Z",
+  "requirement_ids": [
+    "OIDC-28",
+    "OIDC-31",
+    "OIDC-32",
+    "OIDC-34"
+  ],
+  "summary": {
+    "status": "PASS",
+    "total_cases": 5,
+    "passed": 5,
+    "failed": 0,
+    "skipped": 0
+  },
+  "executed_scope": {
+    "task_description": "Re-run validation commands that previously failed after ISSUE-FIXER changes. Produce a verification report under tests/reports and classify whether the original blockers are resolved.",
+    "commands": [
+      {
+        "command": "zig build test",
+        "exit_code": 0,
+        "evidence": "UNIT_EXIT_CODE=0"
+      },
+      {
+        "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+        "exit_code": 0,
+        "evidence": "Cleaning test database... Test database cleaned. INTEGRATION_EXIT_CODE=0"
+      },
+      {
+        "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration-oidc31",
+        "exit_code": 0,
+        "evidence": "Cleaning test database... Test database cleaned. OIDC31_EXIT_CODE=0"
+      }
+    ]
+  },
+  "blocker_closure": [
+    {
+      "requirement_id": "OIDC-28",
+      "original_blocker": "tests/unit/test_oidc28_local_dev_realm.zig failed to compile because std.fs.cwd was removed from Zig 0.16 std.fs root.",
+      "status": "RESOLVED",
+      "evidence": "zig build test exited 0, confirming the OIDC-28 unit test module now compiles within the full unit suite."
+    },
+    {
+      "requirement_id": "OIDC-32",
+      "original_blocker": "tests/unit/test_oidc32_agent_test_identities.zig failed to compile because std.fs.cwd was removed from Zig 0.16 std.fs root.",
+      "status": "RESOLVED",
+      "evidence": "zig build test exited 0, confirming the OIDC-32 unit test module now compiles within the full unit suite."
+    },
+    {
+      "requirement_id": "OIDC-34",
+      "original_blocker": "src/oidc/migration_helper.zig failed integration compilation because QueryResult deinit required mutable access.",
+      "status": "RESOLVED",
+      "evidence": "zig build test-integration exited 0 with BPM_TEST_DB_URL set, confirming the OIDC-34 integration compile path is repaired."
+    },
+    {
+      "requirement_id": "OIDC-31",
+      "original_blocker": "tests/integration/oidc31_end_to_end_auth_suite_test.zig used a stale pg.Pool API symbol.",
+      "status": "RESOLVED",
+      "evidence": "zig build test-integration-oidc31 exited 0, confirming the focused OIDC-31 integration target matches the current pg vendor API."
+    },
+    {
+      "requirement_id": "OIDC-27",
+      "original_blocker": "Windows PowerShell integration env injection was unreliable, causing broad integration skips when BPM_TEST_DB_URL was not visible to child test processes.",
+      "status": "RESOLVED",
+      "evidence": "Both integration commands exited 0 with explicit PowerShell BPM_TEST_DB_URL assignment, confirming the test environment now propagates correctly for the rerun path."
+    }
+  ],
+  "issues": [],
+  "next_action": "All original blockers are closed. Re-run WF02-oidc27-34 Step 04 test validation on the main workflow path."
+}

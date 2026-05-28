@@ -56,6 +56,11 @@ pub const identity_service = @import("identity/service.zig"); // IDN-01 user reg
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01 user registry HTTP handlers
 pub const identity_provider = @import("identity_provider"); // OIDC provider contract and bootstrap wiring
 pub const oidc_agent_lifecycle = @import("oidc/agent_lifecycle.zig"); // OIDC-16..26 lifecycle/idempotency/audit/metrics helpers
+pub const oidc_verification_benchmark = @import("oidc/verification_benchmark.zig"); // OIDC-27 benchmark envelope helpers
+pub const oidc_realm_seed = @import("oidc/realm_seed.zig"); // OIDC-29 realm seed validation and drift checks
+pub const oidc_test_token_helper = @import("oidc/test_token_helper.zig"); // OIDC-30 test-only token helper
+pub const oidc_coexistence_auth = @import("oidc/coexistence_auth.zig"); // OIDC-33 coexistence context equivalence checks
+pub const oidc_migration_helper = @import("oidc/migration_helper.zig"); // OIDC-34 migration helper service
 pub const api_auth = @import("api/middleware/auth.zig"); // API-08 auth middleware provider-manager configuration
 
 const placeholder_health_live = "{\"status\":\"live\"}";
@@ -189,11 +194,6 @@ fn serveRequest(
     defer arena.deinit();
     const req_alloc = arena.allocator();
 
-    // Read request body (up to 1 MiB).
-    var body_transfer_buf: [8192]u8 = undefined;
-    var body_reader = request.readerExpectNone(&body_transfer_buf);
-    const body = body_reader.allocRemaining(req_alloc, std.Io.Limit.limited(1 * 1024 * 1024)) catch &.{};
-
     // Extract user identity from request header.
     const user_id = blk: {
         var hdr_it = request.iterateHeaders();
@@ -208,6 +208,12 @@ fn serveRequest(
     const q_start = std.mem.indexOf(u8, target, "?");
     const path = if (q_start) |qi| target[0..qi] else target;
     const query_str = if (q_start) |qi| target[qi + 1 ..] else "";
+
+    // Read request body only after copying request metadata that borrows from
+    // the receive buffer. Consuming the body can invalidate request.head.target.
+    var body_transfer_buf: [8192]u8 = undefined;
+    var body_reader = request.readerExpectNone(&body_transfer_buf);
+    const body = body_reader.allocRemaining(req_alloc, std.Io.Limit.limited(1 * 1024 * 1024)) catch &.{};
 
     // Get a query parameter by key (case-insensitive key match, URL-encoded values not decoded).
     const QS = struct {

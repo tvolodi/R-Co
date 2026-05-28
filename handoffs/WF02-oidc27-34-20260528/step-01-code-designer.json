@@ -1,0 +1,73 @@
+{
+  "handoff_id": "6c4b3009-805f-48d4-abcc-f6f18bc44d57",
+  "run_id": "WF02-oidc27-34-20260528",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-oidc27-34-20260528/step-01-code-designer.json",
+  "created_at": "2026-05-28T01:58:00Z",
+  "started_at": "2026-05-28T01:58:20Z",
+  "completed_at": "2026-05-28T02:02:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+    "requirement_ids": [
+      "OIDC-27",
+      "OIDC-28",
+      "OIDC-29",
+      "OIDC-30",
+      "OIDC-31",
+      "OIDC-32",
+      "OIDC-33",
+      "OIDC-34"
+    ],
+    "related_handoff_ids": [
+      "2d826593-8e53-48f8-92e7-7f6d2f4e1dbb"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/addon-1/02-functional-requirements.md",
+      "src/design/oidc-20-agent-service-account-clients.md",
+      "src/design/oidc-21-zero-downtime-secret-rotation.md",
+      "src/design/oidc-22-bootstrap-agent-identity.md",
+      "src/design/oidc-23-idp-federation-support.md",
+      "src/design/oidc-24-federated-attribute-mapping.md",
+      "src/design/oidc-25-provider-readiness-health-check.md",
+      "src/design/oidc-26-provider-metrics.md"
+    ]
+  },
+  "task": {
+    "description": "Produce design artefacts for OIDC-27 through OIDC-34 in Stream B (Stage 6.5).\n\nRequirements to design in detail:\n- OIDC-27: token verification performance target and observability envelope.\n- OIDC-28: local development realm runnable setup.\n- OIDC-29: realm seed as versioned artifact and drift controls.\n- OIDC-30: test token issuance helper for automated suites.\n- OIDC-31: end-to-end authentication test suite across real backend + IDP.\n- OIDC-32: dedicated agent test identities/clients and lifecycle policy.\n- OIDC-33: coexistence period behavior between legacy/API tokens and OIDC bearer path.\n- OIDC-34: migration helper for transition rollout/backout safety.\n\nFor each requirement, create src/design/oidc-<NN>-<slug>.md including:\n- Public function signatures + input/output types\n- Data structures and persistence/seed artifact model\n- Invariants and migration/coexistence safety guarantees\n- API route/CLI/helper surfaces and auth scopes\n- Integration test strategy and environment assumptions\n- Cross-module dependencies\n- Risks/open questions\n\nReuse and extend patterns from OIDC-20..26 design files and keep all assumptions explicit.",
+    "acceptance_criteria": [
+      "All OIDC-27..34 requirements map to concrete design elements",
+      "Coexistence and migration safety semantics are explicit and testable",
+      "Realm seed/versioning strategy is deterministic and reproducible",
+      "Token helper and E2E auth suite design specify real-environment execution",
+      "Open questions are listed rather than omitted"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Designed OIDC-27 through OIDC-34 with explicit interfaces, invariants, coexistence/migration safety semantics, seed/versioning strategy, real-environment test strategy, and open questions.",
+    "artifacts_out": [
+      "src/design/oidc-27-token-verification-performance-envelope.md",
+      "src/design/oidc-28-local-development-realm.md",
+      "src/design/oidc-29-realm-seed-versioned-artifact.md",
+      "src/design/oidc-30-test-token-issuance-helper.md",
+      "src/design/oidc-31-end-to-end-authentication-test-suite.md",
+      "src/design/oidc-32-agent-test-identities-lifecycle-policy.md",
+      "src/design/oidc-33-coexistence-period-authentication-behavior.md",
+      "src/design/oidc-34-migration-helper-transition-rollout-backout.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

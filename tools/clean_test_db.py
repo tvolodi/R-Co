@@ -26,7 +26,6 @@ TABLES = [
     "audit_entries",
     "dlq",
     "webhook_subscriptions",
-    "schema_migrations",
 ]
 
 

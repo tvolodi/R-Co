@@ -12,6 +12,8 @@ pub const write_variable = @import("write_variable.zig");
 pub const log_func = @import("log.zig");
 pub const emit_event = @import("emit_event.zig");
 pub const get_instance_state = @import("get_instance_state.zig");
+pub const now_func = @import("now.zig");
+pub const fail_func = @import("fail.zig");
 
 /// Register all host API functions into the platform table.
 pub fn registerAll(
@@ -28,6 +30,8 @@ pub fn registerAll(
     try log_func.register(L, context);
     try emit_event.register(L, context);
     try get_instance_state.register(L, context);
+    try now_func.register(L, context);
+    try fail_func.register(L, context);
 
     // Assign to global 'platform'
     bindings.lua_setglobal(L, "platform");

@@ -4,15 +4,37 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
-### Stage 8 — Lua Script Execution
+### Stage 8 — Lua Script Execution (RELEASED 2026-05-28)
 
+#### Phase 1: Lua Integration Foundations
 - **LUA-01:** LuaJIT static linking via C-interop bindings. Zig can now embed and invoke Lua scripts with no external Lua .so dependency.
 - **LUA-02:** State isolation per script execution. Each script runs in fresh lua_State; no global state leakage between invocations.
 - **LUA-03:** Restricted standard library. Only math, string, table modules available. Dangerous functions (io, os, debug, string.dump, load*) blocked.
 - **LUA-04:** Bytecode rejection. Lua bytecode (.luac) is detected and rejected; only source text scripts accepted.
 - **LUA-05:** Host API with capability-based access control. platform.* functions registered with per-function capability checks.
 
-Acceptance criteria all met. Test coverage gap (MINOR-LUA-001) documented for Phase 2 rework.
+Phase 1 acceptance criteria met. Test coverage gap (MINOR-LUA-001) documented for Phase 2 rework.
+
+#### Phase 2: Lua Capability Enforcement and Resource Limits (RELEASED 2026-05-28)
+Implemented comprehensive capability enforcement and resource limits for Lua script execution:
+
+- **LUA-06:** Capability Check at Call Site. All host API functions implement per-function capability checks; denial messages identify required capability and granted capabilities.
+- **LUA-07:** Capability Manifest Validation. Manifest JSON validated with bounds checking on resource limits (instructions, memory, timeout); invalid manifests rejected with clear error messages.
+- **LUA-08:** Instruction Limit Enforcement. Instruction counter enforced via Lua hook; scripts exceeding limit abort with structured error; configurable per manifest.
+- **LUA-09:** Memory Limit Enforcement. Memory allocator enforces hard limit; scripts exceeding limit abort; configurable per manifest.
+- **LUA-10:** Timeout Enforcement. Timeout timer enforced via platform.now() calls; scripts exceeding timeout abort; configurable per manifest.
+- **LUA-11:** Variable Read/Write Operations. Platform.get/set operations enable capability-gated access to execution context variables; proper error handling for missing variables.
+- **LUA-12:** Service Call Operations. platform.call operation enables capability-gated service invocations with catalog-based routing; proper error handling for missing/inactive services.
+- **LUA-13:** Structured Logging Operations. platform.log operation enables capability-gated structured logging with context correlation; supports trace levels and field enrichment.
+- **LUA-14:** Event Emission Operations. platform.emit operation enables capability-gated event publishing; events include correlation context and structured metadata.
+- **LUA-15:** Time Source (now) Access. platform.now() provides capability-gated access to current time; ISO 8601 format; used for timeout enforcement and logging correlation.
+- **LUA-16:** Structured Failure Handling (fail). platform.fail() enables capability-gated structured failure reporting; failures include context and become audit trail events.
+
+Phase 2 test coverage: 157 comprehensive integration test cases with 409 unit tests executed (all PASS). Implementation verified against release decision: docs/status/release-LUA-06-16-20260528.json.
+
+Validation evidence: tests/reports/WF02-lua06-16-20260528-test-report.json. Security validation: capability enforcement confirmed, manifest validation with bounds checking, all resource limits enforced, no SQL injection, no secrets in source, proper error handling.
+
+Requirements released: LUA-06 through LUA-16 (MUST, Stage 8) - RELEASED
 
 ### Stage 6 — Observability + Extensions
 
@@ -273,10 +295,11 @@ Acceptance criteria all met. Test coverage gap (MINOR-LUA-001) documented for Ph
 - Requirement: OIDC-14 (MUST, Stage 6.5) - RELEASED
 
 ### OIDC-15 — Realm deletion safety (RELEASED 2026-05-28)
-- Implemented two-step realm deletion: mark-for-deletion (no new tokens issued, existing sessions accepted until token expiry) followed by irreversible hard delete after a configurable grace period (default 7 days).
-- Added `realm_deletion_tracker` table schema, grace-period scheduler integration, and comprehensive audit logging per OBS-03 and ADP-09 for each deletion step.
-- Validation evidence passed via RELEASE-VALIDATOR final approval (all unit + integration tests PASS, all NFR benchmarks PASS); release approval is recorded in `docs/status/release-OIDC-11-15-20260528.json`.
-- Requirement: OIDC-15 (MUST, Stage 6.5) - RELEASED
+
+### OIDC-27..OIDC-34 — OIDC foundations completion bundle (RELEASED 2026-05-28)
+- Implemented and validated the Stream B OIDC foundations bundle: verification performance envelope, local development realm, versioned realm seed and drift tooling, test token issuance helper, end-to-end auth suite wiring, dedicated agent test identities, coexistence behavior, and migration helper rollout/backout scaffolding.
+- Validation evidence passed in `tests/reports/report-20260528T034634Z-WF02-oidc27-34-step04-rerun.json`; release approval is recorded in `docs/status/release-OIDC-27-34-20260528.json`.
+- Requirements: OIDC-27 (SHOULD), OIDC-28 (MUST), OIDC-29 (MUST), OIDC-30 (MUST), OIDC-31 (MUST), OIDC-32 (MUST), OIDC-33 (MUST), OIDC-34 (SHOULD) - RELEASED
 
 ### OIDC-16..OIDC-26 — Agent lifecycle, federation, and provider observability bundle (RELEASED 2026-05-28)
 - Implemented OIDC-16 through OIDC-26 backend capabilities in one Stage 6.5 release bundle: full lifecycle provisioning APIs, idempotency handling, transactional compensation behavior, audited/redacted adapter operations, agent service-account flows, rotation/bootstrap controls, federation flows, readiness integration, and provider metrics exposure.
