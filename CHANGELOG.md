@@ -295,10 +295,11 @@ Requirements released: LUA-06 through LUA-16 (MUST, Stage 8) - RELEASED
 - Requirement: OIDC-14 (MUST, Stage 6.5) - RELEASED
 
 ### OIDC-15 — Realm deletion safety (RELEASED 2026-05-28)
-- Implemented two-step realm deletion: mark-for-deletion (no new tokens issued, existing sessions accepted until token expiry) followed by irreversible hard delete after a configurable grace period (default 7 days).
-- Added `realm_deletion_tracker` table schema, grace-period scheduler integration, and comprehensive audit logging per OBS-03 and ADP-09 for each deletion step.
-- Validation evidence passed via RELEASE-VALIDATOR final approval (all unit + integration tests PASS, all NFR benchmarks PASS); release approval is recorded in `docs/status/release-OIDC-11-15-20260528.json`.
-- Requirement: OIDC-15 (MUST, Stage 6.5) - RELEASED
+
+### OIDC-27..OIDC-34 — OIDC foundations completion bundle (RELEASED 2026-05-28)
+- Implemented and validated the Stream B OIDC foundations bundle: verification performance envelope, local development realm, versioned realm seed and drift tooling, test token issuance helper, end-to-end auth suite wiring, dedicated agent test identities, coexistence behavior, and migration helper rollout/backout scaffolding.
+- Validation evidence passed in `tests/reports/report-20260528T034634Z-WF02-oidc27-34-step04-rerun.json`; release approval is recorded in `docs/status/release-OIDC-27-34-20260528.json`.
+- Requirements: OIDC-27 (SHOULD), OIDC-28 (MUST), OIDC-29 (MUST), OIDC-30 (MUST), OIDC-31 (MUST), OIDC-32 (MUST), OIDC-33 (MUST), OIDC-34 (SHOULD) - RELEASED
 
 ### OIDC-16..OIDC-26 — Agent lifecycle, federation, and provider observability bundle (RELEASED 2026-05-28)
 - Implemented OIDC-16 through OIDC-26 backend capabilities in one Stage 6.5 release bundle: full lifecycle provisioning APIs, idempotency handling, transactional compensation behavior, audited/redacted adapter operations, agent service-account flows, rotation/bootstrap controls, federation flows, readiness integration, and provider metrics exposure.

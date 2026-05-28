@@ -1,0 +1,20 @@
+{
+  "realm": "bpm-default",
+  "identities": [
+    {
+      "key": "agent-architect",
+      "clientId": "agent-architect",
+      "requiredRoles": ["AGENT_RUNNER"]
+    },
+    {
+      "key": "agent-developer",
+      "clientId": "agent-developer",
+      "requiredRoles": ["AGENT_RUNNER"]
+    },
+    {
+      "key": "agent-devops",
+      "clientId": "agent-devops",
+      "requiredRoles": ["AGENT_RUNNER"]
+    }
+  ]
+}

@@ -24,7 +24,10 @@ const identity_service = bpm.identity_service;
 // ---------------------------------------------------------------------------
 
 const tenant_default = "00000000-0000-0000-0000-000000000000";
-const tenant_a = "11111111-1111-1111-1111-111111111111";
+const tenant_oidc11_01 = "51111111-1111-1111-1111-111111111111";
+const tenant_oidc11_03 = "53333333-3333-3333-3333-333333333333";
+const tenant_oidc11_04 = "54444444-4444-4444-4444-444444444444";
+const tenant_oidc11_08 = "58888888-8888-8888-8888-888888888888";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -108,6 +111,31 @@ fn cleanupTenantById(pool: *pool_mod.Pool, tenant_id: []const u8) void {
     conn.exec("DELETE FROM tenant WHERE id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
 }
 
+fn cleanupTenantFixture(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []const u8, realm: []const u8) void {
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+
+    conn.exec(
+        \\DELETE FROM group_members
+        \\WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1::uuid)
+    , &[_][]const u8{tenant_id}) catch {};
+
+    conn.exec(
+        \\DELETE FROM api_tokens
+        \\WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1::uuid)
+    , &[_][]const u8{tenant_id}) catch {};
+
+    conn.exec(
+        \\DELETE FROM user_roles
+        \\WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1::uuid)
+    , &[_][]const u8{tenant_id}) catch {};
+
+    conn.exec("DELETE FROM users WHERE tenant_id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
+    conn.exec("DELETE FROM tenant WHERE id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
+    conn.exec("DELETE FROM tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
+    conn.exec("DELETE FROM tenant WHERE idp_realm_id = $1", &[_][]const u8{realm}) catch {};
+}
+
 fn ensureTenantBinding(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []const u8, display_name: []const u8, realm: []const u8) !void {
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -141,21 +169,23 @@ test "TC-OIDC-11-01: resolveByExternalIdentity returns correct user" {
     const realm = "kc-oidc11-01";
     const external_id = "sub-oidc11-01";
     const username = "tc-oidc11-01-user";
+    const tenant_slug = "oidc11-tenant-01";
 
     cleanupUserByExternalIdentity(&pool, realm, external_id);
     cleanupUserByUsername(&pool, username);
-    cleanupTenantById(&pool, tenant_a);
+    cleanupTenantFixture(&pool, tenant_oidc11_01, tenant_slug, realm);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
     defer cleanupUserByUsername(&pool, username);
+    defer cleanupTenantFixture(&pool, tenant_oidc11_01, tenant_slug, realm);
 
-    try ensureTenantBinding(&pool, tenant_a, "oidc11-tenant-a", "OIDC11 Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_oidc11_01, tenant_slug, "OIDC11 Tenant 01", realm);
 
     // Create a user with external identity via the identity service.
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
 
     const created = try service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_oidc11_01,
         .external_realm = realm,
         .external_id = external_id,
         .preferred_username = username,
@@ -170,7 +200,7 @@ test "TC-OIDC-11-01: resolveByExternalIdentity returns correct user" {
     const result = try identity_stability.resolveByExternalIdentity(alloc, &pool, .{
         .external_realm = realm,
         .external_id = external_id,
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_oidc11_01,
     });
     defer result.user.deinit(alloc);
 
@@ -192,7 +222,7 @@ test "TC-OIDC-11-02: resolveByExternalIdentity returns UserNotFound" {
     const result = identity_stability.resolveByExternalIdentity(alloc, &pool, .{
         .external_realm = "unknown-realm",
         .external_id = "unknown-sub",
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_default,
     });
 
     try testing.expectError(error.UserNotFound, result);
@@ -213,21 +243,23 @@ test "TC-OIDC-11-03: renamed user retains same user_id via sub lookup" {
     const realm = "kc-oidc11-03";
     const external_id = "sub-oidc11-03";
     const username = "tc-oidc11-03-user";
+    const tenant_slug = "oidc11-tenant-03";
 
     cleanupUserByExternalIdentity(&pool, realm, external_id);
     cleanupUserByUsername(&pool, username);
-    cleanupTenantById(&pool, tenant_a);
+    cleanupTenantFixture(&pool, tenant_oidc11_03, tenant_slug, realm);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
     defer cleanupUserByUsername(&pool, username);
+    defer cleanupTenantFixture(&pool, tenant_oidc11_03, tenant_slug, realm);
 
-    try ensureTenantBinding(&pool, tenant_a, "oidc11-tenant-a", "OIDC11 Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_oidc11_03, tenant_slug, "OIDC11 Tenant 03", realm);
 
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
 
     // Create user with initial attributes.
     const created = try service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_oidc11_03,
         .external_realm = realm,
         .external_id = external_id,
         .preferred_username = username,
@@ -244,7 +276,7 @@ test "TC-OIDC-11-03: renamed user retains same user_id via sub lookup" {
     const result = try identity_stability.resolveByExternalIdentity(alloc, &pool, .{
         .external_realm = realm,
         .external_id = external_id,
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_oidc11_03,
     });
     defer result.user.deinit(alloc);
 
@@ -268,21 +300,23 @@ test "TC-OIDC-11-04: no fallback to email-based lookup" {
     const external_id = "sub-oidc11-04";
     const wrong_external_id = "sub-wrong-oidc11-04";
     const username = "tc-oidc11-04-user";
+    const tenant_slug = "oidc11-tenant-04";
 
     cleanupUserByExternalIdentity(&pool, realm, external_id);
     cleanupUserByExternalIdentity(&pool, realm, wrong_external_id);
     cleanupUserByUsername(&pool, username);
-    cleanupTenantById(&pool, tenant_a);
+    cleanupTenantFixture(&pool, tenant_oidc11_04, tenant_slug, realm);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
     defer cleanupUserByUsername(&pool, username);
+    defer cleanupTenantFixture(&pool, tenant_oidc11_04, tenant_slug, realm);
 
-    try ensureTenantBinding(&pool, tenant_a, "oidc11-tenant-a", "OIDC11 Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_oidc11_04, tenant_slug, "OIDC11 Tenant 04", realm);
 
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
 
     const created = try service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_oidc11_04,
         .external_realm = realm,
         .external_id = external_id,
         .preferred_username = username,
@@ -297,7 +331,7 @@ test "TC-OIDC-11-04: no fallback to email-based lookup" {
     const result = identity_stability.resolveByExternalIdentity(alloc, &pool, .{
         .external_realm = realm,
         .external_id = wrong_external_id,
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_oidc11_04,
     });
 
     try testing.expectError(error.UserNotFound, result);
@@ -335,20 +369,22 @@ test "TC-OIDC-11-08: resolveByExternalIdentity detects profile drift" {
     const realm = "kc-oidc11-08";
     const external_id = "sub-oidc11-08-stable";
     const username = "tc-oidc11-08-user";
+    const tenant_slug = "oidc11-tenant-08";
 
     cleanupUserByExternalIdentity(&pool, realm, external_id);
     cleanupUserByUsername(&pool, username);
-    cleanupTenantById(&pool, tenant_a);
+    cleanupTenantFixture(&pool, tenant_oidc11_08, tenant_slug, realm);
     defer cleanupUserByExternalIdentity(&pool, realm, external_id);
     defer cleanupUserByUsername(&pool, username);
+    defer cleanupTenantFixture(&pool, tenant_oidc11_08, tenant_slug, realm);
 
-    try ensureTenantBinding(&pool, tenant_a, "oidc11-tenant-a", "OIDC11 Tenant A", realm);
+    try ensureTenantBinding(&pool, tenant_oidc11_08, tenant_slug, "OIDC11 Tenant 08", realm);
 
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
 
     const created = try service.createOrGetJitOidcUser(alloc, .{
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_oidc11_08,
         .external_realm = realm,
         .external_id = external_id,
         .preferred_username = username,
@@ -363,7 +399,7 @@ test "TC-OIDC-11-08: resolveByExternalIdentity detects profile drift" {
     const result = try identity_stability.resolveByExternalIdentity(alloc, &pool, .{
         .external_realm = realm,
         .external_id = external_id,
-        .tenant_id = tenant_a,
+        .tenant_id = tenant_oidc11_08,
     });
     defer result.user.deinit(alloc);
 
