@@ -55,6 +55,7 @@ pub const webhook_dispatcher = @import("webhook/dispatcher.zig"); // EXT-02 webh
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01 user registry persistence
 pub const identity_service = @import("identity/service.zig"); // IDN-01 user registry service
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01 user registry HTTP handlers
+pub const onboarding_routes = @import("api/routes/onboarding.zig"); // OIDC-35 onboarding HTTP handlers
 pub const identity_provider = @import("identity_provider"); // OIDC provider contract and bootstrap wiring
 pub const oidc_agent_lifecycle = @import("oidc/agent_lifecycle.zig"); // OIDC-16..26 lifecycle/idempotency/audit/metrics helpers
 pub const oidc_verification_benchmark = @import("oidc/verification_benchmark.zig"); // OIDC-27 benchmark envelope helpers
@@ -492,6 +493,42 @@ fn serveRequest(
             } else {
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
+        } else if (std.mem.eql(u8, resource, "onboarding")) {
+            // ── /api/v1/onboarding — OIDC-35 ─────────────────────────────────
+            const actor = api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+            };
+
+            if (seg4.len == 0 and method == .POST) {
+                // POST /api/v1/onboarding
+                const idempotency_key = blk: {
+                    var hdr_it = request.iterateHeaders();
+                    while (hdr_it.next()) |h| {
+                        if (std.ascii.eqlIgnoreCase(h.name, "Idempotency-Key")) break :blk h.value;
+                    }
+                    break :blk "";
+                };
+                const r = onboarding_routes.handleOnboarding(id_svc, req_alloc, actor, body, idempotency_key);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (seg4.len > 0 and seg5.len == 0 and method == .GET) {
+                // GET /api/v1/onboarding/:onboarding_id
+                const r = onboarding_routes.handleGetOnboarding(id_svc, req_alloc, actor, seg4);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (seg4.len == 0 and method == .GET) {
+                // GET /api/v1/onboarding?hostname=...
+                const hostname = QS.get(query_str, "hostname") orelse "";
+                const r = onboarding_routes.handleGetOnboardingByHostname(id_svc, req_alloc, actor, hostname);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else {
+                resp_status = 405;
+                resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
             }
         } else {
             resp_status = 404;
