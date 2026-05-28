@@ -1,0 +1,33 @@
+{
+  "handoff_id": "0637cd50-e344-458a-837f-e923bfb33f0a",
+  "run_id": "WF02-oidcf2-20260528",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-28T10:20:00Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F1.6 - Subdomain Tenant Routing",
+    "requirement_ids": [
+      "OIDC-F-05",
+      "OIDC-F-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Commit all remaining artifacts, rebase on main, create PR, squash-merge, delete branch feature/WF02-oidcf2-20260528.",
+    "acceptance_criteria": [
+      "PR created and merged",
+      "Branch deleted from origin",
+      "npm type-check and build pass on main"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}
