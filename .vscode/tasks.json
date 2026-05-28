@@ -20,8 +20,10 @@
 			"command": "powershell",
 			"args": [
 				"-NoProfile",
-				"-Command",
-				"$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration"
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				".vscode/run-zig-test-integration.ps1"
 			],
 			"isBackground": false
 		},

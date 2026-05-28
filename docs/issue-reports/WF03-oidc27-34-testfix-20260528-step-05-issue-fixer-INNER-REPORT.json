@@ -1,0 +1,64 @@
+{
+  "run_id": "WF03-oidc27-34-testfix-20260528",
+  "workflow_id": "WF-03",
+  "step": "05",
+  "agent": "ISSUE-FIXER",
+  "handoff_id": "c30c6874-74b8-4ab9-88af-0b4af9ef0d22",
+  "status": "PASS",
+  "completed_at": "2026-05-28T03:39:57Z",
+  "diagnosis": {
+    "categories": [
+      "D_TEST_ERROR"
+    ],
+    "notes": [
+      "The reported RealmOwnershipMismatch was reproducible as aggregate-suite instability in OIDC-11 integration tests due to mutable shared tenant fixtures.",
+      "Service-layer realm ownership checks were correct; failure originated from test fixture interference under aggregate execution.",
+      "No requirement/design ambiguity was found, so WF-03 Step 2 fix was executed directly in test code."
+    ]
+  },
+  "fixes": [
+    "Isolated OIDC-11 tenant fixtures by assigning per-test tenant IDs/slugs for TC-OIDC-11-01/03/04/08.",
+    "Added cleanupTenantFixture helper to clear tenant-scoped dependent rows and delete tenant records by id, slug, and realm before/after each fixture-bound test.",
+    "Preserved src/identity/service.zig runtime logic unchanged; fix remained minimal and test-scoped."
+  ],
+  "verification": [
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "result": "PASS",
+      "evidence": "INTEGRATION_EXIT_CODE=0"
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://127.0.0.1:8081'; zig build test-integration-oidc31",
+      "result": "PASS",
+      "evidence": "OIDC31_EXIT_CODE=0"
+    },
+    {
+      "command": "zig build",
+      "result": "PASS",
+      "evidence": "ZIG_BUILD_EXIT_CODE=0"
+    },
+    {
+      "command": "zig build test",
+      "result": "PASS",
+      "evidence": "ZIG_BUILD_TEST_EXIT_CODE=0"
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "result": "PASS",
+      "evidence": "WF02_STEP04_INTEGRATION_EXIT_CODE=0"
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://127.0.0.1:8081'; zig build test-integration-oidc31",
+      "result": "PASS",
+      "evidence": "WF02_STEP04_OIDC31_EXIT_CODE=0"
+    }
+  ],
+  "artifacts": [
+    "tests/integration/oidc11_identity_stability_test.zig",
+    "tests/reports/report-20260528T033957Z-WF02-oidc27-34-step04-rerun.json",
+    "docs/issues/ISS-0043.json",
+    "docs/issues/issue_index.json",
+    "docs/issue-reports/WF03-oidc27-34-testfix-20260528-step-05-issue-fixer-INNER-REPORT.json"
+  ],
+  "next_action": "Route to TEST-RUNNER (WF-03 Step 3) or ORCH to refresh WF02 step-04 state with rerun evidence."
+}

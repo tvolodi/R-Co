@@ -1,0 +1,52 @@
+{
+  "run_id": "WF03-oidc27-34-testfix-20260528",
+  "workflow_id": "WF-03",
+  "handoff_id": "d4fcbd57-0475-47fd-a041-3636d57f98b7",
+  "timestamp": "2026-05-28T03:05:17Z",
+  "requirement_ids": [
+    "OIDC-31",
+    "OIDC-34"
+  ],
+  "summary": {
+    "overall_status": "FAIL",
+    "commands_executed": 2,
+    "commands_passed": 1,
+    "commands_failed": 1
+  },
+  "command_results": [
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://127.0.0.1:8081'; zig build test-integration-oidc31",
+      "status": "PASS",
+      "exit_code": 0,
+      "evidence": "Focused OIDC-31 live preflight ran against the local backend on port 8080 and exited 0. The prior CONNECTION_REFUSED blocker is resolved."
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "status": "FAIL",
+      "exit_code": 1,
+      "evidence": "Aggregate integration no longer failed in db_integration_test or oidc10_attribute_sync_test. It now fails in oidc11_identity_stability_test.TC-OIDC-11-01 with error.RealmOwnershipMismatch from src/identity/service.zig:1089 during createOrGetJitOidcUser. Build summary: 397 passed, 7 skipped, 1 failed."
+    }
+  ],
+  "requirement_verdicts": [
+    {
+      "requirement_id": "OIDC-31",
+      "status": "PASS",
+      "evidence": "The dedicated live preflight target exited 0 against BPM_TEST_URL and BPM_IDP_BASE_URL, closing the prior OIDC-31 connectivity blocker."
+    },
+    {
+      "requirement_id": "OIDC-34",
+      "status": "FAIL",
+      "evidence": "The required aggregate integration command still exits 1, now because of an unrelated OIDC-11 identity stability failure rather than the earlier DB migration or OIDC-10 blockers."
+    }
+  ],
+  "issues": [
+    {
+      "severity": "BLOCKER",
+      "requirement_id": "OIDC-34",
+      "layer": "integration",
+      "file": "tests/integration/oidc11_identity_stability_test.zig",
+      "description": "Aggregate zig build test-integration still fails in TC-OIDC-11-01: resolveByExternalIdentity returns correct user because src/identity/service.zig rejects the external realm with error.RealmOwnershipMismatch. This keeps the aggregate path red, so OIDC-34 cannot be closed in this rerun."
+    }
+  ],
+  "next_action": "Route to ORCH for another WF-03 issue-fixer pass targeting the remaining aggregate OIDC-11 blocker, then rerun WF02 step-04 once zig build test-integration exits 0."
+}

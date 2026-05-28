@@ -67,7 +67,7 @@ pub fn listUnlinkedInternalUsers(
     const limit_text = try std.fmt.allocPrint(allocator, "{d}", .{limit});
     defer allocator.free(limit_text);
 
-    const rows = if (filter.tenant_id) |tenant_id|
+    var rows = if (filter.tenant_id) |tenant_id|
         conn.query(
             allocator,
             \\SELECT u.id::text, u.username, COALESCE(u.email,''), u.tenant_id::text, COALESCE(u.username, '')

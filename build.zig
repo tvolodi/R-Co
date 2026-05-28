@@ -242,6 +242,18 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // migration_helper_mod: wraps src/oidc/migration_helper.zig for
+    // integration tests (OIDC-34). Uses named module imports.
+    const migration_helper_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/migration_helper.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_module },
+            .{ .name = "identity_provider", .module = identity_provider_mod },
+        },
+    });
+
     // bpm_src_mod: src/bpm.zig re-export shim used by engine unit tests and
     // integration tests.  Exports .engine, .tasks, .pool, .definition, etc.
     // Uses named module import for pool so that jit_provisioning_mod can
@@ -686,6 +698,24 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc33_coexistence_auth_tests = b.addRunArtifact(oidc33_coexistence_auth_tests);
 
+    const oidc28_local_dev_realm_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc28_local_dev_realm.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_oidc28_local_dev_realm_tests = b.addRunArtifact(oidc28_local_dev_realm_tests);
+
+    const oidc32_agent_test_identities_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc32_agent_test_identities.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_oidc32_agent_test_identities_tests = b.addRunArtifact(oidc32_agent_test_identities_tests);
+
     // SCH-05: Missed timer recovery — pure function unit tests (no DB)
     const sch05_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -851,8 +881,10 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_oidc08_claim_mapping_tests.step);
     test_step.dependOn(&run_oidc08_claim_mapping_ex_tests.step);
     test_step.dependOn(&run_oidc27_verification_benchmark_tests.step);
+    test_step.dependOn(&run_oidc28_local_dev_realm_tests.step);
     test_step.dependOn(&run_oidc29_realm_seed_tests.step);
     test_step.dependOn(&run_oidc30_test_token_helper_tests.step);
+    test_step.dependOn(&run_oidc32_agent_test_identities_tests.step);
     test_step.dependOn(&run_oidc33_coexistence_auth_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
@@ -1045,6 +1077,32 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc15_integration_tests = b.addRunArtifact(oidc15_integration_tests);
 
+    const oidc31_e2e_preflight_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc31_end_to_end_auth_suite_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pool", .module = pool_module },
+            },
+        }),
+    });
+    const run_oidc31_e2e_preflight_tests = b.addRunArtifact(oidc31_e2e_preflight_tests);
+
+    const oidc34_migration_helper_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc34_migration_helper_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "oidc_migration_helper", .module = migration_helper_mod },
+            },
+        }),
+    });
+    const run_oidc34_migration_helper_tests = b.addRunArtifact(oidc34_migration_helper_tests);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
@@ -1061,6 +1119,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_oidc13_integration_tests.step);
     test_integration_step.dependOn(&run_oidc14_integration_tests.step);
     test_integration_step.dependOn(&run_oidc15_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc34_migration_helper_tests.step);
 
     const test_integration_obs03_step = b.step("test-integration-obs03", "Run OBS-03 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs03_step.dependOn(&clean_test_db.step);
@@ -1081,6 +1140,10 @@ pub fn build(b: *std.Build) void {
     const test_oidc10_step = b.step("test-integration-oidc10", "Run OIDC-10 attribute sync integration tests only (requires BPM_TEST_DB_URL)");
     test_oidc10_step.dependOn(&clean_test_db.step);
     test_oidc10_step.dependOn(&run_oidc10_integration_tests.step);
+
+    const test_oidc31_step = b.step("test-integration-oidc31", "Run OIDC-31 E2E auth-suite preflight tests (requires BPM_TEST_DB_URL, BPM_TEST_URL, BPM_IDP_BASE_URL)");
+    test_oidc31_step.dependOn(&clean_test_db.step);
+    test_oidc31_step.dependOn(&run_oidc31_e2e_preflight_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

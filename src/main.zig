@@ -194,11 +194,6 @@ fn serveRequest(
     defer arena.deinit();
     const req_alloc = arena.allocator();
 
-    // Read request body (up to 1 MiB).
-    var body_transfer_buf: [8192]u8 = undefined;
-    var body_reader = request.readerExpectNone(&body_transfer_buf);
-    const body = body_reader.allocRemaining(req_alloc, std.Io.Limit.limited(1 * 1024 * 1024)) catch &.{};
-
     // Extract user identity from request header.
     const user_id = blk: {
         var hdr_it = request.iterateHeaders();
@@ -213,6 +208,12 @@ fn serveRequest(
     const q_start = std.mem.indexOf(u8, target, "?");
     const path = if (q_start) |qi| target[0..qi] else target;
     const query_str = if (q_start) |qi| target[qi + 1 ..] else "";
+
+    // Read request body only after copying request metadata that borrows from
+    // the receive buffer. Consuming the body can invalidate request.head.target.
+    var body_transfer_buf: [8192]u8 = undefined;
+    var body_reader = request.readerExpectNone(&body_transfer_buf);
+    const body = body_reader.allocRemaining(req_alloc, std.Io.Limit.limited(1 * 1024 * 1024)) catch &.{};
 
     // Get a query parameter by key (case-insensitive key match, URL-encoded values not decoded).
     const QS = struct {

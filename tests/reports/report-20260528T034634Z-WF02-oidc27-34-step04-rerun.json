@@ -1,0 +1,88 @@
+{
+  "run_id": "WF02-oidc27-34-20260528",
+  "workflow_id": "WF-02",
+  "source_handoff_id": "bc2e115f-c230-46e9-9652-b945206c9563",
+  "triggered_by_handoff_id": "c30c6874-74b8-4ab9-88af-0b4af9ef0d22",
+  "timestamp": "2026-05-28T03:46:34Z",
+  "summary": {
+    "overall_status": "PASS",
+    "commands_executed": 4,
+    "commands_passed": 4,
+    "commands_failed": 0
+  },
+  "command_results": [
+    {
+      "command": "zig build",
+      "status": "PASS",
+      "exit_code": 0,
+      "evidence": "WF02_RERUN_ZIG_BUILD_EXIT_CODE=0"
+    },
+    {
+      "command": "zig build test",
+      "status": "PASS",
+      "exit_code": 0,
+      "evidence": "WF02_RERUN_ZIG_BUILD_TEST_EXIT_CODE=0"
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration",
+      "status": "PASS",
+      "exit_code": 0,
+      "evidence": "WF02_RERUN_ZIG_BUILD_TEST_INTEGRATION_EXIT_CODE=0"
+    },
+    {
+      "command": "$env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://127.0.0.1:8081'; zig build test-integration-oidc31",
+      "status": "PASS",
+      "exit_code": 0,
+      "evidence": "WF02_RERUN_ZIG_BUILD_TEST_INTEGRATION_OIDC31_EXIT_CODE=0"
+    }
+  ],
+  "requirement_results": [
+    {
+      "requirement_id": "OIDC-27",
+      "status": "PASS",
+      "evidence": "Aggregate and focused integration commands passed in rerun"
+    },
+    {
+      "requirement_id": "OIDC-28",
+      "status": "PASS",
+      "evidence": "Aggregate and focused integration commands passed in rerun"
+    },
+    {
+      "requirement_id": "OIDC-29",
+      "status": "PASS",
+      "evidence": "Aggregate and focused integration commands passed in rerun"
+    },
+    {
+      "requirement_id": "OIDC-30",
+      "status": "PASS",
+      "evidence": "Aggregate and focused integration commands passed in rerun"
+    },
+    {
+      "requirement_id": "OIDC-31",
+      "status": "PASS",
+      "evidence": "Focused preflight target zig build test-integration-oidc31 passed"
+    },
+    {
+      "requirement_id": "OIDC-32",
+      "status": "PASS",
+      "evidence": "Aggregate and focused integration commands passed in rerun"
+    },
+    {
+      "requirement_id": "OIDC-33",
+      "status": "PASS",
+      "evidence": "Aggregate and focused integration commands passed in rerun"
+    },
+    {
+      "requirement_id": "OIDC-34",
+      "status": "PASS",
+      "evidence": "Aggregate integration command passed and prior issue ISS-0043 is RESOLVED"
+    }
+  ],
+  "issues": [],
+  "failure_classification": {
+    "count": 0,
+    "by_severity": {},
+    "by_requirement": {}
+  },
+  "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)."
+}

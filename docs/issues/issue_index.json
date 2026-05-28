@@ -1,429 +1,476 @@
-﻿{
-    "schema_version":  "1.0",
-    "last_updated":  "2026-05-26T21:18:29Z",
-    "next_issue_id":  31,
-    "issues":  [
-                   {
-                       "id":  "ISS-0001",
-                       "title":  "WF04 rerun regression: API-03 integration leak and frontend no-tests failure",
-                       "status":  "RESOLVED",
-                       "severity":  "MAJOR",
-                       "run_id":  "WF04-full-rerun-20260523",
-                       "handoff_id":  "c2726dcc-cda5-4bc1-8114-9cc6512bfe73",
-                       "affected_areas":  [
-                                              "src/engine/instance.zig",
-                                              "src/definition/snapshot.zig",
-                                              "tests/integration/api03_instance_read_test.zig",
-                                              "web/package.json"
-                                          ],
-                       "created_at":  "2026-05-23T15:35:07Z",
-                       "resolved_at":  "2026-05-23T15:35:07Z"
-                   },
-                   {
-                       "id":  "ISS-0002",
-                       "title":  "WF03 SCH-04 escalation timer blocker: scheduler error-set mismatch and escalation SQL typing defects",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-sch04-fix-20260523",
-                       "handoff_id":  "8a3e0c59-cf29-4c70-8c43-6b7f38d5a2bb",
-                       "affected_areas":  [
-                                              "src/scheduler/scheduler.zig",
-                                              "src/scheduler/store.zig"
-                                          ],
-                       "created_at":  "2026-05-23T20:03:45Z",
-                       "resolved_at":  "2026-05-23T20:03:45Z"
-                   },
-                   {
-                       "id":  "ISS-0003",
-                       "title":  "WF03 SCH-07 integration compile blocker: recurrence insert error-set mismatch and scheduler mutability callsites",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-sch07-fix-20260524",
-                       "handoff_id":  "64d818ea-1f93-4869-a001-e4a05de6f4f7",
-                       "affected_areas":  [
-                                              "src/scheduler/scheduler.zig",
-                                              "tests/integration/sch02_timer_polling_test.zig"
-                                          ],
-                       "created_at":  "2026-05-24T01:57:13Z",
-                       "resolved_at":  "2026-05-24T01:57:13Z"
-                   },
-                   {
-                       "id":  "ISS-0004",
-                       "title":  "WF03 IDN-01/SCH-07 blocker set: missing IDN integration entrypoint wiring and SCH recurring startup/payload assertion regressions",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-idn01-testfix-20260524",
-                       "handoff_id":  "2c3b6739-5af4-4fca-8d06-ab51c18d358f",
-                       "affected_areas":  [
-                                              "tests/integration/main_test.zig",
-                                              "tests/integration/idn01_user_registry_test.zig",
-                                              "src/bpm.zig",
-                                              "src/scheduler/scheduler.zig",
-                                              "tests/integration/sch02_timer_polling_test.zig"
-                                          ],
-                       "created_at":  "2026-05-24T02:54:16Z",
-                       "resolved_at":  "2026-05-24T02:54:16Z"
-                   },
-                   {
-                       "id":  "ISS-0005",
-                       "title":  "WF03 IDN-01 release NFR-02 throughput blocker: benchmark append path dominated by per-row protocol overhead",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-idn01-nfr02fix-20260524",
-                       "handoff_id":  "0c53fcea-b575-4f0d-a66b-18ebfbea8cd6",
-                       "affected_areas":  [
-                                              "tests/bench/bench.zig"
-                                          ],
-                       "created_at":  "2026-05-24T03:06:48Z",
-                       "resolved_at":  "2026-05-24T03:06:48Z"
-                   },
-                   {
-                       "id":  "ISS-0006",
-                       "title":  "WF03 IDN-02 integration blocker: API-09 TC-API-09-INT-05 depended on token-gated trace harness preconditions",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-idn02-testfix-20260524",
-                       "handoff_id":  "b6a8fcb2-81fe-4b26-81b6-c41f9b4d74da",
-                       "affected_areas":  [
-                                              "tests/integration/trace_test.zig"
-                                          ],
-                       "created_at":  "2026-05-24T06:38:49Z",
-                       "resolved_at":  "2026-05-24T06:38:49Z"
-                   },
-                   {
-                       "id":  "ISS-0007",
-                       "title":  "WF03 OBS-01 integration blocker: TC-OBS-01-INT-01 lacked token-gated harness precondition and surfaced connection-refused failures",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs01-intfix-20260524",
-                       "handoff_id":  "7cb42a77-58f5-4ed8-b15b-5469f4e67b4d",
-                       "affected_areas":  [
-                                              "tests/integration/trace_test.zig"
-                                          ],
-                       "created_at":  "2026-05-24T14:50:36Z",
-                       "resolved_at":  "2026-05-24T14:50:36Z"
-                   },
-                   {
-                       "id":  "ISS-0008",
-                       "title":  "WF03 OBS-02 integration blocker: TC-SCH-04-02 hang persists with orphaned integration runner test processes",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs02-intfix-20260524",
-                       "handoff_id":  "90c7fba9-b9d8-4c4e-ab07-3eb1f3c69bd7",
-                       "affected_areas":  [
-                                              "src/obs/logger.zig",
-                                              "tests/integration/sch02_timer_polling_test.zig"
-                                          ],
-                       "created_at":  "2026-05-24T17:40:40.739538Z",
-                       "resolved_at":  "2026-05-24T17:50:46Z"
-                   },
-                   {
-                       "id":  "ISS-0009",
-                       "title":  "WF03 OBS-02 connection-refused blocker: obs02 HTTP integration tests lacked token-gated harness precondition",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs02-httpfix-20260524",
-                       "handoff_id":  "14ab84e3-85ad-4e0b-b6c6-41fd2495d6ee",
-                       "affected_areas":  [
-                                              "tests/integration/obs02_metrics_test.zig"
-                                          ],
-                       "created_at":  "2026-05-24T18:13:36.382089Z",
-                       "resolved_at":  "2026-05-24T18:13:36.382089Z"
-                   },
-                   {
-                       "id":  "ISS-0010",
-                       "title":  "WF03 OBS-02 deterministic harness blocker: integration tests depended on external pre-running HTTP server",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs02-harnessfix2-20260524",
-                       "handoff_id":  "de8c1e6f-9970-4dce-a4be-b03d6f7612f8",
-                       "affected_areas":  [
-                                              "tests/integration/obs02_metrics_test.zig",
-                                              "src/obs/metrics.zig"
-                                          ],
-                       "created_at":  "2026-05-24T18:34:06Z",
-                       "resolved_at":  "2026-05-24T18:34:06Z"
-                   },
-                   {
-                       "id":  "ISS-0011",
-                       "title":  "WF03 OBS-03 residual integration blockers after compile-fix rework",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs03-intfix-20260525",
-                       "handoff_id":  "20260525-005",
-                       "affected_areas":  [
-                                              "src/obs/audit.zig",
-                                              "tests/integration/obs03_audit_log_test.zig"
-                                          ],
-                       "created_at":  "2026-05-24T21:59:54Z",
-                       "resolved_at":  "2026-05-24T22:20:31Z"
-                   },
-                   {
-                       "id":  "ISS-0012",
-                       "title":  "WF03 OBS-03 HTTP env blocker: aggregate integration runner masked MUST OBS-03 evidence behind unrelated BPM_TEST_URL skips",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs03-httpenvfix-20260525",
-                       "handoff_id":  "20260525-007",
-                       "affected_areas":  [
-                                              "build.zig",
-                                              "tests/integration/obs03_audit_log_test.zig"
-                                          ],
-                       "created_at":  "2026-05-24T22:37:08Z",
-                       "resolved_at":  "2026-05-24T22:37:08Z"
-                   },
-                   {
-                       "id":  "ISS-0013",
-                       "title":  "WF03 OBS-03 QueryFailed rerun blocker: immutable audit fixture IDs caused duplicate-key failures",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs03-queryfix-20260525",
-                       "handoff_id":  "20260525-009",
-                       "affected_areas":  [
-                                              "tests/integration/obs03_audit_log_test.zig"
-                                          ],
-                       "created_at":  "2026-05-24T22:49:00Z",
-                       "resolved_at":  "2026-05-24T22:49:00Z"
-                   },
-                   {
-                       "id":  "ISS-0014",
-                       "title":  "WF03 OBS-04 integration compile blockers: missing bpm.instance_routes export and optional-string return mismatch",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs04-fixes-20260525",
-                       "handoff_id":  "20260525-018",
-                       "affected_areas":  [
-                                              "src/bpm.zig",
-                                              "tests/integration/obs04_timeline_test.zig",
-                                              "build.zig"
-                                          ],
-                       "created_at":  "2026-05-25T02:53:20Z",
-                       "resolved_at":  "2026-05-25T02:53:20Z"
-                   },
-                   {
-                       "id":  "ISS-0015",
-                       "title":  "WF03 OBS-04 browser E2E gap remains blocked: no runnable backend UI-\u003eAPI server path in current repo state",
-                       "status":  "WONT-FIX",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs04-fixes-20260525",
-                       "handoff_id":  "20260525-018",
-                       "affected_areas":  [
-                                              "src/main.zig",
-                                              "web/package.json"
-                                          ],
-                       "created_at":  "2026-05-25T02:53:20Z",
-                       "resolved_at":  "2026-05-25T02:53:20Z"
-                   },
-                   {
-                       "id":  "ISS-0016",
-                       "title":  "WF03 OBS-04 E2E prerequisite gap: Playwright harness restored but backend runtime still prevents full browser UI-\u003eAPI-\u003eDB execution",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs04-runtime-20260525",
-                       "handoff_id":  "20260525-021",
-                       "affected_areas":  [
-                                              "src/main.zig"
-                                          ],
-                       "created_at":  "2026-05-25T03:06:42Z",
-                       "resolved_at":  "2026-05-25T03:16:13Z"
-                   },
-                   {
-                       "id":  "ISS-0017",
-                       "title":  "WF03 OBS-04 E2E execution unblocked from skip, but deterministic auth/runtime prerequisite still blocks UI-\u003eAPI-\u003eDB closure",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs04-e2eexec-20260525",
-                       "handoff_id":  "20260525-023",
-                       "affected_areas":  [
-                                              "web/tests/e2e/obs04.timeline.e2e.spec.ts",
-                                              "src/main.zig",
-                                              "web/src/auth/AuthProvider.tsx"
-                                          ],
-                       "created_at":  "2026-05-25T03:31:04Z",
-                       "resolved_at":  "2026-05-25T03:37:05Z"
-                   },
-                   {
-                       "id":  "ISS-0018",
-                       "title":  "WF03 OBS-04 deterministic auth harness: Playwright E2E now authenticates and reaches timeline assertions",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs04-e2eauth-20260525",
-                       "handoff_id":  "20260525-024",
-                       "affected_areas":  [
-                                              "web/tests/e2e/obs04.timeline.e2e.spec.ts",
-                                              "web/src/auth/AuthProvider.tsx",
-                                              "web/src/pages/instances/InstanceDetailPage.tsx"
-                                          ],
-                       "created_at":  "2026-05-25T03:37:05Z",
-                       "resolved_at":  "2026-05-25T03:37:05Z"
-                   },
-                   {
-                       "id":  "ISS-0019",
-                       "title":  "WF03 OBS-06 integration compile blocker: Zig 0.16 removed std.Thread.sleep in alert dispatcher backoff path",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs06-compilefix-20260525",
-                       "handoff_id":  "20260525-039",
-                       "affected_areas":  [
-                                              "src/obs/alerts.zig",
-                                              "tests/integration/obs06_alerts_test.zig"
-                                          ],
-                       "created_at":  "2026-05-25T06:58:53Z",
-                       "resolved_at":  "2026-05-25T06:58:53Z"
-                   },
-                   {
-                       "id":  "ISS-0020",
-                       "title":  "WF03 OBS-06 integration env blocker: BPM_TEST_URL skip noise masked requirement-specific evidence in aggregate integration runs",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-obs06-testenv-20260525",
-                       "handoff_id":  "20260525-041",
-                       "affected_areas":  [
-                                              "tests/integration/trace_test.zig"
-                                          ],
-                       "created_at":  "2026-05-25T07:15:47Z",
-                       "resolved_at":  "2026-05-25T07:15:47Z"
-                   },
-                   {
-                       "id":  "ISS-0021",
-                       "title":  "WF03 EXT-01 blocker set: service_task unit suite used stale bpm exports/Zig 0.16 request APIs and exposed configured-header lifetime crash",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-ext01-testfix-20260525",
-                       "handoff_id":  "20260525-052",
-                       "affected_areas":  [
-                                              "tests/unit/service_task_test.zig",
-                                              "src/engine/service_task.zig"
-                                          ],
-                       "created_at":  "2026-05-25T08:58:37Z",
-                       "resolved_at":  "2026-05-25T08:58:37Z"
-                   },
-                   {
-                       "id":  "ISS-0022",
-                       "title":  "WF03 EXT-01 stall removed at TC-EXT-01-INT-03; residual EXT-01 runtime/leak failures remain",
-                       "status":  "OPEN",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-ext01-intfix-20260525",
-                       "handoff_id":  "20260525-055",
-                       "affected_areas":  [
-                                              "tests/integration/ext01_service_task_test.zig"
-                                          ],
-                       "created_at":  "2026-05-25T09:32:46Z",
-                       "resolved_at":  null
-                   },
-                   {
-                       "id":  "ISS-0023",
-                       "title":  "WF03 ADP01/ES07 blocker: archive INSERT used SELECT * after tenant_id migration and silently skipped policy archival",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-adp01-es07fix-20260526",
-                       "handoff_id":  "20260526-005",
-                       "affected_areas":  [
-                                              "src/event_store/store.zig",
-                                              "tests/integration/event_store_integration_test.zig",
-                                              "migrations/027_adp01_event_store_tenant.sql"
-                                          ],
-                       "created_at":  "2026-05-25T20:54:30Z",
-                       "resolved_at":  "2026-05-25T20:54:30Z"
-                   },
-                   {
-                       "id":  "ISS-0024",
-                       "title":  "WF03 ADP04/IDN02 blocker: duplicate group-member idempotency path returned internal_error on fallback read",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-adp04-idn02fix-20260526",
-                       "handoff_id":  "20260526-026",
-                       "affected_areas":  [
-                                              "src/identity/registry.zig",
-                                              "tests/integration/idn02_group_management_test.zig"
-                                          ],
-                       "created_at":  "2026-05-26T03:12:22Z",
-                       "resolved_at":  "2026-05-26T03:12:22Z"
-                   },
-                   {
-                       "id":  "ISS-0025",
-                       "title":  "WF03 ADP-04b coverage blocker: explicit default-tenant OIDC boundary tests missing",
-                       "status":  "RESOLVED",
-                       "severity":  "MAJOR",
-                       "run_id":  "WF03-adp04b-testfix-20260526",
-                       "handoff_id":  "20260526-045",
-                       "affected_areas":  [
-                                              "tests/integration/adp04b_tenant_realm_binding_test.zig",
-                                              "src/identity/service.zig"
-                                          ],
-                       "created_at":  "2026-05-26T05:41:54Z",
-                       "resolved_at":  "2026-05-26T05:41:54Z"
-                   },
-                   {
-                       "id":  "ISS-0026",
-                       "title":  "WF03 ADP-05 coverage blocker: explicit artifact_repository replay-source positive test missing",
-                       "status":  "RESOLVED",
-                       "severity":  "MAJOR",
-                       "run_id":  "WF03-adp05-testfix-20260526",
-                       "handoff_id":  "20260526-054",
-                       "affected_areas":  [
-                                              "tests/integration/adp05_instance_artifact_hash_test.zig"
-                                          ],
-                       "created_at":  "2026-05-26T06:49:57Z",
-                       "resolved_at":  "2026-05-26T06:49:57Z"
-                   },
-                   {
-                       "id":  "ISS-0027",
-                       "title":  "WF03 ADP-06 blocker set: ES-06 up_to_sequence query regression and missing audit pipeline_run_id persistence",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-adp06-testfix-20260526",
-                       "handoff_id":  "20260526-063",
-                       "affected_areas":  [
-                                              "src/event_store/store.zig",
-                                              "tests/integration/adp06_pipeline_run_correlation_test.zig"
-                                          ],
-                       "created_at":  "2026-05-26T08:35:59Z",
-                       "resolved_at":  "2026-05-26T08:35:59Z"
-                   },
-                   {
-                       "id":  "ISS-0028",
-                       "title":  "WF03 ADP-09 test signal blocker: service-task warning logs polluted Zig --listen output and produced false nested failed-command evidence",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-adp09-testfix-20260526",
-                       "handoff_id":  "20260526-084",
-                       "affected_areas":  [
-                                              "src/engine/service_task.zig",
-                                              "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-                                              "tests/reports/report-20260526T124808Z-WF02-adp09-20260526-step04.json"
-                                          ],
-                       "created_at":  "2026-05-26T12:58:06Z",
-                       "resolved_at":  "2026-05-26T12:58:06Z"
-                   },
-                   {
-                       "id":  "ISS-0029",
-                       "title":  "WF03 ADP-12 integration stability blocker: transient local test-server bind collisions surfaced as ADDRESS_ALREADY_EXISTS",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-adp12-testfix-20260526",
-                       "handoff_id":  "20260526-106",
-                       "affected_areas":  [
-                                              "tests/integration/ext01_service_task_test.zig",
-                                              "tests/integration/ext02_webhook_dispatch_test.zig",
-                                              "tests/reports/report-20260526T181358Z-WF02-adp12-20260526-step04.json"
-                                          ],
-                       "created_at":  "2026-05-26T18:26:08Z",
-                       "resolved_at":  "2026-05-26T18:26:08Z"
-                   },
-                   {
-                       "id":  "ISS-0030",
-                       "title":  "WF03 OIDC-03 focused test blockers: fake env return-type coercion mismatch and bootstrap standalone idp_config import dependency",
-                       "status":  "RESOLVED",
-                       "severity":  "BLOCKER",
-                       "run_id":  "WF03-oidc03-testfix-20260527",
-                       "handoff_id":  "20260527-022",
-                       "affected_areas":  [
-                                              "src/config/identity_provider.zig",
-                                              "src/identity/provider/bootstrap.zig"
-                                          ],
-                       "created_at":  "2026-05-26T21:18:29Z",
-                       "resolved_at":  "2026-05-26T21:18:29Z"
-                   }
-               ]
+{
+  "schema_version": "1.0",
+  "last_updated": "2026-05-28T03:39:57Z",
+  "next_issue_id": 44,
+  "issues": [
+    {
+      "id": "ISS-0001",
+      "title": "WF04 rerun regression: API-03 integration leak and frontend no-tests failure",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "run_id": "WF04-full-rerun-20260523",
+      "handoff_id": "c2726dcc-cda5-4bc1-8114-9cc6512bfe73",
+      "affected_areas": [
+        "src/engine/instance.zig",
+        "src/definition/snapshot.zig",
+        "tests/integration/api03_instance_read_test.zig",
+        "web/package.json"
+      ],
+      "created_at": "2026-05-23T15:35:07Z",
+      "resolved_at": "2026-05-23T15:35:07Z"
+    },
+    {
+      "id": "ISS-0002",
+      "title": "WF03 SCH-04 escalation timer blocker: scheduler error-set mismatch and escalation SQL typing defects",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-sch04-fix-20260523",
+      "handoff_id": "8a3e0c59-cf29-4c70-8c43-6b7f38d5a2bb",
+      "affected_areas": [
+        "src/scheduler/scheduler.zig",
+        "src/scheduler/store.zig"
+      ],
+      "created_at": "2026-05-23T20:03:45Z",
+      "resolved_at": "2026-05-23T20:03:45Z"
+    },
+    {
+      "id": "ISS-0003",
+      "title": "WF03 SCH-07 integration compile blocker: recurrence insert error-set mismatch and scheduler mutability callsites",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-sch07-fix-20260524",
+      "handoff_id": "64d818ea-1f93-4869-a001-e4a05de6f4f7",
+      "affected_areas": [
+        "src/scheduler/scheduler.zig",
+        "tests/integration/sch02_timer_polling_test.zig"
+      ],
+      "created_at": "2026-05-24T01:57:13Z",
+      "resolved_at": "2026-05-24T01:57:13Z"
+    },
+    {
+      "id": "ISS-0004",
+      "title": "WF03 IDN-01/SCH-07 blocker set: missing IDN integration entrypoint wiring and SCH recurring startup/payload assertion regressions",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-idn01-testfix-20260524",
+      "handoff_id": "2c3b6739-5af4-4fca-8d06-ab51c18d358f",
+      "affected_areas": [
+        "tests/integration/main_test.zig",
+        "tests/integration/idn01_user_registry_test.zig",
+        "src/bpm.zig",
+        "src/scheduler/scheduler.zig",
+        "tests/integration/sch02_timer_polling_test.zig"
+      ],
+      "created_at": "2026-05-24T02:54:16Z",
+      "resolved_at": "2026-05-24T02:54:16Z"
+    },
+    {
+      "id": "ISS-0005",
+      "title": "WF03 IDN-01 release NFR-02 throughput blocker: benchmark append path dominated by per-row protocol overhead",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-idn01-nfr02fix-20260524",
+      "handoff_id": "0c53fcea-b575-4f0d-a66b-18ebfbea8cd6",
+      "affected_areas": [
+        "tests/bench/bench.zig"
+      ],
+      "created_at": "2026-05-24T03:06:48Z",
+      "resolved_at": "2026-05-24T03:06:48Z"
+    },
+    {
+      "id": "ISS-0006",
+      "title": "WF03 IDN-02 integration blocker: API-09 TC-API-09-INT-05 depended on token-gated trace harness preconditions",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-idn02-testfix-20260524",
+      "handoff_id": "b6a8fcb2-81fe-4b26-81b6-c41f9b4d74da",
+      "affected_areas": [
+        "tests/integration/trace_test.zig"
+      ],
+      "created_at": "2026-05-24T06:38:49Z",
+      "resolved_at": "2026-05-24T06:38:49Z"
+    },
+    {
+      "id": "ISS-0007",
+      "title": "WF03 OBS-01 integration blocker: TC-OBS-01-INT-01 lacked token-gated harness precondition and surfaced connection-refused failures",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs01-intfix-20260524",
+      "handoff_id": "7cb42a77-58f5-4ed8-b15b-5469f4e67b4d",
+      "affected_areas": [
+        "tests/integration/trace_test.zig"
+      ],
+      "created_at": "2026-05-24T14:50:36Z",
+      "resolved_at": "2026-05-24T14:50:36Z"
+    },
+    {
+      "id": "ISS-0008",
+      "title": "WF03 OBS-02 integration blocker: TC-SCH-04-02 hang persists with orphaned integration runner test processes",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs02-intfix-20260524",
+      "handoff_id": "90c7fba9-b9d8-4c4e-ab07-3eb1f3c69bd7",
+      "affected_areas": [
+        "src/obs/logger.zig",
+        "tests/integration/sch02_timer_polling_test.zig"
+      ],
+      "created_at": "2026-05-24T17:40:40.739538Z",
+      "resolved_at": "2026-05-24T17:50:46Z"
+    },
+    {
+      "id": "ISS-0009",
+      "title": "WF03 OBS-02 connection-refused blocker: obs02 HTTP integration tests lacked token-gated harness precondition",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs02-httpfix-20260524",
+      "handoff_id": "14ab84e3-85ad-4e0b-b6c6-41fd2495d6ee",
+      "affected_areas": [
+        "tests/integration/obs02_metrics_test.zig"
+      ],
+      "created_at": "2026-05-24T18:13:36.382089Z",
+      "resolved_at": "2026-05-24T18:13:36.382089Z"
+    },
+    {
+      "id": "ISS-0010",
+      "title": "WF03 OBS-02 deterministic harness blocker: integration tests depended on external pre-running HTTP server",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs02-harnessfix2-20260524",
+      "handoff_id": "de8c1e6f-9970-4dce-a4be-b03d6f7612f8",
+      "affected_areas": [
+        "tests/integration/obs02_metrics_test.zig",
+        "src/obs/metrics.zig"
+      ],
+      "created_at": "2026-05-24T18:34:06Z",
+      "resolved_at": "2026-05-24T18:34:06Z"
+    },
+    {
+      "id": "ISS-0011",
+      "title": "WF03 OBS-03 residual integration blockers after compile-fix rework",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs03-intfix-20260525",
+      "handoff_id": "20260525-005",
+      "affected_areas": [
+        "src/obs/audit.zig",
+        "tests/integration/obs03_audit_log_test.zig"
+      ],
+      "created_at": "2026-05-24T21:59:54Z",
+      "resolved_at": "2026-05-24T22:20:31Z"
+    },
+    {
+      "id": "ISS-0012",
+      "title": "WF03 OBS-03 HTTP env blocker: aggregate integration runner masked MUST OBS-03 evidence behind unrelated BPM_TEST_URL skips",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs03-httpenvfix-20260525",
+      "handoff_id": "20260525-007",
+      "affected_areas": [
+        "build.zig",
+        "tests/integration/obs03_audit_log_test.zig"
+      ],
+      "created_at": "2026-05-24T22:37:08Z",
+      "resolved_at": "2026-05-24T22:37:08Z"
+    },
+    {
+      "id": "ISS-0013",
+      "title": "WF03 OBS-03 QueryFailed rerun blocker: immutable audit fixture IDs caused duplicate-key failures",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs03-queryfix-20260525",
+      "handoff_id": "20260525-009",
+      "affected_areas": [
+        "tests/integration/obs03_audit_log_test.zig"
+      ],
+      "created_at": "2026-05-24T22:49:00Z",
+      "resolved_at": "2026-05-24T22:49:00Z"
+    },
+    {
+      "id": "ISS-0014",
+      "title": "WF03 OBS-04 integration compile blockers: missing bpm.instance_routes export and optional-string return mismatch",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-fixes-20260525",
+      "handoff_id": "20260525-018",
+      "affected_areas": [
+        "src/bpm.zig",
+        "tests/integration/obs04_timeline_test.zig",
+        "build.zig"
+      ],
+      "created_at": "2026-05-25T02:53:20Z",
+      "resolved_at": "2026-05-25T02:53:20Z"
+    },
+    {
+      "id": "ISS-0015",
+      "title": "WF03 OBS-04 browser E2E gap remains blocked: no runnable backend UI->API server path in current repo state",
+      "status": "WONT-FIX",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-fixes-20260525",
+      "handoff_id": "20260525-018",
+      "affected_areas": [
+        "src/main.zig",
+        "web/package.json"
+      ],
+      "created_at": "2026-05-25T02:53:20Z",
+      "resolved_at": "2026-05-25T02:53:20Z"
+    },
+    {
+      "id": "ISS-0016",
+      "title": "WF03 OBS-04 E2E prerequisite gap: Playwright harness restored but backend runtime still prevents full browser UI->API->DB execution",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-runtime-20260525",
+      "handoff_id": "20260525-021",
+      "affected_areas": [
+        "src/main.zig"
+      ],
+      "created_at": "2026-05-25T03:06:42Z",
+      "resolved_at": "2026-05-25T03:16:13Z"
+    },
+    {
+      "id": "ISS-0017",
+      "title": "WF03 OBS-04 E2E execution unblocked from skip, but deterministic auth/runtime prerequisite still blocks UI->API->DB closure",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-e2eexec-20260525",
+      "handoff_id": "20260525-023",
+      "affected_areas": [
+        "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+        "src/main.zig",
+        "web/src/auth/AuthProvider.tsx"
+      ],
+      "created_at": "2026-05-25T03:31:04Z",
+      "resolved_at": "2026-05-25T03:37:05Z"
+    },
+    {
+      "id": "ISS-0018",
+      "title": "WF03 OBS-04 deterministic auth harness: Playwright E2E now authenticates and reaches timeline assertions",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs04-e2eauth-20260525",
+      "handoff_id": "20260525-024",
+      "affected_areas": [
+        "web/tests/e2e/obs04.timeline.e2e.spec.ts",
+        "web/src/auth/AuthProvider.tsx",
+        "web/src/pages/instances/InstanceDetailPage.tsx"
+      ],
+      "created_at": "2026-05-25T03:37:05Z",
+      "resolved_at": "2026-05-25T03:37:05Z"
+    },
+    {
+      "id": "ISS-0019",
+      "title": "WF03 OBS-06 integration compile blocker: Zig 0.16 removed std.Thread.sleep in alert dispatcher backoff path",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs06-compilefix-20260525",
+      "handoff_id": "20260525-039",
+      "affected_areas": [
+        "src/obs/alerts.zig",
+        "tests/integration/obs06_alerts_test.zig"
+      ],
+      "created_at": "2026-05-25T06:58:53Z",
+      "resolved_at": "2026-05-25T06:58:53Z"
+    },
+    {
+      "id": "ISS-0020",
+      "title": "WF03 OBS-06 integration env blocker: BPM_TEST_URL skip noise masked requirement-specific evidence in aggregate integration runs",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-obs06-testenv-20260525",
+      "handoff_id": "20260525-041",
+      "affected_areas": [
+        "tests/integration/trace_test.zig"
+      ],
+      "created_at": "2026-05-25T07:15:47Z",
+      "resolved_at": "2026-05-25T07:15:47Z"
+    },
+    {
+      "id": "ISS-0021",
+      "title": "WF03 EXT-01 blocker set: service_task unit suite used stale bpm exports/Zig 0.16 request APIs and exposed configured-header lifetime crash",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-ext01-testfix-20260525",
+      "handoff_id": "20260525-052",
+      "affected_areas": [
+        "tests/unit/service_task_test.zig",
+        "src/engine/service_task.zig"
+      ],
+      "created_at": "2026-05-25T08:58:37Z",
+      "resolved_at": "2026-05-25T08:58:37Z"
+    },
+    {
+      "id": "ISS-0022",
+      "title": "WF03 EXT-01 stall removed at TC-EXT-01-INT-03; residual EXT-01 runtime/leak failures remain",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-ext01-intfix-20260525",
+      "handoff_id": "20260525-055",
+      "affected_areas": [
+        "tests/integration/ext01_service_task_test.zig"
+      ],
+      "created_at": "2026-05-25T09:32:46Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0023",
+      "title": "WF03 ADP01/ES07 blocker: archive INSERT used SELECT * after tenant_id migration and silently skipped policy archival",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-adp01-es07fix-20260526",
+      "handoff_id": "20260526-005",
+      "affected_areas": [
+        "src/event_store/store.zig",
+        "tests/integration/event_store_integration_test.zig",
+        "migrations/027_adp01_event_store_tenant.sql"
+      ],
+      "created_at": "2026-05-25T20:54:30Z",
+      "resolved_at": "2026-05-25T20:54:30Z"
+    },
+    {
+      "id": "ISS-0024",
+      "title": "WF03 ADP04/IDN02 blocker: duplicate group-member idempotency path returned internal_error on fallback read",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-adp04-idn02fix-20260526",
+      "handoff_id": "20260526-026",
+      "affected_areas": [
+        "src/identity/registry.zig",
+        "tests/integration/idn02_group_management_test.zig"
+      ],
+      "created_at": "2026-05-26T03:12:22Z",
+      "resolved_at": "2026-05-26T03:12:22Z"
+    },
+    {
+      "id": "ISS-0025",
+      "title": "WF03 ADP-04b coverage blocker: explicit default-tenant OIDC boundary tests missing",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "run_id": "WF03-adp04b-testfix-20260526",
+      "handoff_id": "20260526-045",
+      "affected_areas": [
+        "tests/integration/adp04b_tenant_realm_binding_test.zig",
+        "src/identity/service.zig"
+      ],
+      "created_at": "2026-05-26T05:41:54Z",
+      "resolved_at": "2026-05-26T05:41:54Z"
+    },
+    {
+      "id": "ISS-0026",
+      "title": "WF03 ADP-05 coverage blocker: explicit artifact_repository replay-source positive test missing",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "run_id": "WF03-adp05-testfix-20260526",
+      "handoff_id": "20260526-054",
+      "affected_areas": [
+        "tests/integration/adp05_instance_artifact_hash_test.zig"
+      ],
+      "created_at": "2026-05-26T06:49:57Z",
+      "resolved_at": "2026-05-26T06:49:57Z"
+    },
+    {
+      "id": "ISS-0027",
+      "title": "WF03 ADP-06 blocker set: ES-06 up_to_sequence query regression and missing audit pipeline_run_id persistence",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-adp06-testfix-20260526",
+      "handoff_id": "20260526-063",
+      "affected_areas": [
+        "src/event_store/store.zig",
+        "tests/integration/adp06_pipeline_run_correlation_test.zig"
+      ],
+      "created_at": "2026-05-26T08:35:59Z",
+      "resolved_at": "2026-05-26T08:35:59Z"
+    },
+    {
+      "id": "ISS-0028",
+      "title": "WF03 ADP-09 test signal blocker: service-task warning logs polluted Zig --listen output and produced false nested failed-command evidence",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-adp09-testfix-20260526",
+      "handoff_id": "20260526-084",
+      "affected_areas": [
+        "src/engine/service_task.zig",
+        "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+        "tests/reports/report-20260526T124808Z-WF02-adp09-20260526-step04.json"
+      ],
+      "created_at": "2026-05-26T12:58:06Z",
+      "resolved_at": "2026-05-26T12:58:06Z"
+    },
+    {
+      "id": "ISS-0029",
+      "title": "WF03 ADP-12 integration stability blocker: transient local test-server bind collisions surfaced as ADDRESS_ALREADY_EXISTS",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-adp12-testfix-20260526",
+      "handoff_id": "20260526-106",
+      "affected_areas": [
+        "tests/integration/ext01_service_task_test.zig",
+        "tests/integration/ext02_webhook_dispatch_test.zig",
+        "tests/reports/report-20260526T181358Z-WF02-adp12-20260526-step04.json"
+      ],
+      "created_at": "2026-05-26T18:26:08Z",
+      "resolved_at": "2026-05-26T18:26:08Z"
+    },
+    {
+      "id": "ISS-0030",
+      "title": "WF03 OIDC-03 focused test blockers: fake env return-type coercion mismatch and bootstrap standalone idp_config import dependency",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-oidc03-testfix-20260527",
+      "handoff_id": "20260527-022",
+      "affected_areas": [
+        "src/config/identity_provider.zig",
+        "src/identity/provider/bootstrap.zig"
+      ],
+      "created_at": "2026-05-26T21:18:29Z",
+      "resolved_at": "2026-05-26T21:18:29Z"
+    },
+    {
+      "id": "ISS-0041",
+      "title": "WF03 OIDC-27..34 validation blockers: Zig 0.16 test API drift, OIDC-34 query-result mutability mismatch, OIDC-31 stale pool API, and Windows integration env task fragility",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-oidc27-34-testfix-20260528",
+      "handoff_id": "7df9dd9a-7c1e-4439-87e2-b1697f6f0115",
+      "affected_areas": [
+        "tests/unit/test_oidc28_local_dev_realm.zig",
+        "tests/unit/test_oidc32_agent_test_identities.zig",
+        "src/oidc/migration_helper.zig",
+        "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+        "build.zig",
+        ".vscode/tasks.json",
+        ".vscode/run-zig-test-integration.ps1"
+      ],
+      "created_at": "2026-05-28T02:35:43Z",
+      "resolved_at": "2026-05-28T02:35:43Z"
+    },
+    {
+      "id": "ISS-0042",
+      "title": "WF03 OIDC-27..34 residual blockers: test DB cleanup reset migration state and main.zig crashed live OIDC-31 preflight",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-oidc27-34-testfix-20260528",
+      "handoff_id": "49a0b0fb-d34b-468d-a50b-f5b9d2724076",
+      "affected_areas": [
+        "tools/clean_test_db.py",
+        "src/main.zig",
+        "tests/reports/report-20260528T024811Z-WF02-oidc27-34-step04.json"
+      ],
+      "created_at": "2026-05-28T02:59:04Z",
+      "resolved_at": "2026-05-28T02:59:04Z"
+    },
+    {
+      "id": "ISS-0043",
+      "title": "WF03 OIDC-27..34 residual aggregate blocker: OIDC-11 integration tenant fixture collisions caused RealmOwnershipMismatch under parallel aggregate runs",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-oidc27-34-testfix-20260528",
+      "handoff_id": "c30c6874-74b8-4ab9-88af-0b4af9ef0d22",
+      "affected_areas": [
+        "tests/integration/oidc11_identity_stability_test.zig"
+      ],
+      "created_at": "2026-05-28T03:39:57Z",
+      "resolved_at": "2026-05-28T03:39:57Z"
+    }
+  ]
 }
