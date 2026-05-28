@@ -1,5 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
+import { ApiConnectivityBanner } from './ApiConnectivityBanner'
 
 type Role = 'PLATFORM_ADMIN' | 'PROCESS_DESIGNER' | 'PROCESS_OPERATOR' | 'TASK_WORKER'
 
@@ -93,6 +94,7 @@ export function AppShell() {
 
       {/* Main content */}
       <main style={{ flex: 1, overflow: 'auto', background: '#f8fafc' }}>
+        <ApiConnectivityBanner />
         <Outlet />
       </main>
     </div>

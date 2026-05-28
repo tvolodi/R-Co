@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-28T07:20:59Z",
+  "last_updated": "2026-05-28T08:45:00Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -2418,6 +2418,16 @@
       "release_run": "WF02-shf1a-20260528",
       "release_decision": "docs/status/release-F1-SH01-04-20260528.json",
       "last_updated": "2026-05-28T07:20:59Z"
+    },
+    "SH-05": {
+      "status": "RELEASED",
+      "released_at": "2026-05-28",
+      "run_id": "WF02-shf1b-20260528"
+    },
+    "SH-06": {
+      "status": "RELEASED",
+      "released_at": "2026-05-28",
+      "run_id": "WF02-shf1b-20260528"
     }
   }
 }

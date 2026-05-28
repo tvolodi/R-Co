@@ -3,6 +3,7 @@ import { AuthProvider } from '@/auth/AuthProvider'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import LoginPage from '@/pages/LoginPage'
 import { AppShell } from '@/components/layout/AppShell'
+import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import DefinitionListPage from '@/pages/definitions/DefinitionListPage'
 import DefinitionEditorPage from '@/pages/definitions/DefinitionEditorPage'
 import InstanceBoardPage from '@/pages/instances/InstanceBoardPage'
@@ -31,7 +32,9 @@ export const router = createBrowserRouter([
     element: (
       <AuthProvider>
         <ProtectedRoute>
-          <AppShell />
+          <ErrorBoundary>
+            <AppShell />
+          </ErrorBoundary>
         </ProtectedRoute>
       </AuthProvider>
     ),
