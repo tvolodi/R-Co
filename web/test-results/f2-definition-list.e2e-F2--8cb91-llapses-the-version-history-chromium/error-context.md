@@ -12,221 +12,258 @@
 # Error details
 
 ```
-Error: apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:4173
-Call log:
-  - → POST http://127.0.0.1:4173/api/v1/definitions
-    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36
-    - accept: */*
-    - accept-encoding: gzip,deflate,br
-    - Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ6Mi0yT3IwVEUxQjJDZ0xiNGt1LTBlaUR1SGgzRW1KcGxHNlJGVVlJY19BIn0.eyJleHAiOjE3Nzk5ODc4OTYsImlhdCI6MTc3OTk4NzU5NiwianRpIjoib25ydHJvOjQwZWExMjllLTAxMDctNDFjYi04NWViLTY0ZTIzNzVlMDA0ZSIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MS9yZWFsbXMvYnBtLWRlZmF1bHQiLCJzdWIiOiI0NjQwZGI3ZS04MTg1LTQ0NmItYTM4Yy0wMGU1MWZiZjA1YjUiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJicG0tcGxhdGZvcm0tYXBpIiwic2lkIjoiODBiYTc4ZDUtMTY4Zi00NzJkLWIxNmEtNDJlMjdmNDg4ZDdiIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJQTEFURk9STV9BRE1JTiJdfSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInJvbGVzIjpbIlBMQVRGT1JNX0FETUlOIl0sIm5hbWUiOiJBZG1pbiBVc2VyIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiYWRtaW4tdXNlciIsImdpdmVuX25hbWUiOiJBZG1pbiIsImZhbWlseV9uYW1lIjoiVXNlciIsImVtYWlsIjoiYWRtaW5AYnBtLmxvY2FsIn0.KfDppf6iisZvtWdTihvCZtcOkNzOW5ohuhQbCq8mkM8lUt0iIoobfDW9A2Ja1JVDgWA4XFhI1SwpSSsAlaB0qIiVLlB8sF0WubbTiA406f1RZaU9v1EZMMybXop1Ax7czenSvHBQzDBECBfbVxqYXNlgpYFTKFyWqFR9jZmB0g_IxKo1ONtlnkpXCoyDGYCdFekmusr7vtIwkSKi1D8OAjeOkqJw5mHq3sYO-w8NVbIts_RPYqG3yQ2eOPviFG5K06iz1tXgetbxC_Q-tTqu1Tm2dtuESTD4byvPK9Q4JTaqn0DWscaz7DnX-O4aADqk9V7WIy9disFJvRq3l52Kpw
-    - Content-Type: application/json
-    - content-length: 343
+Error: expect(locator).toBeVisible() failed
 
+Locator: getByTestId('version-history-row')
+Expected: visible
+Timeout: 5000ms
+Error: element(s) not found
+
+Call log:
+  - Expect "toBeVisible" with timeout 5000ms
+  - waiting for getByTestId('version-history-row')
+
+```
+
+```yaml
+- complementary:
+  - text: BPM Platform
+  - navigation:
+    - link "Instances":
+      - /url: /instances
+    - link "My Tasks":
+      - /url: /tasks
+    - link "Definitions":
+      - /url: /definitions
+    - link "DLQ":
+      - /url: /dlq
+    - link "Webhooks":
+      - /url: /webhooks
+    - link "Users":
+      - /url: /admin/users
+    - link "Groups":
+      - /url: /admin/groups
+    - link "Tokens":
+      - /url: /admin/tokens
+    - link "Audit":
+      - /url: /admin/audit
+    - link "Health":
+      - /url: /admin/health
+    - link "Metrics":
+      - /url: /admin/metrics
+  - text: Admin User PLATFORM_ADMIN
+  - button "Sign out"
+- main:
+  - 'heading "Edit: Collapse Test pd-ui-e2e-collapse-1779988200609" [level=2]'
+  - text: Graph JSON (nodes + edges)
+  - textbox: "{ \"nodes\": [], \"edges\": [] }"
+  - paragraph: Visual canvas (React Flow) will replace this editor in a future iteration.
+  - button "Save"
 ```
 
 # Test source
 
 ```ts
-  8   |  *   - No page.route() stubs for any API endpoint.
-  9   |  *   - All HTTP calls go to the real backend:
-  10  |  *     1. Keycloak token endpoint (password grant) for authentication
-  11  |  *     2. Backend /definitions API for test data setup/teardown
-  12  |  *     3. Browser API calls (via the app's client.ts) with real JWT token
-  13  |  *
-  14  |  * Directive T-3 compliance:
-  15  |  *   - After every significant UI action a screenshot is taken and the visible
-  16  |  *     DOM is asserted. Every verdict is stated as "screen shows X after Y".
-  17  |  *
-  18  |  * Infrastructure:
-  19  |  *   - Frontend: http://127.0.0.1:4173 (Vite dev server, started by playwright.config.ts)
-  20  |  *   - Backend API: available at same origin via Vite proxy (/api → localhost:8080)
-  21  |  *   - Keycloak: http://localhost:8081/realms/bpm-default
-  22  |  *   - Test user: admin-user / admin-pass (PLATFORM_ADMIN role, has PROCESS_DESIGNER access)
-  23  |  *   - Bootstrap token env var: TEST_BOOTSTRAP_TOKEN (fallback if Keycloak unavailable)
-  24  |  */
-  25  | 
-  26  | import { test, expect } from '@playwright/test'
-  27  | import * as fs from 'fs'
-  28  | import * as path from 'path'
-  29  | 
-  30  | const SCREENSHOTS_DIR = 'tests/screenshots'
-  31  | const KEYCLOAK_TOKEN_URL = 'http://localhost:8081/realms/bpm-default/protocol/openid-connect/token'
-  32  | const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
-  33  | const KEYCLOAK_USERNAME = 'admin-user'
-  34  | const KEYCLOAK_PASSWORD = 'admin-pass'
-  35  | const API_PREFIX = '/api/v1'
-  36  | 
-  37  | // ── Screenshot helper ─────────────────────────────────────────────────────────
-  38  | 
-  39  | async function shot(page: import('@playwright/test').Page, name: string): Promise<void> {
-  40  |   const dir = path.resolve(SCREENSHOTS_DIR)
-  41  |   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-  42  |   await page.screenshot({ path: path.join(dir, `PDUI-${name}.png`) })
-  43  | }
-  44  | 
-  45  | // ── Token management ──────────────────────────────────────────────────────────
-  46  | 
-  47  | /**
-  48  |  * Obtains a real JWT from Keycloak via the password grant (direct access) flow.
-  49  |  * The returned token is a real signed JWT that the backend accepts.
-  50  |  */
-  51  | async function getKeycloakToken(request: import('@playwright/test').APIRequestContext): Promise<string> {
-  52  |   const response = await request.post(KEYCLOAK_TOKEN_URL, {
-  53  |     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  54  |     form: {
-  55  |       client_id: KEYCLOAK_CLIENT_ID,
-  56  |       username: KEYCLOAK_USERNAME,
-  57  |       password: KEYCLOAK_PASSWORD,
-  58  |       grant_type: 'password',
-  59  |     },
-  60  |   })
-  61  | 
-  62  |   if (!response.ok()) {
-  63  |     const body = await response.text()
-  64  |     throw new Error(
-  65  |       `Keycloak token request failed (${response.status()}): ${body}\n` +
-  66  |       `Ensure Keycloak is running at ${KEYCLOAK_TOKEN_URL.replace('/protocol/openid-connect/token', '')}\n` +
-  67  |       `and user ${KEYCLOAK_USERNAME} exists with password ${KEYCLOAK_PASSWORD}.`,
-  68  |     )
-  69  |   }
-  70  | 
-  71  |   const body = await response.json() as { access_token: string }
-  72  |   return body.access_token
-  73  | }
-  74  | 
-  75  | // ── Login via UI with a real token ────────────────────────────────────────────
-  76  | 
-  77  | /**
-  78  |  * Logs into the application by pasting a real JWT into the token input field
-  79  |  * and submitting the login form. This exercises the real login code path:
-  80  |  * GET /health/ready → decode JWT → set session → navigate to workspace.
-  81  |  */
-  82  | async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
-  83  |   await page.goto('/login')
-  84  |   await expect(page.getByTestId('login-token-input')).toBeVisible()
-  85  |   await page.getByTestId('login-token-input').fill(token)
-  86  |   await page.getByTestId('login-submit').click()
-  87  |   // Wait for navigation away from /login to the workspace
-  88  |   await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
-  89  |   // Verify workspace is rendered
-  90  |   await expect(page.getByTestId('user-display-name')).toBeVisible({ timeout: 10_000 })
-  91  | }
-  92  | 
-  93  | /** Navigate to /definitions via the sidebar link (SPA navigation — preserves in-memory session). */
-  94  | async function navigateToDefinitions(page: import('@playwright/test').Page): Promise<void> {
-  95  |   await page.getByRole('link', { name: 'Definitions' }).click()
-  96  |   await page.waitForURL(/\/definitions/, { timeout: 10_000 })
-  97  | }
-  98  | 
-  99  | // ── API helpers (using Playwright request context with real token) ────────────
-  100 | 
-  101 | async function createTestDefinition(
-  102 |   request: import('@playwright/test').APIRequestContext,
-  103 |   token: string,
-  104 |   name: string,
-  105 |   version: string,
-  106 |   description?: string,
-  107 | ): Promise<{ id: string; name: string; version: string; status: string }> {
-> 108 |   const response = await request.post(`${API_PREFIX}/definitions`, {
-      |                                  ^ Error: apiRequestContext.post: connect ECONNREFUSED 127.0.0.1:4173
-  109 |     headers: {
-  110 |       'Authorization': `Bearer ${token}`,
-  111 |       'Content-Type': 'application/json',
-  112 |     },
-  113 |     data: {
-  114 |       name,
-  115 |       version,
-  116 |       description: description ?? '',
-  117 |       graph: {
-  118 |         nodes: [
-  119 |           { id: 'start', node_type: 'START', label: null, attributes: null },
-  120 |           { id: 'end', node_type: 'END', label: null, attributes: null },
-  121 |         ],
-  122 |         edges: [
-  123 |           { id: 'e1', source: 'start', target: 'end', condition: null, is_default: false },
-  124 |         ],
-  125 |       },
-  126 |       stage: null,
-  127 |     },
-  128 |   })
-  129 | 
-  130 |   if (!response.ok()) {
-  131 |     const body = await response.text()
-  132 |     throw new Error(`POST /definitions failed (${response.status()}): ${body}`)
-  133 |   }
-  134 | 
-  135 |   return response.json() as Promise<{ id: string; name: string; version: string; status: string }>
-  136 | }
-  137 | 
-  138 | async function deleteTestDefinition(
-  139 |   request: import('@playwright/test').APIRequestContext,
-  140 |   token: string,
-  141 |   id: string,
-  142 | ): Promise<void> {
-  143 |   const response = await request.delete(`${API_PREFIX}/definitions/${id}`, {
-  144 |     headers: { 'Authorization': `Bearer ${token}` },
-  145 |   })
-  146 |   // 204 or 404 are both acceptable (already deleted or not found)
-  147 |   if (response.status() !== 204 && response.status() !== 404) {
-  148 |     console.warn(`DELETE /definitions/${id} returned ${response.status()}`)
-  149 |   }
-  150 | }
-  151 | 
-  152 | // ── Test suite ────────────────────────────────────────────────────────────────
-  153 | 
-  154 | test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
-  155 |   let authToken: string
-  156 |   const createdDefinitionIds: string[] = []
-  157 | 
-  158 |   /** UUID v4-like id for tracking test-created definitions */
-  159 |   function testId(label: string): string {
-  160 |     return `pd-ui-e2e-${label}-${Date.now()}`
-  161 |   }
-  162 | 
-  163 |   test.beforeAll(async ({ request }) => {
-  164 |     // Obtain a real JWT from Keycloak
-  165 |     authToken = await getKeycloakToken(request)
-  166 |   })
-  167 | 
-  168 |   test.afterEach(async ({ request }) => {
-  169 |     // Clean up all definitions created during tests
-  170 |     for (const id of createdDefinitionIds) {
-  171 |       await deleteTestDefinition(request, authToken, id)
-  172 |     }
-  173 |     createdDefinitionIds.length = 0
-  174 |   })
-  175 | 
-  176 |   // ═══════════════════════════════════════════════════════════════════════════════
-  177 |   // PD-UI-01 — Definition list
-  178 |   // ═══════════════════════════════════════════════════════════════════════════════
-  179 | 
-  180 |   test.describe('PD-UI-01 — Definition list', () => {
-  181 |     test('TC-PDUI01-01: definition list shows definitions from the backend', async ({ page, request }) => {
-  182 |       const uniqueSuffix = testId('list-01')
-  183 |       const def1 = await createTestDefinition(request, authToken, `Order Flow ${uniqueSuffix}`, '1.0.0')
-  184 |       const def2 = await createTestDefinition(request, authToken, `Approval Flow ${uniqueSuffix}`, '1.0.0')
-  185 |       createdDefinitionIds.push(def1.id, def2.id)
-  186 | 
-  187 |       await loginWithToken(page, authToken)
-  188 | 
-  189 |       // Navigate to definitions via sidebar (SPA navigation preserves in-memory session)
-  190 |       await navigateToDefinitions(page)
-  191 | 
-  192 |       // Screen shows the definition names in the table
-  193 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
-  194 |       await expect(page.getByTestId(`def-name-${def2.id}`)).toBeVisible()
-  195 | 
-  196 |       // Screen shows version, status badge, and creation date for each row
-  197 |       // The definition name button is clickable (proves it's a rendered row)
-  198 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toContainText(`Order Flow ${uniqueSuffix}`)
-  199 | 
-  200 |       await shot(page, 'TC01-definition-list')
-  201 |       // VERDICT: Screen shows definition list with name buttons for both test definitions
-  202 |     })
-  203 | 
-  204 |     test('TC-PDUI01-02: empty state renders when no definitions exist for search', async ({ page }) => {
-  205 |       await loginWithToken(page, authToken)
-  206 | 
-  207 |       await navigateToDefinitions(page)
-  208 |       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+  279 |       await navigateToDefinitions(page)
+  280 | 
+  281 |       // Both definitions visible before filtering
+  282 |       await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
+  283 | 
+  284 |       await shot(page, 'TC02-02-before-filter')
+  285 |       // VERDICT: Screen shows draft definition in unfiltered list
+  286 |     })
+  287 | 
+  288 |     test('TC-PDUI02-04: status filter selects Draft and shows filtered results', async ({ page, request }) => {
+  289 |       const uniqueSuffix = testId('reload')
+  290 |       const def1 = await createTestDefinition(request, authToken, `Reload Test A ${uniqueSuffix}`, '1.0.0')
+  291 |       const def2 = await createTestDefinition(request, authToken, `Reload Test B ${uniqueSuffix}`, '2.0.0', 'Second version')
+  292 |       createdDefinitionIds.push(def1.id, def2.id)
+  293 | 
+  294 |       await loginWithToken(page, authToken)
+  295 |       await navigateToDefinitions(page)
+  296 |       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+  297 | 
+  298 |       // Both definitions visible
+  299 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
+  300 |       await expect(page.getByTestId(`def-name-${def2.id}`)).toBeVisible()
+  301 | 
+  302 |       // Select "Draft" in the status filter
+  303 |       await page.getByTestId('status-filter-select').selectOption('DRAFT')
+  304 |       await page.waitForTimeout(500)
+  305 | 
+  306 |       // Both definitions are DRAFT, so both should still be visible
+  307 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
+  308 |       await expect(page.getByTestId(`def-name-${def2.id}`)).toBeVisible()
+  309 | 
+  310 |       await shot(page, 'TC02-04-after-filter')
+  311 |       // VERDICT: Screen shows filtered definitions after selecting Draft in status filter
+  312 |     })
+  313 | 
+  314 |     test('TC-PDUI02-05: clearing all status filters shows all definitions', async ({ page, request }) => {
+  315 |       const uniqueSuffix = testId('clear')
+  316 |       const def = await createTestDefinition(request, authToken, `Clear Filter Test ${uniqueSuffix}`, '1.0.0')
+  317 |       createdDefinitionIds.push(def.id)
+  318 | 
+  319 |       await loginWithToken(page, authToken)
+  320 |       await navigateToDefinitions(page)
+  321 |       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+  322 | 
+  323 |       // Select DRAFT filter
+  324 |       await page.getByTestId('status-filter-select').selectOption('DRAFT')
+  325 |       await page.waitForTimeout(500)
+  326 |       await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
+  327 | 
+  328 |       // Clear filter by selecting "All"
+  329 |       await page.getByTestId('status-filter-select').selectOption('')
+  330 |       await page.waitForTimeout(500)
+  331 | 
+  332 |       // Definition still visible without filter
+  333 |       await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
+  334 | 
+  335 |       await shot(page, 'TC02-05-after-clear')
+  336 |       // VERDICT: Screen shows all definitions after clearing status filter
+  337 |     })
+  338 |   })
+  339 | 
+  340 |   // ═══════════════════════════════════════════════════════════════════════════════
+  341 |   // PD-UI-03 — Version history
+  342 |   // ═══════════════════════════════════════════════════════════════════════════════
+  343 | 
+  344 |   test.describe('PD-UI-03 — Version history', () => {
+  345 |     test('TC-PDUI03-01: clicking definition name expands version history row', async ({ page, request }) => {
+  346 |       const uniqueSuffix = testId('expand')
+  347 |       const def = await createTestDefinition(request, authToken, `Version Flow ${uniqueSuffix}`, '1.0.0')
+  348 |       createdDefinitionIds.push(def.id)
+  349 | 
+  350 |       await loginWithToken(page, authToken)
+  351 |       await navigateToDefinitions(page)
+  352 | 
+  353 |       // Click the definition name button to expand version history
+  354 |       await page.getByTestId(`def-name-${def.id}`).click()
+  355 |       await page.waitForTimeout(1000)
+  356 | 
+  357 |       // Screen shows version history row
+  358 |       const versionHistory = page.getByTestId('version-history-row')
+  359 |       await expect(versionHistory).toBeVisible({ timeout: 10_000 })
+  360 | 
+  361 |       // Shows "Version history: <name>" heading
+  362 |       await expect(versionHistory).toContainText(`Version Flow ${uniqueSuffix}`)
+  363 | 
+  364 |       await shot(page, 'TC03-01-expanded-version-history')
+  365 |       // VERDICT: Screen shows version history row with heading "Version history: Version Flow ..."
+  366 |     })
+  367 | 
+  368 |     test('TC-PDUI03-04: clicking the same name again collapses the version history', async ({ page, request }) => {
+  369 |       const uniqueSuffix = testId('collapse')
+  370 |       const def = await createTestDefinition(request, authToken, `Collapse Test ${uniqueSuffix}`, '1.0.0')
+  371 |       createdDefinitionIds.push(def.id)
+  372 | 
+  373 |       await loginWithToken(page, authToken)
+  374 |       await navigateToDefinitions(page)
+  375 | 
+  376 |       // Expand first
+  377 |       await page.getByTestId(`def-name-${def.id}`).click()
+  378 |       await page.waitForTimeout(1000)
+> 379 |       await expect(page.getByTestId('version-history-row')).toBeVisible()
+      |                                                             ^ Error: expect(locator).toBeVisible() failed
+  380 | 
+  381 |       // Click again to collapse
+  382 |       await page.getByTestId(`def-name-${def.id}`).click()
+  383 |       await page.waitForTimeout(500)
+  384 | 
+  385 |       // Version history row should be gone
+  386 |       await expect(page.getByTestId('version-history-row')).not.toBeVisible()
+  387 | 
+  388 |       await shot(page, 'TC03-04-collapsed')
+  389 |       // VERDICT: Screen no longer shows version history after clicking name again
+  390 |     })
+  391 |   })
+  392 | 
+  393 |   // ═══════════════════════════════════════════════════════════════════════════════
+  394 |   // PD-UI-04 — Create definition
+  395 |   // ═══════════════════════════════════════════════════════════════════════════════
+  396 | 
+  397 |   test.describe('PD-UI-04 — Create definition', () => {
+  398 |     test('TC-PDUI04-01: "New Definition" button opens create dialog', async ({ page }) => {
+  399 |       await loginWithToken(page, authToken)
+  400 |       await navigateToDefinitions(page)
+  401 | 
+  402 |       // Click the "New Definition" button
+  403 |       const newDefButton = page.getByTestId('btn-new-definition')
+  404 |       await expect(newDefButton).toBeVisible()
+  405 |       await newDefButton.click()
+  406 | 
+  407 |       // Screen shows create definition dialog
+  408 |       const dialog = page.getByTestId('create-definition-dialog')
+  409 |       await expect(dialog).toBeVisible({ timeout: 5_000 })
+  410 | 
+  411 |       // Dialog title is "Create New Definition"
+  412 |       await expect(dialog).toContainText('Create New Definition')
+  413 | 
+  414 |       // Form fields present
+  415 |       await expect(page.getByTestId('create-name-input')).toBeVisible()
+  416 |       await expect(page.getByTestId('create-version-input')).toBeVisible()
+  417 |       await expect(page.getByTestId('create-description-input')).toBeVisible()
+  418 | 
+  419 |       // Buttons present
+  420 |       await expect(page.getByTestId('create-submit')).toBeVisible()
+  421 |       await expect(page.getByTestId('create-cancel')).toBeVisible()
+  422 | 
+  423 |       await shot(page, 'TC04-01-create-dialog-open')
+  424 |       // VERDICT: Screen shows "Create New Definition" dialog with name, version, and description fields
+  425 |     })
+  426 | 
+  427 |     test('TC-PDUI04-02: dialog validates required name field', async ({ page }) => {
+  428 |       await loginWithToken(page, authToken)
+  429 |       await navigateToDefinitions(page)
+  430 | 
+  431 |       // Open dialog
+  432 |       await page.getByTestId('btn-new-definition').click()
+  433 |       await expect(page.getByTestId('create-definition-dialog')).toBeVisible({ timeout: 5_000 })
+  434 | 
+  435 |       // Clear the name field (default might be empty) and submit
+  436 |       const nameInput = page.getByTestId('create-name-input')
+  437 |       await nameInput.fill('')
+  438 | 
+  439 |       // Submit
+  440 |       await page.getByTestId('create-submit').click()
+  441 |       await page.waitForTimeout(500)
+  442 | 
+  443 |       // Screen shows validation error
+  444 |       await expect(page.getByText('Name is required')).toBeVisible()
+  445 | 
+  446 |       await shot(page, 'TC04-02-validation-error')
+  447 |       // VERDICT: Screen shows "Name is required" validation error when name is empty
+  448 |     })
+  449 | 
+  450 |     test('TC-PDUI04-03: creating a definition succeeds', async ({ page }) => {
+  451 |       const uniqueSuffix = testId('create')
+  452 | 
+  453 |       await loginWithToken(page, authToken)
+  454 |       await navigateToDefinitions(page)
+  455 | 
+  456 |       // Open dialog
+  457 |       await page.getByTestId('btn-new-definition').click()
+  458 |       await expect(page.getByTestId('create-definition-dialog')).toBeVisible({ timeout: 5_000 })
+  459 | 
+  460 |       // Fill form
+  461 |       const defName = `E2E Created ${uniqueSuffix}`
+  462 |       await page.getByTestId('create-name-input').fill(defName)
+  463 |       await page.getByTestId('create-version-input').fill('1.0.0')
+  464 |       await page.getByTestId('create-description-input').fill('Created by E2E test')
+  465 | 
+  466 |       await shot(page, 'TC04-03-form-filled')
+  467 | 
+  468 |       // Submit — this should navigate away to /definitions/:id
+  469 |       await page.getByTestId('create-submit').click()
+  470 | 
+  471 |       // Wait for navigation to the new definition's editor page
+  472 |       await page.waitForURL(/\/definitions\/(?!new$)([0-9a-f-]+)/, { timeout: 15_000 })
+  473 | 
+  474 |       await shot(page, 'TC04-03-after-creation')
+  475 |       // VERDICT: Screen navigated to /definitions/{id} after successful creation
+  476 |     })
+  477 | 
+  478 |     test('TC-PDUI04-05: Cancel button dismisses the dialog', async ({ page }) => {
+  479 |       await loginWithToken(page, authToken)
 ```

@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useDefinitions, useActivateDefinition, useArchiveDefinition, useCreateDefinition } from '@/hooks/useDefinitions'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useDefinitions, useDefinitionVersions, useActivateDefinition, useArchiveDefinition, useCreateDefinition } from '@/hooks/useDefinitions'
 import type { DefinitionStatus, ProcessDefinition } from '@/types/api'
 
 const STATUS_BADGE: Record<string, string> = {
@@ -19,24 +19,46 @@ export default function DefinitionListPage() {
   const [createVersion, setCreateVersion] = useState('')
   const [createDesc, setCreateDesc] = useState('')
   const [createError, setCreateError] = useState<string | null>(null)
+  const [createValidationErrors, setCreateValidationErrors] = useState<{ name?: string; version?: string }>({})
+  const [expandedDefId, setExpandedDefId] = useState<string | null>(null)
+  const [expandedDefName, setExpandedDefName] = useState<string | null>(null)
   const { data, isLoading } = useDefinitions({ status, name: search || undefined })
+  const versionsQuery = useDefinitionVersions(expandedDefName ?? '')
   const activate = useActivateDefinition()
   const archive = useArchiveDefinition()
   const createDef = useCreateDefinition()
 
+  const validateCreate = (): boolean => {
+    const errors: { name?: string; version?: string } = {}
+    if (!createName.trim()) errors.name = 'Name is required'
+    if (!createVersion.trim()) errors.version = 'Version is required'
+    setCreateValidationErrors(errors)
+    return Object.keys(errors).length === 0
+  }
+
   const handleCreate = async () => {
-    if (!createName.trim() || !createVersion.trim()) return
+    if (!validateCreate()) return
     setCreateError(null)
     try {
       const result = await createDef.mutateAsync({
         name: createName.trim(),
         version: createVersion.trim(),
         description: createDesc.trim(),
+        graph: {
+          nodes: [
+            { id: 'start', node_type: 'START', label: null } as any,
+            { id: 'end', node_type: 'END', label: null } as any,
+          ],
+          edges: [
+            { id: 'e1', source: 'start', target: 'end', condition: null, is_default: false } as any,
+          ],
+        } as any,
       })
       setShowCreate(false)
       setCreateName('')
       setCreateVersion('')
       setCreateDesc('')
+      setCreateValidationErrors({})
       navigate(`/definitions/${result.id}`)
     } catch (err: unknown) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create definition')
@@ -102,40 +124,79 @@ export default function DefinitionListPage() {
           </thead>
           <tbody>
             {items.map((def: ProcessDefinition) => (
-              <tr key={def.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={{ padding: '.6rem .8rem' }}>
-                  <Link to={`/definitions/${def.id}`} data-testid={`def-name-${def.id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-                    {def.name}
-                  </Link>
-                </td>
-                <td style={{ padding: '.6rem .8rem', color: '#64748b' }}>{def.version}</td>
-                <td style={{ padding: '.6rem .8rem' }}>
-                  <span style={{ color: STATUS_BADGE[def.status] ?? '#374151', fontWeight: 600, fontSize: '.8rem' }}>
-                    {def.status}
-                  </span>
-                </td>
-                <td style={{ padding: '.6rem .8rem', color: '#94a3b8', fontSize: '.8rem' }}>
-                  {new Date(def.updated_at).toLocaleDateString()}
-                </td>
-                <td style={{ padding: '.6rem .8rem', display: 'flex', gap: '.5rem' }}>
-                  {def.status === 'DRAFT' && (
-                    <button
-                      onClick={() => activate.mutate(def.id)}
-                      style={{ padding: '.25rem .6rem', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '.8rem' }}
+              <React.Fragment key={def.id}>
+                <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '.6rem .8rem' }}>
+                    <span
+                      data-testid={`def-name-${def.id}`}
+                      onClick={() => {
+                        if (expandedDefId === def.id) {
+                          setExpandedDefId(null)
+                          setExpandedDefName(null)
+                        } else {
+                          setExpandedDefId(def.id)
+                          setExpandedDefName(def.name)
+                        }
+                      }}
+                      style={{ color: '#2563eb', textDecoration: 'none', cursor: 'pointer' }}
                     >
-                      Activate
-                    </button>
-                  )}
-                  {(def.status === 'ACTIVE' || def.status === 'DEPRECATED') && (
-                    <button
-                      onClick={() => archive.mutate(def.id)}
-                      style={{ padding: '.25rem .6rem', background: '#6b7280', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '.8rem' }}
-                    >
-                      Archive
-                    </button>
-                  )}
-                </td>
-              </tr>
+                      {def.name}
+                    </span>
+                  </td>
+                  <td style={{ padding: '.6rem .8rem', color: '#64748b' }}>{def.version}</td>
+                  <td style={{ padding: '.6rem .8rem' }}>
+                    <span style={{ color: STATUS_BADGE[def.status] ?? '#374151', fontWeight: 600, fontSize: '.8rem' }}>
+                      {def.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '.6rem .8rem', color: '#94a3b8', fontSize: '.8rem' }}>
+                    {new Date(def.updated_at).toLocaleDateString()}
+                  </td>
+                  <td style={{ padding: '.6rem .8rem', display: 'flex', gap: '.5rem' }}>
+                    {def.status === 'DRAFT' && (
+                      <button
+                        onClick={() => activate.mutate(def.id)}
+                        style={{ padding: '.25rem .6rem', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '.8rem' }}
+                      >
+                        Activate
+                      </button>
+                    )}
+                    {(def.status === 'ACTIVE' || def.status === 'DEPRECATED') && (
+                      <button
+                        onClick={() => archive.mutate(def.id)}
+                        style={{ padding: '.25rem .6rem', background: '#6b7280', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '.8rem' }}
+                      >
+                        Archive
+                      </button>
+                    )}
+                  </td>
+                </tr>
+                {expandedDefId === def.id && (
+                  <tr data-testid="version-history-row">
+                    <td colSpan={5} style={{ padding: '0' }}>
+                      <div style={{ background: '#f8fafc', padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0' }}>
+                        <strong style={{ fontSize: '.85rem', color: '#374151' }}>
+                          Version history: {def.name}
+                        </strong>
+                        {versionsQuery.isLoading && (
+                          <p style={{ fontSize: '.8rem', color: '#94a3b8', margin: '.5rem 0 0' }}>Loading versions...</p>
+                        )}
+                        {versionsQuery.data && (
+                          <div style={{ marginTop: '.5rem' }}>
+                            {(versionsQuery.data as { items?: ProcessDefinition[] }).items?.map((v) => (
+                              <div key={v.id} style={{ display: 'flex', gap: '1rem', padding: '.3rem 0', fontSize: '.85rem', color: '#475569', borderBottom: '1px solid #e2e8f0' }}>
+                                <span style={{ fontWeight: 600 }}>{v.version}</span>
+                                <span style={{ color: STATUS_BADGE[v.status] ?? '#374151' }}>{v.status}</span>
+                                <span style={{ color: '#94a3b8' }}>{new Date(v.updated_at).toLocaleDateString()}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -173,10 +234,13 @@ export default function DefinitionListPage() {
                 data-testid="create-name-input"
                 type="text"
                 value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
+                onChange={(e) => { setCreateName(e.target.value); setCreateValidationErrors((prev) => ({ ...prev, name: undefined })) }}
                 style={{ width: '100%', padding: '.4rem .6rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '.85rem', boxSizing: 'border-box' }}
                 placeholder="My Process"
               />
+              {createValidationErrors.name && (
+                <p style={{ color: '#dc2626', fontSize: '.8rem', margin: '.25rem 0 0' }}>{createValidationErrors.name}</p>
+              )}
             </div>
 
             <div style={{ marginBottom: '.75rem' }}>
@@ -187,10 +251,13 @@ export default function DefinitionListPage() {
                 data-testid="create-version-input"
                 type="text"
                 value={createVersion}
-                onChange={(e) => setCreateVersion(e.target.value)}
+                onChange={(e) => { setCreateVersion(e.target.value); setCreateValidationErrors((prev) => ({ ...prev, version: undefined })) }}
                 style={{ width: '100%', padding: '.4rem .6rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '.85rem', boxSizing: 'border-box' }}
                 placeholder="1.0.0"
               />
+              {createValidationErrors.version && (
+                <p style={{ color: '#dc2626', fontSize: '.8rem', margin: '.25rem 0 0' }}>{createValidationErrors.version}</p>
+              )}
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
@@ -209,7 +276,7 @@ export default function DefinitionListPage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
               <button
                 data-testid="create-cancel"
-                onClick={() => { setShowCreate(false); setCreateError(null) }}
+                onClick={() => { setShowCreate(false); setCreateError(null); setCreateValidationErrors({}) }}
                 style={{ padding: '.4rem .9rem', background: '#f1f5f9', color: '#374151', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer', fontSize: '.85rem' }}
               >
                 Cancel
@@ -217,10 +284,10 @@ export default function DefinitionListPage() {
               <button
                 data-testid="create-submit"
                 onClick={handleCreate}
-                disabled={!createName.trim() || !createVersion.trim() || createDef.isPending}
+                disabled={createDef.isPending}
                 style={{
-                  padding: '.4rem .9rem', background: !createName.trim() || !createVersion.trim() ? '#93c5fd' : '#2563eb',
-                  color: '#fff', borderRadius: '4px', border: 'none', cursor: !createName.trim() || !createVersion.trim() ? 'not-allowed' : 'pointer',
+                  padding: '.4rem .9rem', background: '#2563eb',
+                  color: '#fff', borderRadius: '4px', border: 'none', cursor: 'pointer',
                   fontSize: '.85rem',
                 }}
               >

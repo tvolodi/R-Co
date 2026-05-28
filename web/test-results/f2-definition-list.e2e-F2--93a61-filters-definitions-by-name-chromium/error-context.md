@@ -14,14 +14,14 @@
 ```
 Error: expect(locator).toBeVisible() failed
 
-Locator: getByTestId('def-name-fb2cdc26-fd9d-4e86-9f2c-58aa415cebd6')
+Locator: getByTestId('def-name-c7700d37-ae95-4605-9902-12ca32b3905c')
 Expected: visible
 Timeout: 5000ms
 Error: element(s) not found
 
 Call log:
   - Expect "toBeVisible" with timeout 5000ms
-  - waiting for getByTestId('def-name-fb2cdc26-fd9d-4e86-9f2c-58aa415cebd6')
+  - waiting for getByTestId('def-name-c7700d37-ae95-4605-9902-12ca32b3905c')
 
 ```
 
@@ -55,7 +55,7 @@ Call log:
   - button "Sign out"
 - main:
   - heading "Process Definitions" [level=2]
-  - textbox "Search definitions..."
+  - textbox "Search definitions...": Alpha pd-ui-e2e-search-1779988144719
   - text: Status
   - combobox:
     - option "All" [selected]
@@ -64,30 +64,12 @@ Call log:
     - option "Deprecated"
     - option "Archived"
   - button "+ New Definition"
-  - table:
-    - rowgroup:
-      - row "Name Version Status Updated Actions":
-        - columnheader "Name"
-        - columnheader "Version"
-        - columnheader "Status"
-        - columnheader "Updated"
-        - columnheader "Actions"
-    - rowgroup
+  - paragraph: No definitions found
 ```
 
 # Test source
 
 ```ts
-  132 |     throw new Error(`POST /definitions failed (${response.status()}): ${body}`)
-  133 |   }
-  134 | 
-  135 |   return response.json() as Promise<{ id: string; name: string; version: string; status: string }>
-  136 | }
-  137 | 
-  138 | async function deleteTestDefinition(
-  139 |   request: import('@playwright/test').APIRequestContext,
-  140 |   token: string,
-  141 |   id: string,
   142 | ): Promise<void> {
   143 |   const response = await request.delete(`${API_PREFIX}/definitions/${id}`, {
   144 |     headers: { 'Authorization': `Bearer ${token}` },
@@ -178,8 +160,7 @@ Call log:
   229 |       await navigateToDefinitions(page)
   230 | 
   231 |       // Both definitions visible initially
-> 232 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
-      |                                                             ^ Error: expect(locator).toBeVisible() failed
+  232 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
   233 |       await expect(page.getByTestId(`def-name-${def2.id}`)).toBeVisible()
   234 | 
   235 |       // Type search for Alpha only
@@ -189,7 +170,8 @@ Call log:
   239 |       await page.waitForTimeout(1500)
   240 | 
   241 |       // Screen shows only the Alpha definition
-  242 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
+> 242 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
+      |                                                             ^ Error: expect(locator).toBeVisible() failed
   243 |       await expect(page.getByTestId(`def-name-${def2.id}`)).not.toBeVisible()
   244 | 
   245 |       // URL contains the search parameter
@@ -280,4 +262,14 @@ Call log:
   330 |       await page.waitForTimeout(500)
   331 | 
   332 |       // Definition still visible without filter
+  333 |       await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
+  334 | 
+  335 |       await shot(page, 'TC02-05-after-clear')
+  336 |       // VERDICT: Screen shows all definitions after clearing status filter
+  337 |     })
+  338 |   })
+  339 | 
+  340 |   // ═══════════════════════════════════════════════════════════════════════════════
+  341 |   // PD-UI-03 — Version history
+  342 |   // ═══════════════════════════════════════════════════════════════════════════════
 ```

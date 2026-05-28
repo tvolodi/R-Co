@@ -14,14 +14,14 @@
 ```
 Error: expect(locator).toBeVisible() failed
 
-Locator: getByTestId('def-name-9535d749-9031-4666-8377-b87eae54ca46')
+Locator: getByTestId('def-name-ffae27c3-2bf3-49c2-921e-1257caf6efb3')
 Expected: visible
 Timeout: 5000ms
 Error: element(s) not found
 
 Call log:
   - Expect "toBeVisible" with timeout 5000ms
-  - waiting for getByTestId('def-name-9535d749-9031-4666-8377-b87eae54ca46')
+  - waiting for getByTestId('def-name-ffae27c3-2bf3-49c2-921e-1257caf6efb3')
 
 ```
 
@@ -55,7 +55,7 @@ Call log:
   - button "Sign out"
 - main:
   - heading "Process Definitions" [level=2]
-  - textbox "Search definitions..."
+  - textbox "Search definitions...": Alpha pd-ui-e2e-search-1779988153454
   - text: Status
   - combobox:
     - option "All" [selected]
@@ -64,133 +64,14 @@ Call log:
     - option "Deprecated"
     - option "Archived"
   - button "+ New Definition"
-  - table:
-    - rowgroup:
-      - row "Name Version Status Updated Actions":
-        - columnheader "Name"
-        - columnheader "Version"
-        - columnheader "Status"
-        - columnheader "Updated"
-        - columnheader "Actions"
-    - rowgroup
-```
-
-```
-Error: apiRequestContext.delete: connect ECONNREFUSED 127.0.0.1:4173
-Call log:
-  - → DELETE http://127.0.0.1:4173/api/v1/definitions/9535d749-9031-4666-8377-b87eae54ca46
-    - user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.7778.96 Safari/537.36
-    - accept: */*
-    - accept-encoding: gzip,deflate,br
-    - Authorization: Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ6Mi0yT3IwVEUxQjJDZ0xiNGt1LTBlaUR1SGgzRW1KcGxHNlJGVVlJY19BIn0.eyJleHAiOjE3Nzk5ODc4NjYsImlhdCI6MTc3OTk4NzU2NiwianRpIjoib25ydHJvOjdmNTdlZWFkLWJhMDEtNGNkOC1iY2U2LWY4ODQxMzhkOGUzMCIsImlzcyI6Imh0dHA6Ly9sb2NhbGhvc3Q6ODA4MS9yZWFsbXMvYnBtLWRlZmF1bHQiLCJzdWIiOiI0NjQwZGI3ZS04MTg1LTQ0NmItYTM4Yy0wMGU1MWZiZjA1YjUiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJicG0tcGxhdGZvcm0tYXBpIiwic2lkIjoiMDRlZTY1MDYtOWMwYi00MjlkLWIyNTMtYTJhYTA4ZWI3NjE1IiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIqIl0sInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJQTEFURk9STV9BRE1JTiJdfSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInJvbGVzIjpbIlBMQVRGT1JNX0FETUlOIl0sIm5hbWUiOiJBZG1pbiBVc2VyIiwicHJlZmVycmVkX3VzZXJuYW1lIjoiYWRtaW4tdXNlciIsImdpdmVuX25hbWUiOiJBZG1pbiIsImZhbWlseV9uYW1lIjoiVXNlciIsImVtYWlsIjoiYWRtaW5AYnBtLmxvY2FsIn0.VKDByzORoe-0l_BAX6HBiv6SknBnXwp_6cdw68gilMR2F3x7W5--UHcwGrBdqM5psRw3RjsG_YszmQJ1M-MtduuW3htuwlV6sYZmnybYscagnRHK6a4OYS1UVNleVnXSUaNAeuzZTFL-hztNcaYms5bp5xV_Iv7TtkJTFCcD0TildfvG43tbn1uDyeiyqnBEs-iyb9EbdKdZtY0X9-tNPRMCaCoTVgTC5LzBvXqIuLKpPNEiR3Xdqza59gsEECXeOZibIJDJ5MN1JfilzcOahWHtUy9Bb7Bt6ebc5Fge6LjbT4SpHX3iu_HxVOqPnNzlcy5vA72YWjorEUYG26Sasw
-
+  - paragraph: No definitions found
 ```
 
 # Test source
 
 ```ts
-  43  | }
-  44  | 
-  45  | // ── Token management ──────────────────────────────────────────────────────────
-  46  | 
-  47  | /**
-  48  |  * Obtains a real JWT from Keycloak via the password grant (direct access) flow.
-  49  |  * The returned token is a real signed JWT that the backend accepts.
-  50  |  */
-  51  | async function getKeycloakToken(request: import('@playwright/test').APIRequestContext): Promise<string> {
-  52  |   const response = await request.post(KEYCLOAK_TOKEN_URL, {
-  53  |     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  54  |     form: {
-  55  |       client_id: KEYCLOAK_CLIENT_ID,
-  56  |       username: KEYCLOAK_USERNAME,
-  57  |       password: KEYCLOAK_PASSWORD,
-  58  |       grant_type: 'password',
-  59  |     },
-  60  |   })
-  61  | 
-  62  |   if (!response.ok()) {
-  63  |     const body = await response.text()
-  64  |     throw new Error(
-  65  |       `Keycloak token request failed (${response.status()}): ${body}\n` +
-  66  |       `Ensure Keycloak is running at ${KEYCLOAK_TOKEN_URL.replace('/protocol/openid-connect/token', '')}\n` +
-  67  |       `and user ${KEYCLOAK_USERNAME} exists with password ${KEYCLOAK_PASSWORD}.`,
-  68  |     )
-  69  |   }
-  70  | 
-  71  |   const body = await response.json() as { access_token: string }
-  72  |   return body.access_token
-  73  | }
-  74  | 
-  75  | // ── Login via UI with a real token ────────────────────────────────────────────
-  76  | 
-  77  | /**
-  78  |  * Logs into the application by pasting a real JWT into the token input field
-  79  |  * and submitting the login form. This exercises the real login code path:
-  80  |  * GET /health/ready → decode JWT → set session → navigate to workspace.
-  81  |  */
-  82  | async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
-  83  |   await page.goto('/login')
-  84  |   await expect(page.getByTestId('login-token-input')).toBeVisible()
-  85  |   await page.getByTestId('login-token-input').fill(token)
-  86  |   await page.getByTestId('login-submit').click()
-  87  |   // Wait for navigation away from /login to the workspace
-  88  |   await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
-  89  |   // Verify workspace is rendered
-  90  |   await expect(page.getByTestId('user-display-name')).toBeVisible({ timeout: 10_000 })
-  91  | }
-  92  | 
-  93  | /** Navigate to /definitions via the sidebar link (SPA navigation — preserves in-memory session). */
-  94  | async function navigateToDefinitions(page: import('@playwright/test').Page): Promise<void> {
-  95  |   await page.getByRole('link', { name: 'Definitions' }).click()
-  96  |   await page.waitForURL(/\/definitions/, { timeout: 10_000 })
-  97  | }
-  98  | 
-  99  | // ── API helpers (using Playwright request context with real token) ────────────
-  100 | 
-  101 | async function createTestDefinition(
-  102 |   request: import('@playwright/test').APIRequestContext,
-  103 |   token: string,
-  104 |   name: string,
-  105 |   version: string,
-  106 |   description?: string,
-  107 | ): Promise<{ id: string; name: string; version: string; status: string }> {
-  108 |   const response = await request.post(`${API_PREFIX}/definitions`, {
-  109 |     headers: {
-  110 |       'Authorization': `Bearer ${token}`,
-  111 |       'Content-Type': 'application/json',
-  112 |     },
-  113 |     data: {
-  114 |       name,
-  115 |       version,
-  116 |       description: description ?? '',
-  117 |       graph: {
-  118 |         nodes: [
-  119 |           { id: 'start', node_type: 'START', label: null, attributes: null },
-  120 |           { id: 'end', node_type: 'END', label: null, attributes: null },
-  121 |         ],
-  122 |         edges: [
-  123 |           { id: 'e1', source: 'start', target: 'end', condition: null, is_default: false },
-  124 |         ],
-  125 |       },
-  126 |       stage: null,
-  127 |     },
-  128 |   })
-  129 | 
-  130 |   if (!response.ok()) {
-  131 |     const body = await response.text()
-  132 |     throw new Error(`POST /definitions failed (${response.status()}): ${body}`)
-  133 |   }
-  134 | 
-  135 |   return response.json() as Promise<{ id: string; name: string; version: string; status: string }>
-  136 | }
-  137 | 
-  138 | async function deleteTestDefinition(
-  139 |   request: import('@playwright/test').APIRequestContext,
-  140 |   token: string,
-  141 |   id: string,
   142 | ): Promise<void> {
-> 143 |   const response = await request.delete(`${API_PREFIX}/definitions/${id}`, {
-      |                                        ^ Error: apiRequestContext.delete: connect ECONNREFUSED 127.0.0.1:4173
+  143 |   const response = await request.delete(`${API_PREFIX}/definitions/${id}`, {
   144 |     headers: { 'Authorization': `Bearer ${token}` },
   145 |   })
   146 |   // 204 or 404 are both acceptable (already deleted or not found)
@@ -289,6 +170,106 @@ Call log:
   239 |       await page.waitForTimeout(1500)
   240 | 
   241 |       // Screen shows only the Alpha definition
-  242 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
+> 242 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
+      |                                                             ^ Error: expect(locator).toBeVisible() failed
   243 |       await expect(page.getByTestId(`def-name-${def2.id}`)).not.toBeVisible()
+  244 | 
+  245 |       // URL contains the search parameter
+  246 |       await expect(page).toHaveURL(/search=Alpha/)
+  247 | 
+  248 |       await shot(page, 'TC03-search-filter')
+  249 |       // VERDICT: Screen shows only Alpha Flow after typing search query; URL contains search param
+  250 |     })
+  251 |   })
+  252 | 
+  253 |   // ═══════════════════════════════════════════════════════════════════════════════
+  254 |   // PD-UI-02 — Status filter
+  255 |   // ═══════════════════════════════════════════════════════════════════════════════
+  256 | 
+  257 |   test.describe('PD-UI-02 — Status filter', () => {
+  258 |     test('TC-PDUI02-01: status filter dropdown shows all four options', async ({ page }) => {
+  259 |       await loginWithToken(page, authToken)
+  260 |       await navigateToDefinitions(page)
+  261 | 
+  262 |       // Open the multi-select status filter
+  263 |       const statusFilter = page.getByTestId('status-filter')
+  264 |       await expect(statusFilter).toBeVisible()
+  265 | 
+  266 |       // The filter shows the label "Status"
+  267 |       await expect(statusFilter).toContainText('Status')
+  268 | 
+  269 |       await shot(page, 'TC02-01-status-filter-visible')
+  270 |       // VERDICT: Screen shows status filter with "Status" label
+  271 |     })
+  272 | 
+  273 |     test('TC-PDUI02-02: selecting Draft filter shows only DRAFT definitions', async ({ page, request }) => {
+  274 |       const uniqueSuffix = testId('draft-filter')
+  275 |       const draftDef = await createTestDefinition(request, authToken, `Draft Only ${uniqueSuffix}`, '1.0.0')
+  276 |       createdDefinitionIds.push(draftDef.id)
+  277 | 
+  278 |       await loginWithToken(page, authToken)
+  279 |       await navigateToDefinitions(page)
+  280 | 
+  281 |       // Both definitions visible before filtering
+  282 |       await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
+  283 | 
+  284 |       await shot(page, 'TC02-02-before-filter')
+  285 |       // VERDICT: Screen shows draft definition in unfiltered list
+  286 |     })
+  287 | 
+  288 |     test('TC-PDUI02-04: status filter selects Draft and shows filtered results', async ({ page, request }) => {
+  289 |       const uniqueSuffix = testId('reload')
+  290 |       const def1 = await createTestDefinition(request, authToken, `Reload Test A ${uniqueSuffix}`, '1.0.0')
+  291 |       const def2 = await createTestDefinition(request, authToken, `Reload Test B ${uniqueSuffix}`, '2.0.0', 'Second version')
+  292 |       createdDefinitionIds.push(def1.id, def2.id)
+  293 | 
+  294 |       await loginWithToken(page, authToken)
+  295 |       await navigateToDefinitions(page)
+  296 |       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+  297 | 
+  298 |       // Both definitions visible
+  299 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
+  300 |       await expect(page.getByTestId(`def-name-${def2.id}`)).toBeVisible()
+  301 | 
+  302 |       // Select "Draft" in the status filter
+  303 |       await page.getByTestId('status-filter-select').selectOption('DRAFT')
+  304 |       await page.waitForTimeout(500)
+  305 | 
+  306 |       // Both definitions are DRAFT, so both should still be visible
+  307 |       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
+  308 |       await expect(page.getByTestId(`def-name-${def2.id}`)).toBeVisible()
+  309 | 
+  310 |       await shot(page, 'TC02-04-after-filter')
+  311 |       // VERDICT: Screen shows filtered definitions after selecting Draft in status filter
+  312 |     })
+  313 | 
+  314 |     test('TC-PDUI02-05: clearing all status filters shows all definitions', async ({ page, request }) => {
+  315 |       const uniqueSuffix = testId('clear')
+  316 |       const def = await createTestDefinition(request, authToken, `Clear Filter Test ${uniqueSuffix}`, '1.0.0')
+  317 |       createdDefinitionIds.push(def.id)
+  318 | 
+  319 |       await loginWithToken(page, authToken)
+  320 |       await navigateToDefinitions(page)
+  321 |       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+  322 | 
+  323 |       // Select DRAFT filter
+  324 |       await page.getByTestId('status-filter-select').selectOption('DRAFT')
+  325 |       await page.waitForTimeout(500)
+  326 |       await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
+  327 | 
+  328 |       // Clear filter by selecting "All"
+  329 |       await page.getByTestId('status-filter-select').selectOption('')
+  330 |       await page.waitForTimeout(500)
+  331 | 
+  332 |       // Definition still visible without filter
+  333 |       await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
+  334 | 
+  335 |       await shot(page, 'TC02-05-after-clear')
+  336 |       // VERDICT: Screen shows all definitions after clearing status filter
+  337 |     })
+  338 |   })
+  339 | 
+  340 |   // ═══════════════════════════════════════════════════════════════════════════════
+  341 |   // PD-UI-03 — Version history
+  342 |   // ═══════════════════════════════════════════════════════════════════════════════
 ```

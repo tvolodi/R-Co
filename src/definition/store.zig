@@ -383,7 +383,10 @@ pub const Store = struct {
             sql.appendSlice(a, if (first_clause) "\nWHERE " else "\n  AND ") catch
                 return DefinitionError.TransactionFailed;
             first_clause = false;
-            sql.appendSlice(a, std.fmt.allocPrint(a, "name = ${d}", .{pidx}) catch
+            // Use ILIKE for substring matching (PD-UI-01 search behaviour).
+            // The pattern "%{name}%" is built as a SQL concatenation to avoid
+            // embedding user data in the SQL text — all values bind as $N parameters.
+            sql.appendSlice(a, std.fmt.allocPrint(a, "name ILIKE '%' || ${d} || '%'", .{pidx}) catch
                 return DefinitionError.TransactionFailed) catch
                 return DefinitionError.TransactionFailed;
             bound.append(a, name) catch return DefinitionError.TransactionFailed;
