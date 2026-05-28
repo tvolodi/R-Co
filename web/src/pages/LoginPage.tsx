@@ -1,34 +1,50 @@
-/** Login page — adapted from ai-dala-forge/frontend/src/features/login/Login.tsx */
+/** Login page — Stage F1: token-based login with health check validation */
 
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
-import type { ApiError } from '@/types/api'
 
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [token, setToken] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
+  const sessionExpired = new URLSearchParams(location.search).get('reason') === 'session-expired'
+
+  function mapError(code: string, fallback: string): string {
+    switch (code) {
+      case 'LOGIN_TOKEN_EMPTY': return 'Please enter an API token.'
+      case 'LOGIN_HEALTH_CHECK_FAILED': return 'Invalid token or access denied.'
+      case 'LOGIN_SERVER_UNAVAILABLE': return 'Cannot reach the server. Check your connection.'
+      case 'TOKEN_DECODE_INVALID': return 'Token format is invalid.'
+      case 'TOKEN_MISSING_ROLES': return 'Token does not contain role assignments. Contact your administrator.'
+      default: return fallback
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!token.trim()) {
+      setError(mapError('LOGIN_TOKEN_EMPTY', 'Please enter an API token.'))
+      return
+    }
     setSubmitting(true)
     try {
-      await login(email, password)
+      await login(token.trim())
       navigate(from, { replace: true })
     } catch (err) {
-      const ae = err as ApiError
-      if (ae?.status === 401) setError('Invalid email or password.')
-      else if (ae?.status === 403) setError('Account is locked or disabled.')
-      else setError(ae?.message ?? 'Login failed.')
+      const ae = err as { code?: string; message?: string }
+      if (!ae.code && !ae.message) {
+        setError(mapError('LOGIN_SERVER_UNAVAILABLE', 'Cannot reach the server. Check your connection.'))
+      } else {
+        setError(mapError(ae.code ?? '', ae.message ?? 'Login failed.'))
+      }
     } finally {
       setSubmitting(false)
     }
@@ -57,6 +73,24 @@ export default function LoginPage() {
       >
         <h1 style={{ marginBottom: '1.5rem', fontSize: '1.4rem' }}>BPM Platform</h1>
 
+        {sessionExpired && (
+          <div
+            data-testid="login-session-expired"
+            role="alert"
+            style={{
+              background: '#fff8e1',
+              border: '1px solid #ffe082',
+              color: '#7a6400',
+              padding: '.75rem 1rem',
+              borderRadius: '4px',
+              marginBottom: '1rem',
+              fontSize: '.9rem',
+            }}
+          >
+            Your session has expired. Please log in again.
+          </div>
+        )}
+
         {error && (
           <div
             data-testid="login-error"
@@ -76,35 +110,19 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleSubmit} data-testid="login-form">
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="email" style={{ display: 'block', marginBottom: '.25rem', fontSize: '.875rem' }}>
-              Email
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label htmlFor="login-token" style={{ display: 'block', marginBottom: '.25rem', fontSize: '.875rem' }}>
+              API Token
             </label>
             <input
-              id="email"
-              data-testid="email-input"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              id="login-token"
+              data-testid="login-token-input"
+              type="password"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
               autoFocus
               disabled={submitting}
-              style={{ width: '100%', padding: '.5rem .75rem', border: '1px solid #ccc', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label htmlFor="password" style={{ display: 'block', marginBottom: '.25rem', fontSize: '.875rem' }}>
-              Password
-            </label>
-            <input
-              id="password"
-              data-testid="password-input"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={submitting}
+              placeholder="Paste your API token here"
               style={{ width: '100%', padding: '.5rem .75rem', border: '1px solid #ccc', borderRadius: '4px', fontSize: '1rem', boxSizing: 'border-box' }}
             />
           </div>
@@ -112,7 +130,7 @@ export default function LoginPage() {
           <button
             type="submit"
             data-testid="login-submit"
-            disabled={submitting || !email || !password}
+            disabled={submitting}
             style={{
               width: '100%',
               padding: '.6rem',

@@ -1,0 +1,50 @@
+{
+  "handoff_id": "9aef9cc3-f3ab-44d9-aeb2-9bf71baaa82f",
+  "run_id": "WF02-shf1a-20260528",
+  "workflow_id": "WF-02",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-28T07:00:00Z",
+  "started_at": "2026-05-28T07:00:10Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F1 - Application Shell and Authentication",
+    "requirement_ids": [
+      "SH-01",
+      "SH-02",
+      "SH-03",
+      "SH-04"
+    ],
+    "related_handoff_ids": [
+      "cd6fed9f-6cee-40e0-81a2-c8d0b37b6643"
+    ],
+    "artifacts_in": [
+      "src/design/shell-f1.md"
+    ]
+  },
+  "task": {
+    "description": "Implement Stage F1 requirements SH-01 through SH-04 per the design artefact at src/design/shell-f1.md. Branch: feature/WF02-shf1a-20260528. Changes required: (1) web/src/api/client.ts - replace localStorage with in-memory module variable, remove refresh token logic; (2) web/src/types/api.ts - add JwtPayload, UserSession types; (3) web/src/auth/tokenUtils.ts - new file with decodeTokenPayload, resolveDisplayName; (4) web/src/auth/AuthContext.tsx - update AuthContextValue interface; (5) web/src/auth/AuthProvider.tsx - rewrite login(token) flow with health check + JWT decode; (6) web/src/pages/LoginPage.tsx - replace email/password with token input field; (7) web/src/components/layout/AppShell.tsx - role-aware nav with full 4-role matrix + user indicator. After implementation: run npm run type-check, npm run lint, npm run build (all must exit 0). Commit and push to feature branch.",
+    "acceptance_criteria": [
+      "web/src/auth/tokenUtils.ts exists with decodeTokenPayload and resolveDisplayName",
+      "client.ts uses in-memory _token variable (no localStorage)",
+      "LoginPage has data-testid=login-token-input (password type) not email/password fields",
+      "LoginPage validates token via GET /health/ready",
+      "LoginPage shows data-testid=login-session-expired banner when URL has reason=session-expired",
+      "AppShell sidebar filters items by session.roles using NAV_ITEMS with roles array",
+      "AppShell header shows data-testid=user-display-name and data-testid=user-roles",
+      "AppShell has data-testid=logout-button",
+      "npm run type-check exits 0",
+      "npm run lint exits 0",
+      "npm run build exits 0"
+    ],
+    "functions_to_call": [
+      "fn:check-frontend-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": null
+}
