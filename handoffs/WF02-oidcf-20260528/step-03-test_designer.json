@@ -1,0 +1,50 @@
+{
+  "handoff_id": "f73d8a9c-2197-4bd0-aced-587e3f51dff3",
+  "run_id": "WF02-oidcf-20260528",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-oidcf-20260528/step-03-test_designer.json",
+  "created_at": "2026-05-28T09:10:18Z",
+  "started_at": "2026-05-28T09:30:19Z",
+  "completed_at": "2026-05-28T09:34:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F1.5 - OIDC SSO Login",
+    "requirement_ids": [
+      "OIDC-F-01",
+      "OIDC-F-02",
+      "OIDC-F-03",
+      "OIDC-F-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/oidc-f1.md",
+      "docs/BPM_Platform_Frontend_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "Write tests/specs/OIDC-F-01-04.md and web/tests/e2e/oidcf-login.e2e.spec.ts. Cover: SSO button visible, button redirects to Keycloak URL, full auth flow with real Keycloak (admin-user/admin-pass), callback error redirects to /login?reason=auth-error, OIDC logout hits end-session endpoint. No MSW.",
+    "acceptance_criteria": [
+      "spec file created",
+      "e2e file created",
+      "5 test cases",
+      "no MSW"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test spec and Playwright E2E file created. 5 test cases covering OIDC-F-01 through OIDC-F-04. No MSW.",
+    "artifacts_out": [
+      "tests/specs/OIDC-F-01-04.md",
+      "web/tests/e2e/oidcf-login.e2e.spec.ts"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

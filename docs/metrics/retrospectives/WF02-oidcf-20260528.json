@@ -1,0 +1,55 @@
+{
+  "run_id": "WF02-oidcf-20260528",
+  "created_at": "2026-05-28T10:05:38Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["OIDC-F-01", "OIDC-F-02", "OIDC-F-03", "OIDC-F-04"],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "steps": {
+    "code-designer": {
+      "estimated_minutes": 20,
+      "actual_minutes": 2,
+      "variance_pct": -90.0
+    },
+    "code-design-validator": {
+      "estimated_minutes": 10,
+      "actual_minutes": 1,
+      "variance_pct": -90.0
+    },
+    "frontend-dev": {
+      "estimated_minutes": 45,
+      "actual_minutes": 9,
+      "variance_pct": -80.0
+    },
+    "test-designer": {
+      "estimated_minutes": 20,
+      "actual_minutes": 5,
+      "variance_pct": -75.0
+    },
+    "test-design-validator": {
+      "estimated_minutes": 10,
+      "actual_minutes": 1,
+      "variance_pct": -90.0
+    },
+    "test-runner": {
+      "estimated_minutes": 20,
+      "actual_minutes": 25,
+      "variance_pct": 25.0
+    },
+    "release-validator": {
+      "estimated_minutes": 10,
+      "actual_minutes": 1,
+      "variance_pct": -90.0
+    },
+    "doc-updater": {
+      "estimated_minutes": 10,
+      "actual_minutes": 1,
+      "variance_pct": -90.0
+    }
+  },
+  "overall": {
+    "estimated_minutes": 145,
+    "actual_minutes": 45,
+    "variance_pct": -68.97
+  }
+}

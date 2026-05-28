@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
+import { oidcManager } from '@/auth/OidcManager'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -14,7 +15,9 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
-  const sessionExpired = new URLSearchParams(location.search).get('reason') === 'session-expired'
+  const searchParams = new URLSearchParams(location.search)
+  const sessionExpired = searchParams.get('reason') === 'session-expired'
+  const authError = searchParams.get('reason') === 'auth-error'
 
   function mapError(code: string, fallback: string): string {
     switch (code) {
@@ -91,6 +94,24 @@ export default function LoginPage() {
           </div>
         )}
 
+        {authError && (
+          <div
+            data-testid="login-auth-error"
+            role="alert"
+            style={{
+              background: '#fff0f0',
+              border: '1px solid #ffcccc',
+              color: '#c00',
+              padding: '.75rem 1rem',
+              borderRadius: '4px',
+              marginBottom: '1rem',
+              fontSize: '.9rem',
+            }}
+          >
+            Authentication failed. Please try again.
+          </div>
+        )}
+
         {error && (
           <div
             data-testid="login-error"
@@ -145,6 +166,26 @@ export default function LoginPage() {
             {submitting ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+
+        <div style={{ marginTop: '1rem', textAlign: 'center', color: '#666', fontSize: '.875rem' }}>or</div>
+
+        <button
+          data-testid="login-sso-button"
+          onClick={() => { void oidcManager.signinRedirect() }}
+          style={{
+            width: '100%',
+            marginTop: '.75rem',
+            padding: '.6rem',
+            background: '#fff',
+            color: '#1a1a1a',
+            border: '1px solid #ccc',
+            borderRadius: '4px',
+            fontSize: '1rem',
+            cursor: 'pointer',
+          }}
+        >
+          Sign in with Keycloak
+        </button>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-28T08:45:00Z",
+  "last_updated": "2026-05-28T10:05:38Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -2548,6 +2548,38 @@
       "status": "RELEASED",
       "released_at": "2026-05-28",
       "run_id": "WF02-shf1b-20260528"
+    },
+    "OIDC-F-01": {
+      "status": "RELEASED",
+      "stage": "F1.5",
+      "priority": "MUST",
+      "title": "SSO login button on LoginPage",
+      "released_in": "WF02-oidcf-20260528",
+      "release_date": "2026-05-28"
+    },
+    "OIDC-F-02": {
+      "status": "RELEASED",
+      "stage": "F1.5",
+      "priority": "MUST",
+      "title": "Authorization code exchange and callback handling",
+      "released_in": "WF02-oidcf-20260528",
+      "release_date": "2026-05-28"
+    },
+    "OIDC-F-03": {
+      "status": "RELEASED",
+      "stage": "F1.5",
+      "priority": "MUST",
+      "title": "Silent token renewal",
+      "released_in": "WF02-oidcf-20260528",
+      "release_date": "2026-05-28"
+    },
+    "OIDC-F-04": {
+      "status": "RELEASED",
+      "stage": "F1.5",
+      "priority": "MUST",
+      "title": "OIDC-aware logout",
+      "released_in": "WF02-oidcf-20260528",
+      "release_date": "2026-05-28"
     }
   }
 }

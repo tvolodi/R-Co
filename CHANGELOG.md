@@ -2,6 +2,16 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — OIDC SSO Login (Stage F1.5)
+
+### Added (WF02-oidcf-20260528)
+- OIDC-F-01: SSO login button on LoginPage using oidc-client-ts; env vars VITE_OIDC_AUTHORITY and VITE_OIDC_CLIENT_ID
+- OIDC-F-02: `/auth/callback` route, authorization code exchange via oidc-client-ts (InMemoryWebStorage), token stored in-memory, redirect to workspace on success / to `/login?reason=auth-error` on failure
+- OIDC-F-03: Silent token renewal via oidc-client-ts `startSilentRenew()` on mount when OIDC is configured
+- OIDC-F-04: OIDC-aware logout calling Keycloak end-session endpoint; non-OIDC sessions use existing logout path
+- Fixed React StrictMode double-effect bug in OidcCallbackPage (PKCE code single-use guard)
+- Fixed Keycloak realm: added roles mapper, disabled VERIFY_PROFILE, added webOrigins
+
 ## [Unreleased]
 
 ### Stage 10 — Platform Repository (RELEASED 2026-05-28)

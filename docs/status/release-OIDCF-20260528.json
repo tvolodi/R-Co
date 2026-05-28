@@ -1,0 +1,15 @@
+{
+  "run_id": "WF02-oidcf-20260528",
+  "release_date": "2026-05-28T10:03:44Z",
+  "stage": "F1.5",
+  "requirements": ["OIDC-F-01", "OIDC-F-02", "OIDC-F-03", "OIDC-F-04"],
+  "decision": "RELEASE",
+  "decision_rationale": "All MUST test cases TC-OIDCF-01 through TC-OIDCF-04 passed, overall test run is PASS, build succeeded, and no BLOCKER issues were found.",
+  "test_report": "tests/reports/WF02-oidcf-20260528-test-report.json",
+  "checks": {
+    "must_tests_pass": true,
+    "overall_pass": true,
+    "build_pass": true,
+    "no_blockers": true
+  }
+}

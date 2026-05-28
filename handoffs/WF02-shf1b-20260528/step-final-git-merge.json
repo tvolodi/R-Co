@@ -31,8 +31,15 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Squash merged feature/WF02-shf1b-20260528 to main. PR #33. Merge commit: 15a9d68. Branch deleted.",
+    "artifacts_out": ["PR #33", "15a9d68"],
+    "issues": [],
+    "next_action": "PIPELINE COMPLETE — Stage F1 (SH-01 through SH-06) fully RELEASED"
+  },
   "rework_count": 0,
   "max_rework": 3,
-  "completed_at": null
+  "status": "COMPLETED",
+  "completed_at": "2026-05-28T08:06:30Z"
 }
