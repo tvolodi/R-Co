@@ -44,3 +44,4 @@ pub const webhook_dispatcher = @import("webhook/dispatcher.zig"); // EXT-02
 pub const onboarding_mod = @import("identity/onboarding.zig"); // OIDC-35
 pub const onboarding_routes = @import("api/routes/onboarding.zig"); // OIDC-35
 pub const identity_provider = @import("identity_provider"); // OIDC provider contract
+pub const simulation = @import("simulation/mod.zig"); // SIM-01..SIM-04

@@ -132,11 +132,16 @@ pub const Migrations = struct {
             }
         }
 
-        // Determine the highest already-applied version for out-of-order detection.
+        // Determine the highest already-applied numeric order for out-of-order detection.
         var max_applied: []const u8 = "";
+        var max_applied_order: u32 = 0;
         var applied_iter = applied.keyIterator();
         while (applied_iter.next()) |k| {
-            if (std.mem.lessThan(u8, max_applied, k.*)) max_applied = k.*;
+            const order = migrationOrder(k.*);
+            if (order > max_applied_order) {
+                max_applied_order = order;
+                max_applied = k.*;
+            }
         }
 
         // Apply pending migrations in order.
@@ -144,8 +149,10 @@ pub const Migrations = struct {
             // Skip already-applied migrations (idempotent).
             if (applied.contains(filename)) continue;
 
-            // Out-of-order check: if this file < max_applied, it was skipped.
-            if (max_applied.len > 0 and std.mem.lessThan(u8, filename, max_applied)) {
+            // Out-of-order check: a lower numeric migration order cannot be applied
+            // after a higher order has already been recorded.
+            const file_order = migrationOrder(filename);
+            if (max_applied.len > 0 and file_order < max_applied_order) {
                 return MigrationError.OutOfOrderMigration;
             }
 
@@ -177,7 +184,17 @@ pub const Migrations = struct {
             conn.exec("COMMIT", &.{}) catch return MigrationError.MigrationFailed;
 
             // Update local tracking so subsequent out-of-order checks are accurate.
-            if (std.mem.lessThan(u8, max_applied, filename)) max_applied = filename;
+            if (file_order > max_applied_order) {
+                max_applied_order = file_order;
+                max_applied = filename;
+            }
         }
     }
 };
+
+fn migrationOrder(filename: []const u8) u32 {
+    var i: usize = 0;
+    while (i < filename.len and std.ascii.isDigit(filename[i])) : (i += 1) {}
+    if (i == 0) return 0;
+    return std.fmt.parseInt(u32, filename[0..i], 10) catch 0;
+}
