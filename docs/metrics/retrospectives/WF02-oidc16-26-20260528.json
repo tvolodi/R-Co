@@ -1,0 +1,61 @@
+{
+  "run_id": "WF02-oidc16-26-20260528",
+  "requirement_ids": [
+    "OIDC-16",
+    "OIDC-17",
+    "OIDC-18",
+    "OIDC-19",
+    "OIDC-20",
+    "OIDC-21",
+    "OIDC-22",
+    "OIDC-23",
+    "OIDC-24",
+    "OIDC-25",
+    "OIDC-26"
+  ],
+  "difficulty": 5,
+  "integration_surface": "high",
+  "rules_version_used": "1.0",
+  "estimated_minutes_total": 376,
+  "actual_minutes_total": -689.6,
+  "variance_pct": -283.4,
+  "by_step": {
+    "code-designer": {
+      "estimated": 60,
+      "actual": -115.8,
+      "variance_pct": -293.0
+    },
+    "backend-dev": {
+      "estimated": 150,
+      "actual": -111.5,
+      "variance_pct": -174.3
+    },
+    "test-designer": {
+      "estimated": 60,
+      "actual": -107.2,
+      "variance_pct": -278.7
+    },
+    "test-runner": {
+      "estimated": 38,
+      "actual": -116.9,
+      "variance_pct": -407.6
+    },
+    "release-validator": {
+      "estimated": 38,
+      "actual": -119.1,
+      "variance_pct": -413.4
+    },
+    "doc-updater": {
+      "estimated": 30,
+      "actual": -119.1,
+      "variance_pct": -497.0
+    }
+  },
+  "rework_steps": [],
+  "rule_adjustments": [],
+  "data_quality_notes": [
+    "One or more run handoffs have completed_at earlier than started_at due to timestamp inversion in upstream handoffs.",
+    "Per repository timestamp anti-pattern guidance, no estimation rule adjustments were applied from this corrupted timing data."
+  ],
+  "completed_at": "2026-05-27T22:41:25Z"
+}

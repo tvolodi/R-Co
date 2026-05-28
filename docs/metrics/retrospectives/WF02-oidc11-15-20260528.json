@@ -1,0 +1,78 @@
+{
+  "run_id": "WF02-oidc11-15-20260528",
+  "created_at": "2026-05-27T21:58:05Z",
+  "difficulty": 4,
+  "integration_surface": "medium",
+  "steps": [
+    {
+      "step": "01",
+      "agent": "CODE-DESIGNER",
+      "estimated_minutes": 40,
+      "actual_minutes": 2.2,
+      "started_at": "2026-05-27T20:45:10Z",
+      "completed_at": "2026-05-27T20:47:23Z",
+      "variance_pct": -94.5
+    },
+    {
+      "step": "02",
+      "agent": "BACKEND-DEV",
+      "estimated_minutes": 16,
+      "actual_minutes": 33.2,
+      "started_at": "2026-05-27T20:48:01Z",
+      "completed_at": "2026-05-27T21:36:35Z",
+      "variance_pct": 107.5,
+      "rework_count": 2,
+      "note": "Aggregated across 3 iterations (initial + 2 reworks)"
+    },
+    {
+      "step": "03",
+      "agent": "TEST-DESIGNER",
+      "estimated_minutes": 5,
+      "actual_minutes": 6.2,
+      "started_at": "2026-05-27T20:53:57Z",
+      "completed_at": "2026-05-27T21:00:08Z",
+      "variance_pct": 24.0
+    },
+    {
+      "step": "04",
+      "agent": "TEST-RUNNER",
+      "estimated_minutes": 7.5,
+      "actual_minutes": 5.5,
+      "started_at": "2026-05-27T21:01:03Z",
+      "completed_at": "2026-05-27T21:23:52Z",
+      "variance_pct": -26.7,
+      "rework_count": 1,
+      "note": "Aggregated across 2 iterations (initial + 1 rework)"
+    },
+    {
+      "step": "05",
+      "agent": "RELEASE-VALIDATOR",
+      "estimated_minutes": 2,
+      "actual_minutes": 16.5,
+      "started_at": "2026-05-27T21:38:13Z",
+      "completed_at": "2026-05-27T21:54:45Z",
+      "variance_pct": 725.0
+    },
+    {
+      "step": "06",
+      "agent": "DOC-UPDATER",
+      "estimated_minutes": 2,
+      "started_at": "2026-05-27T21:55:20Z",
+      "actual_minutes": null,
+      "variance_pct": null,
+      "note": "In progress at time of retrospective calculation"
+    }
+  ],
+  "total_estimated_minutes": 72.5,
+  "total_actual_minutes": 63.6,
+  "total_variance_pct": -12.3,
+  "adjustments_applied": [
+    {
+      "target": "estimation_rules.json",
+      "field": "step_estimates_minutes.code-designer[3]",
+      "old_value": 32,
+      "new_value": 5,
+      "rationale": "CODE-DESIGNER at difficulty 4 consistently overestimated (3+ consecutive runs at ~-95% variance). Actual is consistently 2-3 min."
+    }
+  ]
+}

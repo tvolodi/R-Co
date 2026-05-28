@@ -218,6 +218,53 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-WF02-oidc09-20260527-step04b.json; release approval is recorded in docs/status/release-OIDC-09-20260527.json.
 - Requirement: OIDC-09 (MUST, Stage 6.5) - RELEASED
 
+### OIDC-10 - Attribute synchronisation (RELEASED 2026-05-27)
+- Implemented syncAttributesFromIdentityContext (replaces stub) with profile field update — display_name, email, status synchronised from token claims on every authenticated request.
+- Added role reconciliation: token roles are authoritative for OIDC-sourced role bindings, locally-assigned roles (from IDN-03) preserved across reconciliation cycles.
+- Migration 040_oidc10_role_source.sql adds role_source column to user_roles with values 'oidc' (sourced from OIDC token claims, subject to reconciliation) and 'internal' (assigned locally via IDN-03, preserved).
+- Identity service: updateOidcUserProfile for profile field updates, reconcileOidcRoles for role binding diff computation (insert new OIDC roles, remove stale OIDC roles, skip locally-assigned).
+- Registry: selectUserRoles, insertOidcRoleBinding, deleteOidcRoleBinding for role management queries.
+- Auth pipeline wired with best-effort sync call after JIT provisioning — sync failure logged as warning but does not block authentication.
+- Unit tests (5/5) for pure role reconciliation algorithm; integration tests (9/9) for full flow against real PostgreSQL.
+- Validation evidence passed in tests/reports/report-WF02-oidc10-20260527-step04.json; release approval is recorded in docs/status/release-OIDC-10-20260527.json.
+- Requirement: OIDC-10 (MUST, Stage 6.5) - RELEASED
+
+### OIDC-11 — External user identity stability (RELEASED 2026-05-28)
+- Implemented deterministic `sub`-claim-as-stable-identifier enforcement in JIT provisioning so changes to email or username at the provider never change the local `user_id` or invalidate task assignments, audit attribution, or history.
+- Added `resolveByExternalIdentity(external_realm, external_id)` as the authoritative identity lookup path, ensuring renamed/re-emailed users retain full continuity across all platform records.
+- Validation evidence passed via RELEASE-VALIDATOR final approval (all unit + integration tests PASS, all NFR benchmarks PASS); release approval is recorded in `docs/status/release-OIDC-11-15-20260528.json`.
+- Requirement: OIDC-11 (MUST, Stage 6.5) - RELEASED
+
+### OIDC-12 — Realm-tenant binding (RELEASED 2026-05-28)
+- Implemented additive `idp_realm_id` column on the tenant table via migration, with tenant creation API requiring `idp_realm_id` and deterministic lookup-by-realm-ID returning the owning tenant.
+- Set default tenant `idp_realm_id = 'bpm-default'` per ADP-04b conventions, preserving backward compatibility for legacy tenant records.
+- Validation evidence passed via RELEASE-VALIDATOR final approval (all unit + integration tests PASS, all NFR benchmarks PASS); release approval is recorded in `docs/status/release-OIDC-11-15-20260528.json`.
+- Requirement: OIDC-12 (MUST, Stage 6.5) - RELEASED
+
+### OIDC-13 — Tenant claim source (RELEASED 2026-05-28)
+- Implemented Keycloak protocol mapper configuration for the `tenant_id` claim, ensuring tokens issued by Keycloak contain the corresponding `tenant_id` from realm metadata and clients cannot override the claim.
+- Integrated protocol mapper setup into realm provisioning (OIDC-14) so every provisioned realm automatically includes the `tenant_id` mapper.
+- Validation evidence passed via RELEASE-VALIDATOR final approval (all unit + integration tests PASS, all NFR benchmarks PASS); release approval is recorded in `docs/status/release-OIDC-11-15-20260528.json`.
+- Requirement: OIDC-13 (MUST, Stage 6.5) - RELEASED
+
+### OIDC-14 — Realm provisioning via adapter (RELEASED 2026-05-28)
+- Extended the `IdentityProvider` interface with programmatic realm creation support (`ProvisionRealmInput` including name, display name, token lifetimes, password/MFA policy, signing key algorithm) and implemented the Keycloak adapter's realm creation via Admin REST API.
+- Each provisioned realm is immediately ready to issue tokens and includes the `tenant_id` protocol mapper per OIDC-13.
+- Validation evidence passed via RELEASE-VALIDATOR final approval (all unit + integration tests PASS, all NFR benchmarks PASS); release approval is recorded in `docs/status/release-OIDC-11-15-20260528.json`.
+- Requirement: OIDC-14 (MUST, Stage 6.5) - RELEASED
+
+### OIDC-15 — Realm deletion safety (RELEASED 2026-05-28)
+- Implemented two-step realm deletion: mark-for-deletion (no new tokens issued, existing sessions accepted until token expiry) followed by irreversible hard delete after a configurable grace period (default 7 days).
+- Added `realm_deletion_tracker` table schema, grace-period scheduler integration, and comprehensive audit logging per OBS-03 and ADP-09 for each deletion step.
+- Validation evidence passed via RELEASE-VALIDATOR final approval (all unit + integration tests PASS, all NFR benchmarks PASS); release approval is recorded in `docs/status/release-OIDC-11-15-20260528.json`.
+- Requirement: OIDC-15 (MUST, Stage 6.5) - RELEASED
+
+### OIDC-16..OIDC-26 — Agent lifecycle, federation, and provider observability bundle (RELEASED 2026-05-28)
+- Implemented OIDC-16 through OIDC-26 backend capabilities in one Stage 6.5 release bundle: full lifecycle provisioning APIs, idempotency handling, transactional compensation behavior, audited/redacted adapter operations, agent service-account flows, rotation/bootstrap controls, federation flows, readiness integration, and provider metrics exposure.
+- Added requirement-linked test coverage and executed the consolidated validation run for all bundle requirements, including MUST coverage and OIDC-24 SHOULD coverage.
+- Validation evidence passed in `tests/reports/report-20260527T223337Z-WF02-oidc16-26-step04.json`; release approval is recorded in `docs/status/release-OIDC-16-26-20260528.json`.
+- Requirements: OIDC-16, OIDC-17, OIDC-18, OIDC-19, OIDC-20, OIDC-21, OIDC-22, OIDC-23, OIDC-24, OIDC-25, OIDC-26 (Stage 6.5) - RELEASED
+
 ### OBS-01 — Structured logging (RELEASED 2026-05-24)
 - Implemented a shared single-line JSON logger in `src/obs/logger.zig` and integrated runtime wiring across `src/config.zig` and `src/main.zig`
 - Added request and background logging behavior in `src/api/routes/health.zig` and `src/scheduler/scheduler.zig` with trace-aware field emission and sensitive-value redaction to `[REDACTED]`

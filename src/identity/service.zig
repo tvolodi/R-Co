@@ -446,6 +446,176 @@ pub const Service = struct {
         };
     }
 
+    /// Input for updating an OIDC user's profile fields.
+    pub const UpdateOidcUserProfileInput = struct {
+        user_id: []const u8,
+        tenant_id: []const u8,
+        display_name: []const u8,
+        email: []const u8,
+        status: registry_mod.UserStatus,
+    };
+
+    /// Update display_name, email, and/or status for an OIDC user.
+    /// Only writes fields that actually differ from current stored values.
+    /// Returns the updated User record on success.
+    pub fn updateOidcUserProfile(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        input: UpdateOidcUserProfileInput,
+    ) IdentityError!registry_mod.User {
+        if (input.user_id.len == 0) return error.ValidationFailed;
+        if (input.display_name.len == 0) return error.ValidationFailed;
+        if (!isValidEmail(input.email)) return error.InvalidEmail;
+
+        return self.registry.updateUserProfile(
+            allocator,
+            input.user_id,
+            input.tenant_id,
+            input.display_name,
+            input.email,
+            input.status,
+        ) catch |err| switch (err) {
+            registry_mod.RegistryError.NotFound => error.NotFound,
+            registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+            else => error.PersistenceFailed,
+        };
+    }
+
+    /// Input for role reconciliation.
+    pub const ReconcileOidcRolesInput = struct {
+        tenant_id: []const u8,
+        user_id: []const u8,
+        /// Roles from the IdentityContext that should be
+        /// authoritatively assigned as OIDC-sourced.
+        token_roles: []const []const u8,
+    };
+
+    /// Result of role reconciliation.
+    pub const ReconcileOidcRolesResult = struct {
+        added: []const []const u8,
+        removed: []const []const u8,
+
+        pub fn deinit(self: *ReconcileOidcRolesResult, allocator: std.mem.Allocator) void {
+            for (self.added) |r| allocator.free(r);
+            allocator.free(self.added);
+            for (self.removed) |r| allocator.free(r);
+            allocator.free(self.removed);
+        }
+    };
+
+    /// Reconcile OIDC token roles against local role bindings.
+    ///
+    /// Algorithm:
+    ///   1. Read current user_roles for the user (with role_source).
+    ///   2. Partition into OIDC-sourced vs locally-assigned.
+    ///   3. Compute add_set = token_roles ∖ existing_role_slugs.
+    ///   4. Compute remove_set = OIDC-sourced_slugs ∖ token_roles.
+    ///   5. Insert role bindings for add_set (role_source = 'oidc').
+    ///   6. Delete role bindings for remove_set (only where role_source = 'oidc').
+    ///   7. Return lists of added and removed role slugs.
+    pub fn reconcileOidcRoles(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        input: ReconcileOidcRolesInput,
+    ) IdentityError!ReconcileOidcRolesResult {
+        // 1. Read current user_roles.
+        const bindings = self.registry.selectUserRoles(allocator, input.user_id) catch |err| switch (err) {
+            registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
+            else => return error.PersistenceFailed,
+        };
+        defer {
+            for (bindings) |*b| b.deinit(allocator);
+            allocator.free(bindings);
+        }
+
+        // 2. Partition into OIDC-sourced vs locally-assigned.
+        var oidc_slugs = std.StringHashMap(void).empty;
+        defer oidc_slugs.deinit(allocator);
+        var local_slugs = std.StringHashMap(void).empty;
+        defer local_slugs.deinit(allocator);
+
+        for (bindings) |b| {
+            if (std.mem.eql(u8, b.role_source, "oidc")) {
+                oidc_slugs.put(allocator, b.role_slug, {}) catch return error.OutOfMemory;
+            } else {
+                local_slugs.put(allocator, b.role_slug, {}) catch return error.OutOfMemory;
+            }
+        }
+
+        // 3. Compute add_set = token_roles ∖ (oidc_slugs ∪ local_slugs)
+        var add_list = std.ArrayList([]const u8).empty;
+        defer add_list.deinit(allocator);
+
+        for (input.token_roles) |slug| {
+            if (!oidc_slugs.contains(slug) and !local_slugs.contains(slug)) {
+                add_list.append(allocator, slug) catch return error.OutOfMemory;
+            }
+        }
+
+        // 4. Compute remove_set = oidc_slugs ∖ token_roles
+        var remove_list = std.ArrayList([]const u8).empty;
+        defer remove_list.deinit(allocator);
+
+        var oidc_iter = oidc_slugs.keyIterator();
+        while (oidc_iter.next()) |slug| {
+            var found = false;
+            for (input.token_roles) |token_slug| {
+                if (std.mem.eql(u8, slug.*, token_slug)) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                remove_list.append(allocator, slug.*) catch return error.OutOfMemory;
+            }
+        }
+
+        // 5. Insert OIDC-sourced bindings for add_set.
+        for (add_list.items) |slug| {
+            self.registry.insertOidcRoleBinding(allocator, input.user_id, slug) catch |err| switch (err) {
+                registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+                registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+                registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
+                else => return error.PersistenceFailed,
+            };
+        }
+
+        // 6. Delete OIDC-sourced bindings for remove_set.
+        for (remove_list.items) |slug| {
+            self.registry.deleteOidcRoleBinding(allocator, input.user_id, slug) catch |err| switch (err) {
+                registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+                registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+                registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
+                else => return error.PersistenceFailed,
+            };
+        }
+
+        // 7. Return added and removed slugs (duplicate to owned memory).
+        const added = try allocator.alloc([]const u8, add_list.items.len);
+        errdefer {
+            for (added) |r| allocator.free(r);
+            allocator.free(added);
+        }
+        for (add_list.items, 0..) |slug, i| {
+            added[i] = try allocator.dupe(u8, slug);
+        }
+
+        const removed = try allocator.alloc([]const u8, remove_list.items.len);
+        errdefer {
+            for (removed) |r| allocator.free(r);
+            allocator.free(removed);
+        }
+        for (remove_list.items, 0..) |slug, i| {
+            removed[i] = try allocator.dupe(u8, slug);
+        }
+
+        return .{ .added = added, .removed = removed };
+    }
+
     pub fn createOrGetJitOidcUser(
         self: *Service,
         allocator: std.mem.Allocator,

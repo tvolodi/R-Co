@@ -1,0 +1,26 @@
+{
+  "stage": "Stage 6.5 - Schema adaptations + OIDC foundations",
+  "run_id": "WF02-oidc11-15-20260528",
+  "date": "2026-05-27T21:54:15Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01_p99_read_ms": 0.826,
+    "NFR-01_p99_write_ms": 1.854,
+    "NFR-02_append_throughput_eps": 102080.119,
+    "NFR-04_replay_10000_ms": 34.057
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "OIDC-11",
+    "OIDC-12",
+    "OIDC-13",
+    "OIDC-14",
+    "OIDC-15"
+  ],
+  "validation": {
+    "zig_build": "PASS",
+    "zig_build_test": "PASS",
+    "zig_build_test_integration": "PASS",
+    "zig_build_bench": "PASS"
+  }
+}

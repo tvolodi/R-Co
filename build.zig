@@ -193,6 +193,55 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // identity_stability_mod: wraps src/oidc/identity_stability.zig for
+    // integration tests (OIDC-11). Uses named module imports.
+    const identity_stability_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/identity_stability.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_module },
+        },
+    });
+
+    // realm_tenant_binding_mod: wraps src/oidc/realm_tenant_binding.zig for
+    // integration tests (OIDC-12). Uses named module imports.
+    const realm_tenant_binding_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_tenant_binding.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_module },
+        },
+    });
+
+    // tenant_claim_source_mod: wraps src/oidc/tenant_claim_source.zig for
+    // integration tests (OIDC-13). Pure functions — no pool dependency.
+    const tenant_claim_source_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/tenant_claim_source.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // realm_provisioning_mod: wraps src/oidc/realm_provisioning.zig for
+    // integration tests (OIDC-14). Pure builder functions — no pool dependency.
+    const realm_provisioning_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_provisioning.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // realm_deletion_mod: wraps src/oidc/realm_deletion.zig for
+    // integration tests (OIDC-15). Uses named module imports.
+    const realm_deletion_mod = b.createModule(.{
+        .root_source_file = b.path("src/oidc/realm_deletion.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_module },
+        },
+    });
+
     // bpm_src_mod: src/bpm.zig re-export shim used by engine unit tests and
     // integration tests.  Exports .engine, .tasks, .pool, .definition, etc.
     // Uses named module import for pool so that jit_provisioning_mod can
@@ -822,6 +871,97 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc09_integration_tests = b.addRunArtifact(oidc09_integration_tests);
 
+    // OIDC-10: Attribute sync and role reconciliation integration tests (requires DB)
+    // Provides jit_provisioning, claim_mapping, and bpm as named modules.
+    // bpm provides pool, identity_registry, identity_service via relative imports.
+    const oidc10_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc10_attribute_sync_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "jit_provisioning", .module = jit_provisioning_mod },
+                .{ .name = "claim_mapping", .module = claim_mapping_mod },
+            },
+        }),
+    });
+    const run_oidc10_integration_tests = b.addRunArtifact(oidc10_integration_tests);
+
+    // OIDC-11: Identity stability integration tests (requires DB)
+    const oidc11_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc11_identity_stability_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "identity_stability", .module = identity_stability_mod },
+            },
+        }),
+    });
+    const run_oidc11_integration_tests = b.addRunArtifact(oidc11_integration_tests);
+
+    // OIDC-12: Realm-tenant binding integration tests (requires DB)
+    const oidc12_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc12_realm_tenant_binding_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "realm_tenant_binding", .module = realm_tenant_binding_mod },
+            },
+        }),
+    });
+    const run_oidc12_integration_tests = b.addRunArtifact(oidc12_integration_tests);
+
+    // OIDC-13: Tenant claim source integration tests (pure functions, no DB needed)
+    const oidc13_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc13_tenant_claim_source_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "tenant_claim_source", .module = tenant_claim_source_mod },
+            },
+        }),
+    });
+    const run_oidc13_integration_tests = b.addRunArtifact(oidc13_integration_tests);
+
+    // OIDC-14: Realm provisioning integration tests (pure functions, no DB needed)
+    const oidc14_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc14_realm_provisioning_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "realm_provisioning", .module = realm_provisioning_mod },
+            },
+        }),
+    });
+    const run_oidc14_integration_tests = b.addRunArtifact(oidc14_integration_tests);
+
+    // OIDC-15: Realm deletion safety integration tests (requires DB)
+    const oidc15_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc15_realm_deletion_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "realm_deletion", .module = realm_deletion_mod },
+            },
+        }),
+    });
+    const run_oidc15_integration_tests = b.addRunArtifact(oidc15_integration_tests);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python3", "tools/clean_test_db.py" });
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
@@ -832,6 +972,12 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_integration_tests.step);
     test_integration_step.dependOn(&run_oidc08_integration_tests.step);
     test_integration_step.dependOn(&run_oidc09_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc10_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc11_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc12_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc13_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc14_integration_tests.step);
+    test_integration_step.dependOn(&run_oidc15_integration_tests.step);
 
     const test_integration_obs03_step = b.step("test-integration-obs03", "Run OBS-03 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs03_step.dependOn(&clean_test_db.step);
@@ -848,6 +994,10 @@ pub fn build(b: *std.Build) void {
     const test_oidc09_step = b.step("test-integration-oidc09", "Run OIDC-09 JIT provisioning integration tests only (requires BPM_TEST_DB_URL)");
     test_oidc09_step.dependOn(&clean_test_db.step);
     test_oidc09_step.dependOn(&run_oidc09_integration_tests.step);
+
+    const test_oidc10_step = b.step("test-integration-oidc10", "Run OIDC-10 attribute sync integration tests only (requires BPM_TEST_DB_URL)");
+    test_oidc10_step.dependOn(&clean_test_db.step);
+    test_oidc10_step.dependOn(&run_oidc10_integration_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

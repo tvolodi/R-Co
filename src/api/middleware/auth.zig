@@ -57,6 +57,15 @@ var jit_create_user_callback: ?*const fn (
     default_status: []const u8,
 ) anyerror!jit_provisioning.JitProvisioningResult = null;
 
+/// Callback for OIDC-10 attribute synchronisation after JIT provisioning.
+/// Set via configureJitSyncCallback. When null, sync is skipped.
+var jit_sync_callback: ?*const fn (
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    identity_ctx: *const claim_mapping.IdentityContext,
+    tenant_id: []const u8,
+) anyerror!jit_provisioning.SyncResult = null;
+
 // ── Public types ──────────────────────────────────────────────────────────────
 
 /// HTTP handler result type (mirrors the definition in response.zig).
@@ -720,7 +729,20 @@ pub fn postAuthJitProvision(
         else => return .{ .authenticated = auth_ctx },
     };
 
-    // Load local role bindings from user_roles.
+    // ── OIDC-10: Attribute sync and role reconciliation (best-effort) ──
+    if (jit_sync_callback) |sync_fn| {
+        _ = sync_fn(
+            allocator,
+            db_pool,
+            &identity_ctx,
+            auth_ctx.tenant_id[0..],
+        ) catch |err| {
+            std.log.warn("OIDC-10 sync failed: {s}", .{@errorName(err)});
+        };
+    }
+
+    // Load local role bindings from user_roles (reload because
+    // reconciliation may have changed them).
     const role = loadUserRole(allocator, db_pool, provision_result.user.user_id) catch |err| switch (err) {
         error.PoolExhausted => return .{ .authenticated = auth_ctx },
         error.PersistenceFailed => return .{ .authenticated = auth_ctx },
@@ -836,6 +858,30 @@ pub fn configureJitCreateUserCallback(callback: ?*const fn (
     default_status: []const u8,
 ) anyerror!jit_provisioning.JitProvisioningResult) void {
     jit_create_user_callback = callback;
+}
+
+/// Configure the OIDC-10 attribute synchronisation callback.
+/// When set, postAuthJitProvision will call this after JIT provisioning
+/// to sync profile attributes and reconcile roles.
+/// Pass null to disable sync.
+pub fn configureJitSyncCallback(callback: ?*const fn (
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    identity_ctx: *const claim_mapping.IdentityContext,
+    tenant_id: []const u8,
+) anyerror!jit_provisioning.SyncResult) void {
+    jit_sync_callback = callback;
+}
+
+/// OIDC-10 attribute sync shim that wraps jit_provisioning.syncAttributesFromIdentityContext
+/// into the callback signature expected by auth.zig.
+pub fn syncAttributesFromIdentityContextShim(
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    identity_ctx: *const claim_mapping.IdentityContext,
+    tenant_id: []const u8,
+) anyerror!jit_provisioning.SyncResult {
+    return jit_provisioning.syncAttributesFromIdentityContext(allocator, pool, identity_ctx, tenant_id);
 }
 
 /// Authenticate a single HTTP request.  Called by the HTTP server in the

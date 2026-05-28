@@ -18,6 +18,13 @@ pub const IdentityProvider = struct {
 
     listAuditEventsFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.ListAuditEventsInput) errors.ProviderError!types.AuditEventPage,
 
+    // --- OIDC-13: Protocol mapper ---
+    createProtocolMapperFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.CreateProtocolMapperInput) errors.ProviderError!types.CreateProtocolMapperResult,
+
+    // --- OIDC-15: Realm lifecycle operations ---
+    toggleRealmFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.ToggleRealmInput) errors.ProviderError!types.RealmLifecycleResult,
+    deleteRealmFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.DeleteRealmInput) errors.ProviderError!void,
+
     pub fn verifyToken(self: IdentityProvider, allocator: std.mem.Allocator, input: types.VerifyTokenInput) errors.ProviderError!types.VerifiedPrincipal {
         return self.verifyTokenFn(self.ctx, allocator, input);
     }
@@ -52,5 +59,19 @@ pub const IdentityProvider = struct {
 
     pub fn listAuditEvents(self: IdentityProvider, allocator: std.mem.Allocator, input: types.ListAuditEventsInput) errors.ProviderError!types.AuditEventPage {
         return self.listAuditEventsFn(self.ctx, allocator, input);
+    }
+
+    // --- OIDC-13 ---
+    pub fn createProtocolMapper(self: IdentityProvider, allocator: std.mem.Allocator, input: types.CreateProtocolMapperInput) errors.ProviderError!types.CreateProtocolMapperResult {
+        return self.createProtocolMapperFn(self.ctx, allocator, input);
+    }
+
+    // --- OIDC-15 ---
+    pub fn toggleRealm(self: IdentityProvider, allocator: std.mem.Allocator, input: types.ToggleRealmInput) errors.ProviderError!types.RealmLifecycleResult {
+        return self.toggleRealmFn(self.ctx, allocator, input);
+    }
+
+    pub fn deleteRealm(self: IdentityProvider, allocator: std.mem.Allocator, input: types.DeleteRealmInput) errors.ProviderError!void {
+        return self.deleteRealmFn(self.ctx, allocator, input);
     }
 };

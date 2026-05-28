@@ -147,6 +147,9 @@ pub const Adapter = struct {
             .upsertFederationFn = upsertFederation,
             .deleteFederationFn = deleteFederation,
             .listAuditEventsFn = listAuditEvents,
+            .createProtocolMapperFn = createProtocolMapper,
+            .toggleRealmFn = toggleRealmKeycloak,
+            .deleteRealmFn = deleteRealmKeycloak,
         };
     }
 };
@@ -247,6 +250,13 @@ fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: prov
     });
 
     if (existing.status == 200) {
+        // Realm already exists — apply full configuration (ensure pass).
+        _ = applyRealmConfiguration(self, allocator, bearer, realm_id, input) catch |err| switch (err) {
+            error.OutOfMemory => return error.OutOfMemory,
+            error.UnauthorizedAdminCall => return error.UnauthorizedAdminCall,
+            error.UpstreamProtocolError => return error.UpstreamProtocolError,
+            else => {},
+        };
         return .{
             .realm_id = allocator.dupe(u8, realm_id) catch return error.OutOfMemory,
             .created = false,
@@ -254,7 +264,8 @@ fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: prov
     }
     if (existing.status != 404) return mapStatus(existing.status, .provision_realm);
 
-    const body = try buildRealmCreateBody(allocator, realm_id, input.display_name);
+    // Step 1: Create realm with basic config plus extended OIDC-14 settings.
+    const body = try buildRealmCreateBodyExtended(allocator, realm_id, input);
     defer allocator.free(body);
     const collection_url = keycloak_urls.realmsCollection(allocator, self.config) catch return error.OutOfMemory;
     defer allocator.free(collection_url);
@@ -268,10 +279,139 @@ fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: prov
     });
     if (create_response.status != 201 and create_response.status != 204) return mapStatus(create_response.status, .provision_realm);
 
+    // Step 2-7: Apply full configuration (token lifetimes, password policy, etc.)
+    try applyRealmConfiguration(self, allocator, bearer, realm_id, input);
+
+    // Step 8: Create tenant_id protocol mapper (OIDC-13).
+    const mapper_body = try buildTenantIdMapperBodySimple(allocator, input.tenant_id);
+    defer allocator.free(mapper_body);
+    const mappers_url = keycloak_urls.protocolMappersCollection(allocator, self.config, realm_id) catch return error.OutOfMemory;
+    defer allocator.free(mappers_url);
+
+    _ = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = mappers_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = mapper_body,
+    });
+
     return .{
         .realm_id = allocator.dupe(u8, realm_id) catch return error.OutOfMemory,
         .created = true,
     };
+}
+
+/// Apply extended realm configuration (token lifetimes, password policy, etc.)
+fn applyRealmConfiguration(
+    self: *Adapter,
+    allocator: std.mem.Allocator,
+    bearer: []const u8,
+    realm_id: []const u8,
+    input: provider_types.ProvisionRealmInput,
+) (provider_errors.ProviderError || error{OutOfMemory})!void {
+    // Build password policy string.
+    const pw_policy = std.fmt.allocPrint(allocator, "length({d}) and upperCase(1) and digits(1)", .{input.min_password_length}) catch return error.OutOfMemory;
+    defer allocator.free(pw_policy);
+
+    // Update realm with full config.
+    const update_body = try buildRealmUpdateBody(allocator, realm_id, input);
+    defer allocator.free(update_body);
+    const realm_url = keycloak_urls.realm(allocator, self.config, realm_id) catch return error.OutOfMemory;
+    defer allocator.free(realm_url);
+
+    const update_response = try sendRequest(self, allocator, .{
+        .method = .PUT,
+        .url = realm_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = update_body,
+    });
+    if (update_response.status != 204 and update_response.status != 200) {
+        return mapStatus(update_response.status, .provision_realm);
+    }
+}
+
+// --- OIDC-13: Protocol mapper ---
+
+fn createProtocolMapper(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.CreateProtocolMapperInput) provider_errors.ProviderError!provider_types.CreateProtocolMapperResult {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+
+    const url = keycloak_urls.protocolMappersCollection(allocator, self.config, input.realm_id) catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = input.config_json,
+    });
+
+    if (response.status == 201 or response.status == 204) {
+        return .{
+            .mapper_id = allocator.dupe(u8, input.mapper_name) catch return error.OutOfMemory,
+            .created = true,
+        };
+    }
+    if (response.status == 409) {
+        return .{
+            .mapper_id = allocator.dupe(u8, input.mapper_name) catch return error.OutOfMemory,
+            .created = false,
+        };
+    }
+    return mapStatus(response.status, .provision_realm);
+}
+
+// --- OIDC-15: Realm lifecycle ---
+
+fn toggleRealmKeycloak(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.ToggleRealmInput) provider_errors.ProviderError!provider_types.RealmLifecycleResult {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+
+    const body = std.json.Stringify.valueAlloc(allocator, .{
+        .enabled = input.enabled,
+    }, .{}) catch return error.OutOfMemory;
+    defer allocator.free(body);
+
+    const url = keycloak_urls.realm(allocator, self.config, input.realm_id) catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .PUT,
+        .url = url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = body,
+    });
+
+    if (response.status == 204 or response.status == 200) {
+        return .{
+            .realm_id = allocator.dupe(u8, input.realm_id) catch return error.OutOfMemory,
+            .success = true,
+        };
+    }
+    if (response.status == 404) return error.RealmNotFound;
+    return mapStatus(response.status, .provision_realm);
+}
+
+fn deleteRealmKeycloak(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.DeleteRealmInput) provider_errors.ProviderError!void {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+
+    const url = keycloak_urls.realm(allocator, self.config, input.realm_id) catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .DELETE,
+        .url = url,
+        .bearer_token = bearer,
+    });
+
+    if (response.status == 204 or response.status == 200) return;
+    if (response.status == 404) return error.RealmNotFound;
+    return mapStatus(response.status, .provision_realm);
 }
 
 fn provisionUser(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.ProvisionUserInput) provider_errors.ProviderError!provider_types.ProvisionUserResult {
@@ -818,6 +958,57 @@ fn buildRealmCreateBody(allocator: std.mem.Allocator, realm_id: []const u8, disp
         .realm = realm_id,
         .displayName = display_name,
         .enabled = true,
+    }, .{}) catch return error.OutOfMemory;
+}
+
+/// Extended realm creation body with OIDC-14 configuration.
+fn buildRealmCreateBodyExtended(allocator: std.mem.Allocator, realm_id: []const u8, input: provider_types.ProvisionRealmInput) provider_errors.ProviderError![]u8 {
+    const pw_policy = std.fmt.allocPrint(allocator, "length({d}) and upperCase(1) and digits(1)", .{input.min_password_length}) catch return error.OutOfMemory;
+    defer allocator.free(pw_policy);
+
+    return std.json.Stringify.valueAlloc(allocator, .{
+        .realm = realm_id,
+        .displayName = input.display_name,
+        .enabled = true,
+        .accessTokenLifespan = input.default_token_lifetime_seconds,
+        .accessCodeLifespan = input.default_id_token_lifetime_seconds,
+        .ssoSessionMaxLifespan = input.session_max_lifetime_seconds,
+        .ssoSessionIdleTimeout = input.default_refresh_token_lifetime_seconds,
+        .passwordPolicy = pw_policy,
+    }, .{}) catch return error.OutOfMemory;
+}
+
+/// Build a PUT body for updating realm configuration.
+fn buildRealmUpdateBody(allocator: std.mem.Allocator, realm_id: []const u8, input: provider_types.ProvisionRealmInput) provider_errors.ProviderError![]u8 {
+    const pw_policy = std.fmt.allocPrint(allocator, "length({d}) and upperCase(1) and digits(1)", .{input.min_password_length}) catch return error.OutOfMemory;
+    defer allocator.free(pw_policy);
+
+    return std.json.Stringify.valueAlloc(allocator, .{
+        .realm = realm_id,
+        .displayName = input.display_name,
+        .enabled = true,
+        .accessTokenLifespan = input.default_token_lifetime_seconds,
+        .accessCodeLifespan = input.default_id_token_lifetime_seconds,
+        .ssoSessionMaxLifespan = input.session_max_lifetime_seconds,
+        .ssoSessionIdleTimeout = input.default_refresh_token_lifetime_seconds,
+        .passwordPolicy = pw_policy,
+    }, .{}) catch return error.OutOfMemory;
+}
+
+/// Build the JSON body for creating a tenant_id hardcoded-claim protocol mapper.
+fn buildTenantIdMapperBodySimple(allocator: std.mem.Allocator, tenant_id: []const u8) provider_errors.ProviderError![]u8 {
+    return std.json.Stringify.valueAlloc(allocator, .{
+        .name = "tenant-id-mapper",
+        .protocol = "openid-connect",
+        .protocolMapper = "oidc-hardcoded-claim-mapper",
+        .config = .{
+            .claimName = "tenant_id",
+            .claimValue = tenant_id,
+            .jsonTypeLabel = "String",
+            .accessTokenClaim = "true",
+            .idTokenClaim = "true",
+            .userinfoTokenClaim = "true",
+        },
     }, .{}) catch return error.OutOfMemory;
 }
 
