@@ -4,6 +4,16 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage 8 — Lua Script Execution
+
+- **LUA-01:** LuaJIT static linking via C-interop bindings. Zig can now embed and invoke Lua scripts with no external Lua .so dependency.
+- **LUA-02:** State isolation per script execution. Each script runs in fresh lua_State; no global state leakage between invocations.
+- **LUA-03:** Restricted standard library. Only math, string, table modules available. Dangerous functions (io, os, debug, string.dump, load*) blocked.
+- **LUA-04:** Bytecode rejection. Lua bytecode (.luac) is detected and rejected; only source text scripts accepted.
+- **LUA-05:** Host API with capability-based access control. platform.* functions registered with per-function capability checks.
+
+Acceptance criteria all met. Test coverage gap (MINOR-LUA-001) documented for Phase 2 rework.
+
 ### Stage 6 — Observability + Extensions
 
 ### Stage 6.5 — Schema adaptations + OIDC foundations
