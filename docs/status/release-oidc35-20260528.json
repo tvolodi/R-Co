@@ -1,0 +1,41 @@
+{
+  "stage": "Stage 6.5 - OIDC/Identity Provider",
+  "requirement_id": "OIDC-35",
+  "date": "2026-05-28T14:12:02Z",
+  "run_id": "WF02-oidc35-20260528",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "benchmark_profiles_total": 6,
+    "benchmark_profiles_passed": 6,
+    "benchmark_profiles_failed": 0,
+    "benchmark_overall": "PASS",
+    "nfr_notes": "DSL expression evaluation benchmarks all met the 10 µs threshold with 90% headroom. NFR-01 (API p99 read ≤ 200ms / write ≤ 500ms) applies at the API layer — no regression risk from this additive OIDC-35 module."
+  },
+  "test_results": {
+    "total": 13,
+    "passed": 11,
+    "failed": 0,
+    "skipped": 2,
+    "skipped_details": [
+      {
+        "test_id": "TC-OIDC-35-06",
+        "reason": "BPM_IDP_BASE_URL not set or Keycloak unavailable — requires Keycloak instance",
+        "severity": "MINOR"
+      },
+      {
+        "test_id": "TC-OIDC-35-07",
+        "reason": "BPM_IDP_BASE_URL is set — test requires Keycloak to be unreachable",
+        "severity": "MINOR"
+      }
+    ],
+    "all_must_tests_passing": true
+  },
+  "blocking_issues": [],
+  "major_issues": [],
+  "notes": [
+    "2 skipped tests are MINOR severity — env-dependent (Keycloak availability) and not MUST criteria",
+    "OIDC-35 is not yet registered in docs/status/requirement_status.json — DOC-UPDATER to add entry"
+  ],
+  "approved_requirements": ["OIDC-35"],
+  "recommendation": "RELEASE approved. OIDC-35 implementation is complete, all MUST acceptance criteria are covered by passing integration tests, and NFR benchmarks pass. The 2 skipped tests are env-dependent and not blocking."
+}

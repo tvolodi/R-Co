@@ -1157,6 +1157,20 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc34_migration_helper_tests = b.addRunArtifact(oidc34_migration_helper_tests);
 
+    // OIDC-35: Company onboarding orchestrator integration tests (requires BPM_TEST_DB_URL)
+    const oidc35_onboarding_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/oidc35_onboarding_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "pg", .module = pg_mod },
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_oidc35_onboarding_tests = b.addRunArtifact(oidc35_onboarding_tests);
+
     // XC-01: Trace Propagation integration tests (requires BPM_TEST_DB_URL)
     const xc01_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1240,6 +1254,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_oidc14_integration_tests.step);
     test_integration_step.dependOn(&run_oidc15_integration_tests.step);
     test_integration_step.dependOn(&run_oidc34_migration_helper_tests.step);
+    test_integration_step.dependOn(&run_oidc35_onboarding_tests.step);
     test_integration_step.dependOn(&run_xc01_integration_tests.step);
     test_integration_step.dependOn(&run_xc02_integration_tests.step);
     test_integration_step.dependOn(&run_xc03_integration_tests.step);
@@ -1266,6 +1281,10 @@ pub fn build(b: *std.Build) void {
     const test_oidc10_step = b.step("test-integration-oidc10", "Run OIDC-10 attribute sync integration tests only (requires BPM_TEST_DB_URL)");
     test_oidc10_step.dependOn(&clean_test_db.step);
     test_oidc10_step.dependOn(&run_oidc10_integration_tests.step);
+
+    const test_oidc35_step = b.step("test-integration-oidc35", "Run OIDC-35 company onboarding integration tests (requires BPM_TEST_DB_URL)");
+    test_oidc35_step.dependOn(&clean_test_db.step);
+    test_oidc35_step.dependOn(&run_oidc35_onboarding_tests.step);
 
     const test_oidc31_step = b.step("test-integration-oidc31", "Run OIDC-31 E2E auth-suite preflight tests (requires BPM_TEST_DB_URL, BPM_TEST_URL, BPM_IDP_BASE_URL)");
     test_oidc31_step.dependOn(&clean_test_db.step);

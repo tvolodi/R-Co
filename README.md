@@ -138,6 +138,47 @@ Copy the printed token, open http://localhost:5173, paste it into the **Token** 
 
 ---
 
+## Onboarding a new company tenant
+
+The platform provides an onboarding API to provision new company tenants end-to-end. The endpoint creates a tenant, provisions a Keycloak realm, sets up an admin user and OIDC client, binds a custom hostname, and verifies readiness — all in a single idempotent call.
+
+### `POST /api/v1/onboarding`
+
+```bash
+curl -s -X POST http://localhost:8080/api/v1/onboarding \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -H "Authorization: Bearer <admin-token>" \
+  -d '{
+    "slug": "acme-corp",
+    "display_name": "Acme Corp",
+    "admin_email": "admin@acme.com",
+    "admin_username": "admin",
+    "hostname": "bpm.acme.com"
+  }' | python3 -m json.tool
+```
+
+Response (201 Created):
+```json
+{
+  "onboarding_id": "550e8400-e29b-41d4-a716-446655440000",
+  "tenant_id": "550e8400-e29b-41d4-a716-446655440001",
+  "idp_realm_id": "acme-corp",
+  "client_id": "bpm-platform-api",
+  "admin_user_id": "550e8400-e29b-41d4-a716-446655440002",
+  "hostname": "bpm.acme.com",
+  "oidc_authority": "http://keycloak:8081/realms/acme-corp",
+  "discovery_url": "http://keycloak:8081/realms/acme-corp/.well-known/openid-configuration",
+  "created": true
+}
+```
+
+On idempotent replay (same `Idempotency-Key`): returns 200 with `"created": false`.
+
+See `src/design/oidc35-onboarding.md` for full request/response schemas and the data flow diagram.
+
+---
+
 ## Keycloak admin console
 
 Manage users, roles, and clients at http://localhost:8081 — log in with **admin / admin**, then select the `bpm-default` realm.

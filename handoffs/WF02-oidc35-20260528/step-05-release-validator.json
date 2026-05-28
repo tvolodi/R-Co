@@ -1,0 +1,51 @@
+{
+  "handoff_id": "oidc35-rv-rel-001",
+  "run_id": "WF02-oidc35-20260528",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-05-28T14:10:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 6.5 - OIDC/Identity Provider",
+    "requirement_ids": [
+      "OIDC-35"
+    ],
+    "related_handoff_ids": [
+      "oidc35-tr-001"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-oidc35-20260528.json",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/requirement_status.json"
+    ]
+  },
+  "task": {
+    "description": "Validate OIDC-35 (Company onboarding orchestration) for release. Check that all MUST acceptance criteria are met, NFRs are satisfied, and the test results are clean. Write the release decision to docs/status/. Feature branch: feature/WF02-oidc35-20260528.",
+    "acceptance_criteria": [
+      "All MUST criteria have passing tests (or documented acceptable skips)",
+      "No BLOCKER issues remain",
+      "NFR targets are met",
+      "Release decision written to docs/status/"
+    ],
+    "functions_to_call": [
+      "fn:nfr-benchmarks",
+      "fn:release-decision"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Release APPROVED for OIDC-35 (Company onboarding orchestration). All 11 tests passed (2 skipped MINOR, env-dependent), NFR benchmarks all PASS, no BLOCKER issues.",
+    "artifacts_out": [
+      "docs/status/release-oidc35-20260528.json",
+      "docs/issue-reports/oidc35-release-validation-report.md"
+    ],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER to add OIDC-35 to requirement_status.json as RELEASED and update CHANGELOG.md"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-28T14:10:40Z",
+  "completed_at": "2026-05-28T14:12:02Z"
+}

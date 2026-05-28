@@ -41,3 +41,6 @@ pub const obs_alerts = @import("obs/alerts.zig"); // OBS-06
 pub const webhooks_routes = @import("api/routes/webhooks.zig"); // EXT-02
 pub const webhook_subscription_store = @import("webhook/subscription_store.zig"); // EXT-02
 pub const webhook_dispatcher = @import("webhook/dispatcher.zig"); // EXT-02
+pub const onboarding_mod = @import("identity/onboarding.zig"); // OIDC-35
+pub const onboarding_routes = @import("api/routes/onboarding.zig"); // OIDC-35
+pub const identity_provider = @import("identity_provider"); // OIDC provider contract

@@ -2,6 +2,17 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — Company Onboarding Orchestration (Stage 6.5)
+
+### Added (WF02-oidc35-20260528)
+- **OIDC-35:** Company onboarding orchestration API (`POST /api/v1/onboarding`) — multi-step, idempotent tenant provisioning flow that coordinates tenant creation, Keycloak realm provisioning, admin user setup, OIDC client creation, hostname binding, and realm discovery verification in a single transactional Saga pattern.
+- `GET /api/v1/onboarding/:onboarding_id` — retrieve onboarding result by ID
+- `GET /api/v1/onboarding?hostname={hostname}` — lookup onboarding by hostname
+- Onboarding uses `Idempotency-Key` header for safe retry; idempotent replays return cached 200 result
+- Includes compensating rollback actions on failure per OIDC-18 transactional semantics
+- 13 integration tests (11 passing, 2 skipped for env-dependent Keycloak scenarios), all MUST acceptance criteria covered
+- Release approval: `docs/status/release-oidc35-20260528.json`
+
 ## [Unreleased] — Subdomain Tenant Routing (Stage F1.6)
 
 ### Added (WF02-oidcf2-20260528)

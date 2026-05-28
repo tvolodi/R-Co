@@ -55,6 +55,7 @@ pub const webhook_dispatcher = @import("webhook/dispatcher.zig"); // EXT-02 webh
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01 user registry persistence
 pub const identity_service = @import("identity/service.zig"); // IDN-01 user registry service
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01 user registry HTTP handlers
+pub const onboarding_mod = @import("identity/onboarding.zig"); // OIDC-35 onboarding orchestration
 pub const onboarding_routes = @import("api/routes/onboarding.zig"); // OIDC-35 onboarding HTTP handlers
 pub const identity_provider = @import("identity_provider"); // OIDC provider contract and bootstrap wiring
 pub const oidc_agent_lifecycle = @import("oidc/agent_lifecycle.zig"); // OIDC-16..26 lifecycle/idempotency/audit/metrics helpers

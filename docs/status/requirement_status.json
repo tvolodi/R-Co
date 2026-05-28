@@ -2596,6 +2596,20 @@
       "title": "Dynamic OIDC config from hostname",
       "released_in": "WF02-oidcf2-20260528",
       "release_date": "2026-05-28"
+    },
+    "OIDC-35": {
+      "status": "RELEASED",
+      "stage": 6.5,
+      "priority": "MUST",
+      "title": "Company onboarding orchestration",
+      "implementation_run": "WF02-oidc35-20260528",
+      "test_spec": "tests/specs/OIDC-35.md",
+      "test_run": "tests/reports/WF02-oidc35-20260528-test-report.json",
+      "tested_at": "2026-05-28",
+      "released_at": "2026-05-28T14:13:52Z",
+      "release_run": "WF02-oidc35-20260528",
+      "release_decision": "docs/status/release-oidc35-20260528.json",
+      "last_updated": "2026-05-28T14:13:52Z"
     }
   }
 }
