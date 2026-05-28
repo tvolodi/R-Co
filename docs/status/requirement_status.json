@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-28T07:08:10Z",
+  "last_updated": "2026-05-28T07:20:59Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -2370,6 +2370,54 @@
       "release_run": "WF02-stage10-repo-20260528",
       "release_decision": "docs/status/release-stage10-repo-20260528.json",
       "last_updated": "2026-05-28T07:08:10Z"
+    },
+    "SH-01": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Login screen with JWT token input",
+      "implementation_run": "WF02-shf1a-20260528",
+      "test_spec": "tests/specs/SH-01-04.md",
+      "released_at": "2026-05-28",
+      "release_run": "WF02-shf1a-20260528",
+      "release_decision": "docs/status/release-F1-SH01-04-20260528.json",
+      "last_updated": "2026-05-28T07:20:59Z"
+    },
+    "SH-02": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Session expiry detection with redirect and banner",
+      "implementation_run": "WF02-shf1a-20260528",
+      "test_spec": "tests/specs/SH-01-04.md",
+      "released_at": "2026-05-28",
+      "release_run": "WF02-shf1a-20260528",
+      "release_decision": "docs/status/release-F1-SH01-04-20260528.json",
+      "last_updated": "2026-05-28T07:20:59Z"
+    },
+    "SH-03": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Role-filtered navigation (PLATFORM_ADMIN, PROCESS_DESIGNER, TASK_WORKER/OPERATOR)",
+      "implementation_run": "WF02-shf1a-20260528",
+      "test_spec": "tests/specs/SH-01-04.md",
+      "released_at": "2026-05-28",
+      "release_run": "WF02-shf1a-20260528",
+      "release_decision": "docs/status/release-F1-SH01-04-20260528.json",
+      "last_updated": "2026-05-28T07:20:59Z"
+    },
+    "SH-04": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Active user identity indicator with logout",
+      "implementation_run": "WF02-shf1a-20260528",
+      "test_spec": "tests/specs/SH-01-04.md",
+      "released_at": "2026-05-28",
+      "release_run": "WF02-shf1a-20260528",
+      "release_decision": "docs/status/release-F1-SH01-04-20260528.json",
+      "last_updated": "2026-05-28T07:20:59Z"
     }
   }
 }

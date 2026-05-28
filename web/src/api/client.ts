@@ -9,65 +9,19 @@
 import type { ApiError } from '@/types/api'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
-const TOKEN_KEY = 'bpm_auth_token'
-const REFRESH_TOKEN_KEY = 'bpm_refresh_token'
 
-// ── Token storage ──────────────────────────────────────────────────────────────
+// ── Token storage (in-memory — never localStorage/sessionStorage per FNFR-06) ──
+
+let _token: string | null = null
 
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
+  return _token
 }
 export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token)
+  _token = token
 }
 export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY)
-}
-export function getRefreshToken(): string | null {
-  return localStorage.getItem(REFRESH_TOKEN_KEY)
-}
-export function setRefreshToken(token: string): void {
-  localStorage.setItem(REFRESH_TOKEN_KEY, token)
-}
-export function clearRefreshToken(): void {
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
-}
-
-// ── Token rotation ─────────────────────────────────────────────────────────────
-
-/** In-flight refresh shared across concurrent 401s */
-let refreshPromise: Promise<string | null> | null = null
-
-function isAuthEndpoint(path: string): boolean {
-  return (
-    path.includes('/auth/login') ||
-    path.includes('/auth/refresh') ||
-    path.includes('/auth/logout')
-  )
-}
-
-async function refreshAccessToken(): Promise<string | null> {
-  if (refreshPromise) return refreshPromise
-  const stored = getRefreshToken()
-  if (!stored) return null
-
-  refreshPromise = fetch(`${BASE_URL}/api/v1/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: stored }),
-  })
-    .then(async (res) => {
-      if (!res.ok) return null
-      const data = (await res.json()) as { access_token: string }
-      setToken(data.access_token)
-      return data.access_token
-    })
-    .catch(() => null)
-    .finally(() => {
-      refreshPromise = null
-    })
-
-  return refreshPromise
+  _token = null
 }
 
 // ── Core request ───────────────────────────────────────────────────────────────
@@ -82,29 +36,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  let response = await fetch(`${BASE_URL}${path}`, { ...options, headers })
-
-  // Silent token rotation on 401
-  if (response.status === 401 && !isAuthEndpoint(path)) {
-    const newToken = await refreshAccessToken()
-    if (newToken) {
-      const retryHeaders: Record<string, string> = {
-        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-        ...(options.headers as Record<string, string>),
-        Authorization: `Bearer ${newToken}`,
-      }
-      const retry = await fetch(`${BASE_URL}${path}`, { ...options, headers: retryHeaders })
-      if (retry.ok) {
-        if (retry.status === 204) return undefined as unknown as T
-        return retry.json() as Promise<T>
-      }
-      response = retry
-    }
-  }
+  const response = await fetch(`${BASE_URL}${path}`, { ...options, headers })
 
   if (response.status === 401) {
-    clearToken()
-    clearRefreshToken()
     window.dispatchEvent(new CustomEvent('auth:session-expired'))
     throw buildError(response, { status: 401, message: 'Session expired', code: 'UNAUTHORIZED' })
   }
