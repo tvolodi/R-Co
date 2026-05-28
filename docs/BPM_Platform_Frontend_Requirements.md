@@ -75,6 +75,19 @@ The frontend has no business logic of its own. All data mutations go through the
 
 ---
 
+## Stage F1.5 — OIDC SSO Login
+
+**Goal:** Users can log in via Keycloak OIDC authorization code flow from the existing login screen without copy-pasting tokens. The developer token paste field is preserved unchanged.
+
+| ID | Requirement | Description | Priority |
+|---|---|---|---|
+| **OIDC-F-01** | **SSO login button** | The login screen SHALL display a "Sign in with Keycloak" button alongside the existing token input. Clicking it initiates the OIDC authorization code flow using `oidc-client-ts`. The provider URL is read from `VITE_OIDC_AUTHORITY` (default: `http://localhost:8081/realms/bpm-default`) and the client ID from `VITE_OIDC_CLIENT_ID` (default: `bpm-platform-api`). | **MUST** |
+| **OIDC-F-02** | **OIDC callback handler** | The application SHALL include a `/auth/callback` route that receives the Keycloak redirect, exchanges the authorization code for tokens using `oidc-client-ts`, stores the access token in memory via the existing `setToken()` API, decodes display name and roles from the JWT, and redirects the user to the application workspace. Errors in the callback (invalid state, expired code) SHALL redirect to the login page with `?reason=auth-error`. `oidc-client-ts` MUST be initialised with `userStore: new InMemoryWebStorage()` so that its own internal state (ID token, refresh token, PKCE verifier) is also kept in memory only — never in `localStorage` or `sessionStorage` (FNFR-06). | **MUST** |
+| **OIDC-F-03** | **Silent token renewal** | If the OIDC provider supports silent renew (`prompt=none` in a hidden iframe), the application SHOULD attempt to renew the access token before it expires, keeping the session alive without user interaction. If silent renew fails, the standard session-expired flow (SH-02) applies. | **SHOULD** |
+| **OIDC-F-04** | **OIDC logout** | The logout action (SH-04) SHALL, when the session was established via OIDC, additionally call the Keycloak end-session endpoint to invalidate the SSO session. Internal token sessions (non-OIDC) use the existing logout path unchanged. | **SHOULD** |
+
+---
+
 ## Stage F2 — Process Definition Management
 
 **Goal:** PROCESS_DESIGNER and PLATFORM_ADMIN users can create, version, and manage process definitions through both a list view and a visual canvas editor.

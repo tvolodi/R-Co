@@ -7,8 +7,10 @@ export interface AuthContextValue {
   session: UserSession | null
   isAuthenticated: boolean
   isLoading: boolean
+  loginSource: 'token' | 'oidc' | null
   login: (token: string) => Promise<void>
   logout: () => void
+  setSession: (s: UserSession) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined)

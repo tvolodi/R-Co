@@ -1,0 +1,41 @@
+{
+  "handoff_id": "238fa48f-b895-4376-a5ae-2108bdb2b434",
+  "run_id": "WF02-oidcf-20260528",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "file": "handoffs/WF02-oidcf-20260528/step-final-frontend-dev.json",
+  "created_at": "2026-05-28T09:10:18Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F1.5 - OIDC SSO Login",
+    "requirement_ids": [
+      "OIDC-F-01",
+      "OIDC-F-02",
+      "OIDC-F-03",
+      "OIDC-F-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/metrics/retrospectives/WF02-oidcf-20260528.json"
+    ]
+  },
+  "task": {
+    "description": "Execute fn:git-merge. Rebase feature/WF02-oidcf-20260528 on origin/main, create PR, squash-merge, delete branch.",
+    "acceptance_criteria": [
+      "PR merged",
+      "branch deleted",
+      "commit SHA in result"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom'
 import { AuthProvider } from '@/auth/AuthProvider'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import LoginPage from '@/pages/LoginPage'
+import OidcCallbackPage from '@/pages/OidcCallbackPage'
 import { AppShell } from '@/components/layout/AppShell'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
 import DefinitionListPage from '@/pages/definitions/DefinitionListPage'
@@ -24,6 +25,14 @@ export const router = createBrowserRouter([
     element: (
       <AuthProvider>
         <LoginPage />
+      </AuthProvider>
+    ),
+  },
+  {
+    path: '/auth/callback',
+    element: (
+      <AuthProvider>
+        <OidcCallbackPage />
       </AuthProvider>
     ),
   },

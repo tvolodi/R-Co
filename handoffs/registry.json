@@ -1,8 +1,128 @@
 {
   "schema_version": "1.0",
   "created_at": "2026-05-23T18:08:12Z",
-  "last_updated": "2026-05-28T08:01:20Z",
+  "last_updated": "2026-05-28T09:10:18Z",
   "entries": [
+    {
+      "handoff_id": "238fa48f-b895-4376-a5ae-2108bdb2b434",
+      "file": "handoffs/WF02-oidcf-20260528/step-final-frontend-dev.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "PENDING",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
+    {
+      "handoff_id": "bc27d9e6-965c-44d0-9cd9-784b493fc368",
+      "file": "handoffs/WF02-oidcf-20260528/step-06-doc_updater.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "PENDING",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
+    {
+      "handoff_id": "f785a91a-64ef-4572-bab9-557e2a226ec8",
+      "file": "handoffs/WF02-oidcf-20260528/step-05-release_validator.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "PENDING",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
+    {
+      "handoff_id": "363ddc8f-3026-49c5-aaf4-c4e00b7024e5",
+      "file": "handoffs/WF02-oidcf-20260528/step-04-test_runner.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "PENDING",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
+    {
+      "handoff_id": "28b2fadb-84eb-46e3-8c9a-76512f13c117",
+      "file": "handoffs/WF02-oidcf-20260528/step-3b-test_design_validator.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "3b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "PENDING",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
+    {
+      "handoff_id": "f73d8a9c-2197-4bd0-aced-587e3f51dff3",
+      "file": "handoffs/WF02-oidcf-20260528/step-03-test_designer.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "PENDING",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
+    {
+      "handoff_id": "1a897b6e-5c40-49b4-8a5f-8b8d20243ccb",
+      "file": "handoffs/WF02-oidcf-20260528/step-02-frontend_dev.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "PENDING",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
+    {
+      "handoff_id": "9521c4e3-143f-4660-9993-107918a0b95f",
+      "file": "handoffs/WF02-oidcf-20260528/step-1b-code_design_validator.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "1b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
+    {
+      "handoff_id": "643cbda4-3f5b-42f2-8f77-3adc720e7dd5",
+      "file": "handoffs/WF02-oidcf-20260528/step-01-code_designer.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
+    {
+      "handoff_id": "1088dd22-247f-4f80-bfd4-c89ef9082a6b",
+      "file": "handoffs/WF02-oidcf-20260528/step-00-frontend_dev.json",
+      "run_id": "WF02-oidcf-20260528",
+      "workflow_id": "WF-02",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-05-28T09:10:18Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.5 - OIDC SSO Login"
+    },
     {
       "handoff_id": "3f6f5088-3f90-4f42-bf55-aa05f6f89192",
       "file": "handoffs/WF02-oidc27-34-20260528/step-final-backend-dev.json",
@@ -6458,7 +6578,7 @@
       "to_agent": "FRONTEND-DEV",
       "created_at": "2026-05-28T08:35:00Z",
       "started_at": "2026-05-28T08:35:10Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage F1 Batch 2"
     }
   ]

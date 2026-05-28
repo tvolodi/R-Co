@@ -1,0 +1,26 @@
+{
+  "run_id": "WF02-oidcf-20260528",
+  "created_at": "2026-05-28T09:10:18Z",
+  "rules_version": "1.0",
+  "requirement_ids": [
+    "OIDC-F-01",
+    "OIDC-F-02",
+    "OIDC-F-03",
+    "OIDC-F-04"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "Standard OIDC client integration",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Touches AuthProvider AuthContext LoginPage router client.ts",
+  "estimated_minutes": {
+    "code-designer": 20,
+    "code-design-validator": 10,
+    "frontend-dev": 45,
+    "test-designer": 20,
+    "test-design-validator": 10,
+    "test-runner": 20,
+    "release-validator": 10,
+    "doc-updater": 10,
+    "total": 145
+  }
+}
