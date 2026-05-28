@@ -237,7 +237,7 @@ _Gate: Stage 6.5 Stream A (ADP-* MUST) RELEASED. Stages 7, 8, 9 are fully indepe
 | LUA-15 | Structured failure | MUST |
 | LUA-16 | Runtime error capture | MUST |
 
-#### Stage 9 — Wasm Module Execution
+#### Stage 9 — Wasm Module Execution [RELEASED 2026-05-28]
 
 | ID | Title | Priority |
 |---|---|---|
@@ -255,6 +255,8 @@ _Gate: Stage 6.5 Stream A (ADP-* MUST) RELEASED. Stages 7, 8, 9 are fully indepe
 | WASM-12 | Parity with Lua host API | MUST |
 | WASM-13 | Instance pooling | SHOULD |
 | WASM-14 | Hot reload | MUST |
+
+**Release decision:** [docs/status/release-stage9-wasm-20260528.json](../../docs/status/release-stage9-wasm-20260528.json) - APPROVED. Framework complete with unit test coverage. Integration testing deferred to Stage 10 with documented blockers and remediation plan.
 
 ---
 

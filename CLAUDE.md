@@ -344,6 +344,29 @@ Log: `<ts> | BENCH_ENV_CHECK | <run-id> | --- | ORCH | CLEARED`
 
 **Do not treat unrelated pre-existing workspace changes as blockers or user-facing issues.** Discuss workspace changes only when there is direct file overlap/conflict or they block acceptance criteria.
 
+### GitHub Branch Management (MANDATORY)
+
+**Every feature branch created by the pipeline MUST be managed through GitHub to completion.** This is a hard requirement, not optional.
+
+**DOC-UPDATER (Step Final) MUST:**
+1. Create a GitHub pull request for the feature branch
+2. Ensure all checks pass (CI, build, tests)
+3. Merge the PR to main via `gh pr merge --squash --delete-branch`
+4. Verify the branch is deleted from GitHub (no orphaned branches)
+5. Record the merge in the handoff result (PR number, merge commit SHA)
+
+**If manual intervention is required during merge:**
+- Resolve conflicts via `git merge origin/main` (do NOT use force-push)
+- Rebase if needed: `git rebase origin/main` (resolve conflicts, `git rebase --continue`)
+- Push merged state and retry merge via gh CLI
+
+**ORCH MUST verify completion:**
+- No stale feature branches remain on GitHub
+- PR is closed and merged (not left open)
+- Commit is on main branch with merge message
+
+**Rationale:** Feature branches are temporary. Merged-but-not-deleted branches cause confusion, accumulate clutter, and obscure the release history. Every workflow must leave the repository clean.
+
 ### ORCH forbidden actions
 
 ```
@@ -784,3 +807,36 @@ If `has_estimation` is `True`, run the full retrospective procedure defined in `
 4. If `|variance_pct| > 25%` for a step across ≥2 consecutive runs at the same difficulty, adjust `docs/metrics/estimation_rules.json`
 5. Write `docs/metrics/retrospectives/<run_id>.json`
 6. Add `docs/metrics/retrospectives/<run_id>.json` to `artifacts_out` in this handoff's result
+
+### GitHub Branch Management (MANDATORY Step Final Requirement)
+
+As the final step in every workflow, you MUST manage the GitHub feature branch to completion:
+
+1. **Create a pull request** (if not already created):
+   ```bash
+   gh pr create --base main --title "<workflow title>" --body "<summary>"
+   ```
+
+2. **Ensure all checks pass:**
+   - GitHub Actions CI/CD workflows must pass
+   - All required status checks must be green
+   - Branch must be mergeable (resolve conflicts if needed via `git merge origin/main`)
+
+3. **Merge and delete:**
+   ```bash
+   gh pr merge --squash --delete-branch
+   ```
+   Use `--squash` to create a clean merge commit. The `--delete-branch` flag removes the branch from GitHub.
+
+4. **Verify cleanup:**
+   ```bash
+   git fetch origin && git branch -r | grep feature/<run-id> || echo "✅ Branch deleted"
+   ```
+
+5. **Record in handoff result:**
+   - `artifacts_out`: include PR number (e.g., `PR #28`) and merge commit SHA
+   - `summary`: note successful merge and branch deletion
+
+**If merge fails due to conflicts:** Do NOT give up. Resolve them locally, push, and retry. Branch deletion is non-negotiable.
+
+**Rationale:** Feature branches must not persist on GitHub after merge. Orphaned branches cause confusion and clutter. The repository must remain clean and organized.
