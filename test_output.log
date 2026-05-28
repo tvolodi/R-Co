@@ -1,0 +1,527 @@
+Cleaning test database...
+Test database cleaned.
+test-xc01
++- run test 7 pass (7 total); 1 leaks
+error: 'xc01_trace_propagation_test.test.TC-XC-01-03: trace ID flows through audit entries' leaked 1 allocations:
+       [DebugAllocator] (err): memory address 0x231946900c0 leaked: 
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.zig:454:40: 0x7ff7fe3d976b in dupe__anon_15014 (test_zcu.obj)
+           const new_buf = try allocator.alloc(T, m.len);
+                                              ^
+       E:\Dev\My-Fab\src\util\uuid.zig:16:30: 0x7ff7fe4f7454 in newUuidV4 (test_zcu.obj)
+           return try allocator.dupe(u8, &buf);
+                                    ^
+       E:\Dev\My-Fab\tests\integration\xc01_trace_propagation_test.zig:111:35: 0x7ff7fe53b7df in test.TC-XC-01-03: trace ID flows through audit entries (test_zcu.obj)
+                   try uuid_mod.newUuidV4(alloc),  // audit_id
+                                         ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:140:68: 0x7ff7fe4ce93c in mainServer (test_zcu.obj)
+                       const status: TestResults.Status = if (test_fn.func()) |v| s: {
+                                                                          ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:71:26: 0x7ff7fe4cefd9 in main (test_zcu.obj)
+               return mainServer(init) catch |err| panic("internal test runner failure: {t}", .{err});
+                                ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff7fe4cd1ac in callMain (test_zcu.obj)
+           if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+       
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff7fe4cd1ac in WinStartup (test_zcu.obj)
+               callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                       ^
+       ???:?:?: 0x7ffd44e17373 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ffd4507cc90 in ??? (ntdll.dll)
+failed command: ".\\.zig-cache\\o\\52660846e150205f1531f776a2e155d9\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xceb708ef --listen=-
+
+test-xc06
++- run test 0 pass, 9 fail (9 total)
+error: 'xc06_backwards_compatibility_test.test.TC-XC-06-01: schema migrations are idempotent' failed:
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\testing.zig:615:14: 0x7ff793de97bf in expect (test_zcu.obj)
+           if (!ok) return error.TestUnexpectedResult;
+                    ^
+       E:\Dev\My-Fab\tests\integration\xc06_backwards_compatibility_test.zig:48:5: 0x7ff793df3562 in test.TC-XC-06-01: schema migrations are idempotent (test_zcu.obj)
+           try testing.expect(tables_query.rows.len >= 3);
+           ^
+error: 'xc06_backwards_compatibility_test.test.TC-XC-06-02: instance records from prior version load correctly' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff793db56be in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff793dcb389 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc06_backwards_compatibility_test.zig:69:9: 0x7ff793df27a9 in test.TC-XC-06-02: instance records from prior version load correctly (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc06_backwards_compatibility_test.test.TC-XC-06-03: instance continues normally after schema upgrade' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff793db56be in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff793dcb389 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc06_backwards_compatibility_test.zig:118:9: 0x7ff793df1dc4 in test.TC-XC-06-03: instance continues normally after schema upgrade (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc06_backwards_compatibility_test.test.TC-XC-06-04: definition format migration is automatic at activation' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff793db56be in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff793dcb389 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc06_backwards_compatibility_test.zig:180:9: 0x7ff793df174b in test.TC-XC-06-04: definition format migration is automatic at activation (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc06_backwards_compatibility_test.test.TC-XC-06-05: event type evolution is backwards compatible' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff793db56be in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff793dcb389 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc06_backwards_compatibility_test.zig:229:9: 0x7ff793df0d8b in test.TC-XC-06-05: event type evolution is backwards compatible (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc06_backwards_compatibility_test.test.TC-XC-06-06: archived events remain queryable after upgrade' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff793db56be in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff793dcb389 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc06_backwards_compatibility_test.zig:290:9: 0x7ff793def3c4 in test.TC-XC-06-06: archived events remain queryable after upgrade (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc06_backwards_compatibility_test.test.TC-XC-06-07: multi-step schema evolution is supported' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff793db56be in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff793dcb389 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc06_backwards_compatibility_test.zig:385:9: 0x7ff793deb272 in test.TC-XC-06-07: multi-step schema evolution is supported (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc06_backwards_compatibility_test.test.TC-XC-06-08: audit log evolution maintains chain integrity' failed:
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\testing.zig:615:14: 0x7ff793de97bf in expect (test_zcu.obj)
+           if (!ok) return error.TestUnexpectedResult;
+                    ^
+       E:\Dev\My-Fab\tests\integration\xc06_backwards_compatibility_test.zig:541:5: 0x7ff793dea823 in test.TC-XC-06-08: audit log evolution maintains chain integrity (test_zcu.obj)
+           try testing.expect(query.rows[0][1] == null);
+           ^
+error: 'xc06_backwards_compatibility_test.test.TC-XC-06-09: backward-compatible defaults satisfy constraints' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff793db56be in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff793dcb389 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc06_backwards_compatibility_test.zig:566:9: 0x7ff793da7930 in test.TC-XC-06-09: backward-compatible defaults satisfy constraints (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+failed command: ".\\.zig-cache\\o\\ba075c5fbc30f305f7fad852b34f4d4b\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xceb708ef --listen=-
+
+test-xc05
++- run test 0 pass, 8 fail (8 total)
+error: 'xc05_deterministic_replay_test.test.TC-XC-05-01: point-in-time reconstruction produces matching state' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6ee6a2d0e in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6ee6b89d9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc05_deterministic_replay_test.zig:31:9: 0x7ff6ee6e58ae in test.TC-XC-05-01: point-in-time reconstruction produces matching state (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc05_deterministic_replay_test.test.TC-XC-05-02: repeated reconstruction produces identical state' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6ee6a2d0e in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6ee6b89d9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc05_deterministic_replay_test.zig:119:9: 0x7ff6ee6e40ca in test.TC-XC-05-02: repeated reconstruction produces identical state (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc05_deterministic_replay_test.test.TC-XC-05-03: timestamp-based reconstruction works correctly' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6ee6a2d0e in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6ee6b89d9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc05_deterministic_replay_test.zig:206:9: 0x7ff6ee6e2462 in test.TC-XC-05-03: timestamp-based reconstruction works correctly (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc05_deterministic_replay_test.test.TC-XC-05-04: archived events are included in reconstruction' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6ee6a2d0e in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6ee6b89d9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc05_deterministic_replay_test.zig:294:9: 0x7ff6ee6e08f4 in test.TC-XC-05-04: archived events are included in reconstruction (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc05_deterministic_replay_test.test.TC-XC-05-05: reconstruction accuracy across instance timeline' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6ee6a2d0e in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6ee6b89d9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc05_deterministic_replay_test.zig:398:9: 0x7ff6ee6df1ce in test.TC-XC-05-05: reconstruction accuracy across instance timeline (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc05_deterministic_replay_test.test.TC-XC-05-06: service task outputs are replayed from recorded events' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6ee6a2d0e in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6ee6b89d9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc05_deterministic_replay_test.zig:496:9: 0x7ff6ee6dc4bf in test.TC-XC-05-06: service task outputs are replayed from recorded events (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc05_deterministic_replay_test.test.TC-XC-05-07: empty instance reconstruction returns initial state' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6ee6a2d0e in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6ee6b89d9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc05_deterministic_replay_test.zig:592:9: 0x7ff6ee6d73f2 in test.TC-XC-05-07: empty instance reconstruction returns initial state (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc05_deterministic_replay_test.test.TC-XC-05-08: reconstruction fails gracefully for non-existent instance' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6ee6a2d0e in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:166:9: 0x7ff6ee6a8074 in query (test_zcu.obj)
+               try self.readUntilReady(allocator, &rows);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc05_deterministic_replay_test.zig:640:17: 0x7ff6ee69760e in test.TC-XC-05-08: reconstruction fails gracefully for non-existent instance (test_zcu.obj)
+           var query = try harness.conn.query(
+                       ^
+failed command: ".\\.zig-cache\\o\\b35c1300a5d4fa87028c9714af979dde\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xceb708ef --listen=-
+
+test-xc03
++- run test 0 pass, 9 fail (9 total)
+error: 'xc03_configuration_repository_test.test.TC-XC-03-01: configuration artifact can be uploaded and versioned' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff7a0dc5bee in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff7a0ddb8b9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc03_configuration_repository_test.zig:32:9: 0x7ff7a0e00120 in test.TC-XC-03-01: configuration artifact can be uploaded and versioned (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc03_configuration_repository_test.test.TC-XC-03-02: configuration schema is validated on upload' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff7a0dc5bee in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff7a0ddb8b9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc03_configuration_repository_test.zig:83:9: 0x7ff7a0dff9c5 in test.TC-XC-03-02: configuration schema is validated on upload (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc03_configuration_repository_test.test.TC-XC-03-03: configuration is activated per-tenant atomically' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff7a0dc5bee in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff7a0ddb8b9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc03_configuration_repository_test.zig:135:9: 0x7ff7a0dfe769 in test.TC-XC-03-03: configuration is activated per-tenant atomically (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc03_configuration_repository_test.test.TC-XC-03-04: different tenants have isolated configurations' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff7a0dc5bee in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff7a0ddb8b9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc03_configuration_repository_test.zig:239:13: 0x7ff7a0dfd55e in test.TC-XC-03-04: different tenants have isolated configurations (test_zcu.obj)
+               _ = try harness.conn.exec(
+                   ^
+error: 'xc03_configuration_repository_test.test.TC-XC-03-05: configuration is read on-demand at runtime' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff7a0dc5bee in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff7a0ddb8b9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc03_configuration_repository_test.zig:328:9: 0x7ff7a0dfc7c6 in test.TC-XC-03-05: configuration is read on-demand at runtime (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc03_configuration_repository_test.test.TC-XC-03-06: missing or inactive configuration fails gracefully' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff7a0dc5bee in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:166:9: 0x7ff7a0dcaf54 in query (test_zcu.obj)
+               try self.readUntilReady(allocator, &rows);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc03_configuration_repository_test.zig:383:17: 0x7ff7a0dfc2e0 in test.TC-XC-03-06: missing or inactive configuration fails gracefully (test_zcu.obj)
+           var query = try harness.conn.query(
+                       ^
+error: 'xc03_configuration_repository_test.test.TC-XC-03-08: configuration artifact activation is audited' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff7a0dc5bee in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff7a0ddb8b9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc03_configuration_repository_test.zig:419:9: 0x7ff7a0dfb222 in test.TC-XC-03-08: configuration artifact activation is audited (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc03_configuration_repository_test.test.TC-XC-03-07: configuration artifact immutability is enforced' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff7a0dc5bee in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff7a0ddb8b9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc03_configuration_repository_test.zig:500:9: 0x7ff7a0dfa114 in test.TC-XC-03-07: configuration artifact immutability is enforced (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+error: 'xc03_configuration_repository_test.test.TC-XC-03-09: configuration artifact versioning follows REPO-03' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff7a0dc5bee in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff7a0ddb8b9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc03_configuration_repository_test.zig:558:9: 0x7ff7a0db7af9 in test.TC-XC-03-09: configuration artifact versioning follows REPO-03 (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+failed command: ".\\.zig-cache\\o\\3572a4ec3e21541dc8a5ca6a2fe185e9\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xceb708ef --listen=-
+
+test-xc02
++- run test 3 pass, 5 fail (8 total); 5 leaks
+error: 'xc02_audit_immutability_test.test.TC-XC-02-01: audit entries are append-only (immutability trigger)' failed:
+       expected error.UnexpectedRow, found error.ServerError
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6814030de in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff681418da9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\testing.zig:72:13: 0x7ff68143ffbe in expectError__anon_71241 (test_zcu.obj)
+                   return error.TestUnexpectedError;
+                   ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:52:5: 0x7ff681440619 in test.TC-XC-02-01: audit entries are append-only (immutability trigger) (test_zcu.obj)
+           try testing.expectError(error.UnexpectedRow, update_result);
+           ^
+error: 'xc02_audit_immutability_test.test.TC-XC-02-02: chain hash is deterministically computed' leaked 2 allocations:
+       [DebugAllocator] (err): memory address 0x2161d3800c0 leaked: 
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.zig:454:40: 0x7ff6812d976b in dupe__anon_15014 (test_zcu.obj)
+           const new_buf = try allocator.alloc(T, m.len);
+                                              ^
+       E:\Dev\My-Fab\src\util\uuid.zig:16:30: 0x7ff6813f7244 in newUuidV4 (test_zcu.obj)
+           return try allocator.dupe(u8, &buf);
+                                    ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:96:56: 0x7ff68143f5fd in test.TC-XC-02-02: chain hash is deterministically computed (test_zcu.obj)
+               &.{ tenant_id, actor_id, try uuid_mod.newUuidV4(alloc), resource_id, try uuid_mod.newUuidV4(alloc) },
+                                                              ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:140:68: 0x7ff6813ce93c in mainServer (test_zcu.obj)
+                       const status: TestResults.Status = if (test_fn.func()) |v| s: {
+                                                                          ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:71:26: 0x7ff6813cefd9 in main (test_zcu.obj)
+               return mainServer(init) catch |err| panic("internal test runner failure: {t}", .{err});
+                                ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff6813cd1ac in callMain (test_zcu.obj)
+           if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+       
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff6813cd1ac in WinStartup (test_zcu.obj)
+               callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                       ^
+       ???:?:?: 0x7ffd44e17373 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ffd4507cc90 in ??? (ntdll.dll)
+       
+       [DebugAllocator] (err): memory address 0x2161d380100 leaked: 
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.zig:454:40: 0x7ff6812d976b in dupe__anon_15014 (test_zcu.obj)
+           const new_buf = try allocator.alloc(T, m.len);
+                                              ^
+       E:\Dev\My-Fab\src\util\uuid.zig:16:30: 0x7ff6813f7244 in newUuidV4 (test_zcu.obj)
+           return try allocator.dupe(u8, &buf);
+                                    ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:96:100: 0x7ff68143f6e2 in test.TC-XC-02-02: chain hash is deterministically computed (test_zcu.obj)
+               &.{ tenant_id, actor_id, try uuid_mod.newUuidV4(alloc), resource_id, try uuid_mod.newUuidV4(alloc) },
+                                                                                                          ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:140:68: 0x7ff6813ce93c in mainServer (test_zcu.obj)
+                       const status: TestResults.Status = if (test_fn.func()) |v| s: {
+                                                                          ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:71:26: 0x7ff6813cefd9 in main (test_zcu.obj)
+               return mainServer(init) catch |err| panic("internal test runner failure: {t}", .{err});
+                                ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff6813cd1ac in callMain (test_zcu.obj)
+           if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+       
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff6813cd1ac in WinStartup (test_zcu.obj)
+               callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                       ^
+       ???:?:?: 0x7ffd44e17373 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ffd4507cc90 in ??? (ntdll.dll)
+error: 'xc02_audit_immutability_test.test.TC-XC-02-03: each new entry links to its predecessor' failed:
+       ====== expected this output: =========
+       679731448851da90e74ba90b83ba1d259ee36e35f285c94e289d46c2180a49d5␃
+       
+       ======== instead found this: =========
+       ␃
+       
+       ======================================
+       First difference occurs on line 1:
+       expected:
+       679731448851da90e74ba90b83ba1d259ee36e35f285c94e289d46c2180a49d5
+       ^ ('\x36')
+       found:
+       
+       ^ (end of string)
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\testing.zig:682:9: 0x7ff68143c328 in expectEqualStrings (test_zcu.obj)
+               return error.TestExpectedEqual;
+               ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:176:5: 0x7ff68143d0e6 in test.TC-XC-02-03: each new entry links to its predecessor (test_zcu.obj)
+           try testing.expectEqualStrings(hash_1, prev_hash_2);
+           ^
+error: 'xc02_audit_immutability_test.test.TC-XC-02-05: tampering detection via chain validation' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6814030de in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff681418da9 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:322:9: 0x7ff68143a4be in test.TC-XC-02-05: tampering detection via chain validation (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+       [DebugAllocator] (err): memory address 0x2161d390040 leaked: 
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.zig:454:40: 0x7ff6812d976b in dupe__anon_15014 (test_zcu.obj)
+           const new_buf = try allocator.alloc(T, m.len);
+                                              ^
+       E:\Dev\My-Fab\src\util\uuid.zig:16:30: 0x7ff6813f7244 in newUuidV4 (test_zcu.obj)
+           return try allocator.dupe(u8, &buf);
+                                    ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:294:48: 0x7ff681439767 in test.TC-XC-02-05: tampering detection via chain validation (test_zcu.obj)
+               const audit_id = try uuid_mod.newUuidV4(alloc);
+                                                      ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:140:68: 0x7ff6813ce93c in mainServer (test_zcu.obj)
+                       const status: TestResults.Status = if (test_fn.func()) |v| s: {
+                                                                          ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:71:26: 0x7ff6813cefd9 in main (test_zcu.obj)
+               return mainServer(init) catch |err| panic("internal test runner failure: {t}", .{err});
+                                ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff6813cd1ac in callMain (test_zcu.obj)
+           if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+       
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff6813cd1ac in WinStartup (test_zcu.obj)
+               callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                       ^
+       ???:?:?: 0x7ffd44e17373 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ffd4507cc90 in ??? (ntdll.dll)
+       
+       [DebugAllocator] (err): memory address 0x2161d390140 leaked: 
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.zig:454:40: 0x7ff6812d976b in dupe__anon_15014 (test_zcu.obj)
+           const new_buf = try allocator.alloc(T, m.len);
+                                              ^
+       E:\Dev\My-Fab\src\util\uuid.zig:16:30: 0x7ff6813f7244 in newUuidV4 (test_zcu.obj)
+           return try allocator.dupe(u8, &buf);
+                                    ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:294:48: 0x7ff681439767 in test.TC-XC-02-05: tampering detection via chain validation (test_zcu.obj)
+               const audit_id = try uuid_mod.newUuidV4(alloc);
+                                                      ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:140:68: 0x7ff6813ce93c in mainServer (test_zcu.obj)
+                       const status: TestResults.Status = if (test_fn.func()) |v| s: {
+                                                                          ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:71:26: 0x7ff6813cefd9 in main (test_zcu.obj)
+               return mainServer(init) catch |err| panic("internal test runner failure: {t}", .{err});
+                                ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff6813cd1ac in callMain (test_zcu.obj)
+           if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+       
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff6813cd1ac in WinStartup (test_zcu.obj)
+               callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                       ^
+       ???:?:?: 0x7ffd44e17373 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ffd4507cc90 in ??? (ntdll.dll)
+       
+       [DebugAllocator] (err): memory address 0x2161d390240 leaked: 
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\mem\Allocator.zig:454:40: 0x7ff6812d976b in dupe__anon_15014 (test_zcu.obj)
+           const new_buf = try allocator.alloc(T, m.len);
+                                              ^
+       E:\Dev\My-Fab\src\util\uuid.zig:16:30: 0x7ff6813f7244 in newUuidV4 (test_zcu.obj)
+           return try allocator.dupe(u8, &buf);
+                                    ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:294:48: 0x7ff681439767 in test.TC-XC-02-05: tampering detection via chain validation (test_zcu.obj)
+               const audit_id = try uuid_mod.newUuidV4(alloc);
+                                                      ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:140:68: 0x7ff6813ce93c in mainServer (test_zcu.obj)
+                       const status: TestResults.Status = if (test_fn.func()) |v| s: {
+                                                                          ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:71:26: 0x7ff6813cefd9 in main (test_zcu.obj)
+               return mainServer(init) catch |err| panic("internal test runner failure: {t}", .{err});
+                                ^
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff6813cd1ac in callMain (test_zcu.obj)
+           if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+       
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff6813cd1ac in WinStartup (test_zcu.obj)
+               callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                       ^
+       ???:?:?: 0x7ffd44e17373 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ffd4507cc90 in ??? (ntdll.dll)
+error: 'xc02_audit_immutability_test.test.TC-XC-02-06: legacy entries coexist with chained entries' failed:
+       E:\Dev\zig-x86_64-windows-0.16.0\lib\std\testing.zig:615:14: 0x7ff6814371df in expect (test_zcu.obj)
+           if (!ok) return error.TestUnexpectedResult;
+                    ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:416:5: 0x7ff681438ef3 in test.TC-XC-02-06: legacy entries coexist with chained entries (test_zcu.obj)
+           try testing.expect(query.rows[0][1] == null);
+           ^
+error: 'xc02_audit_immutability_test.test.TC-XC-02-08: chain validation is efficient for large chains' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6814030de in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:166:9: 0x7ff681408444 in query (test_zcu.obj)
+               try self.readUntilReady(allocator, &rows);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc02_audit_immutability_test.zig:509:22: 0x7ff6813f79db in test.TC-XC-02-08: chain validation is efficient for large chains (test_zcu.obj)
+           var validation = try harness.conn.query(
+                            ^
+failed command: ".\\.zig-cache\\o\\a4152d27d00c24ca3163f0bcf164259e\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xceb708ef --listen=-
+
+test-xc04
++- run test 3 pass, 2 fail (5 total)
+error: 'xc04_kernel_determinism_test.test.TC-XC-04-03: scheduler fires timers in deterministic order' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6fef462ce in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6fef5bf99 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc04_kernel_determinism_test.zig:105:13: 0x7ff6fef7bd03 in test.TC-XC-04-03: scheduler fires timers in deterministic order (test_zcu.obj)
+               _ = try harness.conn.exec(
+                   ^
+error: 'xc04_kernel_determinism_test.test.TC-XC-04-05: event append preserves deterministic ordering' failed:
+       E:\Dev\My-Fab\vendor\pg\pg.zig:306:36: 0x7ff6fef462ce in readUntilReady (test_zcu.obj)
+                           if (got_error) return PgError.ServerError;
+                                          ^
+       E:\Dev\My-Fab\vendor\pg\pg.zig:145:9: 0x7ff6fef5bf99 in exec (test_zcu.obj)
+               try self.readUntilReady(null, null);
+               ^
+       E:\Dev\My-Fab\tests\integration\xc04_kernel_determinism_test.zig:214:9: 0x7ff6fef378d4 in test.TC-XC-04-05: event append preserves deterministic ordering (test_zcu.obj)
+           _ = try harness.conn.exec(
+               ^
+failed command: ".\\.zig-cache\\o\\c90356a0c2939c9165aac39d9595152d\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xceb708ef --listen=-
+
+Build Summary: 8/20 steps succeeded (6 failed); 13/46 tests passed (33 failed)
+test-xc01 transitive failure
++- run test 7 pass (7 total); 1 leaks
+test-xc02 transitive failure
++- run test 3 pass, 5 fail (8 total); 5 leaks
+test-xc03 transitive failure
++- run test 0 pass, 9 fail (9 total)
+test-xc04 transitive failure
++- run test 3 pass, 2 fail (5 total)
+test-xc05 transitive failure
++- run test 0 pass, 8 fail (8 total)
+test-xc06 transitive failure
++- run test 0 pass, 9 fail (9 total)
+
+error: the following build command failed with exit code 1:
+.zig-cache\o\ca649387fde8f08709bdc5f12a04afe5\build.exe E:\Dev\zig-x86_64-windows-0.16.0\zig.exe E:\Dev\zig-x86_64-windows-0.16.0\lib E:\Dev\My-Fab .zig-cache C:\Users\tvolodi\AppData\Local\zig --seed 0xceb708ef -Z92f7a4c3c03cb9f8 test-xc01 test-xc02 test-xc03 test-xc04 test-xc05 test-xc06

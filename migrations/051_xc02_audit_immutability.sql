@@ -120,6 +120,27 @@ CREATE TRIGGER trg_bpm_audit_apply_chain_hash
 BEFORE INSERT ON audit_entries
 FOR EACH ROW EXECUTE FUNCTION bpm_audit_apply_chain_hash();
 
+-- Function to enforce audit immutability (prevent UPDATE/DELETE)
+DROP FUNCTION IF EXISTS bpm_audit_enforce_immutability();
+CREATE FUNCTION bpm_audit_enforce_immutability()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RAISE EXCEPTION 'audit entries are immutable and cannot be modified or deleted';
+END;
+$$;
+
+-- Trigger to prevent UPDATE on audit_entries
+CREATE TRIGGER trg_bpm_audit_prevent_update
+BEFORE UPDATE ON audit_entries
+FOR EACH ROW EXECUTE FUNCTION bpm_audit_enforce_immutability();
+
+-- Trigger to prevent DELETE on audit_entries
+CREATE TRIGGER trg_bpm_audit_prevent_delete
+BEFORE DELETE ON audit_entries
+FOR EACH ROW EXECUTE FUNCTION bpm_audit_enforce_immutability();
+
 -- Function to validate an audit chain for tampering
 DROP FUNCTION IF EXISTS bpm_audit_validate_chain(UUID);
 CREATE FUNCTION bpm_audit_validate_chain(p_tenant_id UUID)
