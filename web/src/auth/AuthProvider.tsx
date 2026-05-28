@@ -15,16 +15,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isLoading = false
   const navigate = useNavigate()
 
-  // React to session-expired events dispatched by the API client
+  // React to session-expired events dispatched by the API client.
+  // Use window.location.replace to avoid a React Router ProtectedRoute re-render
+  // race that would strip the ?reason=session-expired query parameter.
   useEffect(() => {
     const handle = () => {
       clearToken()
       setSession(null)
-      navigate('/login?reason=session-expired')
+      window.location.replace('/login?reason=session-expired')
     }
     window.addEventListener('auth:session-expired', handle)
     return () => window.removeEventListener('auth:session-expired', handle)
-  }, [navigate])
+  }, [])
 
   const login = useCallback(async (token: string) => {
     // Validate token against the health endpoint
