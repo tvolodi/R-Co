@@ -7,7 +7,7 @@ import { clearToken, setToken } from '@/api/client'
 import { decodeTokenPayload, resolveDisplayName } from './tokenUtils'
 import type { UserSession } from '@/types/api'
 import { AuthContext, type AuthContextValue } from './AuthContext'
-import { oidcManager, startOidcSilentRenew } from './OidcManager'
+import { getOidcManager } from './OidcManager'
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
@@ -33,10 +33,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // On token-expiring event, perform silent renew and update the in-memory token.
   useEffect(() => {
     if (!import.meta.env.VITE_OIDC_AUTHORITY) return
-    startOidcSilentRenew()
     const handler = async () => {
       try {
-        const newUser = await oidcManager.signinSilent()
+        const m = await getOidcManager()
+        const newUser = await m.signinSilent()
         if (newUser?.access_token) {
           const newToken = newUser.access_token
           setToken(newToken)
@@ -46,9 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // silent renew failed; session-expired event will handle logout
       }
     }
-    oidcManager.events.addAccessTokenExpiring(handler)
+    let cleanup: (() => void) | undefined
+    void getOidcManager().then(m => {
+      m.events.addAccessTokenExpiring(handler)
+      m.startSilentRenew()
+      cleanup = () => m.events.removeAccessTokenExpiring(handler)
+    })
     return () => {
-      oidcManager.events.removeAccessTokenExpiring(handler)
+      if (cleanup) cleanup()
     }
   }, [])
 
@@ -78,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearToken()
     setSessionState(null)
     if (session?.loginSource === 'oidc') {
-      void oidcManager.signoutRedirect()
+      void getOidcManager().then(m => m.signoutRedirect())
       return
     }
     navigate('/login')
