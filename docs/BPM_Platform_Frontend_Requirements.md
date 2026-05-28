@@ -88,6 +88,43 @@ The frontend has no business logic of its own. All data mutations go through the
 
 ---
 
+## Stage F1.6 — Subdomain Tenant Routing
+
+**Goal:** The frontend and backend cooperate to route users to the correct Keycloak realm based on the subdomain (hostname) they use to access the platform. This enables multi-tenant deployments where each tenant has its own subdomain and OIDC realm without requiring per-tenant frontend builds.
+
+| ID | Feature | Description | Priority |
+|---|---|---|---|
+| **OIDC-F-05** | **Tenant-config discovery endpoint** | A public backend endpoint `GET /api/tenant-config?host={hostname}` returns the OIDC authority URL and client ID for the tenant bound to the given hostname. If no binding is found, the default tenant config is returned. | **MUST** |
+| **OIDC-F-06** | **Dynamic OIDC config from hostname** | On app startup, the frontend reads `window.location.hostname`, calls `GET /api/tenant-config?host={hostname}`, and uses the returned `oidc_authority` and `client_id` to initialize `OidcManager` instead of the static env var values. Env vars remain as compile-time fallbacks. | **MUST** |
+
+### OIDC-F-05 — Tenant-config discovery endpoint `[MUST]`
+
+> The backend MUST expose a public endpoint `GET /api/tenant-config?host={hostname}` that returns `{ "oidc_authority": string, "client_id": string }` for the tenant whose registered hostname matches the `host` query parameter. The `oidc_authority` is derived from the tenant's Keycloak realm binding (per OIDC-12). If no tenant is bound to the given hostname, the endpoint MUST return the default tenant config (`bpm-default` realm). The endpoint requires no authentication and its response is cacheable (no sensitive data). This requires a `hostname` column or join table linking a tenant to its registered hostname(s).
+
+**Acceptance Criteria:**
+- `GET /api/tenant-config?host=acme1.localhost` returns `{ "oidc_authority": "http://localhost:8081/realms/bpm-acme1", "client_id": "bpm-platform-api" }` when `acme1.localhost` is bound to the acme1 tenant.
+- `GET /api/tenant-config?host=unknown.localhost` returns the default tenant config with HTTP 200 (not 404).
+- Endpoint requires no JWT or session cookie to respond.
+- Response body is valid JSON with both `oidc_authority` and `client_id` fields present.
+
+**See:** OIDC-12 (realm-tenant binding provides the authority URL), ADP-03 (tenant context), OIDC-F-06 (frontend consumes this endpoint)
+
+---
+
+### OIDC-F-06 — Dynamic OIDC config from hostname `[MUST]`
+
+> On app startup, before rendering `LoginPage`, the frontend MUST read `window.location.hostname`, call `GET /api/tenant-config?host={hostname}`, and use the returned `oidc_authority` and `client_id` to initialize `OidcManager` instead of the static `VITE_OIDC_AUTHORITY` / `VITE_OIDC_CLIENT_ID` env var values. The call MUST be made exactly once per session and the result MUST be cached (module-level singleton or Zustand store). `VITE_OIDC_AUTHORITY` and `VITE_OIDC_CLIENT_ID` remain as compile-time fallbacks used if the API call fails or returns no usable value. If the `/api/tenant-config` call fails (network error or non-200 response), the app MUST fall back to the env var values silently — login MUST still be possible. A loading spinner is acceptable while the config fetch is in flight; a blank screen is not.
+
+**Acceptance Criteria:**
+- When the app is accessed via `acme1.localhost`, clicking the SSO button initiates OIDC flow against `http://localhost:8081/realms/bpm-acme1`.
+- When the app is accessed via `localhost`, the SSO button uses the default realm (`bpm-default`).
+- If `/api/tenant-config` returns HTTP 500, the app falls back to env var values and the login page renders normally without error.
+- The tenant-config fetch is not repeated on subsequent renders or route changes within the same session.
+
+**See:** OIDC-F-01 (SSO login button and OidcManager initialization), OIDC-F-05 (discovery endpoint this requirement consumes)
+
+---
+
 ## Stage F2 — Process Definition Management
 
 **Goal:** PROCESS_DESIGNER and PLATFORM_ADMIN users can create, version, and manage process definitions through both a list view and a visual canvas editor.

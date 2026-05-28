@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
-import { oidcManager } from '@/auth/OidcManager'
+import { getOidcManager } from '@/auth/OidcManager'
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -171,7 +171,7 @@ export default function LoginPage() {
 
         <button
           data-testid="login-sso-button"
-          onClick={() => { void oidcManager.signinRedirect() }}
+          onClick={() => { void getOidcManager().then(m => m.signinRedirect()) }}
           style={{
             width: '100%',
             marginTop: '.75rem',

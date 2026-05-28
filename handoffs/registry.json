@@ -1,8 +1,30 @@
 {
   "schema_version": "1.0",
   "created_at": "2026-05-23T18:08:12Z",
-  "last_updated": "2026-05-28T09:10:18Z",
+  "last_updated": "2026-05-28T10:20:00Z",
   "entries": [
+    {
+      "handoff_id": "676c5ac4-5f80-48a2-8823-32dc74aa654d",
+      "file": "handoffs/WF01-oidcf2-20260528/step-02-req_validator.json",
+      "run_id": "WF01-oidcf2-20260528",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "REQ-VALIDATOR",
+      "created_at": "2026-05-28T10:16:03Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "205473e0-a4b4-4583-9d64-6526ff18dfb6",
+      "file": "handoffs/WF01-oidcf2-20260528/step-01-req_analyst.json",
+      "run_id": "WF01-oidcf2-20260528",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "REQ-ANALYST",
+      "created_at": "2026-05-28T10:16:03Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
     {
       "handoff_id": "238fa48f-b895-4376-a5ae-2108bdb2b434",
       "file": "handoffs/WF02-oidcf-20260528/step-final-frontend-dev.json",
@@ -6580,6 +6602,127 @@
       "started_at": "2026-05-28T08:35:10Z",
       "status": "COMPLETED",
       "stage": "Stage F1 Batch 2"
+    },
+    {
+      "handoff_id": "7d01613e-25fc-47fc-9765-c6fb090de5c3",
+      "file": "handoffs/WF02-oidcf2-20260528/step-00-backend_dev.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "bdb17dc7-52b1-4d0d-942c-3155ab53a32a",
+      "file": "handoffs/WF02-oidcf2-20260528/step-01-code_designer.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "121a1355-0b49-478f-9ef0-797fc85fb014",
+      "file": "handoffs/WF02-oidcf2-20260528/step-1b-code_design_validator.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "1b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "f3801e49-364c-4fd2-881a-7f692cc31227",
+      "file": "handoffs/WF02-oidcf2-20260528/step-02a-backend_dev.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "02a",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "9b53f853-59f7-49f0-bbf1-df272f1702d5",
+      "file": "handoffs/WF02-oidcf2-20260528/step-02b-frontend_dev.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "44c52797-d7fb-445f-a3dd-a636df8af668",
+      "file": "handoffs/WF02-oidcf2-20260528/step-03-test_designer.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "b3a91704-fd86-4408-8442-a5f471b34295",
+      "file": "handoffs/WF02-oidcf2-20260528/step-3b-test_design_validator.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "3b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "1ead6342-65d5-45d9-b08f-87f95d4e99d4",
+      "file": "handoffs/WF02-oidcf2-20260528/step-04-test_runner.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "a06d23f4-6f72-4732-844b-0b2d05f62da8",
+      "file": "handoffs/WF02-oidcf2-20260528/step-05-release_validator.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "72639534-158d-466e-a588-9c11b5c78d87",
+      "file": "handoffs/WF02-oidcf2-20260528/step-06-doc_updater.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
+    },
+    {
+      "handoff_id": "0637cd50-e344-458a-837f-e923bfb33f0a",
+      "file": "handoffs/WF02-oidcf2-20260528/step-final-frontend_dev.json",
+      "run_id": "WF02-oidcf2-20260528",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-05-28T10:20:00Z",
+      "status": "PENDING",
+      "stage": "Stage F1.6 - Subdomain Tenant Routing"
     }
   ]
 }

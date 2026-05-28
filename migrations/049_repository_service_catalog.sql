@@ -18,12 +18,12 @@ CREATE TABLE IF NOT EXISTS service_catalog (
 
     -- Constraints
     CONSTRAINT ck_service_timeout CHECK (timeout_ms >= 1 AND timeout_ms <= 3600000),
-    CONSTRAINT ck_service_auth_method CHECK (required_auth IN ('NONE', 'API_KEY', 'OAUTH2', 'MUTUAL_TLS')),
-
-    -- Indexes
-    INDEX idx_service_catalog_created (created_at),
-    INDEX idx_service_catalog_updated (updated_at)
+    CONSTRAINT ck_service_auth_method CHECK (required_auth IN ('NONE', 'API_KEY', 'OAUTH2', 'MUTUAL_TLS'))
 );
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_service_catalog_created ON service_catalog (created_at);
+CREATE INDEX IF NOT EXISTS idx_service_catalog_updated ON service_catalog (updated_at);
 
 COMMENT ON TABLE service_catalog IS 'Service registry for SERVICE_TASK nodes and Lua service.call() (REPO-07).';
 COMMENT ON COLUMN service_catalog.service_id IS 'Stable, unique identifier (e.g., "crm.customer_lookup").';

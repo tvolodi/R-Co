@@ -1,0 +1,40 @@
+{
+  "handoff_id": "a06d23f4-6f72-4732-844b-0b2d05f62da8",
+  "run_id": "WF02-oidcf2-20260528",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-05-28T10:20:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F1.6 - Subdomain Tenant Routing",
+    "requirement_ids": [
+      "OIDC-F-05",
+      "OIDC-F-06"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/reports/WF02-oidcf2-20260528-test-report.json"
+    ]
+  },
+  "task": {
+    "description": "Confirm OIDC-F-05 and OIDC-F-06 MUST tests pass and write release decision to docs/status/release-OIDCF2-20260528.json.",
+    "acceptance_criteria": [
+      "All MUST tests pass",
+      "Release decision written"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 4 MUST tests (TC-OIDCF2-01 through TC-OIDCF2-04) passed against real backend and Keycloak. Build passed. No blockers. Release decision written to docs/status/release-OIDCF2-20260528.json.",
+    "artifacts_out": ["docs/status/release-OIDCF2-20260528.json"],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER (Step 06)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-28T10:52:18Z",
+  "completed_at": "2026-05-28T10:52:48Z"
+}

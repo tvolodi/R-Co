@@ -20,13 +20,13 @@ CREATE TABLE IF NOT EXISTS artifact_activations (
     CONSTRAINT uq_artifact_active_per_tenant UNIQUE (tenant_id, artifact_kind, artifact_name),
 
     -- Foreign key
-    CONSTRAINT fk_artifact_activation_version FOREIGN KEY (active_version_id) REFERENCES artifact_versions(version_id) ON DELETE RESTRICT,
-
-    -- Indexes for efficient tenant-scoped queries
-    INDEX idx_artifact_activations_tenant_kind (tenant_id, artifact_kind),
-    INDEX idx_artifact_activations_tenant (tenant_id),
-    INDEX idx_artifact_activations_activated_at (activated_at DESC)
+    CONSTRAINT fk_artifact_activation_version FOREIGN KEY (active_version_id) REFERENCES artifact_versions(version_id) ON DELETE RESTRICT
 );
+
+-- Indexes for efficient tenant-scoped queries
+CREATE INDEX IF NOT EXISTS idx_artifact_activations_tenant_kind ON artifact_activations (tenant_id, artifact_kind);
+CREATE INDEX IF NOT EXISTS idx_artifact_activations_tenant ON artifact_activations (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_artifact_activations_activated_at ON artifact_activations (activated_at DESC);
 
 COMMENT ON TABLE artifact_activations IS 'Current active artifact versions per tenant. Enforces one active per (tenant, kind, name).';
 COMMENT ON COLUMN artifact_activations.activation_id IS 'Unique identifier for this activation record.';
@@ -50,13 +50,13 @@ CREATE TABLE IF NOT EXISTS artifact_activation_history (
     rationale            TEXT NOT NULL,                  -- Free-text reason for activation
 
     -- Foreign key
-    CONSTRAINT fk_activation_history_new_version FOREIGN KEY (new_version_id) REFERENCES artifact_versions(version_id) ON DELETE RESTRICT,
-
-    -- Indexes for efficient history queries (reverse chronological order)
-    INDEX idx_activation_history_tenant_artifact_time (tenant_id, artifact_kind, artifact_name, activated_at DESC),
-    INDEX idx_activation_history_tenant (tenant_id),
-    INDEX idx_activation_history_activated_at (activated_at DESC)
+    CONSTRAINT fk_activation_history_new_version FOREIGN KEY (new_version_id) REFERENCES artifact_versions(version_id) ON DELETE RESTRICT
 );
+
+-- Indexes for efficient history queries (reverse chronological order)
+CREATE INDEX IF NOT EXISTS idx_activation_history_tenant_artifact_time ON artifact_activation_history (tenant_id, artifact_kind, artifact_name, activated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_activation_history_tenant ON artifact_activation_history (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_activation_history_activated_at ON artifact_activation_history (activated_at DESC);
 
 COMMENT ON TABLE artifact_activation_history IS 'Audit trail of all artifact activations per tenant (REPO-10).';
 COMMENT ON COLUMN artifact_activation_history.history_id IS 'Unique identifier for this history record.';
@@ -76,12 +76,12 @@ CREATE TABLE IF NOT EXISTS artifact_activation_groups (
     activator_user_id    UUID NOT NULL,
     rationale            TEXT NOT NULL,
     -- artifacts_json: JSON array of {artifact_kind, artifact_name, version_id} objects
-    artifacts_json       JSONB NOT NULL,
-
-    -- Index for tenant-scoped queries
-    INDEX idx_activation_groups_tenant (tenant_id),
-    INDEX idx_activation_groups_activated_at (activated_at DESC)
+    artifacts_json       JSONB NOT NULL
 );
+
+-- Index for tenant-scoped queries
+CREATE INDEX IF NOT EXISTS idx_activation_groups_tenant ON artifact_activation_groups (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_activation_groups_activated_at ON artifact_activation_groups (activated_at DESC);
 
 COMMENT ON TABLE artifact_activation_groups IS 'Records of atomic multi-artifact activation groups (REPO-08, REPO-14).';
 COMMENT ON COLUMN artifact_activation_groups.group_id IS 'Unique identifier for this activation group.';

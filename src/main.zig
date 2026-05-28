@@ -39,6 +39,7 @@ pub const api_openapi = @import("api/openapi/mod.zig"); // API-11 OpenAPI builde
 pub const openapi_routes = @import("api/routes/openapi.zig"); // API-11 public /openapi.json route handler
 pub const health_routes = @import("api/routes/health.zig"); // API-12 public /health/live and /health/ready handlers
 pub const metrics_routes = @import("api/routes/metrics.zig"); // OBS-02 public /metrics route handler
+pub const tenant_config_routes = @import("api/routes/tenant_config.zig"); // OIDC-F-05 public /api/tenant-config route handler
 pub const audit_routes = @import("api/routes/audit.zig"); // OBS-03 GET /audit route handler
 pub const dlq_store = @import("dlq/store.zig"); // OBS-05 dead-letter persistence
 pub const dlq_routes = @import("api/routes/dlq.zig"); // OBS-05 DLQ API handlers
@@ -250,6 +251,13 @@ fn serveRequest(
     // ── /metrics ─────────────────────────────────────────────────────────────
     else if (std.mem.eql(u8, path, "/metrics")) {
         const r = metrics_routes.handleMetrics(req_alloc);
+        resp_status = r.status_code;
+        resp_body = r.body;
+        resp_content_type = r.content_type;
+    }
+    // ── GET /api/tenant-config  (public — no auth required) ──────────────────
+    else if (std.mem.eql(u8, path, "/api/tenant-config") and method == .GET) {
+        const r = tenant_config_routes.handleTenantConfig(req_alloc, pool, query_str);
         resp_status = r.status_code;
         resp_body = r.body;
         resp_content_type = r.content_type;

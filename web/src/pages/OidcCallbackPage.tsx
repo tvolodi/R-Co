@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { oidcManager } from '@/auth/OidcManager'
+import { getOidcManager } from '@/auth/OidcManager'
 import { useAuth } from '@/auth/AuthContext'
 import { setToken } from '@/api/client'
 import { decodeTokenPayload, resolveDisplayName } from '@/auth/tokenUtils'
@@ -28,9 +28,10 @@ export default function OidcCallbackPage() {
     if (_callbackStarted) return
     _callbackStarted = true
 
-    oidcManager
-      .signinRedirectCallback()
-      .then((user) => {
+    ;(async () => {
+      try {
+        const m = await getOidcManager()
+        const user = await m.signinRedirectCallback()
         const token = user.access_token
         const payload = decodeTokenPayload(token)
         if (!payload || !payload.roles || payload.roles.length === 0) {
@@ -45,10 +46,10 @@ export default function OidcCallbackPage() {
           loginSource: 'oidc',
         })
         navigate('/', { replace: true })
-      })
-      .catch(() => {
+      } catch {
         window.location.replace('/login?reason=auth-error')
-      })
+      }
+    })()
   }, [navigate, setSession])
 
   return (

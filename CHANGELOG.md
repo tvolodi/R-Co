@@ -2,6 +2,14 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — Subdomain Tenant Routing (Stage F1.6)
+
+### Added (WF02-oidcf2-20260528)
+- OIDC-F-05: Public GET /api/tenant-config?host={hostname} endpoint — returns OIDC authority URL and client_id for the tenant bound to that hostname; falls back to default realm if no binding found
+- OIDC-F-06: Frontend reads window.location.hostname on startup, calls /api/tenant-config, initializes OidcManager dynamically; env vars remain as compile-time fallbacks; graceful degradation on API failure
+- DB migration 050: tenant_hostnames table linking tenants to hostnames
+- Fixed pre-existing migration syntax errors in migrations 045–049 (MySQL-style inline INDEX → PostgreSQL CREATE INDEX)
+
 ## [Unreleased] — OIDC SSO Login (Stage F1.5)
 
 ### Added (WF02-oidcf-20260528)
