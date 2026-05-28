@@ -963,7 +963,7 @@ pub fn build(b: *std.Build) void {
     const run_oidc15_integration_tests = b.addRunArtifact(oidc15_integration_tests);
 
     // Pre-cleanup: delete all rows from test DB tables before running tests.
-    const clean_test_db = b.addSystemCommand(&.{ "python3", "tools/clean_test_db.py" });
+    const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
     clean_test_db_step.dependOn(&clean_test_db.step);
 

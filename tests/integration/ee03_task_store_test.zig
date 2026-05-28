@@ -299,7 +299,8 @@ test "TC-EE-03-03: getById with unknown task_id returns NotFound" {
     defer pool.deinit();
 
     var task_store = TaskStore.init(&pool);
-    const nonexistent_id: [16]u8 = [_]u8{0xff} ** 16;
+    var nonexistent_id: [16]u8 = undefined;
+    @memset(&nonexistent_id, 0xff);
 
     try std.testing.expectError(TaskError.NotFound, task_store.getById(alloc, nonexistent_id));
 }

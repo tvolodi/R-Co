@@ -1408,7 +1408,8 @@ test "TC-ES-01-05: append with nil actor_id returns ActorIdMissing" {
     defer store.deinit();
 
     const inst_uuid = try parseUuid(alloc, "e5010500-0000-0000-0000-000000000001");
-    const nil_actor: [16]u8 = [_]u8{0} ** 16;
+    var nil_actor: [16]u8 = undefined;
+    @memset(&nil_actor, 0);
 
     try std.testing.expectError(StoreError.ActorIdMissing, store.append(alloc, AppendParams{
         .instance_id = inst_uuid,
@@ -1512,7 +1513,8 @@ test "TC-ES-03-03: append with 256-char idempotency_key returns IdempotencyKeyTo
     const inst_uuid = try parseUuid(alloc, "e5030300-0000-0000-0000-000000000001");
     const actor_uuid = try parseUuid(alloc, "acac0000-0000-0000-0000-000000000027");
 
-    const long_key_arr = [_]u8{'x'} ** 256;
+    var long_key_arr: [256]u8 = undefined;
+    @memset(&long_key_arr, 'x');
     const long_key: []const u8 = &long_key_arr;
 
     try std.testing.expectError(StoreError.IdempotencyKeyTooLong, store.append(alloc, AppendParams{

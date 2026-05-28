@@ -170,6 +170,15 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-WF02-dsl11-20260527-step04.json; release approval is recorded in docs/status/release-DSL-11-20260527.json.
 - Requirement: DSL-11 (MUST, Stage 7) - RELEASED
 
+### DSL-13 — Performance target [SHOULD] — RELEASED
+- Benchmark suite for expression evaluation latency measurement
+- Validates all 6 expression profiles (1-10 AST nodes) under 10 microsecond target
+- Mean latency: <1.1 µs for all profiles (89.8% headroom vs target)
+- Profiles: trivial, scalar_lookup, simple_comparison, nested_logic, complex_nested, builtin_function
+- Test report: tests/reports/DSL-13-test-run.json
+- Validation evidence passed in tests/reports/DSL-13-test-run.md; requirement DSL-13 (SHOULD, Stage 7) RELEASED
+- Requirement: DSL-13 (SHOULD, Stage 7) - RELEASED
+
 ### OIDC-02 - Keycloak adapter (RELEASED 2026-05-26)
 - Implemented a concrete Keycloak 26.x adapter under `src/identity/provider/adapters/keycloak/` that satisfies the OIDC-01 IdentityProvider contract while keeping Keycloak-specific URLs, payloads, and behavior adapter-local.
 - Preserved compile isolation by keeping Keycloak references confined to adapter modules and adapter-local tests, so removing the adapter does not affect non-adapter compilation paths.

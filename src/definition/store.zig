@@ -239,15 +239,20 @@ pub const Store = struct {
             return DefinitionError.TransactionFailed;
         // graph_json is freed when param_arena is deinitialized at function exit.
 
-        // [D] INSERT … ON CONFLICT (tenant_id, name, version) DO NOTHING RETURNING *
+        // [D] INSERT … ON CONFLICT ON CONSTRAINT uq_definition_tenant_version DO NOTHING RETURNING *
         //     Parameterised — $1=name, $2=version, $3=description, $4=graph, $5=created_by.
         //     Security: no user data appears in the SQL string literal.
+        //
+        //     Note on ON CONFLICT: the unique constraint uq_definition_tenant_version on
+        //     (tenant_id, name, version) enforces the constraint. When an INSERT conflicts
+        //     with an existing row, DO NOTHING causes the INSERT to be skipped and RETURNING
+        //     to emit 0 rows. (This is expected and correct for concurrent requests — PD-01.)
         const insert_rows = conn.query(
             allocator,
             \\INSERT INTO process_definitions
             \\  (tenant_id, name, version, description, status, graph, created_by, stage)
             \\VALUES (bpm_effective_tenant_id(), $1, $2, $3, 'DRAFT', $4::jsonb, $5::uuid, $6)
-            \\ON CONFLICT (tenant_id, name, version) DO NOTHING
+            \\ON CONFLICT ON CONSTRAINT uq_definition_tenant_version DO NOTHING
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,

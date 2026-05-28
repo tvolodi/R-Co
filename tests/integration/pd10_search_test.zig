@@ -356,7 +356,9 @@ test "TC-PD-10-06: Store.search — query longer than 512 chars returns QueryToo
     var store = DefinitionStore.init(alloc, &dummy_pool);
     defer store.deinit();
 
-    const long_query = "a" ** 513;
+    var long_query_arr: [513]u8 = undefined;
+    @memset(&long_query_arr, 'a');
+    const long_query: []const u8 = &long_query_arr;
 
     const result = store.search(alloc, SearchOptions{
         .query = long_query,

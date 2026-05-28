@@ -1,0 +1,42 @@
+{
+  "handoff_id": "20260528-audit-isolation-fix",
+  "run_id": "ADHOC-fix-integration-20260528",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-05-27T22:14:00Z",
+  "started_at": "2026-05-27T22:14:00Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "notes": "New audit isolation issue discovered in retest run. Test TC-ADP-02-05 expects 1 audit entry but finds 5, indicating audit_entries table not properly cleaned between tests.",
+    "stage": "Test Infrastructure",
+    "requirement_ids": [],
+    "related_handoff_ids": ["20260527-full-test-001", "20260527-retest-integration-001"],
+    "artifacts_in": ["tests/reports/ADHOC-retest-integration-20260527.json"]
+  },
+  "task": {
+    "description": "Fix audit table isolation issue. Problem: TC-ADP-02-05 integration test expects 1 audit entry created by the test, but finds 5 total entries. This indicates the audit_entries table is not being properly cleaned between test runs despite TRUNCATE CASCADE fix. Investigate: (1) Is audit_entries table included in the TRUNCATE CASCADE cleanup? (2) Are audit entries created by test setup that should be isolated? (3) Check the test expectations and what entries are actually being created. Fix the database cleanup or test setup to ensure proper audit_entries isolation.",
+    "acceptance_criteria": [
+      "Root cause of audit contamination identified",
+      "audit_entries table cleanup verified or fixed",
+      "Rerun test TC-ADP-02-05: passes with expected 1 audit entry",
+      "No other tests affected by audit cleanup fix",
+      "Issue documented"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed audit table isolation issue in TC-ADP-02-05. Root cause: tests using direct Pool connections (not TestHarness) lack transaction-based isolation. If a test fails, its cleanup code doesn't run, leaving stale audit_entries in the database, which contaminates subsequent test runs. Solution: Added pre-cleanup blocks at test start for TC-ADP-02-02, TC-ADP-02-03, TC-ADP-02-04, and TC-ADP-02-05 to remove stale data from previous test runs, ensuring clean state regardless of prior test success/failure.",
+    "artifacts_out": [
+      "tests/integration/adp02_tenant_scope_test.zig",
+      "docs/issue-reports/ADHOC-audit-isolation-fix-20260528.md"
+    ],
+    "issues": [],
+    "next_action": "Ready for retest"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "completed_at": "2026-05-27T22:23:10Z"
+}

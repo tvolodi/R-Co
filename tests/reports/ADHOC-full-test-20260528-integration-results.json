@@ -1,0 +1,93 @@
+﻿{
+    "test_run_id": "ADHOC-full-test-20260528",
+    "timestamp": "2026-05-28T00:30:00Z",
+    "test_layer": "backend_integration_tests",
+    "exit_code": 0,
+    "database": "postgres://bpm:bpm@localhost:5433/bpm_test",
+    "test_execution": {
+        "total_tests_run": 827,
+        "passed": 470,
+        "failed": 37,
+        "skipped": 320,
+        "duration_seconds": 130.67,
+        "pass_rate_percent": 56.8
+    },
+    "failure_summary": {
+        "total_failures": 37,
+        "critical_issue": "Database constraint violations and DSL expression evaluation failures",
+        "categories": [
+            {
+                "type": "DuplicateNameVersion",
+                "count": 28,
+                "severity": "CRITICAL",
+                "description": "Database unique constraint violations preventing definition/instance creation"
+            },
+            {
+                "type": "TestUnexpectedResult",
+                "count": 5,
+                "severity": "CRITICAL",
+                "description": "DSL expression evaluation failures in date and path operations"
+            },
+            {
+                "type": "Other",
+                "count": 4,
+                "severity": "MAJOR",
+                "description": "Additional integration test failures"
+            }
+        ]
+    },
+    "failures_by_type": {
+        "DuplicateNameVersion": [
+            "TC-PD-08-01: SnapshotStore.create",
+            "TC-PD-08-02: SnapshotStore.getByInstanceId",
+            "TC-PD-08-03: SnapshotStore duplicate",
+            "TC-EE-01-06: duplicate correlation_key",
+            "TC-EE-09-01: new key insert",
+            "TC-EE-09-02: existing key overwrite",
+            "TC-EE-09-04: schema violation",
+            "TC-EE-09-05: empty output_variables",
+            "TC-EE-10-01 through TC-EE-10-06: ERROR instance tests (6 failures)",
+            "TC-EXT-01-INT-01 through TC-EXT-01-INT-07: service task tests (7 failures)",
+            "TC-ADP-08-INT-01, INT-03, INT-04: catalog tests (3 failures)",
+            "TC-EXT-03-INT-01 through INT-09: plugin integration (multiple failures)",
+            "TC-IDN-02-06, IDN-02-07: group management (2 failures)",
+            "TC-IDN-03-03b: role access"
+        ],
+        "TestUnexpectedResult": [
+            "DSL-05: dot_path multi-segment resolves from context",
+            "DSL-07: date_add adds seconds",
+            "DSL-07: date_add adds days",
+            "DSL-07: date_add negative days",
+            "DSL-07: date_diff operations (seconds, days, negative result)"
+        ]
+    },
+    "root_cause_analysis": {
+        "primary_issue": "Database test isolation failure",
+        "description": "Despite running clean_test_db.py before test suite, tests fail with DuplicateNameVersion. INSERT statements return 0 rows indicating ON CONFLICT clause prevents insertion. Root cause: previous test data not cleaned or test isolation missing.",
+        "secondary_issue": "DSL expression evaluation regression",
+        "description2": "Date manipulation (date_add, date_diff) and context path resolution tests failing with TestUnexpectedResult errors."
+    },
+    "recommendations": {
+        "immediate": [
+            "Debug DuplicateNameVersion: verify clean_test_db.py clears all necessary tables",
+            "Check test isolation: confirm tests use transactions that rollback changes",
+            "Review recent DSL expression changes: investigate date_add, date_diff, and path resolution"
+        ],
+        "testing": [
+            "Run failing tests individually to isolate test contamination",
+            "Add per-test database rollback for isolation",
+            "Unit test DSL functions before integration tests"
+        ]
+    },
+    "build_information": {
+        "zig_cache_location": ".zig-cache/o",
+        "test_executable_count": 27,
+        "successful_compilation": true,
+        "note": "All integration tests compiled successfully; failures are runtime, not compilation"
+    },
+    "artifacts": {
+        "report_location": "tests/reports/ADHOC-full-test-20260528-integration-results.json"
+    },
+    "status": "FAILED",
+    "acceptance_criteria_met": false
+}

@@ -11,6 +11,7 @@
 //! Requirement traceability: DB-01, DB-02, DB-03
 const std = @import("std");
 const pg = @import("pg");
+const root = @import("root");
 
 // ---------------------------------------------------------------------------
 // Internal helper: ensure schema_migrations exists, then apply all .sql files
@@ -113,7 +114,8 @@ pub const TestHarness = struct {
     ///  1. Reads BPM_TEST_DB_URL from the environment.
     ///  2. Connects directly to the test database (no pool overhead needed).
     ///  3. Runs all pending migrations (idempotent; via schema_migrations table).
-    ///  4. Begins an open transaction that deinit() will always roll back.
+    ///  4. Ensures test tenant context is initialized (for pool connections).
+    ///  5. Begins an open transaction that deinit() will always roll back.
     ///
     /// Caller must call deinit() to roll back the transaction and close the
     /// connection.
@@ -142,6 +144,12 @@ pub const TestHarness = struct {
             std.debug.print("runMigrations failed: {}\n", .{err});
             return err;
         };
+
+        // Initialize test tenant context for all pool connections.
+        // This ensures PostgreSQL has bpm.tenant_id set when pool connections are acquired.
+        if (@hasDecl(root, "setTestTenantContext")) {
+            root.setTestTenantContext();
+        }
 
         // Begin a transaction; deinit() always rolls it back.
         conn.begin() catch |err| {

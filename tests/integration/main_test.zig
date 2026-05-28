@@ -5,6 +5,16 @@ const bpm = @import("bpm");
 pub const api_tenant_context = bpm.api_tenant_context;
 pub const api_pipeline_context = bpm.api_pipeline_context;
 
+// Initialize default test tenant context (nil UUID) for all integration tests.
+// This ensures PostgreSQL pool connections have bpm.tenant_id set correctly.
+pub fn setTestTenantContext() void {
+    api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+}
+
+pub fn clearTestTenantContext() void {
+    api_tenant_context.clear();
+}
+
 // Integration test helpers (TestHarness with rollback-on-deinit isolation).
 const helpers = @import("helpers.zig");
 // Stage 1 — DB layer

@@ -40,9 +40,10 @@ ALTER TABLE audit_log ALTER COLUMN tenant_id SET DEFAULT bpm_effective_tenant_id
 ALTER TABLE process_definitions DROP CONSTRAINT IF EXISTS uq_definition_version;
 DROP INDEX IF EXISTS uq_active_definition;
 DROP INDEX IF EXISTS uq_instance_correlation;
+DROP INDEX IF EXISTS uq_definition_tenant_version;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_definition_tenant_version
-    ON process_definitions (tenant_id, name, version);
+ALTER TABLE process_definitions ADD CONSTRAINT uq_definition_tenant_version
+    UNIQUE (tenant_id, name, version);
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_active_definition_tenant
     ON process_definitions (tenant_id, name)

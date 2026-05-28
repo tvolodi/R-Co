@@ -144,7 +144,8 @@ test "TC-ADP-02-02: definition uniqueness is tenant-partitioned and reads are te
     const tenant_a = default_tenant;
     const tenant_b = "22222222-2222-2222-2222-222222222222";
 
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a}) catch {};
+    // Pre-cleanup: ensure no stale definitions from previous test runs.
+    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
     conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
     conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b}) catch {};
     conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
@@ -220,6 +221,7 @@ test "TC-ADP-02-03: instance persistence is tenant-scoped with default-tenant fa
     const instance_default = "33333333-3333-3333-3333-333333333336";
     const corr = "adp02-instance-corr";
 
+    // Pre-cleanup: ensure no stale instances from previous test runs.
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
     conn.exec("DELETE FROM instance_projections WHERE instance_id IN ($1::uuid, $2::uuid, $3::uuid)", &.{ instance_a, instance_b, instance_default }) catch {};
     try conn.exec(
@@ -316,6 +318,7 @@ test "TC-ADP-02-04: task and transition persistence are isolated across tenants"
     const task_a = "44444444-4444-4444-4444-444444444445";
     const task_b = "44444444-4444-4444-4444-444444444446";
 
+    // Pre-cleanup: ensure no stale tasks/tokens/instances from previous test runs.
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
     conn.exec("DELETE FROM tasks WHERE id IN ($1::uuid, $2::uuid)", &.{ task_a, task_b }) catch {};
     conn.exec("DELETE FROM tokens WHERE id IN ($1::uuid, $2::uuid)", &.{ token_a, token_b }) catch {};
@@ -449,6 +452,15 @@ test "TC-ADP-02-05: audit persistence is tenant-scoped for audit_entries and aud
     const tenant_b = "22222222-2222-2222-2222-222222222222";
     const audit_target_a = "55555555-5555-5555-5555-555555555551";
     const audit_target_b = "55555555-5555-5555-5555-555555555552";
+
+    // Pre-cleanup: ensure no stale audit entries from previous test runs.
+    // This is critical because if the test fails partway through, cleanup at the end won't run.
+    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
+    conn.exec("DELETE FROM audit_entries WHERE resource_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
+    conn.exec("DELETE FROM audit_log WHERE entity_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
+    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
+    conn.exec("DELETE FROM audit_entries WHERE resource_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
+    conn.exec("DELETE FROM audit_log WHERE entity_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
 
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
     try conn.exec(

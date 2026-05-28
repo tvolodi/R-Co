@@ -176,7 +176,7 @@ All pure built-in functions are verified using a **double-call determinism test*
 ### TC-DSL-08-20: date_add determinism — seconds
 **Given:** Source expression `date_add(1000, 5, "second")`
 **When:** Parsed and evaluated twice with identical context
-**Then:** Both evaluations return `ts_val == 1005` and are structurally equal
+**Then:** Both evaluations return `ts_val == 6000` (1000 + 5 × 1000 ms) and are structurally equal
 **Layer:** unit
 **Acceptance criterion mapped:** Built-in `date_add` is pure (deterministic per input)
 
@@ -190,7 +190,7 @@ All pure built-in functions are verified using a **double-call determinism test*
 ### TC-DSL-08-22: date_add determinism — negative offset
 **Given:** Source expression `date_add(1000, -3, "hour")`
 **When:** Parsed and evaluated twice with identical context
-**Then:** Both evaluations return a `ts_val` 3 hours before 1000 and are structurally equal
+**Then:** Both evaluations return `ts_val == -10799000` (1000 - 3 × 3600000 ms) and are structurally equal
 **Layer:** unit
 **Acceptance criterion mapped:** Built-in `date_add` is pure (deterministic per input; negative offset)
 

@@ -50,11 +50,14 @@ def run_psql(sql: str) -> bool:
 
 def main() -> None:
     print("Cleaning test database...", flush=True)
-    for table in TABLES:
-        if table == "audit_entries":
-            run_psql("TRUNCATE TABLE audit_entries")
-        else:
-            run_psql(f"DELETE FROM {table}")
+    # Use TRUNCATE with CASCADE to properly handle foreign key dependencies.
+    # This is much faster than DELETE and guarantees all dependent rows are removed.
+    # Order doesn't matter with CASCADE, but we keep the original order for clarity.
+
+    # Build comma-separated list of all tables for atomic TRUNCATE.
+    tables_str = ", ".join(TABLES)
+    run_psql(f"TRUNCATE TABLE {tables_str} CASCADE")
+
     print("Test database cleaned.", flush=True)
 
 
