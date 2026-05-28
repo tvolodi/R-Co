@@ -1,0 +1,19 @@
+﻿{
+    "total_skipped":  0,
+    "blocker_issue":  {
+                          "description":  "PostgreSQL database is not running or not accessible",
+                          "error_message":  "CONNECTION_REFUSED - cannot connect to postgres://localhost:5432",
+                          "resolution_required":  "Start PostgreSQL database server and create test database",
+                          "affected_tests":  "ALL 46 tests across XC-01 through XC-06",
+                          "severity":  "BLOCKER",
+                          "category":  "ENVIRONMENT_SETUP"
+                      },
+    "total_passed":  0,
+    "total_failed":  46,
+    "total_tests":  46,
+    "timestamp":  "2026-05-28T08:13:52Z",
+    "status":  "BLOCKED",
+    "run_id":  "WF02-xc01-06-20260528",
+    "workflow_id":  "WF02-xc01-06-20260528",
+    "test_suite":  "XC Cross-Cutting Requirements (XC-01 through XC-06)"
+}

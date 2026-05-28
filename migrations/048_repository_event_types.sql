@@ -31,3 +31,7 @@ COMMENT ON COLUMN event_type_registry_producers.id IS 'Unique identifier for thi
 COMMENT ON COLUMN event_type_registry_producers.event_type_id IS 'Reference to event_store.event_type_registry(id).';
 COMMENT ON COLUMN event_type_registry_producers.definition_version_id IS 'Reference to artifact_versions where artifact_kind="definition".';
 COMMENT ON COLUMN event_type_registry_producers.registered_at IS 'UTC timestamp when this event type was registered for this definition.';
+
+-- Indexes for efficient queries (created separately)
+CREATE INDEX IF NOT EXISTS idx_event_type_registry_event_type ON event_type_registry_producers (event_type_id);
+CREATE INDEX IF NOT EXISTS idx_event_type_registry_definition ON event_type_registry_producers (definition_version_id);

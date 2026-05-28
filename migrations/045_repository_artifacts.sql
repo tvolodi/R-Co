@@ -22,6 +22,10 @@ COMMENT ON COLUMN repository_artifacts.content_hash IS 'SHA-256 digest of canoni
 COMMENT ON COLUMN repository_artifacts.content_type IS 'MIME type: application/json (definitions, forms, schemas) or application/wasm (compiled modules).';
 COMMENT ON COLUMN repository_artifacts.byte_size IS 'Stored content length in bytes.';
 
+-- Indexes for type-filtered and time-filtered queries (created separately)
+CREATE INDEX IF NOT EXISTS idx_repo_artifacts_type_created ON repository_artifacts (content_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_repo_artifacts_created ON repository_artifacts (created_at);
+
 
 CREATE TABLE IF NOT EXISTS artifact_versions (
     version_id           UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -59,3 +63,9 @@ COMMENT ON COLUMN artifact_versions.content_hash IS 'SHA-256 hash of canonical a
 COMMENT ON COLUMN artifact_versions.parent_version_id IS 'Optional reference to the parent version for provenance tracking.';
 COMMENT ON COLUMN artifact_versions.created_by IS 'UUID of user who created this version.';
 COMMENT ON COLUMN artifact_versions.description IS 'Optional free-text description of what changed in this version.';
+
+-- Indexes for efficient queries (created separately)
+CREATE INDEX IF NOT EXISTS idx_artifact_versions_kind_name_created ON artifact_versions (artifact_kind, artifact_name, created_at);
+CREATE INDEX IF NOT EXISTS idx_artifact_versions_content_hash ON artifact_versions (content_hash);
+CREATE INDEX IF NOT EXISTS idx_artifact_versions_kind_name ON artifact_versions (artifact_kind, artifact_name);
+CREATE INDEX IF NOT EXISTS idx_artifact_versions_parent ON artifact_versions (parent_version_id);

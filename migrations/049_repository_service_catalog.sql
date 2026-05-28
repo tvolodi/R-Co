@@ -35,3 +35,7 @@ COMMENT ON COLUMN service_catalog.timeout_ms IS 'Maximum request duration in mil
 COMMENT ON COLUMN service_catalog.retry_policy IS 'JSON object defining retry strategy and max attempts.';
 COMMENT ON COLUMN service_catalog.created_at IS 'UTC timestamp when service was registered.';
 COMMENT ON COLUMN service_catalog.updated_at IS 'UTC timestamp of most recent service update.';
+
+-- Indexes (created separately)
+CREATE INDEX IF NOT EXISTS idx_service_catalog_created ON service_catalog (created_at);
+CREATE INDEX IF NOT EXISTS idx_service_catalog_updated ON service_catalog (updated_at);

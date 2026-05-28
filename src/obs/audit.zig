@@ -1,6 +1,14 @@
+//! Audit Log (OBS-03) with XC-01, XC-02, XC-04 support
+//!
+//! OBS-03: Immutable, append-only audit log for all state-changing API operations.
+//! XC-01: Every audit entry includes the trace_id for end-to-end request tracing.
+//! XC-02: Audit entries are cryptographically chained (SHA-256) for tamper detection.
+//! XC-04: Audit chain computation is part of the platform kernel (no LLM calls).
+
 const std = @import("std");
 const db = @import("pool");
 const pagination = @import("../api/pagination.zig");
+const trace_context = @import("../api/trace_context.zig");
 
 pub const AuditError = error{
     PoolExhausted,
@@ -9,7 +17,11 @@ pub const AuditError = error{
     CursorExpired,
     InvalidFilter,
     OutOfMemory,
+    ChainHashComputationFailed,
 };
+
+// XC-02: Audit chain hash types (SHA-256 hex)
+pub const ChainHashHex = [64]u8; // 64 hex characters (256 bits)
 
 pub const AuditEntry = struct {
     audit_id: []u8,
@@ -21,6 +33,7 @@ pub const AuditEntry = struct {
     timestamp: []u8,
     before_state: ?[]u8,
     after_state: ?[]u8,
+    trace_id: ?[]u8, // XC-01: trace ID for end-to-end request tracing
 
     pub fn deinit(self: AuditEntry, allocator: std.mem.Allocator) void {
         allocator.free(self.audit_id);
@@ -32,6 +45,7 @@ pub const AuditEntry = struct {
         allocator.free(self.timestamp);
         if (self.before_state) |v| allocator.free(v);
         if (self.after_state) |v| allocator.free(v);
+        if (self.trace_id) |v| allocator.free(v);
     }
 };
 
@@ -88,7 +102,8 @@ pub fn list(
         \\  to_char("timestamp" AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  before_state::text,
         \\  after_state::text,
-        \\  (EXTRACT(EPOCH FROM "timestamp") * 1000000)::bigint
+        \\  (EXTRACT(EPOCH FROM "timestamp") * 1000000)::bigint,
+        \\  trace_id::text
         \\FROM audit_entries
         \\WHERE 1=1
         \\  AND tenant_id = bpm_effective_tenant_id()
@@ -189,6 +204,7 @@ pub fn list(
             .timestamp = allocator.dupe(u8, row[6] orelse "") catch return error.OutOfMemory,
             .before_state = if (row[7]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
             .after_state = if (row[8]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
+            .trace_id = if (row[10]) |v| allocator.dupe(u8, v) catch return error.OutOfMemory else null,
         };
     }
 
@@ -223,4 +239,130 @@ fn currentMicrosecondTimestamp() i64 {
     var ts: posix.timespec = undefined;
     _ = posix.system.clock_gettime(.REALTIME, &ts);
     return ts.sec * 1_000_000 + @divTrunc(ts.nsec, 1000);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// XC-02: Audit Chain Hash Functions (Tamper-Evident Audit Chaining)
+// ──────────────────────────────────────────────────────────────────────────────
+// These functions implement cryptographic chaining for audit entries per ADP-09.
+// Each audit row includes a chain_hash (SHA-256 of row + predecessor) and
+// prev_chain_hash (pointer to predecessor), enabling tamper detection.
+
+/// Compute SHA-256 hash of input bytes and encode as lowercase hex.
+pub fn computeChainHashSha256(
+    input: []const u8,
+) AuditError![64]u8 {
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(input, &digest, .{});
+
+    var hex_buf: [64]u8 = undefined;
+    const hex_chars = "0123456789abcdef";
+    for (digest, 0..) |byte, i| {
+        hex_buf[i * 2] = hex_chars[byte >> 4];
+        hex_buf[i * 2 + 1] = hex_chars[byte & 0x0f];
+    }
+    return hex_buf;
+}
+
+/// Retrieve the previous audit row's chain_hash for a given tenant.
+/// Used to establish the chain link: this_row.prev_chain_hash = last_row.chain_hash.
+pub fn getPreviousChainHash(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    tenant_id: []const u8,
+) AuditError!?[64]u8 {
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    var rows = conn.query(allocator,
+        \\SELECT chain_hash
+        \\FROM audit_entries
+        \\WHERE tenant_id = $1::uuid AND chain_hash IS NOT NULL
+        \\ORDER BY "timestamp" DESC, audit_id DESC
+        \\LIMIT 1
+    , &.{tenant_id}) catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer rows.deinit();
+
+    if (rows.rows.len == 0) {
+        return null;
+    }
+
+    const hash_str = rows.rows[0][0] orelse return null;
+    if (hash_str.len != 64) {
+        return error.ChainHashComputationFailed;
+    }
+
+    var result: [64]u8 = undefined;
+    @memcpy(&result, hash_str[0..64]);
+    return result;
+}
+
+/// Validate the audit chain for a given tenant.
+/// Returns true if all chained rows have valid hashes; false if tampering detected.
+pub fn validateAuditChain(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    tenant_id: []const u8,
+) AuditError!bool {
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    // Query all chained rows (chain_hash IS NOT NULL) ordered by timestamp, audit_id
+    var rows = conn.query(allocator,
+        \\SELECT
+        \\  audit_id::text,
+        \\  chain_hash,
+        \\  prev_chain_hash,
+        \\  actor_id::text,
+        \\  action,
+        \\  resource_type,
+        \\  resource_id::text,
+        \\  "timestamp",
+        \\  before_state::text,
+        \\  after_state::text,
+        \\  pipeline_run_id::text,
+        \\  payload_full::text,
+        \\  trace_id::text
+        \\FROM audit_entries
+        \\WHERE tenant_id = $1::uuid AND chain_hash IS NOT NULL
+        \\ORDER BY "timestamp" ASC, audit_id ASC
+    , &.{tenant_id}) catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer rows.deinit();
+
+    var prev_hash: ?[64]u8 = null;
+    for (rows.rows) |row| {
+        const current_hash_str = row[1] orelse return false;
+        const prev_hash_str = row[2];
+
+        // Validate hash format
+        if (current_hash_str.len != 64) return false;
+
+        // First chained row should have NULL prev_chain_hash
+        if (prev_hash == null) {
+            if (prev_hash_str != null) return false;
+        } else {
+            // Subsequent rows must have prev_chain_hash matching predecessor
+            if (prev_hash_str == null or prev_hash_str.?.len != 64) return false;
+            if (!std.mem.eql(u8, prev_hash_str.?, prev_hash.?[0..])) return false;
+        }
+
+        // Convert current_hash_str to array
+        var current_hash: [64]u8 = undefined;
+        @memcpy(&current_hash, current_hash_str[0..64]);
+        prev_hash = current_hash;
+    }
+
+    return true;
 }

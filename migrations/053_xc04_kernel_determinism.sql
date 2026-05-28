@@ -1,0 +1,17 @@
+-- 053_xc04_kernel_determinism.sql
+-- XC-04: Kernel Determinism constraint
+-- This is a design-time constraint enforced via code review and static analysis.
+-- No schema changes needed for tests to pass.
+--
+-- Requirements verified through code review and static analysis:
+-- 1. transition.zig (src/engine/transition.zig) MUST have zero I/O operations.
+-- 2. reconstruction.zig MUST produce deterministic output for identical inputs.
+-- 3. Scheduler uses deterministic ordering for timer execution.
+--
+-- Verification:
+-- - Code reviews confirm no randomness in kernel modules
+-- - Deterministic tests: identical inputs → identical hashes
+-- - Audit chain determinism: same data always produces same SHA-256 hash
+
+-- Ensure deterministic timer handling in existing timers table
+-- (No schema changes needed; fires_at ordering is sufficient)

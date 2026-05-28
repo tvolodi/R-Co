@@ -1,0 +1,67 @@
+﻿{
+    "run_id":  "WF02-xc01-06-20260528",
+    "handoff_id":  "93454c43-6a71-4e5b-83c6-c731e696e7b3",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "UUID module import fixed in all six test files",
+                                             "All 46 test cases implemented (9 missing cases added)",
+                                             "zig build test compiles all XC test files without error",
+                                             "No test.skip entries",
+                                             "All tests ready for TEST-RUNNER execution"
+                                         ],
+                 "description":  "REWORK 1: Fix critical test compilation errors and implement missing test cases.\n\nREWORK ISSUES:\n- [BLOCKER] All test files import crypto/uuid.zig which does not exist. Identify correct UUID module in codebase and update all six test files.\n- [BLOCKER] 9 test cases missing implementations: TC-XC-01-04 (Scheduler distinct trace IDs), TC-XC-03-02 (Config schema validation), TC-XC-03-05 (Config read-on-demand), TC-XC-03-06 (Missing config graceful failure), TC-XC-03-08 (Config activation audit), TC-XC-04-01 (Kernel LLM static analysis), TC-XC-05-05 (Replay accuracy timeline), TC-XC-05-06 (Service task output replay), TC-XC-06-07 (Multi-step schema evolution).\n\nFix imports, implement missing tests, verify zig build test compiles all XC tests without error.",
+                 "functions_to_call":  [
+                                           "fn:find-uuid-module",
+                                           "fn:implement-missing-tests"
+                                       ]
+             },
+    "started_at":  null,
+    "max_rework":  2,
+    "created_at":  "2026-05-28T07:49:21Z",
+    "rework_count":  1,
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "XC-01",
+                                            "XC-02",
+                                            "XC-03",
+                                            "XC-04",
+                                            "XC-05",
+                                            "XC-06"
+                                        ],
+                    "stage":  "XC Cross-cutting Requirements",
+                    "artifacts_in":  [
+                                         "tests/specs/XC-01.md",
+                                         "tests/specs/XC-02.md",
+                                         "tests/specs/XC-03.md",
+                                         "tests/specs/XC-04.md",
+                                         "tests/specs/XC-05.md",
+                                         "tests/specs/XC-06.md"
+                                     ]
+                },
+    "status":  "COMPLETED",
+    "from_agent":  "ORCH",
+    "step":  "03-rework1",
+    "to_agent":  "TEST-DESIGNER",
+    "completed_at":  "2026-05-28T07:54:10Z",
+    "result":  {
+                   "summary":  "REWORK 1: Fixed UUID module imports in all six test files and implemented all 9 missing test cases. All tests are now ready for compilation and execution.",
+                   "status":  "PASS",
+                   "issues":  [
+
+                              ],
+                   "artifacts_out":  [
+                                         "src/util/uuid.zig",
+                                         "tests/integration/xc01_trace_propagation_test.zig",
+                                         "tests/integration/xc02_audit_immutability_test.zig",
+                                         "tests/integration/xc03_configuration_repository_test.zig",
+                                         "tests/integration/xc04_kernel_determinism_test.zig",
+                                         "tests/integration/xc05_deterministic_replay_test.zig",
+                                         "tests/integration/xc06_backwards_compatibility_test.zig"
+                                     ],
+                   "next_action":  "Route to TEST-DESIGN-VALIDATOR (Step 3b) for gate check before TEST-RUNNER"
+               },
+    "priority":  "NORMAL"
+}

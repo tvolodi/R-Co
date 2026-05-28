@@ -1,0 +1,112 @@
+{
+  "run_id": "WF02-xc01-06-20260528",
+  "run_timestamp": "2026-05-28T08:24:06Z",
+  "environment": {
+    "database_url": "postgres://bpm:bpm@localhost:5433/bpm_test",
+    "migrations_status": "FIXED - 5 migrations corrected for PostgreSQL compatibility",
+    "zig_version": "0.16.0"
+  },
+  "test_suites": {
+    "xc01": {
+      "status": "PASSED",
+      "total_tests": 7,
+      "passed": 7,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "TC-XC-01-01: missing X-Trace-Id header generates UUID v4",
+          "status": "PASSED"
+        },
+        {
+          "name": "TC-XC-01-02: supplied X-Trace-Id header is propagated",
+          "status": "PASSED"
+        },
+        {
+          "name": "TC-XC-01-03: trace ID flows through audit entries",
+          "status": "PASSED"
+        },
+        {
+          "name": "TC-XC-01-04: scheduler tasks generate distinct trace IDs",
+          "status": "PASSED"
+        },
+        {
+          "name": "TC-XC-01-05: trace context is thread-local isolated",
+          "status": "PASSED"
+        },
+        {
+          "name": "TC-XC-01-06: trace context clear() resets state",
+          "status": "PASSED"
+        },
+        {
+          "name": "TC-XC-01-07: trace ID is included in error responses",
+          "status": "PASSED"
+        }
+      ]
+    },
+    "xc02": {
+      "status": "BLOCKED",
+      "total_tests": 8,
+      "passed": 0,
+      "failed": 8,
+      "issue": "Compilation error: ArrayList initialization syntax incompatible with Zig 0.16.0",
+      "affected_requirement": "XC-02: Audit Immutability"
+    },
+    "xc03": {
+      "status": "BLOCKED",
+      "total_tests": 9,
+      "passed": 0,
+      "failed": 9,
+      "issue": "Tests require database tables/functions not created by migrations (likely XC-03 specific schema)",
+      "affected_requirement": "XC-03: Configuration Repository"
+    },
+    "xc04": {
+      "status": "BLOCKED",
+      "total_tests": 5,
+      "passed": 0,
+      "failed": 5,
+      "issue": "Compilation error: ArrayList.init() syntax",
+      "affected_requirement": "XC-04: Kernel Determinism"
+    },
+    "xc05": {
+      "status": "BLOCKED",
+      "total_tests": 8,
+      "passed": 0,
+      "failed": 8,
+      "issue": "Compilation error: ArrayList.init() syntax",
+      "affected_requirement": "XC-05: Deterministic Replay"
+    },
+    "xc06": {
+      "status": "BLOCKED",
+      "total_tests": 9,
+      "passed": 0,
+      "failed": 9,
+      "issue": "Compilation error: Unknown (likely ArrayList syntax)",
+      "affected_requirement": "XC-06: Backwards Compatibility"
+    }
+  },
+  "summary": {
+    "total_test_cases": 46,
+    "passed": 7,
+    "failed": 39,
+    "blocked": 39,
+    "pass_rate": "15.2%"
+  },
+  "fixes_applied": [
+    "Fixed migration 045_repository_artifacts.sql: converted inline INDEX declarations to separate CREATE INDEX statements",
+    "Fixed migration 046_repository_activations.sql: converted 3 tables with inline INDEX to separate CREATE INDEX statements",
+    "Fixed migration 047_repository_form_schemas.sql: converted inline INDEX with GIN to separate CREATE INDEX statement",
+    "Fixed migration 048_repository_event_types.sql: converted inline INDEX to separate CREATE INDEX statements",
+    "Fixed migration 049_repository_service_catalog.sql: converted inline INDEX to separate CREATE INDEX statements",
+    "Fixed xc01_trace_propagation_test.zig: changed action_timestamp to timestamp in 3 tests (TC-XC-01-03, TC-XC-01-04, TC-XC-01-07)"
+  ],
+  "root_causes": {
+    "migration_errors": "PostgreSQL does not support inline INDEX declarations in CREATE TABLE IF NOT EXISTS statements. All indexes must be created separately via CREATE INDEX.",
+    "test_column_naming": "Tests used 'action_timestamp' column name when actual column in audit_entries is 'timestamp'",
+    "xc02_xc04_xc05_xc06": "ArrayList initialization syntax issues in tests - Zig 0.16.0 uses different ArrayList initialization semantics"
+  },
+  "next_steps": [
+    "Fix ArrayList initialization in xc02, xc04, xc05, xc06 tests (requires understanding Zig 0.16.0 ArrayList API)",
+    "Fix xc03 tests to use correct database objects and schema",
+    "Run full test suite after fixes"
+  ]
+}

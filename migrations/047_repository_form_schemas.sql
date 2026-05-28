@@ -37,3 +37,10 @@ COMMENT ON COLUMN form_schema_registry.field_type IS 'Type classification: strin
 COMMENT ON COLUMN form_schema_registry.field_label IS 'User-visible label displayed in the form.';
 COMMENT ON COLUMN form_schema_registry.required IS 'Whether the field is mandatory.';
 COMMENT ON COLUMN form_schema_registry.pattern IS 'Optional regex pattern for field validation.';
+
+-- Indexes for searchability (created separately)
+CREATE INDEX IF NOT EXISTS idx_form_schema_version ON form_schema_registry (version_id);
+CREATE INDEX IF NOT EXISTS idx_form_schema_field_type ON form_schema_registry (field_type);
+CREATE INDEX IF NOT EXISTS idx_form_schema_field_name ON form_schema_registry (field_name);
+-- Full-text search on labels (GIN index for LIKE queries)
+CREATE INDEX IF NOT EXISTS idx_form_schema_field_label ON form_schema_registry USING GIN (to_tsvector('english', field_label));
