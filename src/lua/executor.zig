@@ -14,6 +14,14 @@ const errors = @import("errors.zig");
 const capabilities = @import("capabilities.zig");
 const stdlib = @import("stdlib.zig");
 const host_api = @import("host_api/mod.zig");
+const manifest = @import("manifest.zig");
+const instruction_limiter = @import("instruction_limiter.zig");
+const memory_limiter = @import("memory_limiter.zig");
+const timeout_ctx = @import("timeout.zig");
+const time_source = @import("time_source.zig");
+const structured_logger = @import("structured_logger.zig");
+const service_catalog = @import("service_catalog.zig");
+const events = @import("events.zig");
 
 /// Execution context passed to Lua and used by host API functions.
 pub const ExecutionContext = struct {
