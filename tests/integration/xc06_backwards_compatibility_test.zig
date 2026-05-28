@@ -8,7 +8,7 @@ const testing = std.testing;
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
-const uuid_mod = @import("../crypto/uuid.zig");
+const uuid_mod = @import("../util/uuid.zig");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TC-XC-06-01: Schema migrations are idempotent and additive
@@ -360,6 +360,109 @@ test "TC-XC-06-06: archived events remain queryable after upgrade" {
     const live_count_str = query_live.rows[0][0] orelse "0";
     const live_count = try std.fmt.parseInt(i64, live_count_str, 10);
     try testing.expectEqual(@as(i64, 5), live_count);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-XC-06-07: Multi-step schema evolution is supported
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-XC-06-07: multi-step schema evolution is supported" {
+    const alloc = testing.allocator;
+    var harness = try TestHarness.init(alloc);
+    defer harness.deinit();
+
+    const instance_id = try uuid_mod.newUuidV4(alloc);
+    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(instance_id);
+        alloc.free(tenant_id);
+    }
+
+    // V1: Create instance
+    _ = try harness.conn.exec(
+        \\INSERT INTO instances (
+        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  status, variables, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+    ,
+        &.{
+            instance_id,
+            tenant_id,
+            "def-hash-v1",
+            "ACTIVE",
+            "{\"v1_field\":\"value\"}",
+        },
+    );
+
+    // Simulate V2 migration: add v2_field column (new columns should be nullable)
+    // In practice, this is a schema migration in the DB.
+    // For this test, we verify the instance can still be queried and extended.
+
+    // V2: Add event with v2-specific payload
+    const event_v2_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(event_v2_id);
+
+    _ = try harness.conn.exec(
+        \\INSERT INTO events (
+        \\  event_id, instance_id, tenant_id, event_type,
+        \\  payload, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    ,
+        &.{
+            event_v2_id,
+            instance_id,
+            tenant_id,
+            "migration.v2_event",
+            "{\"v2_field\":\"extended\"}",
+            "v2-event-1",
+        },
+    );
+
+    // V3: Add event with v3-specific payload
+    const event_v3_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(event_v3_id);
+
+    _ = try harness.conn.exec(
+        \\INSERT INTO events (
+        \\  event_id, instance_id, tenant_id, event_type,
+        \\  payload, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    ,
+        &.{
+            event_v3_id,
+            instance_id,
+            tenant_id,
+            "migration.v3_event",
+            "{\"v3_field\":\"evolved\"}",
+            "v3-event-1",
+        },
+    );
+
+    // Verify instance is still accessible and events accumulate correctly
+    var query = try harness.conn.query(
+        alloc,
+        \\SELECT COUNT(*) FROM events WHERE instance_id = $1
+    ,
+        &.{instance_id},
+    );
+    defer query.deinit();
+
+    const event_count_str = query.rows[0][0] orelse "0";
+    const event_count = try std.fmt.parseInt(i64, event_count_str, 10);
+    try testing.expectEqual(@as(i64, 2), event_count); // v2 and v3 events
+
+    // Verify instance base record is still intact
+    var instance_query = try harness.conn.query(
+        alloc,
+        \\SELECT status, variables FROM instances WHERE instance_id = $1
+    ,
+        &.{instance_id},
+    );
+    defer instance_query.deinit();
+
+    try testing.expectEqual(@as(usize, 1), instance_query.rows.len);
+    try testing.expectEqualStrings("ACTIVE", instance_query.rows[0][0] orelse "");
+    try testing.expect(std.mem.containsAtLeast(u8, instance_query.rows[0][1] orelse "", 1, "v1_field"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

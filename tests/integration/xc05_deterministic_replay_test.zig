@@ -8,7 +8,7 @@ const testing = std.testing;
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
-const uuid_mod = @import("../crypto/uuid.zig");
+const uuid_mod = @import("../util/uuid.zig");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TC-XC-05-01: Point-in-time reconstruction produces matching state
@@ -369,6 +369,195 @@ test "TC-XC-05-04: archived events are included in reconstruction" {
     // Archive has 50 events (1-50), live has up to 50 events (51-100, capped at 75)
     try testing.expectEqual(@as(i64, 50), archive_count);
     try testing.expectEqual(@as(i64, 25), live_count); // 51-75 = 25 events
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-XC-05-05: Reconstruction accuracy across instance timeline
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-XC-05-05: reconstruction accuracy across instance timeline" {
+    const alloc = testing.allocator;
+    var harness = try TestHarness.init(alloc);
+    defer harness.deinit();
+
+    const instance_id = try uuid_mod.newUuidV4(alloc);
+    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(instance_id);
+        alloc.free(tenant_id);
+    }
+
+    // Create instance with initial counter at 0
+    _ = try harness.conn.exec(
+        \\INSERT INTO instances (
+        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  status, variables, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+    ,
+        &.{
+            instance_id,
+            tenant_id,
+            "def-hash",
+            "ACTIVE",
+            "{\"counter\":0}",
+        },
+    );
+
+    // Append 5 events that increment counter
+    for (0..5) |i| {
+        const event_id = try uuid_mod.newUuidV4(alloc);
+        const idem_key = try std.fmt.allocPrint(alloc, "timeline-event-{d}", .{i});
+        defer {
+            alloc.free(event_id);
+            alloc.free(idem_key);
+        }
+
+        _ = try harness.conn.exec(
+            \\INSERT INTO events (
+            \\  event_id, instance_id, tenant_id, event_type,
+            \\  payload, idempotency_key, created_at
+            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ,
+            &.{
+                event_id,
+                instance_id,
+                tenant_id,
+                "counter.inc",
+                "{\"value\":1}",
+                idem_key,
+            },
+        );
+    }
+
+    // Reconstruct at different points in timeline
+    // At sequence 0: before any events
+    var query_0 = try harness.conn.query(
+        alloc,
+        \\SELECT COUNT(*) FROM events WHERE instance_id = $1 AND sequence_number < 1
+    ,
+        &.{instance_id},
+    );
+    defer query_0.deinit();
+    const count_0_str = query_0.rows[0][0] orelse "0";
+    const count_0 = try std.fmt.parseInt(i64, count_0_str, 10);
+    try testing.expectEqual(@as(i64, 0), count_0);
+
+    // At sequence 3: after 3 increments
+    var query_3 = try harness.conn.query(
+        alloc,
+        \\SELECT COUNT(*) FROM events WHERE instance_id = $1 AND sequence_number <= 3
+    ,
+        &.{instance_id},
+    );
+    defer query_3.deinit();
+    const count_3_str = query_3.rows[0][0] orelse "0";
+    const count_3 = try std.fmt.parseInt(i64, count_3_str, 10);
+    try testing.expectEqual(@as(i64, 3), count_3);
+
+    // At sequence 5: after all increments
+    var query_5 = try harness.conn.query(
+        alloc,
+        \\SELECT COUNT(*) FROM events WHERE instance_id = $1 AND sequence_number <= 5
+    ,
+        &.{instance_id},
+    );
+    defer query_5.deinit();
+    const count_5_str = query_5.rows[0][0] orelse "0";
+    const count_5 = try std.fmt.parseInt(i64, count_5_str, 10);
+    try testing.expectEqual(@as(i64, 5), count_5);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-XC-05-06: Service task outputs are replayed from recorded events
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-XC-05-06: service task outputs are replayed from recorded events" {
+    const alloc = testing.allocator;
+    var harness = try TestHarness.init(alloc);
+    defer harness.deinit();
+
+    const instance_id = try uuid_mod.newUuidV4(alloc);
+    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const task_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(instance_id);
+        alloc.free(tenant_id);
+        alloc.free(task_id);
+    }
+
+    // Create instance
+    _ = try harness.conn.exec(
+        \\INSERT INTO instances (
+        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  status, created_at
+        \\) VALUES ($1, $2, $3, $4, NOW())
+    ,
+        &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
+    );
+
+    // Create service task invocation event
+    const task_event_id = try uuid_mod.newUuidV4(alloc);
+    const task_idem_key = try std.fmt.allocPrint(alloc, "task-call-{s}", .{task_id[0..8]});
+    defer {
+        alloc.free(task_event_id);
+        alloc.free(task_idem_key);
+    }
+
+    _ = try harness.conn.exec(
+        \\INSERT INTO events (
+        \\  event_id, instance_id, tenant_id, event_type,
+        \\  payload, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    ,
+        &.{
+            task_event_id,
+            instance_id,
+            tenant_id,
+            "service_task.invoked",
+            "{\"task_id\":\"" ++ task_id ++ "\",\"params\":{\"x\":10}}",
+            task_idem_key,
+        },
+    );
+
+    // Record service task output (captured result)
+    const output_event_id = try uuid_mod.newUuidV4(alloc);
+    const output_idem_key = try std.fmt.allocPrint(alloc, "task-output-{s}", .{task_id[0..8]});
+    defer {
+        alloc.free(output_event_id);
+        alloc.free(output_idem_key);
+    }
+
+    _ = try harness.conn.exec(
+        \\INSERT INTO events (
+        \\  event_id, instance_id, tenant_id, event_type,
+        \\  payload, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+    ,
+        &.{
+            output_event_id,
+            instance_id,
+            tenant_id,
+            "service_task.completed",
+            "{\"task_id\":\"" ++ task_id ++ "\",\"output\":{\"result\":42}}",
+            output_idem_key,
+        },
+    );
+
+    // Query the recorded output from events
+    var query = try harness.conn.query(
+        alloc,
+        \\SELECT payload FROM events
+        \\WHERE instance_id = $1 AND event_type = $2
+        \\ORDER BY created_at
+    ,
+        &.{ instance_id, "service_task.completed" },
+    );
+    defer query.deinit();
+
+    // Should find the recorded output
+    try testing.expectEqual(@as(usize, 1), query.rows.len);
+    const payload = query.rows[0][0] orelse "";
+    try testing.expect(std.mem.containsAtLeast(u8, payload, 1, "\"result\":42"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

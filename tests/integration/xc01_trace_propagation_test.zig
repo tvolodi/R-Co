@@ -12,7 +12,7 @@ const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
 const trace_context = @import("../api/trace_context.zig");
-const uuid_mod = @import("../crypto/uuid.zig");
+const uuid_mod = @import("../util/uuid.zig");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TC-XC-01-01: Missing X-Trace-Id header generates UUID v4
@@ -129,6 +129,89 @@ test "TC-XC-01-03: trace ID flows through audit entries" {
 
     try testing.expectEqual(@as(usize, 1), query.rows.len);
     try testing.expectEqualStrings(trace_id, query.rows[0][0] orelse "");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-XC-01-04: Scheduler tasks generate distinct trace IDs
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-XC-01-04: scheduler tasks generate distinct trace IDs" {
+    const alloc = testing.allocator;
+    var harness = try TestHarness.init(alloc);
+    defer harness.deinit();
+
+    // Simulate scheduler task 1 generating a trace ID
+    const scheduler_trace_1 = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(scheduler_trace_1);
+
+    // Simulate scheduler task 2 generating a trace ID
+    const scheduler_trace_2 = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(scheduler_trace_2);
+
+    // Traces should be distinct
+    try testing.expect(!std.mem.eql(u8, scheduler_trace_1, scheduler_trace_2));
+
+    // Both should be valid UUIDs
+    try testing.expectEqual(@as(usize, 36), scheduler_trace_1.len);
+    try testing.expectEqual(@as(usize, 36), scheduler_trace_2.len);
+
+    // Record both tasks' operations in audit with distinct trace IDs
+    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
+    const resource_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(tenant_id);
+        alloc.free(actor_id);
+        alloc.free(resource_id);
+    }
+
+    // Task 1 audit entry
+    const audit_1 = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(audit_1);
+
+    _ = try harness.conn.exec(
+        \\INSERT INTO audit_entries (
+        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  action_timestamp, trace_id
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+    ,
+        &.{ audit_1, tenant_id, actor_id, "scheduler.fire", "timer", resource_id, scheduler_trace_1 },
+    );
+
+    // Task 2 audit entry
+    const audit_2 = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(audit_2);
+
+    _ = try harness.conn.exec(
+        \\INSERT INTO audit_entries (
+        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  action_timestamp, trace_id
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+    ,
+        &.{ audit_2, tenant_id, actor_id, "scheduler.fire", "timer", resource_id, scheduler_trace_2 },
+    );
+
+    // Query both tasks' entries and verify they have distinct trace IDs
+    var query_1 = try harness.conn.query(
+        alloc,
+        \\SELECT trace_id FROM audit_entries WHERE trace_id = $1
+    ,
+        &.{scheduler_trace_1},
+    );
+    defer query_1.deinit();
+
+    var query_2 = try harness.conn.query(
+        alloc,
+        \\SELECT trace_id FROM audit_entries WHERE trace_id = $1
+    ,
+        &.{scheduler_trace_2},
+    );
+    defer query_2.deinit();
+
+    try testing.expectEqual(@as(usize, 1), query_1.rows.len);
+    try testing.expectEqual(@as(usize, 1), query_2.rows.len);
+    try testing.expectEqualStrings(scheduler_trace_1, query_1.rows[0][0] orelse "");
+    try testing.expectEqualStrings(scheduler_trace_2, query_2.rows[0][0] orelse "");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

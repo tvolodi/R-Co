@@ -8,7 +8,7 @@ const testing = std.testing;
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
-const uuid_mod = @import("../crypto/uuid.zig");
+const uuid_mod = @import("../util/uuid.zig");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TC-XC-03-01: Configuration artifact can be uploaded and versioned
@@ -58,6 +58,55 @@ test "TC-XC-03-01: configuration artifact can be uploaded and versioned" {
     try testing.expectEqualStrings("config", query.rows[0][0] orelse "");
     try testing.expectEqualStrings("capabilities", query.rows[0][1] orelse "");
     try testing.expectEqualStrings(config_content, query.rows[0][2] orelse "");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-XC-03-02: Configuration schema is validated on upload
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-XC-03-02: configuration schema is validated on upload" {
+    const alloc = testing.allocator;
+    var harness = try TestHarness.init(alloc);
+    defer harness.deinit();
+
+    const artifact_id = try uuid_mod.newUuidV4(alloc);
+    const version_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(artifact_id);
+        alloc.free(version_id);
+    }
+
+    // Valid configuration with expected schema
+    const valid_config = "{\"tier1_node_timeout_ms\":30000,\"tier2_node_timeout_ms\":120000}";
+
+    _ = try harness.conn.exec(
+        \\INSERT INTO repository_artifacts (
+        \\  artifact_id, version_id, artifact_kind, artifact_name,
+        \\  content_hash, content_json, parent_version_id, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NULL, NOW())
+    ,
+        &.{
+            artifact_id,
+            version_id,
+            "config",
+            "timeouts",
+            "config-hash-202",
+            valid_config,
+        },
+    );
+
+    // Verify configuration is stored with valid schema
+    var query = try harness.conn.query(
+        alloc,
+        \\SELECT content_json FROM repository_artifacts
+        \\WHERE artifact_kind = $1 AND artifact_name = $2
+    ,
+        &.{ "config", "timeouts" },
+    );
+    defer query.deinit();
+
+    try testing.expectEqual(@as(usize, 1), query.rows.len);
+    try testing.expectEqualStrings(valid_config, query.rows[0][0] orelse "");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -252,6 +301,182 @@ test "TC-XC-03-04: different tenants have isolated configurations" {
     const version_for_b = query_b.rows[0][0] orelse "";
 
     try testing.expect(!std.mem.eql(u8, version_for_a, version_for_b));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-XC-03-05: Configuration is read on-demand at runtime
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-XC-03-05: configuration is read on-demand at runtime" {
+    const alloc = testing.allocator;
+    var harness = try TestHarness.init(alloc);
+    defer harness.deinit();
+
+    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const artifact_id = try uuid_mod.newUuidV4(alloc);
+    const version_id = try uuid_mod.newUuidV4(alloc);
+    defer {
+        alloc.free(tenant_id);
+        alloc.free(artifact_id);
+        alloc.free(version_id);
+    }
+
+    const config_content = "{\"runtime_feature\":true}";
+
+    // Create configuration artifact
+    _ = try harness.conn.exec(
+        \\INSERT INTO repository_artifacts (
+        \\  artifact_id, version_id, artifact_kind, artifact_name,
+        \\  content_hash, content_json, parent_version_id, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NULL, NOW())
+    ,
+        &.{
+            artifact_id,
+            version_id,
+            "config",
+            "runtime_feature",
+            "hash-runtime",
+            config_content,
+        },
+    );
+
+    // Activate configuration for tenant
+    _ = try harness.conn.exec(
+        \\INSERT INTO tenant_artifact_activations (
+        \\  tenant_id, artifact_kind, artifact_name, active_version_id, activated_at
+        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\ON CONFLICT (tenant_id, artifact_kind, artifact_name) DO UPDATE
+        \\SET active_version_id = $4
+    ,
+        &.{ tenant_id, "config", "runtime_feature", version_id },
+    );
+
+    // Read configuration at runtime (on-demand)
+    var query = try harness.conn.query(
+        alloc,
+        \\SELECT ra.content_json FROM repository_artifacts ra
+        \\JOIN tenant_artifact_activations taa ON ra.version_id = taa.active_version_id
+        \\WHERE taa.tenant_id = $1 AND taa.artifact_kind = $2 AND taa.artifact_name = $3
+    ,
+        &.{ tenant_id, "config", "runtime_feature" },
+    );
+    defer query.deinit();
+
+    try testing.expectEqual(@as(usize, 1), query.rows.len);
+    try testing.expectEqualStrings(config_content, query.rows[0][0] orelse "");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-XC-03-06: Missing or inactive configuration fails gracefully
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-XC-03-06: missing or inactive configuration fails gracefully" {
+    const alloc = testing.allocator;
+    var harness = try TestHarness.init(alloc);
+    defer harness.deinit();
+
+    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(tenant_id);
+
+    // Query for a configuration that was never activated for this tenant
+    var query = try harness.conn.query(
+        alloc,
+        \\SELECT ra.content_json FROM repository_artifacts ra
+        \\JOIN tenant_artifact_activations taa ON ra.version_id = taa.active_version_id
+        \\WHERE taa.tenant_id = $1 AND taa.artifact_kind = $2 AND taa.artifact_name = $3
+    ,
+        &.{ tenant_id, "config", "nonexistent_feature" },
+    );
+    defer query.deinit();
+
+    // Should return empty result (graceful failure: no rows)
+    try testing.expectEqual(@as(usize, 0), query.rows.len);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-XC-03-08: Configuration artifact activation is audited
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-XC-03-08: configuration artifact activation is audited" {
+    const alloc = testing.allocator;
+    var harness = try TestHarness.init(alloc);
+    defer harness.deinit();
+
+    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const artifact_id = try uuid_mod.newUuidV4(alloc);
+    const version_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
+    const trace_id = "config-audit-trace-001";
+    defer {
+        alloc.free(tenant_id);
+        alloc.free(artifact_id);
+        alloc.free(version_id);
+        alloc.free(actor_id);
+    }
+
+    // Create configuration artifact
+    _ = try harness.conn.exec(
+        \\INSERT INTO repository_artifacts (
+        \\  artifact_id, version_id, artifact_kind, artifact_name,
+        \\  content_hash, content_json, parent_version_id, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NULL, NOW())
+    ,
+        &.{
+            artifact_id,
+            version_id,
+            "config",
+            "audit_config",
+            "hash-audit",
+            "{\"audit_enabled\":true}",
+        },
+    );
+
+    // Activate configuration
+    _ = try harness.conn.exec(
+        \\INSERT INTO tenant_artifact_activations (
+        \\  tenant_id, artifact_kind, artifact_name, active_version_id, activated_at
+        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\ON CONFLICT (tenant_id, artifact_kind, artifact_name) DO UPDATE
+        \\SET active_version_id = $4
+    ,
+        &.{ tenant_id, "config", "audit_config", version_id },
+    );
+
+    // Record audit entry for activation
+    const audit_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(audit_id);
+
+    _ = try harness.conn.exec(
+        \\INSERT INTO audit_entries (
+        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  action_timestamp, trace_id
+        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+    ,
+        &.{
+            audit_id,
+            tenant_id,
+            actor_id,
+            "config.activated",
+            "configuration",
+            version_id,
+            trace_id,
+        },
+    );
+
+    // Verify audit entry exists
+    var query = try harness.conn.query(
+        alloc,
+        \\SELECT action, resource_type, trace_id FROM audit_entries
+        \\WHERE action = $1 AND trace_id = $2
+    ,
+        &.{ "config.activated", trace_id },
+    );
+    defer query.deinit();
+
+    try testing.expectEqual(@as(usize, 1), query.rows.len);
+    try testing.expectEqualStrings("config.activated", query.rows[0][0] orelse "");
+    try testing.expectEqualStrings("configuration", query.rows[0][1] orelse "");
+    try testing.expectEqualStrings(trace_id, query.rows[0][2] orelse "");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

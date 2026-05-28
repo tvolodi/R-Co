@@ -8,7 +8,7 @@ const testing = std.testing;
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
-const uuid_mod = @import("../crypto/uuid.zig");
+const uuid_mod = @import("../util/uuid.zig");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TC-XC-02-01: Audit entries are append-only (no UPDATE/DELETE allowed)
