@@ -1,0 +1,19 @@
+{
+  "bpm-default": {
+    "PLATFORM_ADMIN": {
+      "username": "admin-user",
+      "password": "admin-pass",
+      "clientId": "bpm-platform-api"
+    },
+    "PROCESS_DESIGNER": {
+      "username": "designer-user",
+      "password": "designer-pass",
+      "clientId": "bpm-platform-api"
+    },
+    "TASK_WORKER": {
+      "username": "worker-user",
+      "password": "worker-pass",
+      "clientId": "bpm-platform-api"
+    }
+  }
+}

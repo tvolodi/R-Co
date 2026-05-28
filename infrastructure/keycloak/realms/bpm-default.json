@@ -1,0 +1,87 @@
+{
+  "id": "bpm-default",
+  "realm": "bpm-default",
+  "enabled": true,
+  "displayName": "BPM Default Realm",
+  "attributes": {
+    "seedVersion": "2026-05-28",
+    "tenant_id": "00000000-0000-0000-0000-000000000000"
+  },
+  "roles": {
+    "realm": [
+      { "name": "PLATFORM_ADMIN" },
+      { "name": "PROCESS_DESIGNER" },
+      { "name": "TASK_WORKER" },
+      { "name": "AGENT_RUNNER" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "bpm-platform-api",
+      "name": "BPM Platform API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["*"]
+    },
+    {
+      "clientId": "agent-architect",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "agent-architect-secret"
+    },
+    {
+      "clientId": "agent-developer",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "agent-developer-secret"
+    },
+    {
+      "clientId": "agent-devops",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "agent-devops-secret"
+    }
+  ],
+  "users": [
+    {
+      "username": "admin-user",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "admin-pass", "temporary": false }
+      ],
+      "realmRoles": ["PLATFORM_ADMIN"]
+    },
+    {
+      "username": "designer-user",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "designer-pass", "temporary": false }
+      ],
+      "realmRoles": ["PROCESS_DESIGNER"]
+    },
+    {
+      "username": "worker-user",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        { "type": "password", "value": "worker-pass", "temporary": false }
+      ],
+      "realmRoles": ["TASK_WORKER"]
+    }
+  ]
+}
