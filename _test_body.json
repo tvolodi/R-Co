@@ -1,0 +1,1 @@
+{"name": "TestDef", "version": "1.0.0", "description": "", "graph": {"nodes": [{"id": "start", "node_type": "START"}, {"id": "end", "node_type": "END"}], "edges": [{"id": "e1", "source": "start", "target": "end"}]}, "stage": null}

@@ -1,8 +1,38 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-28T12:58:52Z",
-  "next_issue_id": 46,
+  "last_updated": "2026-05-28T15:40:23Z",
+  "next_issue_id": 48,
   "issues": [
+    {
+      "id": "ISS-0047",
+      "title": "DefinitionListPage missing data-testid attribute on filter container",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "run_id": "WF03-f2a-e2e-fix-20260528",
+      "handoff_id": "wf03-f2a-step01-002",
+      "affected_areas": [
+        "web/src/pages/definitions/DefinitionListPage.tsx"
+      ],
+      "created_at": "2026-05-28T15:37:43Z",
+      "resolved_at": "2026-05-28T15:40:23Z",
+      "resolution": "Added data-testid=filter-bar to filter container div in DefinitionListPage.tsx. Root cause of 2 E2E test failures.",
+      "prevention": "All UI container elements used in tests should have data-testid attributes."
+    },
+    {
+      "id": "ISS-0046",
+      "title": "POST /definitions graph field required - CreateDefinitionBody.graph made optional",
+      "status": "RESOLVED",
+      "severity": "CRITICAL",
+      "run_id": "WF03-f2a-e2e-fix-20260528",
+      "handoff_id": "wf03-f2a-step01-002",
+      "affected_areas": [
+        "src/api/routes/definitions.zig"
+      ],
+      "created_at": "2026-05-28T15:37:43Z",
+      "resolved_at": "2026-05-28T15:40:23Z",
+      "resolution": "Made graph field optional (?DefinitionGraph) in CreateDefinitionBody; handleCreate defaults to empty graph when null. Root cause of 11 E2E test failures (PD-UI-01..04).",
+      "prevention": "Creation-time graph field should be optional since frontend creates definitions before user adds nodes to canvas."
+    },
     {
       "id": "ISS-0045",
       "title": "WF03 XC-02..XC-06 testfix diagnosis: mixed integration-schema drift and test expectation drift across XC suites",
@@ -25,7 +55,7 @@
     },
     {
       "id": "ISS-0044",
-      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
+      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails \u2014 unique index not upgraded to named constraint",
       "status": "RESOLVED",
       "severity": "CRITICAL",
       "run_id": "WF03-def-store-regression-20260528",

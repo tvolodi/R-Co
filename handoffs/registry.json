@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2026-05-23T18:08:12Z",
-  "last_updated": "2026-05-28T14:16:02Z",
+  "last_updated": "2026-05-28T17:14:13Z",
   "entries": [
     {
       "to_agent": "BACKEND-DEV",
@@ -6521,6 +6521,48 @@
       "created_at": "2026-05-28T14:16:02Z",
       "status": "PENDING",
       "stage": "Stage 6.5 - OIDC/Identity Provider"
+    },
+    {
+      "handoff_id": "wf03-f2a-step00-001",
+      "run_id": "WF03-f2a-e2e-fix-20260528",
+      "workflow_id": "WF-03",
+      "step": "00",
+      "file": "handoffs/WF03-f2a-e2e-fix-20260528/step-00-frontend-dev.json",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-05-28T15:33:37Z",
+      "started_at": null,
+      "completed_at": "2026-05-28T15:35:15Z",
+      "status": "COMPLETED",
+      "stage": "F2"
+    },
+    {
+      "handoff_id": "wf03-f2a-step02-003",
+      "run_id": "WF03-f2a-e2e-fix-20260528",
+      "workflow_id": "WF-03",
+      "step": "02",
+      "file": "handoffs/WF03-f2a-e2e-fix-20260528/step-02-test-runner.json",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-28T15:41:30Z",
+      "started_at": "2026-05-28T15:41:30Z",
+      "completed_at": "2026-05-28T17:13:28Z",
+      "status": "COMPLETED",
+      "stage": "F2"
+    },
+    {
+      "handoff_id": "wf03-f2a-step03-004",
+      "run_id": "WF03-f2a-e2e-fix-20260528",
+      "workflow_id": "WF-03",
+      "step": "03-rework1",
+      "file": "handoffs/WF03-f2a-e2e-fix-20260528/step-03-issue-fixer-rework1.json",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-05-28T17:14:13Z",
+      "started_at": null,
+      "completed_at": null,
+      "status": "IN_PROGRESS",
+      "stage": "F2"
     }
   ]
 }

@@ -29,6 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:session-expired', handle)
   }, [])
 
+  // E2E support: no-op — session survives via SPA navigation only (FNFR-06).
+
   // Start OIDC silent renew if OIDC authority is configured.
   // On token-expiring event, perform silent renew and update the in-memory token.
   useEffect(() => {
