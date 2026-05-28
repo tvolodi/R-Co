@@ -25,7 +25,24 @@
       "directAccessGrantsEnabled": true,
       "standardFlowEnabled": true,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["*"]
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     },
     {
       "clientId": "agent-architect",
@@ -58,8 +75,12 @@
   "users": [
     {
       "username": "admin-user",
+      "email": "admin@bpm.local",
+      "firstName": "Admin",
+      "lastName": "User",
       "enabled": true,
       "emailVerified": true,
+      "requiredActions": [],
       "credentials": [
         { "type": "password", "value": "admin-pass", "temporary": false }
       ],
@@ -67,8 +88,12 @@
     },
     {
       "username": "designer-user",
+      "email": "designer@bpm.local",
+      "firstName": "Designer",
+      "lastName": "User",
       "enabled": true,
       "emailVerified": true,
+      "requiredActions": [],
       "credentials": [
         { "type": "password", "value": "designer-pass", "temporary": false }
       ],
@@ -76,8 +101,12 @@
     },
     {
       "username": "worker-user",
+      "email": "worker@bpm.local",
+      "firstName": "Worker",
+      "lastName": "User",
       "enabled": true,
       "emailVerified": true,
+      "requiredActions": [],
       "credentials": [
         { "type": "password", "value": "worker-pass", "temporary": false }
       ],

@@ -7,11 +7,27 @@ import { useAuth } from '@/auth/AuthContext'
 import { setToken } from '@/api/client'
 import { decodeTokenPayload, resolveDisplayName } from '@/auth/tokenUtils'
 
+/**
+ * Module-level guard: prevent double-invocation of signinRedirectCallback().
+ *
+ * In development, React StrictMode fires useEffect twice (mount → unmount → remount).
+ * An PKCE authorization code is single-use — the second call would receive
+ * "Code not valid" from Keycloak and erroneously redirect to /login?reason=auth-error.
+ *
+ * This flag is set before the async call begins. Because it lives at module scope it
+ * survives the StrictMode remount. It is reset to false on each full page load (the
+ * module is re-imported when Keycloak redirects back to /auth/callback).
+ */
+let _callbackStarted = false
+
 export default function OidcCallbackPage() {
   const { setSession } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
+    if (_callbackStarted) return
+    _callbackStarted = true
+
     oidcManager
       .signinRedirectCallback()
       .then((user) => {

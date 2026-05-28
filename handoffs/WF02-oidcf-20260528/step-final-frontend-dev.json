@@ -7,7 +7,7 @@
   "to_agent": "FRONTEND-DEV",
   "file": "handoffs/WF02-oidcf-20260528/step-final-frontend-dev.json",
   "created_at": "2026-05-28T09:10:18Z",
-  "started_at": null,
+  "started_at": "2026-05-28T10:07:06Z",
   "completed_at": null,
   "status": "PENDING",
   "priority": "NORMAL",
