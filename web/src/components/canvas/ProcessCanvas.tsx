@@ -231,7 +231,7 @@ export default function ProcessCanvas({
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div ref={reactFlowWrapper} style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div ref={reactFlowWrapper} data-testid="process-canvas" style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

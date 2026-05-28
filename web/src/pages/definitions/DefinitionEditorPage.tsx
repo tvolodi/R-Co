@@ -27,10 +27,10 @@ import type { ValidationError } from '@/components/canvas/ValidationSummaryBar'
 
 const EMPTY_GRAPH: DefinitionGraph = {
   nodes: [
-    { id: 'start', type: 'START' },
-    { id: 'end', type: 'END' },
+    { id: 'start', node_type: 'START', label: null, attributes: null },
+    { id: 'end', node_type: 'END', label: null, attributes: null },
   ],
-  edges: [{ id: 'e1', source: 'start', target: 'end' }],
+  edges: [{ id: 'e1', source: 'start', target: 'end', condition: null, is_default: false }],
 }
 
 // ── Page component ────────────────────────────────────────────────────────────
@@ -72,7 +72,7 @@ export default function DefinitionEditorPage() {
   const nodeNames = useMemo(() => {
     const map = new Map<string, string>()
     for (const gn of currentGraph.nodes) {
-      map.set(gn.id, gn.name || gn.type)
+      map.set(gn.id, gn.label || gn.node_type)
     }
     return map
   }, [currentGraph])

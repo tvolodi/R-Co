@@ -72,18 +72,18 @@ export function graphToFlow(graph: DefinitionGraph): GraphToFlowResult {
   }
 
   const nodes: Node<CanvasNodeData>[] = graph.nodes.map((gn) => {
-    const dims = NODE_DIMENSIONS[gn.type] ?? { width: 180, height: 72 }
+    const dims = NODE_DIMENSIONS[gn.node_type] ?? { width: 180, height: 72 }
     const defaultPos = DEFAULT_POSITIONS[gn.id] ?? nextPosition()
     const position = persistedPositions.get(gn.id) ?? defaultPos
 
     return {
       id: gn.id,
-      type: gn.type.toLowerCase(), // React Flow uses lowercase node type keys
+      type: gn.node_type.toLowerCase(), // React Flow uses lowercase node type keys
       position,
       data: {
-        nodeType: gn.type,
-        name: gn.name ?? '',
-        attributes: gn.attributes ?? {},
+        nodeType: gn.node_type,
+        name: gn.label ?? '',
+        attributes: gn.attributes ?? '',
       },
       width: dims.width,
       height: dims.height,

@@ -1,0 +1,41 @@
+{
+  "handoff_id": "d79da2ea-6f6a-4337-8dc0-c8ff165af6df",
+  "run_id": "WF03-f2a-canvas-fix-20260528",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-05-28T19:20:49Z",
+  "started_at": "2026-05-28T19:20:49Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F2 \u2014 Batch 1: Canvas Foundation",
+    "requirement_ids": [
+      "PD-UI-09",
+      "PD-UI-10",
+      "PD-UI-11",
+      "PD-UI-12"
+    ],
+    "related_handoff_ids": [
+      "49a593b4"
+    ],
+    "artifacts_in": [
+      "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "src/definition/graph.zig",
+      "tests/reports/report-2026-05-29-WF02-f2a-canvas-batch1-20260528.json",
+      "src/design/canvas-f2-batch1.md"
+    ]
+  },
+  "task": {
+    "description": "Fix the E2E test data format in web/tests/e2e/f2-canvas.e2e.spec.ts. All 13 tests fail because the test helper functions use incorrect GraphNode field names.\n\nRoot cause: The backend GraphNode struct (src/definition/graph.zig) has:\n  label: ?[]const u8,  (NOT \"name\")\n  attributes: ?[]const u8 = null,  (JSON string, NOT a JSON object)\n\nFixes needed in the test file:\n1. Replace all occurrences of name: \"...\" in graph node objects with label: \"...\"\n2. Serialize attributes values as JSON strings, e.g. attributes: JSON.stringify({...}) instead of attributes: {...}\n3. After fixing, run: cd web && npx playwright test f2-canvas.e2e.spec.ts --reporter=list\n4. Confirm at least some tests pass (or get past setup)",
+    "acceptance_criteria": [
+      "Test setup succeeds (POST /api/v1/definitions returns 201, not 400)",
+      "At least some E2E tests pass"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": null
+}
