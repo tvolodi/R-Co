@@ -312,7 +312,7 @@ fn serveRequest(
                         try request.respond(resp_body, .{ .status = @enumFromInt(resp_status), .keep_alive = false, .extra_headers = &ct_hdr });
                         return;
                     };
-                    defer parsed.deinit();
+
                     const r = definition_routes.handleCreate(def_store, req_alloc, parsed.value, actor_uuid);
                     resp_status = r.status_code;
                     resp_body = r.body;
@@ -359,7 +359,7 @@ fn serveRequest(
                         try request.respond(resp_body, .{ .status = @enumFromInt(resp_status), .keep_alive = false, .extra_headers = &ct_hdr });
                         return;
                     };
-                    defer parsed.deinit();
+
                     const r = definition_routes.handlePatch(def_store, req_alloc, seg4, parsed.value);
                     resp_status = r.status_code;
                     resp_body = r.body;

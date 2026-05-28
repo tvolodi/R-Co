@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useDefinitions, useActivateDefinition, useArchiveDefinition } from '@/hooks/useDefinitions'
-import type { DefinitionStatus } from '@/types/api'
+import { Link, useNavigate } from 'react-router-dom'
+import { useDefinitions, useActivateDefinition, useArchiveDefinition, useCreateDefinition } from '@/hooks/useDefinitions'
+import type { DefinitionStatus, ProcessDefinition } from '@/types/api'
 
 const STATUS_BADGE: Record<string, string> = {
   DRAFT:      '#f59e0b',
@@ -11,85 +11,225 @@ const STATUS_BADGE: Record<string, string> = {
 }
 
 export default function DefinitionListPage() {
+  const navigate = useNavigate()
   const [status, setStatus] = useState<DefinitionStatus | undefined>()
-  const { data, isLoading } = useDefinitions({ status })
+  const [search, setSearch] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createVersion, setCreateVersion] = useState('')
+  const [createDesc, setCreateDesc] = useState('')
+  const [createError, setCreateError] = useState<string | null>(null)
+  const { data, isLoading } = useDefinitions({ status, name: search || undefined })
   const activate = useActivateDefinition()
   const archive = useArchiveDefinition()
+  const createDef = useCreateDefinition()
+
+  const handleCreate = async () => {
+    if (!createName.trim() || !createVersion.trim()) return
+    setCreateError(null)
+    try {
+      const result = await createDef.mutateAsync({
+        name: createName.trim(),
+        version: createVersion.trim(),
+        description: createDesc.trim(),
+      })
+      setShowCreate(false)
+      setCreateName('')
+      setCreateVersion('')
+      setCreateDesc('')
+      navigate(`/definitions/${result.id}`)
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : 'Failed to create definition')
+    }
+  }
+
+  const items = (data as { items?: ProcessDefinition[] } | undefined)?.items ?? []
 
   return (
     <div style={{ padding: '1.5rem' }}>
       <div data-testid="filter-bar" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
         <h2 style={{ margin: 0 }}>Process Definitions</h2>
-        <select
-          value={status ?? ''}
-          onChange={(e) => setStatus((e.target.value as DefinitionStatus) || undefined)}
-          style={{ padding: '.35rem .6rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+        <input
+          data-testid="definition-search"
+          type="text"
+          placeholder="Search definitions..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ padding: '.35rem .6rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '.85rem', flex: 1, maxWidth: '280px' }}
+        />
+        <div data-testid="status-filter" style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}>
+          <span style={{ fontSize: '.85rem', color: '#475569' }}>Status</span>
+          <select
+            data-testid="status-filter-select"
+            value={status ?? ''}
+            onChange={(e) => setStatus((e.target.value as DefinitionStatus) || undefined)}
+            style={{ padding: '.35rem .6rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '.85rem' }}
+          >
+            <option value="">All</option>
+            <option value="DRAFT">Draft</option>
+            <option value="ACTIVE">Active</option>
+            <option value="DEPRECATED">Deprecated</option>
+            <option value="ARCHIVED">Archived</option>
+          </select>
+        </div>
+        <button
+          data-testid="btn-new-definition"
+          onClick={() => setShowCreate(true)}
+          style={{ marginLeft: 'auto', padding: '.4rem .9rem', background: '#2563eb', color: '#fff', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '.85rem' }}
         >
-          <option value="">All</option>
-          <option value="DRAFT">Draft</option>
-          <option value="ACTIVE">Active</option>
-          <option value="DEPRECATED">Deprecated</option>
-          <option value="ARCHIVED">Archived</option>
-        </select>
-        <Link
-          to="/definitions/new"
-          style={{ marginLeft: 'auto', padding: '.4rem .9rem', background: '#2563eb', color: '#fff', borderRadius: '4px', textDecoration: 'none', fontSize: '.85rem' }}
-        >
-          + New
-        </Link>
+          + New Definition
+        </button>
       </div>
 
       {isLoading && <p>Loading…</p>}
 
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
-        <thead>
-          <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
-            <th style={{ padding: '.6rem .8rem' }}>Name</th>
-            <th style={{ padding: '.6rem .8rem' }}>Version</th>
-            <th style={{ padding: '.6rem .8rem' }}>Status</th>
-            <th style={{ padding: '.6rem .8rem' }}>Updated</th>
-            <th style={{ padding: '.6rem .8rem' }}>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(data?.items ?? []).map((def) => (
-            <tr key={def.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-              <td style={{ padding: '.6rem .8rem' }}>
-                <Link to={`/definitions/${def.id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-                  {def.name}
-                </Link>
-              </td>
-              <td style={{ padding: '.6rem .8rem', color: '#64748b' }}>{def.version}</td>
-              <td style={{ padding: '.6rem .8rem' }}>
-                <span style={{ color: STATUS_BADGE[def.status] ?? '#374151', fontWeight: 600, fontSize: '.8rem' }}>
-                  {def.status}
-                </span>
-              </td>
-              <td style={{ padding: '.6rem .8rem', color: '#94a3b8', fontSize: '.8rem' }}>
-                {new Date(def.updated_at).toLocaleDateString()}
-              </td>
-              <td style={{ padding: '.6rem .8rem', display: 'flex', gap: '.5rem' }}>
-                {def.status === 'DRAFT' && (
-                  <button
-                    onClick={() => activate.mutate(def.id)}
-                    style={{ padding: '.25rem .6rem', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '.8rem' }}
-                  >
-                    Activate
-                  </button>
-                )}
-                {(def.status === 'ACTIVE' || def.status === 'DEPRECATED') && (
-                  <button
-                    onClick={() => archive.mutate(def.id)}
-                    style={{ padding: '.25rem .6rem', background: '#6b7280', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '.8rem' }}
-                  >
-                    Archive
-                  </button>
-                )}
-              </td>
+      {!isLoading && items.length === 0 && (
+        <p data-testid="empty-state" style={{ textAlign: 'center', color: '#94a3b8', padding: '2rem' }}>
+          No definitions found
+        </p>
+      )}
+
+      {items.length > 0 && (
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem' }}>
+          <thead>
+            <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
+              <th style={{ padding: '.6rem .8rem' }}>Name</th>
+              <th style={{ padding: '.6rem .8rem' }}>Version</th>
+              <th style={{ padding: '.6rem .8rem' }}>Status</th>
+              <th style={{ padding: '.6rem .8rem' }}>Updated</th>
+              <th style={{ padding: '.6rem .8rem' }}>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((def: ProcessDefinition) => (
+              <tr key={def.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                <td style={{ padding: '.6rem .8rem' }}>
+                  <Link to={`/definitions/${def.id}`} data-testid={`def-name-${def.id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
+                    {def.name}
+                  </Link>
+                </td>
+                <td style={{ padding: '.6rem .8rem', color: '#64748b' }}>{def.version}</td>
+                <td style={{ padding: '.6rem .8rem' }}>
+                  <span style={{ color: STATUS_BADGE[def.status] ?? '#374151', fontWeight: 600, fontSize: '.8rem' }}>
+                    {def.status}
+                  </span>
+                </td>
+                <td style={{ padding: '.6rem .8rem', color: '#94a3b8', fontSize: '.8rem' }}>
+                  {new Date(def.updated_at).toLocaleDateString()}
+                </td>
+                <td style={{ padding: '.6rem .8rem', display: 'flex', gap: '.5rem' }}>
+                  {def.status === 'DRAFT' && (
+                    <button
+                      onClick={() => activate.mutate(def.id)}
+                      style={{ padding: '.25rem .6rem', background: '#16a34a', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '.8rem' }}
+                    >
+                      Activate
+                    </button>
+                  )}
+                  {(def.status === 'ACTIVE' || def.status === 'DEPRECATED') && (
+                    <button
+                      onClick={() => archive.mutate(def.id)}
+                      style={{ padding: '.25rem .6rem', background: '#6b7280', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '.8rem' }}
+                    >
+                      Archive
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {/* Create Definition Dialog */}
+      {showCreate && (
+        <div
+          data-testid="create-definition-dialog"
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.4)', display: 'flex',
+            alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          }}
+          onClick={() => setShowCreate(false)}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: '8px', padding: '1.5rem',
+              width: '420px', maxWidth: '90vw', boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 1rem' }}>Create New Definition</h3>
+
+            {createError && (
+              <p style={{ color: '#dc2626', fontSize: '.85rem', marginBottom: '.75rem' }}>{createError}</p>
+            )}
+
+            <div style={{ marginBottom: '.75rem' }}>
+              <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, marginBottom: '.25rem', color: '#374151' }}>
+                Name <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                data-testid="create-name-input"
+                type="text"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                style={{ width: '100%', padding: '.4rem .6rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '.85rem', boxSizing: 'border-box' }}
+                placeholder="My Process"
+              />
+            </div>
+
+            <div style={{ marginBottom: '.75rem' }}>
+              <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, marginBottom: '.25rem', color: '#374151' }}>
+                Version <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                data-testid="create-version-input"
+                type="text"
+                value={createVersion}
+                onChange={(e) => setCreateVersion(e.target.value)}
+                style={{ width: '100%', padding: '.4rem .6rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '.85rem', boxSizing: 'border-box' }}
+                placeholder="1.0.0"
+              />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, marginBottom: '.25rem', color: '#374151' }}>
+                Description
+              </label>
+              <textarea
+                data-testid="create-description-input"
+                value={createDesc}
+                onChange={(e) => setCreateDesc(e.target.value)}
+                style={{ width: '100%', padding: '.4rem .6rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '.85rem', boxSizing: 'border-box', minHeight: '60px' }}
+                placeholder="Optional description"
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '.5rem' }}>
+              <button
+                data-testid="create-cancel"
+                onClick={() => { setShowCreate(false); setCreateError(null) }}
+                style={{ padding: '.4rem .9rem', background: '#f1f5f9', color: '#374151', borderRadius: '4px', border: '1px solid #cbd5e1', cursor: 'pointer', fontSize: '.85rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                data-testid="create-submit"
+                onClick={handleCreate}
+                disabled={!createName.trim() || !createVersion.trim() || createDef.isPending}
+                style={{
+                  padding: '.4rem .9rem', background: !createName.trim() || !createVersion.trim() ? '#93c5fd' : '#2563eb',
+                  color: '#fff', borderRadius: '4px', border: 'none', cursor: !createName.trim() || !createVersion.trim() ? 'not-allowed' : 'pointer',
+                  fontSize: '.85rem',
+                }}
+              >
+                {createDef.isPending ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

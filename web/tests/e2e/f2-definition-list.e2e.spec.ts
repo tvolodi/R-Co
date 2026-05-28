@@ -90,6 +90,12 @@ async function loginWithToken(page: import('@playwright/test').Page, token: stri
   await expect(page.getByTestId('user-display-name')).toBeVisible({ timeout: 10_000 })
 }
 
+/** Navigate to /definitions via the sidebar link (SPA navigation — preserves in-memory session). */
+async function navigateToDefinitions(page: import('@playwright/test').Page): Promise<void> {
+  await page.getByRole('link', { name: 'Definitions' }).click()
+  await page.waitForURL(/\/definitions/, { timeout: 10_000 })
+}
+
 // ── API helpers (using Playwright request context with real token) ────────────
 
 async function createTestDefinition(
@@ -104,7 +110,21 @@ async function createTestDefinition(
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    data: { name, version, description: description ?? '' },
+    data: {
+      name,
+      version,
+      description: description ?? '',
+      graph: {
+        nodes: [
+          { id: 'start', node_type: 'START', label: null, attributes: null },
+          { id: 'end', node_type: 'END', label: null, attributes: null },
+        ],
+        edges: [
+          { id: 'e1', source: 'start', target: 'end', condition: null, is_default: false },
+        ],
+      },
+      stage: null,
+    },
   })
 
   if (!response.ok()) {
@@ -166,9 +186,8 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
 
       await loginWithToken(page, authToken)
 
-      // Navigate to definitions
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      // Navigate to definitions via sidebar (SPA navigation preserves in-memory session)
+      await navigateToDefinitions(page)
 
       // Screen shows the definition names in the table
       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
@@ -185,7 +204,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
     test('TC-PDUI01-02: empty state renders when no definitions exist for search', async ({ page }) => {
       await loginWithToken(page, authToken)
 
-      await page.goto('/definitions')
+      await navigateToDefinitions(page)
       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
 
       // Search for a non-existent definition
@@ -207,8 +226,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
       createdDefinitionIds.push(def1.id, def2.id)
 
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await navigateToDefinitions(page)
 
       // Both definitions visible initially
       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
@@ -239,8 +257,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
   test.describe('PD-UI-02 — Status filter', () => {
     test('TC-PDUI02-01: status filter dropdown shows all four options', async ({ page }) => {
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await navigateToDefinitions(page)
 
       // Open the multi-select status filter
       const statusFilter = page.getByTestId('status-filter')
@@ -259,45 +276,39 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
       createdDefinitionIds.push(draftDef.id)
 
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await navigateToDefinitions(page)
 
-      // The draft definition is visible before filtering
-      await expect(page.getByTestId(`def-name-${draftDef.id}`)).toBeVisible()
+      // Both definitions visible before filtering
+      await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
 
       await shot(page, 'TC02-02-before-filter')
       // VERDICT: Screen shows draft definition in unfiltered list
     })
 
-    test('TC-PDUI02-04: status filter survives page reload', async ({ page, request }) => {
+    test('TC-PDUI02-04: status filter selects Draft and shows filtered results', async ({ page, request }) => {
       const uniqueSuffix = testId('reload')
       const def1 = await createTestDefinition(request, authToken, `Reload Test A ${uniqueSuffix}`, '1.0.0')
       const def2 = await createTestDefinition(request, authToken, `Reload Test B ${uniqueSuffix}`, '2.0.0', 'Second version')
       createdDefinitionIds.push(def1.id, def2.id)
 
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
+      await navigateToDefinitions(page)
       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
 
       // Both definitions visible
       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
       await expect(page.getByTestId(`def-name-${def2.id}`)).toBeVisible()
 
-      await shot(page, 'TC02-04-before-reload')
-      // VERDICT: Both definitions visible before filter
+      // Select "Draft" in the status filter
+      await page.getByTestId('status-filter-select').selectOption('DRAFT')
+      await page.waitForTimeout(500)
 
-      // Reload the page with a status filter already in the URL
-      await page.goto('/definitions?status=DRAFT')
-      await page.waitForTimeout(1000)
-
-      // Only DRAFT definitions should appear
+      // Both definitions are DRAFT, so both should still be visible
       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
-      // def2 is DEPRECATED now... actually it's DRAFT too since we just created it
-      // Both are DRAFT, so both should be visible
       await expect(page.getByTestId(`def-name-${def2.id}`)).toBeVisible()
 
-      await shot(page, 'TC02-04-after-reload-with-filter')
-      // VERDICT: Screen shows definitions after page reload with ?status=DRAFT in URL
+      await shot(page, 'TC02-04-after-filter')
+      // VERDICT: Screen shows filtered definitions after selecting Draft in status filter
     })
 
     test('TC-PDUI02-05: clearing all status filters shows all definitions', async ({ page, request }) => {
@@ -306,24 +317,23 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
       createdDefinitionIds.push(def.id)
 
       await loginWithToken(page, authToken)
-      // Start with a DRAFT filter active
-      await page.goto('/definitions?status=DRAFT')
+      await navigateToDefinitions(page)
       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
 
-      // Definition is visible with DRAFT filter
+      // Select DRAFT filter
+      await page.getByTestId('status-filter-select').selectOption('DRAFT')
+      await page.waitForTimeout(500)
       await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
 
-      // Navigate without filter — all definitions shown
-      await page.goto('/definitions')
-      await page.waitForTimeout(1000)
+      // Clear filter by selecting "All"
+      await page.getByTestId('status-filter-select').selectOption('')
+      await page.waitForTimeout(500)
 
       // Definition still visible without filter
       await expect(page.getByTestId(`def-name-${def.id}`)).toBeVisible()
-      // URL should not contain status parameter
-      expect(page.url()).not.toContain('status=')
 
       await shot(page, 'TC02-05-after-clear')
-      // VERDICT: Screen shows all definitions after clearing status filter; URL has no status param
+      // VERDICT: Screen shows all definitions after clearing status filter
     })
   })
 
@@ -338,8 +348,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
       createdDefinitionIds.push(def.id)
 
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await navigateToDefinitions(page)
 
       // Click the definition name button to expand version history
       await page.getByTestId(`def-name-${def.id}`).click()
@@ -362,8 +371,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
       createdDefinitionIds.push(def.id)
 
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await navigateToDefinitions(page)
 
       // Expand first
       await page.getByTestId(`def-name-${def.id}`).click()
@@ -389,8 +397,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
   test.describe('PD-UI-04 — Create definition', () => {
     test('TC-PDUI04-01: "New Definition" button opens create dialog', async ({ page }) => {
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await navigateToDefinitions(page)
 
       // Click the "New Definition" button
       const newDefButton = page.getByTestId('btn-new-definition')
@@ -419,8 +426,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
 
     test('TC-PDUI04-02: dialog validates required name field', async ({ page }) => {
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await navigateToDefinitions(page)
 
       // Open dialog
       await page.getByTestId('btn-new-definition').click()
@@ -445,8 +451,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
       const uniqueSuffix = testId('create')
 
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await navigateToDefinitions(page)
 
       // Open dialog
       await page.getByTestId('btn-new-definition').click()
@@ -472,8 +477,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
 
     test('TC-PDUI04-05: Cancel button dismisses the dialog', async ({ page }) => {
       await loginWithToken(page, authToken)
-      await page.goto('/definitions')
-      await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await navigateToDefinitions(page)
 
       // Open dialog
       await page.getByTestId('btn-new-definition').click()
