@@ -18,7 +18,7 @@ export default function DefinitionListPage() {
 
   return (
     <div style={{ padding: '1.5rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+      <div data-testid="filter-bar" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
         <h2 style={{ margin: 0 }}>Process Definitions</h2>
         <select
           value={status ?? ''}
