@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDefinitions, useDefinitionVersions, useActivateDefinition, useArchiveDefinition, useCreateDefinition } from '@/hooks/useDefinitions'
-import type { DefinitionStatus, ProcessDefinition } from '@/types/api'
+import type { DefinitionStatus, ProcessDefinition, DefinitionGraph } from '@/types/api'
 
 const STATUS_BADGE: Record<string, string> = {
   DRAFT:      '#f59e0b',
@@ -22,6 +22,16 @@ export default function DefinitionListPage() {
   const [createValidationErrors, setCreateValidationErrors] = useState<{ name?: string; version?: string }>({})
   const [expandedDefId, setExpandedDefId] = useState<string | null>(null)
   const [expandedDefName, setExpandedDefName] = useState<string | null>(null)
+  const [pendingNavId, setPendingNavId] = useState<string | null>(null)
+
+  // Navigate to the newly-created definition after React commits all state.
+  // Using useEffect ensures this runs outside the mutation's async handler,
+  // avoiding React 18 batching interactions with simultaneous query invalidations.
+  useEffect(() => {
+    if (pendingNavId) {
+      navigate(`/definitions/${pendingNavId}`)
+    }
+  }, [pendingNavId, navigate])
   const { data, isLoading } = useDefinitions({ status, name: search || undefined })
   const versionsQuery = useDefinitionVersions(expandedDefName ?? '')
   const activate = useActivateDefinition()
@@ -46,20 +56,20 @@ export default function DefinitionListPage() {
         description: createDesc.trim(),
         graph: {
           nodes: [
-            { id: 'start', node_type: 'START', label: null } as any,
-            { id: 'end', node_type: 'END', label: null } as any,
+            { id: 'start', node_type: 'START' as string, label: null },
+            { id: 'end', node_type: 'END' as string, label: null },
           ],
           edges: [
-            { id: 'e1', source: 'start', target: 'end', condition: null, is_default: false } as any,
+            { id: 'e1', source: 'start', target: 'end', condition: null, is_default: false },
           ],
-        } as any,
+        } as unknown as DefinitionGraph,
       })
       setShowCreate(false)
       setCreateName('')
       setCreateVersion('')
       setCreateDesc('')
       setCreateValidationErrors({})
-      navigate(`/definitions/${result.id}`)
+      setPendingNavId(result.id)
     } catch (err: unknown) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create definition')
     }

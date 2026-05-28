@@ -228,6 +228,37 @@ fn serveRequest(
             }
             return null;
         }
+
+        /// Like get() but percent-decodes the value: '+' → space, '%XX' → byte.
+        /// Returns a slice allocated with `alloc`; null if the key is absent.
+        fn getDecoded(qs: []const u8, key: []const u8, alloc: std.mem.Allocator) ?[]u8 {
+            const raw = get(qs, key) orelse return null;
+            var out = alloc.alloc(u8, raw.len) catch return null; // OOM: treat as absent
+            var i: usize = 0;
+            var j: usize = 0;
+            while (i < raw.len) {
+                if (raw[i] == '+') {
+                    out[j] = ' ';
+                    i += 1;
+                    j += 1;
+                } else if (raw[i] == '%' and i + 2 < raw.len) {
+                    const byte = std.fmt.parseInt(u8, raw[i + 1 .. i + 3], 16) catch {
+                        out[j] = raw[i];
+                        i += 1;
+                        j += 1;
+                        continue;
+                    };
+                    out[j] = byte;
+                    i += 3;
+                    j += 1;
+                } else {
+                    out[j] = raw[i];
+                    i += 1;
+                    j += 1;
+                }
+            }
+            return out[0..j];
+        }
     };
 
     const method = request.head.method;
@@ -290,7 +321,7 @@ fn serveRequest(
                 // GET /api/v1/definitions  or  POST /api/v1/definitions
                 if (method == .GET) {
                     const params = definition_routes.ListQueryParams{
-                        .name = QS.get(query_str, "name"),
+                        .name = QS.getDecoded(query_str, "name", req_alloc),
                         .status = QS.get(query_str, "status"),
                         .stage = QS.get(query_str, "stage"),
                         .cursor = QS.get(query_str, "cursor"),
