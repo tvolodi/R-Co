@@ -1,0 +1,78 @@
+{
+  "run_id": "WF02-oidcf2-20260528",
+  "created_at": "2026-05-28T10:55:22Z",
+  "rules_version": "1.1",
+  "requirement_ids": ["OIDC-F-05", "OIDC-F-06"],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "steps": {
+    "code-designer": {
+      "step": "01",
+      "started_at": "2026-05-28T10:23:08Z",
+      "completed_at": "2026-05-28T10:27:14Z",
+      "actual_minutes": 4.1,
+      "estimated_minutes": 32,
+      "variance_pct": -87
+    },
+    "backend-dev": {
+      "step": "02a",
+      "started_at": "2026-05-28T10:30:21Z",
+      "completed_at": "2026-05-28T10:39:37Z",
+      "actual_minutes": 9.3,
+      "estimated_minutes": 12,
+      "variance_pct": -22
+    },
+    "frontend-dev": {
+      "step": "02b",
+      "started_at": "2026-05-28T10:40:09Z",
+      "completed_at": "2026-05-28T10:43:13Z",
+      "actual_minutes": 3.1,
+      "estimated_minutes": 44,
+      "variance_pct": -93
+    },
+    "test-designer": {
+      "step": "03",
+      "started_at": "2026-05-28T10:43:41Z",
+      "completed_at": "2026-05-28T10:45:30Z",
+      "actual_minutes": 1.8,
+      "estimated_minutes": 8,
+      "variance_pct": -78
+    },
+    "test-runner": {
+      "step": "04",
+      "started_at": "2026-05-28T10:47:52Z",
+      "completed_at": "2026-05-28T10:51:40Z",
+      "actual_minutes": 3.8,
+      "estimated_minutes": 4,
+      "variance_pct": -5
+    },
+    "release-validator": {
+      "step": "05",
+      "started_at": "2026-05-28T10:52:18Z",
+      "completed_at": "2026-05-28T10:52:48Z",
+      "actual_minutes": 0.5,
+      "estimated_minutes": 10,
+      "variance_pct": -95
+    },
+    "doc-updater": {
+      "step": "06",
+      "started_at": "2026-05-28T10:52:18Z",
+      "completed_at": "2026-05-28T10:55:22Z",
+      "actual_minutes": 3.1,
+      "estimated_minutes": 2,
+      "variance_pct": 55
+    }
+  },
+  "totals": {
+    "estimated_minutes": 112,
+    "actual_minutes": 25.7,
+    "variance_pct": -77
+  },
+  "notes": [
+    "All steps significantly faster than estimated at difficulty-3/medium-surface.",
+    "Frontend-dev (-93%) and release-validator (-95%) were fastest relative to estimates — requirements were straightforward and well-designed.",
+    "Backend-dev (-22%) closest to estimate — new migration + route handler matched standard complexity.",
+    "doc-updater (+55%) slightly over estimate — retrospective computation added overhead.",
+    "Systematic underutilisation of estimated time across all steps suggests difficulty-3 estimates are calibrated for more complex integration scenarios than this subdomain-routing feature required."
+  ]
+}

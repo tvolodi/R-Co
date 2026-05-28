@@ -1,0 +1,51 @@
+{
+  "run_id": "WF02-oidcf2-20260528",
+  "timestamp": "2026-05-28T10:51:40Z",
+  "suite": "oidcf2-subdomain E2E",
+  "infrastructure": {
+    "backend": "http://localhost:8080 (bpm-platform.exe)",
+    "frontend": "http://127.0.0.1:4173 (Vite dev, started by Playwright webServer)",
+    "keycloak": "http://localhost:8081 (running)"
+  },
+  "build": {
+    "type_check": "PASS (tsc --noEmit exit 0)",
+    "build": "PASS (vite build exit 0, 124 modules)"
+  },
+  "results": [
+    {
+      "tc": "TC-OIDCF2-01",
+      "requirement": "OIDC-F-05",
+      "status": "PASS",
+      "duration_ms": 544,
+      "message": "GET /api/tenant-config?host=unknown.example.com returned 200 with oidc_authority containing 'bpm-default' and client_id='bpm-platform-api'. Screen shows login page after API call."
+    },
+    {
+      "tc": "TC-OIDCF2-02",
+      "requirement": "OIDC-F-05",
+      "status": "PASS",
+      "duration_ms": 358,
+      "message": "GET /api/tenant-config?host=localhost returned 200 with non-empty oidc_authority and client_id strings. Screen shows login page after API call."
+    },
+    {
+      "tc": "TC-OIDCF2-03",
+      "requirement": "OIDC-F-06",
+      "status": "PASS",
+      "duration_ms": 485,
+      "message": "SSO button click triggered Keycloak auth request to URL containing 'bpm-default' realm. Screen shows login page; outgoing auth URL confirmed to target bpm-default realm."
+    },
+    {
+      "tc": "TC-OIDCF2-04",
+      "requirement": "OIDC-F-06",
+      "status": "PASS",
+      "duration_ms": 363,
+      "message": "When /api/tenant-config returns 500, login page still renders with SSO button visible and page-login data-testid present. App did not crash; screen shows complete login page."
+    }
+  ],
+  "summary": {
+    "total": 4,
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0
+  },
+  "overall": "PASS"
+}

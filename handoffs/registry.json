@@ -6655,7 +6655,7 @@
       "from_agent": "ORCH",
       "to_agent": "FRONTEND-DEV",
       "created_at": "2026-05-28T10:20:00Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage F1.6 - Subdomain Tenant Routing"
     },
     {
@@ -6666,7 +6666,7 @@
       "from_agent": "ORCH",
       "to_agent": "TEST-DESIGNER",
       "created_at": "2026-05-28T10:20:00Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage F1.6 - Subdomain Tenant Routing"
     },
     {
@@ -6677,7 +6677,7 @@
       "from_agent": "ORCH",
       "to_agent": "TEST-DESIGN-VALIDATOR",
       "created_at": "2026-05-28T10:20:00Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage F1.6 - Subdomain Tenant Routing"
     },
     {
@@ -6688,7 +6688,7 @@
       "from_agent": "ORCH",
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-05-28T10:20:00Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage F1.6 - Subdomain Tenant Routing"
     },
     {
@@ -6699,7 +6699,7 @@
       "from_agent": "ORCH",
       "to_agent": "RELEASE-VALIDATOR",
       "created_at": "2026-05-28T10:20:00Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage F1.6 - Subdomain Tenant Routing"
     },
     {
@@ -6710,7 +6710,7 @@
       "from_agent": "ORCH",
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-05-28T10:20:00Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage F1.6 - Subdomain Tenant Routing"
     },
     {

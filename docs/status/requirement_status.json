@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-28T10:05:38Z",
+  "last_updated": "2026-05-28T10:55:22Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -2579,6 +2579,22 @@
       "priority": "MUST",
       "title": "OIDC-aware logout",
       "released_in": "WF02-oidcf-20260528",
+      "release_date": "2026-05-28"
+    },
+    "OIDC-F-05": {
+      "status": "RELEASED",
+      "stage": "F1.6",
+      "priority": "MUST",
+      "title": "Tenant-config discovery endpoint",
+      "released_in": "WF02-oidcf2-20260528",
+      "release_date": "2026-05-28"
+    },
+    "OIDC-F-06": {
+      "status": "RELEASED",
+      "stage": "F1.6",
+      "priority": "MUST",
+      "title": "Dynamic OIDC config from hostname",
+      "released_in": "WF02-oidcf2-20260528",
       "release_date": "2026-05-28"
     }
   }
