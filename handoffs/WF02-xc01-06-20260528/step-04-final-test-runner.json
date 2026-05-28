@@ -37,123 +37,123 @@
     "from_agent":  "ORCH",
     "step":  "04-final",
     "to_agent":  "TEST-RUNNER",
-    "completed_at":  "2026-05-28T08:47:02Z",
+    "completed_at":  "2026-05-28T08:50:00Z",
     "result":  {
-        "status": "FAIL",
-        "summary": "XC test suite execution complete: 13/46 tests PASSED (28.3% pass rate). XC-01 fully passing (7/7); XC-02 mostly passing (3/8); XC-03 blocked by missing repository_artifacts table (0/9); XC-04 mostly passing (3/5); XC-05 all failing (0/8); XC-06 build error preventing execution. Critical blockers: missing XC-03 schema table, XC-06 compilation failure, trigger logic issues in XC-02.",
-        "test_counts": {
-            "total": 46,
-            "passed": 13,
-            "failed": 33
-        },
-        "test_results_by_requirement": [
-            {
-                "requirement_id": "XC-01",
-                "title": "Trace Propagation",
-                "passed": 7,
-                "total": 7,
-                "status": "PASS"
-            },
-            {
-                "requirement_id": "XC-02",
-                "title": "Audit Immutability",
-                "passed": 3,
-                "total": 8,
-                "status": "FAIL",
-                "notes": "3 passing, 5 failing due to trigger logic and test assertion issues"
-            },
-            {
-                "requirement_id": "XC-03",
-                "title": "Configuration Repository",
-                "passed": 0,
-                "total": 9,
-                "status": "FAIL",
-                "notes": "All tests blocked - repository_artifacts table does not exist"
-            },
-            {
-                "requirement_id": "XC-04",
-                "title": "Kernel Determinism",
-                "passed": 3,
-                "total": 5,
-                "status": "FAIL",
-                "notes": "2 tests failing"
-            },
-            {
-                "requirement_id": "XC-05",
-                "title": "Deterministic Replay",
-                "passed": 0,
-                "total": 8,
-                "status": "FAIL",
-                "notes": "All 8 tests failing - root cause needs investigation"
-            },
-            {
-                "requirement_id": "XC-06",
-                "title": "Backwards Compatibility",
-                "passed": 0,
-                "total": 4,
-                "status": "FAIL",
-                "notes": "Test compilation failed - cannot execute"
-            }
-        ],
-        "critical_issues": [
-            {
-                "issue": "Repository artifacts table missing",
-                "affected_tests": 9,
-                "requirement": "XC-03",
-                "severity": "CRITICAL"
-            },
-            {
-                "issue": "XC-06 test compilation failure",
-                "affected_tests": 4,
-                "requirement": "XC-06",
-                "severity": "CRITICAL"
-            },
-            {
-                "issue": "Immutability trigger logic broken in XC-02",
-                "affected_tests": 2,
-                "requirement": "XC-02",
-                "severity": "HIGH"
-            }
-        ],
-        "artifacts_out": [
-            "tests/reports/xc-requirements-test-run-20260528-084702.json",
-            "tests/integration/xc02_audit_immutability_test.zig (fixed: action_timestamp -> timestamp)",
-            "tests/integration/xc03_configuration_repository_test.zig (fixed: action_timestamp -> timestamp)",
-            "tests/integration/xc06_backwards_compatibility_test.zig (fixed: action_timestamp -> timestamp)"
-        ],
-        "issues": [
-            {
-                "severity": "CRITICAL",
-                "code": "SCHEMA_MISSING_XC03",
-                "description": "repository_artifacts table does not exist - migration 052_xc03_configuration_repository.sql may not have been applied correctly",
-                "impact": "All 9 XC-03 tests blocked with ServerError"
-            },
-            {
-                "severity": "CRITICAL",
-                "code": "BUILD_FAILED_XC06",
-                "description": "XC-06 test suite fails to compile",
-                "impact": "All 4 XC-06 tests cannot execute"
-            },
-            {
-                "severity": "HIGH",
-                "code": "TRIGGER_LOGIC_XC02",
-                "description": "Immutability trigger in migration 051 broken - TC-XC-02-01 expects error.UnexpectedRow from trigger but gets error.ServerError",
-                "impact": "1 XC-02 test fails, 1 more test has broken assertion"
-            },
-            {
-                "severity": "HIGH",
-                "code": "CHAIN_HASH_LEGACY",
-                "description": "Chain hash computation incorrectly populates chain_hash for legacy entries - should remain NULL",
-                "impact": "TC-XC-02-06 fails assertion"
-            },
-            {
-                "severity": "MEDIUM",
-                "code": "UUID_LEAK",
-                "description": "Tests leak UUID allocations - newUuidV4 calls allocator.dupe but test strings not freed",
-                "impact": "4 tests report memory leaks but still pass"
-            }
-        ],
-        "next_action": "ESCALATE to ORCH with critical blockers - requires fixes to XC-03 schema table creation, XC-06 test compilation, and XC-02 trigger logic before tests can pass"
-    },
+                   "status":  "FAIL",
+                   "summary":  "XC test suite execution complete: 13/46 tests PASSED (28.3% pass rate). XC-01 fully passing (7/7); XC-02 mostly passing (3/8); XC-03 blocked by missing repository_artifacts table (0/9); XC-04 mostly passing (3/5); XC-05 all failing (0/8); XC-06 build error preventing execution. Critical blockers: missing XC-03 schema table, XC-06 compilation failure, trigger logic issues in XC-02.",
+                   "test_counts":  {
+                                       "total":  46,
+                                       "passed":  13,
+                                       "failed":  33
+                                   },
+                   "test_results_by_requirement":  [
+                                                       {
+                                                           "requirement_id":  "XC-01",
+                                                           "title":  "Trace Propagation",
+                                                           "passed":  7,
+                                                           "total":  7,
+                                                           "status":  "PASS"
+                                                       },
+                                                       {
+                                                           "requirement_id":  "XC-02",
+                                                           "title":  "Audit Immutability",
+                                                           "passed":  3,
+                                                           "total":  8,
+                                                           "status":  "FAIL",
+                                                           "notes":  "3 passing, 5 failing due to trigger logic and test assertion issues"
+                                                       },
+                                                       {
+                                                           "requirement_id":  "XC-03",
+                                                           "title":  "Configuration Repository",
+                                                           "passed":  0,
+                                                           "total":  9,
+                                                           "status":  "FAIL",
+                                                           "notes":  "All tests blocked - repository_artifacts table does not exist"
+                                                       },
+                                                       {
+                                                           "requirement_id":  "XC-04",
+                                                           "title":  "Kernel Determinism",
+                                                           "passed":  3,
+                                                           "total":  5,
+                                                           "status":  "FAIL",
+                                                           "notes":  "2 tests failing"
+                                                       },
+                                                       {
+                                                           "requirement_id":  "XC-05",
+                                                           "title":  "Deterministic Replay",
+                                                           "passed":  0,
+                                                           "total":  8,
+                                                           "status":  "FAIL",
+                                                           "notes":  "All 8 tests failing - root cause needs investigation"
+                                                       },
+                                                       {
+                                                           "requirement_id":  "XC-06",
+                                                           "title":  "Backwards Compatibility",
+                                                           "passed":  0,
+                                                           "total":  4,
+                                                           "status":  "FAIL",
+                                                           "notes":  "Test compilation failed - cannot execute"
+                                                       }
+                                                   ],
+                   "critical_issues":  [
+                                           {
+                                               "issue":  "Repository artifacts table missing",
+                                               "affected_tests":  9,
+                                               "requirement":  "XC-03",
+                                               "severity":  "CRITICAL"
+                                           },
+                                           {
+                                               "issue":  "XC-06 test compilation failure",
+                                               "affected_tests":  4,
+                                               "requirement":  "XC-06",
+                                               "severity":  "CRITICAL"
+                                           },
+                                           {
+                                               "issue":  "Immutability trigger logic broken in XC-02",
+                                               "affected_tests":  2,
+                                               "requirement":  "XC-02",
+                                               "severity":  "HIGH"
+                                           }
+                                       ],
+                   "artifacts_out":  [
+                                         "tests/reports/xc-requirements-test-run-20260528-084702.json",
+                                         "tests/integration/xc02_audit_immutability_test.zig (fixed: action_timestamp -\u003e timestamp)",
+                                         "tests/integration/xc03_configuration_repository_test.zig (fixed: action_timestamp -\u003e timestamp)",
+                                         "tests/integration/xc06_backwards_compatibility_test.zig (fixed: action_timestamp -\u003e timestamp)"
+                                     ],
+                   "issues":  [
+                                  {
+                                      "severity":  "CRITICAL",
+                                      "code":  "SCHEMA_MISSING_XC03",
+                                      "description":  "repository_artifacts table does not exist - migration 052_xc03_configuration_repository.sql may not have been applied correctly",
+                                      "impact":  "All 9 XC-03 tests blocked with ServerError"
+                                  },
+                                  {
+                                      "severity":  "CRITICAL",
+                                      "code":  "BUILD_FAILED_XC06",
+                                      "description":  "XC-06 test suite fails to compile",
+                                      "impact":  "All 4 XC-06 tests cannot execute"
+                                  },
+                                  {
+                                      "severity":  "HIGH",
+                                      "code":  "TRIGGER_LOGIC_XC02",
+                                      "description":  "Immutability trigger in migration 051 broken - TC-XC-02-01 expects error.UnexpectedRow from trigger but gets error.ServerError",
+                                      "impact":  "1 XC-02 test fails, 1 more test has broken assertion"
+                                  },
+                                  {
+                                      "severity":  "HIGH",
+                                      "code":  "CHAIN_HASH_LEGACY",
+                                      "description":  "Chain hash computation incorrectly populates chain_hash for legacy entries - should remain NULL",
+                                      "impact":  "TC-XC-02-06 fails assertion"
+                                  },
+                                  {
+                                      "severity":  "MEDIUM",
+                                      "code":  "UUID_LEAK",
+                                      "description":  "Tests leak UUID allocations - newUuidV4 calls allocator.dupe but test strings not freed",
+                                      "impact":  "4 tests report memory leaks but still pass"
+                                  }
+                              ],
+                   "next_action":  "ESCALATE to ORCH with critical blockers - requires fixes to XC-03 schema table creation, XC-06 test compilation, and XC-02 trigger logic before tests can pass"
+               },
     "priority":  "NORMAL"
 }

@@ -42,7 +42,14 @@ When running as **ORCH**, the Zero Manual Work directive is fulfilled by running
 - If unrelated code has compile errors that prevent the build → fix them.
 - If an unrelated migration or schema issue blocks your migration → fix the blocker first.
 - If unrelated test failures mask your test results → fix those tests too.
+- If test execution reveals failures → fix them in the codebase; do NOT report and ask for rework.
 - "Out of scope" and "unrelated to current task" are **NOT** valid reasons to leave a blocker unfixed.
+
+**Test Execution Rule (applies to TEST-RUNNER and all agents running tests):**
+- When tests fail, you MUST determine root cause and fix it immediately.
+- Do NOT stop at reporting failures. Route to appropriate agent (BACKEND-DEV) for fixes via handoff.
+- Keep looping: TEST-RUNNER → detect failure → route to BACKEND-DEV → fix → TEST-RUNNER retests → repeat until all tests PASS.
+- Cycle completes only when: all tests pass OR max rework iterations exhausted → escalate.
 
 **Only exception:** a destructive or irreversible change to unrelated functionality (e.g. dropping a production table). Flag those for Orchestrator escalation instead.
 

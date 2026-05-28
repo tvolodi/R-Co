@@ -1,0 +1,47 @@
+﻿{
+    "run_id":  "WF02-xc01-06-20260528",
+    "handoff_id":  "bc02a09a-14ee-4e3d-b28f-d4980a2aa92e",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "XC-02: Audit trigger logic fixed; 8/8 tests PASS",
+                                             "XC-03: repository_artifacts table exists and migration is correct; 9/9 tests PASS",
+                                             "XC-04: Kernel determinism tests fixed; 5/5 tests PASS",
+                                             "XC-05: Deterministic replay implementation fixed; 8/8 tests PASS",
+                                             "XC-06: Test compilation errors fixed; 4/4 tests PASS",
+                                             "Final result: 46/46 tests PASS (100%)",
+                                             "All changes committed to feature branch"
+                                         ],
+                 "description":  "FINAL REWORK (3/3): XC-01 is 100% passing (7/7). Fix all remaining test failures (33 tests) to reach 100% pass rate (46/46). Issues:\n\n[1] XC-02 (3/8 pass): Audit trigger \bpm_audit_apply_chain_hash has logic errors. Tests expect specific error handling for duplicate key violations and chain hash computation. Fix trigger logic.\n\n[2] XC-03 (0/9 fail): CRITICAL - \repository_artifacts table not created or schema mismatch in migration 052. Verify migration 052 creates table correctly; add/fix migration if needed. Required columns: artifact_id, artifact_kind, tenant_id, etc.\n\n[3] XC-04 (3/5 pass): Test logic issues in determinism validation. Root cause unknown; investigate test assertions and fix kernel determinism implementation.\n\n[4] XC-05 (0/8 fail): Deterministic replay logic broken. Tests fail during \reconstructInstancePointInTime() execution. Fix replay implementation.\n\n[5] XC-06 (0/4 fail): Test compilation error. Fix build errors in xc06_backwards_compatibility_test.zig.\n\nAfter fixes: zig build test-xc01 through test-xc06 must achieve 46/46 PASS rate. This is FINAL rework—no further iterations allowed.",
+                 "functions_to_call":  [
+                                           "fn:fix-all-test-failures",
+                                           "fn:verify-100-percent-pass-rate"
+                                       ]
+             },
+    "started_at":  null,
+    "max_rework":  3,
+    "created_at":  "2026-05-28T08:50:00Z",
+    "rework_count":  3,
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "XC-02",
+                                            "XC-03",
+                                            "XC-04",
+                                            "XC-05",
+                                            "XC-06"
+                                        ],
+                    "stage":  "XC Cross-cutting Requirements",
+                    "artifacts_in":  [
+                                         "tests/reports/xc-requirements-test-run-20260528-084702.json"
+                                     ]
+                },
+    "status":  "PENDING",
+    "from_agent":  "ORCH",
+    "step":  "02-rework3-final",
+    "to_agent":  "BACKEND-DEV",
+    "completed_at":  null,
+    "result":  null,
+    "priority":  "CRITICAL"
+}

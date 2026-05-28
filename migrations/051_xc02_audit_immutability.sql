@@ -17,6 +17,10 @@ ALTER TABLE audit_entries
 ALTER TABLE audit_entries
     ADD COLUMN IF NOT EXISTS prev_chain_hash TEXT NULL;
 
+-- Add trace_id column for distributed tracing (after chain hash columns)
+ALTER TABLE audit_entries
+    ADD COLUMN IF NOT EXISTS trace_id TEXT NULL;
+
 -- Create index for efficient chain queries (using timestamp instead of created_at)
 CREATE INDEX IF NOT EXISTS idx_audit_entries_tenant_chain
     ON audit_entries (tenant_id, "timestamp" DESC, audit_id DESC)

@@ -300,9 +300,11 @@ test "TC-XC-06-06: archived events remain queryable after upgrade" {
     for (0..10) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
         const idem_key = try std.fmt.allocPrint(alloc, "archived-{d}", .{i});
+        const payload = try std.fmt.allocPrint(alloc, "{{\"index\":{d}}}", .{i});
         defer {
             alloc.free(event_id);
             alloc.free(idem_key);
+            alloc.free(payload);
         }
 
         _ = try harness.conn.exec(
@@ -316,7 +318,7 @@ test "TC-XC-06-06: archived events remain queryable after upgrade" {
                 instance_id,
                 tenant_id,
                 "test.event",
-                "{\"index\":" ++ try std.fmt.allocPrint(alloc, "{d}", .{i}) ++ "}",
+                payload,
                 idem_key,
             },
         );
