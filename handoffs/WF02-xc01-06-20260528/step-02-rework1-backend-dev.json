@@ -1,0 +1,44 @@
+﻿{
+    "run_id":  "WF02-xc01-06-20260528",
+    "handoff_id":  "da1a4ad1-2bb5-48f3-9d9c-02c3104a0bb8",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "ArrayList API compatibility fixed in all test files (XC-02, 04, 05, 06)",
+                                             "XC-03 database schema initialized or functions created as needed",
+                                             "zig build test-xc02 through test-xc06 all compile and execute",
+                                             "All 46 tests pass (7 XC-01 + 8 XC-02 + 9 XC-03 + 5 XC-04 + 8 XC-05 + 9 XC-06)"
+                                         ],
+                 "description":  "REWORK 1: Fix XC test failures blocking 39 of 46 tests.\n\nBLOCKERS:\n[BLOCKER] ArrayList.init() syntax in XC-02, XC-04, XC-05, XC-06 tests incompatible with Zig 0.16.0; update ArrayList initialization to match current API (34 test cases blocked)\n[BLOCKER] XC-03 tests fail at runtime - missing database schema or functions required by XC-03 (configuration repository) implementation (9 test cases blocked)\n\nNote: XC-01 fully passing (7/7 tests). Verify that XC-01 requirements (trace propagation) work end-to-end.\n\nFix ArrayList API issues, ensure XC-03 database schema is initialized, then zig build test-xc02 through test-xc06 must pass.",
+                 "functions_to_call":  [
+                                           "fn:fix-arraylist-api",
+                                           "fn:validate-xc03-schema"
+                                       ]
+             },
+    "started_at":  null,
+    "max_rework":  2,
+    "created_at":  "2026-05-28T08:24:06Z",
+    "rework_count":  1,
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "XC-02",
+                                            "XC-03",
+                                            "XC-04",
+                                            "XC-05",
+                                            "XC-06"
+                                        ],
+                    "stage":  "XC Cross-cutting Requirements",
+                    "artifacts_in":  [
+                                         "tests/reports/xc-requirements-test-run-20260528-082406.json"
+                                     ]
+                },
+    "status":  "PENDING",
+    "from_agent":  "ORCH",
+    "step":  "02-rework1",
+    "to_agent":  "BACKEND-DEV",
+    "completed_at":  null,
+    "result":  null,
+    "priority":  "HIGH"
+}

@@ -5,10 +5,11 @@
 
 const std = @import("std");
 const testing = std.testing;
+const bpm = @import("bpm");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
-const uuid_mod = @import("../util/uuid.zig");
+const uuid_mod = bpm.uuid;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TC-XC-04-01: Static analysis — no LLM API patterns in kernel modules
@@ -160,10 +161,10 @@ test "TC-XC-04-04: audit chain hash computation is deterministic" {
     }
 
     // Compute same hash three times
-    var hashes = std.ArrayList([]u8).init(alloc);
+    var hashes: std.ArrayList([]u8) = .empty;
     defer {
         for (hashes.items) |h| alloc.free(h);
-        hashes.deinit();
+        hashes.deinit(alloc);
     }
 
     for (0..3) |_| {
@@ -184,7 +185,7 @@ test "TC-XC-04-04: audit chain hash computation is deterministic" {
         try testing.expectEqual(@as(usize, 1), query.rows.len);
         const hash_str = query.rows[0][0] orelse "";
         const hash_copy = try alloc.dupe(u8, hash_str);
-        try hashes.append(hash_copy);
+        try hashes.append(alloc, hash_copy);
     }
 
     // All three hashes should be identical

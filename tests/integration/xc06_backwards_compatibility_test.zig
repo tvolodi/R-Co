@@ -5,10 +5,11 @@
 
 const std = @import("std");
 const testing = std.testing;
+const bpm = @import("bpm");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
-const uuid_mod = @import("../util/uuid.zig");
+const uuid_mod = bpm.uuid;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TC-XC-06-01: Schema migrations are idempotent and additive

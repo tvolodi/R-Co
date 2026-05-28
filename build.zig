@@ -1157,6 +1157,72 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc34_migration_helper_tests = b.addRunArtifact(oidc34_migration_helper_tests);
 
+    // XC-01: Trace Propagation integration tests (requires BPM_TEST_DB_URL)
+    const xc01_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/xc01_trace_propagation_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_xc01_integration_tests = b.addRunArtifact(xc01_integration_tests);
+
+    // XC-02: Audit Immutability integration tests (requires BPM_TEST_DB_URL)
+    const xc02_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/xc02_audit_immutability_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_xc02_integration_tests = b.addRunArtifact(xc02_integration_tests);
+
+    // XC-03: Configuration Repository integration tests (requires BPM_TEST_DB_URL)
+    const xc03_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/xc03_configuration_repository_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_xc03_integration_tests = b.addRunArtifact(xc03_integration_tests);
+
+    // XC-04: Kernel Determinism integration tests (requires BPM_TEST_DB_URL)
+    const xc04_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/xc04_kernel_determinism_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_xc04_integration_tests = b.addRunArtifact(xc04_integration_tests);
+
+    // XC-05: Deterministic Replay integration tests (requires BPM_TEST_DB_URL)
+    const xc05_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/xc05_deterministic_replay_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_xc05_integration_tests = b.addRunArtifact(xc05_integration_tests);
+
+    // XC-06: Backwards Compatibility integration tests (requires BPM_TEST_DB_URL)
+    const xc06_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/xc06_backwards_compatibility_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_xc06_integration_tests = b.addRunArtifact(xc06_integration_tests);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
@@ -1174,6 +1240,12 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_oidc14_integration_tests.step);
     test_integration_step.dependOn(&run_oidc15_integration_tests.step);
     test_integration_step.dependOn(&run_oidc34_migration_helper_tests.step);
+    test_integration_step.dependOn(&run_xc01_integration_tests.step);
+    test_integration_step.dependOn(&run_xc02_integration_tests.step);
+    test_integration_step.dependOn(&run_xc03_integration_tests.step);
+    test_integration_step.dependOn(&run_xc04_integration_tests.step);
+    test_integration_step.dependOn(&run_xc05_integration_tests.step);
+    test_integration_step.dependOn(&run_xc06_integration_tests.step);
 
     const test_integration_obs03_step = b.step("test-integration-obs03", "Run OBS-03 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs03_step.dependOn(&clean_test_db.step);
@@ -1198,6 +1270,31 @@ pub fn build(b: *std.Build) void {
     const test_oidc31_step = b.step("test-integration-oidc31", "Run OIDC-31 E2E auth-suite preflight tests (requires BPM_TEST_DB_URL, BPM_TEST_URL, BPM_IDP_BASE_URL)");
     test_oidc31_step.dependOn(&clean_test_db.step);
     test_oidc31_step.dependOn(&run_oidc31_e2e_preflight_tests.step);
+
+    // XC test suite: 6 cross-cutting requirements
+    const test_xc01_step = b.step("test-xc01", "Run XC-01 Trace Propagation integration tests (requires BPM_TEST_DB_URL)");
+    test_xc01_step.dependOn(&clean_test_db.step);
+    test_xc01_step.dependOn(&run_xc01_integration_tests.step);
+
+    const test_xc02_step = b.step("test-xc02", "Run XC-02 Audit Immutability integration tests (requires BPM_TEST_DB_URL)");
+    test_xc02_step.dependOn(&clean_test_db.step);
+    test_xc02_step.dependOn(&run_xc02_integration_tests.step);
+
+    const test_xc03_step = b.step("test-xc03", "Run XC-03 Configuration Repository integration tests (requires BPM_TEST_DB_URL)");
+    test_xc03_step.dependOn(&clean_test_db.step);
+    test_xc03_step.dependOn(&run_xc03_integration_tests.step);
+
+    const test_xc04_step = b.step("test-xc04", "Run XC-04 Kernel Determinism integration tests (requires BPM_TEST_DB_URL)");
+    test_xc04_step.dependOn(&clean_test_db.step);
+    test_xc04_step.dependOn(&run_xc04_integration_tests.step);
+
+    const test_xc05_step = b.step("test-xc05", "Run XC-05 Deterministic Replay integration tests (requires BPM_TEST_DB_URL)");
+    test_xc05_step.dependOn(&clean_test_db.step);
+    test_xc05_step.dependOn(&run_xc05_integration_tests.step);
+
+    const test_xc06_step = b.step("test-xc06", "Run XC-06 Backwards Compatibility integration tests (requires BPM_TEST_DB_URL)");
+    test_xc06_step.dependOn(&clean_test_db.step);
+    test_xc06_step.dependOn(&run_xc06_integration_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

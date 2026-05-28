@@ -5,10 +5,11 @@
 
 const std = @import("std");
 const testing = std.testing;
+const bpm = @import("bpm");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
-const uuid_mod = @import("../util/uuid.zig");
+const uuid_mod = bpm.uuid;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TC-XC-05-01: Point-in-time reconstruction produces matching state
@@ -157,10 +158,10 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
     }
 
     // Query state at sequence 10 three times
-    var states = std.ArrayList([]u8).init(alloc);
+    var states: std.ArrayList([]u8) = .empty;
     defer {
         for (states.items) |s| alloc.free(s);
-        states.deinit();
+        states.deinit(alloc);
     }
 
     for (0..3) |_| {
@@ -175,7 +176,7 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
 
         const count_str = query.rows[0][0] orelse "0";
         const count_copy = try alloc.dupe(u8, count_str);
-        try states.append(count_copy);
+        try states.append(alloc, count_copy);
     }
 
     // All three queries should return identical count
@@ -210,10 +211,10 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
     );
 
     // Insert events with different timestamps
-    var timestamps = std.ArrayList([]u8).init(alloc);
+    var timestamps: std.ArrayList([]u8) = .empty;
     defer {
         for (timestamps.items) |ts| alloc.free(ts);
-        timestamps.deinit();
+        timestamps.deinit(alloc);
     }
 
     for (0..5) |i| {
@@ -231,7 +232,7 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
             "NOW() + INTERVAL '{d} milliseconds'",
             .{offset_ms},
         );
-        try timestamps.append(ts);
+        try timestamps.append(alloc, ts);
 
         _ = try harness.conn.exec(
             \\INSERT INTO events (
