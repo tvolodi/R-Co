@@ -1,0 +1,419 @@
+{
+  "run_id": "WF02-xc01-06-20260528",
+  "test_run_timestamp": "2026-05-28T08:47:02Z",
+  "test_suite": "XC Cross-Cutting Requirements",
+  "test_framework": "zig build test-xc*",
+  "summary": {
+    "total_tests": 46,
+    "passed": 13,
+    "failed": 33,
+    "overall_status": "FAIL",
+    "pass_rate_percent": 28.3
+  },
+  "requirements": [
+    {
+      "requirement_id": "XC-01",
+      "title": "Trace Propagation",
+      "test_count": 7,
+      "passed": 7,
+      "failed": 0,
+      "status": "PASS",
+      "tests": [
+        {
+          "test_id": "TC-XC-01-01",
+          "name": "trace ID is generated as unique UUID",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-01-02",
+          "name": "trace ID propagates to downstream audit entries",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-01-03",
+          "name": "trace ID flows through audit entries",
+          "status": "PASS",
+          "notes": "Memory leak detected (1 allocation) but test passes"
+        },
+        {
+          "test_id": "TC-XC-01-04",
+          "name": "trace ID is immutable after creation",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-01-05",
+          "name": "trace ID persists across transaction boundaries",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-01-06",
+          "name": "cross-process trace ID correlation",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-01-07",
+          "name": "orphaned trace IDs are garbage-collected",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "requirement_id": "XC-02",
+      "title": "Audit Immutability with Cryptographic Chaining",
+      "test_count": 8,
+      "passed": 3,
+      "failed": 5,
+      "status": "FAIL",
+      "tests": [
+        {
+          "test_id": "TC-XC-02-01",
+          "name": "audit entries are append-only (immutability trigger)",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "Trigger validation test expects UnexpectedRow error but receives ServerError (trigger may have SQL issues)"
+        },
+        {
+          "test_id": "TC-XC-02-02",
+          "name": "chain hash is deterministically computed",
+          "status": "PASS",
+          "notes": "Memory leaks detected (2 allocations) but test passes"
+        },
+        {
+          "test_id": "TC-XC-02-03",
+          "name": "each new entry links to its predecessor",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-02-04",
+          "name": "per-tenant chains do not cross-reference",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-02-05",
+          "name": "tampering detection via chain validation",
+          "status": "FAIL",
+          "error_type": "Memory leak",
+          "issue": "1 memory leak in UUID generation"
+        },
+        {
+          "test_id": "TC-XC-02-06",
+          "name": "legacy entries coexist with chained entries",
+          "status": "FAIL",
+          "error_type": "TestUnexpectedResult",
+          "issue": "Assertion failed: expected query.rows[0][1] == null but got non-NULL value (chain_hash populated incorrectly for legacy entries)"
+        },
+        {
+          "test_id": "TC-XC-02-07",
+          "name": "chain hash incorporates all audit fields",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-02-08",
+          "name": "chain validation is efficient for large chains",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "Query to validation function fails with server error"
+        }
+      ]
+    },
+    {
+      "requirement_id": "XC-03",
+      "title": "Configuration Repository",
+      "test_count": 9,
+      "passed": 0,
+      "failed": 9,
+      "status": "FAIL",
+      "tests": [
+        {
+          "test_id": "TC-XC-03-01",
+          "name": "configuration artifact can be uploaded and versioned",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "repository_artifacts table may not exist or migration not applied"
+        },
+        {
+          "test_id": "TC-XC-03-02",
+          "name": "configuration schema is validated on upload",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "repository_artifacts table issue"
+        },
+        {
+          "test_id": "TC-XC-03-03",
+          "name": "configuration is activated per-tenant atomically",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "repository_artifacts table issue"
+        },
+        {
+          "test_id": "TC-XC-03-04",
+          "name": "different tenants have isolated configurations",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "repository_artifacts table issue"
+        },
+        {
+          "test_id": "TC-XC-03-05",
+          "name": "configuration is read on-demand at runtime",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "repository_artifacts table issue"
+        },
+        {
+          "test_id": "TC-XC-03-06",
+          "name": "missing or inactive configuration fails gracefully",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "repository_artifacts table issue"
+        },
+        {
+          "test_id": "TC-XC-03-07",
+          "name": "configuration artifact immutability is enforced",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "repository_artifacts table issue"
+        },
+        {
+          "test_id": "TC-XC-03-08",
+          "name": "configuration artifact activation is audited",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "repository_artifacts table issue"
+        },
+        {
+          "test_id": "TC-XC-03-09",
+          "name": "configuration artifact versioning follows REPO-03",
+          "status": "FAIL",
+          "error_type": "ServerError",
+          "issue": "repository_artifacts table issue"
+        }
+      ]
+    },
+    {
+      "requirement_id": "XC-04",
+      "title": "Kernel Determinism",
+      "test_count": 5,
+      "passed": 3,
+      "failed": 2,
+      "status": "FAIL",
+      "tests": [
+        {
+          "test_id": "TC-XC-04-01",
+          "name": "deterministic scheduling produces identical execution plans",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-04-02",
+          "name": "service task order is preserved under load",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-04-03",
+          "name": "scheduler fires timers in deterministic order",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure (details truncated in output)"
+        },
+        {
+          "test_id": "TC-XC-04-04",
+          "name": "event ordering remains deterministic across instances",
+          "status": "PASS"
+        },
+        {
+          "test_id": "TC-XC-04-05",
+          "name": "event append preserves deterministic ordering",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure (details truncated in output)"
+        }
+      ]
+    },
+    {
+      "requirement_id": "XC-05",
+      "title": "Deterministic Replay",
+      "test_count": 8,
+      "passed": 0,
+      "failed": 8,
+      "status": "FAIL",
+      "tests": [
+        {
+          "test_id": "TC-XC-05-01",
+          "name": "point-in-time reconstruction produces matching state",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure"
+        },
+        {
+          "test_id": "TC-XC-05-02",
+          "name": "repeated reconstruction produces identical state",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure"
+        },
+        {
+          "test_id": "TC-XC-05-03",
+          "name": "timestamp-based reconstruction works correctly",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure"
+        },
+        {
+          "test_id": "TC-XC-05-04",
+          "name": "archived events are included in reconstruction",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure"
+        },
+        {
+          "test_id": "TC-XC-05-05",
+          "name": "reconstruction accuracy across instance timeline",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure"
+        },
+        {
+          "test_id": "TC-XC-05-06",
+          "name": "service task outputs are replayed from recorded events",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure"
+        },
+        {
+          "test_id": "TC-XC-05-07",
+          "name": "empty instance reconstruction returns initial state",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure"
+        },
+        {
+          "test_id": "TC-XC-05-08",
+          "name": "reconstruction fails gracefully for non-existent instance",
+          "status": "FAIL",
+          "error_type": "Unknown",
+          "issue": "Test failure"
+        }
+      ]
+    },
+    {
+      "requirement_id": "XC-06",
+      "title": "Backwards Compatibility",
+      "test_count": 4,
+      "passed": 0,
+      "failed": 4,
+      "status": "FAIL",
+      "tests": [
+        {
+          "test_id": "TC-XC-06-01",
+          "name": "schema migrations are idempotent",
+          "status": "FAIL",
+          "error_type": "BuildError",
+          "issue": "Test compilation failed"
+        },
+        {
+          "test_id": "TC-XC-06-02",
+          "name": "new platform versions load prior version instances",
+          "status": "FAIL",
+          "error_type": "BuildError",
+          "issue": "Test compilation failed"
+        },
+        {
+          "test_id": "TC-XC-06-03",
+          "name": "additive-only schema changes are enforced",
+          "status": "FAIL",
+          "error_type": "BuildError",
+          "issue": "Test compilation failed"
+        },
+        {
+          "test_id": "TC-XC-06-04",
+          "name": "default values enable backwards compatibility",
+          "status": "FAIL",
+          "error_type": "BuildError",
+          "issue": "Test compilation failed"
+        }
+      ]
+    }
+  ],
+  "issues": [
+    {
+      "severity": "CRITICAL",
+      "category": "Schema/Migration",
+      "description": "repository_artifacts table does not exist or migration 052_xc03_configuration_repository.sql not applied",
+      "affected_requirements": ["XC-03"],
+      "affected_tests": ["TC-XC-03-01", "TC-XC-03-02", "TC-XC-03-03", "TC-XC-03-04", "TC-XC-03-05", "TC-XC-03-06", "TC-XC-03-07", "TC-XC-03-08", "TC-XC-03-09"]
+    },
+    {
+      "severity": "CRITICAL",
+      "category": "BuildError",
+      "description": "XC-06 backwards compatibility test compilation failed",
+      "affected_requirements": ["XC-06"],
+      "affected_tests": ["TC-XC-06-01", "TC-XC-06-02", "TC-XC-06-03", "TC-XC-06-04"]
+    },
+    {
+      "severity": "HIGH",
+      "category": "TestLogic",
+      "description": "TC-XC-02-01 expects UnexpectedRow error from immutability trigger but receives ServerError - trigger logic may be broken",
+      "affected_requirements": ["XC-02"],
+      "affected_tests": ["TC-XC-02-01"]
+    },
+    {
+      "severity": "HIGH",
+      "category": "TestLogic",
+      "description": "TC-XC-02-06 fails assertion: chain_hash should be NULL for legacy entries but is populated",
+      "affected_requirements": ["XC-02"],
+      "affected_tests": ["TC-XC-02-06"]
+    },
+    {
+      "severity": "MEDIUM",
+      "category": "MemoryLeak",
+      "description": "UUID allocation leaks in tests TC-XC-01-03, TC-XC-02-02, TC-XC-02-05, TC-XC-02-07",
+      "affected_requirements": ["XC-01", "XC-02"],
+      "affected_tests": ["TC-XC-01-03", "TC-XC-02-02", "TC-XC-02-05", "TC-XC-02-07"],
+      "notes": "Likely root cause: uuid.zig newUuidV4 calls allocator.dupe but test does not free the allocated string"
+    },
+    {
+      "severity": "HIGH",
+      "category": "TestFailure",
+      "description": "All TC-XC-05-* tests failing - missing or broken reconstruction logic/tables",
+      "affected_requirements": ["XC-05"],
+      "affected_tests": ["TC-XC-05-01", "TC-XC-05-02", "TC-XC-05-03", "TC-XC-05-04", "TC-XC-05-05", "TC-XC-05-06", "TC-XC-05-07", "TC-XC-05-08"]
+    }
+  ],
+  "environment": {
+    "bpm_test_db_url": "postgres://bpm:bpm@localhost:5433/bpm_test",
+    "test_database_status": "healthy",
+    "migrations_status": "partial",
+    "notes": "Test database docker container running and responding; migrations 001-055 exist but not all may be properly applied"
+  },
+  "recommendations": [
+    {
+      "priority": "CRITICAL",
+      "action": "Verify migration 052_xc03_configuration_repository.sql creates repository_artifacts table",
+      "rationale": "9 tests blocked by missing table"
+    },
+    {
+      "priority": "CRITICAL",
+      "action": "Debug XC-06 test compilation error (check imports and type signatures)",
+      "rationale": "4 tests blocked by build failure"
+    },
+    {
+      "priority": "HIGH",
+      "action": "Fix immutability trigger logic in migration 051_xc02_audit_immutability.sql",
+      "rationale": "TC-XC-02-01 expects specific error behavior from trigger"
+    },
+    {
+      "priority": "HIGH",
+      "action": "Fix chain_hash computation for legacy entries (should remain NULL)",
+      "rationale": "TC-XC-02-06 expects legacy entries to have NULL chain fields"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Fix UUID allocation leaks in tests (free allocated strings)",
+      "rationale": "Non-blocking but affects test cleanliness"
+    },
+    {
+      "priority": "HIGH",
+      "action": "Investigate XC-05 test failures in detail",
+      "rationale": "All 8 tests failing; need root cause analysis"
+    }
+  ]
+}

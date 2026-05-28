@@ -491,7 +491,7 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  action_timestamp, chain_hash, prev_chain_hash
+        \\  timestamp, chain_hash, prev_chain_hash
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NULL, NULL)
     ,
         &.{
@@ -517,7 +517,7 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  action_timestamp
+        \\  timestamp
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
     ,
         &.{ v2_id, tenant_id, v2_actor, "v2.action", "test", v2_resource },
@@ -527,7 +527,7 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
     var query = try harness.conn.query(
         alloc,
         \\SELECT action, chain_hash, prev_chain_hash FROM audit_entries
-        \\WHERE tenant_id = $1 ORDER BY action_timestamp, audit_id
+        \\WHERE tenant_id = $1 ORDER BY timestamp, audit_id
     ,
         &.{tenant_id},
     );

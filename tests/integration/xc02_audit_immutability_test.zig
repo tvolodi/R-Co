@@ -35,7 +35,7 @@ test "TC-XC-02-01: audit entries are append-only (immutability trigger)" {
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  action_timestamp
+        \\  timestamp
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
     ,
         &.{ audit_id, tenant_id, actor_id, "test.create", "test", resource_id },
@@ -138,7 +138,7 @@ test "TC-XC-02-03: each new entry links to its predecessor" {
         _ = try harness.conn.exec(
             \\INSERT INTO audit_entries (
             \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-            \\  action_timestamp
+            \\  timestamp
             \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         ,
             &.{
@@ -158,7 +158,7 @@ test "TC-XC-02-03: each new entry links to its predecessor" {
         \\SELECT action, chain_hash, prev_chain_hash
         \\FROM audit_entries
         \\WHERE tenant_id = $1
-        \\ORDER BY action_timestamp, audit_id
+        \\ORDER BY timestamp, audit_id
     ,
         &.{tenant_id},
     );
@@ -211,7 +211,7 @@ test "TC-XC-02-04: per-tenant chains do not cross-reference" {
         _ = try harness.conn.exec(
             \\INSERT INTO audit_entries (
             \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-            \\  action_timestamp
+            \\  timestamp
             \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         ,
             &.{ audit_id, tenant_a, actor_id, "tenant_a.action", "test", resource_id },
@@ -232,7 +232,7 @@ test "TC-XC-02-04: per-tenant chains do not cross-reference" {
         _ = try harness.conn.exec(
             \\INSERT INTO audit_entries (
             \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-            \\  action_timestamp
+            \\  timestamp
             \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         ,
             &.{ audit_id, tenant_b, actor_id, "tenant_b.action", "test", resource_id },
@@ -243,7 +243,7 @@ test "TC-XC-02-04: per-tenant chains do not cross-reference" {
     var query_a = try harness.conn.query(
         alloc,
         \\SELECT chain_hash, prev_chain_hash FROM audit_entries
-        \\WHERE tenant_id = $1 ORDER BY action_timestamp, audit_id
+        \\WHERE tenant_id = $1 ORDER BY timestamp, audit_id
     ,
         &.{tenant_a},
     );
@@ -253,7 +253,7 @@ test "TC-XC-02-04: per-tenant chains do not cross-reference" {
     var query_b = try harness.conn.query(
         alloc,
         \\SELECT chain_hash, prev_chain_hash FROM audit_entries
-        \\WHERE tenant_id = $1 ORDER BY action_timestamp, audit_id
+        \\WHERE tenant_id = $1 ORDER BY timestamp, audit_id
     ,
         &.{tenant_b},
     );
@@ -304,7 +304,7 @@ test "TC-XC-02-05: tampering detection via chain validation" {
         _ = try harness.conn.exec(
             \\INSERT INTO audit_entries (
             \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-            \\  action_timestamp
+            \\  timestamp
             \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         ,
             &.{ audit_id, tenant_id, actor_id, "test.action", "test", resource_id },
@@ -375,7 +375,7 @@ test "TC-XC-02-06: legacy entries coexist with chained entries" {
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  action_timestamp, chain_hash, prev_chain_hash
+        \\  timestamp, chain_hash, prev_chain_hash
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NULL, NULL)
     ,
         &.{ legacy_id, tenant_id, legacy_actor, "legacy.action", "test", legacy_resource },
@@ -394,7 +394,7 @@ test "TC-XC-02-06: legacy entries coexist with chained entries" {
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  action_timestamp
+        \\  timestamp
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
     ,
         &.{ chain_id, tenant_id, chain_actor, "chained.action", "test", chain_resource },
@@ -404,7 +404,7 @@ test "TC-XC-02-06: legacy entries coexist with chained entries" {
     var query = try harness.conn.query(
         alloc,
         \\SELECT action, chain_hash, prev_chain_hash FROM audit_entries
-        \\WHERE tenant_id = $1 ORDER BY action_timestamp, audit_id
+        \\WHERE tenant_id = $1 ORDER BY timestamp, audit_id
     ,
         &.{tenant_id},
     );
@@ -498,7 +498,7 @@ test "TC-XC-02-08: chain validation is efficient for large chains" {
         _ = try harness.conn.exec(
             \\INSERT INTO audit_entries (
             \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-            \\  action_timestamp
+            \\  timestamp
             \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         ,
             &.{ audit_id, tenant_id, actor_id, "test.action", "test", resource_id },
