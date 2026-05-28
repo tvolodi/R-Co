@@ -4,6 +4,10 @@
 //! transition function (src/engine/transition.zig) to produce a fresh
 //! InstanceState that is equivalent to the persisted instance_projections row.
 //!
+//! XC-04 Kernel Determinism: This module is part of the platform kernel.
+//! State reconstruction is deterministic (ES-06). See reconstructInstancePointInTime()
+//! for XC-05 (Deterministic Replay) point-in-time reconstruction support.
+//!
 //! Design artefact: src/design/engine.md §EE-11
 const std = @import("std");
 const db = @import("pool");
@@ -216,6 +220,109 @@ pub fn reconstructInstance(
         try performWriteBack(allocator, pool, instance_id, state);
     }
 
+    return state;
+}
+
+// ---------------------------------------------------------------------------
+// XC-05: Deterministic Replay — Point-in-Time Reconstruction
+// ---------------------------------------------------------------------------
+
+/// Reconstruct instance state as of a specific sequence number.
+///
+/// Used for XC-05 (Deterministic Replay) to validate that replaying an instance
+/// up to a given sequence number produces identical state to what it had at that point.
+///
+/// Parameters:
+///   up_to_sequence — Stop replay at this event sequence number (inclusive).
+///                    If null, replay to the latest event (same as reconstructInstance).
+///
+/// Returns the reconstructed InstanceState as of that sequence number.
+pub fn reconstructInstancePointInTime(
+    allocator: std.mem.Allocator,
+    pool: *Pool,
+    snapshot_store: *snapshot_mod.SnapshotStore,
+    instance_id: Uuid,
+    up_to_sequence: ?i64,
+) ReconstructionError!InstanceState {
+    // Reuse the same logic as reconstructInstance, but filter events by sequence number.
+    var row_arena = std.heap.ArenaAllocator.init(allocator);
+    defer row_arena.deinit();
+    const ra = row_arena.allocator();
+
+    const snapshot_obj = snapshot_store.getByInstanceId(allocator, instance_id) catch |err| switch (err) {
+        error.DefinitionNotFound => return ReconstructionError.InstanceNotFound,
+        error.PoolExhausted => return ReconstructionError.PoolExhausted,
+        else => return ReconstructionError.QueryFailed,
+    };
+    const snapshot = snapshot_obj.graph;
+
+    const inst_id_hex = uuidToHex(ra, instance_id) catch return ReconstructionError.OutOfMemory;
+
+    const conn = pool.acquire() catch |err| switch (err) {
+        PoolError.ExhaustedPool => return ReconstructionError.PoolExhausted,
+        else => return ReconstructionError.QueryFailed,
+    };
+    defer pool.release(conn);
+
+    // Query with optional sequence cutoff
+    const base_sql =
+        \\SELECT event_type, payload, sequence_number
+        \\FROM events
+        \\WHERE instance_id = $1::uuid
+    ;
+    const with_cutoff_sql =
+        \\SELECT event_type, payload, sequence_number
+        \\FROM events
+        \\WHERE instance_id = $1::uuid AND sequence_number <= $2
+    ;
+
+    var rows: db.QueryResults = undefined;
+    if (up_to_sequence) |seq| {
+        const seq_str = std.fmt.allocPrint(ra, "{d}", .{seq}) catch return ReconstructionError.OutOfMemory;
+        rows = conn.query(ra, with_cutoff_sql, &.{ inst_id_hex, seq_str }) catch
+            return ReconstructionError.QueryFailed;
+    } else {
+        rows = conn.query(ra, base_sql, &.{inst_id_hex}) catch
+            return ReconstructionError.QueryFailed;
+    }
+    defer rows.deinit();
+
+    if (rows.rows.len == 0) return ReconstructionError.InstanceNotFound;
+
+    // Replay events exactly as in reconstructInstance
+    var state = InstanceState{
+        .instance_id = instance_id,
+        .status = .ACTIVE,
+        .tokens = &[_]Token{},
+        .variables = std.json.ObjectMap{},
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .pending_events = &[_]PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
+    };
+
+    for (rows.rows) |row| {
+        const event_type = colGet(row, 0);
+        const payload_json = colGet(row, 1);
+
+        if (std.mem.eql(u8, event_type, "EXECUTION_ERROR")) {
+            state.status = .ERROR;
+            state.error_detail = allocator.dupe(u8, payload_json) catch
+                return ReconstructionError.OutOfMemory;
+            break;
+        }
+
+        const te = mapToTransitionEvent(allocator, event_type, payload_json) catch |err| switch (err) {
+            error.UnknownEventType => continue,
+            error.OutOfMemory => return ReconstructionError.OutOfMemory,
+            error.ParseFailed => return ReconstructionError.ReplayFailed,
+        };
+
+        state = transition_mod.transition(allocator, snapshot, state, te) catch
+            return ReconstructionError.ReplayFailed;
+    }
+
+    state.pending_events = &[_]PendingEvent{};
     return state;
 }
 

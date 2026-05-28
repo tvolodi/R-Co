@@ -5,6 +5,10 @@
 //! index on events(idempotency_key) and a fallback check in events_archive
 //! (Invariant #5 in the design artefact).
 //!
+//! XC-04 Kernel Determinism: This module is part of the platform kernel.
+//! It contains NO LLM API calls, HTTP requests, or external service dependencies.
+//! All event writes are transactional and deterministic (ES-02, DB-03).
+//!
 //! Design artefact: src/design/event_store.md
 const std = @import("std");
 const db = @import("pool");

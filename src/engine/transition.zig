@@ -3,6 +3,11 @@
 //! Implements the deterministic, zero-I/O process state transition logic.
 //! All state is passed in; all output is returned. No DB, no network, no clock.
 //!
+//! XC-04 Kernel Determinism: This module is part of the platform kernel.
+//! It contains NO LLM API calls, HTTP requests, or external service dependencies.
+//! This guarantee is verified by static analysis: grep for "llm|openai|anthropic|model_inference"
+//! returns zero matches (outside comments). Determinism is critical for XC-05 replay.
+//!
 //! Design artefact: src/design/engine.md §EE-02
 const std = @import("std");
 const graph_mod = @import("../definition/graph.zig");

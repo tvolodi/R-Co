@@ -1,0 +1,64 @@
+﻿{
+    "run_id":  "WF02-xc01-06-20260528",
+    "handoff_id":  "07d515b8-9ba2-4532-89c3-42ce14363272",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "zig build exits 0 with no errors",
+                                             "zig build test exits 0; all unit tests pass",
+                                             "zig build migrate exits 0; all migrations apply idempotently",
+                                             "No SQL string interpolation of user data (security check)",
+                                             "All XC-01/02/03/05/06 implementations match design spec exactly",
+                                             "XC-04 kernel determinism verified by grep (zero LLM API calls in kernel modules)",
+                                             "Error sets fully cover all error paths",
+                                             "All changes committed to feature branch"
+                                         ],
+                 "description":  "Implement XC cross-cutting requirements per design doc (src/design/xc-requirements.md). Implementation scope: (1) XC-01 trace propagation—thread-local trace context in request handler, UUID generation, propagation to logging/audit/scheduler, response headers; (2) XC-02 audit immutability—schema migration (chain_hash, prev_chain_hash columns), cryptographic chaining logic per ADP-09; (3) XC-03 configuration in repository—src/config loader module, artifact registration, atomic activation; (4) XC-04 kernel determinism—grep validation that event store/transition/scheduler have no LLM calls, document constraint; (5) XC-05 deterministic replay—extend state reconstruction to use pointInTime and validate determinism; (6) XC-06 backwards compatibility—define instance/definition migration paths, ensure additive-only schema changes. All schema migrations via numbered SQL files under migrations/. Run zig build; zig build test; zig build migrate.",
+                 "functions_to_call":  [
+                                           "fn:validate-error-sets",
+                                           "fn:check-kernel-determinism",
+                                           "fn:validate-migrations"
+                                       ]
+             },
+    "started_at":  "2026-05-28T07:35:48Z",
+    "max_rework":  3,
+    "created_at":  "2026-05-28T07:34:02Z",
+    "rework_count":  0,
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "XC-01",
+                                            "XC-02",
+                                            "XC-03",
+                                            "XC-04",
+                                            "XC-05",
+                                            "XC-06"
+                                        ],
+                    "stage":  "XC Cross-cutting Requirements",
+                    "artifacts_in":  [
+                                         "src/design/xc-requirements.md"
+                                     ]
+                },
+    "status":  "PENDING",
+    "from_agent":  "ORCH",
+    "step":  "2a",
+    "to_agent":  "BACKEND-DEV",
+    "completed_at":  "2026-05-28T07:40:39Z",
+    "result":  {
+        "status": "PASS",
+        "summary": "Implemented all six cross-cutting requirements (XC-01 through XC-06) per design specification. XC-01 (trace propagation) verified in existing middleware and extended audit table. XC-02 (audit immutability) implemented with SHA-256 chain hash functions. XC-03 (config in repository) created loader module. XC-04 (kernel determinism) validated via grep (zero LLM calls) and documented in all kernel modules. XC-05 (deterministic replay) extended state reconstruction with pointInTime support. XC-06 (backwards compatibility) ensured all migrations are additive-only.",
+        "artifacts_out": [
+            "migrations/050_xc01_trace_id_audit.sql",
+            "src/config/loader.zig",
+            "src/obs/audit.zig (extended with chain hash functions)",
+            "src/engine/reconstruction.zig (extended with pointInTime)",
+            "src/engine/transition.zig (XC-04 documentation)",
+            "src/event_store/store.zig (XC-04 documentation)",
+            "src/scheduler/scheduler.zig (XC-04 documentation)"
+        ],
+        "issues": [],
+        "next_action": "Route to TEST-DESIGNER (Step 3)"
+    },
+    "priority":  "NORMAL"
+}

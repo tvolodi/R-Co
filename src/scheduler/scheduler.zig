@@ -2,6 +2,10 @@
 //!
 //! Polls due timers, claims them with advisory locks, and appends the matching
 //! instance event in the same transaction as the timer fire.
+//!
+//! XC-04 Kernel Determinism: This module is part of the platform kernel.
+//! Timer firing order is deterministic (by due_at, then timer_id). No LLM calls.
+//! Each fired timer generates a new trace_id for observability (XC-01).
 const std = @import("std");
 const db = @import("pool");
 const logger = @import("../obs/logger.zig");
