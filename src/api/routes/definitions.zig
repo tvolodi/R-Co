@@ -262,8 +262,8 @@ pub const CreateDefinitionBody = struct {
     version: []const u8,
     /// Optional human-readable description.
     description: ?[]const u8,
-    /// The definition graph; must have `nodes` and `edges` arrays (PD-02).
-    graph: definition_store.DefinitionGraph,
+    /// The definition graph; optional at creation time — defaults to empty {nodes:[], edges:[]} when null.
+    graph: ?definition_store.DefinitionGraph,
     /// Optional process stage label (PD-07).
     stage: ?[]const u8,
 };
@@ -307,11 +307,16 @@ pub fn handleCreate(
     body: CreateDefinitionBody,
     actor_id: definition_store.Uuid,
 ) HandlerResult {
+    const effective_graph = body.graph orelse definition_store.DefinitionGraph{
+        .nodes = &.{},
+        .edges = &.{},
+    };
+
     const params = definition_store.CreateParams{
         .name = body.name,
         .version = body.version,
         .description = body.description,
-        .graph = body.graph,
+        .graph = effective_graph,
         .created_by = actor_id,
         .stage = body.stage,
     };
