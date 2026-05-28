@@ -622,6 +622,70 @@ pub fn build(b: *std.Build) void {
     });
     const run_oidc08_claim_mapping_ex_tests = b.addRunArtifact(oidc08_claim_mapping_ex_tests);
 
+    const oidc27_verification_benchmark_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc27_verification_benchmark.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "oidc_bench", .module = b.createModule(.{
+                    .root_source_file = b.path("src/oidc/verification_benchmark.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+    const run_oidc27_verification_benchmark_tests = b.addRunArtifact(oidc27_verification_benchmark_tests);
+
+    const oidc29_realm_seed_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc29_realm_seed.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "realm_seed", .module = b.createModule(.{
+                    .root_source_file = b.path("src/oidc/realm_seed.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+    const run_oidc29_realm_seed_tests = b.addRunArtifact(oidc29_realm_seed_tests);
+
+    const oidc30_test_token_helper_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc30_test_token_helper.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "oidc_test_token_helper", .module = b.createModule(.{
+                    .root_source_file = b.path("src/oidc/test_token_helper.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+    const run_oidc30_test_token_helper_tests = b.addRunArtifact(oidc30_test_token_helper_tests);
+
+    const oidc33_coexistence_auth_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/test_oidc33_coexistence_auth.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "oidc_coexistence", .module = b.createModule(.{
+                    .root_source_file = b.path("src/oidc/coexistence_auth.zig"),
+                    .target = target,
+                    .optimize = optimize,
+                }) },
+            },
+        }),
+    });
+    const run_oidc33_coexistence_auth_tests = b.addRunArtifact(oidc33_coexistence_auth_tests);
+
     // SCH-05: Missed timer recovery — pure function unit tests (no DB)
     const sch05_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -786,6 +850,10 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_oidc06_jwks_cache_tests.step);
     test_step.dependOn(&run_oidc08_claim_mapping_tests.step);
     test_step.dependOn(&run_oidc08_claim_mapping_ex_tests.step);
+    test_step.dependOn(&run_oidc27_verification_benchmark_tests.step);
+    test_step.dependOn(&run_oidc29_realm_seed_tests.step);
+    test_step.dependOn(&run_oidc30_test_token_helper_tests.step);
+    test_step.dependOn(&run_oidc33_coexistence_auth_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
     test_step.dependOn(&run_service_task_unit_tests.step);
@@ -1045,6 +1113,54 @@ pub fn build(b: *std.Build) void {
     const run_expr_bench = b.addRunArtifact(expr_bench_exe);
     const bench_step = b.step("bench", "Run expression evaluation benchmark (DSL-13)");
     bench_step.dependOn(&run_expr_bench.step);
+
+    const verify_dev_realm_exe = b.addExecutable(.{
+        .name = "verify-dev-realm",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tools/verify_dev_realm.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_verify_dev_realm = b.addRunArtifact(verify_dev_realm_exe);
+    const verify_dev_realm_step = b.step("verify-dev-realm", "Verify local Keycloak realm bootstrap assets");
+    verify_dev_realm_step.dependOn(&run_verify_dev_realm.step);
+
+    const validate_realm_seed_exe = b.addExecutable(.{
+        .name = "validate-realm-seed",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tools/validate_realm_seed.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_validate_realm_seed = b.addRunArtifact(validate_realm_seed_exe);
+    const validate_realm_seed_step = b.step("validate-realm-seed", "Validate deterministic Keycloak realm seed artifact");
+    validate_realm_seed_step.dependOn(&run_validate_realm_seed.step);
+
+    const check_realm_seed_drift_exe = b.addExecutable(.{
+        .name = "check-realm-seed-drift",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tools/check_realm_seed_drift.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_check_realm_seed_drift = b.addRunArtifact(check_realm_seed_drift_exe);
+    const check_realm_seed_drift_step = b.step("check-realm-seed-drift", "Detect drift between committed and runtime realm exports");
+    check_realm_seed_drift_step.dependOn(&run_check_realm_seed_drift.step);
+
+    const verify_agent_test_identities_exe = b.addExecutable(.{
+        .name = "verify-agent-test-identities",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tools/verify_agent_test_identities.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_verify_agent_test_identities = b.addRunArtifact(verify_agent_test_identities_exe);
+    const verify_agent_test_identities_step = b.step("verify-agent-test-identities", "Verify seeded agent service-account identities");
+    verify_agent_test_identities_step.dependOn(&run_verify_agent_test_identities.step);
 
     // ---------------------------------------------------------------------------
     // `zig build openapi` — OpenAPI generator

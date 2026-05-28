@@ -56,6 +56,11 @@ pub const identity_service = @import("identity/service.zig"); // IDN-01 user reg
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01 user registry HTTP handlers
 pub const identity_provider = @import("identity_provider"); // OIDC provider contract and bootstrap wiring
 pub const oidc_agent_lifecycle = @import("oidc/agent_lifecycle.zig"); // OIDC-16..26 lifecycle/idempotency/audit/metrics helpers
+pub const oidc_verification_benchmark = @import("oidc/verification_benchmark.zig"); // OIDC-27 benchmark envelope helpers
+pub const oidc_realm_seed = @import("oidc/realm_seed.zig"); // OIDC-29 realm seed validation and drift checks
+pub const oidc_test_token_helper = @import("oidc/test_token_helper.zig"); // OIDC-30 test-only token helper
+pub const oidc_coexistence_auth = @import("oidc/coexistence_auth.zig"); // OIDC-33 coexistence context equivalence checks
+pub const oidc_migration_helper = @import("oidc/migration_helper.zig"); // OIDC-34 migration helper service
 pub const api_auth = @import("api/middleware/auth.zig"); // API-08 auth middleware provider-manager configuration
 
 const placeholder_health_live = "{\"status\":\"live\"}";
