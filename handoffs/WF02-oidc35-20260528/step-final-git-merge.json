@@ -1,0 +1,39 @@
+{
+  "handoff_id": "oidc35-gm-001",
+  "run_id": "WF02-oidc35-20260528",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-28T14:16:02Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 6.5 - OIDC/Identity Provider",
+    "requirement_ids": [
+      "OIDC-35"
+    ],
+    "related_handoff_ids": [
+      "oidc35-du-001"
+    ],
+    "artifacts_in": [
+      "docs/agents/protocols/GIT_MERGE.md"
+    ],
+    "branch_name": "feature/WF02-oidc35-20260528"
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md:\n1. git checkout main && git pull --ff-only origin main\n2. git fetch origin main\n3. git rebase origin/main on the feature branch\n4. Resolve any conflicts\n5. gh pr create --base main --title 'OIDC-35: Company onboarding orchestration' --body 'Implements the company onboarding API sequence: POST/GET /api/v1/onboarding'\n6. gh pr merge --squash --delete-branch\n7. Verify branch is deleted from GitHub\n\nFeature branch: feature/WF02-oidc35-20260528",
+    "acceptance_criteria": [
+      "PR created and merged",
+      "Branch deleted from remote",
+      "push_status: ok"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-28T14:16:02Z",
+  "completed_at": null
+}

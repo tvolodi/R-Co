@@ -843,6 +843,12 @@ pub fn resetIdentityProviderManager() void {
     identity_provider_manager = provider_manager_mod.defaultManager();
 }
 
+/// Retrieve the current identity provider manager.
+/// Returns the module-level manager configured at startup.
+pub fn getIdentityProviderManager() provider_manager_mod.Manager {
+    return identity_provider_manager;
+}
+
 /// Configure the JIT user creation callback.
 /// When set, OIDC auth tokens will trigger JIT provisioning via this callback.
 /// Pass null to disable JIT provisioning.

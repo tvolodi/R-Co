@@ -1,0 +1,57 @@
+{
+  "run_id": "WF02-oidc35-20260528",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-28T14:10:00Z",
+  "summary": {
+    "total": 13,
+    "passed": 11,
+    "failed": 0,
+    "skipped": 2
+  },
+  "failures": [],
+  "skipped": [
+    {
+      "test_id": "TC-OIDC-35-06",
+      "layer": "integration",
+      "file": "tests/integration/oidc35_onboarding_test.zig",
+      "reason": "BPM_IDP_BASE_URL not set or Keycloak unavailable — requires Keycloak instance",
+      "severity": "MINOR",
+      "requirement_id": "OIDC-35"
+    },
+    {
+      "test_id": "TC-OIDC-35-07",
+      "layer": "integration",
+      "file": "tests/integration/oidc35_onboarding_test.zig",
+      "reason": "BPM_IDP_BASE_URL is set — test requires Keycloak to be unreachable",
+      "severity": "MINOR",
+      "requirement_id": "OIDC-35"
+    }
+  ],
+  "coverage": {
+    "backend_unit_line": null,
+    "integration_all_must_tests_passing": true
+  },
+  "nfr_results": [],
+  "fixes_applied": [
+    {
+      "file": "migrations/052_xc03_configuration_repository.sql",
+      "issue": "Migration referenced columns (version_id, content_json) that don't exist in the repository_artifacts table created by migration 045 (different schema). Changed CREATE TABLE IF NOT EXISTS (no-op) to ALTER TABLE ADD COLUMN IF NOT EXISTS, and fixed the view to join through artifact_versions per the 045/046 schema."
+    },
+    {
+      "file": "tests/integration/oidc35_onboarding_test.zig",
+      "issue": "bytea parameters sent as raw [32]u8 binary instead of PostgreSQL hex text format (\\x<hex>). Added byteaHexLiteral helper."
+    },
+    {
+      "file": "tests/integration/oidc35_onboarding_test.zig",
+      "issue": "generateUuidHex produced 32-char UUIDs without dashes but PostgreSQL ::text cast returns dashes. Fixed to produce standard 36-char UUID format."
+    },
+    {
+      "file": "tests/integration/oidc35_onboarding_test.zig",
+      "issue": "TC-04 JSON body key order didn't match PostgreSQL jsonb::text output. Reordered keys and added spaces to match PG format."
+    },
+    {
+      "file": "tests/integration/oidc35_onboarding_test.zig",
+      "issue": "TC-10 missing tenant INSERT before tenant_hostnames INSERT (FK constraint violation). Added tenant creation."
+    }
+  ]
+}
