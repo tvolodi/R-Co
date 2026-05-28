@@ -18,14 +18,7 @@ CREATE TABLE IF NOT EXISTS form_schema_registry (
     CONSTRAINT uq_form_schema_field UNIQUE (version_id, field_name),
 
     -- Foreign key
-    CONSTRAINT fk_form_schema_version FOREIGN KEY (version_id) REFERENCES artifact_versions(version_id) ON DELETE CASCADE,
-
-    -- Indexes for searchability
-    INDEX idx_form_schema_version (version_id),
-    INDEX idx_form_schema_field_type (field_type),
-    INDEX idx_form_schema_field_name (field_name),
-    -- Full-text search on labels (GIN index for LIKE queries)
-    INDEX idx_form_schema_field_label USING GIN (to_tsvector('english', field_label))
+    CONSTRAINT fk_form_schema_version FOREIGN KEY (version_id) REFERENCES artifact_versions(version_id) ON DELETE CASCADE
 );
 
 COMMENT ON TABLE form_schema_registry IS 'Index of form schema fields for agent-driven discovery (REPO-05).';
@@ -37,3 +30,10 @@ COMMENT ON COLUMN form_schema_registry.field_type IS 'Type classification: strin
 COMMENT ON COLUMN form_schema_registry.field_label IS 'User-visible label displayed in the form.';
 COMMENT ON COLUMN form_schema_registry.required IS 'Whether the field is mandatory.';
 COMMENT ON COLUMN form_schema_registry.pattern IS 'Optional regex pattern for field validation.';
+
+-- Indexes for searchability (created separately)
+CREATE INDEX IF NOT EXISTS idx_form_schema_version ON form_schema_registry (version_id);
+CREATE INDEX IF NOT EXISTS idx_form_schema_field_type ON form_schema_registry (field_type);
+CREATE INDEX IF NOT EXISTS idx_form_schema_field_name ON form_schema_registry (field_name);
+-- Full-text search on labels (GIN index for LIKE queries)
+CREATE INDEX IF NOT EXISTS idx_form_schema_field_label ON form_schema_registry USING GIN (to_tsvector('english', field_label));

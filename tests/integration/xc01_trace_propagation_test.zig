@@ -8,11 +8,12 @@
 
 const std = @import("std");
 const testing = std.testing;
+const bpm = @import("bpm");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
-const trace_context = @import("../api/trace_context.zig");
-const uuid_mod = @import("../util/uuid.zig");
+const trace_context = bpm.trace_context;
+const uuid_mod = bpm.uuid;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TC-XC-01-01: Missing X-Trace-Id header generates UUID v4
@@ -100,10 +101,10 @@ test "TC-XC-01-03: trace ID flows through audit entries" {
 
     // Create an audit entry via INSERT
     // In real scenario, obs/audit.zig would read trace_id from trace_context
-    var result = try harness.conn.exec(
+    try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  action_timestamp, trace_id
+        \\  timestamp, trace_id
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
     ,
         &.{
@@ -116,7 +117,6 @@ test "TC-XC-01-03: trace ID flows through audit entries" {
             trace_id,
         },
     );
-    defer result.deinit();
 
     // Verify audit entry has trace_id
     var query = try harness.conn.query(
@@ -172,7 +172,7 @@ test "TC-XC-01-04: scheduler tasks generate distinct trace IDs" {
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  action_timestamp, trace_id
+        \\  timestamp, trace_id
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
     ,
         &.{ audit_1, tenant_id, actor_id, "scheduler.fire", "timer", resource_id, scheduler_trace_1 },
@@ -185,7 +185,7 @@ test "TC-XC-01-04: scheduler tasks generate distinct trace IDs" {
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  action_timestamp, trace_id
+        \\  timestamp, trace_id
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
     ,
         &.{ audit_2, tenant_id, actor_id, "scheduler.fire", "timer", resource_id, scheduler_trace_2 },
@@ -219,8 +219,6 @@ test "TC-XC-01-04: scheduler tasks generate distinct trace IDs" {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test "TC-XC-01-05: trace context is thread-local isolated" {
-    const alloc = testing.allocator;
-
     // Simulate two concurrent requests on different threads
     // (Note: true concurrency test would require actual thread spawning)
 
@@ -302,7 +300,7 @@ test "TC-XC-01-07: trace ID is included in error responses" {
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
-        \\  action_timestamp, trace_id
+        \\  timestamp, trace_id
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
     ,
         &.{ audit_id, tenant_id, actor_id, "error.occurred", "error", resource_id, trace_id },

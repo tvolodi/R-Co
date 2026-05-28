@@ -10,17 +10,17 @@ CREATE TABLE IF NOT EXISTS repository_artifacts (
     content_hash         BYTEA NOT NULL PRIMARY KEY,
     content_type         VARCHAR(64) NOT NULL,           -- "application/json", "application/wasm", etc.
     byte_size            BIGINT NOT NULL,
-    created_at           TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    -- Indexes for type-filtered and time-filtered queries
-    INDEX idx_repo_artifacts_type_created (content_type, created_at),
-    INDEX idx_repo_artifacts_created (created_at)
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 COMMENT ON TABLE repository_artifacts IS 'Content-addressed immutable artifact storage. Deduplication via content_hash PRIMARY KEY.';
 COMMENT ON COLUMN repository_artifacts.content_hash IS 'SHA-256 digest of canonical artifact content; PRIMARY KEY enforces immutability.';
 COMMENT ON COLUMN repository_artifacts.content_type IS 'MIME type: application/json (definitions, forms, schemas) or application/wasm (compiled modules).';
 COMMENT ON COLUMN repository_artifacts.byte_size IS 'Stored content length in bytes.';
+
+-- Indexes for type-filtered and time-filtered queries (created separately)
+CREATE INDEX IF NOT EXISTS idx_repo_artifacts_type_created ON repository_artifacts (content_type, created_at);
+CREATE INDEX IF NOT EXISTS idx_repo_artifacts_created ON repository_artifacts (created_at);
 
 
 CREATE TABLE IF NOT EXISTS artifact_versions (
@@ -40,13 +40,7 @@ CREATE TABLE IF NOT EXISTS artifact_versions (
 
     -- Foreign keys
     CONSTRAINT fk_artifact_versions_content FOREIGN KEY (content_hash) REFERENCES repository_artifacts(content_hash) ON DELETE RESTRICT,
-    CONSTRAINT fk_artifact_versions_parent FOREIGN KEY (parent_version_id) REFERENCES artifact_versions(version_id) ON DELETE SET NULL,
-
-    -- Indexes for efficient queries
-    INDEX idx_artifact_versions_kind_name_created (artifact_kind, artifact_name, created_at),
-    INDEX idx_artifact_versions_content_hash (content_hash),
-    INDEX idx_artifact_versions_kind_name (artifact_kind, artifact_name),
-    INDEX idx_artifact_versions_parent (parent_version_id)
+    CONSTRAINT fk_artifact_versions_parent FOREIGN KEY (parent_version_id) REFERENCES artifact_versions(version_id) ON DELETE SET NULL
 );
 
 COMMENT ON TABLE artifact_versions IS 'Versioned artifact records with optional parent linkage for lineage.';
@@ -59,3 +53,9 @@ COMMENT ON COLUMN artifact_versions.content_hash IS 'SHA-256 hash of canonical a
 COMMENT ON COLUMN artifact_versions.parent_version_id IS 'Optional reference to the parent version for provenance tracking.';
 COMMENT ON COLUMN artifact_versions.created_by IS 'UUID of user who created this version.';
 COMMENT ON COLUMN artifact_versions.description IS 'Optional free-text description of what changed in this version.';
+
+-- Indexes for efficient queries (created separately)
+CREATE INDEX IF NOT EXISTS idx_artifact_versions_kind_name_created ON artifact_versions (artifact_kind, artifact_name, created_at);
+CREATE INDEX IF NOT EXISTS idx_artifact_versions_content_hash ON artifact_versions (content_hash);
+CREATE INDEX IF NOT EXISTS idx_artifact_versions_kind_name ON artifact_versions (artifact_kind, artifact_name);
+CREATE INDEX IF NOT EXISTS idx_artifact_versions_parent ON artifact_versions (parent_version_id);
