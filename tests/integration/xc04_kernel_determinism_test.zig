@@ -195,12 +195,14 @@ test "TC-XC-04-04: audit chain hash computation is deterministic" {
             \\SELECT
             \\  bpm_audit_compute_chain_hash(
             \\    $1::uuid, $2::uuid, $3::uuid, 'test.action',
-            \\    'test', $4::uuid, NOW()::timestamptz,
+            \\    'test', $4::uuid, '2026-05-28 10:00:00+00'::timestamptz,
             \\    '{"key":"value"}'::jsonb, '{"result":"ok"}'::jsonb,
-            \\    $5::uuid, 'trace-123', '0000000000000000000000000000000000000000000000000000000000000000'::text, NULL
+            \\    $5::uuid, '{"payload":"full"}'::jsonb,
+            \\    '0000000000000000000000000000000000000000000000000000000000000000'::text,
+            \\    'trace-123'
             \\  ) AS hash
         ,
-            &.{ tenant_id, actor_id, resource_id, resource_id, ref_id },
+            &.{ tenant_id, ref_id, actor_id, resource_id, ref_id },
         );
         defer query.deinit();
 

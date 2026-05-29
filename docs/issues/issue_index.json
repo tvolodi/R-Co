@@ -1,8 +1,22 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-29T03:31:05Z",
-  "next_issue_id": 56,
+  "last_updated": "2026-05-29T07:55:12Z",
+  "next_issue_id": 57,
   "issues": [
+    {
+      "id": "ISS-0056",
+      "title": "WF03 stage11 releasefix rework1: TC-XC-04-04 deterministic hash test invoked canonical audit hash function with legacy argument order",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+      "handoff_id": "54d76235-9a39-4a95-a163-98cc36567f96",
+      "affected_areas": [
+        "tests/integration/xc04_kernel_determinism_test.zig",
+        "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-05-rework1-issue-fixer-validation.txt"
+      ],
+      "created_at": "2026-05-29T07:54:41Z",
+      "resolved_at": "2026-05-29T07:54:41Z"
+    },
     {
       "id": "ISS-0055",
       "title": "WF03 stage11 releasefix: ADP-07 TC-ADP-07-01 failed because AGENT_RUNNER seed role was missing after test DB cleanup",

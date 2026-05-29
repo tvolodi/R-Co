@@ -1,0 +1,45 @@
+{
+  "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+  "workflow_id": "WF-03",
+  "handoff_id": "54d76235-9a39-4a95-a163-98cc36567f96",
+  "agent": "ISSUE-FIXER",
+  "step": "05-rework1",
+  "timestamp": "2026-05-29T07:54:41Z",
+  "status": "PASS",
+  "diagnosis": {
+    "category": "D_TEST_ERROR",
+    "summary": "TC-XC-04-04 deterministic hash test was invoking bpm_audit_compute_chain_hash with legacy positional semantics and mismatched types.",
+    "matched_prior_issue": "ISS-0052",
+    "matched_strategy": "Test stabilization for deterministic XC-04 path"
+  },
+  "changes": [
+    {
+      "file": "tests/integration/xc04_kernel_determinism_test.zig",
+      "description": "Aligned TC-XC-04-04 SQL invocation to canonical audit hash function signature and fixed timestamp input for deterministic assertions."
+    }
+  ],
+  "verification": [
+    {
+      "command": "zig build",
+      "result": "PASS",
+      "evidence": "ZIG_BUILD_EXIT_CODE=0"
+    },
+    {
+      "command": "zig build test-integration-xc04",
+      "result": "PASS",
+      "evidence": "XC04_EXIT_CODE=0"
+    },
+    {
+      "command": "zig build test-integration-stage11-sim-xc04",
+      "result": "PASS",
+      "evidence": "STAGE11_XC04_EXIT_CODE=0"
+    }
+  ],
+  "artifacts_out": [
+    "tests/integration/xc04_kernel_determinism_test.zig",
+    "docs/issues/ISS-0056.json",
+    "docs/issues/issue_index.json",
+    "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-05-rework1-issue-fixer-validation.txt",
+    "docs/issue-reports/WF03-stage11-sim01-04-releasefix-20260529-step-05-rework1-issue-fixer-INNER-REPORT.json"
+  ]
+}
