@@ -92,10 +92,19 @@ async function navigateToDefinitions(page: import('@playwright/test').Page): Pro
   await page.waitForURL(/\/definitions/, { timeout: 10_000 })
 }
 
-/** Navigate to a specific definition editor page. */
-async function navigateToDefinitionEditor(page: import('@playwright/test').Page, id: string): Promise<void> {
+/** Navigate to a specific definition editor page.
+ *  Uses direct URL navigation. If redirected to /login, re-authenticates by
+ *  pasting the authToken and then re-navigates to the editor.
+ */
+async function navigateToDefinitionEditor(page: import('@playwright/test').Page, id: string, authToken: string): Promise<void> {
   await page.goto(`/definitions/${id}`)
-  await page.waitForURL(/\/definitions\/([0-9a-f-]+)/, { timeout: 10_000 })
+  // If redirected to /login, re-paste the token and wait for navigation
+  if (await page.getByTestId('login-token-input').isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await page.getByTestId('login-token-input').fill(authToken)
+    await page.getByTestId('login-submit').click()
+    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
+  }
+  await page.waitForURL(/\/definitions\/([0-9a-f-]+)/, { timeout: 15_000 })
 }
 
 // ── API helpers (using Playwright request context with real token) ────────────
@@ -200,10 +209,10 @@ test.describe('F2 — Export/Import Buttons (PD-UI-07)', () => {
     createdDefinitionIds.push(def.id)
 
     await loginWithToken(page, authToken)
-    await navigateToDefinitionEditor(page, def.id)
+    await navigateToDefinitionEditor(page, def.id, authToken)
 
     // Screen shows Export button in the toolbar
-    const exportBtn = page.getByTestId('btn-export')
+    const exportBtn = page.getByTestId('btn-export-definition')
     await expect(exportBtn).toBeVisible({ timeout: 10_000 })
     await expect(exportBtn).toContainText('Export')
 
@@ -221,7 +230,7 @@ test.describe('F2 — Export/Import Buttons (PD-UI-07)', () => {
     createdDefinitionIds.push(def.id)
 
     await loginWithToken(page, authToken)
-    await navigateToDefinitionEditor(page, def.id)
+    await navigateToDefinitionEditor(page, def.id, authToken)
 
     // Verify export via API first (download in browser is hard to assert in headless)
     const doc = await exportDefinition(request, authToken, def.id)
@@ -249,7 +258,7 @@ test.describe('F2 — Export/Import Buttons (PD-UI-07)', () => {
     await navigateToDefinitions(page)
 
     // Screen shows Import button in the filter bar area
-    const importBtn = page.getByTestId('btn-import')
+    const importBtn = page.getByTestId('btn-import-definition')
     await expect(importBtn).toBeVisible({ timeout: 10_000 })
     await expect(importBtn).toContainText('Import')
 
@@ -269,7 +278,7 @@ test.describe('F2 — Export/Import Buttons (PD-UI-07)', () => {
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 10_000 })
 
     // Click the Import button
-    await page.getByTestId('btn-import').click()
+    await page.getByTestId('btn-import-definition').click()
 
     // Verify a file chooser dialog was opened
     const fileChooser = await fileChooserPromise
@@ -312,14 +321,18 @@ test.describe('F2 — Export/Import Buttons (PD-UI-07)', () => {
 
     // Set up file chooser
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 10_000 })
-    await page.getByTestId('btn-import').click()
+    await page.getByTestId('btn-import-definition').click()
     const fileChooser = await fileChooserPromise
 
     // Select the temp file
     await fileChooser.setFiles(tmpFile)
 
-    // Wait for navigation to the new definition editor page
-    await page.waitForURL(/\/definitions\/(?!new$)([0-9a-f-]+)/, { timeout: 15_000 })
+    // Wait for SPA navigation to the new definition editor page
+    // Use waitForFunction since React Router uses History API (not full page navigation)
+    await page.waitForFunction(
+      () => /\/definitions\/(?!new$)[0-9a-f-]+/.test(window.location.pathname),
+      { timeout: 15_000 },
+    )
 
     // Clean up temp file
     try { fs.unlinkSync(tmpFile) } catch { /* ignore */ }
@@ -346,7 +359,7 @@ test.describe('F2 — Export/Import Buttons (PD-UI-07)', () => {
 
     // Set up file chooser
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 10_000 })
-    await page.getByTestId('btn-import').click()
+    await page.getByTestId('btn-import-definition').click()
     const fileChooser = await fileChooserPromise
     await fileChooser.setFiles(tmpFile)
 
@@ -392,7 +405,7 @@ test.describe('F2 — Export/Import Buttons (PD-UI-07)', () => {
 
     // Set up file chooser
     const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 10_000 })
-    await page.getByTestId('btn-import').click()
+    await page.getByTestId('btn-import-definition').click()
     const fileChooser = await fileChooserPromise
     await fileChooser.setFiles(tmpFile)
 

@@ -54,9 +54,9 @@ export default function DefinitionListPage() {
   const createDef = useCreateDefinition()
 
   const isSearching = debouncedSearch.trim().length > 0
-  const searchResults = searchQuery.data as { items?: ProcessDefinition[] } | undefined
-  const items = isSearching
-    ? (searchResults?.items ?? [])
+  const searchResults = searchQuery.data as { items?: { definition: ProcessDefinition; rank: number }[] } | undefined
+  const items: ProcessDefinition[] = isSearching
+    ? (searchResults?.items?.map((r) => r.definition) ?? [])
     : ((data as { items?: ProcessDefinition[] } | undefined)?.items ?? [])
   const isLoadingItems = isSearching ? searchQuery.isLoading : isLoading
 
@@ -200,6 +200,7 @@ export default function DefinitionListPage() {
 
       {importError && (
         <div
+          data-testid="import-error-dialog"
           style={{
             padding: '8px 16px',
             background: '#ffe3e3',

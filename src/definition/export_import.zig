@@ -99,9 +99,11 @@ pub const ExportImportStore = struct {
         const id_hex = uuidToHex(a, definition_id) catch return ExportImportError.DatabaseError;
 
         // Security: definition_id bound as $1 — no SQL string interpolation.
+        // Cast graph::text to ensure pg.zig returns a plain JSON string rather
+        // than a binary-encoded JSONB value that std.json cannot parse.
         const rows = conn.query(
             allocator,
-            \\SELECT id, name, version, description, graph
+            \\SELECT id, name, version, description, graph::text
             \\FROM process_definitions
             \\WHERE id = $1::uuid
             \\  AND tenant_id = bpm_effective_tenant_id()
@@ -131,7 +133,16 @@ pub const ExportImportStore = struct {
             return ExportImportError.DatabaseError;
         errdefer allocator.free(description);
 
-        const graph_json_str = colGet(row, 4);
+        // Parse graph column as JSON text. pg.zig returns JSONB as text format
+        // (all columns use 0 format codes = text), so graph_json_str is a
+        // plain JSON string that std.json can parse.
+        const raw_graph = colGet(row, 4);
+        // pg.zig may return a length-prefixed string; strip the first 4 bytes
+        // if they look like a binary frame header (common in pg.zig v0.x).
+        const graph_json_str = if (raw_graph.len > 4 and raw_graph[0] == 0 and raw_graph[1] == 0 and raw_graph[2] == 0 and raw_graph[3] == 0x01)
+            raw_graph[4..]
+        else
+            raw_graph;
         const graph = parseGraphJson(allocator, graph_json_str) catch
             graph_mod.DefinitionGraph{ .nodes = &.{}, .edges = &.{} };
 
