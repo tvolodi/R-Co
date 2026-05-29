@@ -1,0 +1,23 @@
+{
+  "run_id": "WF02-f3a-batch1-20260529",
+  "created_at": "2026-05-29T19:45:00Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["IN-UI-01", "IN-UI-02", "IN-UI-03", "IN-UI-04"],
+  "difficulty": 3,
+  "difficulty_rationale": "First F3 batch introduces new instance board and detail UX with multi-endpoint integration and stateful interactions.",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Touches instance list, filtering, start flow, and detail route/state across multiple frontend modules with backend API integration.",
+  "surcharge": 0.25,
+  "steps": ["code-designer", "code-design-validator", "frontend-dev", "test-designer", "test-design-validator", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 15,
+    "code-design-validator": 5,
+    "frontend-dev": 75,
+    "test-designer": 30,
+    "test-design-validator": 5,
+    "test-runner": 20,
+    "release-validator": 10,
+    "doc-updater": 10,
+    "total": 170
+  }
+}

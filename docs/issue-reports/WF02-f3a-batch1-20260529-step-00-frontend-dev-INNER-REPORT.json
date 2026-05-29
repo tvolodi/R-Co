@@ -1,0 +1,45 @@
+{
+  "report_id": "WF02-f3a-batch1-20260529-step-00-frontend-dev",
+  "agent_id": "FRONTEND-DEV",
+  "run_id": "WF02-f3a-batch1-20260529",
+  "step": "00",
+  "created_at": "2026-05-29T15:50:57Z",
+  "summary": "Executed fn:git-setup. git checkout main and git pull --ff-only origin main succeeded, but protocol-mandated cleanliness check on main failed due to existing uncommitted and untracked changes. Per fn-git-setup failure conditions, branch creation and push were not attempted; handoff is failed with BLOCKER.",
+  "files_created": [
+    "docs/issue-reports/WF02-f3a-batch1-20260529-step-00-frontend-dev-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-f3a-batch1-20260529/step-00-frontend-dev.json",
+    "handoffs/registry.json",
+    "handoffs/WF02-f3a-batch1-20260529/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "git checkout main",
+      "status": "pass",
+      "detail": "Already on main"
+    },
+    {
+      "name": "git pull --ff-only origin main",
+      "status": "pass",
+      "detail": "Already up to date"
+    },
+    {
+      "name": "git status --porcelain cleanliness gate",
+      "status": "fail",
+      "detail": "Detected uncommitted/untracked files on main; protocol requires FAIL"
+    }
+  ],
+  "issues_found": [
+    {
+      "severity": "BLOCKER",
+      "description": "main has uncommitted changes - stale work from a prior run must be reviewed before fn:git-setup can create feature/WF02-f3a-batch1-20260529"
+    }
+  ],
+  "next_steps": [
+    "Route back to ORCH to resolve/clean main branch state, then re-dispatch Step 00"
+  ],
+  "blockers": [
+    "Uncommitted changes present on main violated fn:git-setup precondition"
+  ]
+}

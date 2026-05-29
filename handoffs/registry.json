@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "created_at": "2026-05-23T18:08:12Z",
-  "last_updated":  "2026-05-29T12:34:08Z",
+  "last_updated":  "2026-05-29T15:53:29Z",
   "entries": [
     {
       "handoff_id": "2ea13308-8506-41a6-ba35-e188030696e4",
@@ -323,8 +323,8 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-05-26T20:34:15Z",
       "started_at": "2026-05-26T20:38:36Z",
-      "completed_at": null,
-      "status": "IN_PROGRESS",
+      "completed_at": "2026-05-29T15:50:57Z",
+      "status": "FAILED",
       "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
@@ -5592,6 +5592,34 @@
       "completed_at": "2026-05-29T12:08:31Z",
       "status": "COMPLETED",
       "stage": "Stage 11 - Test Runner and Simulation Mode"
+    },
+    {
+      "handoff_id": "f3a-step00-001",
+      "file": "handoffs/WF02-f3a-batch1-20260529/step-00-frontend-dev.json",
+      "run_id": "WF02-f3a-batch1-20260529",
+      "workflow_id": "WF-02",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-05-29T19:45:00Z",
+      "started_at": "2026-05-29T19:45:05Z",
+      "completed_at": "2026-05-29T15:50:57Z",
+      "status": "FAILED",
+      "stage": "Stage F3 - Instance monitoring"
+    },
+    {
+      "handoff_id": "adhoc-f3-gitclean-001",
+      "file": "handoffs/ADHOC-f3-gitclean-20260529/step-01-backend-dev-git-clean.json",
+      "run_id": "ADHOC-f3-gitclean-20260529",
+      "workflow_id": "ADHOC-git-clean",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-05-29T19:52:00Z",
+      "started_at": "2026-05-29T19:52:05Z",
+      "completed_at": null,
+      "status": "IN_PROGRESS",
+      "stage": null
     }
   ]
 }
