@@ -5,7 +5,7 @@
   "description": "Fix TC-PDUI08-03: empty search fallback fails to show definition list",
   "steps": [
     { "step": "00", "file": "step-00-backend-dev.json", "agent": "BACKEND-DEV", "status": "PENDING" },
-    { "step": "01", "file": "step-01-frontend-dev.json", "agent": "FRONTEND-DEV", "status": "PENDING" },
+    { "step": "01", "file": "step-01-frontend-dev.json", "agent": "FRONTEND-DEV", "status": "COMPLETED" },
     { "step": "02", "file": "step-02-test-runner.json", "agent": "TEST-RUNNER", "status": "PENDING" },
     { "step": "final", "file": "step-final-backend-dev.json", "agent": "BACKEND-DEV", "status": "PENDING" }
   ]
