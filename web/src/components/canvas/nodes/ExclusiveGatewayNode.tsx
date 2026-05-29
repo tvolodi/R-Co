@@ -7,8 +7,9 @@ export default function ExclusiveGatewayNode({ selected }: NodeProps<Node<Canvas
       className="exclusive-gateway-node"
       style={{
         width: 56,
-        height: 56,
+        height: 80,
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
@@ -27,6 +28,7 @@ export default function ExclusiveGatewayNode({ selected }: NodeProps<Node<Canvas
           alignItems: 'center',
           justifyContent: 'center',
           boxShadow: selected ? '0 0 0 3px rgba(34,139,230,0.2)' : undefined,
+          flexShrink: 0,
         }}
       >
         {/* X mark */}
@@ -42,6 +44,20 @@ export default function ExclusiveGatewayNode({ selected }: NodeProps<Node<Canvas
           ✕
         </span>
       </div>
+
+      {/* Label text for identification */}
+      <span
+        style={{
+          fontSize: 'var(--text-xs, 0.65rem)',
+          color: 'var(--color-warning-dark, #e67700)',
+          marginTop: 2,
+          textAlign: 'center',
+          lineHeight: 1.1,
+          fontWeight: 500,
+        }}
+      >
+        GATEWAY
+      </span>
 
       <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Bottom} />

@@ -30,7 +30,7 @@ const EMPTY_GRAPH: DefinitionGraph = {
     { id: 'start', node_type: 'START', label: null, attributes: null },
     { id: 'end', node_type: 'END', label: null, attributes: null },
   ],
-  edges: [{ id: 'e1', source: 'start', target: 'end', condition: null, is_default: false }],
+  edges: [{ id: 'e1', source: 'start', target: 'end' }],
 }
 
 // ── Page component ────────────────────────────────────────────────────────────
@@ -51,9 +51,12 @@ export default function DefinitionEditorPage() {
   // ── Canvas state ────────────────────────────────────────────────────────────
 
   const [dirty, setDirty] = useState(false)
-  const validationErrors: ValidationError[] = []
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
+  const [selectedNodeData, _setSelectedNodeData] = useState<CanvasNodeData | undefined>(undefined)
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [paletteAddCounter, setPaletteAddCounter] = useState(0)
+  const [paletteAddNodeType, setPaletteAddNodeType] = useState<string | null>(null)
 
   // Ref to hold current canvas nodes/edges for serialization (filled by ProcessCanvas)
   const canvasStateRef = useRef<{ nodesJSON: string; edgesJSON: string } | null>(null)
@@ -112,12 +115,76 @@ export default function DefinitionEditorPage() {
     }
   }
 
+  // ── Validation logic ────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const state = canvasStateRef.current
+    if (!state) {
+      setValidationErrors([])
+      return
+    }
+    try {
+      const nodes: Node<CanvasNodeData>[] = JSON.parse(state.nodesJSON)
+      const edges: Edge<CanvasEdgeData>[] = JSON.parse(state.edgesJSON)
+      const errors: ValidationError[] = []
+
+      const hasStart = nodes.some((n) => n.data.nodeType === 'START')
+      const hasEnd = nodes.some((n) => n.data.nodeType === 'END')
+
+      if (!hasStart) {
+        errors.push({ message: 'Graph must contain a START node.', severity: 'error' })
+      }
+      if (!hasEnd) {
+        errors.push({ message: 'Graph must contain an END node.', severity: 'error' })
+      }
+
+      // Check for unnamed nodes (except START/END)
+      for (const node of nodes) {
+        if (node.data.nodeType !== 'START' && node.data.nodeType !== 'END' && !node.data.name?.trim()) {
+          errors.push({
+            nodeId: node.id,
+            message: `${node.data.nodeType.replace(/_/g, ' ')} node "${node.id}" has no name.`,
+            severity: 'warning',
+          })
+        }
+        // Check EXCLUSIVE_GATEWAY has at least 2 outgoing edges
+        if (node.data.nodeType === 'EXCLUSIVE_GATEWAY') {
+          const outgoing = edges.filter((e) => e.source === node.id)
+          if (outgoing.length < 2) {
+            errors.push({
+              nodeId: node.id,
+              message: `EXCLUSIVE_GATEWAY "${node.id}" should have at least 2 outgoing edges.`,
+              severity: 'warning',
+            })
+          }
+        }
+      }
+
+      setValidationErrors(errors)
+    } catch {
+      setValidationErrors([])
+    }
+  }, [canvasStateRef.current])
+
   // ── Unsaved changes guard ───────────────────────────────────────────────────
 
-  useBlocker(
+  const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       dirty && currentLocation.pathname !== nextLocation.pathname,
   )
+
+  const handleDiscardAndProceed = useCallback(() => {
+    if (blocker.state === 'blocked') {
+      setDirty(false)
+      blocker.proceed()
+    }
+  }, [blocker])
+
+  const handleCancelNavigation = useCallback(() => {
+    if (blocker.state === 'blocked') {
+      blocker.reset()
+    }
+  }, [blocker])
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -130,10 +197,37 @@ export default function DefinitionEditorPage() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [dirty])
 
+  // ── Palette add-node via double-click ──────────────────────────────────────
+
+  const handleAddNodeFromPalette = useCallback((nodeType: import('@/types/api').NodeType) => {
+    if (isReadOnly) return
+    setPaletteAddNodeType(nodeType)
+    setPaletteAddCounter((c) => c + 1)
+  }, [isReadOnly])
+
+  const paletteAddTrigger = useMemo(() => {
+    if (paletteAddCounter === 0 || !paletteAddNodeType) return undefined
+    return { counter: paletteAddCounter, nodeType: paletteAddNodeType }
+  }, [paletteAddCounter, paletteAddNodeType])
+
+
+  // ── Node update trigger (PropPanel → ProcessCanvas) ───────────────────────
+
+  const [nodeUpdateTrigger, setNodeUpdateTrigger] = useState<{
+    nodeId: string
+    data: Partial<CanvasNodeData>
+    counter: number
+  } | null>(null)
+  const nodeUpdateCounterRef = useRef(0)
+
   // ── Property panel callbacks ────────────────────────────────────────────────
 
   const handleUpdateNode = useCallback(
-    (_nodeId: string, _data: Partial<CanvasNodeData>) => { setDirty(true); void _nodeId; void _data; },
+    (nodeId: string, data: Partial<CanvasNodeData>) => {
+      setDirty(true)
+      nodeUpdateCounterRef.current += 1
+      setNodeUpdateTrigger({ nodeId, data, counter: nodeUpdateCounterRef.current })
+    },
     [setDirty],
   )
 
@@ -210,12 +304,14 @@ export default function DefinitionEditorPage() {
           {!isReadOnly && (
             <>
               <button
+                data-testid="btn-show-raw-json"
                 onClick={() => setShowRawJson(!showRawJson)}
                 style={toolbarButtonStyle(showRawJson ? 'var(--color-neutral-200, #e9ecef)' : undefined)}
               >
                 {showRawJson ? 'Hide Raw JSON' : 'Show Raw JSON'}
               </button>
               <button
+                data-testid="btn-save-definition"
                 onClick={handleSave}
                 disabled={create.isPending}
                 style={{
@@ -230,6 +326,7 @@ export default function DefinitionEditorPage() {
           )}
           {isReadOnly && (
             <span
+              data-testid="read-only-banner"
               style={{
                 fontSize: 'var(--text-sm, 0.875rem)',
                 color: 'var(--color-warning-dark, #e67700)',
@@ -238,7 +335,7 @@ export default function DefinitionEditorPage() {
                 borderRadius: 4,
               }}
             >
-              Read-only — {def?.status?.toLowerCase() ?? 'unknown'} status
+              Read-only — {def?.status ?? 'UNKNOWN'} status
             </span>
           )}
         </div>
@@ -323,7 +420,7 @@ export default function DefinitionEditorPage() {
       {/* ── Main layout: Palette | Canvas | Property Panel ─────── */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <ReactFlowProvider>
-          <NodePalette isReadOnly={isReadOnly} />
+          <NodePalette isReadOnly={isReadOnly} onAddNode={handleAddNodeFromPalette} />
 
           <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column' }}>
             <ProcessCanvas
@@ -335,11 +432,14 @@ export default function DefinitionEditorPage() {
               canvasStateRef={canvasStateRef}
               onSelectedNodeChange={setSelectedNodeId}
               onSelectedEdgeChange={setSelectedEdgeId}
+              paletteAddTrigger={paletteAddTrigger}
+              nodeUpdateTrigger={nodeUpdateTrigger}
             />
 
             {/* Raw JSON drawer */}
             {showRawJson && (
               <div
+                data-testid="raw-json-drawer"
                 style={{
                   borderTop: '1px solid var(--border-default, #e9ecef)',
                   background: 'var(--surface-card, #fff)',
@@ -357,6 +457,7 @@ export default function DefinitionEditorPage() {
                   Raw Graph JSON (debug)
                 </div>
                 <textarea
+                  data-testid="raw-json-textarea"
                   readOnly
                   value={currentGraphJson}
                   rows={8}
@@ -380,6 +481,7 @@ export default function DefinitionEditorPage() {
 
           <PropertyPanel
             selectedNodeId={selectedNodeId}
+            selectedNodeData={selectedNodeData}
             selectedEdgeId={selectedEdgeId}
             nodeNames={nodeNames}
             onUpdateNode={handleUpdateNode}
@@ -392,6 +494,85 @@ export default function DefinitionEditorPage() {
           />
         </ReactFlowProvider>
       </div>
+
+      {/* ── Unsaved changes dialog ────────────────────────────── */}
+      {blocker.state === 'blocked' && (
+        <div
+          data-testid="unsaved-changes-dialog"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--color-neutral-0, #fff)',
+              borderRadius: 8,
+              padding: 24,
+              minWidth: 360,
+              maxWidth: 440,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+            }}
+          >
+            <h3
+              style={{
+                margin: '0 0 8px',
+                fontSize: 'var(--text-lg, 1.125rem)',
+                fontWeight: 600,
+                color: 'var(--text-primary, #212529)',
+              }}
+            >
+              Unsaved Changes
+            </h3>
+            <p
+              style={{
+                margin: '0 0 20px',
+                fontSize: 'var(--text-sm, 0.875rem)',
+                color: 'var(--text-secondary, #6c757d)',
+              }}
+            >
+              You have unsaved changes. Do you want to discard them?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                onClick={handleCancelNavigation}
+                style={{
+                  padding: '6px 16px',
+                  border: '1px solid var(--border-default, #e9ecef)',
+                  borderRadius: 4,
+                  background: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 'var(--text-sm, 0.875rem)',
+                  color: 'var(--text-primary, #212529)',
+                }}
+              >
+                Stay
+              </button>
+              <button
+                data-testid="unsaved-discard"
+                onClick={handleDiscardAndProceed}
+                style={{
+                  padding: '6px 16px',
+                  border: 'none',
+                  borderRadius: 4,
+                  background: 'var(--interactive-danger, #fa5252)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 'var(--text-sm, 0.875rem)',
+                  fontWeight: 500,
+                }}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

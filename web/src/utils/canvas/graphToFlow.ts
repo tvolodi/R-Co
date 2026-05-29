@@ -63,8 +63,12 @@ export function graphToFlow(graph: DefinitionGraph): GraphToFlowResult {
   // Map node IDs to their persisted positions
   const persistedPositions = new Map<string, { x: number; y: number }>()
   for (const gn of graph.nodes) {
-    if (gn.attributes?.position && typeof gn.attributes.position === 'object') {
-      const pos = gn.attributes.position as { x: number; y: number }
+    let attrsParsed: Record<string, unknown> = {}
+    if (gn.attributes) {
+      try { attrsParsed = JSON.parse(gn.attributes) } catch { /* ignore */ }
+    }
+    if (attrsParsed?.position && typeof attrsParsed.position === 'object') {
+      const pos = attrsParsed.position as { x: number; y: number }
       if (typeof pos.x === 'number' && typeof pos.y === 'number') {
         persistedPositions.set(gn.id, pos)
       }
@@ -83,7 +87,7 @@ export function graphToFlow(graph: DefinitionGraph): GraphToFlowResult {
       data: {
         nodeType: gn.node_type,
         name: gn.label ?? '',
-        attributes: gn.attributes ?? '',
+        attributes: gn.attributes ?? {} as Record<string, unknown>,
       },
       width: dims.width,
       height: dims.height,

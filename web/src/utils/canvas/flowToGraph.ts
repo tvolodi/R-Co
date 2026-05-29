@@ -15,14 +15,20 @@ export function flowToGraph(
   edges: Edge<CanvasEdgeData>[],
 ): DefinitionGraph {
   const graphNodes: GraphNode[] = nodes.map((node) => {
-    const attrs: Record<string, unknown> = {
-      ...(node.data.attributes ?? {}),
-      position: { x: Math.round(node.position.x), y: Math.round(node.position.y) },
+    let attrs: string | null = null
+    try {
+      const existing = typeof node.data.attributes === 'string' && node.data.attributes ? JSON.parse(node.data.attributes) : {}
+      attrs = JSON.stringify({
+        ...existing,
+        position: { x: Math.round(node.position.x), y: Math.round(node.position.y) },
+      })
+    } catch {
+      attrs = JSON.stringify({ position: { x: Math.round(node.position.x), y: Math.round(node.position.y) } })
     }
     return {
       id: node.id,
-      type: node.data.nodeType,
-      name: node.data.name || undefined,
+      node_type: node.data.nodeType,
+      label: node.data.name || null,
       attributes: attrs,
     }
   })
