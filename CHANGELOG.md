@@ -2,6 +2,30 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — Process Designer Canvas (Stage F2)
+
+### Added (WF02-f2a-canvas-batch1-20260528)
+- **PD-UI-01:** Definition list — paginated, searchable table of all process definitions with name, latest version, status badge (DRAFT/ACTIVE/DEPRECATED/ARCHIVED), and creation date.
+- **PD-UI-02:** Status filter — multi-select status filtering with URL query string persistence across page reloads.
+- **PD-UI-03:** Version history — inline expandable version history row per definition showing all versions with status and navigation link.
+- **PD-UI-04:** Create definition — "New Definition" button opens form modal; on submit calls POST /definitions and navigates to Process Designer canvas.
+- **PD-UI-05:** Lifecycle actions — contextual actions per definition status (Edit/Activate/Delete for DRAFT, View/Deprecate for ACTIVE, View/Archive for DEPRECATED, View for ARCHIVED). Role-inappropriate actions hidden.
+- **PD-UI-06:** Activate confirmation — confirmation dialog when activating would deprecate an existing ACTIVE version.
+- **PD-UI-08:** Full-text search — debounced search bar (300ms) with result highlighting via definition search endpoint.
+- **PD-UI-09:** Visual graph canvas — React Flow-based process definition graph renderer with labelled node cards and directed edges with optional condition labels.
+- **PD-UI-10:** Node palette — sidebar palette listing all supported node types (START, END, HUMAN_TASK, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY, SERVICE_TASK, TIMER, SUB_PROCESS). Drag-and-drop or double-click to add.
+- **PD-UI-11:** Edge creation — drag from source handle to target handle; EXCLUSIVE_GATEWAY edges prompt for CEL condition or default edge toggle.
+- **PD-UI-12:** Node properties panel — inline panel for setting node attributes (assignee_type, assignee_ref, form_schema, escalation_timer_duration for HUMAN_TASK).
+- **PD-UI-15:** Read-only mode — ACTIVE/DEPRECATED/ARCHIVED definitions open as non-interactive canvas with viewable details and read-only banner.
+
+Implementation: `web/src/components/canvas/`, `web/src/components/definitions/`, `web/src/pages/`
+
+E2E tests: 16/16 Playwright canvas E2E tests pass. All MUST acceptance criteria covered.
+
+Release approval: `docs/status/release-f2-canvas-20260529.json`
+
+Requirements released: PD-UI-01, PD-UI-02, PD-UI-03, PD-UI-04, PD-UI-05, PD-UI-06, PD-UI-08, PD-UI-09, PD-UI-10, PD-UI-11, PD-UI-12, PD-UI-15 — RELEASED
+
 ## [Unreleased] — Company Onboarding Orchestration (Stage 6.5)
 
 ### Added (WF02-oidc35-20260528)
