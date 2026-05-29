@@ -190,7 +190,7 @@ pub const Store = struct {
 
         // [B] PD-02: graph structural validation.
         self.clearLastViolations();
-        const vresult = graph_mod.validateGraph(allocator, params.graph) catch
+        const vresult = graph_mod.validateGraph(self.allocator, params.graph) catch
             return DefinitionError.TransactionFailed;
         if (!vresult.valid) {
             // Store violations so the caller can retrieve them via lastViolations().
@@ -201,7 +201,7 @@ pub const Store = struct {
         allocator.free(vresult.violations);
 
         // [B2] PD-05: per-node-type attribute validation.
-        const attr_result = graph_mod.validateNodeAttributes(allocator, params.graph) catch
+        const attr_result = graph_mod.validateNodeAttributes(self.allocator, params.graph) catch
             return DefinitionError.TransactionFailed;
         if (!attr_result.valid) {
             self.last_violations = attr_result.violations;
@@ -210,7 +210,7 @@ pub const Store = struct {
         allocator.free(attr_result.violations);
 
         // [B3] PD-06: edge condition validation.
-        const edge_result = graph_mod.validateEdgeConditions(allocator, params.graph) catch
+        const edge_result = graph_mod.validateEdgeConditions(self.allocator, params.graph) catch
             return DefinitionError.TransactionFailed;
         if (!edge_result.valid) {
             self.last_violations = edge_result.violations;
@@ -218,7 +218,7 @@ pub const Store = struct {
         }
         allocator.free(edge_result.violations);
 
-        const transform_result = graph_mod.validateEdgeTransforms(allocator, params.graph) catch
+        const transform_result = graph_mod.validateEdgeTransforms(self.allocator, params.graph) catch
             return DefinitionError.TransactionFailed;
         if (!transform_result.valid) {
             self.last_violations = transform_result.violations;
@@ -536,7 +536,6 @@ pub const Store = struct {
             const graph_json = col.get(row, 5);
             const graph_to_validate = parseGraphJson(allocator, graph_json) catch {
                 self.setSingleValidationViolation(
-                    allocator,
                     "GRAPH_STRUCTURE_INVALID",
                     "Stored definition graph is not a valid JSON graph document",
                 ) catch return DefinitionError.TransactionFailed;
@@ -544,7 +543,7 @@ pub const Store = struct {
             };
             defer freeDefinitionGraph(allocator, graph_to_validate);
 
-            const vresult = graph_mod.validateGraph(allocator, graph_to_validate) catch
+            const vresult = graph_mod.validateGraph(self.allocator, graph_to_validate) catch
                 return DefinitionError.TransactionFailed;
             if (!vresult.valid) {
                 self.last_violations = vresult.violations;
@@ -552,7 +551,7 @@ pub const Store = struct {
             }
             allocator.free(vresult.violations);
 
-            const attr_result = graph_mod.validateNodeAttributes(allocator, graph_to_validate) catch
+            const attr_result = graph_mod.validateNodeAttributes(self.allocator, graph_to_validate) catch
                 return DefinitionError.TransactionFailed;
             if (!attr_result.valid) {
                 self.last_violations = attr_result.violations;
@@ -560,7 +559,7 @@ pub const Store = struct {
             }
             allocator.free(attr_result.violations);
 
-            const edge_result = graph_mod.validateEdgeConditions(allocator, graph_to_validate) catch
+            const edge_result = graph_mod.validateEdgeConditions(self.allocator, graph_to_validate) catch
                 return DefinitionError.TransactionFailed;
             if (!edge_result.valid) {
                 self.last_violations = edge_result.violations;
@@ -568,7 +567,7 @@ pub const Store = struct {
             }
             allocator.free(edge_result.violations);
 
-            const transform_result = graph_mod.validateEdgeTransforms(allocator, graph_to_validate) catch
+            const transform_result = graph_mod.validateEdgeTransforms(self.allocator, graph_to_validate) catch
                 return DefinitionError.TransactionFailed;
             if (!transform_result.valid) {
                 self.last_violations = transform_result.violations;
@@ -846,7 +845,7 @@ pub const Store = struct {
         if (params.graph) |g| {
             self.clearLastViolations();
 
-            const vresult = graph_mod.validateGraph(allocator, g) catch
+            const vresult = graph_mod.validateGraph(self.allocator, g) catch
                 return DefinitionError.TransactionFailed;
             if (!vresult.valid) {
                 self.last_violations = vresult.violations;
@@ -854,7 +853,7 @@ pub const Store = struct {
             }
             allocator.free(vresult.violations);
 
-            const attr_result = graph_mod.validateNodeAttributes(allocator, g) catch
+            const attr_result = graph_mod.validateNodeAttributes(self.allocator, g) catch
                 return DefinitionError.TransactionFailed;
             if (!attr_result.valid) {
                 self.last_violations = attr_result.violations;
@@ -862,7 +861,7 @@ pub const Store = struct {
             }
             allocator.free(attr_result.violations);
 
-            const edge_result = graph_mod.validateEdgeConditions(allocator, g) catch
+            const edge_result = graph_mod.validateEdgeConditions(self.allocator, g) catch
                 return DefinitionError.TransactionFailed;
             if (!edge_result.valid) {
                 self.last_violations = edge_result.violations;
@@ -870,7 +869,7 @@ pub const Store = struct {
             }
             allocator.free(edge_result.violations);
 
-            const transform_result = graph_mod.validateEdgeTransforms(allocator, g) catch
+            const transform_result = graph_mod.validateEdgeTransforms(self.allocator, g) catch
                 return DefinitionError.TransactionFailed;
             if (!transform_result.valid) {
                 self.last_violations = transform_result.violations;
@@ -1251,13 +1250,15 @@ pub const Store = struct {
 
     fn setSingleValidationViolation(
         self: *Store,
-        allocator: std.mem.Allocator,
         code: []const u8,
         message: []const u8,
     ) error{OutOfMemory}!void {
         self.clearLastViolations();
-        const msg = try std.fmt.allocPrint(allocator, "{s}: {s}", .{ code, message });
-        const violations = try allocator.alloc(Violation, 1);
+        // Use self.allocator, not the caller's allocator, so that
+        // clearLastViolations (which also uses self.allocator) can free
+        // these correctly. Mixing allocators causes an alignment panic.
+        const msg = try std.fmt.allocPrint(self.allocator, "{s}: {s}", .{ code, message });
+        const violations = try self.allocator.alloc(Violation, 1);
         violations[0] = Violation{ .code = code, .message = msg };
         self.last_violations = violations;
     }

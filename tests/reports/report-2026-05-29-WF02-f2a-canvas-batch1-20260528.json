@@ -1,0 +1,195 @@
+{
+  "run_id": "WF02-f2a-canvas-batch1-20260528",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-29T00:15:00Z",
+  "summary": {
+    "total": 13,
+    "passed": 0,
+    "failed": 13,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "test_id": "TC-PDUI09-01",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-09",
+      "root_cause": "Test data sends GraphNode with field 'name' but backend expects 'label'. The Zig GraphNode struct uses 'label' (not 'name') for the display label field.",
+      "recommendation": "Fix the graph template functions in f2-canvas.e2e.spec.ts to use 'label' instead of 'name' for GraphNode entries."
+    },
+    {
+      "test_id": "TC-PDUI09-02",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-09",
+      "root_cause": "Same as TC-PDUI09-01 — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix — replace 'name' with 'label' in gatewayGraph() template"
+    },
+    {
+      "test_id": "TC-PDUI09-03",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-09",
+      "root_cause": "Same as TC-PDUI09-01 — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix — replace 'name' with 'label' in startEndGraph() template"
+    },
+    {
+      "test_id": "TC-PDUI09-04",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-09",
+      "root_cause": "Same as TC-PDUI09-01 — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI10-01",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-10",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI10-02",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-10",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI10-03",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-10",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI11-01",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-11",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI11-02",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-11",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI11-03",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-11",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI12-01",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-12",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI12-02",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-12",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI12-03",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-12",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-PDUI12-04",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-12",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-SAVE-01",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-12",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    },
+    {
+      "test_id": "TC-SAVE-02",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "error_message": "POST /definitions failed (400): {\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-12",
+      "root_cause": "Same — test data uses 'name' instead of 'label'",
+      "recommendation": "Same fix"
+    }
+  ],
+  "root_cause_analysis": {
+    "summary": "All 13 E2E tests fail at the setup stage because POST /api/v1/definitions returns 400 (malformed_json). The root cause is a field name mismatch between the test data and the backend's expected JSON schema.",
+    "field_mismatches": [
+      {
+        "field_in_test": "name",
+        "expected_by_backend": "label",
+        "affected_structures": ["GraphNode in all graph templates (startEndGraph, threeNodeGraph, gatewayGraph, and inline graph definitions)"],
+        "example_test_data": "{ id: 'start', node_type: 'START', name: null, attributes: null }",
+        "expected_format": "{ id: 'start', node_type: 'START', label: null, attributes: null }"
+      },
+      {
+        "field_in_test": "attributes (as JSON object)",
+        "expected_by_backend": "attributes (?[]const u8 — JSON string or null)",
+        "affected_structures": ["GraphNode.attributes in node definitions that include attributes object (e.g., HUMAN_TASK nodes with assignee_type, assignee_ref)"],
+        "example_test_data": "attributes: { assignee_type: 'user', assignee_ref: 'admin-user' }",
+        "expected_format": "attributes: '{\"assignee_type\":\"user\",\"assignee_ref\":\"admin-user\"}'"
+      }
+    ],
+    "note": "The 'name'→'label' mismatch is the primary BLOCKER. The 'attributes'→string format is a secondary issue that would surface after fixing the first. Both must be resolved for the tests to pass."
+  },
+  "screenshots": "test-results/ directory contains screenshot and trace artifacts for each failed test (with retries). Key screenshots available at test-results/f2-canvas.e2e-F2-—-Process-*/",
+  "nfr_results": []
+}
