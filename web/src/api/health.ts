@@ -1,5 +1,4 @@
 import { client } from './client'
-import { getToken } from './client'
 import type { HealthStatus } from '@/types/api'
 
 export const healthApi = {
@@ -14,16 +13,8 @@ export const healthApi = {
  */
 export async function healthReady(): Promise<boolean> {
   try {
-    const token = getToken()
-    const headers: Record<string, string> = {}
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
-    }
-    const response = await fetch('/health/ready', {
-      headers,
-      signal: AbortSignal.timeout(5000),
-    })
-    return response.ok
+    await client.get<unknown>('/health/ready')
+    return true
   } catch {
     return false
   }
