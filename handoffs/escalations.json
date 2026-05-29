@@ -50,6 +50,21 @@
                             "reason":  "PostgreSQL database not accessible at localhost:5432; all 46 test cases blocked on connection",
                             "handoff_id":  "test-runner-db-blocker-20260528",
                             "timestamp":  "2026-05-28T07:58:58Z"
+                        },
+                        {
+                            "handoff_id": "1fb71a0a-95ef-4fde-8f6a-0dd041b8a23f",
+                            "workflow_id": "WF-02",
+                            "agent": "TEST-RUNNER",
+                            "reason": "Max rework (3) exceeded at Step 04 for WF02-stage11-sim05-08-20260529",
+                            "last_issues": [
+                                {
+                                    "id": "SIM05-08-INTEGRATION-HANG-REWORK3-01",
+                                    "severity": "BLOCKER",
+                                    "description": "Integration validation remains blocked: env-bound zig build test-integration stalls and does not produce a completion marker.",
+                                    "affected_requirement": "SIM-05,SIM-06,SIM-07,SIM-08"
+                                }
+                            ],
+                            "timestamp": "2026-05-29T11:34:03Z"
                         }
                     ]
 }

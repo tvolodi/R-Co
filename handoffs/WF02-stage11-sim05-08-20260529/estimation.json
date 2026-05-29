@@ -1,0 +1,36 @@
+{
+  "run_id": "WF02-stage11-sim05-08-20260529",
+  "created_at": "2026-05-29T08:46:42Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "SIM-05",
+    "SIM-06",
+    "SIM-07",
+    "SIM-08"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "Scenario runner and batch execution are multi-module Stage 11 capabilities with deterministic integration requirements.",
+  "integration_surface": "high",
+  "integration_surface_rationale": "Touches simulation runtime, assertion/evaluation paths, and integration test harness for deterministic verification.",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "backend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 8,
+    "code-design-validator": 23,
+    "backend-dev": 9,
+    "test-designer": 3,
+    "test-design-validator": 38,
+    "test-runner": 6,
+    "release-validator": 2,
+    "doc-updater": 2,
+    "total": 91
+  }
+}

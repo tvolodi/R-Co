@@ -6,6 +6,7 @@ pub const mock_catalog = @import("mock_catalog.zig");
 pub const service_interceptor = @import("service_interceptor.zig");
 pub const tenant_store = @import("tenant_store.zig");
 pub const runtime = @import("runtime.zig");
+pub const scenario_runner = @import("scenario_runner.zig");
 
 pub const SimulationRunId = types.SimulationRunId;
 pub const TenantId = types.TenantId;

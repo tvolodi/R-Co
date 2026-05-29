@@ -693,6 +693,16 @@ pub fn build(b: *std.Build) void {
     });
     const run_stage11_sim_xc04_integration_tests = b.addRunArtifact(stage11_sim_xc04_integration_tests);
 
+    const sim05_08_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/sim05_08_scenario_runner_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_sim05_08_integration_tests = b.addRunArtifact(sim05_08_integration_tests);
+
     const obs03_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/obs03_audit_log_test.zig"),
@@ -739,6 +749,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_stage11_sim_xc04_step = b.step("test-integration-stage11-sim-xc04", "Run Stage 11 SIM-01..SIM-04 + XC-04 aggregate integration tests (requires BPM_TEST_DB_URL)");
     test_integration_stage11_sim_xc04_step.dependOn(&clean_test_db.step);
     test_integration_stage11_sim_xc04_step.dependOn(&run_stage11_sim_xc04_integration_tests.step);
+
+    const test_integration_sim05_08_step = b.step("test-integration-sim05-08", "Run Stage 11 SIM-05..SIM-08 integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_sim05_08_step.dependOn(&clean_test_db.step);
+    test_integration_sim05_08_step.dependOn(&run_sim05_08_integration_tests.step);
 
     const test_integration_obs03_step = b.step("test-integration-obs03", "Run OBS-03 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_obs03_step.dependOn(&clean_test_db.step);

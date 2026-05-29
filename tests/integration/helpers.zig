@@ -100,6 +100,14 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     }
 }
 
+fn configureSessionTimeouts(conn: *pg.Conn) !void {
+    // Keep integration runs deterministic under contention: prefer explicit timeout
+    // failures to indefinite waits on locks/statements.
+    try conn.exec("SET lock_timeout = '5s'", &.{});
+    try conn.exec("SET statement_timeout = '60s'", &.{});
+    try conn.exec("SET idle_in_transaction_session_timeout = '120s'", &.{});
+}
+
 fn applyCompatibilityShims(conn: *pg.Conn) !void {
     // Legacy XC integration fixtures still reference `instances` and omit
     // newer mandatory event fields. These shims preserve test intent while
@@ -288,6 +296,11 @@ pub const TestHarness = struct {
             return err;
         };
         errdefer conn.close();
+
+        configureSessionTimeouts(&conn) catch |err| {
+            std.debug.print("configureSessionTimeouts failed: {}\n", .{err});
+            return err;
+        };
 
         // Run migrations against the test database.
         runMigrations(std.testing.io, allocator, &conn) catch |err| {
