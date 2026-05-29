@@ -67,6 +67,7 @@ export interface CreateDefinitionRequest {
   version: string
   description?: string
   graph?: DefinitionGraph
+  stage?: string | null
 }
 
 // ── Process Instances (Stage 3) ───────────────────────────────────────────────

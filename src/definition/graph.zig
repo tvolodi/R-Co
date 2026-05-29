@@ -67,7 +67,7 @@ pub const GraphEdge = struct {
     /// CEL condition expression for EXCLUSIVE_GATEWAY routing (PD-06).
     /// MUST be present (non-null, non-empty) on every non-default outgoing
     /// edge from an EXCLUSIVE_GATEWAY. MUST be null on all other edges.
-    condition: ?[]const u8,
+    condition: ?[]const u8 = null,
     /// Optional CEL transform expression evaluated when traversing this edge (EXT-04).
     /// Null or empty/whitespace-only value is treated as a no-op transform.
     transform: ?[]const u8 = null,

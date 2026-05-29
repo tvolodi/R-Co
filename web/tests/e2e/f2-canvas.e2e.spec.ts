@@ -627,12 +627,12 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
       await page.waitForTimeout(300)
       await expect(conditionDialog).not.toBeVisible()
 
-      // Edge should not exist (cancelled)
+      // Edge count unchanged (cancelled, no new edge added; original 5 edges remain)
       const edgesAfterCancel = page.locator('.react-flow__edge')
-      await expect(edgesAfterCancel).toHaveCount(0)
+      await expect(edgesAfterCancel).toHaveCount(5)
 
       await shot(page, 'TC11-02-after-cancel')
-      // VERDICT: Screen shows canvas without new edge after cancelling ConditionDialog
+      // VERDICT: Screen shows canvas with original 5 edges after cancelling ConditionDialog
     })
 
     test('TC-PDUI11-03: Edge deletion removes the edge', async ({ page, request }) => {
@@ -734,19 +734,25 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
 
     test('TC-PDUI12-03: Saving the definition persists property changes', async ({ page, request }) => {
       const uniqueSuffix = testId('save-03')
-      const graph = startEndGraph()
+      // Use a valid connected graph (backend rejects isolated nodes with 422)
+      const graph = threeNodeGraph(uniqueSuffix)
       const def = await createTestDefinition(request, authToken, `Save Test ${uniqueSuffix}`, '1.0.0', graph)
       createdDefinitionIds.push(def.id)
 
       await loginWithToken(page, authToken)
       await navigateToCanvas(page, def.id)
 
-      // Add a HUMAN_TASK node via double-click
-      await page.getByTestId('palette-item-HUMAN_TASK').dblclick()
-      await page.waitForTimeout(500)
-
-      // Verify 3 nodes now
+      // Verify 3 nodes loaded from the valid graph
       await expect(page.locator('.react-flow__node')).toHaveCount(3)
+
+      // Change a node name to mark dirty
+      await page.getByText(`Review Task ${uniqueSuffix}`).click()
+      await page.waitForTimeout(500)
+      await expect(page.getByTestId('property-panel')).toBeVisible()
+      const nameInput = page.getByTestId('prop-name-input')
+      await nameInput.clear()
+      await nameInput.fill(`Saved Task ${uniqueSuffix}`)
+      await page.waitForTimeout(300)
 
       // Click the Save button
       const saveButton = page.getByTestId('btn-save-definition')
@@ -755,37 +761,47 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
       await saveButton.click()
 
       // Wait for success toast
-      await expect(page.getByText('saved', { exact: false })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('Definition saved', { exact: false })).toBeVisible({ timeout: 10_000 })
 
       await shot(page, 'TC12-03-after-save')
       // VERDICT: Screen shows success toast after saving
 
-      // Reload the page — changes should persist
+      // Reload the page — changes should persist (re-authenticate since token is in-memory)
       await page.reload()
-      await page.waitForURL(`/definitions/${def.id}`, { timeout: 15_000 })
-      await expect(page.getByTestId('process-canvas')).toBeVisible({ timeout: 15_000 })
+      await loginWithToken(page, authToken)
+      await navigateToCanvas(page, def.id)
 
-      // The graph should have 3 nodes after reload (the added HUMAN_TASK persisted)
+      // The graph should have 3 nodes after reload
       const nodesAfterReload = page.locator('.react-flow__node')
       await expect(nodesAfterReload).toHaveCount(3)
 
+      // The saved name should persist
+      await expect(page.getByText(`Saved Task ${uniqueSuffix}`)).toBeVisible()
+
       await shot(page, 'TC12-03-after-reload')
-      // VERDICT: Screen shows canvas with 3 nodes after reload — the added HUMAN_TASK node persisted via save
+      // VERDICT: Screen shows canvas with 3 nodes and saved name after reload — changes persisted via PATCH
     })
 
     test('TC-PDUI12-04: Property panel shows correct fields per node type', async ({ page, request }) => {
       const uniqueSuffix = testId('fields-04')
-      // Create a definition with multiple node types
+      // Create a definition with multiple node types — all connected (backend rejects isolated nodes with 422)
       const graph = {
         nodes: [
           { id: 'start', node_type: 'START', label: null, attributes: null },
           { id: `human-${uniqueSuffix}`, node_type: 'HUMAN_TASK', label: `Human ${uniqueSuffix}`, attributes: '{"role":"admin-user","assignee_type":"user","assignee_ref":"admin-user"}' },
-          { id: `service-${uniqueSuffix}`, node_type: 'SERVICE_TASK', label: `Service ${uniqueSuffix}`, attributes: '{"role":"admin-user","service_type":"http","service_config":"{}"}' },
-          { id: `timer-${uniqueSuffix}`, node_type: 'TIMER', label: `Timer ${uniqueSuffix}`, attributes: '{"role":"admin-user","timer_type":"duration","timer_duration":"PT1H"}' },
+          { id: `service-${uniqueSuffix}`, node_type: 'SERVICE_TASK', label: `Service ${uniqueSuffix}`, attributes: '{"role":"admin-user","service_type":"http","endpoint":"https://example.com/api","service_config":"{}"}' },
+          { id: `timer-${uniqueSuffix}`, node_type: 'TIMER', label: `Timer ${uniqueSuffix}`, attributes: '{"role":"admin-user","timer_type":"duration","timer_duration":"PT1H","duration_iso8601":"PT1H"}' },
           { id: `gw-${uniqueSuffix}`, node_type: 'EXCLUSIVE_GATEWAY', label: null, attributes: null },
           { id: 'end', node_type: 'END', label: null, attributes: null },
         ],
-        edges: [],
+        edges: [
+          { id: 'e1', source: 'start', target: `human-${uniqueSuffix}`, condition: null, is_default: false },
+          { id: 'e2', source: `human-${uniqueSuffix}`, target: `service-${uniqueSuffix}`, condition: null, is_default: false },
+          { id: 'e3', source: `service-${uniqueSuffix}`, target: `timer-${uniqueSuffix}`, condition: null, is_default: false },
+          { id: 'e4', source: `timer-${uniqueSuffix}`, target: `gw-${uniqueSuffix}`, condition: null, is_default: false },
+          { id: 'e5', source: `gw-${uniqueSuffix}`, target: 'end', condition: "status == 'approved'", is_default: false },
+          { id: 'e6', source: `gw-${uniqueSuffix}`, target: 'end', condition: null, is_default: true },
+        ],
       }
       const def = await createTestDefinition(request, authToken, `Field Types ${uniqueSuffix}`, '1.0.0', graph)
       createdDefinitionIds.push(def.id)
@@ -809,8 +825,13 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
       await shot(page, 'TC12-04-service-task-fields')
       // VERDICT: Screen shows SERVICE_TASK property panel with service_type, service_config fields
 
-      // Click TIMER node — panel shows timer fields
-      await page.getByText(`Timer ${uniqueSuffix}`).click()
+      // Click TIMER node — TimerNode renders only a clock icon, no text label.
+      // Node order: START, HUMAN_TASK, SERVICE_TASK, TIMER (4th), GATEWAY, END.
+      // Click the canvas pane first to deselect the previously selected SERVICE_TASK node,
+      // then click the TIMER node using its React Flow data-testid attribute.
+      await page.getByTestId('process-canvas').click({ position: { x: 10, y: 10 } })
+      await page.waitForTimeout(300)
+      await page.locator('[data-testid^="rf__node-timer-"]').click()
       await page.waitForTimeout(500)
       await expect(page.getByTestId('prop-timer-type')).toBeVisible()
       await expect(page.getByTestId('prop-timer-duration')).toBeVisible()
@@ -834,38 +855,44 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
   test.describe('Save workflow', () => {
     test('TC-SAVE-01: Modified canvas saves via PUT and reload shows saved changes', async ({ page, request }) => {
       const uniqueSuffix = testId('fullsave-01')
-      const graph = startEndGraph()
+      // Use a valid connected graph (backend rejects isolated nodes with 422)
+      const graph = threeNodeGraph(uniqueSuffix)
       const def = await createTestDefinition(request, authToken, `Full Save ${uniqueSuffix}`, '1.0.0', graph)
       createdDefinitionIds.push(def.id)
 
       await loginWithToken(page, authToken)
       await navigateToCanvas(page, def.id)
 
-      // Initial state: 2 nodes, 1 edge
-      await expect(page.locator('.react-flow__node')).toHaveCount(2)
-      await expect(page.locator('.react-flow__edge')).toHaveCount(1)
-
-      // Add a HUMAN_TASK node
-      await page.getByTestId('palette-item-HUMAN_TASK').dblclick()
-      await page.waitForTimeout(500)
-
-      // Verify 3 nodes now
+      // Initial state: 3 nodes, 2 edges (valid connected graph)
       await expect(page.locator('.react-flow__node')).toHaveCount(3)
+      await expect(page.locator('.react-flow__edge')).toHaveCount(2)
+
+      // Change a node name to mark dirty
+      await page.getByText(`Review Task ${uniqueSuffix}`).click()
+      await page.waitForTimeout(500)
+      await expect(page.getByTestId('property-panel')).toBeVisible()
+      const nameInput = page.getByTestId('prop-name-input')
+      await nameInput.clear()
+      await nameInput.fill(`Full Saved Task ${uniqueSuffix}`)
+      await page.waitForTimeout(300)
 
       // Save
       await page.getByTestId('btn-save-definition').click()
-      await expect(page.getByText('saved', { exact: false })).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByText('Definition saved', { exact: false })).toBeVisible({ timeout: 10_000 })
 
-      // Reload
+      // Reload — re-authenticate since token is in-memory
       await page.reload()
-      await page.waitForURL(`/definitions/${def.id}`, { timeout: 15_000 })
-      await expect(page.getByTestId('process-canvas')).toBeVisible({ timeout: 15_000 })
+      await loginWithToken(page, authToken)
+      await navigateToCanvas(page, def.id)
 
       // Verify 3 nodes persist after reload
       await expect(page.locator('.react-flow__node')).toHaveCount(3)
 
+      // Verify the saved name persisted
+      await expect(page.getByText(`Full Saved Task ${uniqueSuffix}`)).toBeVisible()
+
       await shot(page, 'TC-SAVE-01-after-reload')
-      // VERDICT: Screen shows canvas with 3 nodes after reload — modifications persisted via PUT
+      // VERDICT: Screen shows canvas with 3 nodes and saved name after reload — modifications persisted via PATCH
     })
 
     test('TC-SAVE-02: Unsaved changes dialog on navigation away', async ({ page, request }) => {

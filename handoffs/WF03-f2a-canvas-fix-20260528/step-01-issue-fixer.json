@@ -4,9 +4,9 @@
   "step": "01",
   "from_agent": "ORCH",
   "to_agent": "ISSUE-FIXER",
-  "created_at": "2026-05-28T19:20:49Z",
-  "started_at": "2026-05-28T19:20:49Z",
-  "status": "COMPLETED",
+  "created_at": "2026-05-29T03:09:17Z",
+  "started_at": "2026-05-29T03:12:48Z",
+  "status": "IN_PROGRESS",
   "priority": "HIGH",
   "context": {
     "stage": "Stage F2 \u2014 Batch 1: Canvas Foundation",
@@ -20,51 +20,24 @@
       "49a593b4"
     ],
     "artifacts_in": [
+      "web/src/components/canvas/ProcessCanvas.tsx",
+      "web/src/components/canvas/ConditionDialog.tsx",
+      "web/src/pages/definitions/DefinitionEditorPage.tsx",
       "web/tests/e2e/f2-canvas.e2e.spec.ts",
-      "src/definition/graph.zig",
-      "tests/reports/report-2026-05-29-WF02-f2a-canvas-batch1-20260528.json",
       "src/design/canvas-f2-batch1.md"
     ]
   },
   "task": {
-    "description": "Fix the E2E test data format in web/tests/e2e/f2-canvas.e2e.spec.ts. All 13 tests fail because the test helper functions use incorrect GraphNode field names.\n\nRoot cause: The backend GraphNode struct (src/definition/graph.zig) has:\n  label: ?[]const u8,  (NOT \"name\")\n  attributes: ?[]const u8 = null,  (JSON string, NOT a JSON object)\n\nFixes needed in the test file:\n1. Replace all occurrences of name: \"...\" in graph node objects with label: \"...\"\n2. Serialize attributes values as JSON strings, e.g. attributes: JSON.stringify({...}) instead of attributes: {...}\n3. After fixing, run: cd web && npx playwright test f2-canvas.e2e.spec.ts --reporter=list\n4. Confirm at least some tests pass (or get past setup)",
+    "description": "Fix the 4 remaining E2E test failures for the React Flow canvas (12/16 currently pass). Branch: feature/WF02-f2a-canvas-batch1-20260528. Commit and push fixes.\n\nFailure 1 - TC-PDUI11-02 (ConditionDialog cancel): React Flow calls onConnect immediately after dragTo, creating the edge BEFORE the ConditionDialog opens. When user cancels, the edge already exists. Fix: in ProcessCanvas.onConnect, for EXCLUSIVE_GATEWAY source: do NOT call addEdges; instead open ConditionDialog first, only call addEdges if user confirms.\n\nFailure 2 - TC-PDUI12-03 (Save persists): Clicking Save does not show saved toast. Check: (a) btn-save-definition is not disabled, (b) clicking triggers handleSave, (c) PUT request succeeds, (d) saved toast appears.\n\nFailure 3 - TC-PDUI12-04 (Property fields per type): Test creates 6 disconnected nodes with no edges; backend rejects POST with 422 ISOLATED_NODE. Fix: update the test manyNodeTypesGraph() helper to include edges connecting all nodes.\n\nFailure 4 - TC-SAVE-01 (Save + reload): Same root cause as Failure 2 - save does not produce toast.",
     "acceptance_criteria": [
-      "Test setup succeeds (POST /api/v1/definitions returns 201, not 400)",
-      "At least some E2E tests pass"
+      "All 16 canvas E2E tests pass",
+      "npm run type-check exits 0",
+      "Commit pushed to feature/WF02-f2a-canvas-batch1-20260528"
     ],
     "functions_to_call": []
   },
-  "result": {
-    "status": "PASS",
-    "summary": "Fixed: backend graph serialization (appendJsonGraph), GraphNode type alignment (node_type/label/attributes), EMPTY_GRAPH field names, canvas testid, and test navigation (SPA pushState). TC-PDUI09-01 passes. Pre-existing allocator crash in store.zig:1246 blocks full suite.",
-    "artifacts_out": [
-      "src/api/routes/definitions.zig",
-      "web/src/types/api.ts",
-      "web/src/utils/canvas/graphToFlow.ts",
-      "web/src/pages/definitions/DefinitionEditorPage.tsx",
-      "web/src/components/canvas/ProcessCanvas.tsx",
-      "web/tests/e2e/f2-canvas.e2e.spec.ts"
-    ],
-    "issues": [
-      {
-        "id": "ISSUE-001",
-        "severity": "BLOCKER",
-        "description": "Backend crashes with allocator alignment error in store.zig:1246 (clearLastViolations) during create. Pre-existing, not caused by this fix. Blocks full test suite.",
-        "affected_requirement": "PD-UI-09"
-      }
-    ],
-    "git_evidence": {
-      "branch_name": "feature/WF02-f2a-canvas-batch1-20260528",
-      "commit_sha_list": [
-        "c2aa3f6"
-      ],
-      "remote_branch": "origin/feature/WF02-f2a-canvas-batch1-20260528",
-      "push_status": "ok",
-      "pr_url": null
-    },
-    "next_action": "Pre-existing backend allocator crash (store.zig:1246) needs fix before full test suite can run. Route to ISSUE-FIXER for the store.zig alignment bug, then restart from Step 3b (TEST-DESIGN-VALIDATOR)."
-  },
-  "rework_count": 0,
+  "result": null,
+  "rework_count": 1,
   "max_rework": 3,
-  "completed_at": "2026-05-28T20:02:28Z"
+  "completed_at": null
 }
