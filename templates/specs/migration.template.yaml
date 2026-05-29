@@ -1,0 +1,127 @@
+# Migration + integration-test parameter file (Lego Type C)
+#
+# This file is the COMPLETE design output for a Type C requirement.
+# CODE-DESIGNER produces it. CODE-DESIGN-VALIDATOR lints it.
+# BACKEND-DEV runs codegen_migration.py over it to produce:
+#   migrations/<number>_<name>.sql
+#   tests/integration/<name>_test.zig   (scaffold only — assertion bodies are CUSTOM blocks)
+#
+# Worked example: a fictional "task_priority_overrides" table.
+# Replace every field with concrete values for your migration; remove # placeholder
+# comments before commit. Keep this file alongside the generated SQL — re-running
+# codegen over the same YAML must reproduce identical output.
+
+schema_version: 1               # template schema version; bump only when migrating templates
+migration_number: 57            # next free number under migrations/; DO NOT zero-pad in YAML (PyYAML treats 057 as octal 47)
+name: task_priority_overrides   # snake_case, matches migrations/<NNN>_<name>.sql
+requirement_ids: [TSK-12]       # MUST IDs from BPM_Platform_Functional_Requirements.md
+purpose: |
+  Allow administrators to override the default priority of an active task
+  without modifying the underlying definition. Required for TSK-12 escalation
+  workflow which boosts overdue tasks into a higher priority lane.
+
+# ------------------------------------------------------------
+# Tables (one or more). Use either `create` or `alter` per entry.
+# ------------------------------------------------------------
+tables:
+  - mode: create                # create | alter
+    name: task_priority_overrides
+    columns:
+      - { name: override_id,     type: uuid,          pk: true,          default: gen_random_uuid() }
+      - { name: tenant_id,       type: uuid,          not_null: true,    fk: "tenants(tenant_id)" }
+      - { name: task_id,         type: uuid,          not_null: true,    fk: "tasks(task_id)" }
+      - { name: priority,        type: "varchar(16)", not_null: true }
+      - { name: reason,          type: text,          not_null: false }
+      - { name: created_by,      type: uuid,          not_null: true,    fk: "users(user_id)" }
+      - { name: created_at,      type: "timestamptz", not_null: true,    default: now() }
+    constraints:
+      - { kind: unique,  columns: [tenant_id, task_id] }
+      - { kind: check,   expression: "priority IN ('LOW','NORMAL','HIGH','URGENT')" }
+    indexes:
+      - { name: idx_task_priority_overrides_task,   columns: [task_id] }
+      - { name: idx_task_priority_overrides_tenant, columns: [tenant_id, created_at] }
+
+  # Second table example — altering an existing table.
+  # - mode: alter
+  #   name: tasks
+  #   add_columns:
+  #     - { name: priority_override_id, type: uuid, not_null: false, fk: "task_priority_overrides(override_id)" }
+  #   drop_columns: []          # AVOID. Append-only migrations only. See docs/anti-patterns.md "DROP".
+
+# ------------------------------------------------------------
+# Integration test scaffold (codegen writes the test file with these fixtures
+# wired up; the test BODY is generated as a CUSTOM block for the implementer).
+# ------------------------------------------------------------
+fixtures:
+  - name: tenant_id
+    kind: uuid                  # uuid | random_string | timestamp_now | sql_setup | sql_literal
+  - name: actor_id
+    kind: uuid
+  - name: target_task_id
+    kind: uuid
+  - name: seed_task_sql
+    kind: sql_setup             # arbitrary SQL run during setup; codegen wraps with defer cleanup
+    sql: |
+      INSERT INTO tasks (task_id, tenant_id, definition_id, status, created_at)
+      VALUES ($1, $2, $3, 'OPEN', now());
+    params: [target_task_id, tenant_id, "00000000-0000-0000-0000-000000000001"]
+
+# Each test case becomes a `test "..." { ... }` block in the generated test file.
+# The `assertions` field is rendered as a `// CUSTOM: assertions go here` block;
+# DO NOT auto-generate assertion logic — that is human/agent work.
+test_cases:
+  - name: insert_then_read
+    description: A newly inserted override is retrievable by (tenant_id, task_id).
+    requirement_ref: TSK-12
+    arrange: |
+      const override_id = generated.uuid();
+    act: |
+      try store.insertOverride(.{
+          .override_id = override_id,
+          .tenant_id = fx.tenant_id,
+          .task_id = fx.target_task_id,
+          .priority = "HIGH",
+          .created_by = fx.actor_id,
+      });
+    assertions: |
+      // CUSTOM: assert SELECT returns the row with the expected priority and FK chain.
+
+  - name: unique_constraint_enforced
+    description: A second insert for the same (tenant_id, task_id) fails with 23505.
+    requirement_ref: TSK-12
+    arrange: |
+      try seedOverride(store, fx, "NORMAL");
+    act: |
+      const result = store.insertOverride(.{
+          .override_id = generated.uuid(),
+          .tenant_id = fx.tenant_id,
+          .task_id = fx.target_task_id,
+          .priority = "URGENT",
+          .created_by = fx.actor_id,
+      });
+    assertions: |
+      // CUSTOM: assert error.UniqueConstraintViolation; SELECT still returns the first row.
+
+  - name: check_constraint_rejects_unknown_priority
+    description: priority = 'BANANAS' is rejected by the CHECK constraint.
+    requirement_ref: TSK-12
+    arrange: ""
+    act: |
+      const result = store.insertOverride(.{
+          .override_id = generated.uuid(),
+          .tenant_id = fx.tenant_id,
+          .task_id = fx.target_task_id,
+          .priority = "BANANAS",
+          .created_by = fx.actor_id,
+      });
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation.
+
+# ------------------------------------------------------------
+# Rollback notes (informational — append-only policy applies; rollback is by
+# a forward migration that archives or supersedes this one).
+# ------------------------------------------------------------
+rollback_strategy: |
+  Forward-only. If this table must be retired, write a subsequent migration that
+  copies rows to an archive table and marks the override_id values as
+  superseded; do NOT add a DROP TABLE migration.

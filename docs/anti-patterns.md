@@ -10,6 +10,20 @@
 
 Before implementing anything, search this file for the module or pattern you are about to use. If your approach matches an entry in the **Anti-Pattern** column, use the **Correct Approach** instead without attempting the anti-pattern first.
 
+## Automated checks
+
+Several of the anti-patterns below are now enforced by linters under `tools/`. Run them as part of self-review or in CI:
+
+| Linter | Catches |
+|---|---|
+| `python3 tools/lint_design_artefact.py <file>` | Schema-qualified table names, oversized code blocks, malformed requirement IDs, real assertions in CUSTOM blocks, migration-number collisions, Lego YAML schema violations |
+| `python3 tools/lint_frontend_conventions.py` | Raw `fetch`/`axios` outside `web/src/api/client.ts`, MSW / `axios-mock-adapter` references, inline query keys, `test.skip` in Playwright specs, role-gated `disabled` instead of hidden |
+| `python3 tools/lint_test_isolation.py` | Hardcoded UUIDs, module-level mutable `var` in integration tests, allocations without `defer` cleanup, `error.SkipZigTest` on tests that cover a requirement, missing `BPM_TEST_DB_URL` reference |
+
+A linter emits BLOCKER for "design or test is broken" issues, MAJOR for "fix before merge", MINOR for "cosmetic". CODE-DESIGN-VALIDATOR and TEST-DESIGN-VALIDATOR run these gates before passing handoffs downstream.
+
+See also `templates/lego-catalog.md` for the standard-pattern templates that lower-capability models should instantiate instead of re-deriving from prose.
+
 ---
 
 ## Backend (Zig)

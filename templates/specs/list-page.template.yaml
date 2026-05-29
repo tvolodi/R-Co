@@ -1,0 +1,69 @@
+# Admin list page parameter file (Lego Type B)
+#
+# Use this when a requirement adds a new admin/list page with the shape:
+# query → table → row actions → optional create form.
+# codegen_list_page.py emits:
+#   web/src/pages/<page_slug>/<PageName>.tsx
+#
+# Worked example — fictional "auditPolicies" admin page.
+
+schema_version: 1
+page_name: AuditPoliciesPage           # PascalCase component name
+page_slug: admin/audit-policies        # used in the file path under web/src/pages/
+resource_name: auditPolicy             # singular, camelCase
+requirement_ids: [ADM-12]
+purpose: |
+  List, create, and archive audit policies. Standard admin list-page layout
+  (filters → table → create form → row archive action).
+
+# Must reference the queryKeys factory; never an inline array. Lint F030 enforces.
+list_query_key: queryKeys.auditPolicies.list
+
+api:
+  list_endpoint: /api/v1/audit-policies
+  create_endpoint: /api/v1/audit-policies
+  delete_endpoint: /api/v1/audit-policies/:id
+
+# ------------------------------------------------------------
+# Filters — rendered as a top-of-page form. Each becomes a controlled input.
+# Type 'select' requires `options` (list of {value, label}).
+# ------------------------------------------------------------
+filters:
+  - { name: search,   type: text,   label: Search,   placeholder: "name or tag" }
+  - { name: status,   type: select, label: Status,   options: [
+       { value: "",        label: "All" },
+       { value: "ACTIVE",  label: "Active" },
+       { value: "ARCHIVED", label: "Archived" },
+    ] }
+  - { name: page_size, type: number, label: "Page size", default: 50 }
+
+# ------------------------------------------------------------
+# Table columns — each becomes a header + cell renderer.
+# `accessor` is the dotted path into the row object; `format` is optional.
+# ------------------------------------------------------------
+columns:
+  - { header: "Name",       accessor: name }
+  - { header: "Status",     accessor: status }
+  - { header: "Created",    accessor: created_at, format: date }
+  - { header: "Updated by", accessor: updated_by_name }
+
+# ------------------------------------------------------------
+# Row-level actions — buttons in the rightmost cell.
+# `requires_role` hides the action entirely (never disabled-only).
+# ------------------------------------------------------------
+row_actions:
+  - { label: "Archive", action: archive, requires_role: PLATFORM_ADMIN, confirm: "Archive this policy?" }
+  - { label: "View",    action: view,    requires_role: null }
+
+# ------------------------------------------------------------
+# Optional create form — set to null to omit the +New button.
+# ------------------------------------------------------------
+create_form:
+  button_label: "+ New policy"
+  fields:
+    - { name: name,        type: text,     label: Name,        required: true }
+    - { name: description, type: textarea, label: Description, required: false }
+    - { name: status,      type: select,   label: Status,      required: true,
+        options: [{ value: ACTIVE, label: Active }, { value: ARCHIVED, label: Archived }] }
+  submit_label: "Create"
+  on_success_invalidate: queryKeys.auditPolicies.list

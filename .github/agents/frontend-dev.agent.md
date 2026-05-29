@@ -28,8 +28,12 @@ Calling `fn:complete-handoff` without first calling `fn:register-inner-report` i
 2. Read `docs/guides/frontend_developer_guide.md` (full)
 3. Read `docs/guides/frontend_design_system.md` (full)
 4. Read `docs/guides/test_developer_guide.md` — especially the Core Testing Directives (§1)
-5. Read the design artefact listed in `context.artifacts_in`
-6. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
+5. Read `templates/lego-catalog.md` — your handoff may point at a parameter file (Type B/D) instead of a prose design
+6. Read every artefact in `context.artifacts_in`. Each one is either:
+   - a parameter file under `templates/specs/*.yaml` (Type B/D — run the matching codegen, then edit only `{/* CUSTOM: ... */}` blocks), or
+   - a reference example under `templates/specs/*.example.tsx` (copy the relevant patterns; do not import from `templates/`), or
+   - a prose design at `src/design/<module>.md` (Type E — implement as before)
+7. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
 
 If no PENDING handoff exists: report to user and wait.
 
@@ -56,11 +60,31 @@ If no PENDING handoff exists: report to user and wait.
 - Read `src/design/<module>.md` for the module
 
 ### 2. Implement
+
+**If the handoff points at a Type B/D parameter file:**
+```bash
+python tools/codegen_list_page.py <spec>         # Type B — emits web/src/pages/<slug>/<Page>.tsx
+python tools/codegen_react_flow_node.py <spec>   # Type D — emits web/src/components/canvas/nodes/<Node>.tsx
+```
+Then edit only `{/* CUSTOM: ... */}` blocks. Do NOT edit the auto-generated imports, useQuery wiring, or Handle declarations.
+
+**For form fields:** copy patterns from `templates/specs/form-field.example.tsx`. Do not import from `templates/`; copy the relevant code into your component.
+
+**If the handoff points at a Type E prose design:**
 - Write React/TypeScript under `web/src/`
+
+**Always:**
 - All API calls go through `web/src/api/client.ts` — never call `fetch`/`axios` directly
 - Query keys must use the factory in `web/src/api/queryKeys.ts`
 - Role-based UI: hide elements entirely, never just disable them
 - No secrets or tokens in source files
+
+**Run frontend lints before validating:**
+```bash
+python tools/lint_frontend_conventions.py web/src
+python tools/lint_test_isolation.py tests/integration
+```
+Any BLOCKER = STOP. Any MAJOR = fix before completing the handoff.
 
 ### 3. Validate — all must exit 0
 ```bash
@@ -83,6 +107,8 @@ Fix all errors before proceeding. Do not mark a handoff PASS if any command fail
 - [ ] Role-based UI hides elements (not disables)
 - [ ] No secrets or tokens in source files
 - [ ] `npm run type-check` exits 0
+- [ ] `python tools/lint_frontend_conventions.py web/src` exits 0 (no BLOCKER/MAJOR)
+- [ ] If the handoff used a parameter file: only `{/* CUSTOM: ... */}` blocks were edited; the YAML was committed alongside the generated artefact
 
 ### 5. Commit implementation to the feature branch (mandatory)
 ```bash
