@@ -65,6 +65,22 @@
                                 }
                             ],
                             "timestamp": "2026-05-29T11:34:03Z"
+                        },
+                        {
+                            "handoff_id": "f3a-step04r3-013",
+                            "workflow_id": "WF-02",
+                            "agent": "TEST-RUNNER",
+                            "reason": "Max rework (3) exceeded at Step 04 for WF02-f3a-batch1-20260529",
+                            "last_issues": [
+                                {
+                                    "severity": "BLOCKER",
+                                    "description": "Playwright E2E failure in TC-PDUI08-03 (web/tests/e2e/pdui08-debounced-search.e2e.spec.ts) blocks full suite PASS despite IN-UI-01..04 requirement tests passing.",
+                                    "requirement_ids": [
+                                        "PD-UI-08"
+                                    ]
+                                }
+                            ],
+                            "timestamp": "2026-05-29T20:50:38Z"
                         }
                     ]
 }
