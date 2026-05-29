@@ -1,0 +1,51 @@
+{
+  "issue_id": "ISS-0055",
+  "title": "WF03 stage11 releasefix: ADP-07 TC-ADP-07-01 failed because AGENT_RUNNER seed role was missing after test DB cleanup",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "A_LOGIC_ERROR",
+  "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+  "workflow_id": "WF-03",
+  "handoff_id": "c7c0735f-c9dd-4bb9-bcec-d2eb7c7f0b82",
+  "requirement_ids": [
+    "SIM-01",
+    "SIM-02",
+    "SIM-03",
+    "SIM-04"
+  ],
+  "summary": "Integration test TC-ADP-07-01 expected the AGENT_RUNNER role to exist in roles but queryRow returned null. Root cause was cleanup drift: schema_migrations stayed populated while roles seed data could be absent.",
+  "root_cause": {
+    "type": "seed_drift_after_cleanup",
+    "details": "tools/clean_test_db.py truncated transient tables but did not enforce mandatory role seeds. When roles seed data was missing, ADP-07 assertion failed even though migrations were already marked applied."
+  },
+  "resolution": {
+    "strategy": "RESEED_MANDATORY_SYSTEM_ROLES_IN_CLEANUP",
+    "changes": [
+      "tools/clean_test_db.py"
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "python tools/clean_test_db.py; docker-compose exec -T db_test psql -U bpm -d bpm_test -c \"SELECT name FROM roles ORDER BY name;\"",
+        "result": "PASS",
+        "evidence": "roles contains AGENT_RUNNER, PLATFORM_ADMIN, PROCESS_DESIGNER, PROCESS_OPERATOR, TASK_WORKER, VIEWER"
+      },
+      {
+        "command": "cmd /c \"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%\"",
+        "result": "PASS",
+        "evidence": "INTEGRATION_EXIT_CODE=0"
+      }
+    ]
+  },
+  "files_changed": [
+    "tools/clean_test_db.py",
+    "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-03-issue-fixer-validation.txt"
+  ],
+  "created_at": "2026-05-29T03:31:05Z",
+  "resolved_at": "2026-05-29T03:31:05Z",
+  "prevention": [
+    "Integration DB cleanup must reseed mandatory identity roles on every run.",
+    "Deterministic integration evidence should verify baseline role seeds before running the suite."
+  ]
+}

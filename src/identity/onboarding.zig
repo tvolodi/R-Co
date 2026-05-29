@@ -129,6 +129,7 @@ const SagaState = struct {
     client_provisioned: bool = false,
     hostname_bound: bool = false,
     tenant_id: ?[]const u8 = null,
+    tenant_slug: ?[]const u8 = null,
     realm_id: ?[]const u8 = null,
     admin_user_id: ?[]const u8 = null,
     client_id: ?[]const u8 = null,
@@ -153,9 +154,12 @@ pub fn executeSaga(
         error.OutOfMemory => return error.OutOfMemory,
         else => return error.PersistenceFailed,
     };
+    errdefer tenant.deinit(allocator);
     saga.tenant_created = true;
     saga.tenant_id = try allocator.dupe(u8, tenant.tenant_id);
     errdefer allocator.free(saga.tenant_id.?);
+    saga.tenant_slug = try allocator.dupe(u8, tenant.slug);
+    errdefer allocator.free(saga.tenant_slug.?);
 
     // ── 2. Provision Keycloak realm ──────────────────────────────────────────
     const realm_result = manager.provisionRealm(allocator, .{
@@ -168,21 +172,26 @@ pub fn executeSaga(
         .require_uppercase = if (input.realm_config) |rc| rc.require_uppercase orelse true else true,
         .require_digit = if (input.realm_config) |rc| rc.require_digit orelse true else true,
         .signing_key_algorithm = if (input.realm_config) |rc| parseSigningAlgorithm(rc.signing_key_algorithm) orelse .RS256 else .RS256,
-    }) catch |err| switch (err) {
-        error.NotImplemented => return error.RealmProvisioningFailed,
-        error.UpstreamUnavailable,
-        error.UpstreamTimeout,
-        error.UpstreamProtocolError,
-        => return error.RealmProvisioningFailed,
-        error.DuplicateResource,
-        error.Conflict,
-        => return error.RealmAlreadyExists,
-        error.UnauthorizedAdminCall,
-        error.ForbiddenAdminCall,
-        => return error.RealmProvisioningFailed,
-        error.Internal => return error.RealmProvisioningFailed,
-        error.OutOfMemory => return error.OutOfMemory,
-        else => return error.RealmProvisioningFailed,
+    }) catch |err| {
+        // Explicitly run compensation for realm provisioning failures so
+        // tenant cleanup does not depend on errdefer behavior.
+        compensate(allocator, manager, pool, &saga) catch {};
+        return switch (err) {
+            error.NotImplemented => error.RealmProvisioningFailed,
+            error.UpstreamUnavailable,
+            error.UpstreamTimeout,
+            error.UpstreamProtocolError,
+            => error.RealmProvisioningFailed,
+            error.DuplicateResource,
+            error.Conflict,
+            => error.RealmAlreadyExists,
+            error.UnauthorizedAdminCall,
+            error.ForbiddenAdminCall,
+            => error.RealmProvisioningFailed,
+            error.Internal => error.RealmProvisioningFailed,
+            error.OutOfMemory => error.OutOfMemory,
+            else => error.RealmProvisioningFailed,
+        };
     };
     saga.realm_provisioned = true;
     saga.realm_id = try allocator.dupe(u8, realm_result.realm_id);
@@ -329,7 +338,7 @@ fn compensate(
         manager.deleteRealm(allocator, .{ .realm_id = saga.realm_id.? }) catch {};
     }
     if (saga.tenant_created and saga.tenant_id != null) {
-        deleteTenantInDb(pool, saga.tenant_id.?) catch {};
+        deleteTenantInDb(pool, saga.tenant_id.?, saga.tenant_slug) catch {};
     }
 }
 
@@ -382,6 +391,7 @@ fn createTenantInDb(
     };
 
     if (row == null) return error.DuplicateTenantSlug;
+    defer freeRow(allocator, row.?);
 
     const tenant = materializeTenant(allocator, row.?) catch |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
@@ -390,9 +400,13 @@ fn createTenantInDb(
     return tenant;
 }
 
-fn deleteTenantInDb(pool: *pool_mod.Pool, tenant_id: []const u8) !void {
+fn deleteTenantInDb(pool: *pool_mod.Pool, tenant_id: []const u8, tenant_slug: ?[]const u8) !void {
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
+
+    if (tenant_slug) |slug| {
+        conn.exec("DELETE FROM tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
+    }
     conn.exec("DELETE FROM tenant WHERE id::text = $1", &[_][]const u8{tenant_id}) catch {};
 }
 

@@ -1,0 +1,52 @@
+{
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-28T18:56:45Z",
+  "summary": {
+    "total": 355,
+    "passed": 304,
+    "failed": 44,
+    "skipped": 7
+  },
+  "layers": {
+    "benchmark_precheck": "PASS",
+    "backend_unit": "PASS",
+    "backend_integration": "FAIL"
+  },
+  "failures": [
+    {
+      "test_id": "TC-SIM-01-01",
+      "layer": "integration",
+      "file": "tests/integration/sim01_04_simulation_mode_test.zig",
+      "error_message": "simulation events are isolated from real tenant queries assertion failed",
+      "severity": "BLOCKER",
+      "requirement_id": "SIM-01"
+    },
+    {
+      "test_id": "TC-ADP-02-05",
+      "layer": "integration",
+      "file": "tests/integration/adp02_tenant_scope_test.zig",
+      "error_message": "expected 1 tenant-scoped audit row but assertion failed",
+      "severity": "BLOCKER",
+      "requirement_id": "SIM-01"
+    },
+    {
+      "test_id": "INTEGRATION-AGGREGATE",
+      "layer": "integration",
+      "file": "tests/integration/main_test.zig",
+      "error_message": "44 integration tests failed; see failed-tests artifact",
+      "severity": "BLOCKER",
+      "requirement_id": "SIM-01"
+    }
+  ],
+  "artifacts": {
+    "bench_log": "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework3-bench-precheck.log",
+    "unit_log": "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework3-zig-build-test.log",
+    "integration_log": "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework3-zig-build-test-integration.log",
+    "failed_tests": "tests/reports/WF02-stage11-sim01-04-20260528-step-04-rework3-failed-tests.txt"
+  },
+  "notes": [
+    "Integration build summary: 52/54 steps succeeded (1 failed); 421/472 tests passed (7 skipped, 44 failed).",
+    "Benchmark pre-check produced benchmark output and no BENCHMARK_SETUP_ERROR/BPM_DB_URL missing markers."
+  ]
+}

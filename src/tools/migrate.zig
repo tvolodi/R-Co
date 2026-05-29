@@ -96,9 +96,14 @@ pub fn main(init: std.process.Init) !void {
 
     // Apply pending migrations.
     var max_applied: []const u8 = "";
+    var max_applied_order: u32 = 0;
     var applied_iter = applied.keyIterator();
     while (applied_iter.next()) |k| {
-        if (std.mem.lessThan(u8, max_applied, k.*)) max_applied = k.*;
+        const order = migrationOrder(k.*);
+        if (order > max_applied_order) {
+            max_applied_order = order;
+            max_applied = k.*;
+        }
     }
 
     var applied_count: u32 = 0;
@@ -108,7 +113,8 @@ pub fn main(init: std.process.Init) !void {
             continue;
         }
 
-        if (max_applied.len > 0 and std.mem.lessThan(u8, filename, max_applied)) {
+        const file_order = migrationOrder(filename);
+        if (max_applied.len > 0 and file_order < max_applied_order) {
             std.log.err("Out-of-order migration: {s} (max applied: {s})", .{ filename, max_applied });
             std.process.exit(1);
         }
@@ -145,7 +151,10 @@ pub fn main(init: std.process.Init) !void {
         };
 
         std.log.info("  apply {s}", .{filename});
-        if (std.mem.lessThan(u8, max_applied, filename)) max_applied = filename;
+        if (file_order > max_applied_order) {
+            max_applied_order = file_order;
+            max_applied = filename;
+        }
         applied_count += 1;
     }
 
@@ -154,4 +163,11 @@ pub fn main(init: std.process.Init) !void {
     } else {
         std.log.info("{d} migration(s) applied successfully.", .{applied_count});
     }
+}
+
+fn migrationOrder(filename: []const u8) u32 {
+    var i: usize = 0;
+    while (i < filename.len and std.ascii.isDigit(filename[i])) : (i += 1) {}
+    if (i == 0) return 0;
+    return std.fmt.parseInt(u32, filename[0..i], 10) catch 0;
 }

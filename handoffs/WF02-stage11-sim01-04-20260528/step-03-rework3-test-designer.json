@@ -1,0 +1,49 @@
+{
+  "handoff_id": "6b23ca2c-3dfd-4f2f-b09e-7299696f1c7f",
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "03-rework3",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-stage11-sim01-04-20260528/step-03-rework3-test-designer.json",
+  "created_at": "2026-05-29T01:27:10Z",
+  "started_at": "2026-05-29T01:27:30Z",
+  "completed_at": "2026-05-29T01:28:59Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": ["SIM-01", "SIM-02", "SIM-03", "SIM-04"],
+    "related_handoff_ids": [
+      "51bca284-3d78-451a-b359-3915a3c2f65d"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-stage11-sim01-04-20260528/step-3b-post-wf03-4-test-design-validator.json",
+      "tests/integration/xc04_kernel_determinism_test.zig",
+      "tests/integration/sim01_04_simulation_mode_test.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 3: fix test fixture isolation blocker from 3b-post-wf03-4. Replace static fixture identifiers with per-test UUID-derived values in all impacted Stage 11 SIM-01..SIM-04 integration coverage. Update test design artifacts accordingly and provide evidence for immediate re-validation.",
+    "acceptance_criteria": [
+      "No static fixture IDs in scoped Stage 11 SIM integration tests",
+      "Per-test UUID fixture isolation applied",
+      "Artifacts ready for Test-Design-Validator hard-gate recheck"
+    ],
+    "functions_to_call": ["fn:design-tests"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 3 complete for SIM-01..SIM-04 Stage11 coverage: replaced static fixture identifiers with per-test UUID-derived fixtures in impacted integration tests and updated SIM-01 design artifact for hard-gate evidence.",
+    "artifacts_out": [
+      "tests/integration/sim01_04_simulation_mode_test.zig",
+      "tests/integration/xc04_kernel_determinism_test.zig",
+      "tests/specs/SIM-01.md",
+      "docs/issue-reports/WF02-stage11-sim01-04-20260528-step-03-rework3-test-designer.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 3,
+  "max_rework": 3
+}

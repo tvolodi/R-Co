@@ -1,0 +1,34 @@
+Cleaning test database...
+Test database cleaned.
+test-integration-oidc31
++- run test w
+error.Unexpected NTSTATUS=0xc0000236 (CONNECTION_REFUSED)
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:12121:57: 0x7ff684a5822b in netConnectIpWindows (test_zcu.obj)
+        else => |status| return windows.unexpectedStatus(status),
+                                                        ^
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\Io\net.zig:340:55: 0x7ff684d0630e in connect (test_zcu.obj)
+        return .{ .socket = try io.vtable.netConnectIp(io.userdata, address, options) };
+                                                      ^
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\Io\net\HostName.zig:369:35: 0x7ff684d05c0e in enqueueConnection (test_zcu.obj)
+    const result = address.connect(io, options) catch |err| switch (err) {
+                                  ^
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\Io.zig:1245:17: 0x7ff684d059f8 in start (test_zcu.obj)
+                _ = @as(Cancelable!void, @call(.auto, function, args_casted.*)) catch {};
+                ^
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:552:22: 0x7ff684a52527 in start (test_zcu.obj)
+            task.func(task.contextPointer());
+                     ^
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\Io\Threaded.zig:1797:29: 0x7ff684a5177f in worker (test_zcu.obj)
+            runnable.startFn(runnable, &thread, t);
+                            ^
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\Thread.zig:422:13: 0x7ff684a512b1 in callFn__anon_52269 (test_zcu.obj)
+            @call(.auto, f, args);
+            ^
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\Thread.zig:536:30: 0x7ff684a5118a in entryFn (test_zcu.obj)
+                return callFn(f, self.fn_args);
+                             ^
+???:?:?: 0x7ffd44e17373 in ??? (KERNEL32.DLL)
+???:?:?: 0x7ffd4507cc90 in ??? (ntdll.dll)
+OIDC31 preflight skipped: IDP discovery unreachable (Unexpected)
+failed command: ".\\.zig-cache\\o\\c246c4b82f0f2698eb9e363d23f2ccc4\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0x43c6107c --listen=-
+

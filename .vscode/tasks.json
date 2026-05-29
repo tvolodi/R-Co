@@ -33,7 +33,7 @@
 			"command": "cmd",
 			"args": [
 				"/c",
-				"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& zig build test-integration && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%"
+				"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%"
 			],
 			"isBackground": false
 		},
@@ -43,7 +43,7 @@
 			"command": "cmd",
 			"args": [
 				"/c",
-				"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& zig build test-integration && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%"
+				"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%"
 			],
 			"isBackground": false
 		}

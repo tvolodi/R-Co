@@ -1,0 +1,41 @@
+{
+  "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
+  "workflow_id": "WF-03",
+  "timestamp": "2026-05-28T19:58:36Z",
+  "summary": {
+    "total": 3,
+    "passed": 2,
+    "failed": 1,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "test_id": "integration-runner-timeout",
+      "layer": "integration",
+      "file": "tests/integration/main_test.zig",
+      "error_message": "test runner failed to respond for 1m9.371ms",
+      "severity": "BLOCKER",
+      "requirement_id": "SIM-01/SIM-02/SIM-03/SIM-04"
+    },
+    {
+      "test_id": "TC-XC-04-03",
+      "layer": "integration",
+      "file": "tests/integration/xc04_kernel_determinism_test.zig",
+      "error_message": "exited with code 255 during deterministic timer ordering test",
+      "severity": "BLOCKER",
+      "requirement_id": "SIM-01/SIM-02/SIM-03/SIM-04"
+    }
+  ],
+  "coverage": {
+    "backend_unit_line": null,
+    "frontend_unit_line": null
+  },
+  "nfr_results": [
+    {
+      "nfr_id": "DSL-13",
+      "target": "Expression benchmark mean and p99 <= 10us",
+      "actual": "Benchmark PASSED (profiles_passed=6, profiles_failed=0)",
+      "passed": true
+    }
+  ]
+}

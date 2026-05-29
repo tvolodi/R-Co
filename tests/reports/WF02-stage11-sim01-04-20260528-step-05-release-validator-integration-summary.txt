@@ -1,0 +1,6 @@
+command: cmd /c set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%
+status: FAIL
+exit_code: 1
+failing_test_excerpt: tests/integration/adp02_tenant_scope_test.zig:535:5 in test.TC-ADP-02-05
+build_summary: 304/355 tests passed, 7 skipped, 44 failed
+failure_marker: test-integration transitive failure

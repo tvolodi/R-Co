@@ -31,6 +31,17 @@ TABLES = [
     "webhook_subscriptions",
 ]
 
+# Mandatory system roles seeded across identity migrations. Integration cleanup
+# must restore them so deterministic runs do not depend on historical DB state.
+SYSTEM_ROLES = [
+    ("PLATFORM_ADMIN", "Full platform access; cannot be deleted"),
+    ("PROCESS_DESIGNER", "Create/modify process definitions"),
+    ("PROCESS_OPERATOR", "Manage instances and tasks"),
+    ("VIEWER", "Read-only access to instances and definitions"),
+    ("TASK_WORKER", "Complete and read assigned tasks"),
+    ("AGENT_RUNNER", "Agent execution account role for pipeline/runtime automation"),
+]
+
 
 def run_psql(sql: str) -> bool:
     """Execute SQL via docker-compose exec db_test psql.  Returns True on success."""
@@ -58,7 +69,20 @@ def main() -> None:
 
     # Build comma-separated list of all tables for atomic TRUNCATE.
     tables_str = ", ".join(TABLES)
-    run_psql(f"TRUNCATE TABLE {tables_str} CASCADE")
+    ok = run_psql(f"TRUNCATE TABLE {tables_str} CASCADE")
+    if not ok:
+        print("ERROR: Test database cleanup failed; aborting integration run.", file=sys.stderr)
+        sys.exit(1)
+
+    for role_name, role_description in SYSTEM_ROLES:
+        sql = (
+            "INSERT INTO roles (name, description, is_system) "
+            f"VALUES ('{role_name}', '{role_description}', true) "
+            "ON CONFLICT (name) DO NOTHING"
+        )
+        if not run_psql(sql):
+            print("ERROR: Failed to reseed mandatory system roles; aborting integration run.", file=sys.stderr)
+            sys.exit(1)
 
     print("Test database cleaned.", flush=True)
 

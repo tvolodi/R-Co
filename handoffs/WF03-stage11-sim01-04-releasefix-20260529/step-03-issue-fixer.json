@@ -1,0 +1,65 @@
+{
+  "handoff_id": "c7c0735f-c9dd-4bb9-bcec-d2eb7c7f0b82",
+  "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-stage11-sim01-04-releasefix-20260529/step-03-issue-fixer.json",
+  "created_at": "2026-05-29T02:52:10Z",
+  "started_at": "2026-05-29T03:19:48Z",
+  "completed_at": "2026-05-29T03:31:05Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "40c4d340-a970-439b-88f0-c498e19cb067"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-stage11-sim01-04-releasefix-20260529/step-02-backend-dev.json",
+      "docs/issues/ISS-0054.json",
+      "tests/reports/zig-test-integration-supervised-latest.log"
+    ]
+  },
+  "task": {
+    "description": "Address remaining release blocker ADP-07 from the deterministic integration run: fix adp07_agent_role_reserved_usernames_test.TC-ADP-07-01 failure while preserving prior ISS-0054 fixes and SIM-01..SIM-04 deterministic stability. Produce updated integration evidence and issue tracking artifacts.",
+    "acceptance_criteria": [
+      "ADP-07 failing test is fixed",
+      "Deterministic integration evidence produced",
+      "No regression in SIM deterministic verification targets"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed ADP-07 TC-ADP-07-01 by reseeding mandatory system roles during deterministic test DB cleanup; full integration rerun now exits 0 while preserving prior ISS-0054 releasefix changes.",
+    "artifacts_out": [
+      "tools/clean_test_db.py",
+      "docs/issues/ISS-0055.json",
+      "docs/issues/issue_index.json",
+      "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-03-issue-fixer-validation.txt",
+      "docs/issue-reports/WF03-stage11-sim01-04-releasefix-20260529-step-03-issue-fixer-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Focused deterministic aggregate command `zig build test-integration-stage11-sim-xc04` still reports TC-XC-04-04 PgError.ServerError; full `zig build test-integration` passed with INTEGRATION_EXIT_CODE=0 after this ADP-07 fix.",
+        "affected_requirement": "SIM-01/SIM-02/SIM-03/SIM-04"
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

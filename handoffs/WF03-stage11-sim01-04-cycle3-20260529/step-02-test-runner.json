@@ -1,0 +1,77 @@
+{
+    "handoff_id":  "a65ae5e6-9f9f-4f78-b7dd-642780a830ec",
+    "run_id":  "WF03-stage11-sim01-04-cycle3-20260529",
+    "workflow_id":  "WF-03",
+    "step":  "02",
+    "from_agent":  "ORCH",
+    "to_agent":  "TEST-RUNNER",
+    "file":  "handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-02-test-runner.json",
+    "created_at":  "2026-05-29T00:03:20Z",
+    "started_at":  "2026-05-29T00:03:40Z",
+    "completed_at":  "2026-05-28T19:58:36Z",
+    "status":  "FAILED",
+    "priority":  "HIGH",
+    "context":  {
+                    "stage":  "Stage 11 - Test Runner and Simulation Mode",
+                    "requirement_ids":  [
+                                            "SIM-01",
+                                            "SIM-02",
+                                            "SIM-03",
+                                            "SIM-04"
+                                        ],
+                    "related_handoff_ids":  [
+                                                "8e3e4f44-4f67-43f3-98d6-ee3376538ebf"
+                                            ],
+                    "artifacts_in":  [
+                                         "handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-01-issue-fixer.json",
+                                         "tests/integration/helpers.zig"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Verification step for cycle 3: run a clean test-runner pass to validate post-fix behavior after cleanup changes and prior runner contention. Produce updated report with explicit PASS/FAIL and blocker list.",
+                 "acceptance_criteria":  [
+                                             "Clean test run executed",
+                                             "Report generated under tests/reports",
+                                             "Deterministic PASS/FAIL result captured"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:run-required-tests",
+                                           "fn:write-test-report"
+                                       ]
+             },
+    "result":  {
+                   "status":  "FAIL",
+                   "summary":  "Benchmark pre-check and backend unit layer passed, but integration verification failed with runner timeout and TC-XC-04-03 crash.",
+                   "artifacts_out":  [
+                                         "tests/reports/report-2026-05-28-WF03-stage11-sim01-04-cycle3-step-02.json",
+                                         "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-02-bench-precheck.log",
+                                         "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-02-zig-build-test.log",
+                                         "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-02-zig-build-test-integration.log"
+                                     ],
+                   "issues":  [
+                                  {
+                                      "description":  "Integration run timed out: test runner failed to respond for 1m9.371ms.",
+                                      "requirement_ids":  [
+                                                              "SIM-01",
+                                                              "SIM-02",
+                                                              "SIM-03",
+                                                              "SIM-04"
+                                                          ],
+                                      "severity":  "BLOCKER"
+                                  },
+                                  {
+                                      "description":  "Integration crash: TC-XC-04-03 exited with code 255 during deterministic timer ordering.",
+                                      "requirement_ids":  [
+                                                              "SIM-01",
+                                                              "SIM-02",
+                                                              "SIM-03",
+                                                              "SIM-04"
+                                                          ],
+                                      "severity":  "BLOCKER"
+                                  }
+                              ],
+                   "next_action":  "Route to ISSUE-FIXER (WF-03) for integration timeout/crash remediation, then rerun TEST-RUNNER Step 02 rework."
+               },
+    "rework_count":  0,
+    "max_rework":  3
+}
