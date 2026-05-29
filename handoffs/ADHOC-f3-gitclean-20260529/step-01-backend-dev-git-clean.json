@@ -36,13 +36,17 @@
     "artifacts_out": [
       "branch: feature/ADHOC-f3-gitclean-20260529-preserve-main",
       "commit: 90f5c307d4772ca26a3a8cb84381a904b167ea9a",
+      "commit: 732a0cc544129e0ecb577673c0bf0f887d29977e",
+      "commit: 5b5695a09e8714d778eb993ee877f6c09b5a52a2",
       "pr: https://github.com/tvolodi/My-Fab/pull/51"
     ],
     "issues": [],
     "git_evidence": {
       "branch_name": "feature/ADHOC-f3-gitclean-20260529-preserve-main",
       "commit_sha_list": [
-        "90f5c307d4772ca26a3a8cb84381a904b167ea9a"
+        "90f5c307d4772ca26a3a8cb84381a904b167ea9a",
+        "732a0cc544129e0ecb577673c0bf0f887d29977e",
+        "5b5695a09e8714d778eb993ee877f6c09b5a52a2"
       ],
       "remote_branch": "origin/feature/ADHOC-f3-gitclean-20260529-preserve-main",
       "push_status": "ok",
