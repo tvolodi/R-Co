@@ -45,3 +45,5 @@ pub const onboarding_mod = @import("identity/onboarding.zig"); // OIDC-35
 pub const onboarding_routes = @import("api/routes/onboarding.zig"); // OIDC-35
 pub const identity_provider = @import("identity_provider"); // OIDC provider contract
 pub const simulation = @import("simulation/mod.zig"); // SIM-01..SIM-04
+pub const simulation_runner = @import("simulation/scenario_runner.zig"); // SIM-05..SIM-08
+pub const simulation_test_routes = @import("api/routes/simulation_test.zig"); // SIM-07..SIM-08

@@ -115,6 +115,8 @@ const oidc07_claim_validation_auth_integration = @import("oidc07_claim_validatio
 const oidc16_26_agent_lifecycle_foundations_integration = @import("oidc16_26_agent_lifecycle_foundations_test.zig");
 // Stage 11 — Simulation mode foundations (SIM-01..SIM-04)
 const sim01_04_simulation_mode_integration = @import("sim01_04_simulation_mode_test.zig");
+// Stage 11 — Scenario schema/runner and batch execution (SIM-05..SIM-08)
+const sim05_08_scenario_runner_integration = @import("sim05_08_scenario_runner_test.zig");
 
 comptime {
     _ = std;
@@ -168,6 +170,7 @@ comptime {
     _ = oidc07_claim_validation_auth_integration;
     _ = oidc16_26_agent_lifecycle_foundations_integration;
     _ = sim01_04_simulation_mode_integration;
+    _ = sim05_08_scenario_runner_integration;
 }
 
 test "integration placeholder" {

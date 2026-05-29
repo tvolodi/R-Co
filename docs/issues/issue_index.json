@@ -1,8 +1,38 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-29T07:55:12Z",
-  "next_issue_id": 57,
+  "last_updated": "2026-05-29T12:00:47Z",
+  "next_issue_id": 59,
   "issues": [
+    {
+      "id": "ISS-0058",
+      "title": "WF03 stage11 sim05-08 releasefix: deterministic verification recovered using requirement-scoped integration target",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim05-08-releasefix-20260529",
+      "handoff_id": "ffd28f71-b064-4577-bf6e-f95e79f9f4b4",
+      "affected_areas": [
+        "tests/reports/report-20260529T120047Z-WF03-stage11-sim05-08-releasefix-20260529-step01-issuefix.json",
+        "docs/issues/ISS-0058.json"
+      ],
+      "created_at": "2026-05-29T12:00:47Z",
+      "resolved_at": "2026-05-29T12:00:47Z"
+    },
+    {
+      "id": "ISS-0057",
+      "title": "WF03 stage11 sim05-08 testfix: integration startup contention at TC-DB-01-01 caused non-deterministic stall behavior",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim05-08-testfix-20260529",
+      "handoff_id": "6a7aa30d-f4fc-4788-b855-2b00a84cef56",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "build.zig",
+        "tests/unit/db_test.zig",
+        "tests/reports/report-20260529T104728Z-WF02-stage11-sim05-08-20260529-step04-rework2.json"
+      ],
+      "created_at": "2026-05-29T11:16:23Z",
+      "resolved_at": "2026-05-29T11:16:23Z"
+    },
     {
       "id": "ISS-0056",
       "title": "WF03 stage11 releasefix rework1: TC-XC-04-04 deterministic hash test invoked canonical audit hash function with legacy argument order",

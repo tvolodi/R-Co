@@ -44,6 +44,7 @@ pub const audit_routes = @import("api/routes/audit.zig"); // OBS-03 GET /audit r
 pub const dlq_store = @import("dlq/store.zig"); // OBS-05 dead-letter persistence
 pub const dlq_routes = @import("api/routes/dlq.zig"); // OBS-05 DLQ API handlers
 pub const webhooks_routes = @import("api/routes/webhooks.zig"); // EXT-02 webhook subscription API handlers
+pub const simulation_test_routes = @import("api/routes/simulation_test.zig"); // SIM-05..SIM-08 test runner API handlers
 pub const api_health_readiness = @import("api/health/readiness.zig"); // API-12 readiness evaluation
 pub const api_health_subsystems = @import("api/health/subsystems.zig"); // API-12 critical subsystem checks
 pub const obs_logger = @import("obs/logger.zig"); // OBS-01 structured logger
@@ -197,13 +198,37 @@ fn serveRequest(
     defer arena.deinit();
     const req_alloc = arena.allocator();
 
-    // Extract user identity from request header.
+    // Extract caller metadata from request headers.
     const user_id = blk: {
         var hdr_it = request.iterateHeaders();
         while (hdr_it.next()) |h| {
             if (std.ascii.eqlIgnoreCase(h.name, "x-bpm-user-id")) break :blk h.value;
         }
         break :blk "00000000-0000-0000-0000-000000000000";
+    };
+
+    const authorization_header = blk: {
+        var hdr_it = request.iterateHeaders();
+        while (hdr_it.next()) |h| {
+            if (std.ascii.eqlIgnoreCase(h.name, "authorization")) break :blk h.value;
+        }
+        break :blk null;
+    };
+
+    const tenant_header = blk: {
+        var hdr_it = request.iterateHeaders();
+        while (hdr_it.next()) |h| {
+            if (std.ascii.eqlIgnoreCase(h.name, "x-bpm-tenant-id")) break :blk h.value;
+        }
+        break :blk null;
+    };
+
+    const permissions_header = blk: {
+        var hdr_it = request.iterateHeaders();
+        while (hdr_it.next()) |h| {
+            if (std.ascii.eqlIgnoreCase(h.name, "x-bpm-permissions")) break :blk h.value;
+        }
+        break :blk null;
     };
 
     // Split path from query string.
@@ -294,6 +319,72 @@ fn serveRequest(
         resp_status = r.status_code;
         resp_body = r.body;
         resp_content_type = r.content_type;
+    }
+    // ── /test/... (SIM-05..SIM-08) ───────────────────────────────────────────
+    else if (std.mem.eql(u8, path, "/test/run") and method == .POST) {
+        const r = simulation_test_routes.handleRunScenario(
+            req_alloc,
+            authorization_header,
+            user_id,
+            tenant_header,
+            permissions_header,
+            body,
+        );
+        resp_status = r.status_code;
+        resp_body = r.body;
+        resp_content_type = r.content_type;
+    } else if (std.mem.eql(u8, path, "/test/run-batch") and method == .POST) {
+        const r = simulation_test_routes.handleRunBatch(
+            req_alloc,
+            authorization_header,
+            user_id,
+            tenant_header,
+            permissions_header,
+            body,
+        );
+        resp_status = r.status_code;
+        resp_body = r.body;
+        resp_content_type = r.content_type;
+    } else if (std.mem.eql(u8, path, "/test/scenarios/validate") and method == .POST) {
+        const r = simulation_test_routes.handleValidateScenario(
+            req_alloc,
+            authorization_header,
+            user_id,
+            tenant_header,
+            permissions_header,
+            body,
+        );
+        resp_status = r.status_code;
+        resp_body = r.body;
+        resp_content_type = r.content_type;
+    } else if (std.mem.startsWith(u8, path, "/test/scenarios/schema/") and method == .GET) {
+        var segs: [8][]const u8 = @splat(@as([]const u8, ""));
+        var seg_count: usize = 0;
+        var seg_it = std.mem.splitScalar(u8, path, '/');
+        while (seg_it.next()) |s| {
+            if (seg_count >= 8) break;
+            segs[seg_count] = s;
+            seg_count += 1;
+        }
+        if (seg_count > 5 and std.mem.eql(u8, segs[1], "test") and std.mem.eql(u8, segs[2], "scenarios") and std.mem.eql(u8, segs[3], "schema")) {
+            const schema_name = segs[4];
+            const schema_version = segs[5];
+            const r = simulation_test_routes.handleGetSchema(
+                req_alloc,
+                authorization_header,
+                user_id,
+                tenant_header,
+                permissions_header,
+                schema_name,
+                schema_version,
+            );
+            resp_status = r.status_code;
+            resp_body = r.body;
+            resp_content_type = r.content_type;
+        } else {
+            resp_status = 404;
+            resp_body = "{\"type\":\"not_found\",\"status\":404}";
+        }
     }
     // ── /api/v1/... ──────────────────────────────────────────────────────────
     else if (std.mem.startsWith(u8, path, "/api/v1/")) {

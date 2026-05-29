@@ -1,0 +1,59 @@
+{
+  "issue_id": "ISS-0057",
+  "title": "WF03 stage11 sim05-08 testfix: integration startup contention at TC-DB-01-01 caused non-deterministic stall behavior",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "E_ENVIRONMENT",
+  "run_id": "WF03-stage11-sim05-08-testfix-20260529",
+  "workflow_id": "WF-03",
+  "handoff_id": "6a7aa30d-f4fc-4788-b855-2b00a84cef56",
+  "requirement_ids": [
+    "SIM-05",
+    "SIM-06",
+    "SIM-07",
+    "SIM-08"
+  ],
+  "summary": "Diagnosed integration stall as environment contention during harness startup (migration/reset path) and removed non-deterministic behavior by introducing DB session timeouts plus a focused SIM-05..SIM-08 integration target for deterministic verification.",
+  "root_cause": {
+    "type": "integration_startup_lock_contention",
+    "details": "Overlapping or contended integration execution could block SQL statements at the first integration test (TC-DB-01-01: migrations), producing apparent hangs without deterministic timeout failure."
+  },
+  "resolution": {
+    "strategy": "RESOLVED_IN_STEP01",
+    "changes": [
+      "Added connection-level lock/statement/idle-in-transaction timeouts in tests/integration/helpers.zig TestHarness initialization to fail fast under contention.",
+      "Added focused build target test-integration-sim05-08 in build.zig for deterministic SIM-05..SIM-08 verification.",
+      "Fixed unrelated zig build test blocker in tests/unit/db_test.zig by importing pool types through bpm module wiring."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS",
+        "evidence": "Completed successfully during step validation"
+      },
+      {
+        "command": "zig build test",
+        "result": "PASS",
+        "evidence": "Completed successfully after db_test module import fix"
+      },
+      {
+        "command": "BPM_TEST_DB_URL=... BPM_TEST_URL=... BPM_IDP_BASE_URL=... zig build test-integration-sim05-08 --summary all",
+        "result": "PASS",
+        "evidence": "Build Summary: 5/5 steps succeeded; 18/18 tests passed; SIM0508_INTEGRATION_EXIT_CODE=0"
+      }
+    ]
+  },
+  "files_changed": [
+    "tests/integration/helpers.zig",
+    "build.zig",
+    "tests/unit/db_test.zig"
+  ],
+  "created_at": "2026-05-29T11:16:23Z",
+  "resolved_at": "2026-05-29T11:16:23Z",
+  "prevention": [
+    "Keep explicit DB lock/statement timeouts in integration harness startup to prevent indefinite waits.",
+    "Use focused integration targets for requirement-scoped reruns before full-suite reruns to isolate regressions quickly."
+  ]
+}
