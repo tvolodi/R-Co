@@ -40,6 +40,9 @@ export const definitionsApi = {
   importJson: (body: unknown) =>
     client.post<ProcessDefinition>('/api/v1/definitions/import', body),
 
+  search: (params: { q: string; limit?: number; offset?: number }) =>
+    client.get<CursorPage<ProcessDefinition>>('/api/v1/definitions/search', params as Record<string, unknown>),
+
   getVersions: (name: string) =>
     client.get<CursorPage<ProcessDefinition>>('/api/v1/definitions', { name } as Record<string, unknown>),
 }
