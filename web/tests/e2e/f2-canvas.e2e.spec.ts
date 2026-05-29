@@ -561,8 +561,8 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
       const gatewayNode = page.locator('.react-flow__node').filter({ hasText: /EXCLUSIVE|GATEWAY/i }).first()
       const taskNode = page.locator('.react-flow__node').filter({ hasText: `Approved Path ${uniqueSuffix}` }).first()
 
-      const sourceHandle = gatewayNode.locator('.react-flow__handle.source')
-      const targetHandle = taskNode.locator('.react-flow__handle.target')
+      const sourceHandle = gatewayNode.locator('.react-flow__handle.source').first()
+      const targetHandle = taskNode.locator('.react-flow__handle.target').first()
       await expect(sourceHandle).toBeVisible()
       await expect(targetHandle).toBeVisible()
 

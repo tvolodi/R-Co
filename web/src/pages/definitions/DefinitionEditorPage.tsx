@@ -430,7 +430,7 @@ export default function DefinitionEditorPage() {
               isReadOnly={isReadOnly}
               onDirtyChange={setDirty}
               canvasStateRef={canvasStateRef}
-              onSelectedNodeChange={setSelectedNodeId}
+              onSelectedNodeChange={(id, nodeData) => { setSelectedNodeId(id); if (nodeData !== undefined) _setSelectedNodeData(nodeData) }}
               onSelectedEdgeChange={setSelectedEdgeId}
               paletteAddTrigger={paletteAddTrigger}
               nodeUpdateTrigger={nodeUpdateTrigger}
