@@ -4,6 +4,14 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage 11 — Test Runner and Simulation Mode
+
+### SIM-01..SIM-04 - Simulation mode release batch (RELEASED 2026-05-29)
+- Released Stage 11 simulation capabilities covering isolated simulation tenant routing, deterministic service mocking, deterministic time control, and deterministic UUID generation.
+- Release approval is recorded in docs/status/release-Stage11-SIM-01-04-2026-05-29.json after WF-03 release-fix closure and WF-02 post-fix test reruns.
+- Validation evidence passed in tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json.
+- Requirements: SIM-01, SIM-02, SIM-03, SIM-04 (MUST, Stage 11) - RELEASED
+
 ### Stage 6 — Observability + Extensions
 
 ### Stage 6.5 — Schema adaptations + OIDC foundations

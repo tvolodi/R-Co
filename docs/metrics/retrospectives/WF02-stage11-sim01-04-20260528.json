@@ -1,0 +1,76 @@
+{
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "stage": "Stage 11 - Test Runner and Simulation Mode",
+  "retrospective_date": "2026-05-29T08:14:52Z",
+  "created_by": "DOC-UPDATER",
+  "rules_version": "1.1",
+  "estimation_source": "handoffs/WF02-stage11-sim01-04-20260528/estimation.json",
+  "requirements_covered": [
+    "SIM-01",
+    "SIM-02",
+    "SIM-03",
+    "SIM-04"
+  ],
+  "difficulty": 4,
+  "integration_surface": "high",
+  "estimated_minutes_total": 89,
+  "actual_minutes_total": 94.64,
+  "variance_pct": 6.3,
+  "by_step": {
+    "code-designer": {
+      "estimated": 8,
+      "actual": 4.7,
+      "variance_pct": -41.2
+    },
+    "code-design-validator": {
+      "estimated": 23,
+      "actual": 1.67,
+      "variance_pct": -92.7
+    },
+    "backend-dev": {
+      "estimated": 9,
+      "actual": 13.28,
+      "variance_pct": 47.6
+    },
+    "test-designer": {
+      "estimated": 3,
+      "actual": 19.5,
+      "variance_pct": 550.0
+    },
+    "test-design-validator": {
+      "estimated": 38,
+      "actual": 20.86,
+      "variance_pct": -45.1
+    },
+    "test-runner": {
+      "estimated": 6,
+      "actual": 27.95,
+      "variance_pct": 365.8
+    },
+    "release-validator": {
+      "estimated": 2,
+      "actual": 6.68,
+      "variance_pct": 234.0
+    }
+  },
+  "rework_steps": [
+    "00",
+    "01-rework1",
+    "03-rework1",
+    "03-rework2",
+    "03-rework3",
+    "04-rework1",
+    "04-rework2",
+    "04-rework3",
+    "05-rework1",
+    "06-rework1",
+    "1b-rework1",
+    "3b-rework1",
+    "3b-rework2",
+    "3b-rework3"
+  ],
+  "rule_adjustments": [],
+  "notes": "No estimation-rule update applied: no qualifying >=2 consecutive same-direction variance runs at difficulty 4 were found for affected steps.",
+  "completed_at": "2026-05-29T08:14:52Z"
+}
