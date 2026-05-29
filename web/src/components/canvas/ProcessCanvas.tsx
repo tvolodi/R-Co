@@ -281,6 +281,7 @@ export default function ProcessCanvas({
 
   const prevCounterRef = useRef(0)
   const prevUpdateCounterRef = useRef(0)
+  const lastSnapshottedNodeRef = useRef<string | null>(null)
 
   // Handle node data updates from PropertyPanel
   useEffect(() => {
@@ -288,8 +289,13 @@ export default function ProcessCanvas({
     prevUpdateCounterRef.current = nodeUpdateTrigger.counter
     if (isReadOnly) return
 
-    // Take snapshot before mutation
-    takeSnapshot()
+    // Only take one snapshot per "edit session" — when the node being edited
+    // changes. This prevents per-keystroke snapshots from flooding the undo
+    // stack, ensuring Ctrl+Z restores the full pre-edit state.
+    if (lastSnapshottedNodeRef.current !== nodeUpdateTrigger.nodeId) {
+      takeSnapshot()
+      lastSnapshottedNodeRef.current = nodeUpdateTrigger.nodeId
+    }
 
     setNodes((nds) =>
       nds.map((n) =>
@@ -435,6 +441,7 @@ export default function ProcessCanvas({
         nodesConnectable={!isReadOnly}
         elementsSelectable={true}
         fitView
+        fitViewOptions={{ maxZoom: 1.5 }}
         deleteKeyCode={['Backspace', 'Delete']}
         style={{ background: 'var(--surface-page, #f8f9fa)' }}
       >

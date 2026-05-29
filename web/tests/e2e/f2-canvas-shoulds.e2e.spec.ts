@@ -224,27 +224,18 @@ test.describe('F2b — Process Designer Canvas SHOULDs (PD-UI-16 through PD-UI-1
       const gatewayNode = page.locator('.react-flow__node').filter({ hasText: /EXCLUSIVE|GATEWAY/i }).first()
       await expect(gatewayNode).toBeVisible()
 
-      // Find the first condition edge (e2: gw → task-a) and click it to open ConditionDialog
-      const conditionEdge = page.locator('.react-flow__edge').filter({ hasText: "status == 'approved'" }).first()
-      await expect(conditionEdge).toBeVisible()
-      await conditionEdge.click({ force: true })
-      await page.waitForTimeout(500)
+      // Find the condition edge label rendered via EdgeLabelRenderer portal
+      // Edge labels are HTML elements positioned by EdgeLabelRenderer, not SVG children of .react-flow__edge
+      const conditionEdgeLabel = page.locator('.react-flow__edgelabel-renderer').filter({ hasText: "status == 'approved'" }).first()
+      await expect(conditionEdgeLabel).toBeVisible({ timeout: 5_000 })
 
-      // Click the edge interaction path to select it, then use property panel edge edit
-      // Alternatively: open ConditionDialog by clicking a condition edge label
-      const edgeLabel = page.locator('.react-flow__edge-textwrapper').filter({ hasText: "status == 'approved'" }).first()
-      if (await edgeLabel.isVisible()) {
-        await edgeLabel.click()
-        await page.waitForTimeout(500)
-      }
-
-      // Try clicking the edge interaction area
-      const edgeInteraction = page.locator('.react-flow__edge-interaction').nth(1) // e2 is the 2nd edge
+      // Click the edge interaction path to select the edge (e2 is the 2nd edge)
+      const edgeInteraction = page.locator('.react-flow__edge-interaction').nth(1)
       await expect(edgeInteraction).toBeVisible()
       await edgeInteraction.click({ force: true })
       await page.waitForTimeout(300)
 
-      // Press Enter to open the edge for editing (or double-click)
+      // Double-click the edge interaction to open ConditionDialog
       await edgeInteraction.dblclick()
       await page.waitForTimeout(800)
 

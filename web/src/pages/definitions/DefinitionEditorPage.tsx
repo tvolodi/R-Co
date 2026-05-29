@@ -422,6 +422,7 @@ export default function DefinitionEditorPage() {
 
       {saved && (
         <div
+          data-testid="save-success-toast"
           style={{
             padding: '8px 16px',
             background: 'var(--color-success-light, #d3f9d8)',
