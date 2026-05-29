@@ -1,0 +1,23 @@
+{
+  "run_id": "WF02-f2b-shoulds-20260529",
+  "workflow_id": "WF-02",
+  "timestamp": "2026-05-29T08:04:45Z",
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "test_id": "BENCH-PRE-CHECK",
+      "layer": "e2e",
+      "file": "(benchmark environment)",
+      "error_message": "BENCHMARK_SETUP_ERROR: MissingDbUrl — zig build bench failed due to missing BPM_TEST_DB_URL environment variable",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-16"
+    }
+  ],
+  "coverage": {},
+  "nfr_results": []
+}

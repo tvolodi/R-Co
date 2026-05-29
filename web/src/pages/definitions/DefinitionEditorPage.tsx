@@ -16,6 +16,7 @@ import type { DefinitionGraph } from '@/types/api'
 import type { CanvasNodeData, CanvasEdgeData } from '@/utils/canvas/graphToFlow'
 import { graphToFlow } from '@/utils/canvas/graphToFlow'
 import { flowToGraph } from '@/utils/canvas/flowToGraph'
+import { useCanvasHistoryStore } from '@/stores/canvasHistoryStore'
 
 import ProcessCanvas from '@/components/canvas/ProcessCanvas'
 import NodePalette from '@/components/canvas/NodePalette'
@@ -58,6 +59,19 @@ export default function DefinitionEditorPage() {
   const [paletteAddCounter, setPaletteAddCounter] = useState(0)
   const [paletteAddNodeType, setPaletteAddNodeType] = useState<string | null>(null)
 
+  // ── Undo/redo triggers ──────────────────────────────────────────────────────
+  const [undoCounter, setUndoCounter] = useState(0)
+  const [redoCouter, setRedoCounter] = useState(0)
+  const undoTrigger = useMemo(() => ({ counter: undoCounter }), [undoCounter])
+  const redoTrigger = useMemo(() => ({ counter: redoCouter }), [redoCouter])
+
+  // ── Auto-layout trigger ─────────────────────────────────────────────────────
+  const [autoLayoutCounter, setAutoLayoutCounter] = useState(0)
+  const autoLayoutTrigger = useMemo(() => ({ counter: autoLayoutCounter }), [autoLayoutCounter])
+
+  // ── Condition errors from server-side validation ────────────────────────────
+  const [conditionErrors, setConditionErrors] = useState<Map<string, string>>(new Map())
+
   // Ref to hold current canvas nodes/edges for serialization (filled by ProcessCanvas)
   const canvasStateRef = useRef<{ nodesJSON: string; edgesJSON: string } | null>(null)
 
@@ -84,6 +98,7 @@ export default function DefinitionEditorPage() {
 
   async function handleSave() {
     setError(null)
+    setConditionErrors(new Map())
 
     const state = canvasStateRef.current
     if (!state) {
@@ -99,14 +114,31 @@ export default function DefinitionEditorPage() {
       if (isNew) {
         await create.mutateAsync({ name, version, description, graph })
       } else {
-        await definitionsApi.update(id!, { name: def!.name, version: def!.version, description: def!.description ?? null, graph, stage: null })
+        await definitionsApi.update(id!, { name: def!.name, version: def!.version, description: def!.description ?? undefined, graph, stage: null })
       }
 
+      // Clear undo history on successful save
+      useCanvasHistoryStore.getState().clear()
       setDirty(false)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
-    } catch (e) {
-      setError(e instanceof SyntaxError ? 'Invalid graph data' : (e as Error).message)
+    } catch (e: unknown) {
+      const err = e as { status?: number; details?: Record<string, unknown>; message?: string }
+      // Parse RFC 9457 Problem Details for condition errors
+      if (err.details && typeof err.details === 'object') {
+        const rawDetails = err.details
+        const detailArr = Array.isArray(rawDetails) ? (rawDetails as Array<{ loc?: string; message?: string }>) : []
+        if (detailArr.length > 0) {
+          const errors = new Map<string, string>()
+          for (const d of detailArr) {
+            if (d.loc && d.loc.includes('condition')) {
+              errors.set(d.loc, d.message ?? 'Invalid condition')
+            }
+          }
+          if (errors.size > 0) setConditionErrors(errors)
+        }
+      }
+      setError(err instanceof SyntaxError ? 'Invalid graph data' : (err.message ?? 'Save failed'))
     }
   }
 
@@ -159,7 +191,36 @@ export default function DefinitionEditorPage() {
     } catch {
       setValidationErrors([])
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasStateRef.current, dirty])
+
+  // ── Keyboard shortcuts (Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y) ───────────────────
+
+  useEffect(() => {
+    const handler = (e: globalThis.KeyboardEvent) => {
+      if (isReadOnly) return
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        setUndoCounter((c) => c + 1)
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault()
+        setRedoCounter((c) => c + 1)
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+        e.preventDefault()
+        setRedoCounter((c) => c + 1)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [isReadOnly])
+
+  // ── Clear history on definition change ──────────────────────────────────────
+
+  useEffect(() => {
+    useCanvasHistoryStore.getState().clear()
+  }, [id])
 
   // ── Unsaved changes guard ───────────────────────────────────────────────────
 
@@ -306,6 +367,14 @@ export default function DefinitionEditorPage() {
                 {showRawJson ? 'Hide Raw JSON' : 'Show Raw JSON'}
               </button>
               <button
+                data-testid="btn-auto-layout"
+                onClick={() => setAutoLayoutCounter((c) => c + 1)}
+                style={toolbarButtonStyle(undefined)}
+                title="Auto-arrange nodes using Dagre layout"
+              >
+                Re-layout
+              </button>
+              <button
                 data-testid="btn-save-definition"
                 onClick={handleSave}
                 disabled={create.isPending}
@@ -353,6 +422,7 @@ export default function DefinitionEditorPage() {
 
       {saved && (
         <div
+          data-testid="save-success-toast"
           style={{
             padding: '8px 16px',
             background: 'var(--color-success-light, #d3f9d8)',
@@ -429,6 +499,10 @@ export default function DefinitionEditorPage() {
               onSelectedEdgeChange={setSelectedEdgeId}
               paletteAddTrigger={paletteAddTrigger}
               nodeUpdateTrigger={nodeUpdateTrigger}
+              autoLayoutTrigger={autoLayoutTrigger}
+              undoTrigger={undoTrigger}
+              redoTrigger={redoTrigger}
+              conditionErrors={conditionErrors}
             />
 
             {/* Raw JSON drawer */}

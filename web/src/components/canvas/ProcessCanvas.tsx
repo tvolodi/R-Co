@@ -2,6 +2,8 @@ import { useCallback, useRef, useState, useEffect, type DragEvent } from 'react'
 import {
   ReactFlow,
   Background,
+  MiniMap,
+  Controls,
   useNodesState,
   useEdgesState,
   addEdge,
@@ -12,11 +14,13 @@ import {
   type EdgeTypes,
   type OnNodesChange,
   type OnEdgesChange,
+  useReactFlow,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import type { NodeType } from '@/types/api'
 import type { CanvasNodeData, CanvasEdgeData } from '@/utils/canvas/graphToFlow'
+import { useCanvasHistoryStore } from '@/stores/canvasHistoryStore'
 
 import StartNode from './nodes/StartNode'
 import EndNode from './nodes/EndNode'
@@ -28,6 +32,7 @@ import TimerNode from './nodes/TimerNode'
 import SubProcessNode from './nodes/SubProcessNode'
 import ConditionEdge from './edges/ConditionEdge'
 import ConditionDialog from './ConditionDialog'
+
 // ── Static type registries (defined outside component to prevent re-renders) ──
 
 const nodeTypes: NodeTypes = {
@@ -43,6 +48,24 @@ const nodeTypes: NodeTypes = {
 
 const edgeTypes: EdgeTypes = {
   condition: ConditionEdge,
+}
+
+// ── Helper: minimap node color matching node type ────────────────────────────
+
+function minimapNodeColor(node: Node<CanvasNodeData>) {
+  const nodeType = node.data?.nodeType
+  switch (nodeType) {
+    case 'START':
+      return 'var(--color-brand-400, #4dabf7)'
+    case 'END':
+      return 'var(--color-error, #fa5252)'
+    case 'EXCLUSIVE_GATEWAY':
+      return 'var(--color-warning-dark, #e67700)'
+    case 'PARALLEL_GATEWAY':
+      return 'var(--color-success-dark, #2f9e44)'
+    default:
+      return 'var(--color-brand-500, #339af0)'
+  }
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -63,6 +86,13 @@ interface ProcessCanvasProps {
   paletteAddTrigger?: { counter: number; nodeType: string }
   /** External node update trigger: from PropertyPanel */
   nodeUpdateTrigger?: { nodeId: string; data: Partial<CanvasNodeData>; counter: number } | null
+  /** External auto-layout trigger: apply Dagre layout to all nodes */
+  autoLayoutTrigger?: { counter: number }
+  /** External undo/redo trigger */
+  undoTrigger?: { counter: number }
+  redoTrigger?: { counter: number }
+  /** Condition errors from server-side validation, keyed by edge source-target */
+  conditionErrors?: Map<string, string>
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -77,11 +107,17 @@ export default function ProcessCanvas({
   onSelectedEdgeChange,
   paletteAddTrigger,
   nodeUpdateTrigger,
+  autoLayoutTrigger,
+  undoTrigger,
+  redoTrigger,
+  conditionErrors,
 }: ProcessCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
+  const historyStore = useCanvasHistoryStore()
+  const reactFlowInstance = useReactFlow()
 
   // ── Condition dialog state ──────────────────────────────────────────────────
 
@@ -90,7 +126,20 @@ export default function ProcessCanvas({
     target: string
     sourceName: string
     targetName: string
+    serverError?: string | null
+    initialCondition?: string
+    initialIsDefault?: boolean
   } | null>(null)
+
+  // ── Helper: take a snapshot of current canvas state ────────────────────────
+
+  const takeSnapshot = useCallback(() => {
+    const snapshot = {
+      nodesJSON: JSON.stringify(nodes),
+      edgesJSON: JSON.stringify(edges),
+    }
+    historyStore.pushSnapshot(snapshot)
+  }, [nodes, edges, historyStore])
 
   // ── Sync canvas state to ref for parent serialization ───────────────────────
 
@@ -101,10 +150,15 @@ export default function ProcessCanvas({
     }
   }, [nodes, edges, canvasStateRef])
 
+  // ── Set condition errors on dialog when mapping changes ────────────────────
+
   // ── Edge creation ───────────────────────────────────────────────────────────
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      // Take snapshot before mutation
+      takeSnapshot()
+
       const sourceNode = nodes.find((n) => n.id === connection.source)
       if (!sourceNode) return
 
@@ -114,11 +168,15 @@ export default function ProcessCanvas({
       const targetName = targetNode?.data?.name || connection.target || ''
 
       if (sourceType === 'EXCLUSIVE_GATEWAY') {
+        // Look up any condition error for this edge
+        const edgeKey = `${connection.source}-${connection.target}`
+        const err = conditionErrors?.get(edgeKey) ?? null
         setConditionDialog({
           source: connection.source,
           target: connection.target,
           sourceName,
           targetName,
+          serverError: err,
         })
       } else {
         const newEdge: Edge<CanvasEdgeData> = {
@@ -132,40 +190,134 @@ export default function ProcessCanvas({
         onDirtyChange(true)
       }
     },
-    [nodes, setEdges, onDirtyChange],
+    [nodes, setEdges, onDirtyChange, takeSnapshot, conditionErrors],
   )
 
   const handleConditionConfirm = useCallback(
     (data: { condition?: string; isDefault: boolean }) => {
       if (!conditionDialog) return
-      const newEdge: Edge<CanvasEdgeData> = {
-        id: `rf-edge-${conditionDialog.source}-${conditionDialog.target}`,
-        source: conditionDialog.source,
-        target: conditionDialog.target,
-        type: 'condition',
-        data: { condition: data.condition, isDefault: data.isDefault },
+      const edgeId = `rf-edge-${conditionDialog.source}-${conditionDialog.target}`
+
+      // Check if this edge already exists (e.g. opened via double-click on existing edge)
+      const existingEdge = edges.find(
+        (e) => e.source === conditionDialog.source && e.target === conditionDialog.target,
+      )
+
+      if (existingEdge) {
+        // Update existing edge data in place
+        setEdges((eds) =>
+          eds.map((e) =>
+            e.id === existingEdge.id
+              ? { ...e, data: { ...e.data, condition: data.condition, isDefault: data.isDefault } }
+              : e,
+          ),
+        )
+      } else {
+        // Create a new edge
+        const newEdge: Edge<CanvasEdgeData> = {
+          id: edgeId,
+          source: conditionDialog.source,
+          target: conditionDialog.target,
+          type: 'condition',
+          data: { condition: data.condition, isDefault: data.isDefault },
+        }
+        setEdges((eds) => addEdge(newEdge, eds))
       }
-      setEdges((eds) => addEdge(newEdge, eds))
+
       setConditionDialog(null)
       onDirtyChange(true)
     },
-    [conditionDialog, setEdges, onDirtyChange],
+    [conditionDialog, edges, setEdges, onDirtyChange],
   )
 
   const handleConditionCancel = useCallback(() => {
     setConditionDialog(null)
   }, [])
 
+  // ── Handle external auto-layout trigger ───────────────────────────────────
+
+  const prevAutoLayoutRef = useRef(0)
+  useEffect(() => {
+    if (!autoLayoutTrigger || autoLayoutTrigger.counter === prevAutoLayoutRef.current) return
+    prevAutoLayoutRef.current = autoLayoutTrigger.counter
+    if (isReadOnly) return
+
+    // Take snapshot before auto-layout
+    takeSnapshot()
+
+    // Dynamic import to avoid bundling dagre eagerly
+    import('@/utils/canvas/autoLayout').then(({ applyLayout }) => {
+      const result = applyLayout(nodes, edges)
+      if (result.nodes) {
+        setNodes(result.nodes)
+        onDirtyChange(true)
+        // Fit view after layout
+        setTimeout(() => {
+          reactFlowInstance.fitView({ duration: 300 })
+        }, 50)
+      }
+    })
+  }, [autoLayoutTrigger, isReadOnly, setNodes, onDirtyChange, nodes, edges, takeSnapshot, reactFlowInstance])
+
+  // ── Handle external undo/redo triggers ─────────────────────────────────────
+
+  const prevUndoRef = useRef(0)
+  useEffect(() => {
+    if (!undoTrigger || undoTrigger.counter === prevUndoRef.current) return
+    prevUndoRef.current = undoTrigger.counter
+
+    const current = canvasStateRef.current
+    if (!current) return
+    const snapshot = historyStore.undo({ nodesJSON: current.nodesJSON, edgesJSON: current.edgesJSON })
+    if (snapshot) {
+      try {
+        const restoredNodes = JSON.parse(snapshot.nodesJSON) as Node<CanvasNodeData>[]
+        const restoredEdges = JSON.parse(snapshot.edgesJSON) as Edge<CanvasEdgeData>[]
+        setNodes(restoredNodes)
+        setEdges(restoredEdges)
+        onDirtyChange(true)
+      } catch { /* silent fallback on corrupted data */ }
+    }
+  }, [undoTrigger, canvasStateRef, historyStore, setNodes, setEdges, onDirtyChange])
+
+  const prevRedoRef = useRef(0)
+  useEffect(() => {
+    if (!redoTrigger || redoTrigger.counter === prevRedoRef.current) return
+    prevRedoRef.current = redoTrigger.counter
+
+    const current = canvasStateRef.current
+    if (!current) return
+    const snapshot = historyStore.redo({ nodesJSON: current.nodesJSON, edgesJSON: current.edgesJSON })
+    if (snapshot) {
+      try {
+        const restoredNodes = JSON.parse(snapshot.nodesJSON) as Node<CanvasNodeData>[]
+        const restoredEdges = JSON.parse(snapshot.edgesJSON) as Edge<CanvasEdgeData>[]
+        setNodes(restoredNodes)
+        setEdges(restoredEdges)
+        onDirtyChange(true)
+      } catch { /* silent fallback on corrupted data */ }
+    }
+  }, [redoTrigger, canvasStateRef, historyStore, setNodes, setEdges, onDirtyChange])
+
   // ── Handle external add-node trigger from palette double-click ────────────
 
   const prevCounterRef = useRef(0)
   const prevUpdateCounterRef = useRef(0)
+  const lastSnapshottedNodeRef = useRef<string | null>(null)
 
   // Handle node data updates from PropertyPanel
   useEffect(() => {
     if (!nodeUpdateTrigger || nodeUpdateTrigger.counter === prevUpdateCounterRef.current) return
     prevUpdateCounterRef.current = nodeUpdateTrigger.counter
     if (isReadOnly) return
+
+    // Only take one snapshot per "edit session" — when the node being edited
+    // changes. This prevents per-keystroke snapshots from flooding the undo
+    // stack, ensuring Ctrl+Z restores the full pre-edit state.
+    if (lastSnapshottedNodeRef.current !== nodeUpdateTrigger.nodeId) {
+      takeSnapshot()
+      lastSnapshottedNodeRef.current = nodeUpdateTrigger.nodeId
+    }
 
     setNodes((nds) =>
       nds.map((n) =>
@@ -174,11 +326,14 @@ export default function ProcessCanvas({
           : n,
       ),
     )
-  }, [nodeUpdateTrigger, isReadOnly, setNodes])
+  }, [nodeUpdateTrigger, isReadOnly, setNodes, takeSnapshot])
   useEffect(() => {
     if (!paletteAddTrigger || paletteAddTrigger.counter === prevCounterRef.current) return
     prevCounterRef.current = paletteAddTrigger.counter
     if (isReadOnly) return
+
+    // Take snapshot before mutation
+    takeSnapshot()
 
     const nodeType = paletteAddTrigger.nodeType as NodeType
     const position = { x: 100 + Math.random() * 400, y: 100 + Math.random() * 300 }
@@ -194,7 +349,7 @@ export default function ProcessCanvas({
     }
     setNodes((nds) => [...nds, newNode])
     onDirtyChange(true)
-  }, [paletteAddTrigger, isReadOnly, setNodes, onDirtyChange])
+  }, [paletteAddTrigger, isReadOnly, setNodes, onDirtyChange, takeSnapshot])
 
   // ── Drag-and-drop from palette ─────────────────────────────────────────────
 
@@ -208,6 +363,9 @@ export default function ProcessCanvas({
       e.preventDefault()
       const nodeType = e.dataTransfer.getData('application/bpm-node-type') as NodeType | ''
       if (!nodeType || isReadOnly) return
+
+      // Take snapshot before mutation
+      takeSnapshot()
 
       const bounds = reactFlowWrapper.current?.getBoundingClientRect()
       if (!bounds) return
@@ -230,7 +388,7 @@ export default function ProcessCanvas({
       setNodes((nds) => [...nds, newNode])
       onDirtyChange(true)
     },
-    [isReadOnly, setNodes, onDirtyChange],
+    [isReadOnly, setNodes, onDirtyChange, takeSnapshot],
   )
 
   // ── Node/edge selection ─────────────────────────────────────────────────────
@@ -251,27 +409,61 @@ export default function ProcessCanvas({
     [onSelectedEdgeChange, onSelectedNodeChange],
   )
 
+  // ── Edge double-click: open ConditionDialog for EXCLUSIVE_GATEWAY edges ────
+
+  const onEdgeDoubleClick = useCallback(
+    (_: React.MouseEvent, edge: Edge<CanvasEdgeData>) => {
+      const sourceNode = nodes.find((n) => n.id === edge.source)
+      if (!sourceNode || sourceNode.data.nodeType !== 'EXCLUSIVE_GATEWAY') return
+
+      const targetNode = nodes.find((n) => n.id === edge.target)
+      const sourceName = sourceNode.data.name || 'Gateway'
+      const targetName = targetNode?.data?.name || edge.target || ''
+
+      setConditionDialog({
+        source: edge.source,
+        target: edge.target,
+        sourceName,
+        targetName,
+        serverError: null,
+        initialCondition: edge.data?.condition ?? '',
+        initialIsDefault: edge.data?.isDefault ?? false,
+      })
+    },
+    [nodes],
+  )
+
   const onPaneClick = useCallback(() => {
     onSelectedNodeChange(null)
     onSelectedEdgeChange(null)
   }, [onSelectedNodeChange, onSelectedEdgeChange])
 
-  // ── Mark dirty on any change ────────────────────────────────────────────────
+  // ── Mark dirty on any change; take snapshot on removes ─────────────────────
 
   const handleNodesChange: OnNodesChange<Node<CanvasNodeData>> = useCallback(
     (changes) => {
+      // Take snapshot before removal
+      const hasRemove = changes.some(c => c.type === 'remove')
+      if (hasRemove) {
+        takeSnapshot()
+      }
       onNodesChange(changes)
       onDirtyChange(true)
     },
-    [onNodesChange, onDirtyChange],
+    [onNodesChange, onDirtyChange, takeSnapshot],
   )
 
   const handleEdgesChange: OnEdgesChange<Edge<CanvasEdgeData>> = useCallback(
     (changes) => {
+      // Take snapshot before removal
+      const hasRemove = changes.some(c => c.type === 'remove')
+      if (hasRemove) {
+        takeSnapshot()
+      }
       onEdgesChange(changes)
       onDirtyChange(true)
     },
-    [onEdgesChange, onDirtyChange],
+    [onEdgesChange, onDirtyChange, takeSnapshot],
   )
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -288,6 +480,7 @@ export default function ProcessCanvas({
         onDragOver={onDragOver}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -295,10 +488,26 @@ export default function ProcessCanvas({
         nodesConnectable={!isReadOnly}
         elementsSelectable={true}
         fitView
+        fitViewOptions={{ maxZoom: 1.5 }}
         deleteKeyCode={['Backspace', 'Delete']}
         style={{ background: 'var(--surface-page, #f8f9fa)' }}
       >
         <Background color="#ccc" gap={20} />
+        <MiniMap
+          nodeColor={minimapNodeColor}
+          maskColor="rgba(0,0,0,0.1)"
+          style={{
+            position: 'absolute',
+            bottom: 12,
+            right: 12,
+            borderRadius: 8,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}
+        />
+        <Controls
+          position="bottom-left"
+          style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+        />
       </ReactFlow>
 
       {/* Condition dialog */}
@@ -308,6 +517,9 @@ export default function ProcessCanvas({
           targetName={conditionDialog.targetName}
           onConfirm={handleConditionConfirm}
           onCancel={handleConditionCancel}
+          serverError={conditionDialog.serverError}
+          initialCondition={conditionDialog.initialCondition}
+          initialIsDefault={conditionDialog.initialIsDefault}
         />
       )}
     </div>

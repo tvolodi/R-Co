@@ -35,7 +35,7 @@ pub fn main(init: std.process.Init) !void {
     const gpa = init.gpa;
 
     const resolved_db_url = resolveDbUrl(init) catch |err| {
-        std.debug.print("BENCHMARK_SETUP_ERROR|missing BPM_BENCH_DB_URL/BPM_DB_URL/BPM_TEST_DB_URL\n", .{});
+        std.debug.print("BENCHMARK_SETUP_ERROR|missing BPM_BENCH_DB_URL/BPM_DB_URL/BPM_TEST_DB_URL (also checked .env)\n", .{});
         return err;
     };
 
@@ -167,7 +167,49 @@ fn resolveDbUrl(init: std.process.Init) error{MissingDbUrl}!ResolvedDbUrl {
         return .{ .url = url, .source = .test_db };
     }
 
+    // Fallback: try to read from .env file in the project root.
+    // This lets `zig build bench` work without manually exporting env vars.
+    if (readDotEnvValue(init.io, init.gpa, "BPM_BENCH_DB_URL")) |url| {
+        return .{ .url = url, .source = .bench };
+    }
+    if (readDotEnvValue(init.io, init.gpa, "BPM_DB_URL")) |url| {
+        return .{ .url = url, .source = .primary };
+    }
+    if (readDotEnvValue(init.io, init.gpa, "BPM_TEST_DB_URL")) |url| {
+        return .{ .url = url, .source = .test_db };
+    }
+
     return error.MissingDbUrl;
+}
+
+/// Read a single key's value from .env in the current working directory.
+/// Returns null if the file cannot be read or the key is not found.
+/// Caller owns the returned memory (freed via allocator).
+fn readDotEnvValue(io: std.Io, allocator: std.mem.Allocator, key: []const u8) ?[]const u8 {
+    const cwd = std.Io.Dir.cwd();
+    const contents = cwd.readFileAlloc(io, ".env", allocator, std.Io.Limit.unlimited) catch return null;
+    defer allocator.free(contents);
+
+    var lines_iter = std.mem.tokenizeScalar(u8, contents, '\n');
+    while (lines_iter.next()) |line| {
+        const trimmed = std.mem.trim(u8, line, " \t\r");
+        // Skip comments and empty lines
+        if (trimmed.len == 0 or trimmed[0] == '#') continue;
+        // Look for "KEY=value" pattern
+        const equals_pos = std.mem.indexOfScalar(u8, trimmed, '=') orelse continue;
+        const line_key = std.mem.trim(u8, trimmed[0..equals_pos], " \t");
+        if (std.mem.eql(u8, line_key, key)) {
+            const value = std.mem.trim(u8, trimmed[equals_pos + 1 ..], " \t");
+            // Strip surrounding quotes (single or double)
+            const unquoted = if ((value.len >= 2 and value[0] == '"' and value[value.len - 1] == '"') or
+                (value[0] == '\'' and value[value.len - 1] == '\''))
+                value[1 .. value.len - 1]
+            else
+                value;
+            return allocator.dupe(u8, unquoted) catch null;
+        }
+    }
+    return null;
 }
 
 fn dbUrlSourceLabel(source: DbUrlSource) []const u8 {

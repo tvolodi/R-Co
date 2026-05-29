@@ -267,7 +267,7 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
         .dot_path => |segments| {
             if (segments.len == 1) {
                 // Single segment — slice directly into source, no allocation needed
-                if (ctx.vars.get(segments[0])) |val| {
+                if (ctx.variables.get(segments[0])) |val| {
                     return EvalResult{ .ok = val };
                 }
                 return EvalResult{ .ok = valueNull() };
@@ -310,7 +310,7 @@ pub fn evaluateNode(node: *const Node, ctx: *const Context, allocator: std.mem.A
                 break :blk slice;
             };
 
-            if (ctx.vars.get(key)) |val| {
+            if (ctx.variables.get(key)) |val| {
                 return EvalResult{ .ok = val };
             }
             // Not found → null (DSL-10: missing path returns null)
@@ -1904,7 +1904,7 @@ test "DSL-05: dot_path resolves from context" {
 
     var ctx = Context.init(alloc);
     defer ctx.deinit();
-    try ctx.vars.put("x", valueInt(42));
+    try ctx.variables.put("x", valueInt(42));
 
     const ev = evaluate(&result.ok, &ctx, alloc);
     try testing.expect(ev == .ok);
@@ -1944,7 +1944,7 @@ test "DSL-05: dot_path multi-segment resolves from context" {
 
     var ctx = Context.init(alloc);
     defer ctx.deinit();
-    try ctx.vars.put("a.b.c", valueStr("deep_value"));
+    try ctx.variables.put("a.b.c", valueStr("deep_value"));
 
     const ev = evaluate(&result.ok, &ctx, alloc);
     try testing.expect(ev == .ok);
@@ -2026,7 +2026,7 @@ test "DSL-05: negate timestamp returns error" {
 
     var ctx = Context.init(alloc);
     defer ctx.deinit();
-    try ctx.vars.put("ts_val", valueTs(1_715_328_000_000));
+    try ctx.variables.put("ts_val", valueTs(1_715_328_000_000));
 
     const ev = evaluate(&result.ok, &ctx, alloc);
     try testing.expect(ev == .err);

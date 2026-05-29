@@ -606,10 +606,11 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
       // Dialog has title "Edge Condition"
       await expect(conditionDialog).toContainText('Edge Condition')
 
-      // Dialog has CEL input field
-      const celInput = page.getByTestId('condition-cel-input')
-      await expect(celInput).toBeVisible()
-      await expect(celInput).toHaveAttribute('placeholder', /status/i)
+      // Dialog has CEL expression editor (CodeMirror)
+      const celEditor = page.getByTestId('cel-expression-editor')
+      await expect(celEditor).toBeVisible()
+      // CodeMirror placeholder text is shown
+      await expect(celEditor.locator('.cm-placeholder')).toBeVisible()
 
       // Dialog has "Default edge" checkbox
       const defaultCheckbox = page.getByTestId('condition-default-checkbox')

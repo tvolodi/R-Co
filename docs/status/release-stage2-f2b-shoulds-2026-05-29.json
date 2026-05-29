@@ -1,0 +1,25 @@
+{
+  "stage": "Stage 2 — Process Designer UI (F2b SHOULD batch)",
+  "date": "2026-05-29T09:16:34Z",
+  "decision": "APPROVED",
+  "run_id": "WF02-f2b-shoulds-20260529",
+  "nfr_results": {
+    "NFR-01_p99_read_ms": { "target": "<= 200ms", "actual": "1.355ms", "passed": true },
+    "NFR-01_p99_write_ms": { "target": "<= 500ms", "actual": "78.978ms", "passed": true },
+    "NFR-02_append_throughput_eps": { "target": ">= 1000 events/sec", "actual": "58197.444 events/sec", "passed": true },
+    "NFR-04_replay_10000_ms": { "target": "<= 5000ms", "actual": "42.677ms", "passed": true }
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "PD-UI-16",
+    "PD-UI-17",
+    "PD-UI-18",
+    "PD-UI-19"
+  ],
+  "test_results": {
+    "e2e_total": 63,
+    "e2e_passed": 63,
+    "e2e_failed": 0,
+    "test_report": "tests/reports/2026-05-29T091228Z-WF03-f2b-testfixes-e2e.md"
+  }
+}

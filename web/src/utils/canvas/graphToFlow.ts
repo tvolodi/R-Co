@@ -80,14 +80,22 @@ export function graphToFlow(graph: DefinitionGraph): GraphToFlowResult {
     const defaultPos = DEFAULT_POSITIONS[gn.id] ?? nextPosition()
     const position = persistedPositions.get(gn.id) ?? defaultPos
 
+    const parsedAttrs: Record<string, unknown> = (() => {
+      if (typeof gn.attributes === 'string') {
+        try { return JSON.parse(gn.attributes) as Record<string, unknown> } catch { /* ignore */ }
+      }
+      if (gn.attributes && typeof gn.attributes === 'object') return gn.attributes as Record<string, unknown>
+      return {}
+    })()
+
     return {
       id: gn.id,
-      type: gn.node_type.toLowerCase(), // React Flow uses lowercase node type keys
+      type: gn.node_type.toLowerCase(),
       position,
       data: {
         nodeType: gn.node_type,
         name: gn.label ?? '',
-        attributes: gn.attributes ?? {} as Record<string, unknown>,
+        attributes: parsedAttrs,
       },
       width: dims.width,
       height: dims.height,

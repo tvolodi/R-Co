@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, type KeyboardEvent } from 'react'
+import CelExpressionEditor from './CelExpressionEditor'
 
 interface ConditionDialogProps {
   /** Source node display name */
@@ -9,6 +10,12 @@ interface ConditionDialogProps {
   onConfirm: (data: { condition?: string; isDefault: boolean }) => void
   /** Called when user cancels */
   onCancel: () => void
+  /** Optional server-side validation error to display inline */
+  serverError?: string | null
+  /** Initial CEL expression value (for editing existing conditions) */
+  initialCondition?: string
+  /** Initial isDefault state (for editing existing edges) */
+  initialIsDefault?: boolean
 }
 
 export default function ConditionDialog({
@@ -16,9 +23,12 @@ export default function ConditionDialog({
   targetName,
   onConfirm,
   onCancel,
+  serverError = null,
+  initialCondition = '',
+  initialIsDefault = false,
 }: ConditionDialogProps) {
-  const [celExpression, setCelExpression] = useState('')
-  const [isDefault, setIsDefault] = useState(false)
+  const [celExpression, setCelExpression] = useState(initialCondition)
+  const [isDefault, setIsDefault] = useState(initialIsDefault)
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -67,8 +77,8 @@ export default function ConditionDialog({
           background: 'var(--color-neutral-0, #fff)',
           borderRadius: 8,
           padding: 24,
-          minWidth: 420,
-          maxWidth: 500,
+          minWidth: 480,
+          maxWidth: 560,
           boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -93,7 +103,7 @@ export default function ConditionDialog({
           {sourceName} → {targetName}
         </p>
 
-        {/* CEL expression input */}
+        {/* CEL expression input with CodeMirror */}
         <div style={{ marginBottom: 16 }}>
           <label
             style={{
@@ -106,28 +116,16 @@ export default function ConditionDialog({
           >
             CEL Expression
           </label>
-          <textarea
-            data-testid="condition-cel-input"
+          <CelExpressionEditor
             value={celExpression}
-            onChange={(e) => {
-              setCelExpression(e.target.value)
-              if (e.target.value) setIsDefault(false)
+            onChange={(val) => {
+              setCelExpression(val)
+              if (val) setIsDefault(false)
             }}
-            placeholder="e.g. status == 'approved'"
             disabled={isDefault}
-            rows={3}
-            style={{
-              width: '100%',
-              padding: '8px 10px',
-              border: `1px solid ${isDefault ? 'var(--color-neutral-200, #e9ecef)' : 'var(--border-default, #e9ecef)'}`,
-              borderRadius: 4,
-              fontFamily: 'var(--font-mono, monospace)',
-              fontSize: 'var(--text-sm, 0.875rem)',
-              resize: 'vertical',
-              boxSizing: 'border-box',
-              background: isDefault ? 'var(--color-neutral-50, #f8f9fa)' : '#fff',
-              color: isDefault ? 'var(--text-disabled, #ced4da)' : undefined,
-            }}
+            serverError={serverError}
+            placeholder="e.g. status == 'approved'"
+            minHeight="80px"
           />
         </div>
 

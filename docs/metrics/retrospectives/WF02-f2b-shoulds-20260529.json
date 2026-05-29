@@ -1,0 +1,67 @@
+{
+  "run_id": "WF02-f2b-shoulds-20260529",
+  "created_at": "2026-05-29T09:19:11Z",
+  "rules_version": "1.0",
+  "difficulty": 3,
+  "integration_surface": "low",
+  "comparison": {
+    "code-designer": {
+      "estimated_minutes": 15,
+      "actual_minutes": 2.9,
+      "variance_pct": -80.7,
+      "step": "01"
+    },
+    "code-design-validator": {
+      "estimated_minutes": 5,
+      "actual_minutes": 0.7,
+      "variance_pct": -86.0,
+      "step": "01b"
+    },
+    "frontend-dev": {
+      "estimated_minutes": 60,
+      "actual_minutes": 3.8,
+      "variance_pct": -93.7,
+      "step": "02"
+    },
+    "test-designer": {
+      "estimated_minutes": 30,
+      "actual_minutes": 2.1,
+      "variance_pct": -93.0,
+      "step": "03"
+    },
+    "test-design-validator": {
+      "estimated_minutes": 5,
+      "actual_minutes": 0.9,
+      "variance_pct": -82.0,
+      "step": "03b"
+    },
+    "test-runner": {
+      "estimated_minutes": 15,
+      "actual_minutes": 8.2,
+      "variance_pct": -45.3,
+      "step": "04/04b/04c",
+      "note": "3 iterations: 2 failures + 1 pass"
+    },
+    "release-validator": {
+      "estimated_minutes": 10,
+      "actual_minutes": 2.6,
+      "variance_pct": -74.0,
+      "step": "05"
+    },
+    "doc-updater": {
+      "estimated_minutes": 10,
+      "actual_minutes": null,
+      "variance_pct": null,
+      "step": "06",
+      "note": "In progress at time of retrospective generation"
+    }
+  },
+  "totals": {
+    "estimated_minutes": 150,
+    "actual_minutes_completed": 21.8,
+    "variance_pct": -85.5
+  },
+  "adjustment_needed": false,
+  "adjustment_reason": "All steps are well below estimate (>25% variance), but this is the first run at difficulty 3 with low integration surface for frontend-only SHOULD requirements. Requires ≥2 consecutive runs with similar variance to trigger estimation_rules.json adjustment.",
+  "notes": "Frontend-only SHOULD batch with additive changes within web/src/components/canvas/. No backend impact. All steps completed far below estimates due to well-scoped requirements using established patterns (React Flow built-in features, dagre layout, Monaco editor, command pattern undo). Test-runner required 2 reworks (step 04 and 04b failed, 04c passed) due to E2E flakiness, not implementation defects."
+}
