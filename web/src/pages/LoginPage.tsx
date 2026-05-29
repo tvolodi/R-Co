@@ -5,6 +5,12 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
 import { getOidcManager } from '@/auth/OidcManager'
 
+type RouteFromState = {
+  pathname: string
+  search?: string
+  hash?: string
+}
+
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -14,7 +20,10 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/'
+  const fromState = (location.state as { from?: RouteFromState } | null)?.from
+  const from = fromState
+    ? `${fromState.pathname}${fromState.search ?? ''}${fromState.hash ?? ''}`
+    : '/'
   const searchParams = new URLSearchParams(location.search)
   const sessionExpired = searchParams.get('reason') === 'session-expired'
   const authError = searchParams.get('reason') === 'auth-error'
