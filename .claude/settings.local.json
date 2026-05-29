@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python tools/lint_design_artefact.py templates/specs/migration.template.yaml)",
+      "Bash(echo \"---EXIT $?---\")",
+      "Bash(python tools/lint_frontend_conventions.py)",
+      "Bash(python tools/lint_test_isolation.py)",
+      "Bash(python tools/lint_test_isolation.py tests/integration/xc01_trace_propagation_test.zig)",
+      "Bash(echo \"exit=$?\")",
+      "Bash(python tools/codegen_migration.py templates/specs/migration.template.yaml --dry-run)",
+      "Bash(python tools/codegen_crud_endpoint.py templates/specs/crud-endpoint.template.yaml --dry-run)",
+      "Bash(python tools/codegen_list_page.py templates/specs/list-page.template.yaml --dry-run)",
+      "Bash(python tools/codegen_error_mapper.py src/identity/registry.zig --dry-run)",
+      "Bash(python tools/codegen_react_flow_node.py templates/specs/react-flow-node.template.yaml --dry-run)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(gh pr *)",
+      "Bash(git fetch *)"
+    ]
+  }
+}

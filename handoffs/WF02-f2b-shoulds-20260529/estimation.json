@@ -1,0 +1,23 @@
+{
+  "run_id": "WF02-f2b-shoulds-20260529",
+  "created_at": "2026-05-29T07:48:19Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["PD-UI-16", "PD-UI-17", "PD-UI-18", "PD-UI-19"],
+  "difficulty": 3,
+  "difficulty_rationale": "All four are frontend-only SHOULD items using well-known patterns (React Flow built-in features, undo stack pattern, Monaco/CodeMirror integration)",
+  "integration_surface": "low",
+  "integration_surface_rationale": "All changes are additive within web/src/components/canvas/ — no backend changes, no existing test impact",
+  "surcharge": 0.0,
+  "steps": ["code-designer", "code-design-validator", "frontend-dev", "test-designer", "test-design-validator", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 15,
+    "code-design-validator": 5,
+    "frontend-dev": 60,
+    "test-designer": 30,
+    "test-design-validator": 5,
+    "test-runner": 15,
+    "release-validator": 10,
+    "doc-updater": 10,
+    "total": 150
+  }
+}

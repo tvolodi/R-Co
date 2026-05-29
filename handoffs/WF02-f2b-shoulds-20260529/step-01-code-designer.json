@@ -1,0 +1,49 @@
+{
+  "handoff_id": "f2b-step01-002",
+  "run_id": "WF02-f2b-shoulds-20260529",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-29T07:48:19Z",
+  "started_at": "2026-05-29T07:50:38Z",
+  "completed_at": "2026-05-29T07:53:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 \u2014 Process Designer UI",
+    "requirement_ids": [
+      "PD-UI-16",
+      "PD-UI-17",
+      "PD-UI-18",
+      "PD-UI-19"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/BPM_Platform_Frontend_Requirements.md",
+      "templates/lego-catalog.md",
+      "docs/guides/frontend_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Design the following four frontend-only SHOULD requirements for the Process Designer canvas. Use docs/BPM_Platform_Frontend_Requirements.md for acceptance criteria.\n\n1. **PD-UI-16 \u2014 CEL expression editor**: Edge condition inputs on EXCLUSIVE_GATEWAY SHALL use a code editor field (Monaco or CodeMirror) with CEL syntax highlighting and basic bracket matching. Server-side syntax errors surfaced inline.\n\n2. **PD-UI-17 \u2014 Canvas minimap & zoom**: The canvas SHALL include a minimap for large graphs and zoom controls (fit-to-screen, zoom in/out). React Flow has built-in <MiniMap/> and Controls components.\n\n3. **PD-UI-18 \u2014 Auto-layout**: A 'Re-layout' button SHALL apply an automatic DAG layout algorithm (e.g. dagre) to arrange nodes cleanly.\n\n4. **PD-UI-19 \u2014 Undo/redo**: The canvas SHALL support undo/redo (Ctrl+Z/Ctrl+Y) for all canvas operations (add node, delete edge, move node, edit property).",
+    "acceptance_criteria": [
+      "All four requirements have design artefacts (Type B or E per lego-catalog)",
+      "Design covers component hierarchy, props, state management, and integration points",
+      "No implementation code in the design"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for canvas Batch 2 enhancements \u2014 PD-UI-16 (CEL editor), PD-UI-17 (minimap/zoom), PD-UI-18 (auto-layout), PD-UI-19 (undo/redo). All classified Type E. Single prose artefact at src/design/canvas-enhancements.md.",
+    "artifacts_out": [
+      "src/design/canvas-enhancements.md",
+      "docs/issue-reports/code-design-wf02-f2b-shoulds-20260529.md"
+    ],
+    "issues": [],
+    "next_action": "ORCH routes to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
