@@ -536,7 +536,6 @@ pub const Store = struct {
             const graph_json = col.get(row, 5);
             const graph_to_validate = parseGraphJson(allocator, graph_json) catch {
                 self.setSingleValidationViolation(
-                    allocator,
                     "GRAPH_STRUCTURE_INVALID",
                     "Stored definition graph is not a valid JSON graph document",
                 ) catch return DefinitionError.TransactionFailed;
@@ -1251,13 +1250,15 @@ pub const Store = struct {
 
     fn setSingleValidationViolation(
         self: *Store,
-        allocator: std.mem.Allocator,
         code: []const u8,
         message: []const u8,
     ) error{OutOfMemory}!void {
         self.clearLastViolations();
-        const msg = try std.fmt.allocPrint(allocator, "{s}: {s}", .{ code, message });
-        const violations = try allocator.alloc(Violation, 1);
+        // Use self.allocator, not the caller's allocator, so that
+        // clearLastViolations (which also uses self.allocator) can free
+        // these correctly. Mixing allocators causes an alignment panic.
+        const msg = try std.fmt.allocPrint(self.allocator, "{s}: {s}", .{ code, message });
+        const violations = try self.allocator.alloc(Violation, 1);
         violations[0] = Violation{ .code = code, .message = msg };
         self.last_violations = violations;
     }
