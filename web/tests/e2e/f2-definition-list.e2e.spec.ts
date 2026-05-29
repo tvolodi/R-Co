@@ -222,11 +222,11 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
       // Wait for debounce and API response
       await page.waitForTimeout(1000)
 
-      // Screen shows "No definitions found" empty message
-      await expect(page.getByText('No definitions found')).toBeVisible({ timeout: 10_000 })
+      // Screen shows "No results found" empty message (search state)
+      await expect(page.getByText('No results found')).toBeVisible({ timeout: 10_000 })
 
       await shot(page, 'TC02-empty-state')
-      // VERDICT: Screen shows "No definitions found" when no results match the search query
+      // VERDICT: Screen shows "No results found" when no results match the search query
     })
 
     test('TC-PDUI01-03: search input filters definitions by name', async ({ page, request }) => {

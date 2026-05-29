@@ -36,6 +36,21 @@ fn restoreAuditChainTrigger(conn: anytype) !void {
     );
 }
 
+fn restoreAuditPreventUpdateTrigger(conn: anytype) !void {
+    try conn.exec(
+        \\DROP TRIGGER IF EXISTS trg_bpm_audit_prevent_update ON audit_entries
+    ,
+        &.{},
+    );
+    try conn.exec(
+        \\CREATE TRIGGER trg_bpm_audit_prevent_update
+        \\BEFORE UPDATE ON audit_entries
+        \\FOR EACH ROW EXECUTE FUNCTION bpm_audit_enforce_immutability()
+    ,
+        &.{},
+    );
+}
+
 test "TC-ADP-09-01: migration adds nullable chain columns and validation primitives" {
     const alloc = testing.allocator;
     var harness = try TestHarness.init(alloc);
@@ -269,11 +284,19 @@ test "TC-ADP-09-03: chain validation reports tampered row first and descendants 
     defer restoreAuditNoUpdateTrigger(&harness.conn) catch {};
 
     try harness.conn.exec(
+        \\DROP TRIGGER IF EXISTS trg_bpm_audit_prevent_update ON audit_entries
+    ,
+        &.{},
+    );
+    defer restoreAuditPreventUpdateTrigger(&harness.conn) catch {};
+
+    try harness.conn.exec(
         "UPDATE audit_entries SET action = 'definition.tampered' WHERE audit_id = 'c9000000-0000-0000-0000-000000000102'::uuid",
         &.{},
     );
 
     try restoreAuditNoUpdateTrigger(&harness.conn);
+    try restoreAuditPreventUpdateTrigger(&harness.conn);
 
     var issues = try harness.conn.query(
         alloc,

@@ -1,0 +1,24 @@
+{
+  "run_id": "WF02-f2c-batch2-20260529",
+  "created_at": "2026-05-29T10:09:48Z",
+  "rules_version": "1.0",
+  "requirement_ids": ["PD-09", "PD-10", "PD-UI-07", "PD-UI-08"],
+  "difficulty": 3,
+  "difficulty_rationale": "PD-09 (export/import) and PD-10 (search) are standard CRUD+query endpoints. PD-UI-07/08 are straightforward frontend features.",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "New API endpoints for export/import/search; touches src/api/routes/definitions.zig and definition store",
+  "surcharge": 0.25,
+  "steps": ["code-designer", "code-design-validator", "backend-dev", "frontend-dev", "test-designer", "test-design-validator", "test-runner", "release-validator", "doc-updater"],
+  "estimated_minutes": {
+    "code-designer": 15,
+    "code-design-validator": 5,
+    "backend-dev": 60,
+    "frontend-dev": 45,
+    "test-designer": 30,
+    "test-design-validator": 5,
+    "test-runner": 20,
+    "release-validator": 10,
+    "doc-updater": 10,
+    "total": 200
+  }
+}

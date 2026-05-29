@@ -981,8 +981,9 @@ fn errorResult(allocator: std.mem.Allocator, code: u16, msg: []const u8) Handler
     return .{ .status_code = code, .body = body };
 }
 
-/// Serialise a []SearchResult to a JSON array string (PD-10). Caller owns the result.
-/// Empty slice → "[]".
+/// Serialise a []SearchResult to a JSON object with an "items" array (PD-10).
+/// Caller owns the result. Empty slice → {"items":[]}.
+/// Format: {"items":[{"definition":{...},"rank":0.5},...]}
 fn serializeSearchResults(
     allocator: std.mem.Allocator,
     results: []const definition_store.SearchResult,
@@ -990,7 +991,7 @@ fn serializeSearchResults(
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(allocator);
 
-    try buf.append(allocator, '[');
+    try buf.appendSlice(allocator, "{\"items\":[");
     for (results, 0..) |sr, i| {
         if (i > 0) try buf.append(allocator, ',');
         const def_json = try serializeDefinition(allocator, sr.definition);
@@ -1002,7 +1003,7 @@ fn serializeSearchResults(
         try buf.appendSlice(allocator, rank_str);
         try buf.append(allocator, '}');
     }
-    try buf.append(allocator, ']');
+    try buf.appendSlice(allocator, "]}");
 
     return buf.toOwnedSlice(allocator);
 }
@@ -1140,8 +1141,8 @@ fn serializeExportDocument(allocator: std.mem.Allocator, doc: export_import.Expo
     try appendJsonStr(allocator, &buf, doc.version);
     try buf.appendSlice(allocator, ",\"description\":");
     try appendJsonStr(allocator, &buf, doc.description);
-    // Graph: emit nodes/edges arrays. Stub consistent with existing serializeDefinition.
-    try buf.appendSlice(allocator, ",\"graph\":{\"nodes\":[],\"edges\":[]}");
+    try buf.appendSlice(allocator, ",\"graph\":");
+    try appendJsonGraph(allocator, &buf, doc.graph);
     try buf.appendSlice(allocator, ",\"exported_at\":");
     try appendJsonStr(allocator, &buf, doc.exported_at);
     try buf.append(allocator, '}');

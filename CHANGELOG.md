@@ -18,6 +18,16 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json.
 - Requirements: SIM-05, SIM-06, SIM-07, SIM-08 (MUST, Stage 11) - RELEASED
 
+### Stage 2 — Process Definitions (Batch f2c)
+
+### PD-09..PD-10, PD-UI-07..PD-UI-08 — Definition import/export + search + UI (RELEASED 2026-05-29)
+- **PD-09** (SHOULD): Definition import/export — Export button downloads self-contained JSON document; Import button accepts JSON file and calls the import endpoint. Backend previously implemented in `src/definition/export_import.zig`.
+- **PD-10** (COULD): Full-text search — Backend search endpoint previously implemented in `src/definition/store.zig` with parameterized ILIKE search ranked by relevance.
+- **PD-UI-07** (SHOULD): Export/Import buttons — Frontend UI providing Export button on definition detail view and Import button on definition list view, wired to PD-09 backend endpoints.
+- **PD-UI-08** (COULD): Debounced full-text search — Search bar on definition list view with 300 ms debounce querying the PD-10 search endpoint, with highlighted results.
+- Validation evidence passed in WF-02 f2c batch 2 E2E tests; release approval is recorded in `docs/status/release-stage2-2026-05-29.json`.
+- Requirements: PD-09, PD-10, PD-UI-07, PD-UI-08 — RELEASED
+
 ### Stage 6 — Observability + Extensions
 
 ### Stage 6.5 — Schema adaptations + OIDC foundations

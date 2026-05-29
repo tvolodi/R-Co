@@ -12,6 +12,7 @@ import type { Node, Edge } from '@xyflow/react'
 
 import { useDefinition, useCreateDefinition } from '@/hooks/useDefinitions'
 import { definitionsApi } from '@/api/definitions'
+import { useAuth } from '@/auth/AuthContext'
 import type { DefinitionGraph } from '@/types/api'
 import type { CanvasNodeData, CanvasEdgeData } from '@/utils/canvas/graphToFlow'
 import { graphToFlow } from '@/utils/canvas/graphToFlow'
@@ -23,6 +24,8 @@ import NodePalette from '@/components/canvas/NodePalette'
 import PropertyPanel from '@/components/canvas/PropertyPanel'
 import ValidationSummaryBar from '@/components/canvas/ValidationSummaryBar'
 import type { ValidationError } from '@/components/canvas/ValidationSummaryBar'
+
+const DESIGNER_ROLES = ['PROCESS_DESIGNER', 'PLATFORM_ADMIN']
 
 // ── Empty starter graph ───────────────────────────────────────────────────────
 
@@ -41,6 +44,7 @@ export default function DefinitionEditorPage() {
   const isNew = !id
   const { data: def, isLoading } = useDefinition(id!)
   const create = useCreateDefinition()
+  const { session } = useAuth()
 
   const [name, setName] = useState('')
   const [version, setVersion] = useState('1.0.0')
@@ -48,6 +52,10 @@ export default function DefinitionEditorPage() {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showRawJson, setShowRawJson] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
+
+  const hasDesignerRole = session?.roles?.some((r) => DESIGNER_ROLES.includes(r)) ?? false
 
   // ── Canvas state ────────────────────────────────────────────────────────────
 
@@ -93,6 +101,35 @@ export default function DefinitionEditorPage() {
     }
     return map
   }, [currentGraph])
+
+  // ── Export handler ──────────────────────────────────────────────────────────
+
+  async function handleExport() {
+    if (!def?.id || isNew) return
+    setExportError(null)
+    setExporting(true)
+    try {
+      const exportData = await definitionsApi.exportJson(def.id)
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `definition-${def.name}-${def.version}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (err: unknown) {
+      const apiErr = err as { status?: number; message?: string }
+      if (apiErr.status === 404) {
+        setExportError('Definition not found')
+      } else {
+        setExportError(apiErr.message ?? 'Export failed')
+      }
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // ── Save handler ────────────────────────────────────────────────────────────
 
@@ -357,6 +394,16 @@ export default function DefinitionEditorPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {hasDesignerRole && !isNew && (
+            <button
+              data-testid="btn-export-definition"
+              onClick={handleExport}
+              disabled={exporting}
+              style={toolbarButtonStyle(undefined)}
+            >
+              {exporting ? 'Exporting…' : 'Export'}
+            </button>
+          )}
           {!isReadOnly && (
             <>
               <button
@@ -417,6 +464,20 @@ export default function DefinitionEditorPage() {
           }}
         >
           {error}
+        </div>
+      )}
+
+      {exportError && (
+        <div
+          style={{
+            padding: '8px 16px',
+            background: 'var(--color-error-light, #ffe3e3)',
+            color: 'var(--color-error-dark, #c92a2a)',
+            fontSize: 'var(--text-sm, 0.875rem)',
+            borderBottom: '1px solid var(--color-error, #fa5252)',
+          }}
+        >
+          {exportError}
         </div>
       )}
 

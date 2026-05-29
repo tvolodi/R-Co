@@ -8,6 +8,8 @@ export const definitionKeys = {
   list: (filters: object) => [...definitionKeys.all, 'list', filters] as const,
   detail: (id: string) => [...definitionKeys.all, 'detail', id] as const,
   active: (name: string) => [...definitionKeys.all, 'active', name] as const,
+  search: (query: string, limit?: number, offset?: number) =>
+    [...definitionKeys.all, 'search', query, limit, offset] as const,
 }
 
 export function useDefinitions(params?: { status?: DefinitionStatus; name?: string }) {
@@ -60,5 +62,15 @@ export function useArchiveDefinition() {
       qc.invalidateQueries({ queryKey: definitionKeys.detail(id) })
       qc.invalidateQueries({ queryKey: definitionKeys.list({}) })
     },
+  })
+}
+
+export function useDefinitionSearch(query: string, options?: { limit?: number; offset?: number }) {
+  const limit = options?.limit ?? 20
+  const offset = options?.offset ?? 0
+  return useQuery({
+    queryKey: definitionKeys.search(query, limit, offset),
+    queryFn: () => definitionsApi.search({ q: query, limit, offset }),
+    enabled: query.trim().length > 0,
   })
 }

@@ -445,7 +445,7 @@ fn serveRequest(
             } else if (std.mem.eql(u8, seg4, "search") and method == .GET) {
                 // GET /api/v1/definitions/search
                 const params = definition_routes.SearchQueryParams{
-                    .q = QS.get(query_str, "q"),
+                    .q = QS.getDecoded(query_str, "q", req_alloc),
                     .limit = if (QS.get(query_str, "limit")) |l| std.fmt.parseInt(u32, l, 10) catch null else null,
                     .offset = if (QS.get(query_str, "offset")) |o| std.fmt.parseInt(u32, o, 10) catch null else null,
                 };
