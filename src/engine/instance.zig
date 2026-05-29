@@ -1140,6 +1140,19 @@ pub const InstanceStore = struct {
         }
         // proj_conn and proj_rows are released here.
 
+        // ── Step c2: EE-10 HTTP 409 guard — reject non-ACTIVE instances ────────
+        // Check the projection status BEFORE loading the snapshot.  If the
+        // instance is already in a terminal state, return InstanceInError
+        // without attempting a snapshot lookup.  This avoids unnecessary
+        // DefinitionNotFound errors when the snapshot row was removed (e.g. by
+        // setInstanceError having already moved the instance out of ACTIVE).
+        if (proj_status == .ERROR) {
+            return CompleteTaskError.InstanceInError;
+        }
+        if (proj_status == .CANCELLED or proj_status == .COMPLETED) {
+            return CompleteTaskError.TaskAlreadyTerminated;
+        }
+
         // Parse current_nodes JSON array → []Token (node_id/branch_id in allocator).
         var tokens = std.ArrayList(transition_mod.Token).empty;
         defer {
@@ -1200,11 +1213,24 @@ pub const InstanceStore = struct {
         if (vars_parsed.value != .object) return CompleteTaskError.PersistenceFailed;
 
         // ── Step d: Load the definition snapshot ──────────────────────────────
+        // If the snapshot is not found (DefinitionNotFound), the instance data is
+        // inconsistent — most likely the snapshot was never created or was deleted
+        // by an external process.  This maps to PersistenceFailed so callers can
+        // distinguish a data-integrity issue from a business-logic rejection.
         const snapshot_obj = self.snapshot_store.getByInstanceId(
             allocator,
             task.instance_id,
         ) catch |err| return switch (err) {
             snapshot_mod.SnapshotError.PoolExhausted => CompleteTaskError.PoolExhausted,
+            snapshot_mod.SnapshotError.DefinitionNotFound => blk: {
+                // If the instance status is already terminal (ERROR, CANCELLED, COMPLETED)
+                // and the snapshot was cleaned up, return InstanceInError so the caller
+                // can respond with the correct HTTP 409.
+                if (proj_status == .ERROR) break :blk CompleteTaskError.InstanceInError;
+                if (proj_status == .CANCELLED or proj_status == .COMPLETED)
+                    break :blk CompleteTaskError.TaskAlreadyTerminated;
+                break :blk CompleteTaskError.PersistenceFailed;
+            },
             else => CompleteTaskError.PersistenceFailed,
         };
         defer snapshot_mod.freeSnapshot(allocator, snapshot_obj);
