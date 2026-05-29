@@ -1,0 +1,32 @@
+{
+  "handoff_id": "f2c-step03b-007",
+  "run_id": "WF02-f2c-batch2-20260529",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-05-29T10:09:48Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definitions",
+    "requirement_ids": ["PD-09", "PD-10", "PD-UI-07", "PD-UI-08"],
+    "related_handoff_ids": ["f2c-step03-006"],
+    "artifacts_in": [
+      "handoffs/WF02-f2c-batch2-20260529/step-03-test-designer.json"
+    ]
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER artefacts for Batch F2c. Verify: every requirement has a runnable integration/E2E test, no SkipZigTest on MUST tests, fixtures use per-test UUIDs, tests clean up.",
+    "acceptance_criteria": [
+      "All 4 requirements have runnable tests",
+      "No test.skip on any covered requirement"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

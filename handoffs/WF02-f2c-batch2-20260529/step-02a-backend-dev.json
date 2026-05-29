@@ -1,0 +1,43 @@
+{
+  "handoff_id": "f2c-step02a-004",
+  "run_id": "WF02-f2c-batch2-20260529",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-29T10:09:48Z",
+  "started_at": "2026-05-29T10:17:56Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 \u2014 Process Definitions",
+    "requirement_ids": [
+      "PD-09",
+      "PD-10"
+    ],
+    "related_handoff_ids": [
+      "f2c-step01-002",
+      "f2c-step01b-003"
+    ],
+    "artifacts_in": [
+      "docs/requirements/PD-09.md",
+      "docs/requirements/PD-10.md",
+      "src/api/routes/definitions.zig",
+      "src/definition/store.zig",
+      "src/definition/graph.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement backend requirements for Batch F2c on branch feature/WF02-f2c-batch2-20260529:\n\n1. **PD-09 \u2014 Export/Import endpoints**:\n   - GET /api/v1/definitions/{id}/export: Returns full definition as self-contained JSON with bpm_export_schema_version field. Include all definition fields, full graph, and export format version.\n   - POST /api/v1/definitions/import: Accepts export JSON, creates new definition in DRAFT status with new UUID. Validates graph per PD-02. Returns HTTP 201 on success, HTTP 422 on validation failure, HTTP 409 if name+version already exists.\n   - Import MUST validate bpm_export_schema_version and reject unsupported versions with HTTP 422.\n\n2. **PD-10 \u2014 Search endpoint**:\n   - GET /api/v1/definitions/search?q={query}: Full-text search over name and description.\n   - Return ranked results (highest-scoring first).\n   - Case-insensitive, partial word matching.\n   - Reject empty query with HTTP 422.\n   - Support pagination per API-06.\n   - Reject query > 512 chars with HTTP 422.\n   - Empty results: HTTP 200 with empty array.\n\nAfter implementation: zig build, zig build test, zig build migrate. All must exit 0.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "New endpoints tested via integration tests"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

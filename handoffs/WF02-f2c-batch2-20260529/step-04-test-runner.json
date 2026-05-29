@@ -1,0 +1,30 @@
+{
+  "handoff_id": "f2c-step04-008",
+  "run_id": "WF02-f2c-batch2-20260529",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-05-29T10:09:48Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 — Process Definitions",
+    "requirement_ids": ["PD-09", "PD-10", "PD-UI-07", "PD-UI-08"],
+    "related_handoff_ids": ["f2c-step03-006", "f2c-step03b-007"],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Run all tests on branch feature/WF02-f2c-batch2-20260529:\n1. Run: zig build bench 2>&1 | head -5 (check bench env)\n2. Start backend, start frontend\n3. zig build test (unit tests)\n4. cd web && npx playwright test (E2E tests)\n\nWrite results to tests/reports/.",
+    "acceptance_criteria": [
+      "All unit tests pass",
+      "All E2E tests pass (63 existing + new F2c tests)"
+    ],
+    "functions_to_call": ["fn:run-all-tests"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

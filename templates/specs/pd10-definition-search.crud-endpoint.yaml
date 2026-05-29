@@ -1,0 +1,38 @@
+# CRUD endpoint parameter file (Lego Type A)
+#
+# PD-10 — Definition full-text search.
+# Maps 1-to-1 onto definition_store.Store.search().
+# Uses `operation: custom` because search is a specialised read operation,
+# not standard CRUD.
+#
+# NOTE: Register this route BEFORE /api/v1/definitions/:id in the router so
+# that "search" is not consumed as a :id path parameter.
+
+schema_version: 1
+resource_name: definition_search
+store_module: src/definition/store.zig
+store_struct: Store
+requirement_ids: [PD-10]
+purpose: |
+  Full-text search over process definition names and descriptions, returning
+  ranked results. Case-insensitive, partial-word matching via PostgreSQL ILIKE.
+  Rank: 3.0 = exact name match, 2.0 = partial name match, 1.0 = description-only
+  match. Empty query and queries > 512 chars are rejected with HTTP 422.
+
+endpoints:
+  - method: GET
+    path: /api/v1/definitions/search
+    operation: custom
+    query_params:
+      - { name: q,       type: "[]const u8", required: true }
+      - { name: limit,   type: "?u32",       required: false }
+      - { name: offset,  type: "?u32",       required: false }
+    store_method: store.search
+    success_status: 200
+    error_map:
+      QueryEmpty:       422
+      QueryTooLong:     422
+      PoolExhausted:    503
+
+default_error_map:
+  PoolExhausted: 503
