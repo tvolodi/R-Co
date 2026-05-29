@@ -1,0 +1,24 @@
+{
+  "id": "ISS-0048",
+  "title": "Playwright regressions: F2 list selectors stability and OBS-04 outdated login selectors",
+  "status": "RESOLVED",
+  "severity": "MAJOR",
+  "run_id": "ADHOC-fix-integration-20260528",
+  "handoff_id": "20260528-audit-isolation-fix",
+  "category": "D",
+  "root_cause": "E2E tests relied on brittle assumptions: list assertions did not scope results to created fixtures, and OBS-04 still used deprecated email/password selectors after token-login migration.",
+  "resolution": "Scoped F2 list assertions via deterministic name filtering and migrated OBS-04 to token-based login selectors with health readiness stub.",
+  "prevention": "E2E tests that depend on fixture rows must pre-filter to unique fixture identifiers, and login selectors must be aligned with current auth UX contracts.",
+  "affected_areas": [
+    "web/tests/e2e/f2-definition-list.e2e.spec.ts",
+    "web/tests/e2e/obs04.timeline.e2e.spec.ts"
+  ],
+  "requirement_ids": [
+    "PD-UI-01",
+    "PD-UI-02",
+    "PD-UI-03",
+    "OBS-04"
+  ],
+  "created_at": "2026-05-29T07:19:43Z",
+  "resolved_at": "2026-05-29T07:19:43Z"
+}

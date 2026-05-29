@@ -7,6 +7,22 @@ const ACCESS_TOKEN = 'obs04-e2e-access-token'
 const REFRESH_TOKEN = 'obs04-e2e-refresh-token'
 const DEFAULT_INSTANCE_ID = E2E_INSTANCE_ID ?? '00000000-0000-0000-0000-000000000404'
 
+function makeFakeJwt(payload: Record<string, unknown>): string {
+  const encode = (obj: unknown) =>
+    Buffer.from(JSON.stringify(obj))
+      .toString('base64')
+      .replace(/=+$/, '')
+  const header = encode({ alg: 'none', typ: 'JWT' })
+  const body = encode(payload)
+  return `${header}.${body}.fake-sig`
+}
+
+const TOKEN_PROCESS_OPERATOR = makeFakeJwt({
+  sub: 'obs04-e2e-user-001',
+  display_name: 'OBS04 E2E User',
+  roles: ['PROCESS_OPERATOR'],
+})
+
 const mockUser = {
   id: '00000000-0000-0000-0000-000000000111',
   email: E2E_EMAIL,
@@ -52,6 +68,14 @@ const mockTimeline = {
 }
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/health/ready', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'ok' }),
+    })
+  })
+
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request()
     const method = request.method()
@@ -159,9 +183,9 @@ test.describe('OBS-04 timeline browser flow', () => {
     await expect(page.getByTestId('page-login')).toBeVisible()
     await page.screenshot({ path: 'test-results/obs04-01-login.png', fullPage: true })
 
-    await page.getByTestId('email-input').fill(E2E_EMAIL)
-    await page.getByTestId('password-input').fill(E2E_PASSWORD)
+    await page.getByTestId('login-token-input').fill(TOKEN_PROCESS_OPERATOR)
     await page.getByTestId('login-submit').click()
+    await expect(page).not.toHaveURL(/\/login/)
 
     const instancesHeading = page.getByRole('heading', { name: 'Instances' })
     await expect(instancesHeading).toBeVisible()

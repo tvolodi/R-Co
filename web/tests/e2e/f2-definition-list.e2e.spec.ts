@@ -96,6 +96,15 @@ async function navigateToDefinitions(page: import('@playwright/test').Page): Pro
   await page.waitForURL(/\/definitions/, { timeout: 10_000 })
 }
 
+async function filterDefinitionsByName(
+  page: import('@playwright/test').Page,
+  searchTerm: string,
+): Promise<void> {
+  await page.getByTestId('definition-search').fill(searchTerm)
+  // Allow debounce + network round-trip to settle before visibility assertions.
+  await page.waitForTimeout(1500)
+}
+
 // ── API helpers (using Playwright request context with real token) ────────────
 
 async function createTestDefinition(
@@ -188,6 +197,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
 
       // Navigate to definitions via sidebar (SPA navigation preserves in-memory session)
       await navigateToDefinitions(page)
+      await filterDefinitionsByName(page, uniqueSuffix)
 
       // Screen shows the definition names in the table
       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
@@ -227,16 +237,14 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
 
       await loginWithToken(page, authToken)
       await navigateToDefinitions(page)
+      await filterDefinitionsByName(page, uniqueSuffix)
 
       // Both definitions visible initially
       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
       await expect(page.getByTestId(`def-name-${def2.id}`)).toBeVisible()
 
       // Type search for the full definition name (backend uses ILIKE substring matching)
-      const searchInput = page.getByTestId('definition-search')
-      await searchInput.fill(`Alpha Flow ${uniqueSuffix}`)
-      // Wait for 300ms debounce + API round-trip
-      await page.waitForTimeout(1500)
+      await filterDefinitionsByName(page, `Alpha Flow ${uniqueSuffix}`)
 
       // Screen shows only the Alpha definition
       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
@@ -274,6 +282,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
 
       await loginWithToken(page, authToken)
       await navigateToDefinitions(page)
+      await filterDefinitionsByName(page, uniqueSuffix)
 
       // Both definitions visible before filtering
       await expect(page.getByTestId(`def-name-${draftDef.id}`)).toBeVisible()
@@ -291,6 +300,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
       await loginWithToken(page, authToken)
       await navigateToDefinitions(page)
       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await filterDefinitionsByName(page, uniqueSuffix)
 
       // Both definitions visible
       await expect(page.getByTestId(`def-name-${def1.id}`)).toBeVisible()
@@ -316,6 +326,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
       await loginWithToken(page, authToken)
       await navigateToDefinitions(page)
       await expect(page.getByTestId('filter-bar')).toBeVisible({ timeout: 10_000 })
+      await filterDefinitionsByName(page, uniqueSuffix)
 
       // Select DRAFT filter
       await page.getByTestId('status-filter-select').selectOption('DRAFT')
@@ -346,6 +357,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
 
       await loginWithToken(page, authToken)
       await navigateToDefinitions(page)
+      await filterDefinitionsByName(page, uniqueSuffix)
 
       // Click the definition name button to expand version history
       await page.getByTestId(`def-name-${def.id}`).click()
@@ -369,6 +381,7 @@ test.describe('F2 — Definition List View (PD-UI-01 through PD-UI-04)', () => {
 
       await loginWithToken(page, authToken)
       await navigateToDefinitions(page)
+      await filterDefinitionsByName(page, uniqueSuffix)
 
       // Expand first
       await page.getByTestId(`def-name-${def.id}`).click()
