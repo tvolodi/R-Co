@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { dlqApi } from '@/api/dlq'
+import { queryKeys } from '@/api/queryKeys'
 import type { DlqEntry } from '@/types/api'
 
 const STATUS_COLOR: Record<string, string> = {
@@ -13,18 +14,18 @@ export default function DlqPage() {
   const qc = useQueryClient()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['dlq'],
+    queryKey: queryKeys.dlq.list(),
     queryFn: () => dlqApi.list(),
   })
 
   const retry = useMutation({
     mutationFn: (id: string) => dlqApi.retry(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['dlq'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.dlq.list() }),
   })
 
   const discard = useMutation({
     mutationFn: (id: string) => dlqApi.discard(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['dlq'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.dlq.list() }),
   })
 
   return (

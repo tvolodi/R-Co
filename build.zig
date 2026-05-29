@@ -779,6 +779,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_migrate = b.addRunArtifact(migrate_exe);
+    run_migrate.setCwd(b.path("."));
     run_migrate.step.dependOn(b.getInstallStep());
     const migrate_step = b.step("migrate", "Apply all pending database migrations (reads BPM_DB_URL)");
     migrate_step.dependOn(&run_migrate.step);
@@ -803,6 +804,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_bench = b.addRunArtifact(bench_exe);
+    run_bench.setCwd(b.path("."));
     const bench_step = b.step("bench", "Run NFR benchmark suite");
     bench_step.dependOn(&run_bench.step);
 

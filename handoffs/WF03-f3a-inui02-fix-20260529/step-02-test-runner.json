@@ -1,0 +1,49 @@
+{
+  "handoff_id": "wf03-f3a-step02-003",
+  "run_id": "WF03-f3a-inui02-fix-20260529",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-02-test-runner.json",
+  "created_at": "2026-05-29T21:32:00Z",
+  "started_at": "2026-05-29T21:32:05Z",
+  "completed_at": "2026-05-29T18:58:22Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F3 - Instance monitoring",
+    "requirement_ids": ["IN-UI-02"],
+    "related_handoff_ids": ["wf03-f3a-step01-002"],
+    "artifacts_in": [
+      "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "docs/issues/ISS-0059.json"
+    ]
+  },
+  "task": {
+    "description": "Rerun targeted and relevant tests to verify IN-UI-02 fix (TC-INUI02-02) and produce test evidence report.",
+    "acceptance_criteria": [
+      "TC-INUI02-02 passes",
+      "No new regressions in related F3 E2E flow",
+      "Report artifact produced"
+    ],
+    "functions_to_call": ["fn:run-tests", "fn:write-test-report"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Mandatory benchmark pre-check failed with missing DB URL environment, so targeted IN-UI-02 verification could not proceed.",
+    "artifacts_out": [
+      "tests/reports/WF03-f3a-inui02-fix-20260529-step-02-test-runner.md"
+    ],
+    "issues": [
+      {
+        "test_id": "BENCH-PRECHECK",
+        "severity": "BLOCKER",
+        "description": "Benchmark environment unavailable: BENCHMARK_SETUP_ERROR|missing BPM_BENCH_DB_URL/BPM_DB_URL/BPM_TEST_DB_URL"
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV to restore benchmark environment, then redispatch TEST-RUNNER for IN-UI-02 targeted verification."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { usersApi, rolesApi } from '@/api/identity'
+import { queryKeys } from '@/api/queryKeys'
 import type { User } from '@/types/api'
 
 export default function UsersPage() {
@@ -10,19 +11,19 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'users'],
+    queryKey: queryKeys.admin.users(),
     queryFn: () => usersApi.list(),
   })
 
   const { data: roles } = useQuery({
-    queryKey: ['admin', 'roles'],
+    queryKey: queryKeys.admin.roles(),
     queryFn: () => rolesApi.list(),
   })
 
   const createUser = useMutation({
     mutationFn: (body: typeof form) => usersApi.create(body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'users'] })
+      qc.invalidateQueries({ queryKey: queryKeys.admin.users() })
       setCreating(false)
       setForm({ email: '', display_name: '', password: '' })
     },
@@ -32,7 +33,7 @@ export default function UsersPage() {
   const toggleActive = useMutation({
     mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
       usersApi.update(id, { is_active }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'users'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.admin.users() }),
   })
 
   void roles // available for role assignment future iteration

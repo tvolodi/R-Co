@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { webhooksApi } from '@/api/dlq'
+import { queryKeys } from '@/api/queryKeys'
 import type { WebhookSubscription } from '@/types/api'
 
 export default function WebhooksPage() {
@@ -9,7 +10,7 @@ export default function WebhooksPage() {
   const [form, setForm] = useState({ url: '', secret: '', event_types: '' })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['webhooks'],
+    queryKey: queryKeys.webhooks.list(),
     queryFn: () => webhooksApi.list(),
   })
 
@@ -20,7 +21,7 @@ export default function WebhooksPage() {
       event_types: form.event_types.split(',').map((s) => s.trim()).filter(Boolean),
     }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['webhooks'] })
+      qc.invalidateQueries({ queryKey: queryKeys.webhooks.list() })
       setCreating(false)
       setForm({ url: '', secret: '', event_types: '' })
     },
@@ -28,7 +29,7 @@ export default function WebhooksPage() {
 
   const deleteWebhook = useMutation({
     mutationFn: (id: string) => webhooksApi.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['webhooks'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.webhooks.list() }),
   })
 
   return (

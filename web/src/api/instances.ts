@@ -10,12 +10,15 @@ import type {
 
 export const instancesApi = {
   list: (params?: {
-    status?: InstanceStatus
+    status?: InstanceStatus[]
     definition_id?: string
     cursor?: string
     page_size?: number
   }) =>
-    client.get<CursorPage<ProcessInstance>>('/api/v1/instances', params as Record<string, unknown>),
+    client.get<CursorPage<ProcessInstance>>('/api/v1/instances', {
+      ...params,
+      status: params?.status?.join(','),
+    } as Record<string, unknown>),
 
   get: (id: string) =>
     client.get<ProcessInstance>(`/api/v1/instances/${id}`),

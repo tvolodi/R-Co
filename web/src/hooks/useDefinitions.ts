@@ -2,14 +2,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { definitionsApi } from '@/api/definitions'
 import type { DefinitionStatus, CreateDefinitionRequest } from '@/types/api'
+import { queryKeys } from '@/api/queryKeys'
 
 export const definitionKeys = {
-  all: ['definitions'] as const,
-  list: (filters: object) => [...definitionKeys.all, 'list', filters] as const,
-  detail: (id: string) => [...definitionKeys.all, 'detail', id] as const,
-  active: (name: string) => [...definitionKeys.all, 'active', name] as const,
-  search: (query: string, limit?: number, offset?: number) =>
-    [...definitionKeys.all, 'search', query, limit, offset] as const,
+  all: queryKeys.definitions.all,
+  list: queryKeys.definitions.list,
+  detail: queryKeys.definitions.detail,
+  active: queryKeys.definitions.active,
+  search: queryKeys.definitions.search,
 }
 
 export function useDefinitions(params?: { status?: DefinitionStatus; name?: string }) {
@@ -37,7 +37,7 @@ export function useCreateDefinition() {
 
 export function useDefinitionVersions(name: string) {
   return useQuery({
-    queryKey: [...definitionKeys.all, 'versions', name],
+    queryKey: queryKeys.definitions.versions(name),
     queryFn: () => definitionsApi.getVersions(name),
     enabled: !!name,
   })

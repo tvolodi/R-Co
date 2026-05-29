@@ -1,0 +1,37 @@
+{
+  "handoff_id": "wf03-f3a-stepfinalr2-008",
+  "run_id": "WF03-f3a-inui02-fix-20260529",
+  "workflow_id": "WF-03",
+  "step": "final-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-f3a-inui02-fix-20260529/step-final-rework2-backend-dev.json",
+  "created_at": "2026-05-29T22:16:00Z",
+  "started_at": "2026-05-29T22:16:05Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F3 - Instance monitoring",
+    "requirement_ids": ["IN-UI-02"],
+    "related_handoff_ids": ["wf03-f3a-stepfinal-006", "wf03-f3a-stepfinalr1-007"],
+    "artifacts_in": [
+      "handoffs/WF03-f3a-inui02-fix-20260529/step-final-backend-dev.json",
+      "handoffs/WF03-f3a-inui02-fix-20260529/step-final-rework1-backend-dev.json",
+      "docs/agents/protocols/GIT_MERGE.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 2 for fn:git-merge. Normalize git state on feature/WF03-f3a-inui02-fix-20260529 by clearing dirty index/worktree safely, fast-forwarding or rebasing onto origin/main, resolving non-fast-forward push rejection, then complete PR/merge/branch-cleanup protocol with evidence.",
+    "acceptance_criteria": [
+      "Step-final handoff passes with git evidence",
+      "push_status is ok",
+      "PR merged (or documented pr_create_error if external outage)",
+      "Branch cleanup completed"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": null,
+  "rework_count": 2,
+  "max_rework": 3
+}

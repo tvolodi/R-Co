@@ -1,0 +1,29 @@
+{
+  "report_id": "WF02-f3a-batch1-20260529-step-01-code-designer",
+  "agent_id": "CODE-DESIGNER",
+  "run_id": "WF02-f3a-batch1-20260529",
+  "step": "01",
+  "created_at": "2026-05-29T16:04:35Z",
+  "summary": "Produced a Type E design artefact for Stage F3 batch 1 frontend requirements IN-UI-01 through IN-UI-04 at src/design/f3-instance-monitoring-ui.md. The artefact classifies each requirement with rationale and defines component hierarchy, route/query state model, API integration points, public interfaces, error taxonomy, state transitions, dependencies, coverage mapping, and open questions for clarified contracts.",
+  "files_created": [
+    "src/design/f3-instance-monitoring-ui.md",
+    "docs/issue-reports/WF02-f3a-batch1-20260529-step-01-code-designer-INNER-REPORT.json"
+  ],
+  "files_modified": [
+    "handoffs/WF02-f3a-batch1-20260529/step-01-code-designer.json",
+    "handoffs/WF02-f3a-batch1-20260529/registry.json",
+    "handoffs/registry.json"
+  ],
+  "tests_run": [
+    {
+      "name": "design artefact lint",
+      "status": "pass",
+      "detail": "python tools/lint_design_artefact.py src/design/f3-instance-monitoring-ui.md"
+    }
+  ],
+  "issues_found": [],
+  "next_steps": [
+    "Route to CODE-DESIGN-VALIDATOR (Step 1b)."
+  ],
+  "blockers": []
+}
