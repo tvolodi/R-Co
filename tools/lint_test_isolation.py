@@ -29,6 +29,7 @@ from dataclasses import dataclass, field, asdict
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_BASELINE = REPO_ROOT / "tools" / "lint_test_isolation.baseline.json"
 
 UUID_LITERAL = re.compile(
     r'"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"'
@@ -92,7 +93,11 @@ def find_test_blocks(text: str) -> list[tuple[str, int, int]]:
 
 
 def lint_file(path: Path, report: Report) -> None:
-    rel = str(path.relative_to(REPO_ROOT))
+    resolved_path = path.resolve()
+    try:
+        rel = str(resolved_path.relative_to(REPO_ROOT)).replace("\\", "/")
+    except ValueError:
+        rel = str(path).replace("\\", "/")
     try:
         text = path.read_text(encoding="utf-8")
     except (UnicodeDecodeError, PermissionError):
@@ -155,10 +160,44 @@ def lint_file(path: Path, report: Report) -> None:
 def iter_targets(paths: list[Path]) -> list[Path]:
     out: list[Path] = []
     for p in paths:
+        p = p.resolve()
         if p.is_dir():
-            out.extend(sorted(p.rglob("*.zig")))
+            out.extend(sorted(f.resolve() for f in p.rglob("*.zig")))
         elif p.suffix == ".zig":
             out.append(p)
+    return out
+
+
+def issue_key(issue: Issue) -> str:
+    return f"{issue.severity}|{issue.code}|{issue.file}|{issue.line}|{issue.message}"
+
+
+def load_baseline(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return set()
+
+    out: set[str] = set()
+    issues = raw.get("issues", []) if isinstance(raw, dict) else []
+    if not isinstance(issues, list):
+        return out
+
+    for item in issues:
+        if not isinstance(item, dict):
+            continue
+        sev = item.get("severity")
+        code = item.get("code")
+        file = item.get("file")
+        line = item.get("line")
+        msg = item.get("message")
+        if not isinstance(sev, str) or not isinstance(code, str) or not isinstance(file, str) or not isinstance(msg, str):
+            continue
+        if not isinstance(line, int):
+            continue
+        out.add(f"{sev}|{code}|{file.replace('\\', '/')}|{line}|{msg}")
     return out
 
 
@@ -167,6 +206,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("paths", nargs="*", type=Path,
                         help="files or directories to lint (default: tests/integration)")
     parser.add_argument("--json", action="store_true", help="emit JSON report")
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        default=DEFAULT_BASELINE,
+        help=f"path to baseline JSON for known legacy findings (default: {DEFAULT_BASELINE})",
+    )
+    parser.add_argument(
+        "--no-baseline",
+        action="store_true",
+        help="disable baseline suppression",
+    )
     args = parser.parse_args(argv)
 
     if args.paths:
@@ -178,14 +228,29 @@ def main(argv: list[str] | None = None) -> int:
     for path in iter_targets(targets):
         lint_file(path, report)
 
+    suppressed = 0
+    if not args.no_baseline:
+        baseline_keys = load_baseline(args.baseline.resolve())
+        if baseline_keys:
+            remaining: list[Issue] = []
+            for issue in report.issues:
+                if issue_key(issue) in baseline_keys:
+                    suppressed += 1
+                    continue
+                remaining.append(issue)
+            report.issues = remaining
+
     if args.json:
         print(json.dumps({
             "files_checked": report.files_checked,
+            "suppressed": suppressed,
             "issues": [asdict(i) for i in report.issues],
         }, indent=2))
     else:
         if not report.issues:
             print(f"OK — {report.files_checked} file(s) checked, no isolation issues.")
+            if suppressed:
+                print(f"Suppressed {suppressed} issue(s) from baseline: {args.baseline}")
         else:
             for i in report.issues:
                 print(i.render())
@@ -194,6 +259,8 @@ def main(argv: list[str] | None = None) -> int:
             minor = sum(1 for i in report.issues if i.severity == "MINOR")
             print(f"\n{report.files_checked} file(s) checked. "
                   f"BLOCKER={blocker} MAJOR={major} MINOR={minor}")
+            if suppressed:
+                print(f"Suppressed {suppressed} issue(s) from baseline: {args.baseline}")
     return 1 if report.has_failures else 0
 
 

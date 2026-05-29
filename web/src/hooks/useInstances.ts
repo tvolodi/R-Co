@@ -2,19 +2,31 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { instancesApi } from '@/api/instances'
 import type { InstanceStatus, StartInstanceRequest } from '@/types/api'
+import { queryKeys } from '@/api/queryKeys'
 
 export const instanceKeys = {
-  all: ['instances'] as const,
-  list: (filters: object) => [...instanceKeys.all, 'list', filters] as const,
-  detail: (id: string) => [...instanceKeys.all, 'detail', id] as const,
-  events: (id: string) => [...instanceKeys.all, 'events', id] as const,
-  timeline: (id: string, cursor: string | null, pageSize: number) =>
-    [...instanceKeys.all, 'timeline', id, cursor, pageSize] as const,
+  all: queryKeys.instances.all,
+  list: queryKeys.instances.list,
+  detail: queryKeys.instances.detail,
+  events: queryKeys.instances.events,
+  timeline: queryKeys.instances.timeline,
 }
 
-export function useInstances(params?: { status?: InstanceStatus; definition_id?: string }) {
+export function useInstances(params?: {
+  status?: InstanceStatus[]
+  definition_id?: string
+  cursor?: string
+  page_size?: number
+}) {
+  const filters = {
+    status: params?.status,
+    definition_id: params?.definition_id,
+    cursor: params?.cursor,
+    page_size: params?.page_size,
+  }
+
   return useQuery({
-    queryKey: instanceKeys.list(params ?? {}),
+    queryKey: instanceKeys.list(filters),
     queryFn: () => instancesApi.list(params),
   })
 }
@@ -54,7 +66,7 @@ export function useStartInstance() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: StartInstanceRequest) => instancesApi.start(body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: instanceKeys.list({}) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: instanceKeys.all }),
   })
 }
 
@@ -76,7 +88,7 @@ export function useCancelInstance() {
     },
     onSettled: (_data, _err, { id }) => {
       qc.invalidateQueries({ queryKey: instanceKeys.detail(id) })
-      qc.invalidateQueries({ queryKey: instanceKeys.list({}) })
+      qc.invalidateQueries({ queryKey: instanceKeys.all })
     },
   })
 }

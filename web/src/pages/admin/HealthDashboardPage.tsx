@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { healthApi } from '@/api/health'
+import { queryKeys } from '@/api/queryKeys'
 
 const BADGE: Record<string, string> = { ok: '#16a34a', degraded: '#f59e0b', error: '#dc2626' }
 
 export default function HealthDashboardPage() {
   const { data, isLoading, dataUpdatedAt } = useQuery({
-    queryKey: ['admin', 'health'],
+    queryKey: queryKeys.admin.health(),
     queryFn: () => healthApi.get(),
     refetchInterval: 10_000,
   })

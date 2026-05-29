@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
 import { client } from '@/api/client'
+import { queryKeys } from '@/api/queryKeys'
 import type { AuditEntry, CursorPage } from '@/types/api'
 
 export default function AuditLogPage() {
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'audit'],
+    queryKey: queryKeys.admin.audit(),
     queryFn: () => client.get<CursorPage<AuditEntry>>('/api/v1/audit'),
     refetchInterval: 30_000,
   })

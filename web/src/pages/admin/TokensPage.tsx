@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tokensApi } from '@/api/identity'
+import { queryKeys } from '@/api/queryKeys'
 import type { ApiToken } from '@/types/api'
 
 export default function TokensPage() {
@@ -10,7 +11,7 @@ export default function TokensPage() {
   const [newToken, setNewToken] = useState<string | null>(null)
 
   const { data: tokenList, isLoading } = useQuery({
-    queryKey: ['admin', 'tokens'],
+    queryKey: queryKeys.admin.tokens(),
     queryFn: () => tokensApi.list(),
   })
   const data = { items: tokenList ?? [] }
@@ -18,7 +19,7 @@ export default function TokensPage() {
   const createToken = useMutation({
     mutationFn: () => tokensApi.create(form.name, form.expires_at || undefined),
     onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: ['admin', 'tokens'] })
+      qc.invalidateQueries({ queryKey: queryKeys.admin.tokens() })
       setNewToken((res as { token: string }).token)
       setCreating(false)
       setForm({ name: '', expires_at: '' })
@@ -27,7 +28,7 @@ export default function TokensPage() {
 
   const revokeToken = useMutation({
     mutationFn: (id: string) => tokensApi.revoke(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'tokens'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.admin.tokens() }),
   })
 
   return (

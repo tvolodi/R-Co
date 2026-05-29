@@ -1,0 +1,48 @@
+{
+  "run_id": "WF02-f3a-batch1-20260529",
+  "handoff_id": "f3a-step02-004",
+  "agent": "FRONTEND-DEV",
+  "timestamp_utc": "2026-05-29T16:20:21Z",
+  "status": "FAILED",
+  "summary": "Implemented IN-UI-01..04 UI and supporting query-key plumbing, but validation gate failed due backend/environment blockers.",
+  "work_completed": [
+    "Implemented URL-persisted instance board filters (multi-status + definition typeahead)",
+    "Implemented Start Instance dialog with definition lookup, active-version display, correlation key, and JSON variables validation",
+    "Implemented instance detail snapshot panel, read-only graph rendering, variable map, and active tasks section",
+    "Added query key factory in web/src/api/queryKeys.ts and migrated affected hooks/pages to query-key factory",
+    "Added Playwright suite web/tests/e2e/f3-instance-monitoring.e2e.spec.ts for IN-UI-01..04"
+  ],
+  "validation": {
+    "lint_frontend_conventions": "PASS after local fixes",
+    "lint_test_isolation": "FAIL (pre-existing MAJOR backlog in tests/integration)",
+    "type_check": "PASS",
+    "eslint": "PASS",
+    "vitest": "PASS",
+    "build": "PASS",
+    "playwright": "FAIL (existing suite failures + targeted f3 suite blocked by backend 500 on /api/v1/definitions)"
+  },
+  "blockers": [
+    {
+      "id": "ISS-F3A-02-001",
+      "severity": "BLOCKER",
+      "detail": "Backend returns HTTP 500 for /api/v1/definitions in current test environment, preventing required real-backend E2E bootstrap and passing Playwright validation."
+    },
+    {
+      "id": "ISS-F3A-02-002",
+      "severity": "MAJOR",
+      "detail": "lint_test_isolation currently reports many unrelated MAJOR violations across tests/integration; this is outside frontend scope but blocks strict command success."
+    }
+  ],
+  "artifacts": [
+    "web/src/api/queryKeys.ts",
+    "web/src/api/instances.ts",
+    "web/src/hooks/useInstances.ts",
+    "web/src/hooks/useDefinitions.ts",
+    "web/src/hooks/useTasks.ts",
+    "web/src/pages/instances/InstanceBoardPage.tsx",
+    "web/src/pages/instances/InstanceDetailPage.tsx",
+    "web/src/types/api.ts",
+    "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts"
+  ],
+  "next_action": "Route to BACKEND-DEV to fix /definitions 500 in environment, then re-dispatch FRONTEND-DEV rework for green E2E + commit/push"
+}

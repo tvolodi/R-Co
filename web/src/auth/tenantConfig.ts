@@ -1,3 +1,5 @@
+import { client } from '@/api/client'
+
 /** Tenant OIDC configuration — fetched from backend by hostname, cached in memory */
 
 const DEFAULT_AUTHORITY = (import.meta.env.VITE_OIDC_AUTHORITY as string) ?? 'http://localhost:8081/realms/bpm-default'
@@ -13,9 +15,7 @@ let _cachedConfig: TenantConfig | null = null
 export async function fetchTenantConfig(hostname: string): Promise<TenantConfig> {
   if (_cachedConfig) return _cachedConfig
   try {
-    const res = await fetch(`/api/tenant-config?host=${encodeURIComponent(hostname)}`)
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json() as TenantConfig
+    const data = await client.get<TenantConfig>('/api/tenant-config', { host: hostname })
     _cachedConfig = data
     return data
   } catch {

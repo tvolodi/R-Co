@@ -1,0 +1,59 @@
+{
+  "handoff_id": "f3a-step03r1-008",
+  "run_id": "WF02-f3a-batch1-20260529",
+  "workflow_id": "WF-02",
+  "step": "03-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-f3a-batch1-20260529/step-03-rework1-test-designer.json",
+  "created_at": "2026-05-29T20:55:00Z",
+  "started_at": "2026-05-29T20:55:05Z",
+  "completed_at": "2026-05-29T18:28:41Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F3 - Instance monitoring",
+    "requirement_ids": ["IN-UI-01", "IN-UI-02", "IN-UI-03", "IN-UI-04"],
+    "related_handoff_ids": ["f3a-step03b-007"],
+    "artifacts_in": [
+      "handoffs/WF02-f3a-batch1-20260529/step-03b-test-design-validator.json",
+      "tests/specs/IN-UI-01.md",
+      "tests/specs/IN-UI-02.md",
+      "tests/specs/IN-UI-03.md",
+      "tests/specs/IN-UI-04.md",
+      "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1 for Step 03 after hard-gate FAIL. Fix all reported issues: spec/test count mismatch (8 vs 4), shared fixtures via beforeAll, missing cleanup hooks, no per-test UUIDs, hardcoded credentials, and service self-sufficiency assumptions. Update test specs and E2E tests so Step 03b can pass.",
+    "acceptance_criteria": [
+      "Spec/test parity for all IN-UI-01..04 MUST requirements",
+      "No shared mutable fixture pattern; per-test isolated data",
+      "Per-test UUID fixtures and cleanup logic present",
+      "No hardcoded credentials in test source",
+      "Tests are self-sufficient or fail clearly with explicit prereq checks"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework iteration 1 complete for IN-UI-01..04: closed validator hard-gate issues for parity, isolation, cleanup, UUID fixtures, credential handling, and prerequisite checks.",
+    "artifacts_out": [
+      "tests/specs/IN-UI-01.md",
+      "tests/specs/IN-UI-02.md",
+      "tests/specs/IN-UI-03.md",
+      "tests/specs/IN-UI-04.md",
+      "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "docs/issue-reports/WF02-f3a-batch1-20260529-step-03-rework1-test-designer-INNER-REPORT.md"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Runtime execution shows TC-INUI02-02 still fails due current app behavior not preserving definition filter URL state after full reload. Structural Step 03b rework findings are remediated."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

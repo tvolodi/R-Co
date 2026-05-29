@@ -109,10 +109,11 @@ def _line_at(text: str, pos: int) -> str:
 def run_check(root: Path, report: Report, code, severity, message, globs, regex, ignore_sub, skip_in_comment) -> None:
     for path in iter_files(root, globs):
         rel = str(path.relative_to(root))
-        if ignore_sub and ignore_sub in rel:
+        rel_posix = rel.replace("\\", "/")
+        if ignore_sub and ignore_sub in rel_posix:
             continue
         # api/client.ts is allowed to use fetch/axios
-        if rel.replace("\\", "/") == API_CLIENT_PATH.removeprefix("web/"):
+        if rel_posix == API_CLIENT_PATH:
             continue
         try:
             text = path.read_text(encoding="utf-8")

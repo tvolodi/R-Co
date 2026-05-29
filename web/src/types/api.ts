@@ -82,6 +82,9 @@ export interface ProcessInstance {
   correlation_key?: string
   status: InstanceStatus
   current_nodes: string[]
+  updated_at?: string
+  current_tasks?: Task[]
+  definition_snapshot?: DefinitionGraph
   variables: Record<string, unknown>
   error_detail?: Record<string, unknown>
   started_at: string
@@ -94,7 +97,7 @@ export interface StartInstanceRequest {
   definition_name?: string
   definition_version?: string
   correlation_key?: string
-  variables?: Record<string, unknown>
+  initial_variables?: Record<string, unknown>
 }
 
 // ── Tasks (Stage 3) ───────────────────────────────────────────────────────────

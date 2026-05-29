@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { groupsApi } from '@/api/identity'
+import { queryKeys } from '@/api/queryKeys'
 import type { Group } from '@/types/api'
 
 export default function GroupsPage() {
@@ -9,14 +10,14 @@ export default function GroupsPage() {
   const [form, setForm] = useState({ name: '', display_name: '', description: '' })
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'groups'],
+    queryKey: queryKeys.admin.groups(),
     queryFn: () => groupsApi.list(),
   })
 
   const createGroup = useMutation({
     mutationFn: (body: typeof form) => groupsApi.create(body),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['admin', 'groups'] })
+      qc.invalidateQueries({ queryKey: queryKeys.admin.groups() })
       setCreating(false)
       setForm({ name: '', display_name: '', description: '' })
     },
@@ -24,7 +25,7 @@ export default function GroupsPage() {
 
   const deleteGroup = useMutation({
     mutationFn: (id: string) => groupsApi.delete(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'groups'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.admin.groups() }),
   })
 
   return (

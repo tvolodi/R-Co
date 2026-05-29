@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { client } from '@/api/client'
+import { queryKeys } from '@/api/queryKeys'
 
 interface MetricSnapshot {
   name: string
@@ -10,7 +11,7 @@ interface MetricSnapshot {
 
 export default function MetricsPage() {
   const { data, isLoading } = useQuery({
-    queryKey: ['admin', 'metrics'],
+    queryKey: queryKeys.admin.metrics(),
     queryFn: () => client.get<{ items: MetricSnapshot[] }>('/api/v1/admin/metrics'),
     refetchInterval: 30_000,
   })

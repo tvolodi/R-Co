@@ -3,13 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { clearToken, setToken } from '@/api/client'
+import { clearToken, client, setToken } from '@/api/client'
 import { decodeTokenPayload, resolveDisplayName } from './tokenUtils'
 import type { UserSession } from '@/types/api'
 import { AuthContext, type AuthContextValue } from './AuthContext'
 import { getOidcManager } from './OidcManager'
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<UserSession | null>(null)
@@ -61,11 +59,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (token: string) => {
     // Validate token against the health endpoint
-    const res = await fetch(`${BASE_URL}/health/ready`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    if (!res.ok) {
-      const err = { status: res.status, message: 'Invalid token or access denied.', code: 'LOGIN_HEALTH_CHECK_FAILED', details: undefined }
+    try {
+      await client.getWithToken<unknown>('/health/ready', token)
+    } catch (error) {
+      const status = typeof error === 'object' && error !== null && 'status' in error
+        ? (error as { status?: number }).status
+        : 401
+      const err = {
+        status: status ?? 401,
+        message: 'Invalid token or access denied.',
+        code: 'LOGIN_HEALTH_CHECK_FAILED',
+        details: undefined,
+      }
       throw err
     }
 

@@ -31,7 +31,11 @@ export function tryRestoreE2eToken(): string | null {
 
 // ── Core request ───────────────────────────────────────────────────────────────
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  behavior: { suppressSessionExpiredEvent?: boolean } = {},
+): Promise<T> {
   const token = getToken()
   const isFormData = options.body instanceof FormData
 
@@ -41,10 +45,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const response = await fetch(`${BASE_URL}${path}`, { ...options, headers })
+  const response = await window.fetch(`${BASE_URL}${path}`, { ...options, headers })
 
   if (response.status === 401) {
-    window.dispatchEvent(new CustomEvent('auth:session-expired'))
+    if (!behavior.suppressSessionExpiredEvent) {
+      window.dispatchEvent(new CustomEvent('auth:session-expired'))
+    }
     throw buildError(response, { status: 401, message: 'Session expired', code: 'UNAUTHORIZED' })
   }
 
@@ -101,6 +107,23 @@ export const client = {
         )}`
       : path
     return request<T>(url)
+  },
+  getWithToken<T>(path: string, token: string, params?: Record<string, unknown>): Promise<T> {
+    const url = params
+      ? `${path}?${new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params).filter((entry): entry is [string, string] => {
+              const v = entry[1];
+              return v !== undefined && v !== null && v !== '';
+            }),
+          ),
+        )}`
+      : path
+    return request<T>(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    }, {
+      suppressSessionExpiredEvent: true,
+    })
   },
   post<T>(path: string, body?: unknown): Promise<T> {
     return request<T>(path, {

@@ -2,12 +2,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '@/api/tasks'
 import type { CompleteTaskRequest, TaskStatus } from '@/types/api'
+import { queryKeys } from '@/api/queryKeys'
 
 export const taskKeys = {
-  all: ['tasks'] as const,
-  list: (filters: object) => [...taskKeys.all, 'list', filters] as const,
-  detail: (id: string) => [...taskKeys.all, 'detail', id] as const,
-  inbox: () => [...taskKeys.all, 'inbox'] as const,
+  all: queryKeys.tasks.all,
+  list: queryKeys.tasks.list,
+  detail: queryKeys.tasks.detail,
+  inbox: queryKeys.tasks.inbox,
 }
 
 export function useTasks(params?: { status?: TaskStatus; instance_id?: string }) {
