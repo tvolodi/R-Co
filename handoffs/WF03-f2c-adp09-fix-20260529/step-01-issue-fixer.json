@@ -1,0 +1,36 @@
+{
+  "handoff_id": "wf03-adp09-fix-001",
+  "run_id": "WF03-f2c-adp09-fix-20260529",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-05-29T10:36:30Z",
+  "started_at": "2026-05-29T10:36:30Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 2",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f2c-step04-008"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-2026-05-29-WF02-f2c-batch2.json"
+    ]
+  },
+  "task": {
+    "description": "Fix pre-existing test failure in tests/integration/adp09_tamper_evident_audit_chain_test.zig:271 on branch feature/WF02-f2c-batch2-20260529. Test TC-ADP-09-03 fails: chain validation reports tampered row first and descendants after. This is unrelated to the F2c batch but blocks pipeline completion.\n\nInvestigate the test logic at line 271. The test expects tampered rows to be detected in a specific order. Fix the test expectation or the validation logic so the test passes.\n\nAfter fixing: zig build test-integration must pass.\n\nCommit and push.",
+    "acceptance_criteria": [
+      "zig build test-integration exits 0",
+      "TC-ADP-09-03 passes"
+    ],
+    "functions_to_call": [
+      "fn:fix-test"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
