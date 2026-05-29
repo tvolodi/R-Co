@@ -12,6 +12,12 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json.
 - Requirements: SIM-01, SIM-02, SIM-03, SIM-04 (MUST, Stage 11) - RELEASED
 
+### SIM-05..SIM-08 - Scenario execution rerun release batch (RELEASED 2026-05-29)
+- Released Stage 11 simulation scenario capabilities covering schema validation, assertion vocabulary coverage, scenario runner execution API behavior, and tenant-aware batch execution behavior.
+- Release approval is recorded in docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json after WF-03 release-fix closure and WF-02 deterministic rerun validation.
+- Validation evidence passed in tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json.
+- Requirements: SIM-05, SIM-06, SIM-07, SIM-08 (MUST, Stage 11) - RELEASED
+
 ### Stage 6 — Observability + Extensions
 
 ### Stage 6.5 — Schema adaptations + OIDC foundations
@@ -636,4 +642,11 @@ All notable changes to the BPM Platform are documented here.
 - Added audit log read access with filterable retrieval for authorized operators, preserving append-only semantics on stored audit records
 - Validation evidence passed in `tests/reports/report-20260524T225404Z-WF02-obs03-step04d-rework3.json` and release gate approval is recorded in `docs/status/release-OBS-03-20260524.json`
 - Requirement: OBS-03 (MUST, Stage 6) - RELEASED
+
+
+### SIM-05..SIM-08 - Scenario execution rerun release batch (RELEASED 2026-05-29)
+- Released Stage 11 simulation scenario capabilities covering schema validation, assertion vocabulary coverage, scenario runner execution API behavior, and tenant-aware batch execution behavior.
+- Release approval is recorded in docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json after WF-03 release-fix closure and WF-02 deterministic rerun validation.
+- Validation evidence passed in tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json.
+- Requirements: SIM-05, SIM-06, SIM-07, SIM-08 (MUST, Stage 11) - RELEASED
 

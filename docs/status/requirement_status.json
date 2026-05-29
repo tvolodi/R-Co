@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-27T07:30:05Z",
+  "last_updated": "2026-05-29T12:27:02Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -1406,6 +1406,62 @@
       "release_run": "WF02-stage11-sim01-04-20260528",
       "release_decision": "docs/status/release-Stage11-SIM-01-04-2026-05-29.json",
       "last_updated": "2026-05-29T08:14:52Z"
+    },
+    "SIM-05": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Scenario schema",
+      "implementation_run": "WF03-stage11-sim05-08-releasefix-20260529",
+      "test_spec": "tests/specs/SIM-05.md",
+      "test_run": "tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json",
+      "tested_at": "2026-05-29",
+      "released_at": "2026-05-29T12:27:02Z",
+      "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
+      "release_decision": "docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json",
+      "last_updated": "2026-05-29T12:27:02Z"
+    },
+    "SIM-06": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Assertion vocabulary",
+      "implementation_run": "WF03-stage11-sim05-08-releasefix-20260529",
+      "test_spec": "tests/specs/SIM-06.md",
+      "test_run": "tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json",
+      "tested_at": "2026-05-29",
+      "released_at": "2026-05-29T12:27:02Z",
+      "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
+      "release_decision": "docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json",
+      "last_updated": "2026-05-29T12:27:02Z"
+    },
+    "SIM-07": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Scenario runner",
+      "implementation_run": "WF03-stage11-sim05-08-releasefix-20260529",
+      "test_spec": "tests/specs/SIM-07.md",
+      "test_run": "tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json",
+      "tested_at": "2026-05-29",
+      "released_at": "2026-05-29T12:27:02Z",
+      "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
+      "release_decision": "docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json",
+      "last_updated": "2026-05-29T12:27:02Z"
+    },
+    "SIM-08": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Batch execution",
+      "implementation_run": "WF03-stage11-sim05-08-releasefix-20260529",
+      "test_spec": "tests/specs/SIM-08.md",
+      "test_run": "tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json",
+      "tested_at": "2026-05-29",
+      "released_at": "2026-05-29T12:27:02Z",
+      "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
+      "release_decision": "docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json",
+      "last_updated": "2026-05-29T12:27:02Z"
     }
   }
 }
