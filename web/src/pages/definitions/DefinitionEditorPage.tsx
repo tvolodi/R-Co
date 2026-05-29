@@ -104,7 +104,7 @@ export default function DefinitionEditorPage() {
       if (isNew) {
         await create.mutateAsync({ name, version, description, graph })
       } else {
-        await definitionsApi.update(id!, { graph })
+        await definitionsApi.update(id!, { name: def!.name, version: def!.version, graph })
       }
 
       setDirty(false)
