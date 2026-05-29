@@ -1,0 +1,100 @@
+# CRUD endpoint parameter file (Lego Type A)
+#
+# Use this when a requirement adds 1+ HTTP route that maps 1-to-1 onto a store
+# method. CODE-DESIGNER fills it in. codegen_crud_endpoint.py produces:
+#   src/api/routes/<resource_name>.zig    (handler stubs + error switch)
+#
+# Worked example — fictional "comments" resource.
+
+schema_version: 1
+resource_name: comments                       # snake_case; used as filename stem
+store_module: src/comment/store.zig           # path to the store backing the resource
+store_struct: comment_store.Store             # Zig type used as the *store parameter
+requirement_ids: [CMT-01, CMT-02]
+purpose: |
+  Public CRUD for instance comments. Maps directly onto comment_store methods;
+  no extra business logic in the handler layer beyond input validation and
+  status-code translation.
+
+# ------------------------------------------------------------
+# Each endpoint becomes one `pub fn handle<Verb>(...)` in the generated file.
+# The HTTP method and path are documentation; the actual router wiring is
+# performed manually in src/api/router.zig (codegen prints a routing snippet
+# you can paste).
+# ------------------------------------------------------------
+endpoints:
+  - method: POST
+    path: /api/v1/comments
+    operation: create               # create | read | list | update | delete | custom
+    body_type: CreateCommentBody    # codegen synthesises a placeholder struct
+    body_fields:                    # required when body_type is set
+      - { name: instance_id, type: "[]const u8" }
+      - { name: text,        type: "[]const u8" }
+    store_method: store.create      # called with the parsed body + actor_id
+    actor_required: true            # true = handler takes actor_id parameter
+    success_status: 201
+    error_map:
+      InstanceNotFound: 404
+      ValidationFailed: 422
+      PoolExhausted:    503
+
+  - method: GET
+    path: /api/v1/comments/:id
+    operation: read
+    path_param: id
+    path_param_type: uuid
+    store_method: store.getById
+    success_status: 200
+    error_map:
+      NotFound:      404
+      InvalidUuid:   422
+      PoolExhausted: 503
+
+  - method: GET
+    path: /api/v1/comments
+    operation: list
+    query_params:
+      - { name: instance_id, type: "?[]const u8", required: false }
+      - { name: page_size,   type: "?u16",        required: false }
+      - { name: cursor,      type: "?[]const u8", required: false }
+    store_method: store.list
+    success_status: 200
+    error_map:
+      InvalidCursor: 422
+      PoolExhausted: 503
+
+  - method: PATCH
+    path: /api/v1/comments/:id
+    operation: update
+    path_param: id
+    path_param_type: uuid
+    body_type: PatchCommentBody
+    body_fields:
+      - { name: text, type: "?[]const u8" }
+    store_method: store.patch
+    actor_required: true
+    success_status: 200
+    error_map:
+      NotFound:         404
+      ValidationFailed: 422
+      PoolExhausted:    503
+
+  - method: DELETE
+    path: /api/v1/comments/:id
+    operation: delete
+    path_param: id
+    path_param_type: uuid
+    store_method: store.archive
+    actor_required: true
+    success_status: 204
+    error_map:
+      NotFound:      404
+      Forbidden:     403
+      PoolExhausted: 503
+
+# ------------------------------------------------------------
+# Shared response error mapping. Used when an endpoint omits a key
+# from its own error_map. Codegen merges (endpoint over global).
+# ------------------------------------------------------------
+default_error_map:
+  PoolExhausted: 503

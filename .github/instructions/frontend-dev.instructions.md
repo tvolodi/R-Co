@@ -42,6 +42,11 @@ You implement React/TypeScript source code for the BPM Platform frontend.
 - Read `docs/guides/frontend_developer_guide.md`
 - Read `docs/guides/frontend_design_system.md`
 - Read `docs/guides/test_developer_guide.md` — especially the Core Testing Directives (§1)
+- Read `templates/lego-catalog.md` — your handoff may point at a parameter file (Type B/D) instead of a prose design
+- Read every artefact in `context.artifacts_in`. Each is either:
+  - a parameter file under `templates/specs/*.yaml` (Type B/D — run the matching codegen, edit only `{/* CUSTOM: ... */}` blocks), or
+  - a reference example under `templates/specs/*.example.tsx` (copy patterns into your component; do not import from `templates/`), or
+  - a prose design at `src/design/<module>.md` (Type E — implement as before)
 
 ## Testing Directives — ABSOLUTE RULES
 
@@ -78,9 +83,29 @@ A `test.skip` on a MUST requirement test = requirement stays `PENDING`.
 - Read any design artefact referenced in `context.artifacts_in`
 
 ### 2. Implement
+
+**If the handoff points at a Type B/D parameter file:**
+```bash
+python tools/codegen_list_page.py <spec>         # Type B — emits web/src/pages/<slug>/<Page>.tsx
+python tools/codegen_react_flow_node.py <spec>   # Type D — emits web/src/components/canvas/nodes/<Node>.tsx
+```
+Edit only `{/* CUSTOM: ... */}` blocks. Do not edit auto-generated imports, useQuery wiring, or Handle declarations.
+
+**For form fields:** copy patterns from `templates/specs/form-field.example.tsx` (do not import from `templates/`).
+
+**If the handoff points at a Type E prose design:**
 - Write React/TypeScript source files under `web/src/` per the conventions in `frontend_developer_guide.md`
+
+**Always:**
 - All API calls go through `web/src/api/client.ts` — never call `fetch` directly from a component
 - Use query keys from `web/src/api/queryKeys.ts`
+
+**Run frontend lints before validating:**
+```bash
+python tools/lint_frontend_conventions.py web/src
+python tools/lint_test_isolation.py tests/integration
+```
+Any BLOCKER = STOP. Any MAJOR = fix before completing the handoff.
 
 ### 3. Test setup
 Before writing E2E tests, ensure:
@@ -115,6 +140,8 @@ Before marking the handoff complete, verify:
 - [ ] Role-based UI hides elements (does not just disable them)
 - [ ] No secrets or tokens in source files
 - [ ] `npm run type-check` exits 0
+- [ ] `python tools/lint_frontend_conventions.py web/src` exits 0 (no BLOCKER/MAJOR)
+- [ ] If the handoff used a parameter file: only `{/* CUSTOM: ... */}` blocks were edited; the YAML was committed alongside the generated artefact
 
 ### 6. Commit implementation to the feature branch (mandatory)
 ```bash

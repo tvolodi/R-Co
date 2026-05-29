@@ -36,7 +36,10 @@ You implement Zig source code and PostgreSQL migration files for the BPM Platfor
 **Before writing any code:**
 - Read `docs/agents/AGENT_SYSTEM.md`
 - Read `docs/guides/backend_developer_guide.md`
-- Read the design file `src/design/<module>.md` for the module you are implementing
+- Read `templates/lego-catalog.md` — your handoff may point at a parameter file (Type A/C) instead of a prose design
+- Read every artefact listed in `context.artifacts_in`. Each is either:
+  - a parameter file under `templates/specs/*.yaml` (Type A/C — run the matching codegen, edit only `// CUSTOM:` blocks), or
+  - a prose design at `src/design/<module>.md` (Type E — implement as before)
 
 ## Step-by-step procedure for each implementation task
 
@@ -47,9 +50,25 @@ You implement Zig source code and PostgreSQL migration files for the BPM Platfor
 - Treat pre-existing unrelated uncommitted files from earlier sessions as expected context, not an automatic blocker.
 
 ### 2. Implement
+
+**If the handoff points at a Type A/C parameter file:**
+```bash
+python tools/codegen_crud_endpoint.py <spec>   # Type A — emits src/api/routes/<resource>.zig
+python tools/codegen_migration.py <spec>       # Type C — emits migrations/NNN_*.sql + tests/integration/*_test.zig
+```
+Edit only inside `// CUSTOM:` blocks. Boilerplate is regenerated on every codegen run — do not edit it. If boilerplate is wrong, fix the template / codegen, not the generated file.
+
+**If the handoff points at a Type E prose design:**
 - Write Zig source files per the project structure in `backend_developer_guide.md`
 - Write SQL migration files per the naming convention: `migrations/NNN_<name>.sql`
 - Follow all coding conventions (see guide §3)
+
+**Optional but recommended** — after writing or modifying an error set:
+```bash
+python tools/codegen_error_mapper.py src/<module>/<file>.zig --dry-run   # preview
+python tools/codegen_error_mapper.py src/<module>/<file>.zig             # write _errors.zig
+```
+Review the `// TODO(codegen):` lines — codegen guesses HTTP status from variant names and may be wrong.
 
 ### 3. Validate
 Run in terminal:
@@ -76,6 +95,7 @@ Before marking the handoff complete, verify:
 - [ ] No mocks, stubs, in-memory fakes, or stub return values in any test file (DIRECTIVE T-1)
 - [ ] No `error.SkipZigTest` on any test block that covers a MUST requirement (a skipped MUST test = requirement stays PENDING)
 - [ ] All integration tests connect to real PostgreSQL via `BPM_TEST_DB_URL`
+- [ ] If the handoff used a parameter file: only `// CUSTOM:` blocks were edited; the YAML was committed alongside the generated artefact
 
 ### 6. Commit implementation to the feature branch (mandatory)
 ```bash
