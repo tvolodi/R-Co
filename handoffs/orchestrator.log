@@ -1,3 +1,13 @@
+2026-05-30T00:24:00Z | ROUTE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-stepfinal-004 | ORCH -> BACKEND-DEV | PENDING
+2026-05-29T20:22:23Z | COMPLETE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-step02-003 | TEST-RUNNER -> ORCH | PASS
+2026-05-30T00:18:00Z | ROUTE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-step02-003 | ORCH -> TEST-RUNNER | PENDING
+2026-05-29T20:12:39Z | COMPLETE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-step01-002 | ISSUE-FIXER -> ORCH | PASS
+2026-05-30T00:12:00Z | ROUTE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-step01-002 | ORCH -> ISSUE-FIXER | PENDING
+2026-05-29T20:04:10Z | COMPLETE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-step00-001 | BACKEND-DEV -> ORCH | PASS
+2026-05-30T00:05:00Z | ROUTE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-step00-001 | ORCH -> BACKEND-DEV | PENDING
+2026-05-29T22:24:00Z | ROUTE | WF02-f3a-batch1-20260529 | f3a-step04r1-011 | ORCH -> TEST-RUNNER | PENDING
+2026-05-29T19:41:26Z | COMPLETE | WF03-f3a-inui02-fix-20260529 | wf03-f3a-stepfinalr2-008 | BACKEND-DEV -> ORCH | PASS
+2026-05-29T19:41:26Z | GIT | WF03-f3a-inui02-fix-20260529 | wf03-f3a-stepfinalr2-008 | ORCH | PR #52 merged; branch deleted; merge commit c2be63f8d6c431d56a68d653b9a32b409fd8c49c
 2026-05-29T12:35:35Z | DONE | WF02-stage11-sim05-08-rerun1-20260529 | --- | ORCH | Completed WF-02 rerun for SIM-05,SIM-06,SIM-07,SIM-08
 2026-05-29T12:35:35Z | GIT | WF02-stage11-sim05-08-rerun1-20260529 | 8ec56f89-1473-4f51-b87b-aa834f3a2f8d | ORCH | PR #48 merged; branch deleted; merge commit 5e8e03f7d695535ca2aee35b835fda8250d2757c
 2026-05-29T12:34:08Z | COMPLETE | WF02-stage11-sim05-08-rerun1-20260529 | 8ec56f89-1473-4f51-b87b-aa834f3a2f8d | BACKEND-DEV -> ORCH | PASS
