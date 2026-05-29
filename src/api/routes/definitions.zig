@@ -1141,8 +1141,8 @@ fn serializeExportDocument(allocator: std.mem.Allocator, doc: export_import.Expo
     try appendJsonStr(allocator, &buf, doc.version);
     try buf.appendSlice(allocator, ",\"description\":");
     try appendJsonStr(allocator, &buf, doc.description);
-    // Graph: emit nodes/edges arrays. Stub consistent with existing serializeDefinition.
-    try buf.appendSlice(allocator, ",\"graph\":{\"nodes\":[],\"edges\":[]}");
+    try buf.appendSlice(allocator, ",\"graph\":");
+    try appendJsonGraph(allocator, &buf, doc.graph);
     try buf.appendSlice(allocator, ",\"exported_at\":");
     try appendJsonStr(allocator, &buf, doc.exported_at);
     try buf.append(allocator, '}');
