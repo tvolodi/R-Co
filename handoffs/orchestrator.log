@@ -1864,3 +1864,5 @@
 2026-05-29T08:04:45Z | FAIL | WF02-f2b-shoulds-20260529 | f2b-step04-007 | TEST-RUNNER | BLOCKER: bench env unavailable (MissingDbUrl)
 2026-05-29T08:05:07Z | BENCH_ENV_BLOCK | WF02-f2b-shoulds-20260529 | --- | ORCH | BLOCKED -> routing to BACKEND-DEV for env setup
 2026-05-29T08:05:07Z | ROUTE | ADHOC-bench-env-20260529 | bench-env-001 | ORCH -> BACKEND-DEV | PENDING
+2026-05-29T08:11:03Z | ROUTE | WF02-f2b-shoulds-20260529 | f2b-step04b-011 | ORCH -> TEST-RUNNER | PENDING (re-test after bench env fix)
+2026-05-29T08:12:49Z | REWORK | ADHOC-bench-env-20260529 | bench-env-002 | ORCH -> BACKEND-DEV | PENDING (rework 1 — residual BENCHMARK_SETUP_ERROR after .env fix)
