@@ -12,6 +12,10 @@ interface ConditionDialogProps {
   onCancel: () => void
   /** Optional server-side validation error to display inline */
   serverError?: string | null
+  /** Initial CEL expression value (for editing existing conditions) */
+  initialCondition?: string
+  /** Initial isDefault state (for editing existing edges) */
+  initialIsDefault?: boolean
 }
 
 export default function ConditionDialog({
@@ -20,9 +24,11 @@ export default function ConditionDialog({
   onConfirm,
   onCancel,
   serverError = null,
+  initialCondition = '',
+  initialIsDefault = false,
 }: ConditionDialogProps) {
-  const [celExpression, setCelExpression] = useState('')
-  const [isDefault, setIsDefault] = useState(false)
+  const [celExpression, setCelExpression] = useState(initialCondition)
+  const [isDefault, setIsDefault] = useState(initialIsDefault)
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {

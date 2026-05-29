@@ -127,6 +127,8 @@ export default function ProcessCanvas({
     sourceName: string
     targetName: string
     serverError?: string | null
+    initialCondition?: string
+    initialIsDefault?: boolean
   } | null>(null)
 
   // ── Helper: take a snapshot of current canvas state ────────────────────────
@@ -194,18 +196,38 @@ export default function ProcessCanvas({
   const handleConditionConfirm = useCallback(
     (data: { condition?: string; isDefault: boolean }) => {
       if (!conditionDialog) return
-      const newEdge: Edge<CanvasEdgeData> = {
-        id: `rf-edge-${conditionDialog.source}-${conditionDialog.target}`,
-        source: conditionDialog.source,
-        target: conditionDialog.target,
-        type: 'condition',
-        data: { condition: data.condition, isDefault: data.isDefault },
+      const edgeId = `rf-edge-${conditionDialog.source}-${conditionDialog.target}`
+
+      // Check if this edge already exists (e.g. opened via double-click on existing edge)
+      const existingEdge = edges.find(
+        (e) => e.source === conditionDialog.source && e.target === conditionDialog.target,
+      )
+
+      if (existingEdge) {
+        // Update existing edge data in place
+        setEdges((eds) =>
+          eds.map((e) =>
+            e.id === existingEdge.id
+              ? { ...e, data: { ...e.data, condition: data.condition, isDefault: data.isDefault } }
+              : e,
+          ),
+        )
+      } else {
+        // Create a new edge
+        const newEdge: Edge<CanvasEdgeData> = {
+          id: edgeId,
+          source: conditionDialog.source,
+          target: conditionDialog.target,
+          type: 'condition',
+          data: { condition: data.condition, isDefault: data.isDefault },
+        }
+        setEdges((eds) => addEdge(newEdge, eds))
       }
-      setEdges((eds) => addEdge(newEdge, eds))
+
       setConditionDialog(null)
       onDirtyChange(true)
     },
-    [conditionDialog, setEdges, onDirtyChange],
+    [conditionDialog, edges, setEdges, onDirtyChange],
   )
 
   const handleConditionCancel = useCallback(() => {
@@ -387,6 +409,30 @@ export default function ProcessCanvas({
     [onSelectedEdgeChange, onSelectedNodeChange],
   )
 
+  // ── Edge double-click: open ConditionDialog for EXCLUSIVE_GATEWAY edges ────
+
+  const onEdgeDoubleClick = useCallback(
+    (_: React.MouseEvent, edge: Edge<CanvasEdgeData>) => {
+      const sourceNode = nodes.find((n) => n.id === edge.source)
+      if (!sourceNode || sourceNode.data.nodeType !== 'EXCLUSIVE_GATEWAY') return
+
+      const targetNode = nodes.find((n) => n.id === edge.target)
+      const sourceName = sourceNode.data.name || 'Gateway'
+      const targetName = targetNode?.data?.name || edge.target || ''
+
+      setConditionDialog({
+        source: edge.source,
+        target: edge.target,
+        sourceName,
+        targetName,
+        serverError: null,
+        initialCondition: edge.data?.condition ?? '',
+        initialIsDefault: edge.data?.isDefault ?? false,
+      })
+    },
+    [nodes],
+  )
+
   const onPaneClick = useCallback(() => {
     onSelectedNodeChange(null)
     onSelectedEdgeChange(null)
@@ -434,6 +480,7 @@ export default function ProcessCanvas({
         onDragOver={onDragOver}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
+        onEdgeDoubleClick={onEdgeDoubleClick}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
@@ -470,6 +517,9 @@ export default function ProcessCanvas({
           targetName={conditionDialog.targetName}
           onConfirm={handleConditionConfirm}
           onCancel={handleConditionCancel}
+          serverError={conditionDialog.serverError}
+          initialCondition={conditionDialog.initialCondition}
+          initialIsDefault={conditionDialog.initialIsDefault}
         />
       )}
     </div>

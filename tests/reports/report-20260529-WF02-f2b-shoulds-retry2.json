@@ -1,0 +1,100 @@
+{
+  "run_id": "WF02-f2b-shoulds-20260529",
+  "workflow_id": "WF-02",
+  "handoff_id": "f2b-step04c-012",
+  "timestamp": "2026-05-29T08:25:00Z",
+  "summary": {
+    "total": 63,
+    "passed": 57,
+    "failed": 6,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "test_id": "TC-PDUI16-01",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas-shoulds.e2e.spec.ts",
+      "line": 229,
+      "error_message": "expect(locator('.react-flow__edge').filter({hasText: \"status == 'approved'\"}).first()).toBeVisible() failed — edge condition label not found on canvas. The test creates an EXCLUSIVE_GATEWAY graph with condition edges, then tries to click a condition edge to open ConditionDialog. The condition edge label text was not rendered.",
+      "severity": "MAJOR",
+      "requirement_id": "PD-UI-16",
+      "root_cause": "Condition edge labels with CEL expressions ('status == \\'approved\\'') are not rendered on the ReactFlow edge elements, or the edge text only shows on hover. The test expects the label to be visible by default."
+    },
+    {
+      "test_id": "TC-PDUI17-02",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas-shoulds.e2e.spec.ts",
+      "line": 415,
+      "error_message": "locator.click: Test timeout — Zoom In button is disabled (element is not enabled). The button resolves but has [disabled] attribute.",
+      "severity": "MAJOR",
+      "requirement_id": "PD-UI-17",
+      "root_cause": "React Flow zoom controls are disabled when the viewport is at the default zoom level (1.0) or the canvas has minZoom == maxZoom. The test expects the zoom-in button to be enabled and clickable at initial render."
+    },
+    {
+      "test_id": "TC-PDUI19-03",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas-shoulds.e2e.spec.ts",
+      "line": 643,
+      "error_message": "expect(getByText('Review Task <uniqueSuffix>')).toBeVisible() failed — after Ctrl+Z undo of property name edit, the original node name was not restored in the visible DOM.",
+      "severity": "MAJOR",
+      "requirement_id": "PD-UI-19",
+      "root_cause": "Ctrl+Z undo of a property name change does not visually restore the original node label text on the canvas node. The undo stack may not cover property panel edits, or the node label does not re-render after undo."
+    },
+    {
+      "test_id": "TC-PDUI11-02",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "line": 611,
+      "error_message": "expect(getByTestId('condition-cel-input')).toBeVisible() failed — ConditionDialog did not appear (or appeared without CEL input) when creating an edge from an EXCLUSIVE_GATEWAY.",
+      "severity": "MAJOR",
+      "requirement_id": "PD-UI-11",
+      "root_cause": "The ConditionDialog with CEL input is not being triggered/presented when dragging from a gateway source handle to a target handle. The edge is created but no dialog follows."
+    },
+    {
+      "test_id": "TC-PDUI12-03",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "line": 764,
+      "error_message": "expect(getByText('Definition saved')).toBeVisible({timeout:10000}) failed — after clicking Save button, the 'Definition saved' success toast was never shown.",
+      "severity": "MAJOR",
+      "requirement_id": "PD-UI-12",
+      "root_cause": "The save action (PUT/PATCH definition) either fails silently on the backend, or the frontend does not show a success toast on save completion. The element 'Definition saved' text is never rendered."
+    },
+    {
+      "test_id": "TC-SAVE-01",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts",
+      "line": 881,
+      "error_message": "expect(getByText('Definition saved')).toBeVisible({timeout:10000}) failed — same root cause as TC-PDUI12-03. The save action does not produce a visible success toast.",
+      "severity": "MAJOR",
+      "requirement_id": "PD-UI-12",
+      "root_cause": "Same as TC-PDUI12-03: Save toast not shown. The save-toast mechanism appears broken globally."
+    }
+  ],
+  "nfr_results": [
+    {
+      "nfr_id": "NFR-01",
+      "target": "p99_read_ms <= 200ms",
+      "actual": "1.032ms",
+      "passed": true
+    },
+    {
+      "nfr_id": "NFR-01",
+      "target": "p99_write_ms <= 500ms",
+      "actual": "2.213ms",
+      "passed": true
+    },
+    {
+      "nfr_id": "NFR-02",
+      "target": "append_throughput_eps >= 1000",
+      "actual": "75748.995 events/sec",
+      "passed": true
+    },
+    {
+      "nfr_id": "NFR-04",
+      "target": "replay_10000_ms <= 5000ms",
+      "actual": "39.972ms",
+      "passed": true
+    }
+  ]
+}

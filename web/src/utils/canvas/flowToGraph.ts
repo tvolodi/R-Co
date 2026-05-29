@@ -17,7 +17,11 @@ export function flowToGraph(
   const graphNodes: GraphNode[] = nodes.map((node) => {
     let attrs: string | null = null
     try {
-      const existing = typeof node.data.attributes === 'string' && node.data.attributes ? JSON.parse(node.data.attributes) : {}
+      // node.data.attributes is a parsed object (Record<string, unknown>) from graphToFlow.
+      // Preserve all existing attributes (e.g. HUMAN_TASK role) and add position.
+      const existing = node.data.attributes && typeof node.data.attributes === 'object' && !Array.isArray(node.data.attributes)
+        ? node.data.attributes as Record<string, unknown>
+        : {}
       attrs = JSON.stringify({
         ...existing,
         position: { x: Math.round(node.position.x), y: Math.round(node.position.y) },

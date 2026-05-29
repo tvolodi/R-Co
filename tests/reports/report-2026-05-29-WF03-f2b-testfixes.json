@@ -1,0 +1,55 @@
+{
+  "run_id": "WF03-f2b-testfixes-20260529",
+  "workflow_id": "WF-03",
+  "timestamp": "2026-05-29T08:46:17Z",
+  "branch": "feature/WF02-f2b-shoulds-20260529",
+  "summary": {
+    "total": 63,
+    "passed": 60,
+    "failed": 3,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "test_id": "TC-PDUI16-01",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas-shoulds.e2e.spec.ts:275",
+      "error_message": "Expected CodeMirror .cm-editor element count > 0, got 0. ConditionDialog opens but CelExpressionEditor (CodeMirror) component does not render in the DOM.",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-16",
+      "visual_verdict": "Screen shows ConditionDialog with edge properties panel (Delete Edge button), but no CEL CodeMirror editor visible. A static 'status == a' label is on the canvas edge, but the interactive CodeMirror editor is missing from the dialog."
+    },
+    {
+      "test_id": "TC-PDUI12-03",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts:765",
+      "error_message": "Expected 'Definition saved' toast visible after save. Backend returned HTTP 422 'Unprocessable Entity'. Save operation failed.",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-12",
+      "visual_verdict": "Screen shows red 'Unprocessable Entity' error banner. Properties panel shows HUMAN_TASK with placeholder values 'Assignee reference' and 'JSON Schema' in assignee_ref and form_schema fields. Save button remains active (blue). No success toast."
+    },
+    {
+      "test_id": "TC-SAVE-01",
+      "layer": "e2e",
+      "file": "web/tests/e2e/f2-canvas.e2e.spec.ts:882",
+      "error_message": "Expected 'Definition saved' toast visible after save. Backend returned HTTP 422 'Unprocessable Entity'. Save operation failed.",
+      "severity": "BLOCKER",
+      "requirement_id": "PD-UI-12",
+      "visual_verdict": "Screen shows red 'Unprocessable Entity' error banner. Properties panel shows HUMAN_TASK with placeholder values 'Assignee reference' and 'JSON Schema' in assignee_ref and form_schema fields. Save button remains active (blue). No success toast."
+    }
+  ],
+  "previously_failing_status": {
+    "PDUI16-01": "STILL_FAILING",
+    "PDUI11-02": "FIXED",
+    "PDUI12-03": "STILL_FAILING",
+    "TC-SAVE-01": "STILL_FAILING",
+    "PDUI17-02": "FIXED",
+    "PDUI19-03": "FIXED"
+  },
+  "root_cause_analysis": {
+    "PDUI16-01": "CelExpressionEditor (CodeMirror) component not rendering inside ConditionDialog. Dialog opens but .cm-editor element count is 0.",
+    "PDUI12-03_TC-SAVE-01": "Backend returns HTTP 422 when saving definitions. Placeholder/empty values in assignee_ref and form_schema fields likely cause validation failure."
+  },
+  "coverage": {},
+  "nfr_results": []
+}
