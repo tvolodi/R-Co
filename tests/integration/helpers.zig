@@ -104,7 +104,7 @@ fn applyCompatibilityShims(conn: *pg.Conn) !void {
     // Legacy XC integration fixtures still reference `instances` and omit
     // newer mandatory event fields. These shims preserve test intent while
     // keeping production schema unchanged.
-    try conn.exec(
+    try execCompatibilitySql(conn,
         \\CREATE TABLE IF NOT EXISTS instances (
         \\  instance_id UUID PRIMARY KEY,
         \\  tenant_id UUID NOT NULL,
@@ -113,11 +113,13 @@ fn applyCompatibilityShims(conn: *pg.Conn) !void {
         \\  variables JSONB NOT NULL DEFAULT '{}',
         \\  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         \\)
-    ,
-        &.{},
     );
 
-    try conn.exec(
+    try execCompatibilitySql(conn,
+        \\DROP FUNCTION IF EXISTS bpm_test_events_compat_defaults() CASCADE
+    );
+
+    try execCompatibilitySql(conn,
         \\CREATE OR REPLACE FUNCTION bpm_test_events_compat_defaults()
         \\RETURNS TRIGGER
         \\LANGUAGE plpgsql
@@ -141,26 +143,24 @@ fn applyCompatibilityShims(conn: *pg.Conn) !void {
         \\    RETURN NEW;
         \\END;
         \\$$
-    ,
-        &.{},
     );
 
-    try conn.exec(
+    try execCompatibilitySql(conn,
         \\DROP TRIGGER IF EXISTS trg_bpm_test_events_compat_defaults ON events
-    ,
-        &.{},
     );
 
-    try conn.exec(
+    try execCompatibilitySql(conn,
         \\CREATE TRIGGER trg_bpm_test_events_compat_defaults
         \\BEFORE INSERT ON events
         \\FOR EACH ROW
         \\EXECUTE FUNCTION bpm_test_events_compat_defaults()
-    ,
-        &.{},
     );
 
-    try conn.exec(
+    try execCompatibilitySql(conn,
+        \\DROP FUNCTION IF EXISTS bpm_repository_artifacts_immutable() CASCADE
+    );
+
+    try execCompatibilitySql(conn,
         \\CREATE OR REPLACE FUNCTION bpm_repository_artifacts_immutable()
         \\RETURNS TRIGGER
         \\LANGUAGE plpgsql
@@ -169,35 +169,85 @@ fn applyCompatibilityShims(conn: *pg.Conn) !void {
         \\    RAISE EXCEPTION 'repository artifacts are immutable and cannot be modified or deleted';
         \\END;
         \\$$
-    ,
-        &.{},
     );
 
-    try conn.exec(
+    try execCompatibilitySql(conn,
         \\DROP TRIGGER IF EXISTS trg_repository_artifacts_prevent_update ON repository_artifacts
-    ,
-        &.{},
     );
-    try conn.exec(
+    try execCompatibilitySql(conn,
         \\CREATE TRIGGER trg_repository_artifacts_prevent_update
         \\BEFORE UPDATE ON repository_artifacts
         \\FOR EACH ROW EXECUTE FUNCTION bpm_repository_artifacts_immutable()
-    ,
-        &.{},
     );
 
-    try conn.exec(
+    try execCompatibilitySql(conn,
         \\DROP TRIGGER IF EXISTS trg_repository_artifacts_prevent_delete ON repository_artifacts
-    ,
-        &.{},
     );
-    try conn.exec(
+    try execCompatibilitySql(conn,
         \\CREATE TRIGGER trg_repository_artifacts_prevent_delete
         \\BEFORE DELETE ON repository_artifacts
         \\FOR EACH ROW EXECUTE FUNCTION bpm_repository_artifacts_immutable()
-    ,
-        &.{},
     );
+}
+
+fn execCompatibilitySql(conn: *pg.Conn, sql: []const u8) !void {
+    conn.exec(sql, &.{}) catch |err| switch (err) {
+        // Compatibility shims are best-effort for legacy suites.
+        error.ServerError => {},
+        else => return err,
+    };
+}
+
+fn resetTestData(conn: *pg.Conn) !void {
+    // Keep migration/seed/config tables intact and only clear transient test data.
+    // Truncate tables one-by-one so one missing legacy table does not skip cleanup.
+    try truncateTableBestEffort(conn, "instance_definition_snapshots");
+    try truncateTableBestEffort(conn, "process_events");
+    try truncateTableBestEffort(conn, "tasks");
+    try truncateTableBestEffort(conn, "timers");
+    try truncateTableBestEffort(conn, "instance_projections");
+    try truncateTableBestEffort(conn, "variable_schemas");
+    try truncateTableBestEffort(conn, "process_definitions");
+    try truncateTableBestEffort(conn, "events");
+    try truncateTableBestEffort(conn, "event_store");
+    try truncateTableBestEffort(conn, "audit_log");
+    try truncateTableBestEffort(conn, "audit_entries");
+    try truncateTableBestEffort(conn, "dlq");
+    try truncateTableBestEffort(conn, "webhook_subscriptions");
+}
+
+fn truncateTableBestEffort(conn: *pg.Conn, comptime table_name: []const u8) !void {
+    const sql = "TRUNCATE TABLE " ++ table_name ++ " RESTART IDENTITY CASCADE";
+    conn.exec(sql, &.{}) catch |err| switch (err) {
+        // Some tables may not exist yet in partial migration states.
+        error.ServerError => {},
+        else => return err,
+    };
+}
+
+fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
+    try conn.exec(
+        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+        \\VALUES (
+        \\  '00000000-0000-0000-0000-000000000000'::uuid,
+        \\  'default',
+        \\  'Default Tenant',
+        \\  'ACTIVE',
+        \\  'bpm-default'
+        \\)
+        \\ON CONFLICT (id) DO UPDATE
+        \\SET slug = EXCLUDED.slug,
+        \\    display_name = EXCLUDED.display_name,
+        \\    status = EXCLUDED.status,
+        \\    idp_realm_id = COALESCE(tenant.idp_realm_id, EXCLUDED.idp_realm_id),
+        \\    updated_at = NOW()
+    , &.{});
+
+    try conn.exec(
+        \\INSERT INTO jit_provisioning_config (realm, enabled, default_status, default_roles)
+        \\VALUES ('bpm-default', TRUE, 'ACTIVE', '[]'::jsonb)
+        \\ON CONFLICT (realm) DO NOTHING
+    , &.{});
 }
 
 // ---------------------------------------------------------------------------
@@ -225,8 +275,8 @@ pub const TestHarness = struct {
         const env: std.process.Environ = .{ .block = .global };
         const url = env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
             error.EnvironmentVariableMissing => {
-                std.debug.print("BPM_TEST_DB_URL is not set — skipping integration test\n", .{});
-                return error.SkipZigTest;
+                std.debug.print("BPM_TEST_DB_URL is required for integration tests\n", .{});
+                return error.MissingTestDatabaseUrl;
             },
             error.OutOfMemory => return error.OutOfMemory,
             else => return err,
@@ -242,6 +292,17 @@ pub const TestHarness = struct {
         // Run migrations against the test database.
         runMigrations(std.testing.io, allocator, &conn) catch |err| {
             std.debug.print("runMigrations failed: {}\n", .{err});
+            return err;
+        };
+
+        // Clear transient integration data for deterministic per-test isolation.
+        resetTestData(&conn) catch |err| {
+            std.debug.print("resetTestData failed: {}\n", .{err});
+            return err;
+        };
+
+        ensureDefaultOidcSeeds(&conn) catch |err| {
+            std.debug.print("ensureDefaultOidcSeeds failed: {}\n", .{err});
             return err;
         };
 

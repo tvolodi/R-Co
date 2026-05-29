@@ -1,0 +1,59 @@
+{
+  "handoff_id": "3baf01b8-4a4d-4e5f-9d1e-96d09a7c3c88",
+  "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
+  "workflow_id": "WF-03",
+  "step": "01-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-01-rework2-issue-fixer.json",
+  "created_at": "2026-05-29T01:14:10Z",
+  "started_at": "2026-05-29T01:16:11Z",
+  "completed_at": "2026-05-29T01:20:09Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": ["SIM-01", "SIM-02", "SIM-03", "SIM-04"],
+    "related_handoff_ids": [
+      "a65ae5e6-9f9f-4f78-b7dd-642780a830ec",
+      "f71d4d1a-30f2-4fb1-8b24-3b2b1c6b2d11"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-02-test-runner.json",
+      "handoffs/WF03-stage11-sim01-04-cycle3-20260529/step-01-rework1-issue-fixer.json",
+      "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-rework1-zig-build-test-integration.log",
+      "tests/integration/helpers.zig",
+      "build.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 2: complete deterministic resolution for Stage 11 cycle3 blockers. Add focused XC-04 execution path and telemetry required to prove timeout elimination, fix TC-XC-04-03 crash root cause, and produce stable aggregate integration PASS evidence for SIM-01..SIM-04 path.",
+    "acceptance_criteria": [
+      "Focused XC-04 execution target exists and runs deterministically",
+      "TC-XC-04-03 passes",
+      "Aggregate integration verification produces deterministic completion evidence"
+    ],
+    "functions_to_call": ["fn:search-issues", "fn:register-issue", "fn:update-issue"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed D-category test fragility and deterministic execution gaps for Stage 11 cycle3: added focused XC-04 target plus Stage11 SIM+XC aggregate target, corrected TC-XC-04-03 query/fixture behavior, and stabilized TC-SIM-01-01 assertion semantics. Deterministic PASS evidence captured with timing telemetry.",
+    "artifacts_out": [
+      "build.zig",
+      "tests/integration/xc04_kernel_determinism_test.zig",
+      "tests/integration/sim01_04_simulation_mode_test.zig",
+      "tests/integration/stage11_sim_xc04_aggregate_test.zig",
+      "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-rework2-zig-build-test-integration-xc04.log",
+      "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-rework2-zig-build-test-integration-stage11-sim-xc04.log",
+      "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-rework2-integration-telemetry.log",
+      "docs/issue-reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-rework2-issue-fixer-INNER-REPORT.json",
+      "docs/issues/ISS-0051.json",
+      "docs/issues/ISS-0052.json",
+      "docs/issues/issue_index.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3) to execute required verification with new deterministic Stage11 paths."
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

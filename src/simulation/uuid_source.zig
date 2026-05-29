@@ -17,7 +17,9 @@ pub const PlatformUuidSource = struct {
         var i: usize = 0;
         while (i < bytes.len) : (i += 8) {
             const v = splitMix64(&self.state);
-            std.mem.writeInt(u64, bytes[i .. i + 8], v, .big);
+            var chunk: [8]u8 = undefined;
+            std.mem.writeInt(u64, &chunk, v, .big);
+            @memcpy(bytes[i .. i + 8], &chunk);
         }
 
         // RFC 4122 version/variant bits.

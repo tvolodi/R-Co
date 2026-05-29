@@ -1,0 +1,18 @@
+﻿Cleaning test database...
+Test database cleaned.
+Cleaning test database...
+Test database cleaned.
+zig : test-integration-oidc35
+строка:1 знак:184
++ ... tion SilentlyContinue; zig build test-integration-oidc35 2>&1 | Out-F ...
++                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test-integration-oidc35:String) [ 
+   ], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
++- run test w
+Failed to bootstrap IDP provider from env: error.MissingProviderType
+BPM_IDP_BASE_URL is set тАФ skipping TC-07 (requires Keycloak unreachable)
+failed command: ".\\.zig-cache\\o\\e1ab148eaee7872900e7800243e52aeb\\test.exe" 
+"--cache-dir=.\\.zig-cache" --seed=0x21370e84 --listen=-
+

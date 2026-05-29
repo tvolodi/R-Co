@@ -1,6 +1,25 @@
 ﻿{
     "escalations":  [
                         {
+                            "handoff_id": "673f1f4c-458e-45f9-b127-f2ce4f7ea3b0",
+                            "workflow_id": "WF-02",
+                            "agent": "TEST-RUNNER",
+                            "reason": "Max rework (3) exceeded at Step 04 for WF02-stage11-sim01-04-20260528",
+                            "last_issues": [
+                                {
+                                    "severity": "BLOCKER",
+                                    "description": "Backend integration layer failed: 44 tests failed in aggregate run; blocker includes TC-SIM-01-01 in simulation isolation path.",
+                                    "requirement_ids": [
+                                        "SIM-01",
+                                        "SIM-02",
+                                        "SIM-03",
+                                        "SIM-04"
+                                    ]
+                                }
+                            ],
+                            "timestamp": "2026-05-28T18:58:20Z"
+                        },
+                        {
                             "action_required":  "User must start PostgreSQL database and configure BPM_TEST_DB_URL before TEST-RUNNER can proceed",
                             "step":  "04",
                             "workflow_id":  "WF02-xc01-06-20260528",

@@ -1,0 +1,44 @@
+test_snapshot_integration.test.TC-PD-08-01: SnapshotStore.create — happy path returns Snapshot with matching fields
+test_snapshot_integration.test.TC-PD-08-02: SnapshotStore.getByInstanceId — returns original graph after definition update
+test_snapshot_integration.test.TC-PD-08-03: SnapshotStore.create — duplicate instance_id returns SnapshotAlreadyExists
+test_snapshot_integration.test.TC-PD-08-06: SnapshotStore round-trip preserves node types, edge conditions, and is_default
+test_snapshot_integration.test.TC-PD-08-07: SnapshotStore — two instance snapshots from same definition are independent
+ee01_start_instance_test.test.TC-EE-01-06: duplicate correlation_key same definition returns DuplicateCorrelationKey
+ee09_merge_variables_test.test.TC-EE-09-01: new key insert — key inserted, no VARIABLE_OVERWRITTEN event
+ee09_merge_variables_test.test.TC-EE-09-02: existing key overwrite (no schema) — VARIABLE_OVERWRITTEN event appended
+ee09_merge_variables_test.test.TC-EE-09-04: schema violation — merge aborted, instance transitions to ERROR
+ee09_merge_variables_test.test.TC-EE-09-05: empty output_variables — no events, variables unchanged
+instance_error_test.test.TC-EE-10-01: gateway no-match triggers ERROR; EXECUTION_ERROR event appended
+instance_error_test.test.TC-EE-10-02: schema violation triggers ERROR; merge not applied
+instance_error_test.test.TC-EE-10-03: ERROR instance rejects task completion with InstanceInError
+instance_error_test.test.TC-EE-10-04: ERROR transition is atomic — both event and projection visible together
+instance_error_test.test.TC-EE-10-05: concurrent ERROR race — exactly one EXECUTION_ERROR event
+instance_error_test.test.TC-EE-10-06: EXECUTION_ERROR payload contains all required fields
+ext01_service_task_test.test.TC-EXT-01-INT-01: empty rendered URL rejects activation and transitions instance to ERROR
+ext01_service_task_test.test.TC-EXT-01-INT-02: 2xx JSON object response merges variables and preserves outbound headers
+ext01_service_task_test.test.TC-EXT-01-INT-03: 2xx non-object body transitions to ERROR without merge
+ext01_service_task_test.test.TC-EXT-01-INT-04: retriable first-attempt failure triggers retry and preserves outbound headers across attempts
+ext01_service_task_test.test.TC-EXT-01-INT-05: redirect responses are not auto-followed and count as failures
+ext01_service_task_test.test.TC-EXT-01-INT-06: HTTP 429 is treated as a retriable failure
+ext01_service_task_test.test.TC-EXT-01-INT-07: exhausted retries move the failure to OBS-05 DLQ and ERROR
+ext01_service_task_test.test.TC-ADP-08-INT-01: service_id uses catalog endpoint and ignores inline url when both are present
+ext01_service_task_test.test.TC-ADP-08-INT-03: missing catalog entry transitions to ERROR before HTTP call
+ext01_service_task_test.test.TC-ADP-08-INT-04: inactive catalog entry transitions to ERROR before HTTP call
+ext03_plugin_integration_test.test.TC-EXT-03-INT-01: startup plugin receives current instance context at runtime
+ext03_plugin_integration_test.test.TC-EXT-03-INT-02: COMPLETE outcome keeps execution non-error
+ext03_plugin_integration_test.test.TC-EXT-03-INT-03: panic-mapped plugin failure transitions instance to ERROR
+ext03_plugin_integration_test.test.TC-EXT-03-INT-06: plugin precedence shadows built-in service task runtime path
+ext03_plugin_integration_test.test.TC-EXT-03-INT-07: COMPLETE output variables merge through EE-09 success path
+ext03_plugin_integration_test.test.TC-EXT-03-INT-08: invalid COMPLETE output payload transitions to EE-10 ERROR
+ext03_plugin_integration_test.test.TC-EXT-03-INT-09: explicit ERROR outcome applies EE-10 and blocks follow-up completion
+idn02_group_management_test.test.TC-IDN-02-06: ACTIVE group member can claim and complete a GROUP-assigned task
+idn02_group_management_test.test.TC-IDN-02-07: removing a member does not mutate an already-assigned GROUP task
+idn03_role_access_test.test.TC-IDN-03-03b: TASK_WORKER GET /tasks returns own and group-member tasks only
+adp07_agent_role_reserved_usernames_test.test.TC-ADP-07-01: AGENT_RUNNER role is seeded and token issuance accepts it
+adp09_tamper_evident_audit_chain_test.test.TC-ADP-09-01: migration adds nullable chain columns and validation primitives
+adp09_tamper_evident_audit_chain_test.test.TC-ADP-09-02: new rows chain deterministically with tenant-scoped predecessors
+adp09_tamper_evident_audit_chain_test.test.TC-ADP-09-03: chain validation reports tampered row first and descendants after
+adp09_tamper_evident_audit_chain_test.test.TC-ADP-09-04: legacy pre-chain rows remain valid and boundary row starts cleanly
+adp10_agent_io_capture_audit_test.test.TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NULL
+adp02_tenant_scope_test.test.TC-ADP-02-05: audit persistence is tenant-scoped for audit_entries and audit_log
+sim01_04_simulation_mode_test.test.TC-SIM-01-01: simulation events are isolated from real tenant queries

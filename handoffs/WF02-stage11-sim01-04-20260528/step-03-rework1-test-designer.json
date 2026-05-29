@@ -1,0 +1,54 @@
+{
+  "handoff_id": "8a054ddd-2d68-4a90-ad5c-b50e63390a6f",
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "03-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-stage11-sim01-04-20260528/step-03-rework1-test-designer.json",
+  "created_at": "2026-05-28T15:36:20Z",
+  "started_at": "2026-05-28T15:36:40Z",
+  "completed_at": "2026-05-28T15:40:37Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "ca171cd2-c2ca-4624-b692-5bb3cbb86e75",
+      "1912c10f-32f0-4cc5-b04f-96f6fe06d57d"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-stage11-sim01-04-20260528/step-3b-test-design-validator.json",
+      "tests/integration/sim01_04_simulation_mode_test.zig",
+      "tests/integration/main_test.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Fix test design/test sources per validator findings. 1) Remove skip behavior for missing BPM_TEST_DB_URL in the shared integration harness; tests must fail clearly, not skip. 2) Ensure per-test unique fixtures for SIM tests (no static tenant UUID in SIM-01 path). Update specs if needed to match behavior.",
+    "acceptance_criteria": [
+      "No skipped MUST coverage due to absent BPM_TEST_DB_URL",
+      "SIM fixtures are per-test unique and isolated",
+      "Updated tests/specs remain runnable and deterministic"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed validator rework issues for SIM-01..SIM-04 by enforcing hard failure when BPM_TEST_DB_URL is absent and replacing static SIM-01 tenant fixture with per-test UUID data.",
+    "artifacts_out": [
+      "tests/integration/helpers.zig",
+      "tests/integration/sim01_04_simulation_mode_test.zig",
+      "docs/issue-reports/WF02-stage11-sim01-04-20260528-step-03-rework1-test-designer.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

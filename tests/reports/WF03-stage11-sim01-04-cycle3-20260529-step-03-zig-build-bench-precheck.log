@@ -1,0 +1,6 @@
+BENCHMARK_SETUP_INFO|db_url_source=BPM_TEST_DB_URL
+NFR_RESULT|NFR-01|p99_read_ms|target=<=200|actual=0.760|unit=ms|passed=true
+NFR_RESULT|NFR-01|p99_write_ms|target=<=500|actual=1.625|unit=ms|passed=true
+NFR_RESULT|NFR-02|append_throughput_eps|target=>=1000|actual=76405.956|unit=events_per_second|passed=true
+NFR_RESULT|NFR-04|replay_10000_ms|target=<=5000|actual=49.562|unit=ms|passed=true
+NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1780017806911

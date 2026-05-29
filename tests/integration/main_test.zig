@@ -113,6 +113,8 @@ const adp02_tenant_scope = @import("adp02_tenant_scope_test.zig");
 const oidc07_claim_validation_auth_integration = @import("oidc07_claim_validation_auth_test.zig");
 // Stage 6.5 — Agent lifecycle foundations (OIDC-16..OIDC-26)
 const oidc16_26_agent_lifecycle_foundations_integration = @import("oidc16_26_agent_lifecycle_foundations_test.zig");
+// Stage 11 — Simulation mode foundations (SIM-01..SIM-04)
+const sim01_04_simulation_mode_integration = @import("sim01_04_simulation_mode_test.zig");
 
 comptime {
     _ = std;
@@ -165,6 +167,7 @@ comptime {
     _ = adp02_tenant_scope;
     _ = oidc07_claim_validation_auth_integration;
     _ = oidc16_26_agent_lifecycle_foundations_integration;
+    _ = sim01_04_simulation_mode_integration;
 }
 
 test "integration placeholder" {

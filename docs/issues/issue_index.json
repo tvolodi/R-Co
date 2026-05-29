@@ -1,8 +1,159 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-28T12:58:52Z",
-  "next_issue_id": 46,
+  "last_updated": "2026-05-29T03:31:05Z",
+  "next_issue_id": 56,
   "issues": [
+    {
+      "id": "ISS-0055",
+      "title": "WF03 stage11 releasefix: ADP-07 TC-ADP-07-01 failed because AGENT_RUNNER seed role was missing after test DB cleanup",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+      "handoff_id": "c7c0735f-c9dd-4bb9-bcec-d2eb7c7f0b82",
+      "affected_areas": [
+        "tools/clean_test_db.py",
+        "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+        "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-03-issue-fixer-validation.txt"
+      ],
+      "created_at": "2026-05-29T03:31:05Z",
+      "resolved_at": "2026-05-29T03:31:05Z"
+    },
+    {
+      "id": "ISS-0054",
+      "title": "WF03 Stage11 releasefix rework1: deterministic integration run exposes ADP-09/ADP-10 assertion failures (no stall)",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+      "handoff_id": "08624c7c-5b8a-459f-a0f3-c8f49a4442a8",
+      "affected_areas": [
+        "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+        "tests/integration/adp10_agent_io_capture_audit_test.zig",
+        "tests/reports/zig-test-integration-supervised-latest.log"
+      ],
+      "created_at": "2026-05-29T02:30:24Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0053",
+      "title": "WF03 Stage11 releasefix: silent integration DB cleanup failure could leak stale fixture data and trigger DuplicateNameVersion cascades",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+      "handoff_id": "08624c7c-5b8a-459f-a0f3-c8f49a4442a8",
+      "affected_areas": [
+        ".vscode/run-zig-test-integration.ps1",
+        "tests/reports/zig-test-integration-supervised-latest.log"
+      ],
+      "created_at": "2026-05-29T01:59:29Z",
+      "resolved_at": "2026-05-29T02:30:24Z"
+    },
+    {
+      "id": "ISS-0052",
+      "title": "WF03 Stage11 cycle3 rework2: XC-04 deterministic path and Stage11 aggregate telemetry stabilization",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
+      "handoff_id": "3baf01b8-4a4d-4e5f-9d1e-96d09a7c3c88",
+      "affected_areas": [
+        "build.zig",
+        "tests/integration/xc04_kernel_determinism_test.zig",
+        "tests/integration/sim01_04_simulation_mode_test.zig",
+        "tests/integration/stage11_sim_xc04_aggregate_test.zig"
+      ],
+      "created_at": "2026-05-29T01:19:26Z",
+      "resolved_at": "2026-05-29T01:19:26Z"
+    },
+    {
+      "id": "ISS-0051",
+      "title": "WF03 Stage11 cycle3 rework1: aggregate integration run remains non-deterministic/blocked after contention hardening",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
+      "handoff_id": "f71d4d1a-30f2-4fb1-8b24-3b2b1c6b2d11",
+      "affected_areas": [
+        "build.zig",
+        "tests/integration/helpers.zig",
+        "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-rework1-zig-build-test-integration.log"
+      ],
+      "created_at": "2026-05-29T01:12:44Z",
+      "resolved_at": "2026-05-29T01:19:26Z"
+    },
+    {
+      "id": "ISS-0050",
+      "title": "WF03 Stage11 cycle3: integration harness reset used all-or-nothing truncate; verification blocked by concurrent integration runners/cache lock contention",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-cycle3-20260529",
+      "handoff_id": "8e3e4f44-4f67-43f3-98d6-ee3376538ebf",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "tests/reports/WF03-stage11-sim01-04-cycle3-20260529-step-01-zig-build-test-integration.log"
+      ],
+      "created_at": "2026-05-28T19:46:36Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0049",
+      "title": "WF03 Stage11 testfix2 rework2: OIDC-35 bootstrap emitted MissingProviderType under partial IDP env",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
+      "handoff_id": "414d3e85-d6db-4f9f-83ea-1c293b8f1f65",
+      "affected_areas": [
+        "tests/integration/oidc35_onboarding_test.zig",
+        "tests/reports/WF03-stage11-sim01-04-testfix2-20260528-step-01-rework2-zig-build-test-integration-oidc35.log"
+      ],
+      "created_at": "2026-05-28T18:43:35Z",
+      "resolved_at": "2026-05-28T18:43:35Z"
+    },
+    {
+      "id": "ISS-0047",
+      "title": "WF03 Stage11 testfix2 rework1: SIM isolation failures resolved via per-test transient-data cleanup and default seed restoration",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
+      "handoff_id": "d8d7f4e0-8918-417e-a450-5f73ef353c2c",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "test_wf03_issuefix_rework1_latest.txt",
+        "test_wf03_oidc09_rework1.txt"
+      ],
+      "created_at": "2026-05-28T17:03:11Z",
+      "resolved_at": "2026-05-28T18:18:53Z"
+    },
+    {
+      "id": "ISS-0048",
+      "title": "WF03 Stage11 rework1: aggregate integration blocked by missing OIDC31 env prerequisites (BPM_IDP_BASE_URL/BPM_TEST_URL)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "run_id": "WF03-stage11-sim01-04-testfix2-20260528",
+      "handoff_id": "d8d7f4e0-8918-417e-a450-5f73ef353c2c",
+      "affected_areas": [
+        "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+        "test_wf03_issuefix_rework1_final.txt"
+      ],
+      "created_at": "2026-05-28T18:18:53Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0046",
+      "title": "WF03 Stage11 testfix: SIM compile blockers, XC shim server errors, and OIDC-35 compensation leak/failure cluster",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-stage11-sim01-04-testfix-20260528",
+      "handoff_id": "ee34f66e-9d15-4d07-9530-26be33ec80f6",
+      "affected_areas": [
+        "src/simulation/tenant_store.zig",
+        "src/simulation/uuid_source.zig",
+        "src/identity/onboarding.zig",
+        "tests/integration/helpers.zig",
+        "tests/integration/oidc35_onboarding_test.zig",
+        "tests/integration/sim01_04_simulation_mode_test.zig",
+        "tests/integration/xc01_trace_propagation_test.zig"
+      ],
+      "created_at": "2026-05-28T16:18:05Z",
+      "resolved_at": "2026-05-28T16:18:05Z"
+    },
     {
       "id": "ISS-0045",
       "title": "WF03 XC-02..XC-06 testfix diagnosis: mixed integration-schema drift and test expectation drift across XC suites",

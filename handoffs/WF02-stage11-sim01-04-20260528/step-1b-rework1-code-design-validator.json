@@ -1,0 +1,50 @@
+{
+  "handoff_id": "95cab7f4-aa0b-42fc-a59c-958a6a0fba69",
+  "run_id": "WF02-stage11-sim01-04-20260528",
+  "workflow_id": "WF-02",
+  "step": "1b-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-stage11-sim01-04-20260528/step-1b-rework1-code-design-validator.json",
+  "created_at": "2026-05-28T15:08:20Z",
+  "started_at": "2026-05-28T15:08:40Z",
+  "completed_at": "2026-05-28T15:09:14Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "27e72ca8-9cc7-40b9-a652-f7fbf620fede",
+      "f7b81daa-d72e-4776-8862-cf9d4dd34d17"
+    ],
+    "artifacts_in": [
+      "src/design/stage11_sim01_04.md",
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK VALIDATION: Re-validate src/design/stage11_sim01_04.md for SIM-01..SIM-04 after rework. Confirm explicit input-validation rules are now complete and all hard-gate checks pass.",
+    "acceptance_criteria": [
+      "All SIM-01..SIM-04 acceptance criteria mapped",
+      "No implementation code in design",
+      "Public signatures, error taxonomy, and dependencies are complete",
+      "Explicit user-input validation rules are present and testable"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for Stage 11 simulation core validated: SIM-01 through SIM-04 acceptance criteria are covered, completeness checks pass, and explicit input-validation rules are present and testable.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a) and/or FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

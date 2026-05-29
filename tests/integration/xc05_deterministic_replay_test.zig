@@ -46,7 +46,9 @@ test "TC-XC-05-01: point-in-time reconstruction produces matching state" {
     // Append 10 events with state evolution
     for (0..10) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
-        const idem_key = try std.fmt.allocPrint(alloc, "event-{d}", .{i});
+        const idem_key = try std.fmt.allocPrint(alloc, "xc05-{s}-event-{d}", .{ instance_id[0..8], i });
+        var seq_buf: [24]u8 = undefined;
+        const seq_text = try std.fmt.bufPrint(&seq_buf, "{d}", .{i + 1});
         defer {
             alloc.free(event_id);
             alloc.free(idem_key);
@@ -55,8 +57,8 @@ test "TC-XC-05-01: point-in-time reconstruction produces matching state" {
         _ = try harness.conn.exec(
             \\INSERT INTO events (
             \\  event_id, instance_id, tenant_id, event_type,
-            \\  payload, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            \\  payload, actor_id, sequence_number, idempotency_key, created_at
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         ,
             &.{
                 event_id,
@@ -64,6 +66,8 @@ test "TC-XC-05-01: point-in-time reconstruction produces matching state" {
                 tenant_id,
                 "counter.incremented",
                 "{\"delta\":1}",
+                tenant_id,
+                seq_text,
                 idem_key,
             },
         );
@@ -134,8 +138,10 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
     // Append 20 events
     for (0..20) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
-        const idem_key = try std.fmt.allocPrint(alloc, "event-{d}", .{i});
+        const idem_key = try std.fmt.allocPrint(alloc, "xc05-{s}-event-{d}", .{ instance_id[0..8], i });
         const payload = try std.fmt.allocPrint(alloc, "{{\"value\":{d}}}", .{i});
+        var seq_buf: [24]u8 = undefined;
+        const seq_text = try std.fmt.bufPrint(&seq_buf, "{d}", .{i + 1});
         defer {
             alloc.free(event_id);
             alloc.free(idem_key);
@@ -145,8 +151,8 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
         _ = try harness.conn.exec(
             \\INSERT INTO events (
             \\  event_id, instance_id, tenant_id, event_type,
-            \\  payload, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            \\  payload, actor_id, sequence_number, idempotency_key, created_at
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         ,
             &.{
                 event_id,
@@ -154,6 +160,8 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
                 tenant_id,
                 "state.updated",
                 payload,
+                tenant_id,
+                seq_text,
                 idem_key,
             },
         );
@@ -214,7 +222,7 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
 
     for (0..5) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
-        const idem_key = try std.fmt.allocPrint(alloc, "event-{d}", .{i});
+        const idem_key = try std.fmt.allocPrint(alloc, "xc05-{s}-event-{d}", .{ instance_id[0..8], i });
         const payload = try std.fmt.allocPrint(alloc, "{{\"index\":{d}}}", .{i});
         const sequence_number = try std.fmt.allocPrint(alloc, "{d}", .{i + 1});
         const offset_ms = try std.fmt.allocPrint(alloc, "{d}", .{i * 1000});
@@ -229,8 +237,8 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
         _ = try harness.conn.exec(
             \\INSERT INTO events (
             \\  event_id, instance_id, tenant_id, event_type,
-            \\  payload, idempotency_key, created_at, sequence_number
-            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW() + ($7::bigint * INTERVAL '1 milliseconds'), $8)
+            \\  payload, actor_id, idempotency_key, created_at, sequence_number
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + ($8::bigint * INTERVAL '1 milliseconds'), $9)
         ,
             &.{
                 event_id,
@@ -238,6 +246,7 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
                 tenant_id,
                 "test.event",
                 payload,
+                tenant_id,
                 idem_key,
                 offset_ms,
                 sequence_number,
@@ -292,8 +301,10 @@ test "TC-XC-05-04: archived events are included in reconstruction" {
     // Insert 100 events
     for (0..100) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
-        const idem_key = try std.fmt.allocPrint(alloc, "event-{d}", .{i});
+        const idem_key = try std.fmt.allocPrint(alloc, "xc05-{s}-event-{d}", .{ instance_id[0..8], i });
         const payload = try std.fmt.allocPrint(alloc, "{{\"index\":{d}}}", .{i});
+        var seq_buf: [24]u8 = undefined;
+        const seq_text = try std.fmt.bufPrint(&seq_buf, "{d}", .{i + 1});
         defer {
             alloc.free(event_id);
             alloc.free(idem_key);
@@ -303,8 +314,8 @@ test "TC-XC-05-04: archived events are included in reconstruction" {
         _ = try harness.conn.exec(
             \\INSERT INTO events (
             \\  event_id, instance_id, tenant_id, event_type,
-            \\  payload, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            \\  payload, actor_id, sequence_number, idempotency_key, created_at
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         ,
             &.{
                 event_id,
@@ -312,6 +323,8 @@ test "TC-XC-05-04: archived events are included in reconstruction" {
                 tenant_id,
                 "test.event",
                 payload,
+                tenant_id,
+                seq_text,
                 idem_key,
             },
         );
@@ -408,7 +421,9 @@ test "TC-XC-05-05: reconstruction accuracy across instance timeline" {
     // Append 5 events that increment counter
     for (0..5) |i| {
         const event_id = try uuid_mod.newUuidV4(alloc);
-        const idem_key = try std.fmt.allocPrint(alloc, "timeline-event-{d}", .{i});
+        const idem_key = try std.fmt.allocPrint(alloc, "xc05-{s}-timeline-event-{d}", .{ instance_id[0..8], i });
+        var seq_buf: [24]u8 = undefined;
+        const seq_text = try std.fmt.bufPrint(&seq_buf, "{d}", .{i + 1});
         defer {
             alloc.free(event_id);
             alloc.free(idem_key);
@@ -417,8 +432,8 @@ test "TC-XC-05-05: reconstruction accuracy across instance timeline" {
         _ = try harness.conn.exec(
             \\INSERT INTO events (
             \\  event_id, instance_id, tenant_id, event_type,
-            \\  payload, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            \\  payload, actor_id, sequence_number, idempotency_key, created_at
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
         ,
             &.{
                 event_id,
@@ -426,6 +441,8 @@ test "TC-XC-05-05: reconstruction accuracy across instance timeline" {
                 tenant_id,
                 "counter.inc",
                 "{\"value\":1}",
+                tenant_id,
+                seq_text,
                 idem_key,
             },
         );
@@ -510,8 +527,8 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
     _ = try harness.conn.exec(
         \\INSERT INTO events (
         \\  event_id, instance_id, tenant_id, event_type,
-        \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\  payload, actor_id, sequence_number, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
     ,
         &.{
             task_event_id,
@@ -519,6 +536,8 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
             tenant_id,
             "service_task.invoked",
             task_payload,
+            tenant_id,
+            "1",
             task_idem_key,
         },
     );
@@ -536,8 +555,8 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
     _ = try harness.conn.exec(
         \\INSERT INTO events (
         \\  event_id, instance_id, tenant_id, event_type,
-        \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\  payload, actor_id, sequence_number, idempotency_key, created_at
+        \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
     ,
         &.{
             output_event_id,
@@ -545,6 +564,8 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
             tenant_id,
             "service_task.completed",
             output_payload,
+            tenant_id,
+            "2",
             output_idem_key,
         },
     );

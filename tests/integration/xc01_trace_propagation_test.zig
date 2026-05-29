@@ -101,6 +101,9 @@ test "TC-XC-01-03: trace ID flows through audit entries" {
 
     // Create an audit entry via INSERT
     // In real scenario, obs/audit.zig would read trace_id from trace_context
+    const audit_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(audit_id);
+
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
         \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
@@ -108,7 +111,7 @@ test "TC-XC-01-03: trace ID flows through audit entries" {
         \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
     ,
         &.{
-            try uuid_mod.newUuidV4(alloc),  // audit_id
+            audit_id,
             tenant_id,
             actor_id,
             "instance.create",

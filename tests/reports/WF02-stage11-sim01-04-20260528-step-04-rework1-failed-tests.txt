@@ -1,0 +1,44 @@
+error: 'xc05_deterministic_replay_test.test.TC-XC-05-03: timestamp-based
+error: 'test_snapshot_integration.test.TC-PD-08-01: SnapshotStore.create Ú¿‘
+error: 'test_snapshot_integration.test.TC-PD-08-02:
+error: 'test_snapshot_integration.test.TC-PD-08-03: SnapshotStore.create Ú¿‘
+error: 'test_snapshot_integration.test.TC-PD-08-06: SnapshotStore round-trip
+error: 'test_snapshot_integration.test.TC-PD-08-07: SnapshotStore Ú¿‘ two
+error: 'ee01_start_instance_test.test.TC-EE-01-06: duplicate correlation_key
+error: 'ee09_merge_variables_test.test.TC-EE-09-01: new key insert Ú¿‘ key
+error: 'ee09_merge_variables_test.test.TC-EE-09-02: existing key overwrite (no
+error: 'ee09_merge_variables_test.test.TC-EE-09-04: schema violation Ú¿‘ merge
+error: 'ee09_merge_variables_test.test.TC-EE-09-05: empty output_variables Ú¿‘
+error: 'instance_error_test.test.TC-EE-10-01: gateway no-match triggers ERROR;
+error: 'instance_error_test.test.TC-EE-10-02: schema violation triggers ERROR;
+error: 'instance_error_test.test.TC-EE-10-03: ERROR instance rejects task
+error: 'instance_error_test.test.TC-EE-10-04: ERROR transition is atomic Ú¿‘
+error: 'instance_error_test.test.TC-EE-10-05: concurrent ERROR race Ú¿‘
+error: 'instance_error_test.test.TC-EE-10-06: EXECUTION_ERROR payload contains
+error: 'ext01_service_task_test.test.TC-EXT-01-INT-01: empty rendered URL
+error: 'ext01_service_task_test.test.TC-EXT-01-INT-02: 2xx JSON object
+error: 'ext01_service_task_test.test.TC-EXT-01-INT-03: 2xx non-object body
+error: 'ext01_service_task_test.test.TC-EXT-01-INT-04: retriable first-attempt
+error: 'ext01_service_task_test.test.TC-EXT-01-INT-05: redirect responses are
+error: 'ext01_service_task_test.test.TC-EXT-01-INT-06: HTTP 429 is treated as
+error: 'ext01_service_task_test.test.TC-EXT-01-INT-07: exhausted retries move
+error: 'ext01_service_task_test.test.TC-ADP-08-INT-01: service_id uses catalog
+error: 'ext01_service_task_test.test.TC-ADP-08-INT-03: missing catalog entry
+error: 'ext01_service_task_test.test.TC-ADP-08-INT-04: inactive catalog entry
+error: 'ext03_plugin_integration_test.test.TC-EXT-03-INT-01: startup plugin
+error: 'ext03_plugin_integration_test.test.TC-EXT-03-INT-02: COMPLETE outcome
+error: 'ext03_plugin_integration_test.test.TC-EXT-03-INT-03: panic-mapped
+error: 'ext03_plugin_integration_test.test.TC-EXT-03-INT-06: plugin precedence
+error: 'ext03_plugin_integration_test.test.TC-EXT-03-INT-07: COMPLETE output
+error: 'ext03_plugin_integration_test.test.TC-EXT-03-INT-08: invalid COMPLETE
+error: 'ext03_plugin_integration_test.test.TC-EXT-03-INT-09: explicit ERROR
+error: 'idn02_group_management_test.test.TC-IDN-02-06: ACTIVE group member can
+error: 'idn02_group_management_test.test.TC-IDN-02-07: removing a member does
+error: 'idn03_role_access_test.test.TC-IDN-03-03b: TASK_WORKER GET /tasks
+error: 'adp09_tamper_evident_audit_chain_test.test.TC-ADP-09-01: migration
+error: 'adp09_tamper_evident_audit_chain_test.test.TC-ADP-09-02: new rows
+error: 'adp09_tamper_evident_audit_chain_test.test.TC-ADP-09-03: chain
+error: 'adp09_tamper_evident_audit_chain_test.test.TC-ADP-09-04: legacy
+error: 'adp10_agent_io_capture_audit_test.test.TC-ADP-10-02: agent rows
+error: 'adp02_tenant_scope_test.test.TC-ADP-02-05: audit persistence is
+error: 'sim01_04_simulation_mode_test.test.TC-SIM-01-01: simulation events are

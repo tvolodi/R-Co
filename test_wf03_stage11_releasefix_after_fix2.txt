@@ -1,0 +1,25 @@
+Cleaning test database...
+Test database cleaned.
+test-integration
++- run test failure
+thread 21416 panic: unrecognized command line argument: --test-threads
+E:\Dev\zig-x86_64-windows-0.16.0\lib\compiler\test_runner.zig:61:18: 0x7ff6a72eef38 in main (test_zcu.obj)
+            panic("unrecognized command line argument: {s}", .{arg});
+                 ^
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:699: 0x7ff6a72ed1ac in callMain (test_zcu.obj)
+    if (fn_info.params[0].type.? == std.process.Init.Minimal) return wrapMain(root.main(.{
+
+E:\Dev\zig-x86_64-windows-0.16.0\lib\std\start.zig:485:17: 0x7ff6a72ed1ac in WinStartup (test_zcu.obj)
+        callMain(std.os.windows.peb().ProcessParameters.CommandLine.slice(), .global),
+                ^
+???:?:?: 0x7ffd44e17373 in ??? (KERNEL32.DLL)
+???:?:?: 0x7ffd4507cc90 in ??? (ntdll.dll)
+error: test process unexpectedly exited with code 3
+failed command: ".\\.zig-cache\\o\\55c8465d8730fc4f548e15c5ad08f443\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0x3054221d --listen=- --test-threads 1
+
+Build Summary: 3/5 steps succeeded (1 failed)
+test-integration transitive failure
++- run test failure
+
+error: the following build command failed with exit code 1:
+.zig-cache\o\5c23c3fd3d2a3d1695f4a5acd317b3e2\build.exe E:\Dev\zig-x86_64-windows-0.16.0\zig.exe E:\Dev\zig-x86_64-windows-0.16.0\lib E:\Dev\My-Fab .zig-cache C:\Users\tvolodi\AppData\Local\zig --seed 0x3054221d -Zb2305ce157577a14 test-integration

@@ -1,0 +1,58 @@
+{
+  "stage": "Stage 11 - Test Runner and Simulation Mode",
+  "date": "2026-05-29T01:46:16Z",
+  "decision": "BLOCKED",
+  "requirement_ids": [
+    "SIM-01",
+    "SIM-02",
+    "SIM-03",
+    "SIM-04"
+  ],
+  "nfr_results": {
+    "benchmark_command": "zig build bench",
+    "benchmark_exit_code": 0,
+    "benchmark_setup_info": "db_url_source=BPM_TEST_DB_URL",
+    "NFR-01_p99_read_ms": {
+      "target": "<=200",
+      "actual": 0.607,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01_p99_write_ms": {
+      "target": "<=500",
+      "actual": 1.3,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02_append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 80310.185,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04_replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 50.257,
+      "unit": "ms",
+      "passed": true
+    },
+    "overall_passed": true,
+    "benchmark_summary": "NFR gate passed for NFR-01, NFR-02, and NFR-04."
+  },
+  "release_checks": {
+    "wf02_step04_post_wf03_4_status": "PASS",
+    "full_integration_regression_check": "FAIL",
+    "unresolved_blocker_or_major_issues": "BLOCKER_PRESENT"
+  },
+  "blocking_issues": [
+    {
+      "severity": "BLOCKER",
+      "owner_agent": "ISSUE-FIXER",
+      "description": "Full integration suite failed during release validation (zig build test-integration, exit 1): 44 failing tests including TC-ADP-02-05 in tests/integration/adp02_tenant_scope_test.zig.",
+      "evidence": "tests/reports/WF02-stage11-sim01-04-20260528-step-05-release-validator-integration-summary.txt"
+    }
+  ],
+  "approved_requirements": [],
+  "non_blocking_issues": [],
+  "recommendation": "BLOCK release. Route to ISSUE-FIXER to resolve integration regressions, then rerun TEST-RUNNER Step 04 and RELEASE-VALIDATOR Step 05."
+}

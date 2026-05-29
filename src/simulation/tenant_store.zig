@@ -74,7 +74,7 @@ pub fn parseTenantId(tenant_text: []const u8) types.SimulationError!types.Tenant
             continue;
         }
         if (si + 1 >= tenant_text.len) return error.InvalidSimulationContext;
-        out[di] = (hexNibble(tenant_text[si]) << 4) | hexNibble(tenant_text[si + 1]);
+        out[di] = (try hexNibble(tenant_text[si]) << 4) | try hexNibble(tenant_text[si + 1]);
         si += 2;
         di += 1;
     }

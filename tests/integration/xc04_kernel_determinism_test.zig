@@ -81,12 +81,12 @@ test "TC-XC-04-03: scheduler fires timers in deterministic order" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
     const definition_id = try uuid_mod.newUuidV4(alloc);
+    const tenant_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
         alloc.free(definition_id);
+        alloc.free(tenant_id);
     }
 
     _ = try harness.conn.exec(
@@ -132,7 +132,17 @@ test "TC-XC-04-03: scheduler fires timers in deterministic order" {
     ,
         &.{instance_id},
     );
-    defer query1.deinit();
+    var first_order: std.ArrayList([]u8) = .empty;
+    defer {
+        for (first_order.items) |id| alloc.free(id);
+        first_order.deinit(alloc);
+    }
+
+    for (query1.rows) |row| {
+        const id = row[0] orelse "";
+        try first_order.append(alloc, try alloc.dupe(u8, id));
+    }
+    query1.deinit();
 
     var query2 = try harness.conn.query(
         alloc,
@@ -144,11 +154,11 @@ test "TC-XC-04-03: scheduler fires timers in deterministic order" {
     );
     defer query2.deinit();
 
-    try testing.expectEqual(query1.rows.len, query2.rows.len);
+    try testing.expectEqual(first_order.items.len, query2.rows.len);
 
-    // Verify order is identical
-    for (query1.rows, query2.rows) |row1, row2| {
-        try testing.expectEqualStrings(row1[0] orelse "", row2[0] orelse "");
+    // Verify order is identical.
+    for (first_order.items, query2.rows) |expected_id, row2| {
+        try testing.expectEqualStrings(expected_id, row2[0] orelse "");
     }
 }
 

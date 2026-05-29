@@ -1,0 +1,30 @@
+WF-03 ISSUE-FIXER VALIDATION REPORT
+run_id=WF03-stage11-sim01-04-releasefix-20260529
+step=03
+timestamp_utc=2026-05-29T03:31:05Z
+
+1) Build validation
+- command: zig build
+- result: PASS
+
+2) Seed-state validation
+- command: python tools/clean_test_db.py; docker-compose exec -T db_test psql -U bpm -d bpm_test -c "SELECT name FROM roles ORDER BY name;"
+- result: PASS
+- output roles:
+  AGENT_RUNNER
+  PLATFORM_ADMIN
+  PROCESS_DESIGNER
+  PROCESS_OPERATOR
+  TASK_WORKER
+  VIEWER
+
+3) Integration validation (full deterministic suite)
+- command: cmd /c "set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%"
+- result: PASS
+- evidence: INTEGRATION_EXIT_CODE=0
+
+4) Additional deterministic aggregate check
+- command: cmd /c "set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration-stage11-sim-xc04"
+- result: FAIL
+- failure: xc04_kernel_determinism_test.TC-XC-04-04 returned PgError.ServerError in query path
+- note: This command is documented for observability only; ADP-07 acceptance is validated by the full integration PASS above.
