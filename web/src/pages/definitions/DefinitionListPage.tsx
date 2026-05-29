@@ -48,7 +48,7 @@ export default function DefinitionListPage() {
       navigate(`/definitions/${pendingNavId}`)
     }
   }, [pendingNavId, navigate])
-  const { data, isLoading } = useDefinitions({ status, name: debouncedSearch || undefined })
+  const { data, isLoading } = useDefinitions({ status })
   const searchQuery = useDefinitionSearch(debouncedSearch, { limit: 20 })
   const versionsQuery = useDefinitionVersions(expandedDefName ?? '')
   const activate = useActivateDefinition()

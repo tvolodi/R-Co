@@ -1,0 +1,57 @@
+{
+  "handoff_id": "f3a-step04r3-013",
+  "run_id": "WF02-f3a-batch1-20260529",
+  "workflow_id": "WF-02",
+  "step": "04-rework3",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-f3a-batch1-20260529/step-04-rework3-test-runner.json",
+  "created_at": "2026-05-30T00:45:00Z",
+  "started_at": "2026-05-30T00:45:05Z",
+  "completed_at": "2026-05-29T20:50:38Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F3 - Instance monitoring",
+    "requirement_ids": ["IN-UI-01", "IN-UI-02", "IN-UI-03", "IN-UI-04"],
+    "related_handoff_ids": ["f3a-step04r2-012", "adhoc-f3a-bench-001"],
+    "artifacts_in": [
+      "handoffs/WF02-f3a-batch1-20260529/step-04-rework2-test-runner.json",
+      "handoffs/ADHOC-f3a-bench-env-20260530/step-01-backend-dev.json",
+      "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "tests/specs/IN-UI-01.md",
+      "tests/specs/IN-UI-02.md",
+      "tests/specs/IN-UI-03.md",
+      "tests/specs/IN-UI-04.md"
+    ]
+  },
+  "task": {
+    "description": "Re-run Stage F3 batch 1 full verification after ADHOC bench-env remediation. Execute required chain and produce structured report with requirement verdicts for IN-UI-01..04.",
+    "acceptance_criteria": [
+      "All required tests for IN-UI-01..04 pass",
+      "Structured report written under tests/reports",
+      "Any remaining failures captured with severity"
+    ],
+    "functions_to_call": ["fn:run-tests", "fn:write-test-report"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Benchmark pre-check passed and all IN-UI-01..04 E2E requirement tests passed, but full E2E suite failed on unrelated TC-PDUI08-03 (PD-UI-08), so WF-02 Step 04 cannot be marked PASS.",
+    "artifacts_out": [
+      "tests/reports/report-2026-05-29-WF02-f3a-batch1-20260529-step04-rework3.json",
+      "docs/issue-reports/WF02-f3a-batch1-20260529-step-04-rework3-test-runner-INNER-REPORT.json"
+    ],
+    "issues": [
+      {
+        "description": "Playwright E2E failure: TC-PDUI08-03 in web/tests/e2e/pdui08-debounced-search.e2e.spec.ts (expect def-name row visible after empty search).",
+        "requirement_ids": [
+          "PD-UI-08"
+        ],
+        "severity": "BLOCKER"
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03) for TC-PDUI08-03 E2E regression, then re-dispatch TEST-RUNNER for full rerun."
+  },
+  "rework_count": 3,
+  "max_rework": 3
+}

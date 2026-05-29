@@ -432,7 +432,7 @@ pub const Store = struct {
 
         sql.appendSlice(a, std.fmt.allocPrint(
             a,
-            "\nORDER BY created_at ASC\nLIMIT ${d}",
+            "\nORDER BY created_at DESC\nLIMIT ${d}",
             .{pidx},
         ) catch return DefinitionError.TransactionFailed) catch
             return DefinitionError.TransactionFailed;

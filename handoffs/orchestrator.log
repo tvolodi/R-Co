@@ -1,3 +1,14 @@
+2026-05-29T20:57:15Z | ROUTE | WF03-f3a-pdui08-fix-20260530 | wf03-pdui08-step00-001 | ORCH -> BACKEND-DEV | PENDING
+2026-05-29T20:57:15Z | ROUTE | WF03-f3a-pdui08-fix-20260530 | wf03-pdui08-step01-002 | ORCH -> FRONTEND-DEV | PENDING
+2026-05-29T20:57:15Z | ROUTE | WF03-f3a-pdui08-fix-20260530 | wf03-pdui08-step02-003 | ORCH -> TEST-RUNNER | PENDING
+2026-05-29T20:57:15Z | ROUTE | WF03-f3a-pdui08-fix-20260530 | wf03-pdui08-stepfinal-004 | ORCH -> BACKEND-DEV | PENDING
+2026-05-29T20:50:38Z | ESCALATE | WF02-f3a-batch1-20260529 | f3a-step04r3-013 | ORCH | Max rework (3) exceeded at Step 04
+2026-05-30T00:45:00Z | ROUTE | WF02-f3a-batch1-20260529 | f3a-step04r3-013 | ORCH -> TEST-RUNNER | PENDING
+2026-05-29T20:39:37Z | COMPLETE | ADHOC-f3a-bench-env-20260530 | adhoc-f3a-bench-001 | BACKEND-DEV -> ORCH | PASS
+2026-05-30T00:38:00Z | ROUTE | ADHOC-f3a-bench-env-20260530 | adhoc-f3a-bench-001 | ORCH -> BACKEND-DEV | PENDING
+2026-05-30T00:32:00Z | ROUTE | WF02-f3a-batch1-20260529 | f3a-step04r2-012 | ORCH -> TEST-RUNNER | PENDING
+2026-05-29T20:26:16Z | COMPLETE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-stepfinal-004 | BACKEND-DEV -> ORCH | PASS
+2026-05-29T20:26:16Z | GIT | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-stepfinal-004 | ORCH | PR #53 merged; branch deleted; merge commit b557728d6a1159a6c879b11bd3ea90dded0cba19
 2026-05-30T00:24:00Z | ROUTE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-stepfinal-004 | ORCH -> BACKEND-DEV | PENDING
 2026-05-29T20:22:23Z | COMPLETE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-step02-003 | TEST-RUNNER -> ORCH | PASS
 2026-05-30T00:18:00Z | ROUTE | WF03-f3a-integration-regression-fix-20260530 | wf03-f3a-int-step02-003 | ORCH -> TEST-RUNNER | PENDING
