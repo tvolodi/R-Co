@@ -85,11 +85,6 @@ export default function DefinitionEditorPage() {
   async function handleSave() {
     setError(null)
 
-    if (validationErrors.some((e) => e.severity === 'error')) {
-      setError('Fix validation errors before saving.')
-      return
-    }
-
     const state = canvasStateRef.current
     if (!state) {
       setError('Canvas not ready.')
@@ -132,10 +127,10 @@ export default function DefinitionEditorPage() {
       const hasEnd = nodes.some((n) => n.data.nodeType === 'END')
 
       if (!hasStart) {
-        errors.push({ message: 'Graph must contain a START node.', severity: 'error' })
+        errors.push({ message: 'Graph must contain a START node.', severity: 'warning' })
       }
       if (!hasEnd) {
-        errors.push({ message: 'Graph must contain an END node.', severity: 'error' })
+        errors.push({ message: 'Graph must contain an END node.', severity: 'warning' })
       }
 
       // Check for unnamed nodes (except START/END)
@@ -164,7 +159,7 @@ export default function DefinitionEditorPage() {
     } catch {
       setValidationErrors([])
     }
-  }, [canvasStateRef.current])
+  }, [canvasStateRef.current, dirty])
 
   // ── Unsaved changes guard ───────────────────────────────────────────────────
 
