@@ -20,7 +20,7 @@ export const definitionsApi = {
     client.post<ProcessDefinition>('/api/v1/definitions', body),
 
   update: (id: string, body: Partial<CreateDefinitionRequest>) =>
-    client.put<ProcessDefinition>(`/api/v1/definitions/${id}`, body),
+    client.patch<ProcessDefinition>(`/api/v1/definitions/${id}`, body),
 
   activate: (id: string) =>
     client.post<ProcessDefinition>(`/api/v1/definitions/${id}/activate`),
@@ -39,4 +39,7 @@ export const definitionsApi = {
 
   importJson: (body: unknown) =>
     client.post<ProcessDefinition>('/api/v1/definitions/import', body),
+
+  getVersions: (name: string) =>
+    client.get<CursorPage<ProcessDefinition>>('/api/v1/definitions', { name } as Record<string, unknown>),
 }

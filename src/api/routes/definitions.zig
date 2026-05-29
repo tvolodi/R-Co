@@ -262,10 +262,10 @@ pub const CreateDefinitionBody = struct {
     version: []const u8,
     /// Optional human-readable description.
     description: ?[]const u8,
-    /// The definition graph; must have `nodes` and `edges` arrays (PD-02).
-    graph: definition_store.DefinitionGraph,
+    /// The definition graph; optional at creation time — defaults to empty {nodes:[], edges:[]} when null.
+    graph: ?definition_store.DefinitionGraph,
     /// Optional process stage label (PD-07).
-    stage: ?[]const u8,
+    stage: ?[]const u8 = null,
 };
 
 /// Body for PUT /api/v1/definitions/:id  (full replacement, DRAFT only).
@@ -307,11 +307,16 @@ pub fn handleCreate(
     body: CreateDefinitionBody,
     actor_id: definition_store.Uuid,
 ) HandlerResult {
+    const effective_graph = body.graph orelse definition_store.DefinitionGraph{
+        .nodes = &.{},
+        .edges = &.{},
+    };
+
     const params = definition_store.CreateParams{
         .name = body.name,
         .version = body.version,
         .description = body.description,
-        .graph = body.graph,
+        .graph = effective_graph,
         .created_by = actor_id,
         .stage = body.stage,
     };
@@ -823,6 +828,41 @@ fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []con
     try buf.append(allocator, '"');
 }
 
+/// Append a JSON serialisation of a DefinitionGraph ({"nodes":[...],"edges":[...]}) to buf.
+fn appendJsonGraph(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), graph: definition_store.DefinitionGraph) !void {
+    try buf.appendSlice(allocator, "{\"nodes\":[");
+    for (graph.nodes, 0..) |node, i| {
+        if (i > 0) try buf.append(allocator, ',');
+        try buf.appendSlice(allocator, "{\"id\":");
+        try appendJsonStr(allocator, buf, node.id);
+        try buf.appendSlice(allocator, ",\"node_type\":");
+        try appendJsonStr(allocator, buf, @tagName(node.node_type));
+        try buf.appendSlice(allocator, ",\"label\":");
+        if (node.label) |l| try appendJsonStr(allocator, buf, l) else try buf.appendSlice(allocator, "null");
+        try buf.appendSlice(allocator, ",\"attributes\":");
+        if (node.attributes) |a| try appendJsonStr(allocator, buf, a) else try buf.appendSlice(allocator, "null");
+        try buf.append(allocator, '}');
+    }
+    try buf.appendSlice(allocator, "],\"edges\":[");
+    for (graph.edges, 0..) |edge, i| {
+        if (i > 0) try buf.append(allocator, ',');
+        try buf.appendSlice(allocator, "{\"id\":");
+        try appendJsonStr(allocator, buf, edge.id);
+        try buf.appendSlice(allocator, ",\"source\":");
+        try appendJsonStr(allocator, buf, edge.source);
+        try buf.appendSlice(allocator, ",\"target\":");
+        try appendJsonStr(allocator, buf, edge.target);
+        try buf.appendSlice(allocator, ",\"condition\":");
+        if (edge.condition) |c| try appendJsonStr(allocator, buf, c) else try buf.appendSlice(allocator, "null");
+        try buf.appendSlice(allocator, ",\"is_default\":");
+        try buf.appendSlice(allocator, if (edge.is_default) "true" else "false");
+        try buf.appendSlice(allocator, ",\"transform\":");
+        if (edge.transform) |t| try appendJsonStr(allocator, buf, t) else try buf.appendSlice(allocator, "null");
+        try buf.append(allocator, '}');
+    }
+    try buf.appendSlice(allocator, "]}");
+}
+
 /// Serialise a single Definition to a JSON string. Caller owns the result.
 fn serializeDefinition(allocator: std.mem.Allocator, def: definition_store.Definition) ![]u8 {
     var buf: std.ArrayList(u8) = .empty;
@@ -847,9 +887,8 @@ fn serializeDefinition(allocator: std.mem.Allocator, def: definition_store.Defin
     }
     try buf.appendSlice(allocator, ",\"status\":");
     try appendJsonStr(allocator, &buf, statusToStr(def.status));
-    // Graph: emit the raw graph nodes/edges arrays.
-    // When pg.zig delivers real rows this should be replaced with parsed JSONB.
-    try buf.appendSlice(allocator, ",\"graph\":{\"nodes\":[],\"edges\":[]}");
+    try buf.appendSlice(allocator, ",\"graph\":");
+    try appendJsonGraph(allocator, &buf, def.graph);
     try buf.appendSlice(allocator, ",\"created_by\":");
     try appendJsonStr(allocator, &buf, created_by_hex);
     {

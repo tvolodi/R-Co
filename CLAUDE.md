@@ -419,6 +419,7 @@ AGENT_ID: BACKEND-DEV
 
 Also read:
 ```bash
+cat templates/lego-catalog.md
 cat docs/guides/backend_developer_guide.md
 cat docs/agents/protocols/GIT_SETUP.md
 cat docs/agents/protocols/GIT_MERGE.md
@@ -429,13 +430,26 @@ Then find your handoff:
 grep -rl '"to_agent": "BACKEND-DEV"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
 ```
 
-Read the handoff file. Read the design artefact it references under `context.artifacts_in`.
+Read the handoff file. Read every artefact it references under `context.artifacts_in` — each is either a Type A/C parameter file (`templates/specs/*.yaml`) or a Type E prose design (`src/design/<module>.md`).
 
 ### Implementation workflow
 
-**1. Understand** — read requirement IDs from `docs/BPM_Platform_Functional_Requirements.md` and the design file at `src/design/<module>.md`. Treat pre-existing unrelated uncommitted files in the workspace as expected context, not an automatic blocker — only stop if there is a direct file conflict with your implementation targets.
+**1. Understand** — read requirement IDs from `docs/BPM_Platform_Functional_Requirements.md`. Treat pre-existing unrelated uncommitted files in the workspace as expected context, not an automatic blocker — only stop if there is a direct file conflict with your implementation targets.
 
-**2. Implement** — write Zig source files and SQL migrations per the conventions in the backend guide.
+**2. Implement:**
+
+- For Type A/C parameter files in the handoff, run the matching codegen and edit only `// CUSTOM:` blocks:
+  ```bash
+  python tools/codegen_crud_endpoint.py <spec>   # Type A → src/api/routes/<resource>.zig
+  python tools/codegen_migration.py <spec>       # Type C → migrations/NNN_*.sql + tests/integration/*_test.zig
+  ```
+  Boilerplate is regenerated on every codegen run; do not edit it. If boilerplate is wrong, fix the template / codegen.
+- For Type E prose designs, write Zig source files and SQL migrations per the conventions in the backend guide.
+- After writing or modifying a `pub const FooError = error { ... };` block, optionally generate the HTTP-response mapper:
+  ```bash
+  python tools/codegen_error_mapper.py src/<module>/<file>.zig   # writes _errors.zig
+  ```
+  Review the `// TODO(codegen):` lines — codegen guesses HTTP status from variant names and may be wrong.
 
 **3. Validate:**
 ```bash
@@ -463,6 +477,7 @@ WF-03 dispatches. Do not proceed until this command produces no output.
 - [ ] No mocks, stubs, in-memory fakes, or stub return values in any test file (DIRECTIVE T-1)
 - [ ] No `error.SkipZigTest` on any test block that covers a MUST requirement (a skipped MUST test = requirement stays PENDING)
 - [ ] All integration tests connect to real PostgreSQL via `BPM_TEST_DB_URL`
+- [ ] If the handoff used a Type A/C parameter file: only `// CUSTOM:` blocks were edited; the YAML was committed alongside the generated artefact
 
 **6. Commit implementation to the feature branch** (mandatory — do this before completing the handoff):
 ```bash
@@ -582,6 +597,7 @@ AGENT_ID: FRONTEND-DEV
 
 Also read:
 ```bash
+cat templates/lego-catalog.md
 cat docs/guides/frontend_developer_guide.md
 cat docs/guides/frontend_design_system.md
 cat docs/agents/protocols/GIT_SETUP.md
@@ -592,6 +608,8 @@ Then find your handoff:
 ```bash
 grep -rl '"to_agent": "FRONTEND-DEV"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
 ```
+
+Read every artefact in `context.artifacts_in` — each is either a Type B/D parameter file (`templates/specs/*.yaml`), a reference example (`templates/specs/*.example.tsx`), or a Type E prose design (`src/design/<module>.md`).
 
 ## Testing Directives — ABSOLUTE RULES
 
@@ -612,7 +630,17 @@ These rules are non-negotiable. Violation of any one makes the handoff FAILED.
 
 ### Implementation workflow
 
-**1. Understand** — read requirements from `docs/BPM_Platform_Frontend_Requirements.md` and the design artefact in `context.artifacts_in`.
+**1. Understand** — read requirements from `docs/BPM_Platform_Frontend_Requirements.md` and every artefact in `context.artifacts_in`. For Type B/D parameter files: run the matching codegen first, then edit only `{/* CUSTOM: ... */}` blocks. For Type E prose designs: implement as before. For form fields: copy patterns from `templates/specs/form-field.example.tsx` (do not import from `templates/`).
+```bash
+python tools/codegen_list_page.py <spec>         # Type B → web/src/pages/<slug>/<Page>.tsx
+python tools/codegen_react_flow_node.py <spec>   # Type D → web/src/components/canvas/nodes/<Node>.tsx
+```
+Before validating, run lints:
+```bash
+python tools/lint_frontend_conventions.py web/src
+python tools/lint_test_isolation.py tests/integration
+```
+Any BLOCKER = STOP. Any MAJOR = fix before completing the handoff.
 
 **2. Implement** — write React/TypeScript under `web/src/` per the frontend guide conventions.
 
@@ -637,6 +665,8 @@ All must pass before completing.
 - [ ] Role-based UI hides elements (does not just disable them)
 - [ ] No secrets or tokens in source files
 - [ ] `npm run type-check` exits 0
+- [ ] `python tools/lint_frontend_conventions.py web/src` exits 0 (no BLOCKER/MAJOR)
+- [ ] If the handoff used a Type B/D parameter file: only `{/* CUSTOM: ... */}` blocks were edited; the YAML was committed alongside the generated artefact
 
 **5. Commit implementation to the feature branch** (mandatory — do this before completing the handoff):
 ```bash
@@ -721,7 +751,20 @@ Find your handoff:
 grep -rl '"to_agent": "CODE-DESIGN-VALIDATOR"' handoffs/ | xargs grep -l '"status": "PENDING"' 2>/dev/null
 ```
 
-Read the design artefact in `context.artifacts_in`. Verify: (1) every acceptance criterion in every MUST requirement has a design element, (2) no implementation code is present, (3) all public function signatures are listed, (4) error taxonomy exists, (5) dependencies documented. FAIL if any check fails. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to BACKEND-DEV (Step 2a)"`.
+Read every artefact in `context.artifacts_in`. Each one is either a parameter file (`templates/specs/*.yaml`, Type A–D) or a prose design (`src/design/<module>.md`, Type E).
+
+**Run per-artefact checks (mandatory):**
+```bash
+# For every Type A–D parameter file:
+python tools/lint_design_artefact.py <artefact>          # exit 0, no BLOCKER/MAJOR
+python tools/codegen_<type>.py <artefact> --dry-run      # exit 0; preview must cover acceptance criteria
+# For every Type E prose design:
+python tools/lint_design_artefact.py src/design/<module>.md
+```
+
+Then verify: (1) every acceptance criterion in every MUST requirement has a design element, (2) for Type E: no implementation code is present, (3) all public function signatures are listed (Type E) or implied by the parameter file (Type A/D), (4) error taxonomy exists (Type E) or `error_map` is specified (Type A), (5) dependencies documented, (6) classification per `templates/lego-catalog.md` is correct (a CRUD endpoint that needs custom mid-flight business logic is Type E, not Type A).
+
+FAIL if any check fails. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to BACKEND-DEV (Step 2a)"`.
 
 ---
 
@@ -792,11 +835,24 @@ AGENT_ID: CODE-DESIGNER
 
 Also read:
 ```bash
+cat templates/lego-catalog.md
 cat docs/guides/backend_developer_guide.md
 cat docs/guides/frontend_developer_guide.md
 ```
 
-Find your handoff. Produce a design artefact at `src/design/<module>.md` per the format specified in `backend_developer_guide.md §6`. Do not write implementation code.
+Find your handoff. **First classify each requirement** against the selection rules in `templates/lego-catalog.md`:
+
+| Type | Output |
+|---|---|
+| **A** CRUD endpoint        | `templates/specs/<name>.crud-endpoint.yaml`   (copy from template, replace values) |
+| **B** Admin list page      | `templates/specs/<name>.list-page.yaml`       |
+| **C** Migration + test     | `templates/specs/<name>.migration.yaml`       |
+| **D** React Flow node      | `templates/specs/<name>.react-flow-node.yaml` |
+| **E** Novel / cross-cutting| `src/design/<module>.md` (prose) per `backend_developer_guide.md §6` |
+
+A requirement may decompose into mixed types — list every parameter file and prose artefact under `artifacts_out`. Before completing the handoff, run the matching codegen with `--dry-run` for every Type A–D file; non-zero exit = malformed YAML.
+
+Do not write implementation code — neither prose function bodies nor SQL DDL outside Type C YAMLs.
 
 ---
 

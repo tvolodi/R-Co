@@ -24,9 +24,36 @@ You operate inside **WF-02 Step 1b** — after CODE-DESIGNER (Step 1) and before
 
 1. Find your handoff:
    - `to_agent = "CODE-DESIGN-VALIDATOR"` and `status = "PENDING"` in `handoffs/`
-2. Read the design artefact listed in `context.artifacts_in` (e.g. `src/design/<module>.md`)
-3. Read the requirement IDs from `context.requirement_ids` in `docs/BPM_Platform_Functional_Requirements.md`
-4. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
+2. Read `templates/lego-catalog.md` — the section *How CODE-DESIGN-VALIDATOR uses this catalog*
+3. Read every artefact in `context.artifacts_in`. Each one is either:
+   - a parameter file under `templates/specs/*.yaml` (Type A–D), or
+   - a prose design under `src/design/<module>.md` (Type E)
+4. Read the requirement IDs from `context.requirement_ids` in `docs/BPM_Platform_Functional_Requirements.md`
+5. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
+
+## Per-artefact checks (mandatory, run on EVERY artefact)
+
+For each Type A–D parameter file (`*.crud-endpoint.yaml`, `*.list-page.yaml`, `*.migration.yaml`, `*.react-flow-node.yaml`):
+
+```bash
+python tools/lint_design_artefact.py <artefact>
+```
+Exit 0 required. Any BLOCKER/MAJOR = FAIL the validation.
+
+Then run the matching codegen with `--dry-run`:
+```bash
+python tools/codegen_migration.py <spec> --dry-run        # Type C
+python tools/codegen_crud_endpoint.py <spec> --dry-run    # Type A
+python tools/codegen_list_page.py <spec> --dry-run        # Type B
+python tools/codegen_react_flow_node.py <spec> --dry-run  # Type D
+```
+Codegen must exit 0. Inspect the generated preview — it must cover every acceptance criterion in the requirement.
+
+For each Type E artefact (`src/design/*.md`):
+```bash
+python tools/lint_design_artefact.py src/design/<module>.md
+```
+Same exit-0 requirement.
 
 ## Validation checklist
 
@@ -44,9 +71,12 @@ Run ALL checks. A single FAIL terminates validation with status FAIL.
 - [ ] Data flow diagram exists (ASCII or Mermaid)
 
 **Correctness:**
-- [ ] No implementation code present (no function bodies, no SQL DDL, no JSX)
-- [ ] No database schema decisions made in the design (those belong in migrations)
+- [ ] For Type E artefacts: no implementation code present (no function bodies, no SQL DDL, no JSX)
+- [ ] For Type E artefacts: no database schema decisions made (those belong in a Type C migration parameter file)
+- [ ] For Type A–D parameter files: `lint_design_artefact.py` exits 0 with no BLOCKER/MAJOR
+- [ ] For Type A–D parameter files: matching codegen `--dry-run` exits 0 and preview covers acceptance criteria
 - [ ] If a requirement is ambiguous, it is flagged as an open question — not guessed at
+- [ ] Classification is correct per `templates/lego-catalog.md` selection rules (e.g. a CRUD endpoint that needs custom mid-flight business logic must be Type E, not Type A)
 
 **Security:**
 - [ ] Any design element that handles user input specifies validation rules

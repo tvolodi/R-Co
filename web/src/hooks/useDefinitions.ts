@@ -33,6 +33,14 @@ export function useCreateDefinition() {
   })
 }
 
+export function useDefinitionVersions(name: string) {
+  return useQuery({
+    queryKey: [...definitionKeys.all, 'versions', name],
+    queryFn: () => definitionsApi.getVersions(name),
+    enabled: !!name,
+  })
+}
+
 export function useActivateDefinition() {
   const qc = useQueryClient()
   return useMutation({

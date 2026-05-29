@@ -1,0 +1,62 @@
+{
+  "handoff_id": "wf03-f2a-step01-002",
+  "run_id": "WF03-f2a-e2e-fix-20260528",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-f2a-e2e-fix-20260528/step-01-issue-fixer.json",
+  "created_at": "2026-05-28T15:33:37Z",
+  "started_at": "2026-05-28T15:37:43Z",
+  "completed_at": "2026-05-28T15:40:46Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F2",
+    "branch_name": "feature/WF03-f2a-e2e-fix-20260528",
+    "requirement_ids": [
+      "PD-UI-01",
+      "PD-UI-02",
+      "PD-UI-03",
+      "PD-UI-04"
+    ],
+    "related_handoff_ids": [
+      "wf03-f2a-step00-001"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-f2a-pdui01-04-20260528/step-04-test-runner.json",
+      "tests/reports/WF02-f2a-pdui01-04-20260528-test-report.md",
+      "handoffs/WF02-f2a-pdui01-04-20260528/step-2b-frontend-dev.json",
+      "src/api/routes/definitions.zig"
+    ]
+  },
+  "task": {
+    "description": "Fix two issues causing 13 Playwright E2E test failures for Stage F2 requirements PD-UI-01 through PD-UI-04:\n\nIssue 1 (root cause - 11 failures): POST /definitions returns 400 'malformed_json' when the request body does not include a `graph` field. The backend CreateDefinitionBody requires `{name, version, description, graph}` with graph requiring nodes and edges. However, the frontend creates a definition first (before the user adds nodes to the canvas), so graph should be optional at creation time. Fix the backend handler in src/api/routes/definitions.zig to accept a request without `graph` (defaulting to empty graph).\n\nIssue 2 (2 failures): The definition list page at web/src/pages/definitions/DefinitionListPage.tsx does not render a DOM element with data-testid='filter-bar'. Add the data-testid attribute to the filter/search section of the page.\n\nAfter fixing, validate:\ncd web\nnpm run type-check\nnpm run lint\nnpm run build",
+    "acceptance_criteria": [
+      "POST /definitions accepts body without graph field (returns 201, not 400)",
+      "DefinitionListPage has data-testid='filter-bar' element",
+      "npm run type-check exits 0",
+      "npm run lint exits 0",
+      "npm run build exits 0"
+    ],
+    "functions_to_call": [
+      "fn:diagnose-issues",
+      "fn:apply-fix",
+      "fn:verify-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed Category A (logic error) and Category D (test attr missing) in definitions.zig and DefinitionListPage.tsx: made graph field optional in CreateDefinitionBody so POST /definitions accepts bodies without graph (defaults to empty {nodes:[], edges:[]}); added data-testid=filter-bar to filter container div. Also fixed 6 pre-existing lint errors (unused request param) in f2-definition-list.e2e.spec.ts. All validations pass: zig build, npm run type-check, npm run lint, npm run build.",
+    "artifacts_out": [
+      "src/api/routes/definitions.zig",
+      "web/src/pages/definitions/DefinitionListPage.tsx",
+      "web/tests/e2e/f2-definition-list.e2e.spec.ts",
+      "docs/issues/issue_index.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (re-test after fix)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

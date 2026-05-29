@@ -24,6 +24,11 @@ export function clearToken(): void {
   _token = null
 }
 
+/** No-op — kept for API compatibility. */
+export function tryRestoreE2eToken(): string | null {
+  return null
+}
+
 // ── Core request ───────────────────────────────────────────────────────────────
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -85,7 +90,16 @@ function buildError(response: Response, partial: Partial<ApiError>): ApiError {
 
 export const client = {
   get<T>(path: string, params?: Record<string, unknown>): Promise<T> {
-    const url = params ? `${path}?${new URLSearchParams(params as Record<string, string>)}` : path
+    const url = params
+      ? `${path}?${new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params).filter((entry): entry is [string, string] => {
+              const v = entry[1];
+              return v !== undefined && v !== null && v !== '';
+            }),
+          ),
+        )}`
+      : path
     return request<T>(url)
   },
   post<T>(path: string, body?: unknown): Promise<T> {

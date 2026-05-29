@@ -32,9 +32,9 @@ export type NodeType = 'START' | 'END' | 'HUMAN_TASK' | 'EXCLUSIVE_GATEWAY' | 'P
 
 export interface GraphNode {
   id: string
-  type: NodeType
-  name?: string
-  attributes?: Record<string, unknown>
+  node_type: NodeType
+  label: string | null
+  attributes: string | null
 }
 
 export interface GraphEdge {
@@ -66,7 +66,8 @@ export interface CreateDefinitionRequest {
   name: string
   version: string
   description?: string
-  graph: DefinitionGraph
+  graph?: DefinitionGraph
+  stage?: string | null
 }
 
 // ── Process Instances (Stage 3) ───────────────────────────────────────────────
