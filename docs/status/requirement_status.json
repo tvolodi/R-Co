@@ -1354,6 +1354,58 @@
       "release_run": "WF02-dsl05-20260527",
       "release_decision": "docs/status/release-DSL-05-20260527.json",
       "last_updated": "2026-05-27T08:18:04Z"
+    },
+    "SIM-01": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Simulation tenant",
+      "implementation_run": "WF02-stage11-sim01-04-20260528",
+      "test_run": "tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json",
+      "tested_at": "2026-05-29",
+      "released_at": "2026-05-29T08:09:41Z",
+      "release_run": "WF02-stage11-sim01-04-20260528",
+      "release_decision": "docs/status/release-Stage11-SIM-01-04-2026-05-29.json",
+      "last_updated": "2026-05-29T08:14:52Z"
+    },
+    "SIM-02": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Service mocking",
+      "implementation_run": "WF02-stage11-sim01-04-20260528",
+      "test_run": "tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json",
+      "tested_at": "2026-05-29",
+      "released_at": "2026-05-29T08:09:41Z",
+      "release_run": "WF02-stage11-sim01-04-20260528",
+      "release_decision": "docs/status/release-Stage11-SIM-01-04-2026-05-29.json",
+      "last_updated": "2026-05-29T08:14:52Z"
+    },
+    "SIM-03": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Time control",
+      "implementation_run": "WF02-stage11-sim01-04-20260528",
+      "test_run": "tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json",
+      "tested_at": "2026-05-29",
+      "released_at": "2026-05-29T08:09:41Z",
+      "release_run": "WF02-stage11-sim01-04-20260528",
+      "release_decision": "docs/status/release-Stage11-SIM-01-04-2026-05-29.json",
+      "last_updated": "2026-05-29T08:14:52Z"
+    },
+    "SIM-04": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Deterministic UUIDs",
+      "implementation_run": "WF02-stage11-sim01-04-20260528",
+      "test_run": "tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json",
+      "tested_at": "2026-05-29",
+      "released_at": "2026-05-29T08:09:41Z",
+      "release_run": "WF02-stage11-sim01-04-20260528",
+      "release_decision": "docs/status/release-Stage11-SIM-01-04-2026-05-29.json",
+      "last_updated": "2026-05-29T08:14:52Z"
     }
   }
 }
