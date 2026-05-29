@@ -1,0 +1,56 @@
+{
+  "issue_id": "ISS-0056",
+  "title": "WF03 stage11 releasefix rework1: TC-XC-04-04 deterministic hash test invoked canonical audit hash function with legacy argument order",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "D_TEST_ERROR",
+  "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+  "workflow_id": "WF-03",
+  "handoff_id": "54d76235-9a39-4a95-a163-98cc36567f96",
+  "requirement_ids": [
+    "SIM-01",
+    "SIM-02",
+    "SIM-03",
+    "SIM-04"
+  ],
+  "summary": "TC-XC-04-04 called bpm_audit_compute_chain_hash using legacy parameter ordering and types, causing PgError.ServerError on deterministic verification. The test now uses canonical ADP-09/ADP-10 ordering and a fixed timestamp.",
+  "root_cause": {
+    "type": "test_signature_drift",
+    "details": "Integration test SQL call passed text where payload_full JSONB is required and used non-canonical argument ordering after audit function reconciliation migration."
+  },
+  "resolution": {
+    "strategy": "ALIGN_TEST_CALL_WITH_CANONICAL_FUNCTION_SIGNATURE",
+    "changes": [
+      "tests/integration/xc04_kernel_determinism_test.zig"
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "cmd /c \"zig build && echo ZIG_BUILD_EXIT_CODE=%ERRORLEVEL%\"",
+        "result": "PASS",
+        "evidence": "ZIG_BUILD_EXIT_CODE=0"
+      },
+      {
+        "command": "cmd /c \"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& zig build test-integration-xc04 && echo XC04_EXIT_CODE=%ERRORLEVEL%\"",
+        "result": "PASS",
+        "evidence": "XC04_EXIT_CODE=0"
+      },
+      {
+        "command": "cmd /c \"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration-stage11-sim-xc04 && echo STAGE11_XC04_EXIT_CODE=%ERRORLEVEL%\"",
+        "result": "PASS",
+        "evidence": "STAGE11_XC04_EXIT_CODE=0"
+      }
+    ]
+  },
+  "files_changed": [
+    "tests/integration/xc04_kernel_determinism_test.zig",
+    "tests/reports/WF03-stage11-sim01-04-releasefix-20260529-step-05-rework1-issue-fixer-validation.txt"
+  ],
+  "created_at": "2026-05-29T07:54:41Z",
+  "resolved_at": "2026-05-29T07:54:41Z",
+  "prevention": [
+    "When audit-chain SQL signatures evolve, update deterministic integration tests in the same change set.",
+    "Prefer fixed timestamps in deterministic hash assertions to avoid time-based drift."
+  ]
+}

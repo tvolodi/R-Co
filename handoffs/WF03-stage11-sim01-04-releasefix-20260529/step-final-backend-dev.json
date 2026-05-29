@@ -1,0 +1,65 @@
+{
+  "handoff_id": "7981de8e-67f8-4ff8-b49f-6f90c4059e6b",
+  "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-stage11-sim01-04-releasefix-20260529/step-final-backend-dev.json",
+  "created_at": "2026-05-29T07:58:44Z",
+  "started_at": "2026-05-29T07:58:46Z",
+  "completed_at": "2026-05-29T08:00:18Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "91d4f344-dba0-4f5e-bdbf-c09c7a4e3fd6"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-stage11-sim01-04-releasefix-20260529/step-06-test-runner.json",
+      "tests/reports/report-20260529T075746Z-WF03-stage11-sim01-04-releasefix-20260529-step06.json"
+    ]
+  },
+  "task": {
+    "description": "Execute WF-03 Step Final git merge workflow (fn:git-merge): ensure feature branch changes for this release-fix run are committed, pushed, and merged per docs/agents/protocols/GIT_MERGE.md with PR metadata recorded in result.git_evidence.",
+    "acceptance_criteria": [
+      "Step Final returns PASS",
+      "push_status is ok",
+      "PR URL or explicit pr_create_error is recorded"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "fn:git-merge stopped at protocol step 1 because current branch is 'main' instead of required 'feature/WF03-stage11-sim01-04-releasefix-20260529'. No rebase/push/PR actions were executed.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "ISS-WF03-STAGE11-RELEASEFIX-FINAL-001",
+        "severity": "BLOCKER",
+        "description": "Branch precondition failed: expected feature/WF03-stage11-sim01-04-releasefix-20260529 but found main. GIT_MERGE protocol requires immediate stop in this case.",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "main",
+      "commit_sha_list": [],
+      "remote_branch": null,
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": "Protocol step 1 precondition failed: current branch is main; required feature/WF03-stage11-sim01-04-releasefix-20260529."
+    },
+    "next_action": "ORCH should route a BACKEND-DEV git-setup step (or restore the expected feature branch) and then re-dispatch Step Final fn:git-merge."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

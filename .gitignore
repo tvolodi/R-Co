@@ -23,3 +23,13 @@ Thumbs.db
 # ── Editor ───────────────────────────────────────────────────────────────────
 *.swp
 *.swo
+
+# ── Test artifacts (generated) ───────────────────────────────────────────────
+playwright-report/
+test-results/
+tests/reports/
+screenshots/
+**/screenshots/
+*-screenshot.png
+*-screenshot.jpg
+*-screenshot.jpeg

@@ -1,0 +1,61 @@
+{
+  "handoff_id": "9d6f4ece-a59b-47ef-a52c-c12c1840dbf2",
+  "run_id": "WF03-stage11-sim01-04-releasefix-20260529",
+  "workflow_id": "WF-03",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF03-stage11-sim01-04-releasefix-20260529/step-04b-test-runner.json",
+  "created_at": "2026-05-29T07:48:32Z",
+  "started_at": "2026-05-29T07:48:36Z",
+  "completed_at": "2026-05-29T07:50:48Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 11 - Test Runner and Simulation Mode",
+    "requirement_ids": [
+      "SIM-01",
+      "SIM-02",
+      "SIM-03",
+      "SIM-04"
+    ],
+    "related_handoff_ids": [
+      "c0c896b4-5f14-4e8a-8d0f-f63e2df4e8a1",
+      "2ab6a4b6-b5c0-4dc2-9b33-d53dc97d5cb3"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-stage11-sim01-04-releasefix-20260529/step-04-test-runner.json",
+      "handoffs/ADHOC-stage11-bench-env-20260529/step-01-backend-dev.json",
+      "tests/reports/report-20260529T074726Z-ADHOC-stage11-bench-env-20260529-step01.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 verification rerun after benchmark environment setup PASS. Execute benchmark pre-check and then deterministic integration verification targets for Stage 11 SIM-01..SIM-04 releasefix path. Record explicit PASS/FAIL with evidence logs and structured report.",
+    "acceptance_criteria": [
+      "Benchmark pre-check clears without BENCHMARK_SETUP_ERROR",
+      "Required integration verification targets executed",
+      "Structured report and logs written under tests/reports"
+    ],
+    "functions_to_call": [
+      "fn:run-required-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Benchmark pre-check passed after ADHOC env setup, but deterministic Stage 11 integration aggregate target failed: xc04_kernel_determinism_test.TC-XC-04-04 returned PgError.ServerError.",
+    "artifacts_out": [
+      "tests/reports/report-20260529T075048Z-WF03-stage11-sim01-04-releasefix-20260529-step04b.json"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Deterministic integration verification target failed: xc04_kernel_determinism_test.TC-XC-04-04 returned PgError.ServerError in query path.",
+        "affected_requirement": "SIM-01/SIM-02/SIM-03/SIM-04"
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER for XC-04 deterministic query-path failure and redispatch TEST-RUNNER."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
