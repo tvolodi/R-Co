@@ -87,18 +87,99 @@ pub fn loadActiveConfig(
     pool: *db.Pool,
     tenant_id: []const u8,
 ) ConfigError!PlatformConfig {
-    _ = allocator;
-    _ = pool;
-    _ = tenant_id;
-
-    // TODO: Implement repository artifact loading per REPO-08, REPO-09
-    // For now, return safe defaults.
-    return PlatformConfig{
+    var config = PlatformConfig{
         .capabilities = CapabilityConfig{},
         .tier_rules = TierSelectionRules{},
         .budget_limits = BudgetLimits{},
         .monitoring = MonitoringConfig{},
     };
+
+    if (loadConfigArtifact(allocator, pool, tenant_id, .capabilities, "capabilities")) |maybe_json| {
+        if (maybe_json) |json| {
+            defer allocator.free(json);
+            parseCapabilities(json, &config.capabilities) catch {};
+        }
+    } else |_| {}
+
+    if (loadConfigArtifact(allocator, pool, tenant_id, .tier_rules, "tier_rules")) |maybe_json| {
+        if (maybe_json) |json| {
+            defer allocator.free(json);
+        }
+    } else |_| {}
+
+    if (loadConfigArtifact(allocator, pool, tenant_id, .budget_limits, "budget_limits")) |maybe_json| {
+        if (maybe_json) |json| {
+            defer allocator.free(json);
+            parseBudgetLimits(json, &config.budget_limits) catch {};
+        }
+    } else |_| {}
+
+    if (loadConfigArtifact(allocator, pool, tenant_id, .monitoring_config, "monitoring_config")) |maybe_json| {
+        if (maybe_json) |json| {
+            defer allocator.free(json);
+            parseMonitoringConfig(json, &config.monitoring) catch {};
+        }
+    } else |_| {}
+
+    return config;
+}
+
+fn parseU32FromJson(key: []const u8, json: []const u8) ?u32 {
+    const pattern_start = "\"";
+    const pattern_mid = "\":";
+    var search: []const u8 = json;
+    while (search.len > 0) {
+        const key_start = std.mem.indexOf(u8, search, key) orelse return null;
+        const remaining = search[key_start + key.len ..];
+        if (remaining.len == 0) return null;
+        if (remaining[0] != ':') {
+            search = remaining;
+            continue;
+        }
+        const val_start = remaining[1..];
+        var i: usize = 0;
+        while (i < val_start.len and val_start[i] == ' ') : (i += 1) {}
+        if (i >= val_start.len) return null;
+        const digits = val_start[i..];
+        var end: usize = 0;
+        while (end < digits.len and std.ascii.isDigit(digits[end])) : (end += 1) {}
+        if (end == 0) return null;
+        return std.fmt.parseUnsigned(u32, digits[0..end], 10) catch null;
+    }
+    return null;
+}
+
+fn parseF32FromJson(key: []const u8, json: []const u8) ?f32 {
+    const key_pat = std.fmt.allocPrint(std.heap.page_allocator, "\"{s}\":", .{key}) catch return null;
+    defer std.heap.page_allocator.free(key_pat);
+    const idx = std.mem.indexOf(u8, json, key_pat) orelse return null;
+    const after = json[idx + key_pat.len ..];
+    var i: usize = 0;
+    while (i < after.len and after[i] == ' ') : (i += 1) {}
+    if (i >= after.len) return null;
+    const start = after[i..];
+    var end: usize = 0;
+    while (end < start.len and (std.ascii.isDigit(start[end]) or start[end] == '.' or start[end] == '-' or start[end] == 'e' or start[end] == 'E')) : (end += 1) {}
+    if (end == 0) return null;
+    return std.fmt.parseFloat(f32, start[0..end]) catch null;
+}
+
+fn parseCapabilities(json: []const u8, out: *CapabilityConfig) error{}!void {
+    if (parseU32FromJson("tier1_node_timeout_ms", json)) |v| out.*.tier1_node_timeout_ms = v;
+    if (parseU32FromJson("tier2_node_timeout_ms", json)) |v| out.*.tier2_node_timeout_ms = v;
+    if (parseU32FromJson("tier3_node_timeout_ms", json)) |v| out.*.tier3_node_timeout_ms = v;
+    if (parseU32FromJson("user_task_timeout_ms", json)) |v| out.*.user_task_timeout_ms = v;
+    if (parseU32FromJson("service_task_timeout_ms", json)) |v| out.*.service_task_timeout_ms = v;
+}
+
+fn parseBudgetLimits(json: []const u8, out: *BudgetLimits) error{}!void {
+    if (parseU32FromJson("service_calls_per_minute", json)) |v| out.*.service_calls_per_minute = v;
+}
+
+fn parseMonitoringConfig(json: []const u8, out: *MonitoringConfig) error{}!void {
+    if (parseU32FromJson("alert_on_latency_p99_ms", json)) |v| out.*.alert_on_latency_p99_ms = v;
+    if (parseF32FromJson("alert_on_error_rate", json)) |v| out.*.alert_on_error_rate = v;
+    if (parseU32FromJson("alert_on_queue_depth", json)) |v| out.*.alert_on_queue_depth = v;
 }
 
 /// Load a specific configuration artifact by kind and name.
@@ -145,14 +226,31 @@ pub fn validateConfigArtifact(
     content_json: []const u8,
     config_kind: ConfigKind,
 ) ConfigError!void {
-    _ = content_json;
-    _ = config_kind;
+    if (content_json.len == 0) return ConfigError.ConfigValidationError;
+    if (content_json[0] != '{') return ConfigError.ConfigValidationError;
 
-    // TODO: Implement schema validation for each config kind
-    // - capabilities: must have tier1_node_timeout_ms, etc.
-    // - tier_rules: must have lr_model_selector and rules array
-    // - budget_limits: must have llm_tokens_per_day, etc.
-    // - monitoring_config: must have alert_on_latency_p99_ms, etc.
+    switch (config_kind) {
+        .capabilities => {
+            if (!std.mem.containsAtLeast(u8, content_json, 1, "tier1_node_timeout_ms"))
+                return ConfigError.ConfigValidationError;
+        },
+        .tier_rules => {
+            if (!std.mem.containsAtLeast(u8, content_json, 1, "lr_model_selector"))
+                return ConfigError.ConfigValidationError;
+        },
+        .budget_limits => {
+            if (!std.mem.containsAtLeast(u8, content_json, 1, "llm_tokens_per_day"))
+                return ConfigError.ConfigValidationError;
+        },
+        .monitoring_config => {
+            if (!std.mem.containsAtLeast(u8, content_json, 1, "alert_on_latency_p99_ms"))
+                return ConfigError.ConfigValidationError;
+        },
+        .oidc_config => {
+            if (!std.mem.containsAtLeast(u8, content_json, 1, "providers"))
+                return ConfigError.ConfigValidationError;
+        },
+    }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
