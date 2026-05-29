@@ -56,9 +56,13 @@ interface ProcessCanvasProps {
   /** Ref filled by ProcessCanvas with current nodes/edges JSON for serialization */
   canvasStateRef: React.MutableRefObject<{ nodesJSON: string; edgesJSON: string } | null>
   /** Called when selected node changes */
-  onSelectedNodeChange: (id: string | null) => void
+  onSelectedNodeChange: (id: string | null, nodeData?: CanvasNodeData) => void
   /** Called when selected edge changes */
   onSelectedEdgeChange: (id: string | null) => void
+  /** External add-node trigger: incrementing counter + nodeType to add via palette double-click */
+  paletteAddTrigger?: { counter: number; nodeType: string }
+  /** External node update trigger: from PropertyPanel */
+  nodeUpdateTrigger?: { nodeId: string; data: Partial<CanvasNodeData>; counter: number } | null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -71,6 +75,8 @@ export default function ProcessCanvas({
   canvasStateRef,
   onSelectedNodeChange,
   onSelectedEdgeChange,
+  paletteAddTrigger,
+  nodeUpdateTrigger,
 }: ProcessCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
@@ -150,6 +156,46 @@ export default function ProcessCanvas({
     setConditionDialog(null)
   }, [])
 
+  // ── Handle external add-node trigger from palette double-click ────────────
+
+  const prevCounterRef = useRef(0)
+  const prevUpdateCounterRef = useRef(0)
+
+  // Handle node data updates from PropertyPanel
+  useEffect(() => {
+    if (!nodeUpdateTrigger || nodeUpdateTrigger.counter === prevUpdateCounterRef.current) return
+    prevUpdateCounterRef.current = nodeUpdateTrigger.counter
+    if (isReadOnly) return
+
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === nodeUpdateTrigger.nodeId
+          ? { ...n, data: { ...n.data, ...nodeUpdateTrigger.data, name: nodeUpdateTrigger.data.name ?? n.data.name } }
+          : n,
+      ),
+    )
+  }, [nodeUpdateTrigger, isReadOnly, setNodes])
+  useEffect(() => {
+    if (!paletteAddTrigger || paletteAddTrigger.counter === prevCounterRef.current) return
+    prevCounterRef.current = paletteAddTrigger.counter
+    if (isReadOnly) return
+
+    const nodeType = paletteAddTrigger.nodeType as NodeType
+    const position = { x: 100 + Math.random() * 400, y: 100 + Math.random() * 300 }
+    const newNode: Node<CanvasNodeData> = {
+      id: `node-${Date.now()}`,
+      type: nodeType.toLowerCase(),
+      position,
+      data: {
+        nodeType,
+        name: '',
+        attributes: {},
+      },
+    }
+    setNodes((nds) => [...nds, newNode])
+    onDirtyChange(true)
+  }, [paletteAddTrigger, isReadOnly, setNodes, onDirtyChange])
+
   // ── Drag-and-drop from palette ─────────────────────────────────────────────
 
   const onDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
@@ -190,8 +236,8 @@ export default function ProcessCanvas({
   // ── Node/edge selection ─────────────────────────────────────────────────────
 
   const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node) => {
-      onSelectedNodeChange(node.id)
+    (_: React.MouseEvent, node: Node<CanvasNodeData>) => {
+      onSelectedNodeChange(node.id, node.data)
       onSelectedEdgeChange(null)
     },
     [onSelectedNodeChange, onSelectedEdgeChange],

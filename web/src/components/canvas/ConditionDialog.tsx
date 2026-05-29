@@ -49,6 +49,7 @@ export default function ConditionDialog({
 
   return (
     <div
+      data-testid="condition-dialog"
       style={{
         position: 'fixed',
         inset: 0,
@@ -106,6 +107,7 @@ export default function ConditionDialog({
             CEL Expression
           </label>
           <textarea
+            data-testid="condition-cel-input"
             value={celExpression}
             onChange={(e) => {
               setCelExpression(e.target.value)
@@ -141,6 +143,7 @@ export default function ConditionDialog({
             }}
           >
             <input
+              data-testid="condition-default-checkbox"
               type="checkbox"
               checked={isDefault}
               onChange={(e) => {
@@ -156,6 +159,7 @@ export default function ConditionDialog({
         {/* Buttons */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <button
+            data-testid="condition-cancel"
             onClick={onCancel}
             style={{
               padding: '6px 16px',
@@ -170,6 +174,7 @@ export default function ConditionDialog({
             Cancel
           </button>
           <button
+            data-testid="condition-confirm"
             onClick={handleConfirm}
             disabled={!isValid}
             style={{

@@ -3,6 +3,7 @@ import type { CanvasNodeData } from '@/utils/canvas/graphToFlow'
 
 interface PropertyPanelProps {
   selectedNodeId: string | null
+  selectedNodeData?: CanvasNodeData
   selectedEdgeId: string | null
   onUpdateNode: (nodeId: string, data: Partial<CanvasNodeData>) => void
   onDeleteEdge: (edgeId: string) => void
@@ -14,6 +15,7 @@ interface PropertyPanelProps {
 
 export default function PropertyPanel({
   selectedNodeId,
+  selectedNodeData,
   selectedEdgeId,
   onUpdateNode,
   onDeleteEdge,
@@ -22,6 +24,11 @@ export default function PropertyPanel({
   nodeNames,
 }: PropertyPanelProps) {
   const [localName, setLocalName] = useState('')
+
+  // Sync localName when selected node changes
+  useEffect(() => {
+    setLocalName(selectedNodeData?.name ?? '')
+  }, [selectedNodeId, selectedNodeData?.name])
 
   const handleKeyDown = useCallback(
     (e: globalThis.KeyboardEvent) => {
@@ -49,7 +56,7 @@ export default function PropertyPanel({
   }
 
   return (
-    <div style={panelStyle}>
+    <div data-testid="property-panel" style={panelStyle}>
       {/* Header */}
       <div
         style={{
@@ -93,6 +100,7 @@ export default function PropertyPanel({
         {selectedNodeId && (
           <NodePropertyContent
             nodeId={selectedNodeId}
+            nodeData={selectedNodeData}
             localName={localName}
             onNameChange={setLocalName}
             onUpdate={onUpdateNode}
@@ -108,6 +116,7 @@ export default function PropertyPanel({
 
 interface NodePropertyContentProps {
   nodeId: string
+  nodeData?: CanvasNodeData
   localName: string
   onNameChange: (name: string) => void
   onUpdate: (nodeId: string, data: Partial<CanvasNodeData>) => void
@@ -116,11 +125,100 @@ interface NodePropertyContentProps {
 
 function NodePropertyContent({
   nodeId,
+  nodeData,
   localName,
   onNameChange,
   onUpdate,
   isReadOnly,
 }: NodePropertyContentProps) {
+  const nodeType = nodeData?.nodeType
+
+  function renderTypeSpecificFields() {
+    switch (nodeType) {
+      case 'HUMAN_TASK':
+        return (
+          <>
+            <Field label="Assignee Type">
+              <select
+                data-testid="prop-assignee-type"
+                disabled={isReadOnly}
+                style={inputStyle(isReadOnly)}
+              >
+                <option value="user">User</option>
+                <option value="group">Group</option>
+                <option value="role">Role</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </Field>
+            <Field label="Assignee Ref">
+              <input
+                data-testid="prop-assignee-ref"
+                disabled={isReadOnly}
+                placeholder="Assignee reference"
+                style={inputStyle(isReadOnly)}
+              />
+            </Field>
+            <Field label="Form Schema">
+              <textarea
+                data-testid="prop-form-schema"
+                disabled={isReadOnly}
+                placeholder="JSON Schema"
+                rows={4}
+                style={inputStyle(isReadOnly)}
+              />
+            </Field>
+          </>
+        )
+      case 'SERVICE_TASK':
+        return (
+          <>
+            <Field label="Service Type">
+              <input
+                data-testid="prop-service-type"
+                disabled={isReadOnly}
+                placeholder="e.g. http, lambda"
+                style={inputStyle(isReadOnly)}
+              />
+            </Field>
+            <Field label="Service Config">
+              <input
+                data-testid="prop-service-config"
+                disabled={isReadOnly}
+                placeholder="JSON config"
+                style={inputStyle(isReadOnly)}
+              />
+            </Field>
+          </>
+        )
+      case 'TIMER':
+        return (
+          <>
+            <Field label="Timer Type">
+              <select
+                data-testid="prop-timer-type"
+                disabled={isReadOnly}
+                style={inputStyle(isReadOnly)}
+              >
+                <option value="duration">Duration</option>
+                <option value="cron">Cron</option>
+                <option value="date">Date</option>
+              </select>
+            </Field>
+            <Field label="Timer Duration">
+              <input
+                data-testid="prop-timer-duration"
+                disabled={isReadOnly}
+                placeholder="e.g. PT1H"
+                style={inputStyle(isReadOnly)}
+              />
+            </Field>
+          </>
+        )
+      default:
+        // START, END, EXCLUSIVE_GATEWAY, PARALLEL_GATEWAY, SUB_PROCESS — no type-specific fields
+        return null
+    }
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -134,12 +232,13 @@ function NodePropertyContent({
             letterSpacing: '0.5px',
           }}
         >
-          Node: {nodeId}
+          Node: {nodeId} ({nodeType ?? 'unknown'})
         </span>
       </div>
 
       <Field label="Name">
         <input
+          data-testid="prop-name-input"
           value={localName}
           onChange={(e) => {
             onNameChange(e.target.value)
@@ -150,6 +249,8 @@ function NodePropertyContent({
           style={inputStyle(isReadOnly)}
         />
       </Field>
+
+      {renderTypeSpecificFields()}
 
       <p style={{ fontSize: 'var(--text-sm, 0.875rem)', color: 'var(--text-secondary, #6c757d)' }}>
         Select a node on the canvas to edit its properties. Changes are saved locally until you click Save.
@@ -195,6 +296,7 @@ function EdgePropertyContent({
       {!isReadOnly && (
         <div style={{ marginTop: 8 }}>
           <button
+            data-testid="edge-delete-btn"
             onClick={() => {
               if (window.confirm('Delete this edge?')) onDelete(edgeId)
             }}

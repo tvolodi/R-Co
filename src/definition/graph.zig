@@ -50,7 +50,7 @@ pub const GraphNode = struct {
     id: []const u8,
     node_type: NodeType,
     /// Display label — optional.
-    label: ?[]const u8,
+    label: ?[]const u8 = null,
     /// JSON object string of type-specific attributes (PD-05). Null for node
     /// types with no required attributes (START, END, gateways).
     attributes: ?[]const u8 = null,

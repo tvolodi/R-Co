@@ -22,9 +22,10 @@ const CATEGORIES = ['Events', 'Tasks', 'Gateways'] as const
 
 interface NodePaletteProps {
   isReadOnly: boolean
+  onAddNode?: (nodeType: NodeType) => void
 }
 
-export default function NodePalette({ isReadOnly }: NodePaletteProps) {
+export default function NodePalette({ isReadOnly, onAddNode }: NodePaletteProps) {
   const onDragStart = useCallback(
     (e: DragEvent<HTMLDivElement>, nodeType: NodeType) => {
       if (isReadOnly) return
@@ -38,6 +39,7 @@ export default function NodePalette({ isReadOnly }: NodePaletteProps) {
 
   return (
     <div
+      data-testid="node-palette"
       className="node-palette"
       style={{
         width: 200,
@@ -82,8 +84,10 @@ export default function NodePalette({ isReadOnly }: NodePaletteProps) {
               {items.map((item) => (
                 <div
                   key={item.type}
+                  data-testid={`palette-item-${item.type}`}
                   draggable={!isReadOnly}
                   onDragStart={(e) => onDragStart(e, item.type)}
+                  onDoubleClick={() => onAddNode?.(item.type)}
                   style={{
                     padding: '8px 16px',
                     cursor: isReadOnly ? 'default' : 'grab',
