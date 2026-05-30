@@ -142,6 +142,18 @@ Use the exact string printed by the command. Then update the handoff JSON file:
 
 > ⛔ Do NOT set `started_at` — ORCH stamps it. Do NOT write a timestamp from memory.
 
+## Output file format rules
+
+**YAML is required for all agent-produced output artefacts.**
+
+| Artefact type | Required format |
+|---|---|
+| Test run reports (`tests/reports/`) | **`.yaml`** |
+| Requirement status (`docs/status/requirement_status.yaml`) | **`.yaml`** |
+| Handoff files | `.json` (exception — machine-read by ORCH) |
+
+**Scratch rule:** One-off scripts, debug dumps, `.tmp`/`.exe`/`.pdb` files → `scratch/` (git-ignored). Never place them in the project root or any tracked directory.
+
 ## Rules
 
 - **Never** string-interpolate user data into SQL

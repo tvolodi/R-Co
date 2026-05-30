@@ -68,7 +68,7 @@ Never report something as working without verifying it yourself. Run the build, 
 
 ### ⛔ File Placement Rules
 
-Agent-created files MUST go in the correct directory. Never create working files in the project root.
+Agent-created files MUST go in the correct directory. **Never create working files in the project root.**
 
 | File type | Directory |
 |---|---|
@@ -81,6 +81,26 @@ Agent-created files MUST go in the correct directory. Never create working files
 | Test run reports | `tests/reports/` |
 | Requirement status | `docs/status/` |
 | Release decisions | `docs/status/` |
+| Scratch scripts, one-off test files, temp output | `scratch/` (git-ignored) |
+
+**Scratch rule:** Any file that is not a permanent project artefact — one-off Python scripts, debug `.txt` dumps, `.tmp` files, intermediate `.exe`/`.pdb` build outputs — goes in `scratch/`. Never place these in the project root, `src/`, `tests/`, or any other tracked directory. The `scratch/` directory is git-ignored; nothing in it is committed.
+
+### ⛔ Output File Format Rules
+
+**YAML is the required format for all agent-produced output artefacts.** JSON is only used for handoff files (which agents read/write as structured data via Python/shell). Everything else must be YAML.
+
+| Artefact type | Required format |
+|---|---|
+| Test run reports (`tests/reports/`) | `.yaml` |
+| Requirement status (`docs/status/requirement_status.yaml`) | `.yaml` |
+| Release decisions (`docs/status/`) | `.yaml` |
+| Inner reports (`docs/issue-reports/`) | `.yaml` |
+| Retrospective files (`docs/metrics/retrospectives/`) | `.yaml` |
+| Estimation files (`handoffs/<run-id>/estimation.yaml`) | `.yaml` |
+| Handoff files (`handoffs/<run-id>/step-*.json`) | `.json` (exception — machine-read by ORCH) |
+| Registry (`handoffs/registry.json`) | `.json` (exception — machine-read by ORCH) |
+
+**Forbidden:** Creating `.json` output artefacts where `.yaml` is required above. If a function definition says `.json` for a report or status file, treat that as outdated — write `.yaml`.
 
 ---
 
@@ -326,9 +346,9 @@ print("ESCALATED — human review required. See handoffs/escalations.json.")
 
 **Stage gate check** before launching WF-02 for a new stage:
 ```python
-import json
-with open("docs/status/requirement_status.json") as f:
-    status = json.load(f)
+import yaml
+with open("docs/status/requirement_status.yaml") as f:
+    status = yaml.safe_load(f)
 must_ids = []  # fill from the requirements doc for the stage
 blocking = [f"{r}: {status['requirements'].get(r, {}).get('status', 'MISSING')}"
             for r in must_ids
@@ -794,7 +814,7 @@ Also read:
 cat docs/guides/test_developer_guide.md
 ```
 
-Find your handoff, then run the test commands specified in `task.functions_to_call`. **First run `zig build bench 2>&1 | head -5`** — if bench env is broken, STOP and return FAIL with severity BLOCKER. Write results to `tests/reports/` per the test guide §8 format. Complete your handoff with a full issue list and severity classification.
+Find your handoff, then run the test commands specified in `task.functions_to_call`. **First run `zig build bench 2>&1 | head -5`** — if bench env is broken, STOP and return FAIL with severity BLOCKER. Write results to `tests/reports/report-<date>-<run_id>.yaml` per the test guide §9 format. Complete your handoff with a full issue list and severity classification.
 
 ---
 
@@ -907,7 +927,7 @@ Run NFR benchmarks and perform the release decision procedure from WF-04 Steps 6
 AGENT_ID: DOC-UPDATER
 ```
 
-Find your handoff. Update `CHANGELOG.md` and requirement status in `docs/status/requirement_status.json` per `task.description`. Use `fn:update-changelog` and `fn:update-requirement-status` as described in `docs/agents/FUNCTIONS.md`.
+Find your handoff. Update `CHANGELOG.md` and requirement status in `docs/status/requirement_status.yaml` per `task.description`. Use `fn:update-changelog` and `fn:update-requirement-status` as described in `docs/agents/FUNCTIONS.md`.
 
 ### Retrospective (WF-02 and WF-04 runs only)
 
@@ -919,12 +939,12 @@ has_estimation = os.path.exists(f"handoffs/{run_id}/estimation.json")
 ```
 
 If `has_estimation` is `True`, run the full retrospective procedure defined in `docs/agents/metrics.md §6`. In summary:
-1. Read `handoffs/<run_id>/estimation.json`
+1. Read `handoffs/<run_id>/estimation.json` (JSON — handoff-family file, exception to YAML rule)
 2. Compute actual work time per step from `started_at` / `completed_at` fields in each step handoff
 3. Compare estimated vs actual, compute `variance_pct` per step and overall
 4. If `|variance_pct| > 25%` for a step across ≥2 consecutive runs at the same difficulty, adjust `docs/metrics/estimation_rules.json`
-5. Write `docs/metrics/retrospectives/<run_id>.json`
-6. Add `docs/metrics/retrospectives/<run_id>.json` to `artifacts_out` in this handoff's result
+5. Write `docs/metrics/retrospectives/<run_id>.yaml`
+6. Add `docs/metrics/retrospectives/<run_id>.yaml` to `artifacts_out` in this handoff's result
 
 ### GitHub Branch Management (MANDATORY Step Final Requirement)
 

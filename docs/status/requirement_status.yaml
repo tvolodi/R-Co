@@ -1,0 +1,2725 @@
+schema_version: '1.0'
+last_updated: '2026-05-30T02:10:57Z'
+requirements:
+  ES-01:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Append event
+    implemented_in:
+    - src/event_store/store.zig
+    test_spec: tests/specs/ES-01-08.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  ES-02:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Ordered read
+    implemented_in:
+    - src/event_store/store.zig
+    test_spec: tests/specs/ES-01-08.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  ES-03:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Event idempotency
+    implemented_in:
+    - src/event_store/store.zig
+    test_spec: tests/specs/ES-01-08.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  ES-04:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Global event stream
+    implemented_in:
+    - src/event_store/store.zig
+    test_spec: tests/specs/ES-01-08.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  ES-05:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Event type registry
+    implemented_in:
+    - src/event_store/registry.zig
+    test_spec: tests/specs/ES-01-08.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  ES-06:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Point-in-time query
+    implemented_in:
+    - src/event_store/store.zig
+    test_spec: tests/specs/ES-01-08.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  ES-07:
+    status: RELEASED
+    stage: 1
+    priority: SHOULD
+    title: Retention policy
+    implemented_in:
+    - src/event_store/store.zig
+    test_spec: tests/specs/ES-01-08.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  ES-08:
+    status: RELEASED
+    stage: 1
+    priority: SHOULD
+    title: Event metadata
+    implemented_in:
+    - src/event_store/store.zig
+    test_spec: tests/specs/ES-01-08.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  DB-01:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Schema initialisation
+    implemented_in:
+    - src/db/migrations.zig
+    test_spec: tests/specs/DB-01-04.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  DB-02:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Connection pooling
+    implemented_in:
+    - src/db/pool.zig
+    test_spec: tests/specs/DB-01-04.md
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  DB-03:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Transactional integrity
+    implemented_in:
+    - src/db/pool.zig
+    - src/db/migrations.zig
+    test_spec: tests/specs/DB-01-04.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  DB-04:
+    status: RELEASED
+    stage: 1
+    priority: MUST
+    title: Health check query
+    implemented_in:
+    - src/db/pool.zig
+    test_spec: tests/specs/DB-01-04.md
+    test_run: WF02-stage1-integration-20260520-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-stage1-release-20260521
+  PD-01:
+    status: RELEASED
+    stage: 2
+    priority: MUST
+    title: Create definition
+    implemented_in:
+    - src/definition/graph.zig
+    - src/definition/store.zig
+    test_spec: tests/specs/PD-01-02.md
+    test_run: WF02-pd01-20260521-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-pd01-20260521
+    last_updated: '2026-05-21T23:05:00Z'
+  PD-02:
+    status: RELEASED
+    stage: 2
+    priority: MUST
+    title: Graph validation
+    implemented_in:
+    - src/definition/graph.zig
+    - src/definition/store.zig
+    test_spec: tests/specs/PD-01-02.md
+    test_run: WF02-pd01-20260521-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-pd01-20260521
+    last_updated: '2026-05-21T23:05:00Z'
+  PD-03:
+    status: RELEASED
+    stage: 2
+    priority: MUST
+    title: Version management
+    implemented_in:
+    - src/definition/store.zig
+    test_spec: tests/specs/PD-03.md
+    test_run: WF02-pd03-20260521-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-pd03-20260521
+    last_updated: '2026-05-21T23:50:00Z'
+  PD-04:
+    status: RELEASED
+    stage: 2
+    priority: MUST
+    title: Definition lifecycle
+    implemented_in:
+    - src/definition/store.zig
+    - src/api/routes/definitions.zig
+    test_spec: tests/specs/PD-04.md
+    test_run: WF02-pd04-20260521-run-01
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22'
+    release_run: WF02-pd04-20260521
+    last_updated: '2026-05-22T00:15:00Z'
+  PD-05:
+    status: RELEASED
+    stage: 2
+    priority: MUST
+    title: Node types
+    implemented_in:
+    - src/definition/graph.zig
+    test_spec: tests/specs/PD-05.md
+    test_run: WF02-pd05-20260521-run-01
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-pd05-20260521
+    last_updated: '2026-05-21T04:05:00Z'
+  PD-06:
+    status: RELEASED
+    stage: 2
+    priority: MUST
+    title: Edge conditions
+    implemented_in:
+    - src/definition/graph.zig
+    test_spec: tests/specs/PD-06.md
+    test_run: WF02-pd06-20260521-run-01
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21T23:59:00Z'
+    release_run: WF02-pd06-20260521
+    last_updated: '2026-05-21T23:59:00Z'
+  PD-07:
+    status: RELEASED
+    stage: 2
+    priority: MUST
+    title: Definition retrieval
+    implemented_in:
+    - src/definition/store.zig
+    - src/api/routes/definitions.zig
+    - migrations/014_definition_stage.sql
+    test_spec: tests/specs/PD-07.md
+    test_run: WF02-pd07-20260521-run-01
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21T07:00:00Z'
+    release_run: WF02-pd07-20260521
+    last_updated: '2026-05-21T07:00:00Z'
+  PD-08:
+    status: RELEASED
+    stage: 2
+    priority: MUST
+    title: Definition snapshot
+    implemented_in:
+    - src/definition/snapshot.zig
+    test_spec: tests/specs/PD-08.md
+    test_run: WF02-pd08-20260521-run-01
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-pd08-20260521
+    last_updated: '2026-05-21T08:05:00Z'
+  PD-09:
+    status: RELEASED
+    stage: 2
+    priority: SHOULD
+    title: Definition import/export
+    implemented_in:
+    - src/definition/export_import.zig
+    - src/api/routes/definitions.zig
+    test_spec: tests/specs/PD-09.md
+    test_run: WF02-pd09-20260521-run-01
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-pd09-20260521
+    last_updated: '2026-05-21T09:18:04Z'
+  PD-10:
+    status: RELEASED
+    stage: 2
+    priority: COULD
+    title: Definition search
+    implemented_in:
+    - src/definition/store.zig
+    - src/api/routes/definitions.zig
+    test_spec: tests/specs/PD-10.md
+    test_run: WF02-pd10-20260521-run-01.md
+    tested_at: '2026-05-21'
+    released_at: '2026-05-21'
+    release_run: WF02-pd10-20260521
+    last_updated: '2026-05-21T18:28:00Z'
+  EE-01:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Start instance
+    released_at: '2026-05-22'
+    release_run: WF02-ee01-20260522
+  EE-02:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Pure transition function
+  EE-03:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Task activation
+    released_at: '2026-05-22'
+    release_run: WF02-ee03-20260522
+  EE-04:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Complete task
+    released_at: '2026-05-22T02:08:26Z'
+    release_run: WF02-ee04-20260522
+    implemented_in:
+    - src/tasks/store.zig
+    - src/engine/instance.zig
+    - src/api/routes/tasks.zig
+    test_spec: tests/specs/EE-04.md
+    test_run: WF02-ee04-20260522-run-01.md
+    tested_at: '2026-05-22'
+  EE-05:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Exclusive gateway
+    released_at: '2026-05-22T05:58:50Z'
+    release_run: WF02-ee05-20260522
+    implemented_in:
+    - src/engine/transition.zig
+    - vendor/cel/cel.zig
+    test_spec: tests/specs/EE-05.md
+    test_run: WF02-ee05-20260522-run-01.md
+    tested_at: '2026-05-22'
+  EE-06:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Parallel gateway (split)
+    implemented_in:
+    - src/engine/transition.zig
+    test_spec: tests/specs/EE-06.md
+    test_run: WF02-ee06-20260522-test-run.json
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22T08:37:11Z'
+    release_run: WF02-ee06-20260522
+  EE-07:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Parallel gateway (join)
+    implemented_in:
+    - src/engine/transition.zig
+    test_spec: tests/specs/EE-07.md
+    test_run: WF02-ee07-20260522-test-run.json
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22T09:29:30Z'
+    release_run: WF02-ee07-20260522
+    last_updated: '2026-05-22T09:29:30Z'
+  EE-08:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Instance cancellation
+    implemented_in:
+    - src/engine/instance.zig
+    test_spec: tests/specs/EE-08.md
+    test_run: tests/reports/WF02-ee08-20260522-test-report.json
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22T10:31:41Z'
+    release_run: WF02-ee08-20260522
+  EE-09:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Variable scoping
+    released_at: '2026-05-22T11:44:54Z'
+    release_run: WF02-ee09-20260522
+  EE-10:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Execution error handling
+    implemented_in:
+    - src/engine/instance.zig
+    test_spec: tests/specs/EE-10.md
+    test_run: tests/reports/EE-10-test-run.json
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22T12:30:36Z'
+    release_run: WF02-ee10-20260522
+    last_updated: '2026-05-22T12:30:36Z'
+  EE-11:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: State reconstruction
+    released_at: '2026-05-22T13:24:54Z'
+    release_run: WF02-ee11-20260522
+    last_updated: '2026-05-22T13:24:54Z'
+  EE-12:
+    status: RELEASED
+    stage: 3
+    priority: MUST
+    title: Concurrent instance safety
+    implemented_in:
+    - src/engine/instance.zig
+    - src/api/routes/tasks.zig
+    test_spec: tests/specs/EE-12.md
+    test_run: EE-12-run-01.md
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22'
+    release_run: WF02-ee12-20260522
+  API-01:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: REST conventions
+    implemented_in:
+    - src/api/errors.zig
+    - src/api/middleware/content_type.zig
+    - src/api/response.zig
+    test_spec: tests/specs/API-01.md
+    test_run: tests/reports/WF02-api01-20260522-test-report.json
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22T15:29:24Z'
+    release_run: WF02-api01-20260522
+  API-02:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: Process definition CRUD
+    implemented_in:
+    - src/api/routes/definitions.zig
+    test_spec: tests/specs/API-02.md
+    test_run: tests/reports/WF02-api02-20260522-test-report.json
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22T17:05:57Z'
+    release_run: WF02-api02-20260522
+    last_updated: '2026-05-22T17:09:05Z'
+  API-03:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: Instance management
+    implemented_in:
+    - src/api/routes/instances.zig
+    - src/instance/store.zig
+    test_spec: tests/specs/API-03.md
+    test_run: tests/reports/WF02-api03-20260522-test-report.json
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22T17:49:00Z'
+    release_run: WF02-api03-20260522
+    last_updated: '2026-05-22T17:49:00Z'
+  API-04:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: Task operations
+    released_at: '2026-05-22T20:54:25Z'
+    release_run: WF02-api04-20260523
+    implemented_in:
+    - src/api/routes/tasks.zig
+  API-05:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: History endpoint
+    implemented_in:
+    - src/api/routes/instances.zig
+    - src/event_store/store.zig
+    test_spec: tests/specs/API-05.md
+    test_run: tests/reports/API-05-test-report.md
+    tested_at: '2026-05-22'
+    released_at: '2026-05-22T21:43:26Z'
+    release_run: WF02-api05-20260523
+  API-06:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: Pagination
+    implemented_in:
+    - src/api/pagination.zig
+    test_spec: tests/specs/API-06.md
+    test_run: tests/reports/API-06-test-report.md
+    tested_at: '2026-05-23'
+    released_at: '2026-05-22T22:19:57Z'
+    release_run: WF02-api06-20260523
+    last_updated: '2026-05-22T22:24:55Z'
+  API-07:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: Input validation
+    implemented_in:
+    - src/api/validation.zig
+    - src/api/middleware/validate.zig
+    test_spec: tests/specs/API-07.md
+    test_run: tests/reports/API-07-test-report.md
+    released_at: '2026-05-23'
+    release_run: WF02-api07-20260523
+    last_updated: '2026-05-23T04:52:25Z'
+  API-08:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: Bearer token auth
+    implemented_in:
+    - src/api/middleware/auth.zig
+    - src/api/errors.zig
+    test_spec: tests/specs/API-08.md
+    test_run: tests/reports/API-08-test-report.md
+    released_at: '2026-05-23'
+    release_run: WF02-api08-20260523
+    last_updated: '2026-05-23T05:55:36Z'
+  API-09:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: Request tracing
+    implemented_in:
+    - src/api/middleware/trace.zig
+    - src/api/trace_context.zig
+    - src/obs/logger.zig
+    - src/api/errors.zig
+    test_spec: tests/specs/API-09.md
+    test_run: tests/reports/API-09-test-report.md
+    released_at: '2026-05-23'
+    release_run: WF02-api09-20260523
+    last_updated: '2026-05-23T11:35:56Z'
+  API-10:
+    status: RELEASED
+    stage: 4
+    priority: SHOULD
+    title: Rate limiting
+    implemented_in:
+    - src/api/middleware/rate_limit.zig
+    - src/api/middleware/auth.zig
+    - src/api/errors.zig
+    - src/main.zig
+    - src/api/api_mod.zig
+    test_spec: tests/specs/API-10.md
+    test_run: tests/reports/API-10-test-report.md
+    tested_at: '2026-05-23'
+    released_at: '2026-05-23T12:21:18Z'
+    release_run: WF02-api10-20260523
+    last_updated: '2026-05-23T12:21:18Z'
+  API-11:
+    status: RELEASED
+    stage: 4
+    priority: SHOULD
+    title: OpenAPI specification
+    implemented_in:
+    - src/api/openapi/mod.zig
+    - src/api/openapi/model.zig
+    - src/api/openapi/path_registry.zig
+    - src/api/openapi/schema_registry.zig
+    - src/api/openapi/version_source.zig
+    - src/api/openapi/builder.zig
+    - src/api/openapi/serialize.zig
+    - src/api/routes/openapi.zig
+    - src/api/api_mod.zig
+    - src/main.zig
+    - src/tools/openapi_gen.zig
+    - build.zig
+    test_spec: tests/specs/API-11.md
+    test_run: tests/reports/API-11-test-report.md
+    released_at: '2026-05-23T13:54:35Z'
+    release_run: WF02-api11-20260523
+    last_updated: '2026-05-23T13:54:35Z'
+  API-12:
+    status: RELEASED
+    stage: 4
+    priority: MUST
+    title: Health endpoints
+    implemented_in:
+    - src/api/routes/health.zig
+    - src/api/health/readiness.zig
+    - src/api/health/subsystems.zig
+    - src/api/openapi/builder.zig
+    - src/api/routes/openapi.zig
+    - src/main.zig
+    test_spec: tests/specs/API-12.md
+    test_run: tests/reports/API-12-test-report.md
+    released_at: '2026-05-23T14:31:26Z'
+    release_run: WF02-api12-20260523
+    last_updated: '2026-05-23T14:31:26Z'
+  SCH-01:
+    status: RELEASED
+    stage: 5
+    priority: MUST
+    title: Durable timer creation
+    implemented_in:
+    - src/scheduler/store.zig
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - migrations/015_timers_status_constraint.sql
+    - tests/bench/bench.zig
+    test_spec: tests/specs/SCH-01.md
+    test_run: tests/reports/WF02-sch01-20260523-test-report.json
+    tested_at: '2026-05-23'
+    released_at: '2026-05-23T16:55:50Z'
+    release_run: WF02-sch01-20260523
+    last_updated: '2026-05-23T16:55:50Z'
+  SCH-02:
+    status: RELEASED
+    stage: 5
+    priority: MUST
+    title: Timer polling
+    implemented_in:
+    - src/design/scheduler.md
+    - src/scheduler/scheduler.zig
+    test_spec: tests/specs/SCH-02.md
+    test_run: tests/reports/WF03-sch02-fix-20260523-run-01.md
+    tested_at: '2026-05-23'
+    released_at: '2026-05-23T18:07:01Z'
+    release_run: WF03-sch02-fix-20260523
+    last_updated: '2026-05-23T18:36:06Z'
+  SCH-03:
+    status: RELEASED
+    stage: 5
+    priority: MUST
+    title: Timer cancellation
+    implemented_in:
+    - src/engine/instance.zig
+    - tests/integration/sch02_timer_polling_test.zig
+    test_spec: tests/specs/SCH-03.md
+    test_run: tests/reports/WF02-sch03-20260523-run-01.md
+    tested_at: '2026-05-23'
+    released_at: '2026-05-23T18:58:11Z'
+    release_run: WF02-sch03-20260523
+    last_updated: '2026-05-23T19:00:42Z'
+  SCH-04:
+    status: RELEASED
+    stage: 5
+    priority: MUST
+    title: Escalation timer
+    implemented_in:
+    - src/scheduler/store.zig
+    - src/tasks/store.zig
+    - src/engine/instance.zig
+    - src/scheduler/scheduler.zig
+    - tests/integration/sch02_timer_polling_test.zig
+    test_spec: tests/specs/SCH-04.md
+    test_run: tests/reports/WF02-sch04-20260523-run-02.md
+    tested_at: '2026-05-23'
+    released_at: '2026-05-23T20:18:45Z'
+    release_run: WF02-sch04-20260523
+    last_updated: '2026-05-23T20:21:55Z'
+  SCH-05:
+    status: RELEASED
+    stage: 5
+    priority: MUST
+    title: Missed timer recovery
+    implemented_in:
+    - src/scheduler/scheduler.zig
+    test_spec: tests/reports/WF02-sch05-20260523-run-01.md
+    tested_at: '2026-05-23'
+    released_at: '2026-05-23T20:47:08Z'
+    release_run: WF02-sch05-20260523
+    last_updated: '2026-05-23T20:47:08Z'
+  SCH-06:
+    status: RELEASED
+    stage: 5
+    priority: SHOULD
+    title: Timer jitter
+    implemented_in:
+    - src/scheduler/scheduler.zig
+    test_spec: tests/specs/SCH-06.md
+    test_run: tests/reports/WF02-sch06-20260523-run-01.md
+    tested_at: '2026-05-23'
+    released_at: '2026-05-23T21:30:47Z'
+    release_run: WF02-sch06-20260523
+    last_updated: '2026-05-23T21:30:47Z'
+  SCH-07:
+    status: RELEASED
+    stage: 5
+    priority: SHOULD
+    title: Recurring timers
+    implemented_in:
+    - src/scheduler/recurrence.zig
+    - src/scheduler/scheduler.zig
+    - src/scheduler/store.zig
+    - src/engine/instance.zig
+    - migrations/016_timer_recurrence_fields.sql
+    test_spec: tests/specs/SCH-07.md
+    test_run: tests/reports/WF02-sch07-20260524-run-02.md
+    tested_at: '2026-05-24'
+    released_at: '2026-05-24T02:04:41Z'
+    release_run: WF02-sch07-20260524
+    last_updated: '2026-05-24T02:07:09Z'
+  IDN-01:
+    status: RELEASED
+    stage: 5
+    priority: MUST
+    title: User registry
+    implemented_in:
+    - src/identity/registry.zig
+    - src/identity/service.zig
+    - src/api/routes/identity.zig
+    - src/api/middleware/auth.zig
+    - src/main.zig
+    - migrations/017_identity_user_registry.sql
+    test_spec: tests/specs/IDN-01.md
+    test_run: tests/reports/report-2026-05-24T02-59-07Z-WF02-idn01-rework2.json
+    tested_at: '2026-05-24'
+    released_at: '2026-05-24T05:25:19Z'
+    release_run: WF02-idn01-20260524
+    last_updated: '2026-05-24T05:28:39Z'
+  IDN-02:
+    status: RELEASED
+    stage: 5
+    priority: MUST
+    title: Group management
+    implemented_in:
+    - src/identity/registry.zig
+    - src/identity/service.zig
+    - src/api/routes/identity.zig
+    - src/api/routes/tasks.zig
+    - migrations/018_identity_group_members.sql
+    test_spec: tests/specs/IDN-02.md
+    test_run: tests/reports/report-20260524T064224Z-WF02-idn02-20260524-rework1.json
+    tested_at: '2026-05-24'
+    released_at: '2026-05-24T06:46:41Z'
+    release_run: WF02-idn02-20260524
+    last_updated: '2026-05-24T06:49:45Z'
+  IDN-03:
+    status: RELEASED
+    stage: 5
+    priority: MUST
+    title: Role-based access
+    implemented_in:
+    - src/api/authorization.zig
+    - src/api/routes/tasks.zig
+    - src/tasks/store.zig
+    test_spec: tests/specs/IDN-03.md
+    test_run: tests/reports/report-2026-05-24-WF02-idn03-step04.json
+    tested_at: '2026-05-24'
+    released_at: '2026-05-24T07:34:50Z'
+    release_run: WF02-idn03-20260524
+    last_updated: '2026-05-24T07:37:51Z'
+  IDN-04:
+    status: RELEASED
+    stage: 5
+    priority: MUST
+    title: API token management
+    implemented_in:
+    - src/identity/service.zig
+    - src/api/routes/identity.zig
+    - src/api/middleware/auth.zig
+    - migrations/019_idn04_api_token_management.sql
+    test_spec: tests/specs/IDN-04.md
+    test_run: tests/reports/WF02-idn04-20260524-run-01.md
+    tested_at: '2026-05-24'
+    released_at: '2026-05-24T08:37:42Z'
+    release_run: WF02-idn04-20260524
+    last_updated: '2026-05-24T08:41:10Z'
+  OBS-01:
+    status: RELEASED
+    stage: 6
+    priority: MUST
+    title: Structured logging
+    implemented_in:
+    - src/obs/logger.zig
+    - src/config.zig
+    - src/main.zig
+    - src/api/routes/health.zig
+    - src/scheduler/scheduler.zig
+    test_spec: tests/specs/OBS-01.md
+    test_run: tests/reports/report-20260524T145355Z-WF02-obs01-20260524-rework1.json
+    tested_at: '2026-05-24'
+    released_at: '2026-05-24T15:07:10Z'
+    release_run: WF02-obs01-20260524
+    last_updated: '2026-05-24T15:10:09Z'
+  OBS-02:
+    status: RELEASED
+    stage: 6
+    priority: MUST
+    title: Prometheus metrics
+    implemented_in:
+    - src/obs/metrics.zig
+    - src/api/routes/metrics.zig
+    - src/db/pool.zig
+    - src/event_store/store.zig
+    - src/engine/instance.zig
+    test_spec: tests/specs/OBS-02.md
+    test_run: tests/reports/report-2026-05-24-WF02-obs02-step04c-rework2.json
+    tested_at: '2026-05-24'
+    released_at: '2026-05-24T18:57:28Z'
+    release_run: WF02-obs02-20260524
+    last_updated: '2026-05-24T19:00:30Z'
+  OBS-03:
+    status: RELEASED
+    stage: 6
+    priority: MUST
+    title: Audit log
+    test_spec: tests/specs/OBS-03.md
+    test_run: tests/reports/report-20260524T225404Z-WF02-obs03-step04d-rework3.json
+    tested_at: '2026-05-24'
+    released_at: '2026-05-24T22:56:58Z'
+    release_run: WF02-obs03-20260525
+    last_updated: '2026-05-24T23:01:03Z'
+  OBS-04:
+    status: RELEASED
+    stage: 6
+    priority: MUST
+    title: Instance timeline view
+    test_spec: tests/specs/OBS-04.md
+    test_run: tests/reports/report-20260525T034702Z-WF02-obs04-step04d-rework3.json
+    tested_at: '2026-05-25'
+    released_at: '2026-05-25T03:50:29Z'
+    release_run: WF02-obs04-20260525
+    last_updated: '2026-05-25T03:53:44Z'
+  OBS-05:
+    status: RELEASED
+    stage: 6
+    priority: MUST
+    title: Dead letter queue
+    test_spec: tests/specs/OBS-05.md
+    test_run: tests/reports/report-20260525-wf02-obs05-step-04-test-runner.json
+    tested_at: '2026-05-25'
+    released_at: '2026-05-25T17:06:29Z'
+    release_run: WF02-obs05-20260525
+    last_updated: '2026-05-25T17:10:51Z'
+  OBS-06:
+    status: RELEASED
+    stage: 6
+    priority: SHOULD
+    title: Alerting hooks
+    test_spec: tests/specs/OBS-06.md
+    test_run: tests/reports/report-20260525-wf02-obs06-step-04c-test-runner-rework2.json
+    tested_at: '2026-05-25'
+    released_at: '2026-05-25T07:24:54Z'
+    release_run: WF02-obs06-20260525
+    last_updated: '2026-05-25T07:29:10Z'
+  EXT-01:
+    status: RELEASED
+    stage: 6
+    priority: MUST
+    title: Service task node type
+    test_spec: tests/specs/EXT-01.md
+    test_run: tests/reports/report-20260525-wf02-ext01-step-04d-test-runner-rework3.json
+    tested_at: '2026-05-25'
+    released_at: '2026-05-25T10:19:51Z'
+    release_run: WF02-ext01-20260525
+    last_updated: '2026-05-25T10:22:34Z'
+  EXT-02:
+    status: RELEASED
+    stage: 6
+    priority: MUST
+    title: Webhook event dispatch
+    implemented_in:
+    - src/webhook/subscription_store.zig
+    - src/webhook/dispatcher.zig
+    - src/webhook/signing.zig
+    - src/api/routes/webhooks.zig
+    test_spec: tests/specs/EXT-02.md
+    test_run: tests/integration/ext02_webhook_dispatch_test.zig
+    release_decision: docs/status/release-stage6-ext02-20260528.json
+    released_at: '2026-05-28T05:42:12Z'
+    release_run: WF02-ext02-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  EXT-03:
+    status: RELEASED
+    stage: 6
+    priority: SHOULD
+    title: Plugin interface
+    test_spec: tests/specs/EXT-03.md
+    test_run: tests/reports/report-20260525T144146Z-WF02-ext03-20260525.json
+    tested_at: '2026-05-25'
+    released_at: '2026-05-25T14:45:21Z'
+    release_run: WF02-ext03-20260525
+    last_updated: '2026-05-25T14:48:52Z'
+  EXT-04:
+    status: RELEASED
+    stage: 6
+    priority: SHOULD
+    title: Variable transformer
+    test_spec: tests/specs/EXT-04.md
+    test_run: tests/reports/report-20260525T152809Z-WF02-ext04-20260525.json
+    tested_at: '2026-05-25'
+    released_at: '2026-05-25T15:31:00Z'
+    release_run: WF02-ext04-20260525
+    last_updated: '2026-05-25T15:35:22Z'
+  EXT-05:
+    status: RELEASED
+    stage: 6
+    priority: SHOULD
+    title: Sub-process support
+    test_spec: tests/specs/EXT-05.md
+    test_run: tests/reports/report-20260525T162125Z-WF02-ext05-20260525.json
+    tested_at: '2026-05-25'
+    released_at: '2026-05-25T16:24:12Z'
+    release_run: WF02-ext05-20260525
+    last_updated: '2026-05-25T16:26:54Z'
+  ADP-01:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Tenant Column on Event Store
+    test_spec: tests/specs/ADP-01.md
+    test_run: tests/reports/report-20260525T210953Z-WF02-adp01-20260526-step04b.json
+    tested_at: '2026-05-25'
+    released_at: '2026-05-25T21:14:14Z'
+    release_run: WF02-adp01-20260526
+    last_updated: '2026-05-25T21:18:01Z'
+  ADP-02:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Tenant column on definition, instance, and audit tables
+    implemented_in:
+    - migrations/028_adp02_tenant_scope_persistence.sql
+    - src/definition/store.zig
+    - src/definition/snapshot.zig
+    - src/definition/export_import.zig
+    - src/engine/instance.zig
+    - src/obs/audit.zig
+    - tests/integration/adp02_tenant_scope_test.zig
+    test_spec: tests/specs/ADP-02.md
+    test_run: tests/reports/report-20260525T215115Z-WF02-adp02-20260526-step04.json
+    tested_at: '2026-05-25'
+    released_at: '2026-05-25T21:53:34Z'
+    release_run: WF02-adp02-20260526
+    last_updated: '2026-05-25T21:56:25Z'
+  ADP-03:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Tenant context resolution on API
+    implementation_run: WF02-adp03-20260526
+    implementation_handoff: handoffs/WF02-adp03-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-03.md
+    test_run: tests/reports/report-20260526T022434Z-WF02-adp03-20260526-step04.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T02:27:06Z'
+    release_run: WF02-adp03-20260526
+    last_updated: '2026-05-26T02:30:19Z'
+  ADP-04:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Tenant binding for users
+    implementation_run: WF02-adp04-20260526
+    implementation_handoff: handoffs/WF02-adp04-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-04.md
+    test_run: tests/reports/report-20260526T032153Z-WF02-adp04-20260526-step-04b-rework1.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T03:26:11Z'
+    release_run: WF02-adp04-20260526
+    release_decision: docs/status/release-ADP-04-20260526.json
+    last_updated: '2026-05-26T03:30:03Z'
+  ADP-04a:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: External identity linkage for users
+    implementation_run: WF02-adp04a-20260526
+    implementation_handoff: handoffs/WF02-adp04a-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-04a.md
+    test_run: tests/reports/WF02-adp04a-20260526-step-04-test-runner.md
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T04:49:32Z'
+    release_run: WF02-adp04a-20260526
+    release_decision: docs/status/release-ADP-04a-20260526.json
+    last_updated: '2026-05-26T04:53:15Z'
+  ADP-04b:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Tenant realm binding for OIDC foundations
+    implementation_run: WF02-adp04b-20260526
+    implementation_handoff: handoffs/WF02-adp04b-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-04b.md
+    test_run: tests/reports/report-20260526T055349Z-WF02-adp04b-20260526-step04b-rework1.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T05:58:22Z'
+    release_run: WF02-adp04b-20260526
+    release_decision: docs/status/release-ADP-04b-20260526.json
+    last_updated: '2026-05-26T06:02:24Z'
+  ADP-05:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Artifact hash reference on instance
+    implementation_run: WF02-adp05-20260526
+    implementation_handoff: handoffs/WF02-adp05-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-05.md
+    test_run: tests/reports/report-20260526T070227Z-WF02-adp05-20260526-step04b.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T07:09:18Z'
+    release_run: WF02-adp05-20260526
+    release_decision: docs/status/release-ADP-05-20260526.json
+    last_updated: '2026-05-26T07:13:16Z'
+  ADP-06:
+    status: RELEASED
+    stage: 6.5
+    priority: SHOULD
+    title: Pipeline run correlation on audit and events
+    implementation_run: WF02-adp06-20260526
+    implementation_handoff: handoffs/WF02-adp06-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-06.md
+    test_run: tests/reports/report-20260526T085420Z-WF02-adp06-20260526-step04b.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T09:00:49Z'
+    release_run: WF02-adp06-20260526
+    release_decision: docs/status/release-ADP-06-20260526.json
+    last_updated: '2026-05-26T09:05:16Z'
+  ADP-07:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Agent role and reserved usernames
+    implementation_run: WF02-adp07-20260526
+    implementation_handoff: handoffs/WF02-adp07-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-07.md
+    test_run: tests/reports/report-20260526T103148Z-WF02-adp07-20260526-step04.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T10:36:37Z'
+    release_run: WF02-adp07-20260526
+    release_decision: docs/status/release-ADP-07-20260526.json
+    last_updated: '2026-05-26T10:40:16Z'
+  ADP-08:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Service task catalog reference
+    implementation_run: WF02-adp08-20260526
+    implementation_handoff: handoffs/WF02-adp08-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-08.md
+    test_run: tests/reports/report-20260526T114455Z-WF02-adp08-20260526-step04.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T11:50:35Z'
+    release_run: WF02-adp08-20260526
+    release_decision: docs/status/release-ADP-08-20260526.json
+    last_updated: '2026-05-26T11:54:24Z'
+  ADP-09:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Tamper-evident audit chain
+    implementation_run: WF02-adp09-20260526
+    implementation_handoff: handoffs/WF02-adp09-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-09.md
+    test_run: tests/reports/report-20260526T132149Z-WF02-adp09-20260526-step04b-rework1.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T13:31:17Z'
+    release_run: WF02-adp09-20260526
+    release_decision: docs/status/release-ADP-09-20260526.json
+    last_updated: '2026-05-26T13:38:17Z'
+  ADP-10:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Agent IO capture audit
+    implementation_run: WF02-adp10-20260526
+    implementation_handoff: handoffs/WF02-adp10-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-10.md
+    test_run: tests/reports/report-20260526T151827Z-WF02-adp10-20260526-step04.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T15:23:42Z'
+    release_run: WF02-adp10-20260526
+    release_decision: docs/status/release-ADP-10-20260526.json
+    last_updated: '2026-05-26T15:26:37Z'
+  ADP-11:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Replay-safe retention policy
+    implementation_run: WF02-adp11-20260526
+    implementation_handoff: handoffs/WF02-adp11-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-11.md
+    test_run: tests/reports/report-2026-05-26-wf02-adp11-step04.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T16:47:45Z'
+    release_run: WF02-adp11-20260526
+    release_decision: docs/status/release-ADP-11-20260526.json
+    last_updated: '2026-05-26T16:51:05Z'
+  ADP-12:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Default-tenant regression suite
+    implementation_run: WF02-adp12-20260526
+    implementation_handoff: handoffs/WF02-adp12-20260526/step-02-backend-dev.json
+    test_spec: tests/specs/ADP-12.md
+    test_run: tests/reports/report-20260526T183724Z-WF02-adp12-20260526-step04b-rework1.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T18:40:59Z'
+    release_run: WF02-adp12-20260526
+    release_decision: docs/status/release-ADP-12-20260526.json
+    last_updated: '2026-05-26T18:44:37Z'
+  OIDC-01:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Pluggable provider interface
+    implementation_run: WF02-oidc01-20260527
+    implementation_handoff: handoffs/WF02-oidc01-20260527/step-02-backend-dev.json
+    test_spec: tests/specs/OIDC-01.md
+    test_run: tests/reports/report-20260527-wf02-oidc01-step-04.json
+    tested_at: '2026-05-27'
+    released_at: '2026-05-26T19:43:27Z'
+    release_run: WF02-oidc01-20260527
+    release_decision: docs/status/release-OIDC-01-20260526.json
+    last_updated: '2026-05-26T19:47:46Z'
+  OIDC-02:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Keycloak adapter
+    implementation_run: WF02-oidc02-20260527
+    implementation_handoff: handoffs/WF02-oidc02-20260527/step-02-backend-dev.json
+    test_spec: tests/specs/OIDC-02.md
+    test_run: tests/reports/report-20260527-wf02-oidc02-step-04.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T20:30:22Z'
+    release_run: WF02-oidc02-20260527
+    release_decision: docs/status/release-OIDC-02-20260526.json
+    last_updated: '2026-05-26T20:34:15Z'
+  OIDC-03:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Configuration source
+    implementation_run: WF02-oidc03-20260527
+    implementation_handoff: handoffs/WF02-oidc03-20260527/step-02-backend-dev.json
+    test_spec: tests/specs/OIDC-03.md
+    test_run: tests/reports/report-20260527-wf02-oidc03-step-04.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T21:27:45Z'
+    release_run: WF02-oidc03-20260527
+    release_decision: docs/status/release-OIDC-03-20260526.json
+    last_updated: '2026-05-26T21:31:39Z'
+  OIDC-04:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Standards-compliance boundary
+    implementation_run: WF02-oidc04-20260527
+    implementation_handoff: handoffs/WF02-oidc04-20260527/step-02-backend-dev.json
+    test_spec: tests/specs/OIDC-04.md
+    test_run: tests/reports/report-20260527-wf02-oidc04-step-04.json
+    tested_at: '2026-05-27'
+    released_at: '2026-05-27T02:21:30Z'
+    release_run: WF02-oidc04-20260527
+    release_decision: docs/status/release-OIDC-04-20260527.json
+    last_updated: '2026-05-27T02:25:17Z'
+  OIDC-05:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Bearer token acceptance
+    implementation_run: WF02-oidc05-20260527
+    implementation_handoff: handoffs/WF02-oidc05-20260527/step-02-backend-dev.json
+    test_spec: tests/specs/OIDC-05.md
+    test_run: tests/reports/report-20260527-wf02-oidc05-step-04.json
+    tested_at: '2026-05-27'
+    released_at: '2026-05-27T03:09:08Z'
+    release_run: WF02-oidc05-20260527
+    release_decision: docs/status/release-OIDC-05-20260527.json
+    last_updated: '2026-05-27T03:12:14Z'
+  DSL-01:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Grammar conformance
+    implementation_run: WF02-dsl01-20260527
+    test_spec: tests/specs/DSL-01.md
+    test_run: tests/reports/report-20260526T213627Z-WF02-dsl01-step04.json
+    tested_at: '2026-05-26'
+    released_at: '2026-05-26T21:46:58Z'
+    release_run: WF02-dsl01-20260527
+    release_decision: docs/status/release-DSL-01-20260526.json
+    last_updated: '2026-05-26T21:46:58Z'
+  DSL-02:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: AST stability
+    implementation_run: WF02-dsl02-20260527
+    test_spec: tests/specs/DSL-02.md
+    test_run: tests/reports/report-2026-05-27T05-26-58Z-WF02-dsl02-step04.json
+    tested_at: '2026-05-27'
+    released_at: '2026-05-27T05:33:06Z'
+    release_run: WF02-dsl02-20260527
+    release_decision: docs/status/release-DSL-02-20260527.json
+    last_updated: '2026-05-27T05:35:18Z'
+  DSL-03:
+    status: RELEASED
+    stage: 7
+    priority: SHOULD
+    title: Error recovery
+    implementation_run: WF02-dsl03-20260527
+    test_spec: tests/specs/DSL-03.md
+    test_run: tests/reports/report-2026-05-27T06-47-01Z-WF02-dsl03-step04.json
+    tested_at: '2026-05-27'
+    release_run: WF02-dsl03-20260527
+    release_decision: docs/status/release-DSL-03-20260527.json
+    last_updated: '2026-05-27T06:49:00Z'
+  DSL-04:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Supported types
+    implementation_run: WF02-dsl04-20260527
+    test_spec: tests/specs/DSL-04.md
+    test_run: tests/reports/report-2026-05-27T07-25-18Z-WF02-dsl04-step04.json
+    tested_at: '2026-05-27'
+    released_at: '2026-05-27T07:30:05Z'
+    release_run: WF02-dsl04-20260527
+    release_decision: docs/status/release-DSL-04-2026-05-27.json
+    last_updated: '2026-05-27T07:30:05Z'
+  DSL-05:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Type coercion
+    implementation_run: WF02-dsl05-20260527
+    test_spec: tests/specs/DSL-05.md
+    test_run: tests/reports/report-2026-05-27T08-13-30Z-WF02-dsl05-step04.json
+    tested_at: '2026-05-27'
+    released_at: '2026-05-27T08:16:15Z'
+    release_run: WF02-dsl05-20260527
+    release_decision: docs/status/release-DSL-05-20260527.json
+    last_updated: '2026-05-27T08:18:04Z'
+  SIM-01:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Simulation tenant
+    implementation_run: WF02-stage11-sim01-04-20260528
+    test_run: tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json
+    tested_at: '2026-05-29'
+    released_at: '2026-05-29T08:09:41Z'
+    release_run: WF02-stage11-sim01-04-20260528
+    release_decision: docs/status/release-Stage11-SIM-01-04-2026-05-29.json
+    last_updated: '2026-05-29T08:14:52Z'
+  SIM-02:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Service mocking
+    implementation_run: WF02-stage11-sim01-04-20260528
+    test_run: tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json
+    tested_at: '2026-05-29'
+    released_at: '2026-05-29T08:09:41Z'
+    release_run: WF02-stage11-sim01-04-20260528
+    release_decision: docs/status/release-Stage11-SIM-01-04-2026-05-29.json
+    last_updated: '2026-05-29T08:14:52Z'
+  SIM-03:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Time control
+    implementation_run: WF02-stage11-sim01-04-20260528
+    test_run: tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json
+    tested_at: '2026-05-29'
+    released_at: '2026-05-29T08:09:41Z'
+    release_run: WF02-stage11-sim01-04-20260528
+    release_decision: docs/status/release-Stage11-SIM-01-04-2026-05-29.json
+    last_updated: '2026-05-29T08:14:52Z'
+  SIM-04:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Deterministic UUIDs
+    implementation_run: WF02-stage11-sim01-04-20260528
+    test_run: tests/reports/report-20260529T080704Z-WF02-stage11-sim01-04-20260528-step04-post-wf03-5.json
+    tested_at: '2026-05-29'
+    released_at: '2026-05-29T08:09:41Z'
+    release_run: WF02-stage11-sim01-04-20260528
+    release_decision: docs/status/release-Stage11-SIM-01-04-2026-05-29.json
+    last_updated: '2026-05-29T08:14:52Z'
+  SIM-05:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Scenario schema
+    implementation_run: WF03-stage11-sim05-08-releasefix-20260529
+    test_spec: tests/specs/SIM-05.md
+    test_run: tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json
+    tested_at: '2026-05-29'
+    released_at: '2026-05-29T12:27:02Z'
+    release_run: WF02-stage11-sim05-08-rerun1-20260529
+    release_decision: docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json
+    last_updated: '2026-05-29T12:27:02Z'
+  SIM-06:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Assertion vocabulary
+    implementation_run: WF03-stage11-sim05-08-releasefix-20260529
+    test_spec: tests/specs/SIM-06.md
+    test_run: tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json
+    tested_at: '2026-05-29'
+    released_at: '2026-05-29T12:27:02Z'
+    release_run: WF02-stage11-sim05-08-rerun1-20260529
+    release_decision: docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json
+    last_updated: '2026-05-29T12:27:02Z'
+  SIM-07:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Scenario runner
+    implementation_run: WF03-stage11-sim05-08-releasefix-20260529
+    test_spec: tests/specs/SIM-07.md
+    test_run: tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json
+    tested_at: '2026-05-29'
+    released_at: '2026-05-29T12:27:02Z'
+    release_run: WF02-stage11-sim05-08-rerun1-20260529
+    release_decision: docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json
+    last_updated: '2026-05-29T12:27:02Z'
+  SIM-08:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Batch execution
+    implementation_run: WF03-stage11-sim05-08-releasefix-20260529
+    test_spec: tests/specs/SIM-08.md
+    test_run: tests/reports/report-20260529T122112Z-WF02-stage11-sim05-08-rerun1-20260529-step04.json
+    tested_at: '2026-05-29'
+    released_at: '2026-05-29T12:27:02Z'
+    release_run: WF02-stage11-sim05-08-rerun1-20260529
+    release_decision: docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json
+    last_updated: '2026-05-29T12:27:02Z'
+  REPO-01:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Content addressing
+    implemented_in:
+    - src/repository/canonicaliser.zig
+    - src/repository/artifacts.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-02:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Immutability
+    implemented_in:
+    - src/repository/artifacts.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-03:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Versioning
+    implemented_in:
+    - src/repository/artifacts.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-04:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Canonical serialisation
+    implemented_in:
+    - src/repository/canonicaliser.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-05:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Form schema indexing
+    implemented_in:
+    - src/repository/schemas.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-06:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Event type registry
+    implemented_in:
+    - src/repository/schemas.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-07:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Service catalog
+    implemented_in:
+    - src/repository/service_catalog.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-08:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Atomic activation
+    implemented_in:
+    - src/repository/activation.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-09:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Per-tenant activation
+    implemented_in:
+    - src/repository/activation.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-10:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Activation history
+    implemented_in:
+    - src/repository/activation.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-11:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Create artifact
+    implemented_in:
+    - src/api/routes/repository.zig
+    - src/repository/artifacts.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-12:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: List versions
+    implemented_in:
+    - src/api/routes/repository.zig
+    - src/repository/artifacts.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-13:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Tenant activations
+    implemented_in:
+    - src/api/routes/repository.zig
+    - src/repository/activation.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  REPO-14:
+    status: RELEASED
+    stage: 10
+    priority: SHOULD
+    title: Bulk bundle operations
+    implemented_in:
+    - src/repository/activation.zig
+    test_spec: tests/specs/REPO-01-13.md
+    release_decision: docs/status/release-stage10-repo-20260528.json
+    released_at: '2026-05-28T07:05:58Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  XC-01:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Trace propagation
+    implemented_in:
+    - src/api/trace_context.zig
+    - src/api/middleware/trace.zig
+    - src/obs/audit.zig
+    - src/api/errors.zig
+    test_spec: tests/specs/XC-01.md
+    test_run: tests/integration/xc01_trace_propagation_test.zig
+    released_at: '2026-05-29T12:51:00Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  XC-02:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Audit immutability
+    implemented_in:
+    - src/obs/audit.zig
+    test_spec: tests/specs/XC-02.md
+    test_run: tests/integration/xc02_audit_immutability_test.zig
+    released_at: '2026-05-29T12:51:00Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  XC-03:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Configuration in repository
+    implemented_in:
+    - src/config/loader.zig
+    - src/repository/activation.zig
+    test_spec: tests/specs/XC-03.md
+    test_run: tests/integration/xc03_configuration_repository_test.zig
+    released_at: '2026-05-29T12:51:00Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  XC-04:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Kernel determinism
+    implemented_in:
+    - src/engine/transition.zig
+    - src/event_store/store.zig
+    - src/scheduler/scheduler.zig
+    test_spec: tests/specs/XC-04.md
+    test_run: tests/integration/xc04_kernel_determinism_test.zig
+    released_at: '2026-05-29T12:51:00Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  XC-05:
+    status: RELEASED
+    stage: 10
+    priority: SHOULD
+    title: Deterministic replay for non-LLM tiers
+    implemented_in:
+    - src/engine/transition.zig
+    - src/event_store/store.zig
+    test_spec: tests/specs/XC-05.md
+    test_run: tests/integration/xc05_deterministic_replay_test.zig
+    released_at: '2026-05-29T12:51:00Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  XC-06:
+    status: RELEASED
+    stage: 10
+    priority: MUST
+    title: Backwards compatibility
+    implemented_in:
+    - src/db/migrations.zig
+    - src/definition/store.zig
+    test_spec: tests/specs/XC-06.md
+    test_run: tests/integration/xc06_backwards_compatibility_test.zig
+    released_at: '2026-05-29T12:51:00Z'
+    release_run: WF02-stage10-repo-20260528
+    last_updated: '2026-05-29T12:51:00Z'
+  DSL-06:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Total evaluation
+    implemented_in:
+    - src/expr/evaluator.zig
+    test_spec: tests/specs/DSL-06.md
+    test_run: tests/reports/report-WF02-dsl06-20260527-step04.json
+    release_decision: docs/status/release-DSL-06-20260527.json
+    released_at: '2026-05-27T14:57:37Z'
+    release_run: WF02-dsl06-20260527
+    last_updated: '2026-05-29T14:00:00Z'
+  DSL-07:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Function whitelist
+    implemented_in:
+    - src/expr/lexer.zig
+    - src/expr/mod.zig
+    test_spec: tests/specs/DSL-09.md
+    test_run: tests/reports/report-WF02-dsl09-20260527-step04.json
+    release_decision: docs/status/release-DSL-09-20260527.json
+    released_at: '2026-05-27T18:45:38Z'
+    release_run: WF02-dsl09-20260527
+    last_updated: '2026-05-29T14:00:00Z'
+  DSL-08:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Function purity
+    implemented_in:
+    - src/expr/mod.zig
+    test_spec: tests/specs/DSL-08.md
+    test_run: tests/reports/report-WF02-dsl08-20260527-step04.json
+    release_decision: docs/status/release-DSL-08-20260527.json
+    released_at: '2026-05-27T17:14:40Z'
+    release_run: WF02-dsl08-20260527
+    last_updated: '2026-05-29T14:00:00Z'
+  DSL-09:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Date built-ins
+    implemented_in:
+    - src/expr/mod.zig
+    test_spec: tests/specs/DSL-09.md
+    test_run: tests/reports/report-WF02-dsl09-20260527-step04.json
+    release_decision: docs/status/release-DSL-09-20260527.json
+    released_at: '2026-05-27T18:45:38Z'
+    release_run: WF02-dsl09-20260527
+    last_updated: '2026-05-29T14:00:00Z'
+  DSL-10:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Context resolution
+    implemented_in:
+    - src/expr/evaluator.zig
+    test_spec: tests/specs/DSL-10.md
+    test_run: tests/reports/report-WF02-dsl10-20260527-step04.json
+    release_decision: docs/status/release-DSL-10-20260527.json
+    released_at: '2026-05-27T19:11:03Z'
+    release_run: WF02-dsl10-20260527
+    last_updated: '2026-05-29T14:00:00Z'
+  DSL-11:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Dot path traversal
+    implemented_in:
+    - src/expr/evaluator.zig
+    test_spec: tests/specs/DSL-11.md
+    test_run: tests/reports/report-WF02-dsl11-20260527-step04.json
+    release_decision: docs/status/release-DSL-11-20260527.json
+    released_at: '2026-05-27T19:43:51Z'
+    release_run: WF02-dsl11-20260527
+    last_updated: '2026-05-29T14:00:00Z'
+  DSL-12:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Engine API
+    implemented_in:
+    - src/expr/mod.zig
+    test_spec: tests/specs/DSL-12.md
+    test_run: tests/reports/DSL-12-2026-05-27T20-30-47Z.md
+    released_at: '2026-05-27T20:33:40Z'
+    release_run: WF02-dsl12-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  DSL-13:
+    status: RELEASED
+    stage: 7
+    priority: SHOULD
+    title: Performance target
+    implemented_in:
+    - src/expr/benchmark.zig
+    test_spec: tests/specs/DSL-13.md
+    test_run: tests/reports/DSL-13-test-run.json
+    released_at: '2026-05-27T21:52:30Z'
+    release_run: WF02-dsl13-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-01:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: LuaJIT integration
+    implemented_in:
+    - src/lua/luajit_bindings.zig
+    test_spec: tests/specs/LUA-01-05.md
+    test_run: tests/reports/WF02-lua01-05-test-run.json
+    release_decision: docs/status/release-stage8-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua01-05-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-02:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: State isolation
+    implemented_in:
+    - src/lua/executor.zig
+    test_spec: tests/specs/LUA-01-05.md
+    test_run: tests/reports/WF02-lua01-05-test-run.json
+    release_decision: docs/status/release-stage8-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua01-05-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-03:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Stdlib restriction
+    implemented_in:
+    - src/lua/stdlib.zig
+    test_spec: tests/specs/LUA-01-05.md
+    test_run: tests/reports/WF02-lua01-05-test-run.json
+    release_decision: docs/status/release-stage8-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua01-05-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-04:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Bytecode loading disabled
+    implemented_in:
+    - src/lua/stdlib.zig
+    - src/lua/executor.zig
+    test_spec: tests/specs/LUA-01-05.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-stage8-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua01-05-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-05:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Host API registration
+    implemented_in:
+    - src/lua/host_api/mod.zig
+    test_spec: tests/specs/LUA-01-05.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-stage8-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua01-05-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-06:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Capability check at call site
+    implemented_in:
+    - src/lua/capabilities.zig
+    test_spec: tests/specs/LUA-06.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-07:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Capability manifest validation
+    implemented_in:
+    - src/lua/manifest.zig
+    test_spec: tests/specs/LUA-07.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-08:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Instruction limit
+    implemented_in:
+    - src/lua/instruction_limiter.zig
+    test_spec: tests/specs/LUA-08.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-09:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Memory limit
+    implemented_in:
+    - src/lua/memory_limiter.zig
+    test_spec: tests/specs/LUA-09.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-10:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Wall clock timeout
+    implemented_in:
+    - src/lua/timeout.zig
+    test_spec: tests/specs/LUA-10.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-11:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Variable read/write
+    implemented_in:
+    - src/lua/executor.zig
+    - src/lua/host_api/read_variable.zig
+    - src/lua/host_api/write_variable.zig
+    test_spec: tests/specs/LUA-11.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-12:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Service call
+    implemented_in:
+    - src/lua/service_catalog.zig
+    - src/lua/host_api/call_service.zig
+    test_spec: tests/specs/LUA-12.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-13:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Logging
+    implemented_in:
+    - src/lua/structured_logger.zig
+    - src/lua/host_api/log.zig
+    test_spec: tests/specs/LUA-13.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-14:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Time source
+    implemented_in:
+    - src/lua/time_source.zig
+    - src/lua/host_api/now.zig
+    test_spec: tests/specs/LUA-14.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-15:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Structured failure
+    implemented_in:
+    - src/lua/host_api/fail.zig
+    - src/lua/events.zig
+    test_spec: tests/specs/LUA-15.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  LUA-16:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Runtime error capture
+    implemented_in:
+    - src/lua/errors.zig
+    - src/lua/events.zig
+    test_spec: tests/specs/LUA-16.md
+    test_run: tests/reports/WF02-lua06-16-20260528-test-report.json
+    release_decision: docs/status/release-LUA-06-16-20260528.json
+    released_at: '2026-05-28T00:00:00Z'
+    release_run: WF02-lua06-16-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-01:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Wasmtime integration
+    implemented_in:
+    - src/wasm/engine.zig
+    - src/wasm/wasmtime_bindings.zig
+    test_spec: tests/specs/WASM-01-14.md
+    test_run: tests/unit/wasm_executor_test.zig
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-02:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Module ABI
+    implemented_in:
+    - src/wasm/instance.zig
+    - src/wasm/executor.zig
+    test_spec: tests/specs/WASM-01-14.md
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-03:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Source compilation job
+    implemented_in:
+    - src/wasm/engine.zig
+    test_spec: tests/specs/WASM-01-14.md
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-04:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Compile caching
+    implemented_in:
+    - src/wasm/engine.zig
+    test_spec: tests/specs/WASM-01-14.md
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-05:
+    status: RELEASED
+    stage: 9
+    priority: SHOULD
+    title: Build reproducibility
+    implemented_in:
+    - src/wasm/engine.zig
+    test_spec: tests/specs/WASM-01-14.md
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-06:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Import whitelist
+    implemented_in:
+    - src/wasm/capabilities.zig
+    test_spec: tests/specs/WASM-01-14.md
+    test_run: tests/unit/wasm_executor_test.zig
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-07:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: No filesystem access
+    implemented_in:
+    - src/wasm/capabilities.zig
+    test_spec: tests/specs/WASM-01-14.md
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-08:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Memory isolation
+    implemented_in:
+    - src/wasm/instance.zig
+    - src/wasm/memory.zig
+    test_spec: tests/specs/WASM-01-14.md
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-09:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Fuel-based execution limit
+    implemented_in:
+    - src/wasm/engine.zig
+    - src/wasm/executor.zig
+    test_spec: tests/specs/WASM-01-14.md
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-10:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Memory cap
+    implemented_in:
+    - src/wasm/memory.zig
+    test_spec: tests/specs/WASM-01-14.md
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-11:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Wall clock timeout
+    implemented_in:
+    - src/wasm/timeout.zig
+    test_spec: tests/specs/WASM-01-14.md
+    test_run: tests/unit/wasm_executor_test.zig
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-12:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Parity with Lua host API
+    implemented_in:
+    - src/wasm/host_api/mod.zig
+    test_spec: tests/specs/WASM-01-14.md
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-13:
+    status: RELEASED
+    stage: 9
+    priority: SHOULD
+    title: Instance pooling
+    implemented_in:
+    - src/wasm/pool.zig
+    test_spec: tests/specs/WASM-01-14.md
+    test_run: tests/unit/wasm_executor_test.zig
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  WASM-14:
+    status: RELEASED
+    stage: 9
+    priority: MUST
+    title: Hot reload
+    implemented_in:
+    - src/wasm/module_registry.zig
+    test_spec: tests/specs/WASM-01-14.md
+    test_run: tests/unit/wasm_executor_test.zig
+    release_decision: docs/status/release-stage9-wasm-20260528.json
+    released_at: '2026-05-28T04:35:00Z'
+    release_run: WF02-wasm01-14-20260528
+    last_updated: '2026-05-29T14:00:00Z'
+  OIDC-06:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: JWKS caching
+    implemented_in:
+    - src/identity/provider/oidc/jwks_cache.zig
+    test_spec: tests/specs/OIDC-06.md
+    release_decision: tests/reports/report-20260527-wf02-oidc06-step04.json
+    released_at: docs/status/release-OIDC-06-20260527.json
+    release_run: WF02-oidc06-20260527
+    last_updated: '2026-05-27T15:11:09Z'
+  OIDC-07:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Claim validation
+    implemented_in:
+    - src/identity/provider/oidc/standards_verifier.zig
+    test_spec: tests/specs/OIDC-07.md
+    release_decision: tests/reports/report-2026-05-27-wf02-oidc07.json
+    released_at: docs/status/release-OIDC-07-20260527.json
+    release_run: WF02-oidc07-20260527
+    last_updated: '2026-05-27T16:03:26Z'
+  OIDC-08:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Standard claim mapping
+    implemented_in:
+    - src/oidc/claim_mapping.zig
+    test_spec: tests/specs/OIDC-08.md
+    release_decision: tests/reports/report-2026-05-27-WF02-oidc08-step04.json
+    released_at: docs/status/release-OIDC-08-20260527.json
+    release_run: WF02-oidc08-20260527
+    last_updated: '2026-05-27T17:03:40Z'
+  OIDC-09:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: JIT user creation
+    implemented_in:
+    - src/oidc/jit_provisioning.zig
+    test_spec: tests/specs/OIDC-09.md
+    release_decision: tests/reports/report-WF02-oidc09-20260527-step04b.json
+    released_at: docs/status/release-OIDC-09-20260527.json
+    release_run: WF02-oidc09-20260527
+    last_updated: '2026-05-27T19:42:22Z'
+  OIDC-10:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Attribute synchronisation
+    implemented_in:
+    - src/oidc/attribute_sync.zig (inferred)
+    test_spec: tests/specs/OIDC-10.md
+    release_decision: tests/reports/report-WF02-oidc10-20260527-step04.json
+    released_at: docs/status/release-OIDC-10-20260527.json
+    release_run: WF02-oidc10-20260527
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-11:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: External user identity stability
+    implemented_in:
+    - src/oidc/identity_stability.zig
+    test_spec: tests/specs/OIDC-11.md
+    release_decision: (batch with OIDC-12-15)
+    released_at: docs/status/release-OIDC-11-15-20260528.json
+    release_run: WF02-oidc11-15-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-12:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Realm-tenant binding
+    implemented_in:
+    - src/oidc/realm_tenant_binding.zig
+    test_spec: tests/specs/OIDC-12.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-11-15-20260528.json
+    release_run: WF02-oidc11-15-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-13:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Tenant claim source
+    implemented_in:
+    - src/oidc/tenant_claim_source.zig
+    test_spec: tests/specs/OIDC-13.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-11-15-20260528.json
+    release_run: WF02-oidc11-15-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-14:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Realm provisioning via adapter
+    implemented_in:
+    - src/oidc/realm_provisioning.zig
+    test_spec: tests/specs/OIDC-14.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-11-15-20260528.json
+    release_run: WF02-oidc11-15-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-15:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Realm deletion safety
+    implemented_in:
+    - src/oidc/realm_deletion.zig
+    test_spec: tests/specs/OIDC-15.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-11-15-20260528.json
+    release_run: WF02-oidc11-15-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-16:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Full lifecycle API for agents
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-16.md
+    release_decision: tests/reports/report-20260527T223337Z-WF02-oidc16-26-step04.json
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-17:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Provisioning idempotency
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-17.md
+    release_decision: (batch with 16-26)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-18:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Provisioning transactional semantics
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-18.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-19:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Provisioning audit
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-19.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-20:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Service accounts for agents
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-20.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-21:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Agent token rotation
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-21.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-22:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Bootstrap agent identity
+    implemented_in:
+    - src/identity/provider/bootstrap.zig
+    test_spec: tests/specs/OIDC-22.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-23:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: IDP federation support
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-23.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-24:
+    status: RELEASED
+    stage: 6.5
+    priority: SHOULD
+    title: Federated user attribute mapping
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-24.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-25:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Provider health check
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-25.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-26:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Provider metrics
+    implemented_in:
+    - src/oidc/agent_lifecycle.zig
+    test_spec: tests/specs/OIDC-26.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-16-26-20260528.json
+    release_run: WF02-oidc16-26-20260528
+    last_updated: '2026-05-28T00:00:00Z'
+  OIDC-27:
+    status: RELEASED
+    stage: 6.5
+    priority: SHOULD
+    title: Token verification performance
+    implemented_in:
+    - src/oidc/verification_benchmark.zig
+    test_spec: tests/specs/OIDC-27.md
+    release_decision: tests/reports/report-20260528T034634Z-WF02-oidc27-34-step04-rerun.json
+    released_at: docs/status/release-OIDC-27-34-20260528.json
+    release_run: WF02-oidc27-34-20260528
+    last_updated: '2026-05-28T03:51:00Z'
+  OIDC-28:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Local development realm
+    implemented_in:
+    - src/oidc/realm_seed.zig
+    test_spec: tests/specs/OIDC-28.md
+    release_decision: (batch with 27-34)
+    released_at: docs/status/release-OIDC-27-34-20260528.json
+    release_run: WF02-oidc27-34-20260528
+    last_updated: '2026-05-28T03:51:00Z'
+  OIDC-29:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Realm seed as versioned artifact
+    implemented_in:
+    - src/oidc/realm_seed.zig
+    test_spec: tests/specs/OIDC-29.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-27-34-20260528.json
+    release_run: WF02-oidc27-34-20260528
+    last_updated: '2026-05-28T03:51:00Z'
+  OIDC-30:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Test token issuance helper
+    implemented_in:
+    - src/oidc/test_token_helper.zig
+    test_spec: tests/specs/OIDC-30.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-27-34-20260528.json
+    release_run: WF02-oidc27-34-20260528
+    last_updated: '2026-05-28T03:51:00Z'
+  OIDC-31:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: End-to-end authentication test suite
+    implemented_in:
+    - src/oidc/test_token_helper.zig
+    test_spec: tests/specs/OIDC-31.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-27-34-20260528.json
+    release_run: WF02-oidc27-34-20260528
+    last_updated: '2026-05-28T03:51:00Z'
+  OIDC-32:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Agent test identities
+    implemented_in:
+    - src/oidc/test_token_helper.zig
+    test_spec: tests/specs/OIDC-32.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-27-34-20260528.json
+    release_run: WF02-oidc27-34-20260528
+    last_updated: '2026-05-28T03:51:00Z'
+  OIDC-33:
+    status: RELEASED
+    stage: 6.5
+    priority: MUST
+    title: Coexistence period
+    implemented_in:
+    - src/oidc/coexistence_auth.zig
+    test_spec: tests/specs/OIDC-33.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-27-34-20260528.json
+    release_run: WF02-oidc27-34-20260528
+    last_updated: '2026-05-28T03:51:00Z'
+  OIDC-34:
+    status: RELEASED
+    stage: 6.5
+    priority: SHOULD
+    title: Migration helper
+    implemented_in:
+    - src/oidc/migration_helper.zig
+    test_spec: tests/specs/OIDC-34.md
+    release_decision: (batch)
+    released_at: docs/status/release-OIDC-27-34-20260528.json
+    release_run: WF02-oidc27-34-20260528
+    last_updated: '2026-05-28T03:51:00Z'
+  SIM-09:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Test result storage
+    release_run: WF02-stage11-sim05-08-rerun1-20260529
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T12:24:56Z'
+  SIM-10:
+    status: RELEASED
+    stage: 11
+    priority: MUST
+    title: Failure diagnostics
+    release_run: WF02-stage11-sim05-08-rerun1-20260529
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T12:24:56Z'
+  SH-01:
+    status: RELEASED
+    stage: F1
+    priority: MUST
+    title: Authenticated shell
+    release_run: WF02-f1-shell
+    released_at: '2026-05-27'
+    last_updated: '2026-05-27T00:00:00Z'
+  SH-02:
+    status: RELEASED
+    stage: F1
+    priority: MUST
+    title: Navigation
+    release_run: WF02-f1-shell
+    released_at: '2026-05-27'
+    last_updated: '2026-05-27T00:00:00Z'
+  SH-03:
+    status: RELEASED
+    stage: F1
+    priority: MUST
+    title: Login page
+    release_run: WF02-f1-shell
+    released_at: '2026-05-27'
+    last_updated: '2026-05-27T00:00:00Z'
+  SH-04:
+    status: RELEASED
+    stage: F1
+    priority: MUST
+    title: Token storage
+    release_run: WF02-f1-shell
+    released_at: '2026-05-27'
+    last_updated: '2026-05-27T00:00:00Z'
+  SH-05:
+    status: RELEASED
+    stage: F1
+    priority: MUST
+    title: Session expiry
+    release_run: WF02-f1-shell
+    released_at: '2026-05-27'
+    last_updated: '2026-05-27T00:00:00Z'
+  SH-06:
+    status: RELEASED
+    stage: F1
+    priority: MUST
+    title: Role-aware routing
+    release_run: WF02-f1-shell
+    released_at: '2026-05-27'
+    last_updated: '2026-05-27T00:00:00Z'
+  SH-07:
+    status: RELEASED
+    stage: F1
+    priority: MUST
+    title: Global error boundary
+    release_run: WF02-f1-shell
+    released_at: '2026-05-27'
+    last_updated: '2026-05-27T00:00:00Z'
+  PD-UI-01:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Definition list page
+    release_run: WF02-f2-batch1
+    released_at: '2026-05-28'
+    last_updated: '2026-05-28T00:00:00Z'
+  PD-UI-02:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Create definition
+    release_run: WF02-f2-batch1
+    released_at: '2026-05-28'
+    last_updated: '2026-05-28T00:00:00Z'
+  PD-UI-03:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Canvas
+    release_run: WF02-f2-batch1
+    released_at: '2026-05-28'
+    last_updated: '2026-05-28T00:00:00Z'
+  PD-UI-04:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Add / delete node
+    release_run: WF02-f2-batch1
+    released_at: '2026-05-28'
+    last_updated: '2026-05-28T00:00:00Z'
+  PD-UI-05:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Node property panel
+    release_run: WF02-f2-batch1
+    released_at: '2026-05-28'
+    last_updated: '2026-05-28T00:00:00Z'
+  PD-UI-06:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Add / delete edge
+    release_run: WF02-f2-batch1
+    released_at: '2026-05-28'
+    last_updated: '2026-05-28T00:00:00Z'
+  PD-UI-07:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: CEL expression editor
+    release_run: WF02-f2-batch2
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T00:00:00Z'
+  PD-UI-08:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Save definition
+    release_run: WF02-f2-batch2
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T19:38:00Z'
+  PD-UI-09:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Validation feedback
+    release_run: WF02-f2-batch2
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T00:00:00Z'
+  PD-UI-10:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Version list
+    release_run: WF02-f2-batch2
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T00:00:00Z'
+  PD-UI-11:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Activate version
+    release_run: WF02-f2-batch2
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T00:00:00Z'
+  PD-UI-12:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Deprecate version
+    release_run: WF02-f2-batch2
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T00:00:00Z'
+  PD-UI-13:
+    status: RELEASED
+    stage: F2
+    priority: SHOULD
+    title: Definition export
+    release_run: WF02-f2-batch3
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T00:00:00Z'
+  PD-UI-14:
+    status: RELEASED
+    stage: F2
+    priority: SHOULD
+    title: Definition import
+    release_run: WF02-f2-batch3
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T00:00:00Z'
+  PD-UI-15:
+    status: RELEASED
+    stage: F2
+    priority: MUST
+    title: Read-only canvas
+    release_run: WF02-f2-batch3
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T00:00:00Z'
+  PD-UI-16:
+    status: RELEASED
+    stage: F2
+    priority: SHOULD
+    title: Diff view
+    release_run: WF02-f2b-shoulds-20260529
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T19:38:00Z'
+  PD-UI-17:
+    status: RELEASED
+    stage: F2
+    priority: SHOULD
+    title: Canvas keyboard shortcuts
+    release_run: WF02-f2b-shoulds-20260529
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T19:38:00Z'
+  PD-UI-18:
+    status: RELEASED
+    stage: F2
+    priority: COULD
+    title: Auto-layout
+    release_run: WF02-f2b-shoulds-20260529
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T19:38:00Z'
+  PD-UI-19:
+    status: RELEASED
+    stage: F2
+    priority: COULD
+    title: Mini-map
+    release_run: WF02-f2b-shoulds-20260529
+    released_at: '2026-05-29'
+    last_updated: '2026-05-29T19:38:00Z'
+  IN-UI-01:
+    status: RELEASED
+    stage: F3
+    priority: MUST
+    title: Instance board
+    implemented_in:
+    - web/src/pages/instances/InstanceBoardPage.tsx
+    test_spec: web/tests/e2e/f3-instance-monitoring.e2e.spec.ts
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f3a-batch1-20260529
+    last_updated: '2026-05-30T02:10:57Z'
+  IN-UI-02:
+    status: RELEASED
+    stage: F3
+    priority: MUST
+    title: Instance filters
+    implemented_in:
+    - web/src/pages/instances/InstanceBoardPage.tsx
+    test_spec: web/tests/e2e/f3-instance-monitoring.e2e.spec.ts
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f3a-batch1-20260529
+    last_updated: '2026-05-30T02:10:57Z'
+  IN-UI-03:
+    status: RELEASED
+    stage: F3
+    priority: MUST
+    title: Start instance
+    implemented_in:
+    - web/src/pages/instances/InstanceBoardPage.tsx
+    test_spec: web/tests/e2e/f3-instance-monitoring.e2e.spec.ts
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f3a-batch1-20260529
+    last_updated: '2026-05-30T02:10:57Z'
+  IN-UI-04:
+    status: RELEASED
+    stage: F3
+    priority: MUST
+    title: Instance detail view
+    implemented_in:
+    - web/src/pages/instances/InstanceDetailPage.tsx
+    test_spec: web/tests/e2e/f3-instance-monitoring.e2e.spec.ts
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f3a-batch1-20260529
+    last_updated: '2026-05-30T02:10:57Z'
+  IN-UI-05:
+    status: IMPLEMENTED
+    stage: F3
+    priority: MUST
+    title: Event history tab
+    last_updated: '2026-05-29T00:00:00Z'
+  IN-UI-06:
+    status: IMPLEMENTED
+    stage: F3
+    priority: MUST
+    title: Timeline tab
+    last_updated: '2026-05-29T00:00:00Z'
+  IN-UI-07:
+    status: IMPLEMENTED
+    stage: F3
+    priority: MUST
+    title: Cancel instance
+    last_updated: '2026-05-29T00:00:00Z'
+  IN-UI-08:
+    status: PENDING
+    stage: F3
+    priority: SHOULD
+    title: Auto-refresh
+    last_updated: '2026-05-29T00:00:00Z'
+  IN-UI-09:
+    status: PENDING
+    stage: F3
+    priority: SHOULD
+    title: Active token visualisation
+    last_updated: '2026-05-29T00:00:00Z'
+  IN-UI-10:
+    status: PENDING
+    stage: F3
+    priority: SHOULD
+    title: History scrubber
+    last_updated: '2026-05-29T00:00:00Z'
+total_requirements: 225
