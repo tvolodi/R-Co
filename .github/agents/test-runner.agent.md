@@ -29,16 +29,31 @@ You MUST NOT skip layers or mark a step PASS before running all required command
 3. Read `task.functions_to_call` in the handoff — these are the commands to run
 4. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
 
-## Benchmark environment pre-check (mandatory before running any test)
+## Pre-check: services + benchmark environment (mandatory before any test)
 
-Before executing any test commands, verify the benchmark environment is reachable:
+Run both checks before executing any test commands.
+
+### 1. Backend service check (for E2E and integration tests)
+
+Verify that backend services are running:
+```bash
+docker-compose ps 2>/dev/null | grep -E "keycloak|db"
+curl -sf http://localhost:8081/health/ready > /dev/null && echo "KC_OK" || echo "KC_DOWN"
+psql "$BPM_TEST_DB_URL" -c "SELECT 1" > /dev/null 2>&1 && echo "DB_OK" || echo "DB_DOWN"
+```
+
+- If all services are healthy: proceed.
+- If any service is down: STOP. Complete handoff with `status: FAIL`, issue severity `BLOCKER`, description: `"Backend services unavailable: <which services>. ORCH must start services via ADHOC BACKEND-DEV handoff (docker-compose up -d db db_test keycloak) before redispatching TEST-RUNNER."` ORCH will dispatch the ADHOC automatically and redispatch you — do NOT attempt to start services yourself.
+
+### 2. Benchmark environment check
+
 ```bash
 zig build bench 2>&1 | head -5
 ```
 - If output shows benchmark numbers and exits 0: proceed.
-- If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: STOP. Complete handoff with `status: FAIL`, issue severity BLOCKER, description: "Benchmark environment unavailable: `<exact error line>`". ORCH will create an ADHOC BACKEND-DEV handoff to fix the environment, then redispatch you.
+- If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: STOP. Complete handoff with `status: FAIL`, issue severity BLOCKER, description: `"Benchmark environment unavailable: <exact error line>"`. ORCH will create an ADHOC BACKEND-DEV handoff to fix the environment, then redispatch you.
 
-Do NOT proceed past this check if it fails.
+Do NOT proceed past either check if it fails.
 
 ## Test commands by layer
 

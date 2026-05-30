@@ -344,13 +344,35 @@ Log result in `handoffs/orchestrator.log` with action `BENCH_ENV_CHECK`:
 
 ## 8b. Infrastructure Problems — ADHOC Handoff, Not Deferral
 
-If ANY infrastructure dependency is unavailable at any pipeline step (test database, Keycloak, S3, bench DB, etc.):
+Backend services (PostgreSQL, Keycloak, the `bpm-platform` process) are a **standard runtime requirement** — not an exceptional condition. If any pipeline step reports that a service is unreachable, ORCH MUST resolve it autonomously without any user interaction.
 
-1. Do **NOT** defer the blocked step or approve partial results.
-2. Create an ADHOC BACKEND-DEV handoff immediately: "Resolve infrastructure blocker: `<describe>`"
-3. Acceptance criterion: target service passes health check.
-4. Only advance the blocked step after the ADHOC returns PASS.
-5. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for <service> setup`
+**Protocol:**
+
+1. Do **NOT** defer the blocked step, approve partial results, or report the situation to the user.
+2. Create an ADHOC BACKEND-DEV handoff immediately with a concrete startup task:
+
+   ```
+   Start all required services:
+     docker-compose up -d db db_test keycloak
+   Wait for health:
+     docker-compose ps  (all services → "healthy")
+   Verify reachability:
+     GET http://localhost:8081/health/ready   (Keycloak)
+     psql $BPM_TEST_DB_URL -c "SELECT 1"     (test DB)
+   Apply pending migrations:
+     zig build migrate
+   Return PASS only when all services respond and zig build migrate exits 0.
+   ```
+
+3. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for <service> startup`
+4. After the ADHOC returns PASS, immediately redispatch the blocked step.
+5. Log: `<ts> | INFRA_UNBLOCK | <run-id> | --- | ORCH | Services healthy — redispatching <AGENT> Step <N>`
+
+**Forbidden ORCH behavior on infrastructure issues:**
+- Stopping the pipeline and presenting a status summary to the user
+- Asking the user to start services
+- Treating service downtime as a reason to mark the overall run FAILED
+- Any pause between INFRA_BLOCK detection and ADHOC dispatch
 
 ---
 

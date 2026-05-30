@@ -1,0 +1,1949 @@
+
+Running 29 tests using 1 worker
+
+[2m[WebServer] [22m[2m11:44:23[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x   1 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:297:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-01: task inbox displays user assigned tasks (572ms)
+[2m[WebServer] [22m[2m11:44:24[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x   2 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:297:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-01: task inbox displays user assigned tasks (retry #1) (339ms)
+[2m[WebServer] [22m[2m11:44:25[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x   3 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:318:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-02: task inbox displays user group-assigned tasks (336ms)
+[2m[WebServer] [22m[2m11:44:26[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x   4 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:318:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-02: task inbox displays user group-assigned tasks (retry #1) (316ms)
+[2m[WebServer] [22m[2m11:44:27[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x   5 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:342:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-03: "My Tasks" filter shows only user-assigned tasks (328ms)
+[2m[WebServer] [22m[2m11:44:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x   6 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:342:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-03: "My Tasks" filter shows only user-assigned tasks (retry #1) (337ms)
+[2m[WebServer] [22m[2m11:44:29[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x   7 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:373:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-04: "My Group Tasks" filter shows only group-assigned tasks (304ms)
+[2m[WebServer] [22m[2m11:44:30[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x   8 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:373:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-04: "My Group Tasks" filter shows only group-assigned tasks (retry #1) (306ms)
+[2m[WebServer] [22m[2m11:44:31[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x   9 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:405:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-05: "All Tasks" filter available only to operators (332ms)
+[2m[WebServer] [22m[2m11:44:32[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  10 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:405:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-05: "All Tasks" filter available only to operators (retry #1) (299ms)
+[2m[WebServer] [22m[2m11:44:33[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  11 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:434:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-06: task list displays required columns (324ms)
+[2m[WebServer] [22m[2m11:44:34[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  12 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:434:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-06: task list displays required columns (retry #1) (339ms)
+[2m[WebServer] [22m[2m11:44:35[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  13 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:456:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-07: pagination controls work for task lists (322ms)
+[2m[WebServer] [22m[2m11:44:36[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  14 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:456:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-07: pagination controls work for task lists (retry #1) (327ms)
+[2m[WebServer] [22m[2m11:44:37[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  15 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:479:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-01: clicking task opens detail panel (341ms)
+[2m[WebServer] [22m[2m11:44:38[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  16 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:479:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-01: clicking task opens detail panel (retry #1) (310ms)
+[2m[WebServer] [22m[2m11:44:39[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  17 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:499:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-02: task detail panel displays node name (328ms)
+[2m[WebServer] [22m[2m11:44:39[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  18 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:499:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-02: task detail panel displays node name (retry #1) (312ms)
+[2m[WebServer] [22m[2m11:44:40[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  19 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:522:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-03: panel displays instance context information (322ms)
+[2m[WebServer] [22m[2m11:44:41[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  20 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:522:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-03: panel displays instance context information (retry #1) (342ms)
+[2m[WebServer] [22m[2m11:44:42[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  21 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:544:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-04: panel displays current instance variables (335ms)
+[2m[WebServer] [22m[2m11:44:43[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  22 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:544:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-04: panel displays current instance variables (retry #1) (343ms)
+[2m[WebServer] [22m[2m11:44:44[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  23 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:566:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-01: text field from form schema renders as input (309ms)
+[2m[WebServer] [22m[2m11:44:45[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  24 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:566:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-01: text field from form schema renders as input (retry #1) (304ms)
+[2m[WebServer] [22m[2m11:44:46[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  25 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:587:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-06: required fields are marked as required (320ms)
+[2m[WebServer] [22m[2m11:44:47[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  26 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:587:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-06: required fields are marked as required (retry #1) (300ms)
+[2m[WebServer] [22m[2m11:44:48[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  27 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:611:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-07: form submission blocked if required fields empty (319ms)
+[2m[WebServer] [22m[2m11:44:49[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  28 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:611:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-07: form submission blocked if required fields empty (retry #1) (300ms)
+[2m[WebServer] [22m[2m11:44:50[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  29 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:641:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-01: complete button is visible on task detail (310ms)
+[2m[WebServer] [22m[2m11:44:51[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  30 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:641:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-01: complete button is visible on task detail (retry #1) (366ms)
+[2m[WebServer] [22m[2m11:44:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  31 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:662:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-02: complete button submits form to backend (325ms)
+[2m[WebServer] [22m[2m11:44:53[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  32 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:662:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-02: complete button submits form to backend (retry #1) (312ms)
+[2m[WebServer] [22m[2m11:44:54[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  33 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:695:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-04: success toast shown after task completion (328ms)
+[2m[WebServer] [22m[2m11:44:55[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  34 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:695:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-04: success toast shown after task completion (retry #1) (294ms)
+[2m[WebServer] [22m[2m11:44:55[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  35 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:727:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-01: claim button visible for group-assigned tasks (314ms)
+[2m[WebServer] [22m[2m11:44:56[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  36 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:727:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-01: claim button visible for group-assigned tasks (retry #1) (349ms)
+[2m[WebServer] [22m[2m11:44:57[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  37 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:758:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-03: claim button sends POST request (335ms)
+[2m[WebServer] [22m[2m11:44:58[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  38 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:758:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-03: claim button sends POST request (retry #1) (306ms)
+[2m[WebServer] [22m[2m11:44:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  39 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:795:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-01: reassign button visible for operators (327ms)
+[2m[WebServer] [22m[2m11:45:00[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  40 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:795:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-01: reassign button visible for operators (retry #1) (308ms)
+[2m[WebServer] [22m[2m11:45:01[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  41 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:819:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-02: reassign button not visible for task workers (313ms)
+[2m[WebServer] [22m[2m11:45:02[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  42 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:819:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-02: reassign button not visible for task workers (retry #1) (323ms)
+[2m[WebServer] [22m[2m11:45:03[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  43 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:841:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-03: reassign button opens search dialog (323ms)
+[2m[WebServer] [22m[2m11:45:04[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  44 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:841:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-03: reassign button opens search dialog (retry #1) (325ms)
+[2m[WebServer] [22m[2m11:45:05[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  45 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:874:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-01: task inbox displays on 375px mobile viewport (329ms)
+[2m[WebServer] [22m[2m11:45:06[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  46 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:874:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-01: task inbox displays on 375px mobile viewport (retry #1) (307ms)
+[2m[WebServer] [22m[2m11:45:07[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  47 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:897:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-02: task detail page renders without horizontal scrolling (320ms)
+[2m[WebServer] [22m[2m11:45:08[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  48 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:897:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-02: task detail page renders without horizontal scrolling (retry #1) (358ms)
+[2m[WebServer] [22m[2m11:45:09[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  49 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:921:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-04: complete button accessible on mobile (302ms)
+[2m[WebServer] [22m[2m11:45:10[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  50 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:921:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-04: complete button accessible on mobile (retry #1) (335ms)
+[2m[WebServer] [22m[2m11:45:11[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  51 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:955:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-01: tasks can be sorted by created time (331ms)
+[2m[WebServer] [22m[2m11:45:11[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  52 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:955:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-01: tasks can be sorted by created time (retry #1) (369ms)
+[2m[WebServer] [22m[2m11:45:12[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  53 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:976:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-03: free-text search filters by task name (322ms)
+[2m[WebServer] [22m[2m11:45:13[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  54 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:976:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-03: free-text search filters by task name (retry #1) (313ms)
+[2m[WebServer] [22m[2m11:45:14[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  55 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1000:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-08-E2E-01: navigation badge displays current task count (318ms)
+[2m[WebServer] [22m[2m11:45:15[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  56 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1000:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-08-E2E-01: navigation badge displays current task count (retry #1) (300ms)
+[2m[WebServer] [22m[2m11:45:16[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  57 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1023:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-09-E2E-01: escalated tasks show visual indicator in list (322ms)
+[2m[WebServer] [22m[2m11:45:17[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/v1/definitions[39m
+[2m[WebServer] [22mAggregateError [ECONNREFUSED]: 
+[2m[WebServer] [22m    at internalConnectMultiple (node:net:1134:18)
+[2m[WebServer] [22m    at afterConnectMultiple (node:net:1715:7)
+  x  58 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1023:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-09-E2E-01: escalated tasks show visual indicator in list (retry #1) (359ms)
+
+
+  1) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:297:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-01: task inbox displays user assigned tasks 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:299:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--5981f-isplays-user-assigned-tasks-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--5981f-isplays-user-assigned-tasks-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--5981f-isplays-user-assigned-tasks-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:299:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--5981f-isplays-user-assigned-tasks-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--5981f-isplays-user-assigned-tasks-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--5981f-isplays-user-assigned-tasks-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--5981f-isplays-user-assigned-tasks-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--5981f-isplays-user-assigned-tasks-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:318:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-02: task inbox displays user group-assigned tasks 
+
+    Error: POST /definitions failed for group task (500): 
+
+      199 |   if (!createResponse.ok()) {
+      200 |     const createBody = await createResponse.text()
+    > 201 |     throw new Error(`POST /definitions failed for group task (${createResponse.status()}): ${createBody}`)
+          |           ^
+      202 |   }
+      203 |
+      204 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createDefinitionWithGroupTask (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:201:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:320:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--250b7-s-user-group-assigned-tasks-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--250b7-s-user-group-assigned-tasks-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--250b7-s-user-group-assigned-tasks-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed for group task (500): 
+
+      199 |   if (!createResponse.ok()) {
+      200 |     const createBody = await createResponse.text()
+    > 201 |     throw new Error(`POST /definitions failed for group task (${createResponse.status()}): ${createBody}`)
+          |           ^
+      202 |   }
+      203 |
+      204 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createDefinitionWithGroupTask (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:201:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:320:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--250b7-s-user-group-assigned-tasks-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--250b7-s-user-group-assigned-tasks-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--250b7-s-user-group-assigned-tasks-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--250b7-s-user-group-assigned-tasks-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--250b7-s-user-group-assigned-tasks-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:342:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-03: "My Tasks" filter shows only user-assigned tasks 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:344:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--32ad9-ws-only-user-assigned-tasks-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--32ad9-ws-only-user-assigned-tasks-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--32ad9-ws-only-user-assigned-tasks-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:344:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--32ad9-ws-only-user-assigned-tasks-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--32ad9-ws-only-user-assigned-tasks-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--32ad9-ws-only-user-assigned-tasks-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--32ad9-ws-only-user-assigned-tasks-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--32ad9-ws-only-user-assigned-tasks-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:373:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-04: "My Group Tasks" filter shows only group-assigned tasks 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:375:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--66d93-s-only-group-assigned-tasks-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--66d93-s-only-group-assigned-tasks-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--66d93-s-only-group-assigned-tasks-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:375:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--66d93-s-only-group-assigned-tasks-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--66d93-s-only-group-assigned-tasks-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--66d93-s-only-group-assigned-tasks-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--66d93-s-only-group-assigned-tasks-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--66d93-s-only-group-assigned-tasks-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:405:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-05: "All Tasks" filter available only to operators 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:407:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c4206-available-only-to-operators-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c4206-available-only-to-operators-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--c4206-available-only-to-operators-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:407:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c4206-available-only-to-operators-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c4206-available-only-to-operators-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--c4206-available-only-to-operators-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c4206-available-only-to-operators-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--c4206-available-only-to-operators-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:434:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-06: task list displays required columns 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:436:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--01641-t-displays-required-columns-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--01641-t-displays-required-columns-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--01641-t-displays-required-columns-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:436:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--01641-t-displays-required-columns-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--01641-t-displays-required-columns-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--01641-t-displays-required-columns-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--01641-t-displays-required-columns-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--01641-t-displays-required-columns-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:456:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-07: pagination controls work for task lists 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:458:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--503a2-ontrols-work-for-task-lists-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--503a2-ontrols-work-for-task-lists-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--503a2-ontrols-work-for-task-lists-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:458:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--503a2-ontrols-work-for-task-lists-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--503a2-ontrols-work-for-task-lists-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--503a2-ontrols-work-for-task-lists-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--503a2-ontrols-work-for-task-lists-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--503a2-ontrols-work-for-task-lists-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:479:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-01: clicking task opens detail panel 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:481:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:481:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:499:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-02: task detail panel displays node name 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:501:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:501:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:522:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-03: panel displays instance context information 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:524:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:524:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:544:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-04: panel displays current instance variables 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:546:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:546:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:566:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-01: text field from form schema renders as input 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:568:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:568:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:587:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-06: required fields are marked as required 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:589:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:589:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:611:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-07: form submission blocked if required fields empty 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:613:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:613:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:641:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-01: complete button is visible on task detail 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:643:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:643:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:662:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-02: complete button submits form to backend 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:664:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:664:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:695:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-04: success toast shown after task completion 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:697:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:697:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  18) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:727:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-01: claim button visible for group-assigned tasks 
+
+    Error: POST /definitions failed for group task (500): 
+
+      199 |   if (!createResponse.ok()) {
+      200 |     const createBody = await createResponse.text()
+    > 201 |     throw new Error(`POST /definitions failed for group task (${createResponse.status()}): ${createBody}`)
+          |           ^
+      202 |   }
+      203 |
+      204 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createDefinitionWithGroupTask (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:201:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:729:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed for group task (500): 
+
+      199 |   if (!createResponse.ok()) {
+      200 |     const createBody = await createResponse.text()
+    > 201 |     throw new Error(`POST /definitions failed for group task (${createResponse.status()}): ${createBody}`)
+          |           ^
+      202 |   }
+      203 |
+      204 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createDefinitionWithGroupTask (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:201:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:729:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  19) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:758:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-03: claim button sends POST request 
+
+    Error: POST /definitions failed for group task (500): 
+
+      199 |   if (!createResponse.ok()) {
+      200 |     const createBody = await createResponse.text()
+    > 201 |     throw new Error(`POST /definitions failed for group task (${createResponse.status()}): ${createBody}`)
+          |           ^
+      202 |   }
+      203 |
+      204 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createDefinitionWithGroupTask (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:201:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:760:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--d6465-m-button-sends-POST-request-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--d6465-m-button-sends-POST-request-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--d6465-m-button-sends-POST-request-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed for group task (500): 
+
+      199 |   if (!createResponse.ok()) {
+      200 |     const createBody = await createResponse.text()
+    > 201 |     throw new Error(`POST /definitions failed for group task (${createResponse.status()}): ${createBody}`)
+          |           ^
+      202 |   }
+      203 |
+      204 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createDefinitionWithGroupTask (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:201:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:760:22
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--d6465-m-button-sends-POST-request-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--d6465-m-button-sends-POST-request-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--d6465-m-button-sends-POST-request-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--d6465-m-button-sends-POST-request-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--d6465-m-button-sends-POST-request-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  20) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:795:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-01: reassign button visible for operators 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:797:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:797:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  21) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:819:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-02: reassign button not visible for task workers 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:821:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:821:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  22) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:841:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-03: reassign button opens search dialog 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:843:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:843:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  23) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:874:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-01: task inbox displays on 375px mobile viewport 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:876:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--03522-ys-on-375px-mobile-viewport-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--03522-ys-on-375px-mobile-viewport-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--03522-ys-on-375px-mobile-viewport-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:876:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--03522-ys-on-375px-mobile-viewport-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--03522-ys-on-375px-mobile-viewport-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--03522-ys-on-375px-mobile-viewport-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--03522-ys-on-375px-mobile-viewport-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--03522-ys-on-375px-mobile-viewport-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  24) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:897:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-02: task detail page renders without horizontal scrolling 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:899:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:899:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  25) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:921:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-04: complete button accessible on mobile 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:923:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:923:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  26) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:955:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-01: tasks can be sorted by created time 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:957:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8145d-n-be-sorted-by-created-time-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8145d-n-be-sorted-by-created-time-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--8145d-n-be-sorted-by-created-time-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:957:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8145d-n-be-sorted-by-created-time-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8145d-n-be-sorted-by-created-time-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--8145d-n-be-sorted-by-created-time-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8145d-n-be-sorted-by-created-time-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--8145d-n-be-sorted-by-created-time-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  27) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:976:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-03: free-text search filters by task name 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:978:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--04e8b-search-filters-by-task-name-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--04e8b-search-filters-by-task-name-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--04e8b-search-filters-by-task-name-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:978:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--04e8b-search-filters-by-task-name-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--04e8b-search-filters-by-task-name-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--04e8b-search-filters-by-task-name-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--04e8b-search-filters-by-task-name-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--04e8b-search-filters-by-task-name-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  28) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1000:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-08-E2E-01: navigation badge displays current task count 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:1002:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--82bea-displays-current-task-count-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--82bea-displays-current-task-count-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--82bea-displays-current-task-count-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:1002:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--82bea-displays-current-task-count-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--82bea-displays-current-task-count-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--82bea-displays-current-task-count-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--82bea-displays-current-task-count-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--82bea-displays-current-task-count-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  29) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1023:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-09-E2E-01: escalated tasks show visual indicator in list 
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:1025:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c7c39-ow-visual-indicator-in-list-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c7c39-ow-visual-indicator-in-list-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--c7c39-ow-visual-indicator-in-list-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: POST /definitions failed during F4 setup (500): 
+
+      136 |   if (!createResponse.ok()) {
+      137 |     const createBody = await createResponse.text()
+    > 138 |     throw new Error(`POST /definitions failed during F4 setup (${createResponse.status()}): ${createBody}`)
+          |           ^
+      139 |   }
+      140 |
+      141 |   const created = (await createResponse.json()) as { id: string; name: string; version: string }
+        at createSimpleDefinition (C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:138:11)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:1025:23
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c7c39-ow-visual-indicator-in-list-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c7c39-ow-visual-indicator-in-list-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--c7c39-ow-visual-indicator-in-list-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--c7c39-ow-visual-indicator-in-list-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--c7c39-ow-visual-indicator-in-list-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  29 failed
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:297:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-01: task inbox displays user assigned tasks 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:318:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-02: task inbox displays user group-assigned tasks 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:342:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-03: "My Tasks" filter shows only user-assigned tasks 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:373:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-04: "My Group Tasks" filter shows only group-assigned tasks 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:405:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-05: "All Tasks" filter available only to operators 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:434:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-06: task list displays required columns 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:456:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-07: pagination controls work for task lists 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:479:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-01: clicking task opens detail panel 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:499:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-02: task detail panel displays node name 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:522:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-03: panel displays instance context information 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:544:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-04: panel displays current instance variables 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:566:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-01: text field from form schema renders as input 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:587:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-06: required fields are marked as required 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:611:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-07: form submission blocked if required fields empty 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:641:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-01: complete button is visible on task detail 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:662:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-02: complete button submits form to backend 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:695:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-04: success toast shown after task completion 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:727:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-01: claim button visible for group-assigned tasks 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:758:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-03: claim button sends POST request 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:795:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-01: reassign button visible for operators 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:819:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-02: reassign button not visible for task workers 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:841:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-03: reassign button opens search dialog 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:874:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-01: task inbox displays on 375px mobile viewport 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:897:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-02: task detail page renders without horizontal scrolling 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:921:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-04: complete button accessible on mobile 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:955:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-01: tasks can be sorted by created time 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:976:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-03: free-text search filters by task name 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1000:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-08-E2E-01: navigation badge displays current task count 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1023:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-09-E2E-01: escalated tasks show visual indicator in list 

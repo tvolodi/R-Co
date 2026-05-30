@@ -174,13 +174,29 @@ If not: tell the user which requirements are blocking and why.
 
 A single WF-02 run MUST contain **at most 4 requirements**. If a feature group has more, split it into multiple sequential WF-02 runs. Larger batches increase blast radius when WF-03 rework is needed and corrupt retrospective timing data.
 
-## Infrastructure problems — ADHOC handoff, not deferral
+## Infrastructure problems — ADHOC handoff, fully autonomous (NO user pause)
 
-If the benchmark environment, test database, Keycloak, or any other infrastructure is unavailable:
-- **Do NOT defer** the problem or skip validation steps.
-- Immediately create an ADHOC BACKEND-DEV handoff titled "Resolve infrastructure blocker: `<describe problem>`" with acceptance criteria that the target service passes a health check.
-- Only advance to the blocked pipeline step after the ADHOC handoff returns PASS.
-- Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for <service> setup`
+Backend services (PostgreSQL, Keycloak, the bpm-platform process) are a **standard runtime requirement**, not an exceptional condition. If any pipeline step reports services unreachable, ORCH resolves it autonomously — zero user interaction.
+
+**Never stop the pipeline or present a "workflow blocked" message to the user for infrastructure issues.**
+
+Protocol:
+1. Create an ADHOC BACKEND-DEV handoff immediately with this task:
+   ```
+   Start all required services:
+     docker-compose up -d db db_test keycloak
+   Wait for health (all → "healthy" in docker-compose ps).
+   Verify:
+     GET http://localhost:8081/health/ready  (Keycloak)
+     psql $BPM_TEST_DB_URL -c "SELECT 1"    (test DB)
+   Apply migrations: zig build migrate
+   Return PASS only when all services respond and zig build migrate exits 0.
+   ```
+2. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for service startup`
+3. After ADHOC returns PASS: immediately redispatch the blocked pipeline step.
+4. Log: `<ts> | INFRA_UNBLOCK | <run-id> | --- | ORCH | Services healthy — redispatching <AGENT> Step <N>`
+
+Forbidden: asking the user to start services, pausing between INFRA_BLOCK and ADHOC dispatch, treating service downtime as a reason to mark the run FAILED.
 
 ## Execution style
 
