@@ -3,30 +3,20 @@ handoff_id: efac70f8-b863-42af-b65e-f7bcf7d18e0c
 agent: FRONTEND-DEV
 step: "02b"
 status: FAIL
-timestamp_utc: "2026-05-30T12:52:42Z"
+timestamp_utc: "2026-05-30T13:15:51Z"
 summary: >-
-  Implemented frontend source for ADM-UI-01..04 (users list/detail flows, create dialog,
-  deactivate confirmation, query-key/API hook alignment) and completed mandatory
-  lint/type/unit/build validations. Full Playwright suite passes only when the new
-  ADM-UI E2E scenario is excluded because backend users CRUD routes return 404.
+  Reworked Stage F5 admin users frontend and reran required real-backend validation.
+  Type-check, lint, unit tests, and build all pass. ADM-UI real-backend Playwright
+  scenario is implemented and executable, but the run is blocked by backend runtime
+  instability: the API process crashes with a segmentation fault during users-list
+  requests, preventing stable completion of ADM-UI-01..04 E2E acceptance.
 artifacts_out:
-  - web/src/api/identity.ts
-  - web/src/api/queryKeys.ts
-  - web/src/components/admin/users/CreateUserDialog.tsx
-  - web/src/components/admin/users/DeactivateUserDialog.tsx
-  - web/src/hooks/useAdminUsers.ts
-  - web/src/pages/admin/users/UsersPage.tsx
-  - web/src/pages/admin/UserDetailPage.tsx
-  - web/src/pages/admin/UsersPage.tsx
-  - web/src/router.tsx
-  - web/src/types/api.ts
-  - web/src/components/forms/DynamicFormRenderer.tsx
-  - web/tests/e2e/f4-task-inbox.e2e.spec.ts
+  - web/tests/e2e/f5-admin-users.e2e.spec.ts
 validation:
+  - command: python tools/codegen_list_page.py templates/specs/adm-ui-01-users.list-page.yaml
+    result: pass
   - command: python tools/lint_frontend_conventions.py
     result: pass
-  - command: python tools/lint_test_isolation.py tests/integration
-    result: pass_with_known_majors
   - command: cd web && npm run type-check
     result: pass
   - command: cd web && npm run lint
@@ -35,20 +25,20 @@ validation:
     result: pass
   - command: cd web && npm run build
     result: pass
-  - command: cd web && npx playwright test
-    result: pass_for_existing_suite_blocked_for_adm_ui
+  - command: cd web && npx playwright test tests/e2e/f5-admin-users.e2e.spec.ts
+    result: fail_blocked_by_backend_crash
 issues:
-  - id: ISSUE-WF02-F5-ADM-UI-ROUTES-404
+  - id: ISSUE-WF02-F5-ADM-UI-BACKEND-SEGFAULT
     severity: BLOCKER
-    affected_requirement: ADM-UI-02
+    affected_requirement: ADM-UI-01
     description: >-
-      Backend returns 404 for users CRUD endpoints required by ADM-UI create/edit/deactivate
-      flows. Verified probes against /api/v1/admin/users, /api/v1/users, /api/v1/identity/users,
-      and /api/v1/admin/identity/users all return 404 with real admin token.
-  - id: ISSUE-WF02-F5-ADM-UI-E2E-BLOCKED
-    severity: BLOCKER
-    affected_requirement: ADM-UI-02
-    description: >-
-      Real-backend Playwright coverage for ADM-UI-01..04 cannot be completed while users API
-      routes are unavailable; attempted F5 E2E scenario fails during backend seed with 404.
-next_action: Route to BACKEND-DEV to expose/repair Stage F5 users CRUD/status endpoints, then rerun FRONTEND-DEV Step 02b rework for ADM-UI E2E completion.
+      Backend process crashes while serving users-list path used by admin users UI.
+      Crash stack points to allocator free path in src/db/pool.zig:273 and
+      identity list-users flow (src/identity/registry.zig:565,
+      src/identity/service.zig:489, src/api/routes/identity.zig:111).
+    evidence:
+      - terminal_id: a6377afa-7468-48dc-a912-0a1b7843d9b5
+      - process: zig build run (via start-backend.ps1)
+      - crash: segmentation fault at address 0xffffffffffffffff
+      - exit_code: 3
+next_action: Route to BACKEND-DEV ADHOC for users-list segfault fix, then redispatch FRONTEND-DEV Step 02b rework for final real-backend E2E pass.
