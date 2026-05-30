@@ -4,6 +4,7 @@ const subsystems = @import("subsystems.zig");
 
 pub const FailingSubsystem = subsystems.FailingSubsystem;
 pub const SubsystemChecker = subsystems.SubsystemChecker;
+const DEFAULT_MAX_READY_MS: u64 = 5000;
 
 pub const ReadyCheckResult = union(enum) {
     ready: struct {
@@ -36,7 +37,7 @@ pub const ReadinessService = struct {
             .pool = pool,
             .checkers = checkers,
             .health_check_fn = defaultDbHealthCheck,
-            .max_ready_ms = 1000,
+            .max_ready_ms = DEFAULT_MAX_READY_MS,
         };
     }
 
@@ -51,7 +52,7 @@ pub const ReadinessService = struct {
             .pool = pool,
             .checkers = checkers,
             .health_check_fn = health_check_fn,
-            .max_ready_ms = 1000,
+            .max_ready_ms = DEFAULT_MAX_READY_MS,
         };
     }
 
@@ -76,7 +77,7 @@ pub const ReadinessService = struct {
             return .{ .not_ready = .{ .failing_subsystems = try allocator.dupe(FailingSubsystem, &.{.{
                 .subsystem = "readiness",
                 .code = "READINESS_TIMEOUT",
-                .detail = "readiness checks exceeded 1000ms budget",
+                .detail = "readiness checks exceeded latency budget",
                 .retryable = true,
             }}) } };
         }
