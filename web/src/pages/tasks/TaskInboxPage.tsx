@@ -245,7 +245,7 @@ function TaskDetailPanel({ taskId, onClose }: { taskId: string; onClose: () => v
 
   if (isLoading) {
     return (
-      <div style={{ width: '40%', borderLeft: '1px solid #e2e8f0', padding: '1.5rem' }}>
+      <div data-testid="task-detail-panel" style={{ width: '40%', borderLeft: '1px solid #e2e8f0', padding: '1.5rem' }}>
         <p>Loading task details…</p>
       </div>
     )
@@ -253,7 +253,7 @@ function TaskDetailPanel({ taskId, onClose }: { taskId: string; onClose: () => v
 
   if (!task) {
     return (
-      <div style={{ width: '40%', borderLeft: '1px solid #e2e8f0', padding: '1.5rem' }}>
+      <div data-testid="task-detail-panel" style={{ width: '40%', borderLeft: '1px solid #e2e8f0', padding: '1.5rem' }}>
         <p style={{ color: '#ef4444' }}>Task not found</p>
         <button onClick={onClose}>Back</button>
       </div>

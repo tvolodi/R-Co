@@ -52,7 +52,7 @@ export function useClaimTask() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) =>
-      tasksApi.get(id), // POST /tasks/:id/assign endpoint not yet in API, using get as placeholder
+      tasksApi.assign(id),
     onSuccess: (_data, id) => {
       qc.invalidateQueries({ queryKey: taskKeys.detail(id) })
       qc.invalidateQueries({ queryKey: taskKeys.inbox() })
