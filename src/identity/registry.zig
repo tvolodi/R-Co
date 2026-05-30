@@ -575,7 +575,7 @@ pub const Registry = struct {
         }
 
         for (rows.rows, 0..) |row, idx| {
-            items[idx] = try materializeUser(allocator, row);
+            items[idx] = try materializeUserBorrowedRow(allocator, row);
             initialized += 1;
         }
 
@@ -1224,6 +1224,10 @@ fn materializeGroupMemberRecord(allocator: std.mem.Allocator, row: []?[]u8) Regi
 
 fn materializeUser(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!User {
     defer freeRow(allocator, row);
+    return materializeUserBorrowedRow(allocator, row);
+}
+
+fn materializeUserBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!User {
     if (row.len < 6) return error.PersistenceFailed;
 
     const user_id = row[0] orelse return error.PersistenceFailed;
