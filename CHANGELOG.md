@@ -6,6 +6,14 @@ All notable changes to the BPM Platform are documented here.
 
 ### Stage F3 — Instance Monitoring (Batch 1)
 
+### IN-UI-05..IN-UI-08 - Instance detail enhancements release batch (RELEASED 2026-05-30)
+- **IN-UI-05** (MUST): Event history tab now includes event type and time-range filtering, plus expandable raw JSON payload rendering.
+- **IN-UI-06** (MUST): Timeline tab now renders actor avatars with deterministic color mapping and improved human-readable timeline entries.
+- **IN-UI-07** (MUST): Cancel instance flow now uses a role-gated confirmation dialog with optional reason capture and optimistic UI update behavior.
+- **IN-UI-08** (SHOULD): Auto-refresh support added via shared polling on board and detail pages, with last-refresh visibility and manual refresh support.
+- Validation evidence passed in tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml; release approval is recorded in docs/status/release-F3b-IN-UI-05-08-2026-05-30.yaml.
+- Requirements: IN-UI-05, IN-UI-06, IN-UI-07, IN-UI-08 (Stage F3) - RELEASED
+
 ### IN-UI-01..IN-UI-04 - Instance monitoring release batch (RELEASED 2026-05-30)
 - **IN-UI-01** (MUST): Instance board — Kanban-style board with columns for Running, Suspended, Completed, and Error instances; cards show instance name, definition name, started-at timestamp, and current status.
 - **IN-UI-02** (MUST): Instance filters — Filter bar on the instance board supporting status filter (multi-select), definition filter (dropdown), and date range filter; filters update the board view in real time.

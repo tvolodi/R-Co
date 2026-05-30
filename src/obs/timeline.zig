@@ -86,18 +86,35 @@ pub fn listTimeline(
     const pa = param_arena.allocator();
 
     const instance_hex = uuidToHex(pa, query.instance_id) catch return TimelineError.OutOfMemory;
-    const tenant_id = query.tenant_id;
 
-    const exists_rows = conn.query(
+    const instance_row = conn.queryRow(
         allocator,
-        "SELECT 1 FROM instance_projections WHERE instance_id = $1",
+        "SELECT tenant_id::text FROM instance_projections WHERE instance_id = $1 LIMIT 1",
         &.{instance_hex},
     ) catch return TimelineError.EventStoreFailure;
-    defer {
-        var mr = exists_rows;
-        mr.deinit();
-    }
-    if (exists_rows.rows.len == 0) return TimelineError.InstanceNotFound;
+    if (instance_row == null) return TimelineError.InstanceNotFound;
+
+    var resolved_tenant_owned: ?[]u8 = null;
+    const resolved_tenant_id = blk: {
+        const row = instance_row.?;
+        defer freeRow(allocator, row);
+        if (row.len == 0) break :blk DEFAULT_TENANT_ID;
+        if (row[0]) |tenant_text| {
+            if (std.mem.eql(u8, tenant_text, DEFAULT_TENANT_ID)) {
+                break :blk DEFAULT_TENANT_ID;
+            }
+            const owned = allocator.dupe(u8, tenant_text) catch return TimelineError.OutOfMemory;
+            resolved_tenant_owned = owned;
+            break :blk owned;
+        }
+        break :blk DEFAULT_TENANT_ID;
+    };
+    defer if (resolved_tenant_owned) |owned| allocator.free(owned);
+
+    const tenant_id = if (std.mem.eql(u8, query.tenant_id, DEFAULT_TENANT_ID))
+        resolved_tenant_id
+    else
+        query.tenant_id;
 
     const after_seq_str: []const u8 = if (query.after_sequence) |v|
         std.fmt.allocPrint(pa, "{d}", .{v}) catch return TimelineError.OutOfMemory

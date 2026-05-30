@@ -37,13 +37,23 @@ export function EventHistoryPanel({ instanceId }: EventHistoryPanelProps) {
 
   const eventsQuery = useInstanceEvents(instanceId, appliedFilters)
 
+  const events = useMemo(() => {
+    const raw = eventsQuery.data as unknown
+    if (Array.isArray(raw)) return raw
+    if (raw && typeof raw === 'object') {
+      const items = (raw as { items?: unknown }).items
+      if (Array.isArray(items)) return items
+    }
+    return []
+  }, [eventsQuery.data])
+
   const eventTypeOptions = useMemo(() => {
     const values = new Set<string>()
-    for (const event of eventsQuery.data ?? []) {
+    for (const event of events) {
       if (event.event_type) values.add(event.event_type)
     }
     return Array.from(values).sort()
-  }, [eventsQuery.data])
+  }, [events])
 
   const onApply = () => {
     const filters = compactFilters({
@@ -159,10 +169,10 @@ export function EventHistoryPanel({ instanceId }: EventHistoryPanelProps) {
 
       {!eventsQuery.isLoading && !eventsQuery.error && (
         <>
-          {(eventsQuery.data?.length ?? 0) > 0 ? (
+          {events.length > 0 ? (
             <>
               <div style={{ color: '#64748b', fontSize: '.8rem', marginBottom: '.45rem' }}>
-                Showing {eventsQuery.data?.length ?? 0} events
+                Showing {events.length} events
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
                 <thead>
@@ -175,7 +185,7 @@ export function EventHistoryPanel({ instanceId }: EventHistoryPanelProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {(eventsQuery.data ?? []).map((event) => (
+                  {events.map((event) => (
                     <tr key={event.event_id} style={{ borderBottom: '1px solid #e2e8f0', verticalAlign: 'top' }}>
                       <td style={{ padding: '.5rem .75rem', color: '#94a3b8', fontFamily: 'monospace' }}>
                         {event.sequence_number}

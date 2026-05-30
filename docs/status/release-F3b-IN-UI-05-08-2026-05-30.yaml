@@ -1,0 +1,47 @@
+schema_version: "1.0"
+run_id: WF02-f3b-inui0508-20260530
+workflow_id: WF-02
+stage: F3b
+decision_at: "2026-05-30T04:53:32Z"
+decision: RELEASE
+release_ready: true
+scope:
+  requirements:
+    - IN-UI-05
+    - IN-UI-06
+    - IN-UI-07
+    - IN-UI-08
+must_requirements:
+  - id: IN-UI-05
+    status: PASS
+    evidence:
+      - "report-2026-05-30-WF02-f3b-inui0508-20260530.yaml: requirement_results IN-UI-05 PASS"
+  - id: IN-UI-06
+    status: PASS
+    evidence:
+      - "report-2026-05-30-WF02-f3b-inui0508-20260530.yaml: requirement_results IN-UI-06 PASS"
+  - id: IN-UI-07
+    status: PASS
+    evidence:
+      - "report-2026-05-30-WF02-f3b-inui0508-20260530.yaml: requirement_results IN-UI-07 PASS"
+should_requirements:
+  - id: IN-UI-08
+    status: PASS
+    evidence:
+      - "report-2026-05-30-WF02-f3b-inui0508-20260530.yaml: requirement_results IN-UI-08 PASS"
+quality_gates:
+  no_open_blockers: true
+  nfr_context:
+    source: tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml
+    nfr_01_p99_read_ms: 1.300
+    nfr_01_p99_write_ms: 2.250
+    nfr_02_append_throughput_eps: 65049.011
+    nfr_04_replay_10000_ms: 37.047
+    overall_passed: true
+issues:
+  blockers: []
+  major: []
+recommendation: "Release batch approved: all MUST requirements IN-UI-05..07 have passing evidence and no blockers are open in current run evidence."
+artifacts_in:
+  - tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml
+  - web/tests/e2e/f3-instance-monitoring.e2e.spec.ts

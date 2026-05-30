@@ -48,22 +48,26 @@ function useReadonlyGraph(
       return { nodes: [], edges: [] }
     }
 
-    const { nodes, edges } = graphToFlow(definitionGraph as never)
-    const highlighted = new Set(activeNodeIds)
+    try {
+      const { nodes, edges } = graphToFlow(definitionGraph as never)
+      const highlighted = new Set(activeNodeIds)
 
-    return {
-      nodes: nodes.map((node) => {
-        const isActive = highlighted.has(node.id)
-        return {
-          ...node,
-          style: {
-            ...(node.style ?? {}),
-            border: isActive ? '2px solid #2563eb' : '1px solid #cbd5e1',
-            boxShadow: isActive ? '0 0 0 4px rgba(37, 99, 235, 0.18)' : undefined,
-          },
-        }
-      }),
-      edges,
+      return {
+        nodes: nodes.map((node) => {
+          const isActive = highlighted.has(node.id)
+          return {
+            ...node,
+            style: {
+              ...(node.style ?? {}),
+              border: isActive ? '2px solid #2563eb' : '1px solid #cbd5e1',
+              boxShadow: isActive ? '0 0 0 4px rgba(37, 99, 235, 0.18)' : undefined,
+            },
+          }
+        }),
+        edges,
+      }
+    } catch {
+      return { nodes: [], edges: [] }
     }
   }, [definitionGraph, activeNodeIds])
 }
@@ -84,7 +88,7 @@ export default function InstanceDetailPage() {
   const [timelineCursor, setTimelineCursor] = useState<string | undefined>(undefined)
   const [timelineItems, setTimelineItems] = useState<TimelineEntry[]>([])
   const [timelineRequested, setTimelineRequested] = useState(false)
-  const [lastAppliedCursor, setLastAppliedCursor] = useState<string>('')
+  const [lastAppliedCursor, setLastAppliedCursor] = useState<string | null>(null)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
 
@@ -104,7 +108,7 @@ export default function InstanceDetailPage() {
     if (activeTab === 'timeline' && !timelineRequested) {
       setTimelineRequested(true)
       setTimelineCursor(undefined)
-      setLastAppliedCursor('')
+      setLastAppliedCursor(null)
       setTimelineItems([])
     }
   }, [activeTab, timelineRequested])
