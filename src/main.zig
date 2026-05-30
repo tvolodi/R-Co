@@ -637,6 +637,50 @@ fn serveRequest(
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";
             }
+        } else if (std.mem.eql(u8, resource, "users")) {
+            const actor = api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+            };
+
+            if (seg4.len == 0) {
+                if (method == .GET) {
+                    const params = identity_routes.ListUsersQueryParams{
+                        .search = QS.getDecoded(query_str, "search", req_alloc),
+                        .status = QS.get(query_str, "status"),
+                        .page = std.fmt.parseInt(u32, QS.get(query_str, "page") orelse "1", 10) catch 1,
+                        .page_size = std.fmt.parseInt(u16, QS.get(query_str, "page_size") orelse "25", 10) catch 25,
+                    };
+                    const r = identity_routes.handleListUsers(id_svc, req_alloc, actor, params);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (method == .POST) {
+                    const r = identity_routes.handleCreateUser(id_svc, req_alloc, actor, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
+            } else if (seg5.len == 0) {
+                if (method == .GET) {
+                    const r = identity_routes.handleGetUser(id_svc, req_alloc, actor, seg4);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (method == .PATCH) {
+                    const r = identity_routes.handlePatchUser(id_svc, req_alloc, actor, seg4, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
         } else if (std.mem.eql(u8, resource, "onboarding")) {
             // ── /api/v1/onboarding — OIDC-35 ─────────────────────────────────
             const actor = api_auth.AuthContext{

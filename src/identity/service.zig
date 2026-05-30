@@ -32,6 +32,32 @@ pub const UpdateUserStatusInput = struct {
     status: registry_mod.UserStatus,
 };
 
+pub const UpdateUserProfileInput = struct {
+    user_id: []const u8,
+    display_name: []const u8,
+    email: []const u8,
+    status: registry_mod.UserStatus,
+};
+
+pub const ListUsersParams = struct {
+    search: ?[]const u8,
+    status: ?registry_mod.UserStatus,
+    page: u32,
+    page_size: u16,
+};
+
+pub const UserListPage = struct {
+    items: []registry_mod.User,
+    total: u64,
+    page: u32,
+    page_size: u16,
+
+    pub fn deinit(self: UserListPage, allocator: std.mem.Allocator) void {
+        for (self.items) |item| item.deinit(allocator);
+        allocator.free(self.items);
+    }
+};
+
 pub const ResolveExternalUserInput = struct {
     tenant_id: []const u8,
     external_realm: []const u8,
@@ -425,6 +451,83 @@ pub const Service = struct {
             registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
             registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
             registry_mod.RegistryError.DuplicateUsername => error.DuplicateUsername,
+            else => error.PersistenceFailed,
+        };
+    }
+
+    pub fn getUserById(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
+        user_id: []const u8,
+    ) IdentityError!registry_mod.User {
+        if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+        if (user_id.len == 0) return error.ValidationFailed;
+
+        const user = self.registry.getUserById(allocator, actor.tenant_id[0..], user_id) catch |err| switch (err) {
+            registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
+            else => return error.PersistenceFailed,
+        };
+
+        return user orelse error.NotFound;
+    }
+
+    pub fn listUsers(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
+        params: ListUsersParams,
+    ) IdentityError!UserListPage {
+        if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+
+        const normalized_page: u32 = if (params.page == 0) 1 else params.page;
+        const normalized_page_size: u16 = if (params.page_size == 0) 25 else params.page_size;
+        const offset = (normalized_page - 1) * @as(u32, normalized_page_size);
+
+        const page = self.registry.listUsers(allocator, actor.tenant_id[0..], .{
+            .search = params.search,
+            .status = params.status,
+            .limit = normalized_page_size,
+            .offset = offset,
+        }) catch |err| switch (err) {
+            registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
+            else => return error.PersistenceFailed,
+        };
+
+        return .{
+            .items = page.items,
+            .total = page.total,
+            .page = normalized_page,
+            .page_size = normalized_page_size,
+        };
+    }
+
+    pub fn updateUserProfile(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
+        input: UpdateUserProfileInput,
+    ) IdentityError!registry_mod.User {
+        if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+        if (input.user_id.len == 0 or input.display_name.len == 0) return error.ValidationFailed;
+        if (!isValidEmail(input.email)) return error.InvalidEmail;
+
+        return self.registry.updateUserProfile(
+            allocator,
+            input.user_id,
+            actor.tenant_id[0..],
+            input.display_name,
+            input.email,
+            input.status,
+        ) catch |err| switch (err) {
+            registry_mod.RegistryError.NotFound => error.NotFound,
+            registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
             else => error.PersistenceFailed,
         };
     }
