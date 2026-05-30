@@ -56,6 +56,7 @@ export const router = createBrowserRouter([
       { path: 'instances/:id', element: <InstanceDetailPage /> },
       { path: 'tasks', element: <TaskInboxPage /> },
       { path: 'admin/users', element: <UsersPage /> },
+      { path: 'admin/users/:id', element: <UsersPage /> },
       { path: 'admin/groups', element: <GroupsPage /> },
       { path: 'admin/tokens', element: <TokensPage /> },
       { path: 'admin/audit', element: <AuditLogPage /> },
