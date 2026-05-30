@@ -370,6 +370,32 @@ If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`:
 If output is clean (exits 0 with benchmark numbers): proceed to dispatch TEST-RUNNER.
 Log: `<ts> | BENCH_ENV_CHECK | <run-id> | --- | ORCH | CLEARED`
 
+**Service startup — ADHOC BACKEND-DEV, fully autonomous (NO user interaction):**
+
+Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** — not an exceptional condition. If TEST-RUNNER reports that services are unreachable (connection refused, 503, Keycloak unavailable), ORCH MUST:
+
+1. Create an ADHOC BACKEND-DEV handoff immediately with task:
+   ```
+   Start all required backend services:
+     docker-compose up -d db db_test keycloak
+   Then wait for health checks:
+     docker-compose ps  (all services must show "healthy")
+   Then verify:
+     GET http://localhost:8081/health/ready  (Keycloak)
+     psql $BPM_TEST_DB_URL -c "SELECT 1"   (test DB)
+   Run zig build migrate to apply any pending migrations.
+   Return PASS only when all services are healthy and zig build migrate exits 0.
+   ```
+2. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for service startup`
+3. After ADHOC returns PASS: immediately redispatch TEST-RUNNER. Do NOT pause or report to user.
+4. Log: `<ts> | INFRA_UNBLOCK | <run-id> | --- | ORCH | Services healthy — redispatching TEST-RUNNER`
+
+**Forbidden ORCH behavior on infrastructure issues:**
+- Stopping the pipeline and presenting "workflow blocked" status to the user
+- Asking the user to start services
+- Treating service startup as a reason to mark the run FAILED
+- Any pause between the INFRA_BLOCK detection and the ADHOC dispatch
+
 **Batch cap:** A single WF-02 run MUST contain **at most 4 requirements**. Split larger groups into sequential runs.
 
 **WF-02 pipeline with new validator gates:**
@@ -392,6 +418,8 @@ Log: `<ts> | BENCH_ENV_CHECK | <run-id> | --- | ORCH | CLEARED`
 **Never explain before acting.** Do not write preamble sentences like "The orchestrator instructions are clear..." or "I'll now create a handoff for...". Just create the handoffs and invoke subagents immediately.
 
 **Never ask the user to invoke an agent.** After creating handoffs, run the pipeline autonomously by calling subagents in sequence. The pipeline is complete only when DOC-UPDATER has set the requirement to RELEASED and Step Final has returned PASS. The user's only valid interaction point is when genuine business-preference ambiguity requires a choice — not for pipeline steps.
+
+**Never pause for infrastructure.** Service downtime (DB, Keycloak, bpm-platform) is a technical obstacle, not a pipeline decision point. Create the ADHOC BACKEND-DEV handoff, dispatch it, wait for PASS, then continue — all within the same autonomous run. Zero user interaction.
 
 **Do not treat unrelated pre-existing workspace changes as blockers or user-facing issues.** Discuss workspace changes only when there is direct file overlap/conflict or they block acceptance criteria.
 
@@ -814,7 +842,25 @@ Also read:
 cat docs/guides/test_developer_guide.md
 ```
 
-Find your handoff, then run the test commands specified in `task.functions_to_call`. **First run `zig build bench 2>&1 | head -5`** — if bench env is broken, STOP and return FAIL with severity BLOCKER. Write results to `tests/reports/report-<date>-<run_id>.yaml` per the test guide §9 format. Complete your handoff with a full issue list and severity classification.
+Find your handoff, then run the test commands specified in `task.functions_to_call`.
+
+**Pre-checks (run before any test command):**
+
+**1. Backend services check** (required for E2E and integration tests):
+```bash
+docker-compose ps 2>/dev/null | grep -E "keycloak|db"
+curl -sf http://localhost:8081/health/ready > /dev/null && echo "KC_OK" || echo "KC_DOWN"
+psql "$BPM_TEST_DB_URL" -c "SELECT 1" > /dev/null 2>&1 && echo "DB_OK" || echo "DB_DOWN"
+```
+If any service is down: STOP. Return FAIL with severity BLOCKER, message: `"Backend services unavailable: <which services>. ORCH must run docker-compose up -d db db_test keycloak via ADHOC BACKEND-DEV, then redispatch TEST-RUNNER."` Do NOT attempt to start services yourself.
+
+**2. Benchmark environment check:**
+```bash
+zig build bench 2>&1 | head -5
+```
+If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: STOP. Return FAIL with severity BLOCKER.
+
+If both pre-checks pass: proceed to run tests. Write results to `tests/reports/report-<date>-<run_id>.yaml` per the test guide §9 format. Complete your handoff with a full issue list and severity classification.
 
 ---
 

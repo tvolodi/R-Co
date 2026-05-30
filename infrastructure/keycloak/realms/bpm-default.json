@@ -111,6 +111,19 @@
         { "type": "password", "value": "worker-pass", "temporary": false }
       ],
       "realmRoles": ["TASK_WORKER"]
+    },
+    {
+      "username": "operator-user",
+      "email": "operator@bpm.local",
+      "firstName": "Operator",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "requiredActions": [],
+      "credentials": [
+        { "type": "password", "value": "operator-pass", "temporary": false }
+      ],
+      "realmRoles": ["PLATFORM_ADMIN"]
     }
   ]
 }

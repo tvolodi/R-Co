@@ -745,6 +745,7 @@ pub const InstanceStore = struct {
             var node_name: []const u8 = task_node_id;
             var assignee_type: ?[]const u8 = null;
             var assignee_ref: ?[]const u8 = null;
+            var form_schema_json: ?[]const u8 = null;
             var node_attrs: ?[]const u8 = null;
 
             for (snapshot.graph.nodes) |node| {
@@ -753,6 +754,7 @@ pub const InstanceStore = struct {
                 if (node.attributes) |attrs| {
                     node_attrs = attrs;
                     parseAssigneeFields(a, attrs, &assignee_type, &assignee_ref);
+                    form_schema_json = extractFormSchemaJson(a, attrs);
                 }
                 break;
             }
@@ -783,6 +785,7 @@ pub const InstanceStore = struct {
                 node_name,
                 assignee_type,
                 assignee_ref,
+                form_schema_json,
             ) catch return InstanceError.TransactionFailed;
             defer task_mod.freeTask(allocator, created_task);
 
@@ -986,6 +989,7 @@ pub const InstanceStore = struct {
             var node_name: []const u8 = task_node_id; // fallback: use node_id
             var assignee_type: ?[]const u8 = null;
             var assignee_ref: ?[]const u8 = null;
+            var form_schema_json: ?[]const u8 = null;
             var node_attrs: ?[]const u8 = null;
 
             for (snapshot.nodes) |node| {
@@ -997,6 +1001,7 @@ pub const InstanceStore = struct {
                 if (node.attributes) |attrs| {
                     node_attrs = attrs;
                     parseAssigneeFields(a, attrs, &assignee_type, &assignee_ref);
+                    form_schema_json = extractFormSchemaJson(a, attrs);
                 }
                 break;
             }
@@ -1020,6 +1025,7 @@ pub const InstanceStore = struct {
                 node_name,
                 assignee_type,
                 assignee_ref,
+                form_schema_json,
             ) catch return ApplyError.PersistenceFailed;
             defer task_mod.freeTask(allocator, created_task);
 
@@ -1676,6 +1682,7 @@ pub const InstanceStore = struct {
             var node_name: []const u8 = new_node;
             var node_assignee_type: ?[]const u8 = null;
             var node_assignee_ref: ?[]const u8 = null;
+            var node_form_schema_json: ?[]const u8 = null;
             var node_attrs: ?[]const u8 = null;
 
             for (snapshot.nodes) |node| {
@@ -1684,6 +1691,7 @@ pub const InstanceStore = struct {
                 if (node.attributes) |attrs| {
                     node_attrs = attrs;
                     parseAssigneeFields(a, attrs, &node_assignee_type, &node_assignee_ref);
+                    node_form_schema_json = extractFormSchemaJson(a, attrs);
                 }
                 break;
             }
@@ -1706,6 +1714,7 @@ pub const InstanceStore = struct {
                 node_name,
                 node_assignee_type,
                 node_assignee_ref,
+                node_form_schema_json,
             ) catch return CompleteTaskError.PersistenceFailed;
             defer task_mod.freeTask(allocator, created_task);
 
@@ -2292,6 +2301,8 @@ pub const InstanceStore = struct {
                 .status = t_status,
                 .assignee_type = t_assignee_type,
                 .assignee_ref = t_assignee_ref,
+                .form_schema = null,
+                .correlation_key = null,
                 .created_at = t_created_at,
                 .updated_at = t_created_at, // updated_at not fetched; use created_at as stub
             };
@@ -4190,6 +4201,26 @@ fn parseAssigneeFields(
             assignee_ref.* = allocator.dupe(u8, v.string) catch null;
         }
     }
+}
+
+/// Extract the raw JSON string for `form_schema` from a node's attributes JSON.
+/// Returns a caller-owned dupe of the serialized form_schema object, or null.
+fn extractFormSchemaJson(allocator: std.mem.Allocator, attrs: []const u8) ?[]const u8 {
+    var inner_arena = std.heap.ArenaAllocator.init(allocator);
+    defer inner_arena.deinit();
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        inner_arena.allocator(),
+        attrs,
+        .{ .allocate = .alloc_always },
+    ) catch return null;
+    defer parsed.deinit();
+    if (parsed.value != .object) return null;
+    const fs_val = parsed.value.object.get("form_schema") orelse return null;
+    if (fs_val == .null) return null;
+    // Re-serialize the form_schema value back to a JSON string for DB storage.
+    const fs_json = std.json.Stringify.valueAlloc(allocator, fs_val, .{}) catch return null;
+    return fs_json;
 }
 
 fn parseEscalationTimerConfig(

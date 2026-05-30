@@ -112,7 +112,7 @@ export interface StartInstanceRequest {
 
 // ── Tasks (Stage 3) ───────────────────────────────────────────────────────────
 
-export type TaskStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED'
+export type TaskStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED' | 'ESCALATED'
 
 export interface Task {
   id: string
@@ -120,14 +120,21 @@ export interface Task {
   token_id: string
   node_id: string
   node_name: string
+  definition_name?: string
+  definition_id?: string
+  definition_version?: string
+  correlation_key?: string
   status: TaskStatus
   assignee_type?: string
   assignee_ref?: string
+  assignee_name?: string
   form_schema?: Record<string, unknown>
   output_variables?: Record<string, unknown>
   completed_by?: string
   completed_at?: string
   created_at: string
+  updated_at?: string
+  escalation_time?: string
 }
 
 export interface CompleteTaskRequest {

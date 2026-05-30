@@ -1,0 +1,102 @@
+---
+run_id: WF02-f4-task-inbox-20260530
+stage: Stage F4 - Task Inbox
+test_date: '2026-05-30T12:09:00Z'
+test_framework: Playwright
+browser: chromium
+duration_seconds: 180
+
+summary:
+  description: E2E test execution for Stage F4 task inbox (TK-UI-01 through TK-UI-10)
+  total_test_cases: 29
+  passed: 8
+  failed: 21
+  pass_rate: 27.6%
+  status: FAIL
+
+test_results:
+  passing:
+    - name: TK-UI-01-E2E-01
+      description: task inbox displays user assigned tasks
+      duration_seconds: 3.2
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-02
+      description: task inbox displays user group-assigned tasks
+      duration_seconds: 3.2
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-03
+      description: My Tasks filter shows only user-assigned tasks
+      duration_seconds: 3.3
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-04
+      description: My Group Tasks filter shows only group-assigned tasks
+      duration_seconds: 3.3
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-05
+      description: All Tasks filter available only to operators
+      duration_seconds: 0.884
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-06
+      description: task list displays required columns
+      duration_seconds: 3.2
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-07
+      description: pagination controls work for task lists
+      duration_seconds: 3.2
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-05-E2E-03
+      description: claim button sends POST request
+      duration_seconds: 0.635
+      requirement_id: TK-UI-05
+      status: PASS
+
+root_causes:
+  - id: TASK_USER_ID_MISMATCH
+    status: FIXED_IN_THIS_RUN
+    description: Backend was defaulting user ID to all-zeros UUID when x-bpm-user-id header was missing
+    solution: Updated web/src/api/client.ts to extract user ID from JWT and send as header
+    impact: Fixed TK-UI-01 tests - tasks now appear in inbox
+
+  - id: DETAIL_PANEL_NOT_APPEARING
+    status: NEW_BLOCKING_ISSUE
+    description: Task detail panel component not rendering after clicking task row
+    root_cause_hypothesis: onClick handler may not be properly triggering state update
+    evidence: All detail panel tests fail with element not found after click
+    next_steps: Investigate TaskInboxPage.tsx onClick handler and React hooks
+
+infrastructure_status:
+  backend_api: OPERATIONAL
+  keycloak_auth: OPERATIONAL
+  database: OPERATIONAL
+
+requirements_covered:
+  - id: TK-UI-01
+    name: Task inbox display and filtering
+    coverage: PARTIAL
+    notes: Tests 1-7 pass
+  - id: TK-UI-02
+    name: Task detail panel display
+    coverage: BLOCKED
+    notes: Detail panel not rendering
+  - id: TK-UI-03
+    name: Task form schema rendering
+    coverage: BLOCKED
+  - id: TK-UI-04
+    name: Task completion
+    coverage: BLOCKED
+  - id: TK-UI-05
+    name: Claim tasks
+    coverage: PARTIAL
+    notes: API test passes, UI button blocked
+  - id: TK-UI-06
+    name: Reassign tasks
+    coverage: BLOCKED
+
+next_action: Route to ISSUE-FIXER to diagnose detail panel rendering issue in TaskInboxPage.tsx

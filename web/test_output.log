@@ -1,0 +1,1216 @@
+
+Running 29 tests using 1 worker
+
+  ok  1 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:297:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-01: task inbox displays user assigned tasks (3.2s)
+  ok  2 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:318:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-02: task inbox displays user group-assigned tasks (3.2s)
+  ok  3 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:342:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-03: "My Tasks" filter shows only user-assigned tasks (3.2s)
+  ok  4 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:373:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-04: "My Group Tasks" filter shows only group-assigned tasks (3.2s)
+  ok  5 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:405:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-05: "All Tasks" filter available only to operators (913ms)
+  ok  6 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:434:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-06: task list displays required columns (3.2s)
+  ok  7 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:456:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-01-E2E-07: pagination controls work for task lists (3.2s)
+  x   8 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:479:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-01: clicking task opens detail panel (8.2s)
+  x   9 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:479:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-01: clicking task opens detail panel (retry #1) (8.3s)
+  x  10 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:499:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-02: task detail panel displays node name (5.9s)
+  x  11 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:499:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-02: task detail panel displays node name (retry #1) (6.0s)
+  x  12 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:522:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-03: panel displays instance context information (5.9s)
+  x  13 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:522:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-03: panel displays instance context information (retry #1) (6.0s)
+  x  14 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:544:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-04: panel displays current instance variables (5.9s)
+  x  15 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:544:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-04: panel displays current instance variables (retry #1) (6.1s)
+  x  16 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:566:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-01: text field from form schema renders as input (5.8s)
+  x  17 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:566:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-01: text field from form schema renders as input (retry #1) (6.0s)
+  x  18 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:587:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-06: required fields are marked as required (5.8s)
+  x  19 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:587:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-06: required fields are marked as required (retry #1) (6.0s)
+  x  20 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:611:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-07: form submission blocked if required fields empty (5.8s)
+  x  21 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:611:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-07: form submission blocked if required fields empty (retry #1) (6.0s)
+  x  22 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:641:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-01: complete button is visible on task detail (5.9s)
+  x  23 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:641:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-01: complete button is visible on task detail (retry #1) (5.9s)
+  x  24 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:662:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-02: complete button submits form to backend (644ms)
+  x  25 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:662:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-02: complete button submits form to backend (retry #1) (743ms)
+  x  26 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:695:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-04: success toast shown after task completion (5.8s)
+  x  27 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:695:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-04: success toast shown after task completion (retry #1) (5.9s)
+  x  28 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:727:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-01: claim button visible for group-assigned tasks (8.2s)
+  x  29 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:727:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-01: claim button visible for group-assigned tasks (retry #1) (8.4s)
+  ok 30 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:758:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-03: claim button sends POST request (639ms)
+  x  31 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:795:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-01: reassign button visible for operators (30.9s)
+  x  32 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:795:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-01: reassign button visible for operators (retry #1) (30.9s)
+  x  33 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:819:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-02: reassign button not visible for task workers (5.9s)
+  x  34 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:819:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-02: reassign button not visible for task workers (retry #1) (6.0s)
+  x  35 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:841:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-03: reassign button opens search dialog (31.0s)
+  x  36 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:841:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-03: reassign button opens search dialog (retry #1) (31.1s)
+  ok 37 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:874:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-01: task inbox displays on 375px mobile viewport (659ms)
+  x  38 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:897:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-02: task detail page renders without horizontal scrolling (5.8s)
+  x  39 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:897:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-02: task detail page renders without horizontal scrolling (retry #1) (5.9s)
+  x  40 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:921:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-04: complete button accessible on mobile (5.8s)
+  x  41 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:921:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-04: complete button accessible on mobile (retry #1) (5.9s)
+  ok 42 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:955:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-01: tasks can be sorted by created time (645ms)
+  ok 43 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:976:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-07-E2E-03: free-text search filters by task name (1.1s)
+  ok 44 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1000:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-08-E2E-01: navigation badge displays current task count (630ms)
+  ok 45 [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:1023:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-09-E2E-01: escalated tasks show visual indicator in list (639ms)
+
+
+  1) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:479:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-01: clicking task opens detail panel 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      493 |     const taskRow = page.getByTestId('task-row').first()
+      494 |     await taskRow.click()
+    > 495 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 5_000 })
+          |                                                         ^
+      496 |     await shot(page, 'TK02-01-detail-panel-open')
+      497 |   })
+      498 |
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:495:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      493 |     const taskRow = page.getByTestId('task-row').first()
+      494 |     await taskRow.click()
+    > 495 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 5_000 })
+          |                                                         ^
+      496 |     await shot(page, 'TK02-01-detail-panel-open')
+      497 |   })
+      498 |
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:495:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--74427-ing-task-opens-detail-panel-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:499:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-02: task detail panel displays node name 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      512 |     const taskRow = page.getByTestId('task-row').first()
+      513 |     await taskRow.click()
+    > 514 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      515 |     const detailTitle = page.getByTestId('task-detail-title')
+      516 |     await expect(detailTitle).toBeVisible()
+      517 |     const titleText = await detailTitle.textContent()
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:514:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      512 |     const taskRow = page.getByTestId('task-row').first()
+      513 |     await taskRow.click()
+    > 514 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      515 |     const detailTitle = page.getByTestId('task-detail-title')
+      516 |     await expect(detailTitle).toBeVisible()
+      517 |     const titleText = await detailTitle.textContent()
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:514:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--6cce0-il-panel-displays-node-name-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:522:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-03: panel displays instance context information 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      535 |     const taskRow = page.getByTestId('task-row').first()
+      536 |     await taskRow.click()
+    > 537 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      538 |     await expect(page.getByTestId('instance-definition-name')).toBeVisible()
+      539 |     await expect(page.getByTestId('instance-id')).toBeVisible()
+      540 |     await expect(page.getByTestId('instance-correlation-key')).toBeVisible()
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:537:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      535 |     const taskRow = page.getByTestId('task-row').first()
+      536 |     await taskRow.click()
+    > 537 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      538 |     await expect(page.getByTestId('instance-definition-name')).toBeVisible()
+      539 |     await expect(page.getByTestId('instance-id')).toBeVisible()
+      540 |     await expect(page.getByTestId('instance-correlation-key')).toBeVisible()
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:537:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--e45ab-nstance-context-information-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:544:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-04: panel displays current instance variables 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      557 |     const taskRow = page.getByTestId('task-row').first()
+      558 |     await taskRow.click()
+    > 559 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      560 |     const variablesSection = page.getByTestId('instance-variables')
+      561 |     await expect(variablesSection).toBeVisible()
+      562 |     await shot(page, 'TK02-04-variables')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:559:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      557 |     const taskRow = page.getByTestId('task-row').first()
+      558 |     await taskRow.click()
+    > 559 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      560 |     const variablesSection = page.getByTestId('instance-variables')
+      561 |     await expect(variablesSection).toBeVisible()
+      562 |     await shot(page, 'TK02-04-variables')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:559:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--8bcdb--current-instance-variables-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:566:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-01: text field from form schema renders as input 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      579 |     const taskRow = page.getByTestId('task-row').first()
+      580 |     await taskRow.click()
+    > 581 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      582 |     const textField = page.getByTestId('form-field-approver_notes')
+      583 |     await expect(textField).toBeVisible()
+      584 |     await shot(page, 'TK03-01-text-field')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:581:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      579 |     const taskRow = page.getByTestId('task-row').first()
+      580 |     await taskRow.click()
+    > 581 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      582 |     const textField = page.getByTestId('form-field-approver_notes')
+      583 |     await expect(textField).toBeVisible()
+      584 |     await shot(page, 'TK03-01-text-field')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:581:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--a8207-orm-schema-renders-as-input-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:587:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-06: required fields are marked as required 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      600 |     const taskRow = page.getByTestId('task-row').first()
+      601 |     await taskRow.click()
+    > 602 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      603 |     const requiredIndicator = page.getByTestId('form-field-required-approver_notes')
+      604 |     const isVisible = await requiredIndicator.count() > 0
+      605 |     if (isVisible) {
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:602:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      600 |     const taskRow = page.getByTestId('task-row').first()
+      601 |     await taskRow.click()
+    > 602 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      603 |     const requiredIndicator = page.getByTestId('form-field-required-approver_notes')
+      604 |     const isVisible = await requiredIndicator.count() > 0
+      605 |     if (isVisible) {
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:602:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--85948-elds-are-marked-as-required-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:611:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-07: form submission blocked if required fields empty 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      624 |     const taskRow = page.getByTestId('task-row').first()
+      625 |     await taskRow.click()
+    > 626 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      627 |     const completeButton = page.getByTestId('task-complete-button')
+      628 |     await completeButton.click()
+      629 |     const errorMessage = page.getByTestId('form-error-message')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:626:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      624 |     const taskRow = page.getByTestId('task-row').first()
+      625 |     await taskRow.click()
+    > 626 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      627 |     const completeButton = page.getByTestId('task-complete-button')
+      628 |     await completeButton.click()
+      629 |     const errorMessage = page.getByTestId('form-error-message')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:626:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--e600c-ed-if-required-fields-empty-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:641:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-01: complete button is visible on task detail 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      654 |     const taskRow = page.getByTestId('task-row').first()
+      655 |     await taskRow.click()
+    > 656 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      657 |     const completeButton = page.getByTestId('task-complete-button')
+      658 |     await expect(completeButton).toBeVisible()
+      659 |     await shot(page, 'TK04-01-complete-button')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:656:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      654 |     const taskRow = page.getByTestId('task-row').first()
+      655 |     await taskRow.click()
+    > 656 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      657 |     const completeButton = page.getByTestId('task-complete-button')
+      658 |     await expect(completeButton).toBeVisible()
+      659 |     await shot(page, 'TK04-01-complete-button')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:656:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--aa1f3-n-is-visible-on-task-detail-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:662:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-02: complete button submits form to backend 
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mnull[39m
+
+      675 |     const taskRow = page.getByTestId('task-row').first()
+      676 |     const taskId = await taskRow.getAttribute('data-task-id')
+    > 677 |     expect(taskId).toBeTruthy()
+          |                    ^
+      678 |     await taskRow.click()
+      679 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+      680 |     const textField = page.getByTestId('form-field-approver_notes')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:677:20
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeTruthy[2m()[22m
+
+    Received: [31mnull[39m
+
+      675 |     const taskRow = page.getByTestId('task-row').first()
+      676 |     const taskId = await taskRow.getAttribute('data-task-id')
+    > 677 |     expect(taskId).toBeTruthy()
+          |                    ^
+      678 |     await taskRow.click()
+      679 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+      680 |     const textField = page.getByTestId('form-field-approver_notes')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:677:20
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--6174d-ton-submits-form-to-backend-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:695:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-04: success toast shown after task completion 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      708 |     const taskRow = page.getByTestId('task-row').first()
+      709 |     await taskRow.click()
+    > 710 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      711 |     const textField = page.getByTestId('form-field-approver_notes')
+      712 |     await textField.fill('Approved')
+      713 |     const completeButton = page.getByTestId('task-complete-button')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:710:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      708 |     const taskRow = page.getByTestId('task-row').first()
+      709 |     await taskRow.click()
+    > 710 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      711 |     const textField = page.getByTestId('form-field-approver_notes')
+      712 |     await textField.fill('Approved')
+      713 |     const completeButton = page.getByTestId('task-complete-button')
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:710:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--9edf6-shown-after-task-completion-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:727:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-01: claim button visible for group-assigned tasks 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      746 |     if (taskRowVisible) {
+      747 |       await taskRow.click()
+    > 748 |       await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                           ^
+      749 |       const claimButton = page.getByTestId('task-claim-button')
+      750 |       const buttonVisible = await claimButton.count() > 0
+      751 |       if (buttonVisible) {
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:748:59
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      746 |     if (taskRowVisible) {
+      747 |       await taskRow.click()
+    > 748 |       await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                           ^
+      749 |       const claimButton = page.getByTestId('task-claim-button')
+      750 |       const buttonVisible = await claimButton.count() > 0
+      751 |       if (buttonVisible) {
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:748:59
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--ec1fe-le-for-group-assigned-tasks-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:795:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-01: reassign button visible for operators 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByTestId('task-row').first()[22m
+
+
+      807 |     await navigateSpa(page, '/tasks')
+      808 |     const taskRow = page.getByTestId('task-row').first()
+    > 809 |     await taskRow.click()
+          |                   ^
+      810 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+      811 |     const reassignButton = page.getByTestId('task-reassign-button')
+      812 |     const buttonExists = await reassignButton.count() > 0
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:809:19
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByTestId('task-row').first()[22m
+
+
+      807 |     await navigateSpa(page, '/tasks')
+      808 |     const taskRow = page.getByTestId('task-row').first()
+    > 809 |     await taskRow.click()
+          |                   ^
+      810 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+      811 |     const reassignButton = page.getByTestId('task-reassign-button')
+      812 |     const buttonExists = await reassignButton.count() > 0
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:809:19
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--2aa2c-utton-visible-for-operators-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:819:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-02: reassign button not visible for task workers 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      832 |     const taskRow = page.getByTestId('task-row').first()
+      833 |     await taskRow.click()
+    > 834 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      835 |     const reassignButton = page.getByTestId('task-reassign-button')
+      836 |     const buttonExists = await reassignButton.count() > 0
+      837 |     expect(buttonExists).toBe(false)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:834:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      832 |     const taskRow = page.getByTestId('task-row').first()
+      833 |     await taskRow.click()
+    > 834 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      835 |     const reassignButton = page.getByTestId('task-reassign-button')
+      836 |     const buttonExists = await reassignButton.count() > 0
+      837 |     expect(buttonExists).toBe(false)
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:834:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--fcdbc-ot-visible-for-task-workers-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:841:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-03: reassign button opens search dialog 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByTestId('task-row').first()[22m
+
+
+      853 |     await navigateSpa(page, '/tasks')
+      854 |     const taskRow = page.getByTestId('task-row').first()
+    > 855 |     await taskRow.click()
+          |                   ^
+      856 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+      857 |     const reassignButton = page.getByTestId('task-reassign-button')
+      858 |     const buttonExists = await reassignButton.count() > 0
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:855:19
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for getByTestId('task-row').first()[22m
+
+
+      853 |     await navigateSpa(page, '/tasks')
+      854 |     const taskRow = page.getByTestId('task-row').first()
+    > 855 |     await taskRow.click()
+          |                   ^
+      856 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+      857 |     const reassignButton = page.getByTestId('task-reassign-button')
+      858 |     const buttonExists = await reassignButton.count() > 0
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:855:19
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--f8b1f--button-opens-search-dialog-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:897:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-02: task detail page renders without horizontal scrolling 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      911 |     const taskRow = page.getByTestId('task-row').first()
+      912 |     await taskRow.click()
+    > 913 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      914 |     const hasHorizontalScroll = await page.evaluate(() => {
+      915 |       return document.documentElement.scrollWidth > window.innerWidth
+      916 |     })
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:913:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      911 |     const taskRow = page.getByTestId('task-row').first()
+      912 |     await taskRow.click()
+    > 913 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      914 |     const hasHorizontalScroll = await page.evaluate(() => {
+      915 |       return document.documentElement.scrollWidth > window.innerWidth
+      916 |     })
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:913:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--e1108-ithout-horizontal-scrolling-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:921:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-04: complete button accessible on mobile 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      935 |     const taskRow = page.getByTestId('task-row').first()
+      936 |     await taskRow.click()
+    > 937 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      938 |     const completeButton = page.getByTestId('task-complete-button')
+      939 |     await expect(completeButton).toBeVisible()
+      940 |     const isInViewport = await completeButton.evaluate((el) => {
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:937:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByTestId('task-detail-panel')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByTestId('task-detail-panel')[22m
+
+
+      935 |     const taskRow = page.getByTestId('task-row').first()
+      936 |     await taskRow.click()
+    > 937 |     await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+          |                                                         ^
+      938 |     const completeButton = page.getByTestId('task-complete-button')
+      939 |     await expect(completeButton).toBeVisible()
+      940 |     const isInViewport = await completeButton.evaluate((el) => {
+        at C:\Users\tvolo\dev\ai-dala\My-Fab\web\tests\e2e\f4-task-inbox.e2e.spec.ts:937:57
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\f4-task-inbox.e2e-F4-task--4c23b-button-accessible-on-mobile-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16 failed
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:479:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-01: clicking task opens detail panel 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:499:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-02: task detail panel displays node name 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:522:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-03: panel displays instance context information 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:544:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-02-E2E-04: panel displays current instance variables 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:566:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-01: text field from form schema renders as input 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:587:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-06: required fields are marked as required 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:611:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-03-E2E-07: form submission blocked if required fields empty 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:641:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-01: complete button is visible on task detail 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:662:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-02: complete button submits form to backend 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:695:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-04-E2E-04: success toast shown after task completion 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:727:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-05-E2E-01: claim button visible for group-assigned tasks 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:795:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-01: reassign button visible for operators 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:819:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-02: reassign button not visible for task workers 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:841:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-06-E2E-03: reassign button opens search dialog 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:897:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-02: task detail page renders without horizontal scrolling 
+    [chromium] › tests\e2e\f4-task-inbox.e2e.spec.ts:921:3 › F4 task inbox UI (TK-UI-01..10) › TK-UI-10-E2E-04: complete button accessible on mobile 
+  13 passed (5.6m)

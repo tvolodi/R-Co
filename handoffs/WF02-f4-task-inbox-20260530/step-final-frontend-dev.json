@@ -1,0 +1,45 @@
+{
+  "handoff_id": "a4650908-512f-49c8-a773-3e3d0ee89e31",
+  "run_id": "WF02-f4-task-inbox-20260530",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-30T12:20:00Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F4 - Task inbox",
+    "requirement_ids": [
+      "TK-UI-01",
+      "TK-UI-02",
+      "TK-UI-03",
+      "TK-UI-04",
+      "TK-UI-05",
+      "TK-UI-06",
+      "TK-UI-07",
+      "TK-UI-08",
+      "TK-UI-09",
+      "TK-UI-10"
+    ],
+    "artifacts_in": [],
+    "related_handoff_ids": []
+  },
+  "task": {
+    "description": "fn:git-merge \u2014 Merge feature/WF02-f4-task-inbox-20260530 to main. Commit any remaining artifacts (test reports, docs, changelog), create PR, ensure checks pass, squash merge, delete branch.",
+    "acceptance_criteria": [
+      "All artifacts committed and pushed to feature branch",
+      "PR created and merged to main via gh pr merge --squash --delete-branch",
+      "Feature branch deleted from GitHub",
+      "result contains branch_name, commit_sha_list, pr_url, push_status: ok"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-05-30T12:20:00Z",
+  "completed_at": null
+}

@@ -86,12 +86,24 @@ After an agent completes a handoff, read `result.status`:
 
 A single WF-02 run MUST contain **at most 4 requirements**. Split larger groups into sequential runs. Large batches increase WF-03 blast radius and corrupt timing metrics.
 
-## Infrastructure problems — ADHOC handoff, never deferral
+## Infrastructure problems — ADHOC handoff, fully autonomous (NO user pause)
 
-If any infrastructure (bench DB, test DB, Keycloak, etc.) is unavailable at any pipeline step:
-- Create an ADHOC BACKEND-DEV handoff to fix the infrastructure immediately
-- Only advance the blocked pipeline step after the ADHOC returns PASS
-- Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for <service> setup`
+Backend services (PostgreSQL, Keycloak, bpm-platform) are a **standard runtime requirement** — not an exceptional condition. If TEST-RUNNER or any pipeline step reports that services are unreachable, ORCH MUST resolve this autonomously without any user interaction.
+
+**Forbidden: stopping the pipeline and showing "workflow blocked" to the user. Forbidden: asking the user to start services.**
+
+Protocol:
+1. Create an ADHOC BACKEND-DEV handoff immediately with task:
+   ```
+   docker-compose up -d db db_test keycloak
+   Wait until: docker-compose ps shows all services "healthy"
+   Verify: GET http://localhost:8081/health/ready (Keycloak), psql $BPM_TEST_DB_URL -c "SELECT 1" (test DB)
+   Run: zig build migrate
+   Return PASS only when all services respond and zig build migrate exits 0.
+   ```
+2. Log: `<ts> | INFRA_BLOCK | <run-id> | --- | ORCH | BLOCKED → routing to BACKEND-DEV for service startup`
+3. After ADHOC returns PASS: immediately redispatch the blocked step (no user prompt).
+4. Log: `<ts> | INFRA_UNBLOCK | <run-id> | --- | ORCH | Services healthy — redispatching <AGENT> Step <N>`
 
 ## Benchmark environment check — BEFORE dispatching TEST-RUNNER
 

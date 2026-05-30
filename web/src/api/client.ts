@@ -29,6 +29,18 @@ export function tryRestoreE2eToken(): string | null {
   return null
 }
 
+/** Extract user ID (sub claim) from JWT token */
+function extractUserIdFromToken(token: string): string | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const decoded = JSON.parse(atob(parts[1]))
+    return decoded.sub || null
+  } catch {
+    return null
+  }
+}
+
 // ── Core request ───────────────────────────────────────────────────────────────
 
 async function request<T>(
@@ -43,7 +55,14 @@ async function request<T>(
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   }
-  if (token) headers['Authorization'] = `Bearer ${token}`
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+    // Extract user ID from JWT and send as required x-bpm-user-id header
+    const userId = extractUserIdFromToken(token)
+    if (userId) {
+      headers['x-bpm-user-id'] = userId
+    }
+  }
 
   const response = await window.fetch(`${BASE_URL}${path}`, { ...options, headers })
 
@@ -119,8 +138,13 @@ export const client = {
           ),
         )}`
       : path
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` }
+    const userId = extractUserIdFromToken(token)
+    if (userId) {
+      headers['x-bpm-user-id'] = userId
+    }
     return request<T>(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
     }, {
       suppressSessionExpiredEvent: true,
     })

@@ -1,0 +1,61 @@
+{
+  "handoff_id": "b4100783-73ca-4261-a7dd-5d4b97e218e8",
+  "run_id": "WF02-f4-task-inbox-20260530",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-30T05:29:31Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F4 - Task inbox",
+    "requirement_ids": [
+      "TK-UI-01",
+      "TK-UI-02",
+      "TK-UI-03",
+      "TK-UI-04",
+      "TK-UI-05",
+      "TK-UI-06",
+      "TK-UI-07",
+      "TK-UI-08",
+      "TK-UI-09",
+      "TK-UI-10"
+    ],
+    "artifacts_in": [],
+    "related_handoff_ids": []
+  },
+  "task": {
+    "description": "Design E2E test specs for Stage F4: task inbox page display and filtering, task detail panel rendering, form submission, task claim/complete/reassign operations, escalation indicators, mobile responsiveness. Every MUST requirement must have a runnable integration test.",
+    "acceptance_criteria": [
+      "Test spec file created at web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "Every MUST requirement (TK-UI-01, 02, 03, 04, 05, 06, 10) has an E2E test case",
+      "Each test is independent, uses per-test fixtures, no shared state",
+      "Tests verify backend API integration (real server)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created comprehensive E2E test specifications and test suite for Stage F4 task inbox features. All MUST requirements (TK-UI-01..06, TK-UI-10) have complete E2E test cases with real backend integration. SHOULD requirements (TK-UI-07..09) also included.",
+    "artifacts_out": [
+      "tests/specs/TK-UI-01.md",
+      "tests/specs/TK-UI-02.md",
+      "tests/specs/TK-UI-03.md",
+      "tests/specs/TK-UI-04.md",
+      "tests/specs/TK-UI-05.md",
+      "tests/specs/TK-UI-06.md",
+      "tests/specs/TK-UI-07.md",
+      "tests/specs/TK-UI-08.md",
+      "tests/specs/TK-UI-09.md",
+      "tests/specs/TK-UI-10.md",
+      "web/tests/e2e/f4-task-inbox.e2e.spec.ts"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": null,
+  "completed_at": "2026-05-30T05:46:01Z"
+}

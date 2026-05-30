@@ -4,6 +4,23 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage F4 — Task Inbox
+
+### TK-UI-01..TK-UI-10 - Task inbox full release batch (RELEASED 2026-05-30)
+- **TK-UI-01** (MUST): Task inbox display — Authenticated users see a list of tasks assigned to them or their groups, with columns for task name, definition, due date, assignee, and status. Filtering by status, assignee, and definition is supported.
+- **TK-UI-02** (MUST): Task detail panel — Selecting a task opens a slide-in detail panel showing full task metadata (name, description, due date, priority, assignee, form schema fields) with action buttons contextualised by role.
+- **TK-UI-03** (MUST): Dynamic form schema rendering — Task detail panel renders the form schema attached to the task node as an interactive form with supported field types (text, number, select, checkbox, date). Form values are pre-populated from task variables.
+- **TK-UI-04** (MUST): Task completion — Assignees can submit the rendered form to complete a task; the UI calls POST /tasks/:id/complete with form field payloads and transitions the task to COMPLETED status with optimistic UI feedback.
+- **TK-UI-05** (MUST): Claim group-assigned tasks — Tasks assigned to a group (no individual assignee) display a Claim button; clicking it calls POST /tasks/:id/assign to set the current user as assignee before allowing completion.
+- **TK-UI-06** (MUST): Reassign tasks (operator) — Operators see a Reassign button on any task detail panel; selecting a new assignee from a user picker calls the assign endpoint and updates the task record, with the change reflected immediately in the inbox.
+- **TK-UI-07** (SHOULD): Sort and free-text search — The inbox supports column-header sorting (due date, name, priority) and a free-text search bar that filters visible tasks client-side with debounce, plus server-side search via query param.
+- **TK-UI-08** (SHOULD): Navigation badge count — The sidebar navigation entry for Tasks shows a live badge with the count of pending tasks assigned to the current user; badge updates on a polling interval without requiring page reload.
+- **TK-UI-09** (SHOULD): Escalation indicator — Tasks past their due date display a distinct escalation indicator (warning icon + red tint) in both the inbox list row and the detail panel header.
+- **TK-UI-10** (MUST): Mobile responsive layout — Task inbox and detail panel are fully usable on viewport widths ≥ 375 px; detail panel renders as a full-screen overlay on mobile, and form fields stack vertically with touch-friendly tap targets.
+- Validation evidence: 29/29 E2E tests passing in tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml; release approval recorded in docs/status/release-f4-task-inbox-2026-05-30.yaml.
+- Key fixes before release: task_id→id field normalisation in API boundary, epoch-microseconds→ISO timestamp conversion, form_schema_json storage and retrieval, operator inbox visibility, useClaimTask wired to assign endpoint.
+- Requirements: TK-UI-01..TK-UI-10 (Stage F4) — RELEASED
+
 ### Stage F3 — Instance Monitoring (Batch 2)
 
 ### IN-UI-09..IN-UI-10 - Token visualization & history scrubber release batch (RELEASED 2026-05-30)

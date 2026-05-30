@@ -605,6 +605,17 @@ fn serveRequest(
                     resp_status = 405;
                     resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
                 }
+            } else if (std.mem.eql(u8, seg4, "inbox") and seg5.len == 0) {
+                // GET /api/v1/tasks/inbox
+                if (method == .GET) {
+                    const page_size = std.fmt.parseInt(u16, QS.get(query_str, "page_size") orelse "50", 10) catch 50;
+                    const r = task_routes.handleInbox(task_store_inst, req_alloc, actor, QS.get(query_str, "cursor"), page_size);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
             } else if (seg5.len == 0 and method == .GET) {
                 // GET /api/v1/tasks/:id
                 const r = task_routes.handleGetById(task_store_inst, req_alloc, seg4);

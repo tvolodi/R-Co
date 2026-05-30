@@ -48,6 +48,18 @@ export function useCompleteTask() {
   })
 }
 
+export function useClaimTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      tasksApi.assign(id),
+    onSuccess: (_data, id) => {
+      qc.invalidateQueries({ queryKey: taskKeys.detail(id) })
+      qc.invalidateQueries({ queryKey: taskKeys.inbox() })
+    },
+  })
+}
+
 export function useReassignTask() {
   const qc = useQueryClient()
   return useMutation({

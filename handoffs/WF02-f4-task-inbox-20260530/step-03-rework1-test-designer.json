@@ -1,0 +1,65 @@
+{
+  "handoff_id": "051e7119-dc63-42dd-9778-56e50aeac37c",
+  "run_id": "WF02-f4-task-inbox-20260530",
+  "workflow_id": "WF-02",
+  "step": "03-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-30T05:40:15Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F4 - Task inbox",
+    "requirement_ids": [
+      "TK-UI-01",
+      "TK-UI-02",
+      "TK-UI-03",
+      "TK-UI-04",
+      "TK-UI-05",
+      "TK-UI-06",
+      "TK-UI-07",
+      "TK-UI-08",
+      "TK-UI-09",
+      "TK-UI-10"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-f4-task-inbox-20260530/step-03b-test-design-validator.json"
+    ],
+    "related_handoff_ids": []
+  },
+  "task": {
+    "description": "REWORK 1: Fix test isolation violations in Stage F4 E2E tests.\n\nCritical issue (BLOCKER): Tests share fixtures via beforeAll() instead of creating per-test instances. This violates test isolation and makes tests order-dependent.\n\nIssues to fix:\n- [BLOCKER] TK-UI-04-E2E-02 and E2E-04 both complete same task from simpleInstance - need separate per-test instances\n- [BLOCKER] TK-UI-05-E2E-03 claims group task that other tests depend on - need per-test instances\n- [BLOCKER] All beforeAll() fixtures must be moved to beforeEach() for true per-test isolation\n- [MAJOR] TK-UI-01 test spec defines 7 cases but only 3 implemented - implement all 7\n- [MAJOR] Complete missing test cases for filter combinations\n\nFix by:\n1. Refactor web/tests/e2e/f4-task-inbox.e2e.spec.ts to create new definition/instance/task for each test\n2. Use test.beforeEach() to set up per-test fixtures\n3. Ensure each test cleans up after itself with defer statements\n4. Update test specs to match implemented test count\n5. Run tests locally to verify no order-dependency",
+    "acceptance_criteria": [
+      "Each test creates its own definition, instance, and task fixtures",
+      "beforeEach() used for per-test setup, not beforeAll()",
+      "All TK-UI-01 test cases implemented (7/7)",
+      "Tests pass in any execution order (no shared state)",
+      "No test failures due to order-dependency",
+      "All changes committed to feature branch"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed critical test isolation violations in Stage F4 E2E tests. Refactored all tests to use per-test fixture creation via beforeEach() instead of shared beforeAll() fixtures. Implemented all 7 TK-UI-01 test cases (was 3/7). Each test now creates its own definition, instance, and task with unique identifiers to ensure zero test order-dependency.",
+    "artifacts_out": [
+      "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "tests/specs/TK-UI-01.md",
+      "tests/specs/TK-UI-02.md",
+      "tests/specs/TK-UI-03.md",
+      "tests/specs/TK-UI-04.md",
+      "tests/specs/TK-UI-05.md",
+      "tests/specs/TK-UI-06.md",
+      "tests/specs/TK-UI-07.md",
+      "tests/specs/TK-UI-08.md",
+      "tests/specs/TK-UI-09.md",
+      "tests/specs/TK-UI-10.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": null,
+  "completed_at": "2026-05-30T05:52:36Z"
+}

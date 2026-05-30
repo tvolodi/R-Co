@@ -1,0 +1,41 @@
+{
+  "handoff_id": "b2f170f5-bac1-46cd-97eb-53a757cab42e",
+  "run_id": "WF03-f4-taskdetail-blk-20260530",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-30T08:15:00Z",
+  "status": "PENDING",
+  "priority": "CRITICAL",
+  "context": {
+    "stage": "Stage F4 - Task inbox",
+    "requirement_ids": [
+      "TK-UI-02",
+      "TK-UI-03",
+      "TK-UI-04",
+      "TK-UI-05",
+      "TK-UI-06",
+      "TK-UI-10"
+    ],
+    "artifacts_in": [],
+    "related_handoff_ids": [
+      "WF02-f4-task-inbox-20260530"
+    ]
+  },
+  "task": {
+    "description": "Merge WF-03 fixes into feature branch and verify all tests pass.",
+    "acceptance_criteria": [
+      "All changes committed and pushed",
+      "Feature branch is up to date with main"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": null,
+  "completed_at": null
+}
