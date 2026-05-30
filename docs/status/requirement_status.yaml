@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-05-30T02:10:57Z'
+last_updated: '2026-05-30T04:55:33Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -2687,29 +2687,66 @@ requirements:
     release_run: WF02-f3a-batch1-20260529
     last_updated: '2026-05-30T02:10:57Z'
   IN-UI-05:
-    status: IMPLEMENTED
+    status: RELEASED
     stage: F3
     priority: MUST
     title: Event history tab
-    last_updated: '2026-05-29T00:00:00Z'
+    implemented_in:
+    - web/src/pages/instances/InstanceDetailPage.tsx
+    - web/src/components/instances/EventHistoryPanel.tsx
+    - web/src/components/instances/EventJsonExpandable.tsx
+    test_spec: web/tests/e2e/f3-instance-monitoring.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f3b-inui0508-20260530
+    last_updated: '2026-05-30T04:55:33Z'
   IN-UI-06:
-    status: IMPLEMENTED
+    status: RELEASED
     stage: F3
     priority: MUST
     title: Timeline tab
-    last_updated: '2026-05-29T00:00:00Z'
+    implemented_in:
+    - web/src/pages/instances/InstanceDetailPage.tsx
+    - web/src/components/instances/TimelineFeed.tsx
+    - web/src/components/instances/ActorAvatar.tsx
+    - src/obs/timeline.zig
+    test_spec: web/tests/e2e/f3-instance-monitoring.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f3b-inui0508-20260530
+    last_updated: '2026-05-30T04:55:33Z'
   IN-UI-07:
-    status: IMPLEMENTED
+    status: RELEASED
     stage: F3
     priority: MUST
     title: Cancel instance
-    last_updated: '2026-05-29T00:00:00Z'
+    implemented_in:
+    - web/src/pages/instances/InstanceDetailPage.tsx
+    - web/src/components/instances/CancelInstanceDialog.tsx
+    - web/src/hooks/useInstances.ts
+    test_spec: web/tests/e2e/f3-instance-monitoring.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f3b-inui0508-20260530
+    last_updated: '2026-05-30T04:55:33Z'
   IN-UI-08:
-    status: PENDING
+    status: RELEASED
     stage: F3
     priority: SHOULD
     title: Auto-refresh
-    last_updated: '2026-05-29T00:00:00Z'
+    implemented_in:
+    - web/src/hooks/usePolling.ts
+    - web/src/pages/instances/InstanceBoardPage.tsx
+    - web/src/pages/instances/InstanceDetailPage.tsx
+    test_spec: web/tests/e2e/f3-instance-monitoring.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f3b-inui0508-20260530
+    last_updated: '2026-05-30T04:55:33Z'
   IN-UI-09:
     status: PENDING
     stage: F3

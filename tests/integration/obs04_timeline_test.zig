@@ -77,6 +77,32 @@ fn seedInstanceProjection(
     );
 }
 
+fn seedInstanceProjectionWithTenant(
+    conn: *bpm.pool.Conn,
+    instance_id: []const u8,
+    definition_id: []const u8,
+    tenant_id: []const u8,
+    status: []const u8,
+) !void {
+    try conn.exec(
+        \\INSERT INTO instance_projections (
+        \\  instance_id, tenant_id, definition_id, correlation_key, status,
+        \\  current_nodes, variables, error_detail, last_event_seq,
+        \\  started_at, completed_at, cancelled_at, updated_at
+        \\)
+        \\VALUES (
+        \\  $1::uuid, $2::uuid, $3::uuid, NULL, $4,
+        \\  '[]'::jsonb, '{}'::jsonb, NULL, 0,
+        \\  NOW() - INTERVAL '1 day',
+        \\  CASE WHEN $4 = 'COMPLETED' THEN NOW() - INTERVAL '1 hour' ELSE NULL END,
+        \\  CASE WHEN $4 = 'CANCELLED' THEN NOW() - INTERVAL '30 minutes' ELSE NULL END,
+        \\  NOW()
+        \\)
+    ,
+        &.{ instance_id, tenant_id, definition_id, status },
+    );
+}
+
 fn insertUser(
     conn: *bpm.pool.Conn,
     user_id: []const u8,
@@ -397,4 +423,58 @@ test "TC-OBS-04-INT-04: actor display-name fallback order user -> token_descript
     try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"actor_display_name\":\"Operator Ada\""));
     try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"actor_display_name\":\"Automation Token\""));
     try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"actor_display_name\":\"system\""));
+}
+
+test "TC-OBS-04-INT-05: timeline resolves tenant from instance projection when query tenant is default" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const instance_id = "12121212-3434-5656-7878-909090909090";
+    const definition_id = "abababab-1234-5678-90ab-cdefabcdef12";
+    const non_default_tenant = "11111111-2222-3333-4444-555555555555";
+    const actor_id = "9a9a9a9a-bcbc-dede-f0f0-010101010101";
+
+    cleanupInstance(&pool, instance_id);
+    defer cleanupInstance(&pool, instance_id);
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+
+    try seedInstanceProjectionWithTenant(conn, instance_id, definition_id, non_default_tenant, "ACTIVE");
+    try insertEvent(
+        conn,
+        "dddddddd-1111-2222-3333-444444444444",
+        instance_id,
+        "INSTANCE_STARTED",
+        "{}",
+        "{}",
+        actor_id,
+        "2026-05-30T04:00:00Z",
+        1,
+        "obs04-int5-live-1",
+    );
+    try conn.exec(
+        "UPDATE events SET tenant_id = $1::uuid WHERE event_id = $2::uuid",
+        &.{ non_default_tenant, "dddddddd-1111-2222-3333-444444444444" },
+    );
+
+    var registry = Registry.init(alloc, &pool);
+    defer registry.deinit();
+    var store = EventStore.init(alloc, &pool, &registry);
+
+    const result = instance_routes.handleTimeline(
+        &store,
+        alloc,
+        instance_id,
+        .{ .cursor = null, .page_size = 50 },
+    );
+    defer freeRouteBody(alloc, result.body);
+
+    try testing.expectEqual(@as(u16, 200), result.status_code);
+    try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"count\":1"));
+    try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "dddddddd-1111-2222-3333-444444444444"));
 }

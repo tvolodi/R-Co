@@ -22,6 +22,12 @@ type TaskListFilters = {
   page_size?: number
 }
 
+type EventFilters = {
+  event_type?: string
+  from?: string
+  to?: string
+}
+
 function sortStatuses(statuses?: InstanceStatus[]): InstanceStatus[] | undefined {
   if (!statuses || statuses.length === 0) return undefined
   return [...statuses].sort()
@@ -39,7 +45,8 @@ export const queryKeys = {
       },
     ] as const,
     detail: (id: string) => [...queryKeys.instances.all, 'detail', id] as const,
-    events: (id: string) => [...queryKeys.instances.all, 'events', id] as const,
+    events: (id: string, filters?: EventFilters) =>
+      [...queryKeys.instances.all, 'events', id, filters ?? {}] as const,
     timeline: (id: string, cursor: string | null, pageSize: number) =>
       [...queryKeys.instances.all, 'timeline', id, cursor, pageSize] as const,
   },

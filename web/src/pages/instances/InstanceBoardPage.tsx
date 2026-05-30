@@ -4,6 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useInstances, instanceKeys, useStartInstance } from '@/hooks/useInstances'
 import { useDefinitions, useDefinition } from '@/hooks/useDefinitions'
 import { useAuth } from '@/auth/AuthContext'
+import { usePolling } from '@/hooks/usePolling'
+import { queryKeys } from '@/api/queryKeys'
 import type { InstanceStatus } from '@/types/api'
 
 const STATUS_COLORS: Record<InstanceStatus, string> = {
@@ -19,6 +21,11 @@ const START_ROLES = ['PLATFORM_ADMIN', 'PROCESS_OPERATOR', 'PROCESS_DESIGNER']
 function toISODate(value: string | undefined): string {
   if (!value) return '—'
   return new Date(value).toLocaleString()
+}
+
+function toRefreshLabel(value: string | null): string {
+  if (!value) return 'Not yet refreshed'
+  return new Date(value).toLocaleTimeString()
 }
 
 function parseStatusFilter(searchParams: URLSearchParams): InstanceStatus[] {
@@ -68,6 +75,7 @@ export default function InstanceBoardPage() {
     cursor,
     page_size: pageSize,
   })
+  const polling = usePolling({ queryKeyPrefix: queryKeys.instances.all })
 
   const startInstance = useStartInstance()
 
@@ -219,6 +227,26 @@ export default function InstanceBoardPage() {
             Start Instance
           </button>
         )}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '.6rem', marginBottom: '.8rem' }}>
+        <span style={{ color: '#64748b', fontSize: '.8rem' }}>
+          Last refreshed: {toRefreshLabel(polling.lastRefreshedAt)}
+        </span>
+        <button
+          onClick={() => void polling.refreshNow()}
+          disabled={instancesQuery.isRefetching}
+          style={{
+            padding: '.35rem .8rem',
+            border: '1px solid #cbd5e1',
+            borderRadius: '4px',
+            background: '#fff',
+            cursor: 'pointer',
+            fontSize: '.8rem',
+          }}
+        >
+          {instancesQuery.isRefetching ? 'Refreshing...' : 'Refresh'}
+        </button>
       </div>
 
       <div data-testid="instance-filter-bar" style={{ display: 'grid', gap: '.75rem', marginBottom: '1rem' }}>

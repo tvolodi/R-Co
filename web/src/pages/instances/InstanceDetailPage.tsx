@@ -2,12 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { ReactFlow, Background, Controls, MiniMap, type Node, type Edge } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { useInstance, useInstanceEvents, useCancelInstance, useInstanceTimeline } from '@/hooks/useInstances'
+import { useInstance, useCancelInstance, useInstanceTimeline } from '@/hooks/useInstances'
 import { useTasks } from '@/hooks/useTasks'
 import { useDefinition } from '@/hooks/useDefinitions'
+import { useAuth } from '@/auth/AuthContext'
+import { usePolling } from '@/hooks/usePolling'
+import { queryKeys } from '@/api/queryKeys'
 import { graphToFlow, type CanvasNodeData, type CanvasEdgeData } from '@/utils/canvas/graphToFlow'
-import { getTimelineActorDisplayName, getTimelineSecondaryContext, mergeTimelineItems } from './timelineUtils'
+import { mergeTimelineItems } from './timelineUtils'
 import type { TimelineEntry } from '@/types/api'
+import { EventHistoryPanel } from '@/components/instances/EventHistoryPanel'
+import { TimelineFeed } from '@/components/instances/TimelineFeed'
+import { CancelInstanceDialog } from '@/components/instances/CancelInstanceDialog'
 
 const STATUS_COLORS: Record<string, string> = {
   ACTIVE: '#2563eb',
@@ -16,9 +22,16 @@ const STATUS_COLORS: Record<string, string> = {
   ERROR: '#dc2626',
 }
 
+const CANCEL_ROLES = ['PROCESS_OPERATOR', 'PROCESS_ADMIN', 'PLATFORM_ADMIN']
+
 function formatDateTime(value: string | undefined): string {
   if (!value) return '—'
   return new Date(value).toLocaleString()
+}
+
+function toRefreshLabel(value: string | null): string {
+  if (!value) return 'Not yet refreshed'
+  return new Date(value).toLocaleTimeString()
 }
 
 function useReadonlyGraph(
@@ -35,38 +48,49 @@ function useReadonlyGraph(
       return { nodes: [], edges: [] }
     }
 
-    const { nodes, edges } = graphToFlow(definitionGraph as never)
-    const highlighted = new Set(activeNodeIds)
+    try {
+      const { nodes, edges } = graphToFlow(definitionGraph as never)
+      const highlighted = new Set(activeNodeIds)
 
-    return {
-      nodes: nodes.map((node) => {
-        const isActive = highlighted.has(node.id)
-        return {
-          ...node,
-          style: {
-            ...(node.style ?? {}),
-            border: isActive ? '2px solid #2563eb' : '1px solid #cbd5e1',
-            boxShadow: isActive ? '0 0 0 4px rgba(37, 99, 235, 0.18)' : undefined,
-          },
-        }
-      }),
-      edges,
+      return {
+        nodes: nodes.map((node) => {
+          const isActive = highlighted.has(node.id)
+          return {
+            ...node,
+            style: {
+              ...(node.style ?? {}),
+              border: isActive ? '2px solid #2563eb' : '1px solid #cbd5e1',
+              boxShadow: isActive ? '0 0 0 4px rgba(37, 99, 235, 0.18)' : undefined,
+            },
+          }
+        }),
+        edges,
+      }
+    } catch {
+      return { nodes: [], edges: [] }
     }
   }, [definitionGraph, activeNodeIds])
 }
 
 export default function InstanceDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const { session } = useAuth()
+
   const { data: instance, isLoading } = useInstance(id!)
   const { data: definition } = useDefinition(instance?.definition_id ?? '')
   const { data: pendingTasks } = useTasks({ status: 'PENDING', instance_id: id })
-  const { data: events } = useInstanceEvents(id!)
   const cancel = useCancelInstance()
+
+  const detailQueryKey = id ? queryKeys.instances.detail(id) : queryKeys.instances.all
+  const polling = usePolling({ queryKeyPrefix: detailQueryKey, enabled: !!id })
+
   const [activeTab, setActiveTab] = useState<'history' | 'timeline'>('history')
   const [timelineCursor, setTimelineCursor] = useState<string | undefined>(undefined)
   const [timelineItems, setTimelineItems] = useState<TimelineEntry[]>([])
   const [timelineRequested, setTimelineRequested] = useState(false)
-  const [lastAppliedCursor, setLastAppliedCursor] = useState<string>('')
+  const [lastAppliedCursor, setLastAppliedCursor] = useState<string | null>(null)
+  const [showCancelDialog, setShowCancelDialog] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
 
   const timelineQuery = useInstanceTimeline(
     id!,
@@ -78,12 +102,13 @@ export default function InstanceDetailPage() {
   const instanceVariables = instance?.variables && typeof instance.variables === 'object' ? instance.variables : {}
   const instanceGraph = instance?.definition_snapshot ?? definition?.graph
   const readonlyGraph = useReadonlyGraph(instanceGraph, currentNodes)
+  const canCancel = session?.roles.some((role) => CANCEL_ROLES.includes(role)) ?? false
 
   useEffect(() => {
     if (activeTab === 'timeline' && !timelineRequested) {
       setTimelineRequested(true)
       setTimelineCursor(undefined)
-      setLastAppliedCursor('')
+      setLastAppliedCursor(null)
       setTimelineItems([])
     }
   }, [activeTab, timelineRequested])
@@ -105,6 +130,20 @@ export default function InstanceDetailPage() {
     setTimelineCursor(timelineQuery.data.next_cursor)
   }
 
+  const onCancelConfirm = (reason?: string) => {
+    if (!instance) return
+    setCancelError(null)
+    cancel.mutate(
+      { id: instance.instance_id, reason },
+      {
+        onError: () => {
+          setCancelError('Failed to cancel instance. The status has been restored.')
+        },
+      },
+    )
+    setShowCancelDialog(false)
+  }
+
   if (isLoading) return <p style={{ padding: '1.5rem' }}>Loading…</p>
   if (!instance) return <p style={{ padding: '1.5rem', color: '#dc2626' }}>Instance not found.</p>
 
@@ -113,9 +152,9 @@ export default function InstanceDetailPage() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', marginBottom: '1.25rem' }}>
         <h2 style={{ margin: 0 }}>Instance</h2>
         <code style={{ fontSize: '.8rem', color: '#64748b' }}>{instance.instance_id}</code>
-        {instance.status === 'ACTIVE' && (
+        {instance.status === 'ACTIVE' && canCancel && (
           <button
-            onClick={() => cancel.mutate({ id: instance.instance_id })}
+            onClick={() => setShowCancelDialog(true)}
             disabled={cancel.isPending}
             style={{ marginLeft: 'auto', padding: '.35rem .8rem', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '.85rem' }}
           >
@@ -123,6 +162,32 @@ export default function InstanceDetailPage() {
           </button>
         )}
       </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '.6rem', marginBottom: '.8rem' }}>
+        <span style={{ color: '#64748b', fontSize: '.8rem' }}>
+          Last refreshed: {toRefreshLabel(polling.lastRefreshedAt)}
+        </span>
+        <button
+          onClick={() => void polling.refreshNow()}
+          disabled={timelineQuery.isRefetching || cancel.isPending}
+          style={{
+            padding: '.35rem .8rem',
+            border: '1px solid #cbd5e1',
+            borderRadius: '4px',
+            background: '#fff',
+            cursor: 'pointer',
+            fontSize: '.8rem',
+          }}
+        >
+          {timelineQuery.isRefetching ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+
+      {cancelError && (
+        <div role="alert" aria-live="polite" style={{ padding: '.55rem .7rem', marginBottom: '.8rem', background: '#ffe3e3', color: '#c92a2a', border: '1px solid #fa5252', borderRadius: '4px', fontSize: '.85rem' }}>
+          {cancelError}
+        </div>
+      )}
 
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.9rem', marginBottom: '1rem' }}>
         <tbody>
@@ -256,105 +321,35 @@ export default function InstanceDetailPage() {
 
       {activeTab === 'history' && (
         <>
-          <h3 style={{ marginBottom: '.75rem' }}>Event log</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '.85rem' }}>
-            <thead>
-              <tr style={{ background: '#f1f5f9', textAlign: 'left' }}>
-                <th style={{ padding: '.5rem .75rem' }}>#</th>
-                <th style={{ padding: '.5rem .75rem' }}>Type</th>
-                <th style={{ padding: '.5rem .75rem' }}>Actor</th>
-                <th style={{ padding: '.5rem .75rem' }}>Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(events ?? []).map((ev) => (
-                <tr key={ev.event_id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '.5rem .75rem', color: '#94a3b8', fontFamily: 'monospace' }}>{ev.sequence_number}</td>
-                  <td style={{ padding: '.5rem .75rem', fontFamily: 'monospace', fontSize: '.8rem' }}>{ev.event_type}</td>
-                  <td style={{ padding: '.5rem .75rem', color: '#64748b', fontFamily: 'monospace', fontSize: '.8rem' }}>{typeof ev.actor_id === 'string' ? ev.actor_id.slice(0, 8) : 'system'}</td>
-                  <td style={{ padding: '.5rem .75rem', color: '#64748b' }}>{new Date(ev.created_at).toLocaleString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <h3 style={{ marginBottom: '.75rem' }}>Event history</h3>
+          <EventHistoryPanel instanceId={id!} />
         </>
       )}
 
       {activeTab === 'timeline' && (
         <>
           <h3 style={{ marginBottom: '.75rem' }}>Timeline</h3>
-          {timelineQuery.isLoading && timelineItems.length === 0 && <p>Loading timeline…</p>}
           {timelineQuery.error && timelineItems.length === 0 && (
             <p style={{ color: '#dc2626' }}>Failed to load timeline.</p>
           )}
-          {timelineItems.length === 0 && !timelineQuery.isLoading && !timelineQuery.error && (
-            <p style={{ color: '#64748b' }}>No timeline entries found.</p>
-          )}
-
-          <div style={{ borderLeft: '2px solid #dbeafe', paddingLeft: '1rem', display: 'grid', gap: '1rem' }}>
-            {timelineItems.map((item) => {
-              const actorDisplay = getTimelineActorDisplayName(item.actor_display_name)
-              const secondaryContext = getTimelineSecondaryContext(item)
-              return (
-                <article key={item.event_id} style={{ position: 'relative' }}>
-                  <span
-                    aria-hidden
-                    style={{
-                      position: 'absolute',
-                      left: '-1.44rem',
-                      top: '.42rem',
-                      width: '.55rem',
-                      height: '.55rem',
-                      borderRadius: '9999px',
-                      background: '#2563eb',
-                    }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '.75rem', flexWrap: 'wrap' }}>
-                    <strong style={{ color: '#0f172a', fontSize: '.9rem' }}>{item.description}</strong>
-                    <span style={{ color: '#475569', fontSize: '.8rem' }}>{new Date(item.timestamp).toLocaleString()}</span>
-                  </div>
-                  <div style={{ color: '#475569', fontSize: '.8rem', marginTop: '.25rem' }}>
-                    {item.event_type} • {actorDisplay} • seq {item.sequence_num}
-                  </div>
-                  {secondaryContext && (
-                    <div style={{ color: '#64748b', fontSize: '.8rem', marginTop: '.15rem' }}>
-                      {secondaryContext}
-                    </div>
-                  )}
-                  {Object.keys(item.metadata ?? {}).length > 0 && (
-                    <details style={{ marginTop: '.4rem' }}>
-                      <summary style={{ color: '#334155', fontSize: '.8rem', cursor: 'pointer' }}>Metadata</summary>
-                      <pre style={{ background: '#f8fafc', padding: '.65rem', borderRadius: '4px', fontSize: '.75rem', overflow: 'auto' }}>
-                        {JSON.stringify(item.metadata, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </article>
-              )
-            })}
-          </div>
-
-          <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '.75rem' }}>
-            <span style={{ color: '#64748b', fontSize: '.8rem' }}>Loaded {timelineItems.length} entries</span>
-            {timelineQuery.data?.next_cursor && (
-              <button
-                onClick={onTimelineLoadMore}
-                disabled={timelineQuery.isFetching}
-                style={{
-                  padding: '.35rem .8rem',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '4px',
-                  background: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '.85rem',
-                }}
-              >
-                {timelineQuery.isFetching ? 'Loading…' : 'Load more'}
-              </button>
-            )}
-          </div>
+          <TimelineFeed
+            items={timelineItems}
+            isLoading={timelineQuery.isLoading}
+            hasMore={Boolean(timelineQuery.data?.next_cursor)}
+            onLoadMore={onTimelineLoadMore}
+            isFetchingMore={timelineQuery.isFetching}
+          />
         </>
       )}
+
+      <CancelInstanceDialog
+        open={showCancelDialog}
+        instanceId={instance.instance_id}
+        instanceName={`${instance.definition_name} v${instance.definition_version}`}
+        onConfirm={onCancelConfirm}
+        onCancel={() => setShowCancelDialog(false)}
+        isPending={cancel.isPending}
+      />
     </div>
   )
 }

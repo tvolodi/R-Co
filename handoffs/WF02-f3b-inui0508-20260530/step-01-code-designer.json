@@ -1,0 +1,59 @@
+{
+  "handoff_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+  "run_id": "WF02-f3b-inui0508-20260530",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-05-30T02:36:27Z",
+  "started_at": "2026-05-30T02:37:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F3b",
+    "requirement_ids": ["IN-UI-05", "IN-UI-06", "IN-UI-07", "IN-UI-08"],
+    "related_handoff_ids": ["a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"],
+    "artifacts_in": [
+      "docs/BPM_Platform_Frontend_Requirements.md",
+      "docs/requirements/IN-UI-05.md",
+      "docs/requirements/IN-UI-06.md",
+      "docs/requirements/IN-UI-07.md",
+      "docs/requirements/IN-UI-08.md",
+      "templates/lego-catalog.md",
+      "docs/guides/frontend_developer_guide.md",
+      "web/src/pages/instances/InstanceDetailPage.tsx",
+      "web/src/hooks/useInstances.ts",
+      "web/src/api/instances.ts",
+      "web/src/api/queryKeys.ts",
+      "web/src/types/api.ts"
+    ]
+  },
+  "task": {
+    "description": "Design the implementation for IN-UI-05 (Event history tab), IN-UI-06 (Timeline tab), IN-UI-07 (Cancel instance), and IN-UI-08 (Auto-refresh) for the instance detail page.\n\nContext: IN-UI-01 through IN-UI-04 are already RELEASED. The InstanceDetailPage.tsx already has:\n- A tab structure with 'history' and 'timeline' tabs\n- Basic event log table (needs filtering per IN-UI-05)\n- Basic timeline feed (needs actor avatars and human-readable descriptions per IN-UI-06)\n- A Cancel button (needs confirmation dialog and role gating per IN-UI-07)\n- useCancelInstance hook with optimistic update already implemented\n- useInstanceTimeline hook with cursor-based pagination\n\nRequirements:\n- IN-UI-05 MUST: Event history tab with filterable table (event type, time range), expandable raw JSON payload\n- IN-UI-06 MUST: Timeline tab with vertical chronological feed, actor avatars, timestamps, human-readable descriptions\n- IN-UI-07 MUST: Cancel button (operator+ role only), confirmation dialog, optimistic update with rollback\n- IN-UI-08 SHOULD: Auto-refresh polling every 10s (configurable), last-refreshed indicator, manual refresh button\n\nClassify each requirement against templates/lego-catalog.md. For Type B/D, produce parameter YAML files. For Type E, produce prose designs. All designs go to artifacts_out.",
+    "acceptance_criteria": [
+      "Every MUST requirement has a design artefact",
+      "Type classification is correct per lego-catalog.md",
+      "For Type B/D: codegen --dry-run exits 0",
+      "For Type E: no implementation code present, all public function signatures listed",
+      "Error taxonomy exists for each design",
+      "Dependencies documented"
+    ],
+    "functions_to_call": ["fn:classify-requirements"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Classified IN-UI-05 through IN-UI-08 as Type E (novel/cross-cutting). Produced 4 prose design artefacts covering event history filtering, timeline avatars, cancel confirmation dialog, and auto-refresh polling hook.",
+    "artifacts_out": [
+      "src/design/in-ui-05-event-history.md",
+      "src/design/in-ui-06-timeline-tab.md",
+      "src/design/in-ui-07-cancel-instance.md",
+      "src/design/in-ui-08-auto-refresh.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-30T02:37:30Z",
+  "completed_at": "2026-05-30T02:39:56Z"
+}

@@ -547,6 +547,15 @@ fn serveRequest(
                 const r = instance_routes.handleHistory(ev_store, req_alloc, seg4, params);
                 resp_status = r.status_code;
                 resp_body = r.body;
+            } else if (std.mem.eql(u8, seg5, "timeline") and method == .GET) {
+                // GET /api/v1/instances/:id/timeline — must precede plain /:id
+                const params = instance_routes.TimelineParams{
+                    .cursor = QS.get(query_str, "cursor"),
+                    .page_size = std.fmt.parseInt(u16, QS.get(query_str, "page_size") orelse "50", 10) catch 50,
+                };
+                const r = instance_routes.handleTimeline(ev_store, req_alloc, seg4, params);
+                resp_status = r.status_code;
+                resp_body = r.body;
             } else if (std.mem.eql(u8, seg5, "reconstruct") and method == .GET) {
                 const r = instance_routes.handleReconstruct(inst_store, req_alloc, seg4);
                 resp_status = r.status_code;

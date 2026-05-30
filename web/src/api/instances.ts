@@ -29,8 +29,18 @@ export const instancesApi = {
   cancel: (id: string, reason?: string) =>
     client.post<void>(`/api/v1/instances/${id}/cancel`, { reason }),
 
-  events: (id: string, params?: { after_seq?: number; before_seq?: number; limit?: number }) =>
-    client.get<EventRecord[]>(`/api/v1/instances/${id}/events`, params as Record<string, unknown>),
+  events: (
+    id: string,
+    params?: {
+      after_seq?: number
+      before_seq?: number
+      limit?: number
+      event_type?: string
+      from?: string
+      to?: string
+    },
+  ) =>
+    client.get<EventRecord[]>(`/api/v1/instances/${id}/history`, params as Record<string, unknown>),
 
   timeline: (id: string, params?: { cursor?: string; page_size?: number }) =>
     client.get<TimelinePage>(`/api/v1/instances/${id}/timeline`, params as Record<string, unknown>),

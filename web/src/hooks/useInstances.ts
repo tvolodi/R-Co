@@ -12,6 +12,12 @@ export const instanceKeys = {
   timeline: queryKeys.instances.timeline,
 }
 
+export interface EventFilters {
+  event_type?: string
+  from?: string
+  to?: string
+}
+
 export function useInstances(params?: {
   status?: InstanceStatus[]
   definition_id?: string
@@ -39,10 +45,10 @@ export function useInstance(id: string) {
   })
 }
 
-export function useInstanceEvents(id: string) {
+export function useInstanceEvents(id: string, filters?: EventFilters) {
   return useQuery({
-    queryKey: instanceKeys.events(id),
-    queryFn: () => instancesApi.events(id),
+    queryKey: instanceKeys.events(id, filters),
+    queryFn: () => instancesApi.events(id, filters),
     enabled: !!id,
   })
 }
