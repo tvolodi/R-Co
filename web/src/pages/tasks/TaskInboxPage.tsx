@@ -307,20 +307,58 @@ function TaskDetailPanel({ taskId, onClose }: { taskId: string; onClose: () => v
           <p style={{ margin: '.25rem 0' }}>
             <strong>Instance ID:</strong> <span data-testid="instance-id">{task.instance_id}</span>
           </p>
+          {task.correlation_key && (
+            <p style={{ margin: '.25rem 0' }}>
+              <strong>Correlation Key:</strong> <span data-testid="instance-correlation-key">{task.correlation_key}</span>
+            </p>
+          )}
           <p style={{ margin: '.25rem 0' }}>
             <strong>Created:</strong> {new Date(task.created_at).toLocaleString()}
           </p>
         </div>
       </div>
 
+      {/* Instance variables (TK-UI-02) */}
+      <div data-testid="instance-variables" style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ fontSize: '.95rem', fontWeight: 600, marginBottom: '.75rem' }}>Instance Variables</h3>
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '1rem', fontSize: '.85rem', color: '#475569' }}>
+          {/* Variables will be populated from instance context - TK-UI-02 implementation pending */}
+          <p style={{ margin: 0, color: '#94a3b8' }}>Variables display pending implementation</p>
+        </div>
+      </div>
+
       {/* Form if schema exists */}
-      {task.form_schema && (
+      {task.form_schema && typeof task.form_schema === 'object' && (
         <div style={{ marginBottom: '1.5rem' }}>
           <h3 style={{ fontSize: '.95rem', fontWeight: 600, marginBottom: '.75rem' }}>Task Form</h3>
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '1rem' }}>
-            <p style={{ color: '#64748b', fontSize: '.9rem' }}>
-              Form rendering from JSON Schema (TK-UI-03 implementation pending)
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {Object.entries((task.form_schema as Record<string, unknown>).properties || {}).map(([fieldName, fieldDef]) => {
+              const fieldDef_ = fieldDef as Record<string, unknown> | undefined
+              const isRequired = Array.isArray((task.form_schema as Record<string, unknown>).required) &&
+                ((task.form_schema as Record<string, unknown>).required as string[]).includes(fieldName)
+              const fieldType = fieldDef_?.type as string || 'string'
+              const fieldTitle = fieldDef_?.title as string || fieldName
+
+              return (
+                <div key={fieldName} style={{ display: 'flex', flexDirection: 'column', gap: '.5rem' }}>
+                  <label style={{ fontSize: '.9rem', fontWeight: 500 }}>
+                    {fieldTitle}
+                    {isRequired && <span data-testid={`form-field-required-${fieldName}`} style={{ color: '#ef4444', marginLeft: '.25rem' }}>*</span>}
+                  </label>
+                  <input
+                    data-testid={`form-field-${fieldName}`}
+                    type={fieldType === 'number' ? 'number' : fieldType === 'boolean' ? 'checkbox' : 'text'}
+                    placeholder={fieldTitle}
+                    style={{
+                      padding: '.5rem .75rem',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '4px',
+                      fontSize: '.9rem',
+                    }}
+                  />
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
