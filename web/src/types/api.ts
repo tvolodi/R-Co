@@ -207,16 +207,22 @@ export interface UserSession {
 }
 
 export interface User {
-  id: string
+  id?: string
+  user_id?: string
+  username?: string
   email: string
   display_name: string
-  is_active: boolean
+  status?: 'ACTIVE' | 'INACTIVE'
+  is_active?: boolean
   roles: string[]
+  role_ids?: string[]
+  group_ids?: string[]
   last_login_at?: string
   created_at: string
 }
 
 export interface Group {
+  group_id?: string
   id: string
   name: string
   display_name: string

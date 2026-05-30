@@ -75,7 +75,9 @@ export const queryKeys = {
     health: () => [...queryKeys.admin.all, 'health'] as const,
     metrics: () => [...queryKeys.admin.all, 'metrics'] as const,
     tokens: () => [...queryKeys.admin.all, 'tokens'] as const,
-    users: () => [...queryKeys.admin.all, 'users'] as const,
+    users: (filters?: { search?: string; status?: string; page?: number; page_size?: number }) =>
+      [...queryKeys.admin.all, 'users', filters ?? {}] as const,
+    userDetail: (id: string) => [...queryKeys.admin.all, 'user', id] as const,
     roles: () => [...queryKeys.admin.all, 'roles'] as const,
   },
 

@@ -279,7 +279,6 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   let workerToken = ''
   let operatorToken = ''
   let workerUserId = ''
-  let operatorUserId = ''
 
   test.beforeEach(async ({ request }) => {
     // Authenticate tokens once per test
@@ -288,9 +287,8 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
     // Extract user IDs from JWT tokens
     const workerPayload = decodeJwtPayload(workerToken)
-    const operatorPayload = decodeJwtPayload(operatorToken)
+    void decodeJwtPayload(operatorToken)
     workerUserId = workerPayload.sub || KEYCLOAK_WORKER_USERNAME
-    operatorUserId = operatorPayload.sub || KEYCLOAK_OPERATOR_USERNAME
   })
 
   // TK-UI-01: Task inbox display and filtering
