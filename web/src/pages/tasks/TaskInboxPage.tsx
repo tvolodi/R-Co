@@ -6,6 +6,18 @@ import { useAuth } from '@/auth/AuthContext'
 type FilterType = 'me' | 'group' | 'all'
 type SortOrder = 'created' | '-created'
 
+// Decode JWT to extract user ID (sub claim)
+function decodeJwtPayload(token: string): { sub?: string; preferred_username?: string; [key: string]: unknown } {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) throw new Error('Invalid JWT token')
+    const decoded = JSON.parse(atob(parts[1]))
+    return decoded
+  } catch {
+    return {}
+  }
+}
+
 export default function TaskInboxPage() {
   const { session } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -18,6 +30,13 @@ export default function TaskInboxPage() {
 
   const { data: inboxData, isLoading: inboxLoading } = useTaskInbox()
 
+  // Extract user ID from JWT token
+  const userId = useMemo(() => {
+    if (!session?.token) return null
+    const payload = decodeJwtPayload(session.token)
+    return payload.sub || null
+  }, [session?.token])
+
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
     if (!inboxData?.items) return []
@@ -26,7 +45,7 @@ export default function TaskInboxPage() {
 
     // Filter by type
     if (filter === 'me') {
-      results = results.filter(t => t.assignee_ref === session?.token)
+      results = results.filter(t => t.assignee_ref === userId)
     } else if (filter === 'group') {
       // TODO: filter by user's groups once implemented
     }
@@ -47,7 +66,7 @@ export default function TaskInboxPage() {
     }
 
     return results
-  }, [inboxData?.items, filter, sort, search, session?.token])
+  }, [inboxData?.items, filter, sort, search, userId])
 
   const handleFilterChange = (newFilter: FilterType) => {
     const params = new URLSearchParams(searchParams)
@@ -84,6 +103,7 @@ export default function TaskInboxPage() {
               {(['me', 'group', isOperator && 'all'].filter(Boolean) as FilterType[]).map(f => (
                 <button
                   key={f}
+                  data-testid={f === 'all' ? 'task-filter-all-tasks' : undefined}
                   onClick={() => handleFilterChange(f)}
                   style={{
                     padding: '.5rem 1rem',
@@ -101,6 +121,7 @@ export default function TaskInboxPage() {
             </div>
 
             <select
+              data-testid="task-sort-control"
               value={sort}
               onChange={e => handleSortChange(e.target.value as SortOrder)}
               style={{
@@ -117,6 +138,7 @@ export default function TaskInboxPage() {
 
             <input
               type="text"
+              data-testid="task-search-input"
               placeholder="Search tasks…"
               value={search}
               onChange={e => handleSearchChange(e.target.value)}
@@ -142,10 +164,11 @@ export default function TaskInboxPage() {
             <p style={{ color: '#64748b' }}>No tasks found.</p>
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.75rem' }} data-testid="task-inbox-list">
             {filteredTasks.map((task) => (
               <div
                 key={task.id}
+                data-testid="task-row"
                 onClick={() => setSelectedTaskId(task.id)}
                 style={{
                   background: selectedTaskId === task.id ? '#eff6ff' : '#fff',
@@ -159,16 +182,17 @@ export default function TaskInboxPage() {
                 }}
               >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, marginBottom: '.25rem' }}>{task.node_name}</div>
+                  <div data-testid="task-name" style={{ fontWeight: 600, marginBottom: '.25rem' }}>{task.node_name}</div>
                   <div style={{ fontSize: '.85rem', color: '#64748b' }}>
-                    Instance: <code style={{ fontSize: '.8rem' }}>{task.instance_id.slice(0, 8)}…</code>
-                    {task.assignee_ref && <> · Assigned to: {task.assignee_ref}</>}
+                    Instance: <code data-testid="task-instance-id" style={{ fontSize: '.8rem' }}>{task.instance_id.slice(0, 8)}…</code>
+                    {task.assignee_ref && <> · Assigned to: <span data-testid="task-assignee">{task.assignee_ref}</span></>}
                   </div>
                   <div style={{ fontSize: '.8rem', color: '#94a3b8', marginTop: '.25rem' }}>
                     {new Date(task.created_at).toLocaleDateString()} {new Date(task.created_at).toLocaleTimeString()}
                   </div>
                 </div>
                 <div
+                  data-testid="task-status"
                   style={{
                     padding: '.25rem .75rem',
                     background: task.status === 'PENDING' ? '#dbeafe' : '#e5e7eb',
@@ -203,6 +227,13 @@ function TaskDetailPanel({ taskId, onClose }: { taskId: string; onClose: () => v
   const complete = useCompleteTask()
   const claim = useClaimTask()
 
+  // Extract user ID from JWT token
+  const userId = useMemo(() => {
+    if (!session?.token) return null
+    const payload = decodeJwtPayload(session.token)
+    return payload.sub || null
+  }, [session?.token])
+
   if (isLoading) {
     return (
       <div style={{ width: '40%', borderLeft: '1px solid #e2e8f0', padding: '1.5rem' }}>
@@ -220,13 +251,13 @@ function TaskDetailPanel({ taskId, onClose }: { taskId: string; onClose: () => v
     )
   }
 
-  const isAssignedToMe = task.assignee_ref === session?.token
+  const isAssignedToMe = task.assignee_ref === userId
   const isClaimable = task.assignee_type && ['GROUP', 'ROLE'].includes(task.assignee_type) && !isAssignedToMe
 
   return (
-    <div style={{ width: '40%', borderLeft: '1px solid #e2e8f0', padding: '1.5rem', overflowY: 'auto' }}>
+    <div data-testid="task-detail-panel" style={{ width: '40%', borderLeft: '1px solid #e2e8f0', padding: '1.5rem', overflowY: 'auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h2 style={{ margin: 0 }}>{task.node_name}</h2>
+        <h2 data-testid="task-detail-title" style={{ margin: 0 }}>{task.node_name}</h2>
         <button
           onClick={onClose}
           style={{
@@ -270,10 +301,10 @@ function TaskDetailPanel({ taskId, onClose }: { taskId: string; onClose: () => v
         <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '.95rem', fontWeight: 600 }}>Instance Context</h3>
         <div style={{ fontSize: '.85rem', color: '#475569' }}>
           <p style={{ margin: '.25rem 0' }}>
-            <strong>Definition:</strong> {task.definition_name ?? 'N/A'}
+            <strong>Definition:</strong> <span data-testid="instance-definition-name">{task.definition_name ?? 'N/A'}</span>
           </p>
           <p style={{ margin: '.25rem 0' }}>
-            <strong>Instance ID:</strong> {task.instance_id}
+            <strong>Instance ID:</strong> <span data-testid="instance-id">{task.instance_id}</span>
           </p>
           <p style={{ margin: '.25rem 0' }}>
             <strong>Created:</strong> {new Date(task.created_at).toLocaleString()}
@@ -297,6 +328,7 @@ function TaskDetailPanel({ taskId, onClose }: { taskId: string; onClose: () => v
       <div style={{ display: 'flex', gap: '.75rem', marginTop: '2rem' }}>
         {isClaimable && (
           <button
+            data-testid="task-claim-button"
             onClick={() => claim.mutate(taskId)}
             disabled={claim.isPending || !isClaimable}
             style={{
@@ -317,6 +349,7 @@ function TaskDetailPanel({ taskId, onClose }: { taskId: string; onClose: () => v
 
         {isAssignedToMe && task.status === 'PENDING' && (
           <button
+            data-testid="task-complete-button"
             onClick={() => complete.mutate({ id: taskId, body: { output_variables: {} } })}
             disabled={complete.isPending}
             style={{
