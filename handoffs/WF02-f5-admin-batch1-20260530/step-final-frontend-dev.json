@@ -1,0 +1,35 @@
+{
+  "handoff_id": "ed0ad668-1e4f-4f20-b555-0ff54f52f3d4",
+  "run_id": "WF02-f5-admin-batch1-20260530",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-30T16:50:19Z",
+  "started_at": "2026-05-30T16:50:19Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 1)",
+    "requirement_ids": ["ADM-UI-01", "ADM-UI-02", "ADM-UI-03", "ADM-UI-04"],
+    "related_handoff_ids": ["7ecf7f95-b440-42fc-bf74-c02f35fd2f35"],
+    "artifacts_in": [
+      "handoffs/WF02-f5-admin-batch1-20260530/step-06-doc-updater.json",
+      "docs/status/requirement_status.yaml",
+      "CHANGELOG.md"
+    ]
+  },
+  "task": {
+    "description": "Execute fn:git-merge for WF02-f5-admin-batch1-20260530 and complete PR merge/branch cleanup.",
+    "acceptance_criteria": [
+      "PR merged to main",
+      "Feature branch removed locally and remotely",
+      "Git evidence captured in handoff result"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

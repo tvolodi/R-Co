@@ -88,6 +88,8 @@ pub fn endpointPolicyKey(method: []const u8, path_template: []const u8) Endpoint
     if (std.mem.eql(u8, method, "POST") and std.mem.eql(u8, path_template, "/tasks/:id/reassign")) return .TasksReassign;
 
     if (std.mem.eql(u8, method, "POST") and std.mem.eql(u8, path_template, "/users")) return .UsersManage;
+    if (std.mem.eql(u8, method, "GET") and (std.mem.eql(u8, path_template, "/users") or std.mem.eql(u8, path_template, "/users/:id"))) return .UsersManage;
+    if (std.mem.eql(u8, method, "PATCH") and std.mem.eql(u8, path_template, "/users/:id")) return .UsersManage;
     if ((std.mem.eql(u8, method, "POST") or std.mem.eql(u8, method, "DELETE") or std.mem.eql(u8, method, "GET")) and std.mem.startsWith(u8, path_template, "/groups")) return .GroupsManage;
     if ((std.mem.eql(u8, method, "POST") or std.mem.eql(u8, method, "GET") or std.mem.eql(u8, method, "DELETE")) and std.mem.startsWith(u8, path_template, "/tokens")) return .TokensManage;
     if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/audit")) return .AuditRead;

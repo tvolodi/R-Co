@@ -130,6 +130,23 @@ pub const CreateTenantInput = struct {
     idp_realm_id: ?[]const u8,
 };
 
+pub const ListUsersParams = struct {
+    search: ?[]const u8,
+    status: ?UserStatus,
+    limit: u16,
+    offset: u32,
+};
+
+pub const UserListPage = struct {
+    items: []User,
+    total: u64,
+
+    pub fn deinit(self: UserListPage, allocator: std.mem.Allocator) void {
+        for (self.items) |item| item.deinit(allocator);
+        allocator.free(self.items);
+    }
+};
+
 /// A single role binding row from user_roles joined with roles.
 pub const UserRoleBinding = struct {
     role_slug: []const u8,
@@ -448,6 +465,121 @@ pub const Registry = struct {
             return .ACTIVE;
         }
         return .INACTIVE;
+    }
+
+    pub fn getUserById(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+        user_id: []const u8,
+    ) RegistryError!?User {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const row = conn.queryRow(
+            allocator,
+            \\SELECT id::text, username, display_name, email, status, created_at::text
+            \\FROM users
+            \\WHERE id::text = $1 AND tenant_id = $2::uuid
+            \\LIMIT 1
+        ,
+            &[_][]const u8{ user_id, tenant_id },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (row == null) return null;
+        return try materializeUser(allocator, row.?);
+    }
+
+    pub fn listUsers(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+        params: ListUsersParams,
+    ) RegistryError!UserListPage {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const search_text = params.search orelse "";
+        const status_text = if (params.status) |status| status.asString() else "";
+        const offset_text = std.fmt.allocPrint(allocator, "{d}", .{params.offset}) catch return error.OutOfMemory;
+        defer allocator.free(offset_text);
+        const limit_text = std.fmt.allocPrint(allocator, "{d}", .{params.limit}) catch return error.OutOfMemory;
+        defer allocator.free(limit_text);
+
+        const count_row = conn.queryRow(
+            allocator,
+            \\SELECT COUNT(*)::text
+            \\FROM users
+            \\WHERE tenant_id = $1::uuid
+            \\  AND ($2 = '' OR username ILIKE '%' || $2 || '%' OR display_name ILIKE '%' || $2 || '%' OR email ILIKE '%' || $2 || '%')
+            \\  AND ($3 = '' OR status = $3)
+        ,
+            &[_][]const u8{ tenant_id, search_text, status_text },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (count_row == null) return error.PersistenceFailed;
+        defer freeRow(allocator, count_row.?);
+        const total_raw = count_row.?[0] orelse return error.PersistenceFailed;
+        const total = std.fmt.parseInt(u64, total_raw, 10) catch return error.PersistenceFailed;
+
+        var rows = conn.query(
+            allocator,
+            \\SELECT id::text, username, display_name, email, status, created_at::text
+            \\FROM users
+            \\WHERE tenant_id = $1::uuid
+            \\  AND ($2 = '' OR username ILIKE '%' || $2 || '%' OR display_name ILIKE '%' || $2 || '%' OR email ILIKE '%' || $2 || '%')
+            \\  AND ($3 = '' OR status = $3)
+            \\ORDER BY created_at DESC, id DESC
+            \\OFFSET $4::int
+            \\LIMIT $5::int
+        ,
+            &[_][]const u8{ tenant_id, search_text, status_text, offset_text, limit_text },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer rows.deinit();
+
+        const items = allocator.alloc(User, rows.rows.len) catch return error.OutOfMemory;
+        var initialized: usize = 0;
+        errdefer {
+            var i: usize = 0;
+            while (i < initialized) : (i += 1) {
+                items[i].deinit(allocator);
+            }
+            allocator.free(items);
+        }
+
+        for (rows.rows, 0..) |row, idx| {
+            items[idx] = try materializeUserBorrowedRow(allocator, row);
+            initialized += 1;
+        }
+
+        return .{ .items = items, .total = total };
     }
 
     pub fn selectUserByExternalIdentity(
@@ -1092,6 +1224,10 @@ fn materializeGroupMemberRecord(allocator: std.mem.Allocator, row: []?[]u8) Regi
 
 fn materializeUser(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!User {
     defer freeRow(allocator, row);
+    return materializeUserBorrowedRow(allocator, row);
+}
+
+fn materializeUserBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!User {
     if (row.len < 6) return error.PersistenceFailed;
 
     const user_id = row[0] orelse return error.PersistenceFailed;

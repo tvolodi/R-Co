@@ -9,6 +9,13 @@ pub const HandlerResult = struct {
     body: []const u8,
 };
 
+pub const ListUsersQueryParams = struct {
+    search: ?[]const u8,
+    status: ?[]const u8,
+    page: u32,
+    page_size: u16,
+};
+
 pub fn handleCreateUser(
     service: *identity_service.Service,
     allocator: std.mem.Allocator,
@@ -86,6 +93,127 @@ pub fn handleCreateUser(
     defer user.deinit(allocator);
 
     return .{ .status_code = 201, .body = serializeUser(allocator, user) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handleListUsers(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    params: ListUsersQueryParams,
+) HandlerResult {
+    const status = blk: {
+        const raw = params.status orelse break :blk null;
+        break :blk identity_registry.UserStatus.fromString(raw) orelse
+            return errorResult(allocator, 422, "status_invalid");
+    };
+
+    const page = service.listUsers(allocator, actor, .{
+        .search = params.search,
+        .status = status,
+        .page = params.page,
+        .page_size = params.page_size,
+    }) catch |err| switch (err) {
+        identity_service.IdentityError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.IdentityError.ValidationFailed => return errorResult(allocator, 422, "validation_failed"),
+        identity_service.IdentityError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer page.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeUserListPage(allocator, page) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handleGetUser(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    user_id: []const u8,
+) HandlerResult {
+    const user = service.getUserById(allocator, actor, user_id) catch |err| switch (err) {
+        identity_service.IdentityError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.IdentityError.NotFound => return errorResult(allocator, 404, "not_found"),
+        identity_service.IdentityError.ValidationFailed => return errorResult(allocator, 422, "validation_failed"),
+        identity_service.IdentityError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer user.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeUser(allocator, user) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handlePatchUser(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    user_id: []const u8,
+    body: []const u8,
+) HandlerResult {
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        body,
+        .{ .allocate = .alloc_always },
+    ) catch return errorResult(allocator, 400, "malformed_json");
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return errorResult(allocator, 422, "invalid_body");
+    const obj = parsed.value.object;
+
+    var existing = service.getUserById(allocator, actor, user_id) catch |err| switch (err) {
+        identity_service.IdentityError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.IdentityError.NotFound => return errorResult(allocator, 404, "not_found"),
+        identity_service.IdentityError.ValidationFailed => return errorResult(allocator, 422, "validation_failed"),
+        identity_service.IdentityError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer existing.deinit(allocator);
+
+    const display_name = blk: {
+        const raw = obj.get("display_name") orelse break :blk existing.display_name;
+        break :blk switch (raw) {
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "display_name_invalid"),
+        };
+    };
+
+    const email = blk: {
+        const raw = obj.get("email") orelse break :blk existing.email;
+        break :blk switch (raw) {
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "email_invalid"),
+        };
+    };
+
+    const status = blk: {
+        const raw = obj.get("status") orelse break :blk existing.status;
+        const status_raw = switch (raw) {
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "status_invalid"),
+        };
+        break :blk identity_registry.UserStatus.fromString(status_raw) orelse
+            return errorResult(allocator, 422, "status_invalid");
+    };
+
+    const user = service.updateUserProfile(allocator, actor, .{
+        .user_id = user_id,
+        .display_name = display_name,
+        .email = email,
+        .status = status,
+    }) catch |err| switch (err) {
+        identity_service.IdentityError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.IdentityError.NotFound => return errorResult(allocator, 404, "not_found"),
+        identity_service.IdentityError.InvalidEmail,
+        identity_service.IdentityError.ValidationFailed,
+        => return errorResult(allocator, 422, "validation_failed"),
+        identity_service.IdentityError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer user.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeUser(allocator, user) catch
         return errorResult(allocator, 500, "serialization_failed") };
 }
 
@@ -439,6 +567,34 @@ fn serializeUser(allocator: std.mem.Allocator, user: identity_registry.User) ![]
     try appendJsonStr(allocator, &buf, user.status.asString());
     try buf.appendSlice(allocator, ",\"created_at\":");
     try appendJsonStr(allocator, &buf, user.created_at);
+    try buf.append(allocator, '}');
+
+    return buf.toOwnedSlice(allocator);
+}
+
+fn serializeUserListPage(allocator: std.mem.Allocator, page: identity_service.UserListPage) ![]u8 {
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    try buf.appendSlice(allocator, "{\"items\":[");
+    for (page.items, 0..) |user, idx| {
+        if (idx > 0) try buf.append(allocator, ',');
+        const user_json = try serializeUser(allocator, user);
+        defer allocator.free(user_json);
+        try buf.appendSlice(allocator, user_json);
+    }
+    try buf.appendSlice(allocator, "],\"total\":");
+    const total_text = try std.fmt.allocPrint(allocator, "{d}", .{page.total});
+    defer allocator.free(total_text);
+    try buf.appendSlice(allocator, total_text);
+    try buf.appendSlice(allocator, ",\"page\":");
+    const page_text = try std.fmt.allocPrint(allocator, "{d}", .{page.page});
+    defer allocator.free(page_text);
+    try buf.appendSlice(allocator, page_text);
+    try buf.appendSlice(allocator, ",\"page_size\":");
+    const page_size_text = try std.fmt.allocPrint(allocator, "{d}", .{page.page_size});
+    defer allocator.free(page_size_text);
+    try buf.appendSlice(allocator, page_size_text);
     try buf.append(allocator, '}');
 
     return buf.toOwnedSlice(allocator);

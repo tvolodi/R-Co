@@ -1,0 +1,43 @@
+{
+  "stage": "Stage F5 - Administration (batch 1)",
+  "date": "2026-05-30T16:45:29Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01.p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.316,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01.p99_write_ms": {
+      "target": "<=500",
+      "actual": 20.977,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02.append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 67146.462,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04.replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 45.769,
+      "unit": "ms",
+      "passed": true
+    }
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "ADM-UI-01",
+    "ADM-UI-02",
+    "ADM-UI-03",
+    "ADM-UI-04"
+  ],
+  "evidence": {
+    "step04_handoff": "handoffs/WF02-f5-admin-batch1-20260530/step-04-test-runner.json",
+    "step04_report": "tests/reports/report-20260530-WF02-f5-admin-batch1-step04.md",
+    "benchmark_summary": "NFR_BENCH_SUMMARY|overall_passed=true"
+  }
+}
