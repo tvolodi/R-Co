@@ -100,6 +100,7 @@ async function createSimpleDefinition(
             node_type: 'HUMAN_TASK',
             label: 'Review Form',
             attributes: JSON.stringify({
+              role: 'reviewer',
               assignee_type: 'USER',
               assignee_ref: 'worker-user',
               form_schema: {
@@ -164,6 +165,7 @@ async function createDefinitionWithGroupTask(
             node_type: 'HUMAN_TASK',
             label: 'Group Review',
             attributes: JSON.stringify({
+              role: 'approver',
               assignee_type: 'GROUP',
               assignee_ref: 'approvers',
               form_schema: {
