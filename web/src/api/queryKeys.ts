@@ -22,6 +22,15 @@ type TaskListFilters = {
   page_size?: number
 }
 
+type AdminAuditFilters = {
+  actor?: string
+  resource_type?: string
+  from?: string
+  to?: string
+  cursor?: string
+  page_size?: number
+}
+
 type EventFilters = {
   event_type?: string
   from?: string
@@ -70,7 +79,7 @@ export const queryKeys = {
 
   admin: {
     all: ['admin'] as const,
-    audit: () => [...queryKeys.admin.all, 'audit'] as const,
+    audit: (filters?: AdminAuditFilters) => [...queryKeys.admin.all, 'audit', filters ?? {}] as const,
     groups: () => [...queryKeys.admin.all, 'groups'] as const,
     groupMembers: (groupId: string) => [...queryKeys.admin.all, 'group-members', groupId] as const,
     health: () => [...queryKeys.admin.all, 'health'] as const,

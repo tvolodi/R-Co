@@ -725,6 +725,18 @@ pub fn build(b: *std.Build) void {
     run_obs03_integration_tests.setCwd(b.path("."));
     run_obs03_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    const adm_ui_09_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/adm_ui_09_health_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_adm_ui_09_integration_tests = b.addRunArtifact(adm_ui_09_integration_tests);
+    run_adm_ui_09_integration_tests.setCwd(b.path("."));
+    run_adm_ui_09_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     const obs04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/obs04_timeline_test.zig"),
@@ -758,6 +770,7 @@ pub fn build(b: *std.Build) void {
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL)");
     test_integration_step.dependOn(&clean_test_db.step);
     test_integration_step.dependOn(&run_integration_tests.step);
+    test_integration_step.dependOn(&run_adm_ui_09_integration_tests.step);
 
     const test_integration_xc04_step = b.step("test-integration-xc04", "Run XC-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_xc04_step.dependOn(&clean_test_db.step);

@@ -14,8 +14,8 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
-            std.debug.print("BPM_TEST_DB_URL is not set - skipping integration test\n", .{});
-            return error.SkipZigTest;
+            std.debug.print("BPM_TEST_DB_URL is not set - integration test cannot run\n", .{});
+            return error.TestEnvironmentMissing;
         },
         else => return err,
     };
@@ -185,6 +185,9 @@ test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fi
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+
     const name = "tc-obs03-write-audit";
     const version = "1.0.0";
     cleanupDefinition(&pool, name, version);
@@ -193,7 +196,9 @@ test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fi
     var store = DefinitionStore.init(alloc, &pool);
     defer store.deinit();
 
-    const creator = try parseUuid("00000000-0000-0000-0000-000000000099");
+    const creator_id = try dbUuidString(conn, alloc);
+    defer alloc.free(creator_id);
+    const creator = try parseUuid(creator_id);
 
     const nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null },
@@ -238,9 +243,6 @@ test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fi
     const def_id = try uuidToString(alloc, def.id);
     defer alloc.free(def_id);
 
-    const conn = try pool.acquire();
-    defer pool.release(conn);
-
     const rows = try conn.query(
         alloc,
         \\SELECT
@@ -282,8 +284,10 @@ test "TC-OBS-03-INT-01: state-changing writes create audit rows with required fi
     try testing.expect(first[6] == null);
     try testing.expect(first[7] != null);
 
-    const user_id = "00000000-0000-0000-0000-0000000000a1";
-    const token_id = "00000000-0000-0000-0000-0000000000b1";
+    const user_id = try dbUuidString(conn, alloc);
+    defer alloc.free(user_id);
+    const token_id = try dbUuidString(conn, alloc);
+    defer alloc.free(token_id);
     cleanupUserByEmail(conn, "obs03-delete-audit@example.test");
     cleanupUserAndToken(conn, user_id, token_id);
     defer cleanupUserAndToken(conn, user_id, token_id);
@@ -322,6 +326,9 @@ test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" 
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+
     const name = "tc-obs03-read-only";
     const version = "1.0.0";
     cleanupDefinition(&pool, name, version);
@@ -330,7 +337,9 @@ test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" 
     var store = DefinitionStore.init(alloc, &pool);
     defer store.deinit();
 
-    const creator = try parseUuid("00000000-0000-0000-0000-000000000199");
+    const creator_id = try dbUuidString(conn, alloc);
+    defer alloc.free(creator_id);
+    const creator = try parseUuid(creator_id);
     const nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null },
         .{ .id = "E", .node_type = .END, .label = null },
@@ -355,9 +364,6 @@ test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" 
     const def_id = try uuidToString(alloc, def.id);
     defer alloc.free(def_id);
 
-    const conn = try pool.acquire();
-    defer pool.release(conn);
-
     const before_count = try countRows(
         conn,
         alloc,
@@ -377,7 +383,7 @@ test "TC-OBS-03-INT-02: read-only GET/list operations do not create audit rows" 
     const list_result = bpm.audit_routes.handleList(&pool, alloc, .{
         .resource_type = "definition",
         .resource_id = def_id,
-        .actor_id = "00000000-0000-0000-0000-000000000199",
+        .actor_id = creator_id,
         .page_size = 10,
     });
     defer alloc.free(list_result.body);
@@ -404,8 +410,10 @@ test "TC-OBS-03-INT-03: audit insert failure rolls back business write" {
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    const def_id = "00000000-0000-0000-0000-000000000301";
-    const creator = "00000000-0000-0000-0000-000000000302";
+    const def_id = try dbUuidString(conn, alloc);
+    defer alloc.free(def_id);
+    const creator = try dbUuidString(conn, alloc);
+    defer alloc.free(creator);
     const name = "tc-obs03-rollback-failure";
     const version = "1.0.0";
 
@@ -620,8 +628,10 @@ test "TC-OBS-03-INT-06: canceled-token post-auth action remains audited" {
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    const user_id = "00000000-0000-0000-0000-000000000601";
-    const token_id = "00000000-0000-0000-0000-000000000602";
+    const user_id = try dbUuidString(conn, alloc);
+    defer alloc.free(user_id);
+    const token_id = try dbUuidString(conn, alloc);
+    defer alloc.free(token_id);
 
     cleanupUserByEmail(conn, "obs03-revoke-audit@example.test");
     cleanupUserAndToken(conn, user_id, token_id);

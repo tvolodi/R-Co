@@ -1,0 +1,49 @@
+{
+  "handoff_id": "10cbdea6-c099-49fa-ae2d-85bfd177d5a0",
+  "run_id": "WF02-f5-admin-batch3-20260531",
+  "workflow_id": "WF-02",
+  "step": "03-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-30T21:20:42Z",
+  "started_at": "2026-05-30T21:21:01Z",
+  "completed_at": "2026-05-30T21:22:11Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 3)",
+    "requirement_ids": ["ADM-UI-09", "ADM-UI-10", "ADM-UI-11"],
+    "related_handoff_ids": [
+      "989f60e1-dc24-48d5-9b0d-9dc878f7b180",
+      "64016806-dc5c-426b-8741-777d189e4e0e"
+    ],
+    "artifacts_in": [
+      "web/tests/e2e/f5-admin-observability.e2e.spec.ts",
+      "web/src/api/audit.ts",
+      "tests/specs/ADM-UI-11.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK 2: Re-run and finalize Step-03 test deliverables for ADM-UI-09..11 after frontend audit path fix. Confirm all three requirement scenarios pass in the observability E2E suite and update artifacts as needed.",
+    "acceptance_criteria": [
+      "ADM-UI-09..11 Step-03 test scenarios pass",
+      "Step-03 handoff can close PASS"
+    ],
+    "functions_to_call": ["fn:design-tests-rework", "fn:test-validate"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Revalidated ADM-UI-09..11 Step-03 scenarios after audit path fix; observability E2E suite passes all three scenarios.",
+    "artifacts_out": [
+      "tests/specs/ADM-UI-09.md",
+      "tests/specs/ADM-UI-10.md",
+      "tests/specs/ADM-UI-11.md",
+      "web/tests/e2e/f5-admin-observability.e2e.spec.ts",
+      "docs/issue-reports/WF02-f5-admin-batch3-20260531-step-03-rework2-test-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
+  },
+  "rework_count": 2,
+  "max_rework": 2
+}

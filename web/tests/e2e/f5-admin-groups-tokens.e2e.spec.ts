@@ -47,10 +47,6 @@ async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: shotPath(name), fullPage: true })
 }
 
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 function jwtSubject(token: string): string {
   const parts = token.split('.')
   if (parts.length !== 3) throw new Error('Invalid JWT format')
@@ -186,29 +182,6 @@ async function deleteGroup(request: APIRequestContext, token: string, groupId: s
 
   if (!response.ok() && response.status() !== 404) {
     throw new Error(`Failed to delete group ${groupId} (${response.status()})`)
-  }
-}
-
-async function addGroupMember(request: APIRequestContext, token: string, groupId: string, userId: string): Promise<void> {
-  const response = await request.post(`${API_BASE_URL}/api/v1/admin/groups/${groupId}/members`, {
-    headers: authHeaders(token),
-    data: { user_ids: [userId] },
-  })
-
-  if (!response.ok()) {
-    const body = await response.text()
-    throw new Error(`Failed to add member ${userId} to group ${groupId} (${response.status()}): ${body}`)
-  }
-}
-
-async function removeGroupMember(request: APIRequestContext, token: string, groupId: string, userId: string): Promise<void> {
-  const response = await request.delete(`${API_BASE_URL}/api/v1/admin/groups/${groupId}/members`, {
-    headers: authHeaders(token),
-  })
-
-  if (!response.ok()) {
-    const body = await response.text()
-    throw new Error(`Failed to remove member ${userId} from group ${groupId} (${response.status()}): ${body}`)
   }
 }
 

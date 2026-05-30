@@ -13,6 +13,8 @@ const PoolConfig = bpm.pool.PoolConfig;
 const Registry = bpm.registry.Registry;
 const EventStore = bpm.store.Store;
 
+var uuid_counter: u64 = 0;
+
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
@@ -193,6 +195,30 @@ fn extractJsonStringField(
     return try allocator.dupe(u8, body[after..end_rel]);
 }
 
+fn randomUuidString() [36]u8 {
+    var bytes = [_]u8{0} ** 16;
+    const seed = 0x6f62733400000000 ^ uuid_counter;
+    uuid_counter += 1;
+    var prng = std.Random.DefaultPrng.init(seed);
+    prng.random().bytes(&bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    const hex = "0123456789abcdef";
+    var out = [_]u8{0} ** 36;
+    var out_idx = @as(usize, 0);
+    for (bytes, 0..) |b, idx| {
+        if (idx == 4 or idx == 6 or idx == 8 or idx == 10) {
+            out[out_idx] = '-';
+            out_idx += 1;
+        }
+        out[out_idx] = hex[@as(usize, @intCast((b >> 4) & 0x0f))];
+        out[out_idx + 1] = hex[@as(usize, @intCast(b & 0x0f))];
+        out_idx += 2;
+    }
+    return out;
+}
+
 test "TC-OBS-04-INT-01: unknown instance returns HTTP 404" {
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
@@ -200,6 +226,8 @@ test "TC-OBS-04-INT-01: unknown instance returns HTTP 404" {
 
     var pool = try makePool(alloc, url);
     defer pool.deinit();
+
+    const missing_instance_id = randomUuidString();
 
     var registry = Registry.init(alloc, &pool);
     defer registry.deinit();
@@ -209,7 +237,7 @@ test "TC-OBS-04-INT-01: unknown instance returns HTTP 404" {
     const result = instance_routes.handleTimeline(
         &store,
         alloc,
-        "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        missing_instance_id[0..],
         .{ .cursor = null, .page_size = 50 },
     );
     defer freeRouteBody(alloc, result.body);
@@ -226,31 +254,35 @@ test "TC-OBS-04-INT-02: cancelled instance includes archived+live full history i
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const instance_id = "11111111-1111-1111-1111-111111111111";
-    const definition_id = "22222222-2222-2222-2222-222222222222";
-    const known_user_id = "33333333-3333-3333-3333-333333333333";
-    const missing_user_id = "44444444-4444-4444-4444-444444444444";
-    const system_actor_id = "55555555-5555-5555-5555-555555555555";
+    const instance_id = randomUuidString();
+    const definition_id = randomUuidString();
+    const known_user_id = randomUuidString();
+    const missing_user_id = randomUuidString();
+    const system_actor_id = randomUuidString();
+    const archived_event_1 = randomUuidString();
+    const archived_event_2 = randomUuidString();
+    const live_event_3 = randomUuidString();
+    const live_event_4 = randomUuidString();
 
-    cleanupInstance(&pool, instance_id);
-    defer cleanupInstance(&pool, instance_id);
-    cleanupUser(&pool, known_user_id);
-    defer cleanupUser(&pool, known_user_id);
+    cleanupInstance(&pool, instance_id[0..]);
+    defer cleanupInstance(&pool, instance_id[0..]);
+    cleanupUser(&pool, known_user_id[0..]);
+    defer cleanupUser(&pool, known_user_id[0..]);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    try seedInstanceProjection(conn, instance_id, definition_id, "CANCELLED");
-    try insertUser(conn, known_user_id, "obs04_user", "obs04@example.test", "Alice Kim");
+    try seedInstanceProjection(conn, instance_id[0..], definition_id[0..], "CANCELLED");
+    try insertUser(conn, known_user_id[0..], "obs04_user", "obs04@example.test", "Alice Kim");
 
     try insertArchivedEvent(
         conn,
-        "aaaaaaaa-0000-0000-0000-000000000001",
-        instance_id,
+        archived_event_1[0..],
+        instance_id[0..],
         "INSTANCE_STARTED",
         "{}",
         "{}",
-        known_user_id,
+        known_user_id[0..],
         "2026-05-25T10:00:00Z",
         1,
         "obs04-int2-arch-1",
@@ -258,12 +290,12 @@ test "TC-OBS-04-INT-02: cancelled instance includes archived+live full history i
     );
     try insertArchivedEvent(
         conn,
-        "aaaaaaaa-0000-0000-0000-000000000002",
-        instance_id,
+        archived_event_2[0..],
+        instance_id[0..],
         "TASK_ACTIVATED",
         "{\"node_id\":\"task_review\"}",
         "{\"token_description\":\"Deploy Token\"}",
-        missing_user_id,
+        missing_user_id[0..],
         "2026-05-25T10:02:00Z",
         2,
         "obs04-int2-arch-2",
@@ -271,24 +303,24 @@ test "TC-OBS-04-INT-02: cancelled instance includes archived+live full history i
     );
     try insertEvent(
         conn,
-        "aaaaaaaa-0000-0000-0000-000000000003",
-        instance_id,
+        live_event_3[0..],
+        instance_id[0..],
         "TASK_COMPLETED",
         "{\"node_id\":\"task_review\"}",
         "{}",
-        system_actor_id,
+        system_actor_id[0..],
         "2026-05-25T10:03:00Z",
         3,
         "obs04-int2-live-3",
     );
     try insertEvent(
         conn,
-        "aaaaaaaa-0000-0000-0000-000000000004",
-        instance_id,
+        live_event_4[0..],
+        instance_id[0..],
         "INSTANCE_CANCELLED",
         "{}",
         "{}",
-        known_user_id,
+        known_user_id[0..],
         "2026-05-25T10:04:00Z",
         4,
         "obs04-int2-live-4",
@@ -301,7 +333,7 @@ test "TC-OBS-04-INT-02: cancelled instance includes archived+live full history i
     const result = instance_routes.handleTimeline(
         &store,
         alloc,
-        instance_id,
+        instance_id[0..],
         .{ .cursor = null, .page_size = 50 },
     );
     defer freeRouteBody(alloc, result.body);
@@ -310,10 +342,10 @@ test "TC-OBS-04-INT-02: cancelled instance includes archived+live full history i
     try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"count\":4"));
     try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"event_type\":\"INSTANCE_CANCELLED\""));
 
-    const idx1 = std.mem.indexOf(u8, result.body, "aaaaaaaa-0000-0000-0000-000000000001") orelse return error.TestUnexpectedResult;
-    const idx2 = std.mem.indexOf(u8, result.body, "aaaaaaaa-0000-0000-0000-000000000002") orelse return error.TestUnexpectedResult;
-    const idx3 = std.mem.indexOf(u8, result.body, "aaaaaaaa-0000-0000-0000-000000000003") orelse return error.TestUnexpectedResult;
-    const idx4 = std.mem.indexOf(u8, result.body, "aaaaaaaa-0000-0000-0000-000000000004") orelse return error.TestUnexpectedResult;
+    const idx1 = std.mem.indexOf(u8, result.body, archived_event_1[0..]) orelse return error.TestUnexpectedResult;
+    const idx2 = std.mem.indexOf(u8, result.body, archived_event_2[0..]) orelse return error.TestUnexpectedResult;
+    const idx3 = std.mem.indexOf(u8, result.body, live_event_3[0..]) orelse return error.TestUnexpectedResult;
+    const idx4 = std.mem.indexOf(u8, result.body, live_event_4[0..]) orelse return error.TestUnexpectedResult;
     try testing.expect(idx1 < idx2 and idx2 < idx3 and idx3 < idx4);
 
     try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"actor_display_name\":\"Alice Kim\""));
@@ -329,20 +361,23 @@ test "TC-OBS-04-INT-03: cursor pagination returns deterministic continuation wit
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const instance_id = "66666666-6666-6666-6666-666666666666";
-    const definition_id = "77777777-7777-7777-7777-777777777777";
-    const actor_id = "88888888-8888-8888-8888-888888888888";
+    const instance_id = randomUuidString();
+    const definition_id = randomUuidString();
+    const actor_id = randomUuidString();
+    const event_1 = randomUuidString();
+    const event_2 = randomUuidString();
+    const event_3 = randomUuidString();
 
-    cleanupInstance(&pool, instance_id);
-    defer cleanupInstance(&pool, instance_id);
+    cleanupInstance(&pool, instance_id[0..]);
+    defer cleanupInstance(&pool, instance_id[0..]);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    try seedInstanceProjection(conn, instance_id, definition_id, "ACTIVE");
-    try insertEvent(conn, "bbbbbbbb-0000-0000-0000-000000000001", instance_id, "INSTANCE_STARTED", "{}", "{}", actor_id, "2026-05-25T12:00:00Z", 1, "obs04-int3-1");
-    try insertEvent(conn, "bbbbbbbb-0000-0000-0000-000000000002", instance_id, "TASK_ACTIVATED", "{}", "{}", actor_id, "2026-05-25T12:01:00Z", 2, "obs04-int3-2");
-    try insertEvent(conn, "bbbbbbbb-0000-0000-0000-000000000003", instance_id, "TASK_COMPLETED", "{}", "{}", actor_id, "2026-05-25T12:02:00Z", 3, "obs04-int3-3");
+    try seedInstanceProjection(conn, instance_id[0..], definition_id[0..], "ACTIVE");
+    try insertEvent(conn, event_1[0..], instance_id[0..], "INSTANCE_STARTED", "{}", "{}", actor_id[0..], "2026-05-25T12:00:00Z", 1, "obs04-int3-1");
+    try insertEvent(conn, event_2[0..], instance_id[0..], "TASK_ACTIVATED", "{}", "{}", actor_id[0..], "2026-05-25T12:01:00Z", 2, "obs04-int3-2");
+    try insertEvent(conn, event_3[0..], instance_id[0..], "TASK_COMPLETED", "{}", "{}", actor_id[0..], "2026-05-25T12:02:00Z", 3, "obs04-int3-3");
 
     var registry = Registry.init(alloc, &pool);
     defer registry.deinit();
@@ -351,7 +386,7 @@ test "TC-OBS-04-INT-03: cursor pagination returns deterministic continuation wit
     const first = instance_routes.handleTimeline(
         &store,
         alloc,
-        instance_id,
+        instance_id[0..],
         .{ .cursor = null, .page_size = 2 },
     );
     defer freeRouteBody(alloc, first.body);
@@ -365,16 +400,16 @@ test "TC-OBS-04-INT-03: cursor pagination returns deterministic continuation wit
     const second = instance_routes.handleTimeline(
         &store,
         alloc,
-        instance_id,
+        instance_id[0..],
         .{ .cursor = next_cursor, .page_size = 2 },
     );
     defer freeRouteBody(alloc, second.body);
 
     try testing.expectEqual(@as(u16, 200), second.status_code);
     try testing.expect(std.mem.containsAtLeast(u8, second.body, 1, "\"count\":1"));
-    try testing.expect(std.mem.containsAtLeast(u8, second.body, 1, "bbbbbbbb-0000-0000-0000-000000000003"));
-    try testing.expect(!std.mem.containsAtLeast(u8, second.body, 1, "bbbbbbbb-0000-0000-0000-000000000001"));
-    try testing.expect(!std.mem.containsAtLeast(u8, second.body, 1, "bbbbbbbb-0000-0000-0000-000000000002"));
+    try testing.expect(std.mem.containsAtLeast(u8, second.body, 1, event_3[0..]));
+    try testing.expect(!std.mem.containsAtLeast(u8, second.body, 1, event_1[0..]));
+    try testing.expect(!std.mem.containsAtLeast(u8, second.body, 1, event_2[0..]));
     try testing.expect(std.mem.containsAtLeast(u8, second.body, 1, "\"next_cursor\":null"));
 }
 
@@ -386,26 +421,29 @@ test "TC-OBS-04-INT-04: actor display-name fallback order user -> token_descript
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const instance_id = "99999999-9999-9999-9999-999999999999";
-    const definition_id = "abababab-abab-abab-abab-abababababab";
-    const known_user_id = "cdcdcdcd-cdcd-cdcd-cdcd-cdcdcdcdcdcd";
-    const unknown_user_id = "dededede-dede-dede-dede-dededededede";
-    const system_user_id = "efefefef-efef-efef-efef-efefefefefef";
+    const instance_id = randomUuidString();
+    const definition_id = randomUuidString();
+    const known_user_id = randomUuidString();
+    const unknown_user_id = randomUuidString();
+    const system_user_id = randomUuidString();
+    const event_1 = randomUuidString();
+    const event_2 = randomUuidString();
+    const event_3 = randomUuidString();
 
-    cleanupInstance(&pool, instance_id);
-    defer cleanupInstance(&pool, instance_id);
-    cleanupUser(&pool, known_user_id);
-    defer cleanupUser(&pool, known_user_id);
+    cleanupInstance(&pool, instance_id[0..]);
+    defer cleanupInstance(&pool, instance_id[0..]);
+    cleanupUser(&pool, known_user_id[0..]);
+    defer cleanupUser(&pool, known_user_id[0..]);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    try seedInstanceProjection(conn, instance_id, definition_id, "ACTIVE");
-    try insertUser(conn, known_user_id, "obs04_user2", "obs04-user2@example.test", "Operator Ada");
+    try seedInstanceProjection(conn, instance_id[0..], definition_id[0..], "ACTIVE");
+    try insertUser(conn, known_user_id[0..], "obs04_user2", "obs04-user2@example.test", "Operator Ada");
 
-    try insertEvent(conn, "cccccccc-0000-0000-0000-000000000001", instance_id, "INSTANCE_STARTED", "{}", "{}", known_user_id, "2026-05-25T14:00:00Z", 1, "obs04-int4-1");
-    try insertEvent(conn, "cccccccc-0000-0000-0000-000000000002", instance_id, "TASK_ACTIVATED", "{}", "{\"token_description\":\"Automation Token\"}", unknown_user_id, "2026-05-25T14:01:00Z", 2, "obs04-int4-2");
-    try insertEvent(conn, "cccccccc-0000-0000-0000-000000000003", instance_id, "TASK_COMPLETED", "{}", "{}", system_user_id, "2026-05-25T14:02:00Z", 3, "obs04-int4-3");
+    try insertEvent(conn, event_1[0..], instance_id[0..], "INSTANCE_STARTED", "{}", "{}", known_user_id[0..], "2026-05-25T14:00:00Z", 1, "obs04-int4-1");
+    try insertEvent(conn, event_2[0..], instance_id[0..], "TASK_ACTIVATED", "{}", "{\"token_description\":\"Automation Token\"}", unknown_user_id[0..], "2026-05-25T14:01:00Z", 2, "obs04-int4-2");
+    try insertEvent(conn, event_3[0..], instance_id[0..], "TASK_COMPLETED", "{}", "{}", system_user_id[0..], "2026-05-25T14:02:00Z", 3, "obs04-int4-3");
 
     var registry = Registry.init(alloc, &pool);
     defer registry.deinit();
@@ -414,7 +452,7 @@ test "TC-OBS-04-INT-04: actor display-name fallback order user -> token_descript
     const result = instance_routes.handleTimeline(
         &store,
         alloc,
-        instance_id,
+        instance_id[0..],
         .{ .cursor = null, .page_size = 50 },
     );
     defer freeRouteBody(alloc, result.body);
@@ -433,33 +471,34 @@ test "TC-OBS-04-INT-05: timeline resolves tenant from instance projection when q
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const instance_id = "12121212-3434-5656-7878-909090909090";
-    const definition_id = "abababab-1234-5678-90ab-cdefabcdef12";
-    const non_default_tenant = "11111111-2222-3333-4444-555555555555";
-    const actor_id = "9a9a9a9a-bcbc-dede-f0f0-010101010101";
+    const instance_id = randomUuidString();
+    const definition_id = randomUuidString();
+    const non_default_tenant = randomUuidString();
+    const actor_id = randomUuidString();
+    const event_id = randomUuidString();
 
-    cleanupInstance(&pool, instance_id);
-    defer cleanupInstance(&pool, instance_id);
+    cleanupInstance(&pool, instance_id[0..]);
+    defer cleanupInstance(&pool, instance_id[0..]);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    try seedInstanceProjectionWithTenant(conn, instance_id, definition_id, non_default_tenant, "ACTIVE");
+    try seedInstanceProjectionWithTenant(conn, instance_id[0..], definition_id[0..], non_default_tenant[0..], "ACTIVE");
     try insertEvent(
         conn,
-        "dddddddd-1111-2222-3333-444444444444",
-        instance_id,
+        event_id[0..],
+        instance_id[0..],
         "INSTANCE_STARTED",
         "{}",
         "{}",
-        actor_id,
+        actor_id[0..],
         "2026-05-30T04:00:00Z",
         1,
         "obs04-int5-live-1",
     );
     try conn.exec(
         "UPDATE events SET tenant_id = $1::uuid WHERE event_id = $2::uuid",
-        &.{ non_default_tenant, "dddddddd-1111-2222-3333-444444444444" },
+        &.{ non_default_tenant[0..], event_id[0..] },
     );
 
     var registry = Registry.init(alloc, &pool);
@@ -469,12 +508,12 @@ test "TC-OBS-04-INT-05: timeline resolves tenant from instance projection when q
     const result = instance_routes.handleTimeline(
         &store,
         alloc,
-        instance_id,
+        instance_id[0..],
         .{ .cursor = null, .page_size = 50 },
     );
     defer freeRouteBody(alloc, result.body);
 
     try testing.expectEqual(@as(u16, 200), result.status_code);
     try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "\"count\":1"));
-    try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, "dddddddd-1111-2222-3333-444444444444"));
+    try testing.expect(std.mem.containsAtLeast(u8, result.body, 1, event_id[0..]));
 }

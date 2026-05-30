@@ -182,21 +182,20 @@ pub const Conn = struct {
             }
             return PoolError.QueryFailed;
         };
+        defer result.deinit();
         if (result.rows.len == 0) {
-            result.deinit();
             return null;
         }
 
         const source_row = result.rows[0];
         const owned_row = allocator.alloc(?[]u8, source_row.len) catch {
-            result.deinit();
             return PoolError.QueryFailed;
         };
 
         var copied: usize = 0;
         errdefer {
             for (owned_row[0..copied]) |col| {
-                if (col) |c| if (c.len > 0) allocator.free(c);
+                if (col) |c| allocator.free(c);
             }
             allocator.free(owned_row);
         }
@@ -210,7 +209,6 @@ pub const Conn = struct {
             copied += 1;
         }
 
-        result.deinit();
         return owned_row;
     }
 

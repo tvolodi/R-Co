@@ -1,0 +1,48 @@
+{
+  "handoff_id": "9c886f8e-e48b-4154-96e5-ca7031874882",
+  "run_id": "WF03-f5-batch3-step04-fix-20260530",
+  "workflow_id": "WF-03",
+  "step": "01-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-05-30T22:46:03Z",
+  "started_at": "2026-05-30T22:47:06Z",
+  "completed_at": "2026-05-30T22:55:13Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 integration blocker fix",
+    "requirement_ids": ["ADM-UI-09", "ADM-UI-11"],
+    "related_handoff_ids": [
+      "27dfa92a-19f3-4a12-8a90-cb71d44f76c7",
+      "b7253c94-6638-4022-ad32-32dd9fb6cd0a"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260530T224504Z-WF03-f5-batch3-step04-fix-20260530.yaml",
+      "tests/integration/obs04_timeline_test.zig",
+      "src/db/pool.zig",
+      "vendor/pg/pg.zig",
+      "src/obs/timeline.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK 1: Diagnose and fix the aggregate-suite OBS-04 DebugAllocator leak path that still appears in TC-OBS-04-INT-04 and TC-OBS-04-INT-05 during `zig build test-integration` and `zig build test-integration -- --test-filter 'TC-IDN-02-05'`, even though the focused OBS-04 target passes in isolation. Validate with the aggregate verification commands after the fix.",
+    "acceptance_criteria": [
+      "Aggregate filtered integration run passes",
+      "Aggregate integration suite no longer reproduces the OBS-04 leak blocker"
+    ],
+    "functions_to_call": ["fn:search-issues", "fn:register-issue", "fn:update-issue"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated the existing Category A allocator-cleanup fix for the OBS-04 aggregate leak path. The checked-in PostgreSQL result cleanup logic already matched ISS-0062, and after clearing a locked bpm-platform binary the required aggregate verification commands passed without reproducing the DebugAllocator leak.",
+    "artifacts_out": [
+      "docs/issues/ISS-0062.json",
+      "docs/issue-reports/WF03-f5-batch3-step04-fix-20260530-step-01-rework1-issue-fixer.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

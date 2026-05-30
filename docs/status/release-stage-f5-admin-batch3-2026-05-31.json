@@ -1,0 +1,41 @@
+{
+  "stage": "Stage F5 - Administration (batch 3)",
+  "date": "2026-05-30T23:30:48Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01.p99_read_ms": {
+      "target": "<=200",
+      "actual": 0.882,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01.p99_write_ms": {
+      "target": "<=500",
+      "actual": 2.122,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02.append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 74628.917,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04.replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 33.397,
+      "unit": "ms",
+      "passed": true
+    }
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "ADM-UI-09",
+    "ADM-UI-10",
+    "ADM-UI-11"
+  ],
+  "evidence": {
+    "input_report": "tests/reports/report-20260530T232838Z-WF02-f5-admin-batch3-step04-recovery-rerun.yaml",
+    "benchmark_summary": "NFR_BENCH_SUMMARY|overall_passed=true|run_id=bench-1780183815109"
+  }
+}

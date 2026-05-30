@@ -1,0 +1,56 @@
+{
+  "handoff_id": "0920acf5-1bc2-4f82-96fc-ee7c3375c49a",
+  "run_id": "WF02-f5-admin-batch3-20260531",
+  "workflow_id": "WF-02",
+  "step": "04-rework2",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-05-30T23:17:38Z",
+  "started_at": "2026-05-30T23:17:57Z",
+  "completed_at": "2026-05-30T23:19:09Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 3)",
+    "requirement_ids": ["ADM-UI-09", "ADM-UI-10", "ADM-UI-11"],
+    "related_handoff_ids": [
+      "a73643a8-9227-450e-8f49-b6cd373f197a",
+      "913ccb68-177b-4edf-a8ee-b801bfc16c99",
+      "a81582ef-d656-4cce-b85e-d9c0d7287743"
+    ],
+    "artifacts_in": [
+      "tests/specs/ADM-UI-09.md",
+      "tests/specs/ADM-UI-10.md",
+      "tests/specs/ADM-UI-11.md",
+      "web/tests/e2e/f5-admin-observability.e2e.spec.ts",
+      "tests/integration/adm_ui_09_health_test.zig",
+      "tests/integration/obs03_audit_log_test.zig",
+      "tests/integration/obs04_timeline_test.zig",
+      "tests/reports/report-20260530T230423Z-WF03-f5-batch3-step04-fix-20260530-rework1.yaml"
+    ]
+  },
+  "task": {
+    "description": "REWORK 2: Re-run WF-02 step-04 required tests for ADM-UI-09..11 now that services are restored and WF-03 verification has passed. Confirm integration coverage and observability E2E against real backend and report final pass/fail for the WF-02 gate.",
+    "acceptance_criteria": [
+      "Required test suite passes",
+      "ADM-UI-09..11 coverage validated against real backend"
+    ],
+    "functions_to_call": ["fn:test-run", "fn:test-report"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Mandatory precheck failed: Keycloak readiness endpoint returned HTTP 404, so WF-02 step-04 required ADM-UI-09..11 tests were not executed.",
+    "artifacts_out": [
+      "tests/reports/report-20260530T231909Z-WF02-f5-admin-batch3-step04-rework2.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Backend services unavailable: keycloak readiness endpoint returned HTTP 404 at http://localhost:8081/health/ready. ORCH must start/repair services via ADHOC BACKEND-DEV handoff (docker-compose up -d db db_test keycloak) before redispatching TEST-RUNNER."
+      }
+    ],
+    "next_action": "Route to ORCH for ADHOC BACKEND-DEV infra recovery, then redispatch TEST-RUNNER Step 04."
+  },
+  "rework_count": 2,
+  "max_rework": 2
+}

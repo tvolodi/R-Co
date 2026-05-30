@@ -1,0 +1,53 @@
+{
+  "handoff_id": "989f60e1-dc24-48d5-9b0d-9dc878f7b180",
+  "run_id": "WF02-f5-admin-batch3-20260531",
+  "workflow_id": "WF-02",
+  "step": "03-rework1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-30T21:06:58Z",
+  "started_at": "2026-05-30T21:07:13Z",
+  "completed_at": "2026-05-30T21:15:59Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 3)",
+    "requirement_ids": ["ADM-UI-09", "ADM-UI-10", "ADM-UI-11"],
+    "related_handoff_ids": [
+      "53697b4b-cd3a-489b-b0a3-7883d449f4ca",
+      "8cca8e0b-fd81-4d97-91d8-d454e2a706f3"
+    ],
+    "artifacts_in": [
+      "web/tests/e2e/f5-admin-observability.e2e.spec.ts",
+      "src/main.zig",
+      "docs/issue-reports/WF02-f5-admin-batch3-20260531-step03-test-designer.yaml"
+    ]
+  },
+  "task": {
+    "description": "REWORK 1: Re-run and complete test design/implementation validation for ADM-UI-09..11 after backend audit endpoint unblock. Ensure ADM-UI-11 scenario now passes and update test artifacts as needed.",
+    "acceptance_criteria": [
+      "Test specs for ADM-UI-09..11 are complete",
+      "ADM-UI-09..11 runnable tests pass for Step 03 deliverables"
+    ],
+    "functions_to_call": ["fn:design-tests-rework", "fn:test-validate"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Re-ran ADM-UI-09..11 Step-03 after backend unblock: ADM-UI-09 and ADM-UI-10 pass, ADM-UI-11 remains blocked by audit page load failure caused by frontend audit client endpoint mismatch (/audit vs /api/v1/audit).",
+    "artifacts_out": [
+      "web/tests/e2e/f5-admin-observability.e2e.spec.ts",
+      "tests/specs/ADM-UI-11.md",
+      "docs/issue-reports/WF02-f5-admin-batch3-20260531-step03-test-designer.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "ADM-UI-11 audit page shows \"Failed to load audit entries for the selected filters.\" in E2E reruns. Root cause: frontend audit client requests /audit while backend route is /api/v1/audit.",
+        "suggested_owner": "FRONTEND-DEV"
+      }
+    ],
+    "next_action": "Route to ORCH for FRONTEND-DEV fix on web/src/api/audit.ts endpoint path, then redispatch TEST-DESIGNER"
+  },
+  "rework_count": 1,
+  "max_rework": 2
+}

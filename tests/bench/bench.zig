@@ -35,18 +35,19 @@ const Result = struct {
 
 pub fn main(init: std.process.Init) !void {
     const gpa = init.gpa;
+    const stdout = std.Io.File.stdout();
 
     const resolved_db_url = resolveDbUrl(init) catch |err| {
         std.debug.print("BENCHMARK_SETUP_ERROR|missing BPM_BENCH_DB_URL/BPM_DB_URL/BPM_TEST_DB_URL (also checked .env)\n", .{});
         return err;
     };
 
-    std.debug.print("BENCHMARK_SETUP_INFO|db_url_source={s}\n", .{dbUrlSourceLabel(resolved_db_url.source)});
+    try writeBenchLine(init.io, gpa, stdout, "BENCHMARK_SETUP_INFO|db_url_source={s}\n", .{dbUrlSourceLabel(resolved_db_url.source)});
 
     var pool = connectPool(init, gpa, resolved_db_url.url) catch |err| blk: {
         if (err == db.PoolError.ConnectionFailed and resolved_db_url.source != .test_db) {
             if (init.environ_map.get("BPM_TEST_DB_URL")) |test_db_url| {
-                std.debug.print("BENCHMARK_SETUP_INFO|retry_db_url_source=test_db_fallback\n", .{});
+                try writeBenchLine(init.io, gpa, stdout, "BENCHMARK_SETUP_INFO|retry_db_url_source=test_db_fallback\n", .{});
                 break :blk connectPool(init, gpa, test_db_url) catch |retry_err| {
                     std.debug.print("BENCHMARK_SETUP_ERROR|pool_init={s}\n", .{@errorName(retry_err)});
                     return retry_err;
@@ -132,14 +133,17 @@ pub fn main(init: std.process.Init) !void {
 
     var all_passed = true;
     for (results) |r| {
-        std.debug.print(
+        try writeBenchLine(
+            init.io,
+            gpa,
+            stdout,
             "NFR_RESULT|{s}|{s}|target={s}|actual={d:.3}|unit={s}|passed={s}\n",
             .{ r.id, r.metric, r.target, r.actual, r.unit, if (r.passed) "true" else "false" },
         );
         if (!r.passed) all_passed = false;
     }
 
-    std.debug.print("NFR_BENCH_SUMMARY|overall_passed={s}|run_id={s}\n", .{ if (all_passed) "true" else "false", run_id });
+    try writeBenchLine(init.io, gpa, stdout, "NFR_BENCH_SUMMARY|overall_passed={s}|run_id={s}\n", .{ if (all_passed) "true" else "false", run_id });
 
     if (!all_passed) return error.ThresholdFailed;
 }
@@ -247,6 +251,21 @@ fn connectPool(init: std.process.Init, allocator: std.mem.Allocator, db_url: []c
         .url = db_url,
         .pool_size = 4,
     });
+}
+
+fn writeBenchLine(
+    io: std.Io,
+    allocator: std.mem.Allocator,
+    stdout: std.Io.File,
+    comptime fmt: []const u8,
+    args: anytype,
+) !void {
+    const line = std.fmt.allocPrint(allocator, fmt, args) catch |err| {
+        std.debug.print("BENCHMARK_SETUP_ERROR|format={s}\n", .{@errorName(err)});
+        return err;
+    };
+    defer allocator.free(line);
+    try stdout.writeStreamingAll(io, line);
 }
 
 fn cleanupRun(conn: *db.Conn, run_id: []const u8) !void {

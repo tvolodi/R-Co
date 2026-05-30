@@ -5,6 +5,18 @@ import { queryKeys } from '@/api/queryKeys'
 import type { User } from '@/types/api'
 import { useLocation, useNavigate } from 'react-router-dom'
 
+function roleList(user: User): string[] {
+  return Array.isArray(user.roles) ? user.roles : []
+}
+
+function displayUsername(user: User): string {
+  if (typeof user.username === 'string' && user.username.length > 0) return user.username
+  if (typeof user.email === 'string' && user.email.length > 0) {
+    return user.email.split('@')[0]
+  }
+  return 'unknown-user'
+}
+
 export default function UsersPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -316,11 +328,11 @@ export default function UsersPage() {
         </thead>
         <tbody>
           {(data?.items ?? []).map((u: User) => (
-            <tr key={u.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-              <td style={{ padding: '.6rem .8rem' }}>{u.email.split('@')[0]}</td>
+            <tr key={u.id ?? u.user_id ?? `${u.email}-${u.created_at}`} style={{ borderBottom: '1px solid #e2e8f0' }}>
+              <td style={{ padding: '.6rem .8rem' }}>{displayUsername(u)}</td>
               <td style={{ padding: '.6rem .8rem' }}>{u.display_name}</td>
               <td style={{ padding: '.6rem .8rem' }}>{u.email}</td>
-              <td style={{ padding: '.6rem .8rem', fontSize: '.8rem', color: '#64748b' }}>{u.roles.join(', ')}</td>
+              <td style={{ padding: '.6rem .8rem', fontSize: '.8rem', color: '#64748b' }}>{roleList(u).join(', ')}</td>
               <td style={{ padding: '.6rem .8rem' }}>
                 <span style={{ color: u.is_active ? '#16a34a' : '#9ca3af', fontWeight: 600, fontSize: '.8rem' }}>
                   {u.is_active ? 'ACTIVE' : 'INACTIVE'}

@@ -386,7 +386,7 @@ _Gate: Stage F3 MUST requirements RELEASED. Backend Stage 4 task endpoints RELEA
 
 | ID | Title | Priority |
 |---|---|---|
-| TK-UI-01 | Task inbox | MUST |
+| TK-UI-01 Contin| Task inbox | MUST |
 | TK-UI-02 | Task detail panel | MUST |
 | TK-UI-03 | Dynamic form rendering | MUST |
 | TK-UI-04 | Complete task | MUST |

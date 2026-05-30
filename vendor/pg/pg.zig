@@ -48,6 +48,9 @@ pub const Result = struct {
 
     pub fn deinit(self: *Result) void {
         for (self.rows) |row| {
+            for (row) |col| {
+                if (col) |value| self.allocator.free(value);
+            }
             self.allocator.free(row);
         }
         self.allocator.free(self.rows);
@@ -562,9 +565,7 @@ pub const Conn = struct {
         var iterations: u32 = 0;
         var sfm_it = mem.splitScalar(u8, sfm, ',');
         while (sfm_it.next()) |part| {
-            if (mem.startsWith(u8, part, "r=")) combined_nonce = part[2..]
-            else if (mem.startsWith(u8, part, "s=")) salt_b64 = part[2..]
-            else if (mem.startsWith(u8, part, "i="))
+            if (mem.startsWith(u8, part, "r=")) combined_nonce = part[2..] else if (mem.startsWith(u8, part, "s=")) salt_b64 = part[2..] else if (mem.startsWith(u8, part, "i="))
                 iterations = std.fmt.parseInt(u32, part[2..], 10) catch return PgError.AuthenticationFailed;
         }
         if (combined_nonce.len == 0 or salt_b64.len == 0 or iterations == 0)

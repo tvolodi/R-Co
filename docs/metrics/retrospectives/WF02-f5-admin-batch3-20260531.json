@@ -1,0 +1,69 @@
+{
+  "run_id": "WF02-f5-admin-batch3-20260531",
+  "requirement_ids": [
+    "ADM-UI-09",
+    "ADM-UI-10",
+    "ADM-UI-11"
+  ],
+  "difficulty": 4,
+  "integration_surface": "medium",
+  "rules_version_used": "1.1",
+  "estimated_minutes_total": 141,
+  "actual_minutes_total": 126.5,
+  "variance_pct": -10.3,
+  "by_step": {
+    "code-designer": {
+      "estimated": 6,
+      "actual": 1.6,
+      "variance_pct": -73.3
+    },
+    "code-design-validator": {
+      "estimated": 19,
+      "actual": 15.6,
+      "variance_pct": -17.9
+    },
+    "frontend-dev": {
+      "estimated": 75,
+      "actual": 39.1,
+      "variance_pct": -47.9
+    },
+    "test-designer": {
+      "estimated": 3,
+      "actual": 36.6,
+      "variance_pct": 1120.0
+    },
+    "test-design-validator": {
+      "estimated": 31,
+      "actual": 1.7,
+      "variance_pct": -94.5
+    },
+    "test-runner": {
+      "estimated": 5,
+      "actual": 29.4,
+      "variance_pct": 488.0
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 1.0,
+      "variance_pct": 0.0
+    },
+    "doc-updater": {
+      "estimated": 1,
+      "actual": 1.5,
+      "variance_pct": 50.0
+    }
+  },
+  "rework_steps": [
+    "01b-rework1",
+    "02b-rework1",
+    "03-rework1",
+    "03-rework2",
+    "03-rework3",
+    "03b-revalidate",
+    "04-rework1",
+    "04-rework2",
+    "04-recovery-rerun"
+  ],
+  "rule_adjustments": [],
+  "completed_at": "2026-05-30T23:33:13Z"
+}
