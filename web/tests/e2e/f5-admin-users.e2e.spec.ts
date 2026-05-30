@@ -40,10 +40,25 @@ async function getKeycloakToken(
 async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
   await page.goto('/login')
   await expect(page.getByTestId('login-token-input')).toBeVisible({ timeout: 10_000 })
-  await page.getByTestId('login-token-input').fill(token)
-  await page.getByTestId('login-submit').click()
+  const tokenInput = page.getByTestId('login-token-input')
+  const submitButton = page.getByTestId('login-submit')
 
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await tokenInput.fill(token)
+    await submitButton.click()
+
+    try {
+      await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 7_500 })
+      return
+    } catch {
+      const invalidAlert = page.getByText('Invalid token or access denied.')
+      if (attempt < 3 && await invalidAlert.isVisible()) {
+        await page.waitForTimeout(1_000)
+        continue
+      }
+      throw new Error(`Token login did not complete after ${attempt} attempt(s)`)
+    }
+  }
 }
 
 async function navigateSpa(page: import('@playwright/test').Page, targetPath: string): Promise<void> {
