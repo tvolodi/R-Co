@@ -1,0 +1,90 @@
+{
+  "issue_id": "ISS-0062",
+  "title": "WF03 f5 batch3 step04: PostgreSQL result rows leaked column buffers across OBS-03/OBS-04 and masked TC-IDN-02-05",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "A_LOGIC_ERROR",
+  "run_id": "WF03-f5-batch3-step04-fix-20260530",
+  "workflow_id": "WF-03",
+  "handoff_id": "27dfa92a-19f3-4a12-8a90-cb71d44f76c7",
+  "requirement_ids": [
+    "ADM-UI-09",
+    "ADM-UI-11"
+  ],
+  "summary": "Resolved the batch3 Step04 backend integration blocker by fixing PostgreSQL result cleanup so query/queryRow callers release per-column buffers, eliminating the DebugAllocator leak traces seen in OBS-03 audit pagination, OBS-04 timeline reads, and the aggregate path that had masked ADM-UI-09 confirmation behind TC-IDN-02-05.",
+  "root_cause": {
+    "type": "pg_result_column_cleanup_missing",
+    "details": "The PostgreSQL client deinitialized only row slices, not the duplicated column buffers allocated in parseDataRow. Query-heavy integration paths therefore leaked on every successful read. A follow-on regression in src/db/pool.zig queryRow also lacked guaranteed result cleanup on every exit path."
+  },
+  "resolution": {
+    "strategy": "ISSUE_FIX_ALLOCATOR_CLEANUP",
+    "changes": [
+      "Updated vendor/pg/pg.zig Result.deinit to free every non-null column buffer before freeing each row slice.",
+      "Updated src/db/pool.zig queryRow to defer result cleanup across all exits and to free copied zero-length slices correctly on error.",
+      "Revalidated the dedicated OBS-03 and OBS-04 integration targets plus the aggregate blocker rerun for TC-IDN-02-05."
+    ]
+  },
+  "follow_up_verification": {
+    "handoff_id": "9c886f8e-e48b-4154-96e5-ca7031874882",
+    "timestamp": "2026-05-30T22:55:13Z",
+    "summary": "Rework verification found the allocator-cleanup fix already present in the working tree. After clearing a locked zig-out executable from a running bpm-platform process, the required aggregate validation commands both exited 0 and no OBS-04 DebugAllocator leak reproduced.",
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS",
+        "evidence": "Build completed successfully after stopping the running bpm-platform.exe that held zig-out/bin/bpm-platform.exe open on Windows."
+      },
+      {
+        "command": "zig build test-integration -- --test-filter \"TC-IDN-02-05\"",
+        "result": "PASS",
+        "evidence": "FILTER_EXIT=0"
+      },
+      {
+        "command": "zig build test-integration",
+        "result": "PASS",
+        "evidence": "INTEGRATION_EXIT=0"
+      }
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "zig build",
+        "result": "PASS",
+        "evidence": "Completed without build errors after stopping the locked bpm-platform process."
+      },
+      {
+        "command": "zig build test-integration-obs03",
+        "result": "PASS",
+        "evidence": "OBS03_EXIT=0"
+      },
+      {
+        "command": "zig build test-integration-obs04",
+        "result": "PASS",
+        "evidence": "OBS04_EXIT=0"
+      },
+      {
+        "command": "zig build test-integration -- --test-filter \"TC-IDN-02-05\"",
+        "result": "PASS",
+        "evidence": "EXIT=0"
+      },
+      {
+        "command": "zig build test-integration",
+        "result": "PASS",
+        "evidence": "INTEGRATION_EXIT_CODE=0"
+      }
+    ]
+  },
+  "files_changed": [
+    "vendor/pg/pg.zig",
+    "src/db/pool.zig",
+    "docs/issues/ISS-0062.json",
+    "docs/issues/issue_index.json"
+  ],
+  "created_at": "2026-05-30T22:20:40Z",
+  "resolved_at": "2026-05-30T22:20:40Z",
+  "prevention": [
+    "Whenever a DB client stores per-cell duplicated buffers, deinit must walk both the row list and each column allocation instead of freeing only container slices.",
+    "In wrapper helpers like queryRow, use defer-based cleanup so early returns and copy failures cannot bypass result deallocation."
+  ]
+}

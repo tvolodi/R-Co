@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-30T16:48:37Z",
+  "last_updated": "2026-05-30T23:33:13Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -2662,6 +2662,54 @@
       "released_at": "2026-05-30",
       "release_run": "WF02-f5-admin-batch1-20260530",
       "last_updated": "2026-05-30T16:48:37Z"
+    },
+    "ADM-UI-09": {
+      "status": "RELEASED",
+      "stage": "F5",
+      "priority": "MUST",
+      "title": "Health dashboard",
+      "implemented_in": [
+        "web/src/pages/admin/HealthDashboardPage.tsx"
+      ],
+      "test_spec": "tests/specs/ADM-UI-09.md",
+      "test_run": "tests/reports/report-20260530T232838Z-WF02-f5-admin-batch3-step04-recovery-rerun.yaml",
+      "release_decision": "docs/status/release-stage-f5-admin-batch3-2026-05-31.json",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f5-admin-batch3-20260531",
+      "last_updated": "2026-05-30T23:33:13Z"
+    },
+    "ADM-UI-10": {
+      "status": "RELEASED",
+      "stage": "F5",
+      "priority": "SHOULD",
+      "title": "Metrics viewer",
+      "implemented_in": [
+        "web/src/pages/admin/MetricsPage.tsx"
+      ],
+      "test_spec": "tests/specs/ADM-UI-10.md",
+      "test_run": "tests/reports/report-20260530T232838Z-WF02-f5-admin-batch3-step04-recovery-rerun.yaml",
+      "release_decision": "docs/status/release-stage-f5-admin-batch3-2026-05-31.json",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f5-admin-batch3-20260531",
+      "last_updated": "2026-05-30T23:33:13Z"
+    },
+    "ADM-UI-11": {
+      "status": "RELEASED",
+      "stage": "F5",
+      "priority": "MUST",
+      "title": "Audit log viewer",
+      "implemented_in": [
+        "web/src/pages/admin/AuditLogPage.tsx"
+      ],
+      "test_spec": "tests/specs/ADM-UI-11.md",
+      "test_run": "tests/reports/report-20260530T232838Z-WF02-f5-admin-batch3-step04-recovery-rerun.yaml",
+      "release_decision": "docs/status/release-stage-f5-admin-batch3-2026-05-31.json",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f5-admin-batch3-20260531",
+      "last_updated": "2026-05-30T23:33:13Z"
     }
   }
 }

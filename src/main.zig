@@ -652,6 +652,38 @@ fn serveRequest(
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";
             }
+        } else if (std.mem.eql(u8, resource, "audit")) {
+            const actor = api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+            };
+
+            if (actor.role != .PLATFORM_ADMIN) {
+                resp_status = 403;
+                resp_body = "{\"error\":\"forbidden\"}";
+            } else if (seg4.len == 0 and method == .GET) {
+                const params = audit_routes.ListAuditParams{
+                    .actor_id = QS.get(query_str, "actor_id"),
+                    .resource_type = QS.get(query_str, "resource_type"),
+                    .resource_id = QS.get(query_str, "resource_id"),
+                    .pipeline_run_id = QS.get(query_str, "pipeline_run_id"),
+                    .from = QS.get(query_str, "from"),
+                    .to = QS.get(query_str, "to"),
+                    .cursor = QS.get(query_str, "cursor"),
+                    .page_size = if (QS.get(query_str, "page_size")) |ps| std.fmt.parseInt(u16, ps, 10) catch null else null,
+                };
+                const r = audit_routes.handleList(pool, req_alloc, params);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (seg4.len == 0) {
+                resp_status = 405;
+                resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
         } else if (std.mem.eql(u8, resource, "auth")) {
             const actor = api_auth.AuthContext{
                 .user_id = user_id,

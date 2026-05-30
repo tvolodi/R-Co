@@ -1,0 +1,50 @@
+{
+  "handoff_id": "2cc2d659-b995-4afa-8094-2f5c659cfaee",
+  "run_id": "WF02-f5-admin-batch3-20260531",
+  "workflow_id": "WF-02",
+  "step": "04-recovery-rerun",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-05-30T23:23:00Z",
+  "started_at": "2026-05-30T23:23:18Z",
+  "completed_at": "2026-05-30T23:28:38Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 3)",
+    "requirement_ids": ["ADM-UI-09", "ADM-UI-10", "ADM-UI-11"],
+    "related_handoff_ids": [
+      "0920acf5-1bc2-4f82-96fc-ee7c3375c49a",
+      "aee95cf7-f909-4ca7-86ef-11656c7da56b"
+    ],
+    "artifacts_in": [
+      "tests/specs/ADM-UI-09.md",
+      "tests/specs/ADM-UI-10.md",
+      "tests/specs/ADM-UI-11.md",
+      "web/tests/e2e/f5-admin-observability.e2e.spec.ts",
+      "tests/integration/adm_ui_09_health_test.zig",
+      "tests/integration/obs03_audit_log_test.zig",
+      "tests/integration/obs04_timeline_test.zig",
+      "tests/reports/report-20260530T231909Z-WF02-f5-admin-batch3-step04-rework2.yaml"
+    ]
+  },
+  "task": {
+    "description": "Recovery rerun of WF-02 step-04 after Keycloak readiness compatibility restore. Execute required prechecks and test suite for ADM-UI-09..11 against real backend and report final gate outcome.",
+    "acceptance_criteria": [
+      "Required test suite passes",
+      "ADM-UI-09..11 coverage validated against real backend"
+    ],
+    "functions_to_call": ["fn:test-run", "fn:test-report"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Mandatory prechecks passed and WF-02 Step 04 ADM-UI-09..11 backend/frontend/E2E test layers passed against real backend.",
+    "artifacts_out": [
+      "tests/reports/report-20260530T232838Z-WF02-f5-admin-batch3-step04-recovery-rerun.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 2,
+  "max_rework": 2
+}

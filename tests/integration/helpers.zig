@@ -48,7 +48,7 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     };
 
     var dir_open_error: anyerror = error.FileNotFound;
-    var dir: std.Io.Dir = blk: {
+    const dir: std.Io.Dir = blk: {
         const opened_absolute = std.Io.Dir.openDirAbsolute(io, migrations_dir, .{ .iterate = true }) catch |abs_err| {
             dir_open_error = abs_err;
 
@@ -70,7 +70,7 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     };
     defer dir.close(io);
 
-    var names: std.ArrayList([]u8) = .empty;
+    var names = std.ArrayList([]u8).empty;
     defer {
         for (names.items) |n| allocator.free(n);
         names.deinit(allocator);

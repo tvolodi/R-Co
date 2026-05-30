@@ -1,0 +1,56 @@
+{
+  "handoff_id": "dba25678-a1c2-411c-8870-864dfa272dea",
+  "run_id": "WF02-f5-admin-batch3-20260531",
+  "workflow_id": "WF-02",
+  "step": "03-rework3",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-30T21:24:47Z",
+  "started_at": "2026-05-30T21:25:04Z",
+  "completed_at": "2026-05-30T21:41:25Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 3)",
+    "requirement_ids": ["ADM-UI-09", "ADM-UI-10", "ADM-UI-11"],
+    "related_handoff_ids": ["0cfa4c14-17a8-4517-a784-1d9a263b042e"],
+    "artifacts_in": [
+      "tests/specs/ADM-UI-09.md",
+      "tests/specs/ADM-UI-10.md",
+      "tests/specs/ADM-UI-11.md",
+      "web/tests/e2e/f5-admin-observability.e2e.spec.ts",
+      "tests/integration/obs03_audit_log_test.zig"
+    ]
+  },
+  "task": {
+    "description": "REWORK 3: Address all Step-3b validation issues. Implement/ensure MUST integration coverage for ADM-UI-09, remove SkipZigTest usage in MUST integration flow by failing clearly when env is missing, replace static fixture UUID literals with per-test UUID-generated fixtures, and remove hardcoded credential defaults from observability E2E tests. Re-run validations and update artifacts.",
+    "acceptance_criteria": [
+      "Step-3b validator issues are resolved",
+      "Updated tests/specs and tests satisfy MUST hard-gate requirements"
+    ],
+    "functions_to_call": ["fn:design-tests-rework", "fn:test-validate"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Added ADM-UI-09 real-DB integration coverage, removed SkipZigTest from the obs03 integration helper, replaced static UUID fixtures with generated UUIDs in obs03, and removed hardcoded observability E2E credential defaults; full integration validation still encountered unrelated suite failures/leak noise outside the touched files.",
+    "artifacts_out": [
+      "build.zig",
+      "src/bpm.zig",
+      "tests/integration/adm_ui_09_health_test.zig",
+      "tests/integration/obs03_audit_log_test.zig",
+      "tests/integration/helpers.zig",
+      "tests/integration/obs04_timeline_test.zig",
+      "tests/specs/ADM-UI-09.md",
+      "web/tests/e2e/f5-admin-observability.e2e.spec.ts"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Full zig build test-integration validation did not complete cleanly in the workspace task environment; unrelated integration tests emitted DB-environment and leak failures outside the touched files, so end-to-end suite PASS could not be confirmed here."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 3,
+  "max_rework": 4
+}

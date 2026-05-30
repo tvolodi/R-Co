@@ -47,6 +47,7 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
   behavior: { suppressSessionExpiredEvent?: boolean } = {},
+  parseAs: 'json' | 'text' = 'json',
 ): Promise<T> {
   const token = getToken()
   const isFormData = options.body instanceof FormData
@@ -90,15 +91,25 @@ async function request<T>(
       body = (await response.json()) as Record<string, unknown>
     } catch { /* not JSON */ }
 
+    const details =
+      typeof body['errors'] === 'object' && body['errors'] !== null
+        ? (body['errors'] as Record<string, unknown>)
+        : (Object.keys(body).length > 0 ? body : undefined)
+
     throw buildError(response, {
       status: response.status,
       message: (body['title'] as string) ?? (body['message'] as string) ?? response.statusText,
       code: (body['type'] as string) ?? (body['code'] as string) ?? String(response.status),
-      details: body['errors'] as Record<string, unknown>,
+      details,
     })
   }
 
-  if (response.status === 204) return undefined as unknown as T
+  if (response.status === 204) {
+    return (parseAs === 'text' ? '' : undefined) as T
+  }
+  if (parseAs === 'text') {
+    return (await response.text()) as T
+  }
   return response.json() as Promise<T>
 }
 
@@ -126,6 +137,19 @@ export const client = {
         )}`
       : path
     return request<T>(url)
+  },
+  getText(path: string, params?: Record<string, unknown>): Promise<string> {
+    const url = params
+      ? `${path}?${new URLSearchParams(
+          Object.fromEntries(
+            Object.entries(params).filter((entry): entry is [string, string] => {
+              const v = entry[1];
+              return v !== undefined && v !== null && v !== '';
+            }),
+          ),
+        )}`
+      : path
+    return request<string>(url, {}, {}, 'text')
   },
   getWithToken<T>(path: string, token: string, params?: Record<string, unknown>): Promise<T> {
     const url = params

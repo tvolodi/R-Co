@@ -24,6 +24,15 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json; release approval is recorded in docs/status/release-stage-f5-admin-batch2-2026-05-30.json.
 - Requirements: ADM-UI-05, ADM-UI-06, ADM-UI-07, ADM-UI-08 (Stage F5) - RELEASED
 
+### Stage F5 - Administration (Batch 3)
+
+### ADM-UI-09..ADM-UI-11 - Admin observability release batch (RELEASED 2026-05-30)
+- **ADM-UI-09** (MUST): Health dashboard - Added `/admin/health` dashboard cards for readiness, database connectivity, scheduler status, DB latency, and uptime with 15-second auto-refresh behavior.
+- **ADM-UI-10** (SHOULD): Metrics viewer - Added `/admin/metrics` rendering for Prometheus `GET /metrics` output grouped by metric family with readable sample/labels/value tables.
+- **ADM-UI-11** (MUST): Audit log viewer - Added `/admin/audit` paginated filtering by actor/resource/time and expandable JSON before/after diff rows.
+- Validation evidence passed in tests/reports/report-20260530T232838Z-WF02-f5-admin-batch3-step04-recovery-rerun.yaml; release approval is recorded in docs/status/release-stage-f5-admin-batch3-2026-05-31.json.
+- Requirements: ADM-UI-09, ADM-UI-10, ADM-UI-11 (Stage F5) - RELEASED
+
 ### Stage F4 — Task Inbox
 
 ### TK-UI-01..TK-UI-10 - Task inbox full release batch (RELEASED 2026-05-30)
