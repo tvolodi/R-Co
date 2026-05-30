@@ -76,12 +76,28 @@ pub const Tenant = struct {
 pub const Group = struct {
     group_id: []const u8,
     name: []const u8,
+    display_name: []const u8,
+    description: []const u8,
+    is_system: bool,
+    member_count: u64,
     created_at: []const u8,
 
     pub fn deinit(self: Group, allocator: std.mem.Allocator) void {
         allocator.free(self.group_id);
         allocator.free(self.name);
+        allocator.free(self.display_name);
+        allocator.free(self.description);
         allocator.free(self.created_at);
+    }
+};
+
+pub const GroupListPage = struct {
+    items: []Group,
+    total: u64,
+
+    pub fn deinit(self: GroupListPage, allocator: std.mem.Allocator) void {
+        for (self.items) |item| item.deinit(allocator);
+        allocator.free(self.items);
     }
 };
 
@@ -863,6 +879,8 @@ pub const Registry = struct {
         allocator: std.mem.Allocator,
         tenant_id: []const u8,
         name: []const u8,
+        display_name: []const u8,
+        description: ?[]const u8,
     ) RegistryError!Group {
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
@@ -873,11 +891,17 @@ pub const Registry = struct {
         const row = conn.queryRow(
             allocator,
             \\INSERT INTO groups (tenant_id, name, display_name, description, is_system)
-            \\VALUES ($1::uuid, $2, $3, NULL, false)
+            \\VALUES ($1::uuid, $2, $3, $4, false)
             \\ON CONFLICT (name) DO NOTHING
-            \\RETURNING id::text, name, created_at::text
+            \\RETURNING id::text,
+            \\          name,
+            \\          display_name,
+            \\          COALESCE(description, ''),
+            \\          is_system::text,
+            \\          created_at::text,
+            \\          '0'
         ,
-            &[_][]const u8{ tenant_id, name, name },
+            &[_][]const u8{ tenant_id, name, display_name, description orelse "" },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -889,6 +913,100 @@ pub const Registry = struct {
 
         if (row == null) return error.DuplicateGroupName;
         return materializeGroup(allocator, row.?);
+    }
+
+    pub fn listGroups(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+    ) RegistryError!GroupListPage {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        var rows = conn.query(
+            allocator,
+            \\SELECT g.id::text,
+            \\       g.name,
+            \\       g.display_name,
+            \\       COALESCE(g.description, ''),
+            \\       g.is_system::text,
+            \\       g.created_at::text,
+            \\       COUNT(gm.user_id)::text
+            \\FROM groups g
+            \\LEFT JOIN group_members gm ON gm.group_id = g.id
+            \\WHERE g.tenant_id = $1::uuid
+            \\GROUP BY g.id, g.name, g.display_name, g.description, g.is_system, g.created_at
+            \\ORDER BY g.name ASC
+        ,
+            &[_][]const u8{tenant_id},
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer rows.deinit();
+
+        const items = allocator.alloc(Group, rows.rows.len) catch return error.OutOfMemory;
+        errdefer allocator.free(items);
+
+        var count: usize = 0;
+        errdefer {
+            for (items[0..count]) |item| item.deinit(allocator);
+        }
+
+        for (rows.rows) |row| {
+            items[count] = materializeGroup(allocator, row) catch return error.OutOfMemory;
+            count += 1;
+        }
+
+        return .{ .items = items, .total = @as(u64, @intCast(count)) };
+    }
+
+    pub fn deleteGroupIfEmpty(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+        group_id: []const u8,
+    ) RegistryError!bool {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const deleted = conn.queryRow(
+            allocator,
+            \\DELETE FROM groups g
+            \\WHERE g.tenant_id = $1::uuid
+            \\  AND g.id = $2::uuid
+            \\  AND NOT EXISTS (
+            \\      SELECT 1
+            \\      FROM group_members gm
+            \\      WHERE gm.group_id = g.id
+            \\  )
+            \\RETURNING 1::text
+        ,
+            &[_][]const u8{ tenant_id, group_id },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (deleted) |row| {
+            freeRow(allocator, row);
+            return true;
+        }
+        return false;
     }
 
     pub fn groupExists(
@@ -1167,15 +1285,26 @@ pub const Registry = struct {
 
 fn materializeGroup(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!Group {
     defer freeRow(allocator, row);
-    if (row.len < 3) return error.PersistenceFailed;
+    if (row.len < 7) return error.PersistenceFailed;
 
     const group_id = row[0] orelse return error.PersistenceFailed;
     const name = row[1] orelse return error.PersistenceFailed;
-    const created_at = row[2] orelse return error.PersistenceFailed;
+    const display_name = row[2] orelse return error.PersistenceFailed;
+    const description = row[3] orelse return error.PersistenceFailed;
+    const is_system_raw = row[4] orelse return error.PersistenceFailed;
+    const created_at = row[5] orelse return error.PersistenceFailed;
+    const member_count_raw = row[6] orelse return error.PersistenceFailed;
+
+    const member_count = std.fmt.parseInt(u64, member_count_raw, 10) catch return error.PersistenceFailed;
+    const is_system = std.mem.eql(u8, is_system_raw, "t") or std.mem.eql(u8, is_system_raw, "true");
 
     return .{
         .group_id = allocator.dupe(u8, group_id) catch return error.OutOfMemory,
         .name = allocator.dupe(u8, name) catch return error.OutOfMemory,
+        .display_name = allocator.dupe(u8, display_name) catch return error.OutOfMemory,
+        .description = allocator.dupe(u8, description) catch return error.OutOfMemory,
+        .is_system = is_system,
+        .member_count = member_count,
         .created_at = allocator.dupe(u8, created_at) catch return error.OutOfMemory,
     };
 }

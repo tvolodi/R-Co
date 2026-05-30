@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-05-30T16:48:37Z'
+last_updated: '2026-05-30T18:54:15Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -2974,4 +2974,60 @@ requirements:
     released_at: '2026-05-30'
     release_run: WF02-f5-admin-batch1-20260530
     last_updated: '2026-05-30T16:48:37Z'
-total_requirements: 239
+  ADM-UI-05:
+    status: RELEASED
+    stage: F5
+    priority: MUST
+    title: Group management
+    implemented_in:
+    - web/src/pages/admin/GroupsPage.tsx
+    test_spec: tests/specs/ADM-UI-05.md
+    test_run: handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json
+    release_decision: docs/status/release-stage-f5-admin-batch2-2026-05-30.json
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f5-admin-batch2-20260530
+    last_updated: '2026-05-30T18:54:15Z'
+  ADM-UI-06:
+    status: RELEASED
+    stage: F5
+    priority: MUST
+    title: Token list
+    implemented_in:
+    - web/src/pages/admin/TokensPage.tsx
+    test_spec: tests/specs/ADM-UI-06.md
+    test_run: handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json
+    release_decision: docs/status/release-stage-f5-admin-batch2-2026-05-30.json
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f5-admin-batch2-20260530
+    last_updated: '2026-05-30T18:54:15Z'
+  ADM-UI-07:
+    status: RELEASED
+    stage: F5
+    priority: MUST
+    title: Issue token
+    implemented_in:
+    - web/src/pages/admin/TokensPage.tsx
+    test_spec: tests/specs/ADM-UI-07.md
+    test_run: handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json
+    release_decision: docs/status/release-stage-f5-admin-batch2-2026-05-30.json
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f5-admin-batch2-20260530
+    last_updated: '2026-05-30T18:54:15Z'
+  ADM-UI-08:
+    status: RELEASED
+    stage: F5
+    priority: MUST
+    title: Revoke token
+    implemented_in:
+    - web/src/pages/admin/TokensPage.tsx
+    test_spec: tests/specs/ADM-UI-08.md
+    test_run: handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json
+    release_decision: docs/status/release-stage-f5-admin-batch2-2026-05-30.json
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f5-admin-batch2-20260530
+    last_updated: '2026-05-30T18:54:15Z'
+total_requirements: 243

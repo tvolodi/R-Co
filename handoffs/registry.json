@@ -3,6 +3,21 @@
     "note":  "Active registry — entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
     "entries":  [
         {
+            "handoff_id": "ed0ad668-1e4f-4f20-b555-0ff54f52f3d4",
+            "file": "handoffs/WF02-f5-admin-batch1-20260530/step-final-frontend-dev.json",
+            "run_id": "WF02-f5-admin-batch1-20260530",
+            "workflow_id": "WF-02",
+            "step": "final",
+            "from_agent": "ORCH",
+            "to_agent": "FRONTEND-DEV",
+            "created_at": "2026-05-30T16:50:19Z",
+            "started_at": "2026-05-30T16:50:19Z",
+            "completed_at": "2026-05-30T17:08:00Z",
+            "status": "COMPLETED",
+            "stage": "Stage F5 - Administration (batch 1)",
+            "last_updated": "2026-05-30T17:08:00Z"
+        },
+        {
             "handoff_id": "6d3f19d0-4c9f-450e-8e88-1981e4f82010",
             "file": "handoffs/WF03-f5-step04-r3-intfix-20260530/step-final-backend-dev.json",
             "run_id": "WF03-f5-step04-r3-intfix-20260530",
@@ -1940,7 +1955,7 @@
                         "from_agent":  "ORCH",
                         "to_agent":  "TEST-RUNNER",
                         "created_at":  "2026-05-30T01:55:25Z",
-                        "started_at":  null,
+                        "started_at":  "2026-05-30T17:20:36Z",
                         "completed_at":  null,
                         "status":  "COMPLETED",
                         "stage":  "Stage F3 - Instance monitoring"
@@ -2353,7 +2368,7 @@
                         "from_agent":  "ORCH",
                         "to_agent":  "DOC-UPDATER",
                         "created_at":  "2026-05-30T05:29:31Z",
-                        "status":  "PENDING",
+                        "status":  "IN_PROGRESS",
                         "stage":  "Stage F4 - Task inbox"
                     },
                     {
@@ -2364,7 +2379,7 @@
                         "from_agent":  "ORCH",
                         "to_agent":  "FRONTEND-DEV",
                         "created_at":  "2026-05-30T05:29:31Z",
-                        "status":  "PENDING",
+                        "status":  "IN_PROGRESS",
                         "stage":  "Stage F4 - Task inbox"
                     },
                     {
@@ -2386,7 +2401,7 @@
                         "from_agent":  "ORCH",
                         "to_agent":  "BACKEND-DEV",
                         "created_at":  "2026-05-30T05:50:00Z",
-                        "status":  "PENDING",
+                        "status":  "IN_PROGRESS",
                         "stage":  "Stage F4 - Task inbox"
                     },
                     {
@@ -2419,7 +2434,7 @@
                         "from_agent":  "ORCH",
                         "to_agent":  "FRONTEND-DEV",
                         "created_at":  "2026-05-30T08:15:00Z",
-                        "status":  "PENDING",
+                        "status":  "IN_PROGRESS",
                         "stage":  "Stage F4 - Task inbox"
                     },
                     {
@@ -2473,6 +2488,95 @@
                         "completed_at":  "2026-05-30T12:10:33Z",
                         "status":  "COMPLETED",
                         "stage":  "Stage F4"
+                    },
+                    {
+                        "handoff_id":  "3c74a785-31c9-41c0-a740-bb8d5e3ba7f4",
+                        "file":  "handoffs/ADHOC-f5-batch2-user-create-404-20260530/step-01-backend-dev.json",
+                        "run_id":  "ADHOC-f5-batch2-user-create-404-20260530",
+                        "workflow_id":  "ADHOC-f5-b2-user404",
+                        "step":  "01",
+                        "from_agent":  "ORCH",
+                        "to_agent":  "BACKEND-DEV",
+                        "created_at":  "2026-05-30T17:52:41Z",
+                        "started_at":  "2026-05-30T17:53:01Z",
+                        "completed_at":  "2026-05-30T18:01:07Z",
+                        "status":  "COMPLETED",
+                        "stage":  "Stage F5 - Administration (batch 2) unblock"
+                    }
+                    ,
+                    {
+                        "handoff_id":  "e4d4c146-d266-4abf-a2fb-4061f4b40a2c",
+                        "file":  "handoffs/ADHOC-f5-batch2-groups-timeout-20260530/step-01-backend-dev.json",
+                        "run_id":  "ADHOC-f5-batch2-groups-timeout-20260530",
+                        "workflow_id":  "ADHOC-f5-b2-groups-timeout",
+                        "step":  "01",
+                        "from_agent":  "ORCH",
+                        "to_agent":  "BACKEND-DEV",
+                        "created_at":  "2026-05-30T18:03:26Z",
+                        "started_at":  "2026-05-30T18:03:42Z",
+                        "completed_at":  "2026-05-30T18:19:00Z",
+                        "status":  "FAILED",
+                        "stage":  "Stage F5 - Administration (batch 2) unblock"
+                    }
+                    ,
+                    {
+                        "handoff_id":  "641aae29-736c-4f0c-b1b8-87f9f638e8de",
+                        "file":  "handoffs/WF03-f5-batch2-e2e-fix-20260530/step-01-issue-fixer.json",
+                        "run_id":  "WF03-f5-batch2-e2e-fix-20260530",
+                        "workflow_id":  "WF-03",
+                        "step":  "01",
+                        "from_agent":  "ORCH",
+                        "to_agent":  "ISSUE-FIXER",
+                        "created_at":  "2026-05-30T18:19:56Z",
+                        "started_at":  "2026-05-30T18:21:01Z",
+                        "completed_at":  "2026-05-30T18:30:42Z",
+                        "status":  "COMPLETED",
+                        "stage":  "WF-03 issue resolution for Stage F5 batch 2 E2E blockers"
+                    }
+                    ,
+                    {
+                        "handoff_id":  "8cf28a0d-82d4-4911-b6fd-62c06fb592a0",
+                        "file":  "handoffs/WF03-f5-batch2-e2e-fix-20260530/step-02-test-runner.json",
+                        "run_id":  "WF03-f5-batch2-e2e-fix-20260530",
+                        "workflow_id":  "WF-03",
+                        "step":  "02",
+                        "from_agent":  "ORCH",
+                        "to_agent":  "TEST-RUNNER",
+                        "created_at":  "2026-05-30T18:31:05Z",
+                        "started_at":  "2026-05-30T18:42:47Z",
+                        "completed_at":  "2026-05-30T18:44:49Z",
+                        "status":  "COMPLETED",
+                        "stage":  "WF-03 issue resolution for Stage F5 batch 2 E2E blockers"
+                    }
+                    ,
+                    {
+                        "handoff_id":  "64bc0868-ff0d-4546-abfb-30f35e427ee8",
+                        "file":  "handoffs/ADHOC-f5-batch2-benchenv-20260530/step-01-backend-dev.json",
+                        "run_id":  "ADHOC-f5-batch2-benchenv-20260530",
+                        "workflow_id":  "ADHOC-f5-b2-benchenv",
+                        "step":  "01",
+                        "from_agent":  "ORCH",
+                        "to_agent":  "BACKEND-DEV",
+                        "created_at":  "2026-05-30T18:34:56Z",
+                        "started_at":  "2026-05-30T18:35:11Z",
+                        "completed_at":  "2026-05-30T18:42:01Z",
+                        "status":  "COMPLETED",
+                        "stage":  "Stage F5 - Administration (batch 2) benchmark precheck unblock"
+                    }
+                    ,
+                    {
+                        "handoff_id":  "7f65f982-de42-44b8-a9e2-9c7f005d6295",
+                        "file":  "handoffs/WF02-f5-admin-batch2-20260530/step-final-frontend-dev.json",
+                        "run_id":  "WF02-f5-admin-batch2-20260530",
+                        "workflow_id":  "WF-02",
+                        "step":  "final",
+                        "from_agent":  "ORCH",
+                        "to_agent":  "FRONTEND-DEV",
+                        "created_at":  "2026-05-30T18:57:01Z",
+                        "started_at":  "2026-05-30T18:57:19Z",
+                        "completed_at":  null,
+                        "status":  "PENDING",
+                        "stage":  "Stage F5 - Administration (batch 2)"
                     }
                 ]
 }

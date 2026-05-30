@@ -24,8 +24,10 @@ export default function UsersPage() {
     return match?.[1] ?? null
   }, [location.pathname])
 
+  const usersQueryKey = queryKeys.admin.users({ search: searchApplied || undefined })
+
   const { data, isLoading } = useQuery({
-    queryKey: [...queryKeys.admin.users(), { search: searchApplied }],
+    queryKey: usersQueryKey,
     queryFn: () => usersApi.list({ search: searchApplied || undefined }),
   })
 
@@ -51,7 +53,7 @@ export default function UsersPage() {
   })
 
   const userDetail = useQuery({
-    queryKey: [...queryKeys.admin.users(), 'detail', selectedUserId],
+    queryKey: queryKeys.admin.userDetail(selectedUserId ?? ''),
     queryFn: () => usersApi.get(selectedUserId ?? ''),
     enabled: Boolean(selectedUserId),
   })
@@ -66,7 +68,7 @@ export default function UsersPage() {
       setSubmitMessage('Saved')
       qc.invalidateQueries({ queryKey: queryKeys.admin.users() })
       if (selectedUserId) {
-        qc.invalidateQueries({ queryKey: [...queryKeys.admin.users(), 'detail', selectedUserId] })
+        qc.invalidateQueries({ queryKey: queryKeys.admin.userDetail(selectedUserId) })
       }
     },
     onError: (e) => setError((e as Error).message),
@@ -254,7 +256,7 @@ export default function UsersPage() {
             { key: 'email', label: 'Email', type: 'email' },
             { key: 'password', label: 'Password', type: 'password' },
           ] as const).map((f) => (
-            <div key={f} style={{ marginBottom: '.75rem' }}>
+            <div key={f.key} style={{ marginBottom: '.75rem' }}>
               <label style={{ display: 'block', marginBottom: '.25rem', fontSize: '.875rem', fontWeight: 500 }}>{f.label}</label>
               <input
                 type={f.type}

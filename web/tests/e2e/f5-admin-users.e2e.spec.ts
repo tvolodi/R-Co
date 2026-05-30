@@ -10,14 +10,6 @@ const KEYCLOAK_DISCOVERY_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default/.well-kn
 const KEYCLOAK_TOKEN_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default/protocol/openid-connect/token`
 const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
 
-function getRequiredEnv(name: string): string {
-  const value = process.env[name]
-  if (!value || !value.trim()) {
-    throw new Error(`Missing required environment variable: ${name}`)
-  }
-  return value
-}
-
 function getEnvOrDefault(name: string, fallback: string): string {
   const value = process.env[name]
   return value && value.trim() ? value : fallback
@@ -47,12 +39,6 @@ function jwtSubject(token: string): string {
   const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8')) as { sub?: string }
   if (!payload.sub) throw new Error('JWT does not contain sub claim')
   return payload.sub
-}
-
-function userIdFromBody(body: { user_id?: string; id?: string }): string {
-  const id = body.user_id ?? body.id
-  if (!id) throw new Error('User response did not contain user id')
-  return id
 }
 
 async function createUserFixture(

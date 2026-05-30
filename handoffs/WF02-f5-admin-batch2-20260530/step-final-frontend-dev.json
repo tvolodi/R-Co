@@ -1,0 +1,32 @@
+{
+  "handoff_id": "7f65f982-de42-44b8-a9e2-9c7f005d6295",
+  "run_id": "WF02-f5-admin-batch2-20260530",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-30T18:57:01Z",
+  "started_at": "2026-05-30T18:57:19Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 2)",
+    "requirement_ids": ["ADM-UI-05", "ADM-UI-06", "ADM-UI-07", "ADM-UI-08"],
+    "related_handoff_ids": ["9b06ffbe-d32a-45c0-8d90-16368f176b71"],
+    "artifacts_in": [
+      "handoffs/WF02-f5-admin-batch2-20260530/step-06-doc-updater.json"
+    ]
+  },
+  "task": {
+    "description": "Execute final fn:git-merge for WF02-f5-admin-batch2-20260530: ensure PR is created/merged with squash, branch deleted on GitHub, and record PR + merge SHA evidence in result.",
+    "acceptance_criteria": [
+      "PR merged to main",
+      "feature/WF02-f5-admin-batch2-20260530 deleted locally and on origin"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

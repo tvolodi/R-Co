@@ -169,8 +169,8 @@ export default function UsersPage() {
                             username: payload.username,
                             display_name: payload.display_name,
                             email: payload.email,
+                            password: payload.password,
                             role_ids: payload.role_ids,
-                            status: 'ACTIVE',
                         },
                         {
                             onSuccess: (created) => {

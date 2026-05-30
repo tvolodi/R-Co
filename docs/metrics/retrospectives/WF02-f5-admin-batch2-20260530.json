@@ -1,0 +1,65 @@
+{
+  "run_id": "WF02-f5-admin-batch2-20260530",
+  "created_at": "2026-05-30T18:54:15Z",
+  "rules_version": "1.1",
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "comparison": {
+    "code-designer": {
+      "estimated_minutes": 26,
+      "actual_minutes": 3.5,
+      "variance_pct": -86.5,
+      "step": "01"
+    },
+    "code-design-validator": {
+      "estimated_minutes": 12,
+      "actual_minutes": 1.5,
+      "variance_pct": -87.5,
+      "step": "01b"
+    },
+    "frontend-dev": {
+      "estimated_minutes": 35,
+      "actual_minutes": 7.3,
+      "variance_pct": -79.1,
+      "step": "02b"
+    },
+    "test-designer": {
+      "estimated_minutes": 6,
+      "actual_minutes": 9,
+      "variance_pct": 50,
+      "step": "03"
+    },
+    "test-design-validator": {
+      "estimated_minutes": 10,
+      "actual_minutes": 1,
+      "variance_pct": -90,
+      "step": "03b"
+    },
+    "test-runner": {
+      "estimated_minutes": 3,
+      "actual_minutes": 2,
+      "variance_pct": -33.3,
+      "step": "04"
+    },
+    "release-validator": {
+      "estimated_minutes": 3,
+      "actual_minutes": 1.1,
+      "variance_pct": -63.3,
+      "step": "05"
+    },
+    "doc-updater": {
+      "estimated_minutes": 2,
+      "actual_minutes": 1.2,
+      "variance_pct": -40,
+      "step": "06"
+    }
+  },
+  "totals": {
+    "estimated_minutes": 97,
+    "actual_minutes": 26.6,
+    "variance_pct": -72.6
+  },
+  "adjustment_needed": false,
+  "adjustment_reason": "No estimation_rules update applied: this run alone does not satisfy the >=2 consecutive comparable-run threshold for adjustments.",
+  "notes": "WF-02 Stage F5 batch-2 release retrospective generated from handoff started_at/completed_at timestamps; doc-updater duration measured to completion timestamp."
+}

@@ -1,0 +1,37 @@
+schema_version: 1
+page_name: GroupsPage
+page_slug: admin/groups
+resource_name: group
+requirement_ids: [ADM-UI-05]
+purpose: |
+  List all groups with member counts and provide the standard admin actions for
+  group lifecycle management: create a group, manage members, and delete empty groups.
+
+# Must reference the queryKeys factory; never an inline array. Lint F030 enforces.
+list_query_key: queryKeys.admin.groups
+
+api:
+  list_endpoint: /api/v1/admin/groups
+  create_endpoint: /api/v1/admin/groups
+  delete_endpoint: /api/v1/admin/groups/:id
+
+filters: []
+
+columns:
+  - { header: "Name", accessor: name }
+  - { header: "Display name", accessor: display_name }
+  - { header: "Members", accessor: member_count }
+  - { header: "Description", accessor: description }
+
+row_actions:
+  - { label: "Manage members", action: manage_members, requires_role: PLATFORM_ADMIN }
+  - { label: "Delete", action: archive, requires_role: PLATFORM_ADMIN, confirm: "Delete this group if it is empty?" }
+
+create_form:
+  button_label: "+ New group"
+  fields:
+    - { name: name, type: text, label: Name, required: true }
+    - { name: display_name, type: text, label: Display name, required: true }
+    - { name: description, type: textarea, label: Description, required: false }
+  submit_label: "Create group"
+  on_success_invalidate: queryKeys.admin.groups

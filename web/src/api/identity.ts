@@ -5,6 +5,7 @@ import type {
   Role,
   RolePermission,
   ApiToken,
+  IssuedToken,
   PagedResponse,
 } from '@/types/api'
 
@@ -89,11 +90,11 @@ export const rolesApi = {
 
 export const tokensApi = {
   list: () =>
-    client.get<ApiToken[]>('/api/v1/auth/tokens'),
+    client.get<{ items: ApiToken[] }>('/api/v1/auth/tokens'),
 
   /** Returns the raw token value once — store it immediately */
-  create: (name: string, expiresAt?: string) =>
-    client.post<{ token: string; meta: ApiToken }>('/api/v1/auth/tokens', { name, expires_at: expiresAt }),
+  create: (body: { user_id: string; roles: string[]; expires_at?: string }) =>
+    client.post<IssuedToken>('/api/v1/auth/tokens', body),
 
   revoke: (id: string) =>
     client.delete<void>(`/api/v1/auth/tokens/${id}`),

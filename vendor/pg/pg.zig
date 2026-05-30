@@ -48,9 +48,6 @@ pub const Result = struct {
 
     pub fn deinit(self: *Result) void {
         for (self.rows) |row| {
-            for (row) |col| {
-                if (col) |c| self.allocator.free(c);
-            }
             self.allocator.free(row);
         }
         self.allocator.free(self.rows);
@@ -156,9 +153,6 @@ pub const Conn = struct {
         var rows: std.ArrayList([]?[]u8) = .empty;
         errdefer {
             for (rows.items) |row| {
-                for (row) |col| {
-                    if (col) |c| allocator.free(c);
-                }
                 allocator.free(row);
             }
             rows.deinit(allocator);
@@ -331,7 +325,6 @@ pub const Conn = struct {
         const ncols = self.readInt16() catch return PgError.ConnectionFailed;
         const row = allocator.alloc(?[]u8, @intCast(ncols)) catch return PgError.OutOfMemory;
         errdefer {
-            for (row) |col| if (col) |c| allocator.free(c);
             allocator.free(row);
         }
 

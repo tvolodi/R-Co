@@ -72,6 +72,7 @@ export const queryKeys = {
     all: ['admin'] as const,
     audit: () => [...queryKeys.admin.all, 'audit'] as const,
     groups: () => [...queryKeys.admin.all, 'groups'] as const,
+    groupMembers: (groupId: string) => [...queryKeys.admin.all, 'group-members', groupId] as const,
     health: () => [...queryKeys.admin.all, 'health'] as const,
     metrics: () => [...queryKeys.admin.all, 'metrics'] as const,
     tokens: () => [...queryKeys.admin.all, 'tokens'] as const,

@@ -239,7 +239,21 @@ fn serveRequest(
 
     // Read request body only after copying request metadata that borrows from
     // the receive buffer. Consuming the body can invalidate request.head.target.
+    // Some clients (including Playwright APIRequestContext) send
+    // `Expect: 100-continue` for POST bodies, so acknowledge it before reading.
     var body_transfer_buf: [8192]u8 = undefined;
+    request.writeExpectContinue() catch |err| switch (err) {
+        error.HttpExpectationFailed => {
+            const ct_hdr = [_]std.http.Header{.{ .name = "content-type", .value = "application/json" }};
+            try request.respond("{\"type\":\"expectation_failed\",\"status\":417}", .{
+                .status = @enumFromInt(417),
+                .keep_alive = false,
+                .extra_headers = &ct_hdr,
+            });
+            return;
+        },
+        error.WriteFailed => return err,
+    };
     var body_reader = request.readerExpectNone(&body_transfer_buf);
     const body = body_reader.allocRemaining(req_alloc, std.Io.Limit.limited(1 * 1024 * 1024)) catch &.{};
 
@@ -402,6 +416,7 @@ fn serveRequest(
         const resource = if (seg_count > 3) segs[3] else "";
         const seg4 = if (seg_count > 4) segs[4] else "";
         const seg5 = if (seg_count > 5) segs[5] else "";
+        const seg6 = if (seg_count > 6) segs[6] else "";
 
         if (std.mem.eql(u8, resource, "definitions")) {
             // Actor UUID for definition writes (created_by).
@@ -633,6 +648,118 @@ fn serveRequest(
                 const r = task_routes.handleReassign(task_store_inst, req_alloc, actor, seg4, body);
                 resp_status = r.status_code;
                 resp_body = r.body;
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
+        } else if (std.mem.eql(u8, resource, "auth")) {
+            const actor = api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+            };
+
+            if (std.mem.eql(u8, seg4, "tokens")) {
+                if (seg5.len == 0) {
+                    if (method == .GET) {
+                        const r = identity_routes.handleListTokens(id_svc, req_alloc, actor);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .POST) {
+                        const r = identity_routes.handleCreateToken(id_svc, req_alloc, actor, body);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                } else if (seg6.len == 0 and method == .DELETE) {
+                    const r = identity_routes.handleRevokeToken(id_svc, req_alloc, actor, seg5);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 404;
+                    resp_body = "{\"type\":\"not_found\",\"status\":404}";
+                }
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
+        } else if (std.mem.eql(u8, resource, "admin")) {
+            const actor = api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+            };
+
+            if (std.mem.eql(u8, seg4, "groups")) {
+                if (seg5.len == 0) {
+                    if (method == .GET) {
+                        const r = identity_routes.handleListGroups(id_svc, req_alloc, actor);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .POST) {
+                        const r = identity_routes.handleCreateGroup(id_svc, req_alloc, actor, body);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                } else if (std.mem.eql(u8, seg6, "members")) {
+                    if (method == .GET) {
+                        const r = identity_routes.handleListGroupMembersArray(id_svc, req_alloc, actor, seg5);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .POST) {
+                        const r = identity_routes.handleAddGroupMember(id_svc, req_alloc, actor, seg5, body);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .DELETE) {
+                        const maybe_page = id_svc.listGroupMembers(req_alloc, actor, seg5, .{ .cursor = null, .page_size = 200 }) catch |err| switch (err) {
+                            identity_service.GroupError.GroupNotFound => blk: {
+                                resp_status = 404;
+                                resp_body = "{\"error\":\"group_not_found\"}";
+                                break :blk null;
+                            },
+                            identity_service.GroupError.ValidationFailed => blk: {
+                                resp_status = 422;
+                                resp_body = "{\"error\":\"validation_failed\"}";
+                                break :blk null;
+                            },
+                            identity_service.GroupError.Forbidden => blk: {
+                                resp_status = 403;
+                                resp_body = "{\"error\":\"forbidden\"}";
+                                break :blk null;
+                            },
+                            else => blk: {
+                                resp_status = 500;
+                                resp_body = "{\"error\":\"internal_error\"}";
+                                break :blk null;
+                            },
+                        };
+                        if (maybe_page) |page| {
+                            defer page.deinit(req_alloc);
+                            for (page.items) |member| {
+                                id_svc.removeGroupMember(req_alloc, actor, .{ .group_id = seg5, .user_id = member.user_id }) catch {};
+                            }
+                            resp_status = 204;
+                            resp_body = "";
+                        }
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                } else if (seg6.len == 0 and method == .DELETE) {
+                    const r = identity_routes.handleDeleteGroup(id_svc, req_alloc, actor, seg5);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 404;
+                    resp_body = "{\"type\":\"not_found\",\"status\":404}";
+                }
             } else {
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";

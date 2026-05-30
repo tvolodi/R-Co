@@ -359,7 +359,29 @@ pub fn handleCreateGroup(
         else => return errorResult(allocator, 422, "name_invalid"),
     };
 
-    const group = service.createGroup(allocator, actor, .{ .name = name }) catch |err| switch (err) {
+    const display_name: ?[]const u8 = blk: {
+        const raw = parsed.value.object.get("display_name") orelse break :blk null;
+        break :blk switch (raw) {
+            .null => null,
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "display_name_invalid"),
+        };
+    };
+
+    const description: ?[]const u8 = blk: {
+        const raw = parsed.value.object.get("description") orelse break :blk null;
+        break :blk switch (raw) {
+            .null => null,
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "description_invalid"),
+        };
+    };
+
+    const group = service.createGroup(allocator, actor, .{
+        .name = name,
+        .display_name = display_name,
+        .description = description,
+    }) catch |err| switch (err) {
         identity_service.GroupError.Forbidden => return errorResult(allocator, 403, "forbidden"),
         identity_service.GroupError.DuplicateGroupName => return errorResult(allocator, 409, "duplicate_group_name"),
         identity_service.GroupError.ValidationFailed => return errorResult(allocator, 422, "validation_failed"),
@@ -388,10 +410,21 @@ pub fn handleAddGroupMember(
     defer parsed.deinit();
 
     if (parsed.value != .object) return errorResult(allocator, 422, "invalid_body");
-    const user_id_val = parsed.value.object.get("user_id") orelse return errorResult(allocator, 422, "user_id_required");
-    const user_id = switch (user_id_val) {
-        .string => |s| s,
-        else => return errorResult(allocator, 422, "user_id_invalid"),
+    const user_id = blk: {
+        if (parsed.value.object.get("user_id")) |user_id_val| {
+            break :blk switch (user_id_val) {
+                .string => |s| s,
+                else => return errorResult(allocator, 422, "user_id_invalid"),
+            };
+        }
+        const user_ids_val = parsed.value.object.get("user_ids") orelse return errorResult(allocator, 422, "user_id_required");
+        if (user_ids_val != .array or user_ids_val.array.items.len == 0) {
+            return errorResult(allocator, 422, "user_id_invalid");
+        }
+        break :blk switch (user_ids_val.array.items[0]) {
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "user_id_invalid"),
+        };
     };
 
     const result = service.addGroupMember(allocator, actor, .{ .group_id = group_id, .user_id = user_id }) catch |err| switch (err) {
@@ -407,6 +440,85 @@ pub fn handleAddGroupMember(
     const status_code: u16 = if (result.created) 201 else 200;
     return .{ .status_code = status_code, .body = serializeGroupMemberResult(allocator, result.member, result.created) catch
         return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handleListGroups(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+) HandlerResult {
+    const page = service.listGroups(allocator, actor) catch |err| switch (err) {
+        identity_service.GroupError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.GroupError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer page.deinit(allocator);
+
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    buf.appendSlice(allocator, "{\"items\":[") catch return errorResult(allocator, 500, "serialization_failed");
+    for (page.items, 0..) |group, idx| {
+        if (idx > 0) buf.append(allocator, ',') catch return errorResult(allocator, 500, "serialization_failed");
+        const group_json = serializeGroup(allocator, group) catch return errorResult(allocator, 500, "serialization_failed");
+        defer allocator.free(group_json);
+        buf.appendSlice(allocator, group_json) catch return errorResult(allocator, 500, "serialization_failed");
+    }
+    buf.appendSlice(allocator, "],\"total\":") catch return errorResult(allocator, 500, "serialization_failed");
+    const total_text = std.fmt.allocPrint(allocator, "{d}", .{page.total}) catch return errorResult(allocator, 500, "serialization_failed");
+    defer allocator.free(total_text);
+    buf.appendSlice(allocator, total_text) catch return errorResult(allocator, 500, "serialization_failed");
+    buf.appendSlice(allocator, ",\"page\":1,\"page_size\":200}") catch return errorResult(allocator, 500, "serialization_failed");
+
+    return .{ .status_code = 200, .body = buf.toOwnedSlice(allocator) catch return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handleDeleteGroup(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    group_id: []const u8,
+) HandlerResult {
+    service.deleteGroup(allocator, actor, group_id) catch |err| switch (err) {
+        identity_service.GroupError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.GroupError.GroupNotFound => return errorResult(allocator, 404, "group_not_found"),
+        identity_service.GroupError.ValidationFailed => return errorResult(allocator, 422, "validation_failed"),
+        identity_service.GroupError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+
+    return .{ .status_code = 204, .body = allocator.alloc(u8, 0) catch return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handleListGroupMembersArray(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    group_id: []const u8,
+) HandlerResult {
+    const page = service.listGroupMembers(allocator, actor, group_id, .{ .cursor = null, .page_size = 200 }) catch |err| switch (err) {
+        identity_service.GroupError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.GroupError.GroupNotFound => return errorResult(allocator, 404, "group_not_found"),
+        identity_service.GroupError.CrossTenantAccessDenied => return errorResult(allocator, 404, "group_not_found"),
+        identity_service.GroupError.ValidationFailed => return errorResult(allocator, 422, "validation_failed"),
+        identity_service.GroupError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer page.deinit(allocator);
+
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    buf.append(allocator, '[') catch return errorResult(allocator, 500, "serialization_failed");
+    for (page.items, 0..) |member, idx| {
+        if (idx > 0) buf.append(allocator, ',') catch return errorResult(allocator, 500, "serialization_failed");
+        const user_json = serializeUser(allocator, member) catch return errorResult(allocator, 500, "serialization_failed");
+        defer allocator.free(user_json);
+        buf.appendSlice(allocator, user_json) catch return errorResult(allocator, 500, "serialization_failed");
+    }
+    buf.append(allocator, ']') catch return errorResult(allocator, 500, "serialization_failed");
+
+    return .{ .status_code = 200, .body = buf.toOwnedSlice(allocator) catch return errorResult(allocator, 500, "serialization_failed") };
 }
 
 pub fn handleListGroupMembers(
@@ -632,11 +744,30 @@ fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []con
 }
 
 fn serializeGroup(allocator: std.mem.Allocator, group: identity_registry.Group) ![]u8 {
-    return std.fmt.allocPrint(
-        allocator,
-        "{{\"group_id\":\"{s}\",\"name\":\"{s}\",\"created_at\":\"{s}\"}}",
-        .{ group.group_id, group.name, group.created_at },
-    );
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    try buf.appendSlice(allocator, "{\"id\":");
+    try appendJsonStr(allocator, &buf, group.group_id);
+    try buf.appendSlice(allocator, ",\"group_id\":");
+    try appendJsonStr(allocator, &buf, group.group_id);
+    try buf.appendSlice(allocator, ",\"name\":");
+    try appendJsonStr(allocator, &buf, group.name);
+    try buf.appendSlice(allocator, ",\"display_name\":");
+    try appendJsonStr(allocator, &buf, group.display_name);
+    try buf.appendSlice(allocator, ",\"description\":");
+    try appendJsonStr(allocator, &buf, group.description);
+    try buf.appendSlice(allocator, ",\"is_system\":");
+    try buf.appendSlice(allocator, if (group.is_system) "true" else "false");
+    const member_count = try std.fmt.allocPrint(allocator, "{d}", .{group.member_count});
+    defer allocator.free(member_count);
+    try buf.appendSlice(allocator, ",\"member_count\":");
+    try buf.appendSlice(allocator, member_count);
+    try buf.appendSlice(allocator, ",\"created_at\":");
+    try appendJsonStr(allocator, &buf, group.created_at);
+    try buf.append(allocator, '}');
+
+    return buf.toOwnedSlice(allocator);
 }
 
 fn serializeGroupMemberResult(allocator: std.mem.Allocator, member: identity_registry.GroupMember, created: bool) ![]u8 {
