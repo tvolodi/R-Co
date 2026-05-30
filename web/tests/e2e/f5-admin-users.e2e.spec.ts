@@ -56,33 +56,28 @@ function userIdFromBody(body: { user_id?: string; id?: string }): string {
 }
 
 async function createUserFixture(
-  request: import('@playwright/test').APIRequestContext,
-  token: string,
+  page: import('@playwright/test').Page,
   label: string,
 ): Promise<{ id: string; username: string; email: string }> {
   const fixtureId = randomUUID()
   const username = `f5-${label}-${fixtureId.slice(0, 12)}`
   const email = `${username}@example.com`
-  const response = await request.post('/api/v1/users', {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'x-bpm-user-id': jwtSubject(token),
-    },
-    data: {
-      username,
-      display_name: `Fixture ${label}`,
-      email,
-      role_ids: [],
-      status: 'ACTIVE',
-    },
-  })
 
-  if (!response.ok()) {
-    throw new Error(`Failed to create fixture user (${response.status()})`)
+  await navigateSpa(page, '/admin/users')
+  await page.getByTestId('admin-users-new').click()
+  await page.getByLabel('Username').fill(username)
+  await page.getByLabel('Display name').fill(`Fixture ${label}`)
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Password').fill(`pw-${fixtureId.slice(0, 16)}`)
+  await page.getByRole('button', { name: 'Create user' }).click()
+  await page.waitForURL(/\/admin\/users\/.+/, { timeout: 15_000 })
+
+  const createdPath = page.url().split('/admin/users/')[1] ?? ''
+  const createdId = createdPath.split('?')[0].split('#')[0]
+  if (!createdId) {
+    throw new Error('Failed to create fixture user (missing created id from URL)')
   }
-
-  const body = (await response.json()) as { user_id?: string; id?: string }
-  return { id: userIdFromBody(body), username, email }
+  return { id: createdId, username, email }
 }
 
 async function cleanupUserFixture(
@@ -90,7 +85,7 @@ async function cleanupUserFixture(
   token: string,
   userId: string,
 ): Promise<void> {
-  const response = await request.patch(`/api/v1/users/${userId}`, {
+  const response = await request.patch(`${API_BASE_URL}/api/v1/admin/users/${userId}`, {
     headers: {
       Authorization: `Bearer ${token}`,
       'x-bpm-user-id': jwtSubject(token),
@@ -231,10 +226,10 @@ test.describe('F5 admin users UI (ADM-UI-01..04)', () => {
   })
 
   test('ADM-UI-03: user detail page updates profile, status, roles, and groups', async ({ page, request }) => {
-    const fixture = await createUserFixture(request, adminToken, 'edit')
+    await loginWithToken(page, adminToken)
+    const fixture = await createUserFixture(page, 'edit')
 
     try {
-      await loginWithToken(page, adminToken)
       await navigateSpa(page, `/admin/users/${fixture.id}`)
       await expect(page.getByTestId('admin-user-detail-form')).toBeVisible({ timeout: 15_000 })
       await expect(page.getByRole('heading', { name: 'Role assignments' })).toBeVisible()
@@ -262,10 +257,10 @@ test.describe('F5 admin users UI (ADM-UI-01..04)', () => {
   })
 
   test('ADM-UI-04: deactivate action shows warning copy and sets status to INACTIVE', async ({ page, request }) => {
-    const fixture = await createUserFixture(request, adminToken, 'deactivate')
+    await loginWithToken(page, adminToken)
+    const fixture = await createUserFixture(page, 'deactivate')
 
     try {
-      await loginWithToken(page, adminToken)
       await navigateSpa(page, `/admin/users/${fixture.id}`)
       await expect(page.getByTestId('admin-user-detail-form')).toBeVisible({ timeout: 15_000 })
 

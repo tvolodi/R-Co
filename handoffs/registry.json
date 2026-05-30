@@ -2,6 +2,21 @@
     "schema_version":  "1.0",
     "note":  "Active registry — entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
     "entries":  [
+        {
+            "handoff_id": "f74070a6-162e-4d8d-89f2-61d31f358f0f",
+            "file": "handoffs/WF03-f5-batch1-step04-fail-20260530/step-02-test-runner.json",
+            "run_id": "WF03-f5-batch1-step04-fail-20260530",
+            "workflow_id": "WF-03",
+            "step": "02",
+            "from_agent": "ORCH",
+            "to_agent": "TEST-RUNNER",
+            "created_at": "2026-05-30T15:34:44Z",
+            "started_at": "2026-05-30T15:34:44Z",
+            "completed_at": "2026-05-30T15:37:22Z",
+            "status": "COMPLETED",
+            "stage": "WF-03 issue resolution retest for F5 batch1",
+            "last_updated": "2026-05-30T15:37:22Z"
+        },
                     {
                         "handoff_id":  "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
                         "file":  "handoffs/WF03-f5-batch1-step04-fail-20260530/step-01-issue-fixer.json",
@@ -11,11 +26,11 @@
                         "from_agent":  "ORCH",
                         "to_agent":  "ISSUE-FIXER",
                         "created_at":  "2026-05-30T14:47:56Z",
-                        "started_at":  "2026-05-30T15:23:04Z",
-                        "completed_at":  "2026-05-30T15:33:03Z",
-                        "status":  "COMPLETED",
+                        "started_at": "2026-05-30T15:38:12Z",
+                        "completed_at": "2026-05-30T15:40:45Z",
+                        "status": "COMPLETED",
                         "stage":  "WF-03 issue resolution for F5 batch1 step04 failures",
-                        "last_updated":  "2026-05-30T15:33:03Z"
+                        "last_updated": "2026-05-30T15:40:45Z"
                     },
                     {
                         "handoff_id":  "2248135c-f060-4c8b-8963-f9a0698cb01a",
