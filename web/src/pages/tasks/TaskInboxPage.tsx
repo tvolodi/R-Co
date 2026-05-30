@@ -170,7 +170,15 @@ export default function TaskInboxPage() {
                 key={task.id}
                 data-testid="task-row"
                 data-task-id={task.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelectedTaskId(task.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelectedTaskId(task.id)
+                  }
+                }}
                 style={{
                   background: selectedTaskId === task.id ? '#eff6ff' : '#fff',
                   border: selectedTaskId === task.id ? '2px solid #2563eb' : '1px solid #e2e8f0',
