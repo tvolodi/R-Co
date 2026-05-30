@@ -1,0 +1,45 @@
+{
+  "handoff_id": "fd1cbbe8-1d9d-436e-8fc7-c4a5e0a5f19d",
+  "run_id": "WF02-f4-task-inbox-20260530",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-30T05:29:31Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F4 - Task inbox",
+    "requirement_ids": [
+      "TK-UI-01",
+      "TK-UI-02",
+      "TK-UI-03",
+      "TK-UI-04",
+      "TK-UI-05",
+      "TK-UI-06",
+      "TK-UI-07",
+      "TK-UI-08",
+      "TK-UI-09",
+      "TK-UI-10"
+    ],
+    "artifacts_in": [],
+    "related_handoff_ids": []
+  },
+  "task": {
+    "description": "Finalize Stage F4 release: create GitHub PR, verify all checks pass, merge to main with squash, delete feature branch, verify cleanup.",
+    "acceptance_criteria": [
+      "PR created on GitHub with all checks passing",
+      "PR merged to main via gh pr merge --squash --delete-branch",
+      "Feature branch deleted from GitHub",
+      "Merge commit recorded in handoff result"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": null,
+  "completed_at": null
+}

@@ -1,0 +1,44 @@
+{
+  "handoff_id": "83ad78c5-9169-4756-8b1e-0ed6137aed17",
+  "run_id": "WF02-f4-task-inbox-20260530",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-05-30T05:29:31Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F4 - Task inbox",
+    "requirement_ids": [
+      "TK-UI-01",
+      "TK-UI-02",
+      "TK-UI-03",
+      "TK-UI-04",
+      "TK-UI-05",
+      "TK-UI-06",
+      "TK-UI-07",
+      "TK-UI-08",
+      "TK-UI-09",
+      "TK-UI-10"
+    ],
+    "artifacts_in": [],
+    "related_handoff_ids": []
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER output. Verify every MUST requirement has a runnable E2E test, no test.skip on MUST tests, fixtures are isolated, tests connect to real backend.",
+    "acceptance_criteria": [
+      "Every MUST requirement (TK-UI-01 to TK-UI-06, TK-UI-10) has a passing E2E test",
+      "No test.skip decorators on MUST requirement tests",
+      "Tests are self-sufficient (start services or fail clearly)",
+      "Tests use per-test fixture creation",
+      "Tests run against real backend"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": null,
+  "completed_at": null
+}
