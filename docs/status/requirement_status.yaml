@@ -2748,15 +2748,19 @@ requirements:
     release_run: WF02-f3b-inui0508-20260530
     last_updated: '2026-05-30T04:55:33Z'
   IN-UI-09:
-    status: PENDING
+    status: RELEASED
     stage: F3
     priority: SHOULD
     title: Active token visualisation
-    last_updated: '2026-05-29T00:00:00Z'
+    released_at: '2026-05-30T05:20:31Z'
+    release_run: WF02-f3b-inui0910-20260530
+    last_updated: '2026-05-30T05:20:31Z'
   IN-UI-10:
-    status: PENDING
+    status: RELEASED
     stage: F3
     priority: SHOULD
     title: History scrubber
-    last_updated: '2026-05-29T00:00:00Z'
+    released_at: '2026-05-30T05:20:31Z'
+    release_run: WF02-f3b-inui0910-20260530
+    last_updated: '2026-05-30T05:20:31Z'
 total_requirements: 225
