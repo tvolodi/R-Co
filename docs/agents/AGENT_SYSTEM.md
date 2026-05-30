@@ -61,7 +61,7 @@ Agents communicate exclusively through **handoff files**. No agent passes instru
 
 ### 4.1 Handoff file location
 
-All handoff files live in `handoffs/<RUN-ID>/`. Each workflow run gets its own subdirectory. The registry is split into an active index and a per-run archive: `handoffs/registry.json` tracks open handoffs, while `handoffs/<run_id>/registry.json` tracks terminal handoffs for that run.
+All handoff files live in `handoffs/<RUN-ID>/`. Each workflow run gets its own subdirectory. `handoffs/registry.json` is the **active registry** — it contains only current and recent entries. Older COMPLETED entries are periodically archived to `handoffs/history/registry-archive-<date>.json` to keep the active file manageable. Similarly, `handoffs/orchestrator.log` retains only recent lines; older lines are in `handoffs/history/orchestrator-archive-<date>.log`.
 
 **Benefits of per-run directories:**
 - All artefacts for a single pipeline run are co-located
@@ -258,23 +258,29 @@ DRAFT → VALIDATED → DESIGNED → DESIGN-REVIEWED → IMPLEMENTED → TEST-DE
 
 ## 6. Artifact Locations
 
-| Type | Location | Owner agent(s) |
-|---|---|---|
-| Zig source | `src/` | `BACKEND-DEV` |
-| SQL migrations | `migrations/` | `BACKEND-DEV` |
-| Frontend source | `web/src/` | `FRONTEND-DEV` |
-| Code design artefacts | `src/design/` | `CODE-DESIGNER` |
-| Test specs | `tests/specs/` | `TEST-DESIGNER` |
-| Test reports | `tests/reports/` | `TEST-RUNNER` |
-| Handoff files | `handoffs/` | All (via `ORCH`) |
-| Requirement status | `docs/status/` | `DOC-UPDATER`, `RELEASE-VALIDATOR` |
-| Agent workflows | `docs/agents/workflows/` | `ORCH` reads only |
-| Git protocols | `docs/agents/protocols/` | `BACKEND-DEV`, `FRONTEND-DEV` read |
-| Agent function index | `docs/agents/FUNCTIONS.md` | All agents read |
-| Estimation rules (living) | `docs/metrics/estimation_rules.json` | `ORCH` (read), `DOC-UPDATER` (update) |
-| Per-run estimation | `handoffs/<run_id>/estimation.json` | `ORCH` |
-| Per-run retrospectives | `docs/metrics/retrospectives/` | `DOC-UPDATER` |
-| Individual function specs | `docs/agents/functions/fn-*.md` | Agents load per-function |
+| Type | Location | Owner agent(s) | Format |
+|---|---|---|---|
+| Zig source | `src/` | `BACKEND-DEV` | `.zig` |
+| SQL migrations | `migrations/` | `BACKEND-DEV` | `.sql` |
+| Frontend source | `web/src/` | `FRONTEND-DEV` | `.ts`/`.tsx` |
+| Code design artefacts | `src/design/` | `CODE-DESIGNER` | `.md` |
+| Test specs | `tests/specs/` | `TEST-DESIGNER` | `.md` |
+| Test reports | `tests/reports/` | `TEST-RUNNER` | **`.yaml`** |
+| Handoff files | `handoffs/` | All (via `ORCH`) | `.json` (exception) |
+| Requirement status | `docs/status/requirement_status.yaml` | `DOC-UPDATER`, `RELEASE-VALIDATOR` | **`.yaml`** |
+| Release decisions | `docs/status/` | `RELEASE-VALIDATOR` | **`.yaml`** |
+| Agent workflows | `docs/agents/workflows/` | `ORCH` reads only | `.md` |
+| Git protocols | `docs/agents/protocols/` | `BACKEND-DEV`, `FRONTEND-DEV` read | `.md` |
+| Agent function index | `docs/agents/FUNCTIONS.md` | All agents read | `.md` |
+| Estimation rules (living) | `docs/metrics/estimation_rules.json` | `ORCH` (read), `DOC-UPDATER` (update) | `.json` (exception) |
+| Per-run estimation | `handoffs/<run_id>/estimation.json` | `ORCH` | `.json` (exception) |
+| Per-run retrospectives | `docs/metrics/retrospectives/` | `DOC-UPDATER` | **`.yaml`** |
+| Individual function specs | `docs/agents/functions/fn-*.md` | Agents load per-function | `.md` |
+| Scratch / temp files | `scratch/` | Any agent | any (git-ignored) |
+
+**Output format rule:** All agent-produced output artefacts use **YAML** (`.yaml`). The only exceptions are handoff files, the active registry, and estimation files — these remain `.json` because ORCH reads/writes them as structured Python dicts. Never create `.json` test reports, status files, or retrospectives.
+
+**Scratch rule:** Any file that is not a permanent project artefact (one-off scripts, debug dumps, `.tmp` files, `.exe`/`.pdb` build outputs) goes in `scratch/`. That directory is git-ignored. Never place such files in the project root, `src/`, `tests/`, or any other tracked directory.
 
 ---
 

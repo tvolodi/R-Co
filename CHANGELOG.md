@@ -4,6 +4,16 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage F3 — Instance Monitoring (Batch 1)
+
+### IN-UI-01..IN-UI-04 - Instance monitoring release batch (RELEASED 2026-05-30)
+- **IN-UI-01** (MUST): Instance board — Kanban-style board with columns for Running, Suspended, Completed, and Error instances; cards show instance name, definition name, started-at timestamp, and current status.
+- **IN-UI-02** (MUST): Instance filters — Filter bar on the instance board supporting status filter (multi-select), definition filter (dropdown), and date range filter; filters update the board view in real time.
+- **IN-UI-03** (MUST): Start instance — Start Instance button on the board opens a modal to select a deployed definition and start a new instance; modal validates required selection before submission.
+- **IN-UI-04** (MUST): Instance detail view — Dedicated detail page at `/instances/:id` displaying instance metadata, current state, definition name, started-at, and a status badge; navigable from board cards.
+- Validation evidence passed in WF-02 f3a batch 1 E2E tests; release approval is recorded in `docs/status/release-stage-F3-batch1-2026-05-30.json`.
+- Requirements: IN-UI-01, IN-UI-02, IN-UI-03, IN-UI-04 (MUST, Stage F3) — RELEASED
+
 ### Stage 11 — Test Runner and Simulation Mode
 
 ### SIM-01..SIM-04 - Simulation mode release batch (RELEASED 2026-05-29)

@@ -61,6 +61,20 @@ Round numbers like `T18:30:00Z` are a red flag that the timestamp was invented. 
 
 **`started_at` stamping:** Run the shell command immediately before spawning each subagent and write its output as `started_at`. Do NOT reuse `created_at` for `started_at`.
 
+## Output file format rules
+
+**YAML is required for all agent-produced output artefacts.** JSON is only used for handoff files (`.json`) and the registry — these are machine-read by ORCH and remain `.json`.
+
+| Artefact type | Required format |
+|---|---|
+| Test run reports (`tests/reports/`) | **`.yaml`** |
+| Requirement status (`docs/status/requirement_status.yaml`) | **`.yaml`** |
+| Release decisions (`docs/status/`) | **`.yaml`** |
+| Retrospectives (`docs/metrics/retrospectives/`) | **`.yaml`** |
+| Handoff files, registry, estimation | `.json` (exception) |
+
+**Scratch rule:** One-off scripts, debug dumps, `.tmp` files, `.exe`/`.pdb` outputs → `scratch/` (git-ignored). Never create these in the project root or any tracked directory.
+
 ## Creating a handoff
 
 1. Run the timestamp command above and save its output as `<NOW>`
@@ -142,7 +156,7 @@ After an agent completes a handoff, read `result.status`:
 
 ## Stage gate check
 
-Before launching WF-02 for Stage N+1, verify in `docs/status/requirement_status.json`:
+Before launching WF-02 for Stage N+1, verify in `docs/status/requirement_status.yaml`:
 - All MUST requirements for Stage N have status `RELEASED`
 
 If not: tell the user which requirements are blocking and why.
