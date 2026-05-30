@@ -1,0 +1,54 @@
+{
+  "handoff_id": "987a946e-9e49-4ae7-aa3e-d3ed5265f8e7",
+  "run_id": "WF02-f5-admin-batch1-20260530",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-05-30T14:10:19Z",
+  "started_at": "2026-05-30T14:25:47Z",
+  "completed_at": "2026-05-30T14:40:03Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 1)",
+    "requirement_ids": ["ADM-UI-01", "ADM-UI-02", "ADM-UI-03", "ADM-UI-04"],
+    "related_handoff_ids": ["c902deec-1ad8-489e-9ad3-6ff2f0435f50"],
+    "artifacts_in": [
+      "web/tests/e2e/f5-admin-users.e2e.spec.ts",
+      "tests/specs/ADM-UI-01.md",
+      "tests/specs/ADM-UI-02.md",
+      "tests/specs/ADM-UI-03.md",
+      "tests/specs/ADM-UI-04.md"
+    ]
+  },
+  "task": {
+    "description": "Execute required tests for ADM-UI-01..04 and produce report.",
+    "acceptance_criteria": [
+      "Required tests pass",
+      "Report written under tests/reports",
+      "No BLOCKER or MAJOR issues remain"
+    ],
+    "functions_to_call": ["fn:run-tests"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Prechecks and most test layers passed; E2E had 6 failures requiring WF-03 issue resolution.",
+    "artifacts_out": [
+      "tests/reports/20260530T141233Z-WF02-f5-admin-batch1-20260530-precheck.md",
+      "tests/reports/20260530T142227Z-WF02-f5-admin-batch1-20260530-precheck.md",
+      "tests/reports/20260530T144003Z-WF02-f5-admin-batch1-20260530-step04.md"
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-WF02-F5-STEP04-E2E",
+        "severity": "BLOCKER",
+        "description": "E2E layer failed (6 failures) in Step 04 run.",
+        "affected_requirement": "ADM-UI-01"
+      }
+    ],
+    "next_action": "Route to WF-03 issue resolution"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

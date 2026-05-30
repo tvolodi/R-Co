@@ -3,6 +3,21 @@
     "note":  "Active registry — entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
     "entries":  [
         {
+            "handoff_id": "eef9502d-fde8-449c-a188-30f748e8797f",
+            "file": "handoffs/WF03-f5-batch1-step04-fail-20260530/step-final-frontend-dev.json",
+            "run_id": "WF03-f5-batch1-step04-fail-20260530",
+            "workflow_id": "WF-03",
+            "step": "final",
+            "from_agent": "ORCH",
+            "to_agent": "FRONTEND-DEV",
+            "created_at": "2026-05-30T15:44:48Z",
+            "started_at": "2026-05-30T15:44:48Z",
+            "completed_at": null,
+            "status": "IN_PROGRESS",
+            "stage": "WF-03 issue resolution retest for F5 batch1",
+            "last_updated": "2026-05-30T15:45:22Z"
+        },
+        {
             "handoff_id": "f74070a6-162e-4d8d-89f2-61d31f358f0f",
             "file": "handoffs/WF03-f5-batch1-step04-fail-20260530/step-02-test-runner.json",
             "run_id": "WF03-f5-batch1-step04-fail-20260530",
@@ -11,11 +26,11 @@
             "from_agent": "ORCH",
             "to_agent": "TEST-RUNNER",
             "created_at": "2026-05-30T15:34:44Z",
-            "started_at": "2026-05-30T15:34:44Z",
-            "completed_at": "2026-05-30T15:37:22Z",
+            "started_at": "2026-05-30T15:42:12Z",
+            "completed_at": "2026-05-30T15:44:04Z",
             "status": "COMPLETED",
             "stage": "WF-03 issue resolution retest for F5 batch1",
-            "last_updated": "2026-05-30T15:37:22Z"
+            "last_updated": "2026-05-30T15:44:04Z"
         },
                     {
                         "handoff_id":  "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
