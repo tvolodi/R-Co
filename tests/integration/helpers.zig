@@ -12,6 +12,7 @@
 const std = @import("std");
 const pg = @import("pg");
 const root = @import("root");
+const build_options = @import("build_options");
 
 // ---------------------------------------------------------------------------
 // Internal helper: ensure schema_migrations exists, then apply all .sql files
@@ -29,7 +30,107 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         &.{},
     );
 
-    var dir = try std.Io.Dir.cwd().openDir(io, "migrations", .{ .iterate = true });
+    const environ: std.process.Environ = .{ .block = .global };
+    const env_migrations_dir = environ.getAlloc(allocator, "BPM_MIGRATIONS_DIR") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => null,
+        error.OutOfMemory => return error.OutOfMemory,
+        error.InvalidWtf8 => unreachable,
+    };
+    defer if (env_migrations_dir) |path| allocator.free(path);
+
+    const migrations_dir = if (env_migrations_dir) |path| path else build_options.migrations_dir;
+
+    {
+        var dir = try std.Io.Dir.openDirAbsolute(io, migrations_dir, .{ .iterate = true });
+        defer dir.close(io);
+
+        var names: std.ArrayList([]u8) = .empty;
+        defer {
+            for (names.items) |n| allocator.free(n);
+            names.deinit(allocator);
+        }
+
+        var it = dir.iterate();
+        while (try it.next(io)) |entry| {
+            if (entry.kind != .file) continue;
+            if (!std.mem.endsWith(u8, entry.name, ".sql")) continue;
+            const copy = try allocator.dupe(u8, entry.name);
+            errdefer allocator.free(copy);
+            try names.append(allocator, copy);
+        }
+
+        std.sort.block([]u8, names.items, {}, struct {
+            fn lt(_: void, a: []u8, b: []u8) bool {
+                return std.mem.lessThan(u8, a, b);
+            }
+        }.lt);
+
+        var applied = std.StringHashMap(void).init(allocator);
+        defer {
+            var key_iter = applied.keyIterator();
+            while (key_iter.next()) |key| allocator.free(key.*);
+            applied.deinit();
+        }
+
+        var existing = try conn.query(
+            allocator,
+            "SELECT version FROM schema_migrations ORDER BY version",
+            &.{},
+        );
+        defer existing.deinit();
+        for (existing.rows) |row| {
+            if (row.len > 0) {
+                if (row[0]) |ver| {
+                    const ver_copy = try allocator.dupe(u8, ver);
+                    errdefer allocator.free(ver_copy);
+                    try applied.put(ver_copy, {});
+                }
+            }
+        }
+
+        for (names.items) |filename| {
+            if (applied.contains(filename)) continue;
+
+            const sql_bytes = try dir.readFileAlloc(io, filename, allocator, std.Io.Limit.limited(16 * 1024 * 1024));
+            defer allocator.free(sql_bytes);
+
+            try conn.begin();
+            conn.simpleQuery(sql_bytes) catch |err| {
+                conn.rollback() catch {};
+                return err;
+            };
+            conn.exec(
+                "INSERT INTO schema_migrations(version) VALUES ($1)",
+                &.{filename},
+            ) catch |err| {
+                conn.rollback() catch {};
+                return err;
+            };
+            try conn.commit();
+        }
+        return;
+    }
+
+    const migration_candidates = [_][]const u8{
+        "migrations",
+        "../migrations",
+        "../../migrations",
+        "../../../migrations",
+        "../../../../migrations",
+    };
+
+    var dir_open_error: anyerror = error.FileNotFound;
+    var dir: std.Io.Dir = blk: {
+        for (migration_candidates) |candidate| {
+            const opened = std.Io.Dir.cwd().openDir(io, candidate, .{ .iterate = true }) catch |err| {
+                dir_open_error = err;
+                if (err == error.FileNotFound) continue;
+                return err;
+            };
+            break :blk opened;
+        }
+        return dir_open_error;
+    };
     defer dir.close(io);
 
     var names: std.ArrayList([]u8) = .empty;

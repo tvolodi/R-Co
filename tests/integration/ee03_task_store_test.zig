@@ -227,7 +227,7 @@ test "TC-EE-03-01: createInTx returns task with PENDING status" {
     try conn.begin();
     errdefer conn.exec("ROLLBACK", &.{}) catch {};
 
-    const task = try task_store.createInTx(alloc, conn, inst_id, token_id, "T", "My Task", null, null);
+    const task = try task_store.createInTx(alloc, conn, inst_id, token_id, "T", "My Task", null, null, null);
     defer bpm.tasks.freeTask(alloc, task);
 
     try conn.commit();
