@@ -74,6 +74,14 @@ export interface CreateDefinitionRequest {
 
 export type InstanceStatus = 'ACTIVE' | 'COMPLETED' | 'CANCELLED' | 'ERROR'
 
+export interface Token {
+  token_id: string
+  node_id: string
+  status: 'active' | 'completed' | 'pending' | 'error'
+  created_at: string
+  event_id?: string
+}
+
 export interface ProcessInstance {
   instance_id: string
   definition_id: string
@@ -82,6 +90,8 @@ export interface ProcessInstance {
   correlation_key?: string
   status: InstanceStatus
   current_nodes: string[]
+  current_tokens?: Token[]
+  active_tokens?: Token[]
   updated_at?: string
   current_tasks?: Task[]
   definition_snapshot?: DefinitionGraph

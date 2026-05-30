@@ -4,6 +4,14 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage F3 — Instance Monitoring (Batch 2)
+
+### IN-UI-09..IN-UI-10 - Token visualization & history scrubber release batch (RELEASED 2026-05-30)
+- **IN-UI-09** (SHOULD): Active token visualisation on process graph displays live execution context tokens with distinct visual styling on the canvas, including token state transitions during execution.
+- **IN-UI-10** (SHOULD): History scrubber provides timeline-based scrubbing on the event history tab allowing users to seek to any historical snapshot of the running instance with live state rendering.
+- Validation evidence passed in tests/reports/report-2026-05-30-WF02-f3b-inui0910-20260530.yaml; release approval is recorded in docs/status/release-F3b-IN-UI-09-10-2026-05-30.yaml.
+- Requirements: IN-UI-09, IN-UI-10 (Stage F3) - RELEASED
+
 ### Stage F3 — Instance Monitoring (Batch 1)
 
 ### IN-UI-05..IN-UI-08 - Instance detail enhancements release batch (RELEASED 2026-05-30)
