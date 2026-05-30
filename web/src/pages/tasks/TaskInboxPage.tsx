@@ -37,16 +37,20 @@ export default function TaskInboxPage() {
     return payload.sub || null
   }, [session?.token])
 
+  const isOperatorRole = !!(session?.roles?.includes('PROCESS_OPERATOR') || session?.roles?.includes('PLATFORM_ADMIN'))
+
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
     if (!inboxData?.items) return []
 
     let results = inboxData.items
 
-    // Filter by type
-    if (filter === 'me') {
+    // Filter by type.
+    // Operators see all tasks from the inbox endpoint — no client-side assignee filter.
+    // Non-operators apply the assignee_ref filter to show only their own tasks in "me" view.
+    if (filter === 'me' && !isOperatorRole) {
       results = results.filter(t => t.assignee_ref === userId)
-    } else if (filter === 'group') {
+    } else if (filter === 'group' && !isOperatorRole) {
       // TODO: filter by user's groups once implemented
     }
 
@@ -66,7 +70,7 @@ export default function TaskInboxPage() {
     }
 
     return results
-  }, [inboxData?.items, filter, sort, search, userId])
+  }, [inboxData?.items, filter, sort, search, userId, isOperatorRole])
 
   const handleFilterChange = (newFilter: FilterType) => {
     const params = new URLSearchParams(searchParams)
@@ -90,7 +94,7 @@ export default function TaskInboxPage() {
     setSearchParams(params)
   }
 
-  const isOperator = session?.roles?.includes('PROCESS_OPERATOR') || session?.roles?.includes('PLATFORM_ADMIN')
+  const isOperator = isOperatorRole
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 60px)' }}>

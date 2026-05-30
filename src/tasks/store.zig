@@ -149,6 +149,7 @@ pub const TaskStore = struct {
         node_name: []const u8,
         assignee_type: ?[]const u8,
         assignee_ref: ?[]const u8,
+        form_schema_json: ?[]const u8,
     ) TaskError!Task {
         _ = self;
 
@@ -163,17 +164,19 @@ pub const TaskStore = struct {
         // SQL NULL so that unassigned tasks have NULL assignee_type/ref.
         const at_param: []const u8 = assignee_type orelse "";
         const ar_param: []const u8 = assignee_ref orelse "";
+        const fs_param: []const u8 = form_schema_json orelse "";
 
         // Security: $1=instance_id, $2=token_id, $3=node_id, $4=node_name,
-        //           $5=assignee_type, $6=assignee_ref — all bound as $N params.
+        //           $5=assignee_type, $6=assignee_ref, $7=form_schema — all bound as $N params.
         const rows = conn.query(
             allocator,
             \\INSERT INTO tasks
             \\    (instance_id, token_id, node_id, node_name, status,
-            \\     assignee_type, assignee_ref)
+            \\     assignee_type, assignee_ref, form_schema)
             \\VALUES
             \\    ($1::uuid, $2::uuid, $3, $4, 'PENDING',
-            \\     NULLIF($5, ''), NULLIF($6, ''))
+            \\     NULLIF($5, ''), NULLIF($6, ''),
+            \\     NULLIF($7, '')::jsonb)
             \\RETURNING
             \\    id,
             \\    instance_id,
@@ -186,7 +189,7 @@ pub const TaskStore = struct {
             \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
-            &.{ inst_id_hex, tok_id_hex, node_id, node_name, at_param, ar_param },
+            &.{ inst_id_hex, tok_id_hex, node_id, node_name, at_param, ar_param, fs_param },
         ) catch return TaskError.InvalidInput;
         defer {
             var r = rows;
