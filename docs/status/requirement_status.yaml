@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-05-30T04:55:33Z'
+last_updated: '2026-05-30T16:48:37Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -2917,4 +2917,61 @@ requirements:
     released_at: '2026-05-30'
     release_run: WF02-f4-task-inbox-20260530
     last_updated: '2026-05-30T12:05:29Z'
-total_requirements: 235
+  ADM-UI-01:
+    status: RELEASED
+    stage: F5
+    priority: MUST
+    title: User list
+    implemented_in:
+    - web/src/pages/admin/users/UsersPage.tsx
+    - web/src/pages/admin/UsersPage.tsx
+    test_spec: tests/specs/ADM-UI-01.md
+    test_run: tests/reports/report-20260530-WF02-f5-admin-batch1-step04.md
+    release_decision: docs/status/release-stage-f5-admin-batch1-2026-05-30.json
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f5-admin-batch1-20260530
+    last_updated: '2026-05-30T16:48:37Z'
+  ADM-UI-02:
+    status: RELEASED
+    stage: F5
+    priority: MUST
+    title: Create user
+    implemented_in:
+    - web/src/pages/admin/users/UsersPage.tsx
+    test_spec: tests/specs/ADM-UI-02.md
+    test_run: tests/reports/report-20260530-WF02-f5-admin-batch1-step04.md
+    release_decision: docs/status/release-stage-f5-admin-batch1-2026-05-30.json
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f5-admin-batch1-20260530
+    last_updated: '2026-05-30T16:48:37Z'
+  ADM-UI-03:
+    status: RELEASED
+    stage: F5
+    priority: MUST
+    title: Edit user
+    implemented_in:
+    - web/src/pages/admin/UserDetailPage.tsx
+    test_spec: tests/specs/ADM-UI-03.md
+    test_run: tests/reports/report-20260530-WF02-f5-admin-batch1-step04.md
+    release_decision: docs/status/release-stage-f5-admin-batch1-2026-05-30.json
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f5-admin-batch1-20260530
+    last_updated: '2026-05-30T16:48:37Z'
+  ADM-UI-04:
+    status: RELEASED
+    stage: F5
+    priority: MUST
+    title: Deactivate user
+    implemented_in:
+    - web/src/pages/admin/UserDetailPage.tsx
+    test_spec: tests/specs/ADM-UI-04.md
+    test_run: tests/reports/report-20260530-WF02-f5-admin-batch1-step04.md
+    release_decision: docs/status/release-stage-f5-admin-batch1-2026-05-30.json
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f5-admin-batch1-20260530
+    last_updated: '2026-05-30T16:48:37Z'
+total_requirements: 239

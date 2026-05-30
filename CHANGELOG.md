@@ -4,6 +4,16 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage F5 - Administration (Batch 1)
+
+### ADM-UI-01..ADM-UI-04 - Admin users release batch (RELEASED 2026-05-30)
+- **ADM-UI-01** (MUST): User list - Added a paginated, searchable users table with columns for username, display name, email, roles, status, and created date.
+- **ADM-UI-02** (MUST): Create user - Added New User flow to create users with username, display name, email, and initial role assignments via POST /users.
+- **ADM-UI-03** (MUST): Edit user - Added user detail editing for display name, email, ACTIVE/INACTIVE status, group memberships, and role assignments.
+- **ADM-UI-04** (MUST): Deactivate user - Added explicit deactivate action that sets status to INACTIVE with confirmation messaging.
+- Validation evidence passed in tests/reports/report-20260530-WF02-f5-admin-batch1-step04.md; release approval is recorded in docs/status/release-stage-f5-admin-batch1-2026-05-30.json.
+- Requirements: ADM-UI-01, ADM-UI-02, ADM-UI-03, ADM-UI-04 (Stage F5) - RELEASED
+
 ### Stage F4 — Task Inbox
 
 ### TK-UI-01..TK-UI-10 - Task inbox full release batch (RELEASED 2026-05-30)
