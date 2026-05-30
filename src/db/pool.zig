@@ -148,17 +148,14 @@ pub const Conn = struct {
         }
 
         if (!self._is_valid) return PoolError.StaleConnection;
-        var result = self._pg.query(allocator, sql, params) catch |err| {
+        const result = self._pg.query(allocator, sql, params) catch |err| {
             if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
                 self._is_valid = false;
                 return PoolError.StaleConnection;
             }
             return PoolError.QueryFailed;
         };
-        // Transfer ownership: pg.Result and QueryResult share the same memory layout.
-        const qr = QueryResult{ .rows = result.rows, .allocator = allocator };
-        result.rows = &.{}; // prevent double-free
-        return qr;
+        return QueryResult{ .rows = result.rows, .result = result };
     }
 
     /// Execute a parameterised query and return the first row, or null if no
@@ -190,20 +187,31 @@ pub const Conn = struct {
             return null;
         }
 
-        // Transfer ownership of the first row to the caller, then free only
-        // the remaining rows plus the outer slice.
-        const row = result.rows[0];
-        if (result.rows.len > 1) {
-            for (result.rows[1..]) |other_row| {
-                for (other_row) |col| {
-                    if (col) |c| allocator.free(c);
-                }
-                allocator.free(other_row);
+        const source_row = result.rows[0];
+        const owned_row = allocator.alloc(?[]u8, source_row.len) catch {
+            result.deinit();
+            return PoolError.QueryFailed;
+        };
+
+        var copied: usize = 0;
+        errdefer {
+            for (owned_row[0..copied]) |col| {
+                if (col) |c| if (c.len > 0) allocator.free(c);
             }
+            allocator.free(owned_row);
         }
-        allocator.free(result.rows);
-        result.rows = &.{};
-        return row;
+
+        for (source_row, 0..) |col, idx| {
+            if (col) |value| {
+                owned_row[idx] = allocator.dupe(u8, value) catch return PoolError.QueryFailed;
+            } else {
+                owned_row[idx] = null;
+            }
+            copied += 1;
+        }
+
+        result.deinit();
+        return owned_row;
     }
 
     // -----------------------------------------------------------------------
@@ -278,16 +286,11 @@ pub const Conn = struct {
 pub const QueryResult = struct {
     /// rows[i][j] = column j of row i, or null for SQL NULL.
     rows: [][]?[]u8,
-    allocator: std.mem.Allocator,
+    result: pg.Result,
 
     pub fn deinit(self: *QueryResult) void {
-        for (self.rows) |row| {
-            for (row) |col| {
-                if (col) |c| self.allocator.free(c);
-            }
-            self.allocator.free(row);
-        }
-        self.allocator.free(self.rows);
+        self.result.deinit();
+        self.rows = &.{};
     }
 };
 

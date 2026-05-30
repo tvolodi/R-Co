@@ -14,6 +14,16 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-20260530-WF02-f5-admin-batch1-step04.md; release approval is recorded in docs/status/release-stage-f5-admin-batch1-2026-05-30.json.
 - Requirements: ADM-UI-01, ADM-UI-02, ADM-UI-03, ADM-UI-04 (Stage F5) - RELEASED
 
+### Stage F5 - Administration (Batch 2)
+
+### ADM-UI-05..ADM-UI-08 - Admin groups and tokens release batch (RELEASED 2026-05-30)
+- **ADM-UI-05** (MUST): Group management - Added Groups admin section supporting group listing with member counts, group creation, member add/remove, and empty-group deletion flows.
+- **ADM-UI-06** (MUST): Token list - Added API Tokens admin table with associated user, granted roles, expiry date, created date, and revoked-state visibility without exposing raw token values.
+- **ADM-UI-07** (MUST): Issue token - Added Issue Token workflow collecting target user, role set, and optional expiry; token value is shown exactly once with copy action and non-retrievable warning.
+- **ADM-UI-08** (MUST): Revoke token - Added token revoke action with confirmation dialog and revoked-state UI treatment in token list rows.
+- Validation evidence passed in handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json; release approval is recorded in docs/status/release-stage-f5-admin-batch2-2026-05-30.json.
+- Requirements: ADM-UI-05, ADM-UI-06, ADM-UI-07, ADM-UI-08 (Stage F5) - RELEASED
+
 ### Stage F4 — Task Inbox
 
 ### TK-UI-01..TK-UI-10 - Task inbox full release batch (RELEASED 2026-05-30)

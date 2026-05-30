@@ -5,6 +5,7 @@ type CreateUserPayload = {
   username: string
   display_name: string
   email: string
+  password: string
   role_ids: string[]
 }
 
@@ -50,6 +51,7 @@ function CreateUserForm({ roles, isSubmitting, submitError, onCancel, onSubmit }
           username: String(formData.get('username') ?? '').trim(),
           display_name: String(formData.get('display_name') ?? '').trim(),
           email: String(formData.get('email') ?? '').trim(),
+          password: String(formData.get('password') ?? '').trim(),
           role_ids: roleIds,
         })
       }}
@@ -62,6 +64,9 @@ function CreateUserForm({ roles, isSubmitting, submitError, onCancel, onSubmit }
       </Field>
       <Field label="Email">
         <input name="email" type="email" required />
+      </Field>
+      <Field label="Password">
+        <input name="password" type="password" required />
       </Field>
       <Field label="Initial roles">
         <div style={{ maxHeight: 120, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, padding: 8 }}>

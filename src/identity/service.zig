@@ -94,6 +94,18 @@ pub const CreateTenantInput = struct {
 
 pub const CreateGroupInput = struct {
     name: []const u8,
+    display_name: ?[]const u8,
+    description: ?[]const u8,
+};
+
+pub const GroupListPage = struct {
+    items: []registry_mod.Group,
+    total: u64,
+
+    pub fn deinit(self: GroupListPage, allocator: std.mem.Allocator) void {
+        for (self.items) |item| item.deinit(allocator);
+        allocator.free(self.items);
+    }
 };
 
 pub const AddGroupMemberInput = struct {
@@ -768,13 +780,58 @@ pub const Service = struct {
         if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
         if (input.name.len == 0) return error.ValidationFailed;
 
-        return self.registry.createGroup(allocator, actor.tenant_id[0..], input.name) catch |err| switch (err) {
+        const display_name = if (input.display_name) |dn|
+            if (dn.len == 0) input.name else dn
+        else
+            input.name;
+
+        const description = if (input.description) |desc|
+            if (desc.len == 0) null else desc
+        else
+            null;
+
+        return self.registry.createGroup(allocator, actor.tenant_id[0..], input.name, display_name, description) catch |err| switch (err) {
             registry_mod.RegistryError.DuplicateGroupName => error.DuplicateGroupName,
             registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
             registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
             registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
             else => error.PersistenceFailed,
         };
+    }
+
+    pub fn listGroups(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
+    ) GroupError!GroupListPage {
+        if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+
+        const page = self.registry.listGroups(allocator, actor.tenant_id[0..]) catch |err| switch (err) {
+            registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
+            else => return error.PersistenceFailed,
+        };
+
+        return .{ .items = page.items, .total = page.total };
+    }
+
+    pub fn deleteGroup(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
+        group_id: []const u8,
+    ) GroupError!void {
+        if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+        if (group_id.len == 0) return error.ValidationFailed;
+
+        const deleted = self.registry.deleteGroupIfEmpty(allocator, actor.tenant_id[0..], group_id) catch |err| switch (err) {
+            registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+            else => return error.PersistenceFailed,
+        };
+
+        if (!deleted) return error.GroupNotFound;
     }
 
     pub fn addGroupMember(

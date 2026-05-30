@@ -46,7 +46,7 @@ pub fn main(init: std.process.Init) !void {
     var pool = connectPool(init, gpa, resolved_db_url.url) catch |err| blk: {
         if (err == db.PoolError.ConnectionFailed and resolved_db_url.source != .test_db) {
             if (init.environ_map.get("BPM_TEST_DB_URL")) |test_db_url| {
-                std.debug.print("BENCHMARK_SETUP_INFO|retry_db_url_source=BPM_TEST_DB_URL\n", .{});
+                std.debug.print("BENCHMARK_SETUP_INFO|retry_db_url_source=test_db_fallback\n", .{});
                 break :blk connectPool(init, gpa, test_db_url) catch |retry_err| {
                     std.debug.print("BENCHMARK_SETUP_ERROR|pool_init={s}\n", .{@errorName(retry_err)});
                     return retry_err;
@@ -236,9 +236,9 @@ fn parseDotEnvValue(allocator: std.mem.Allocator, contents: []const u8, key: []c
 
 fn dbUrlSourceLabel(source: DbUrlSource) []const u8 {
     return switch (source) {
-        .bench => "BPM_BENCH_DB_URL",
-        .primary => "BPM_DB_URL",
-        .test_db => "BPM_TEST_DB_URL",
+        .bench => "bench_env",
+        .primary => "primary_env",
+        .test_db => "test_db_env",
     };
 }
 

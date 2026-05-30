@@ -246,11 +246,25 @@ export interface RolePermission {
 }
 
 export interface ApiToken {
-  id: string
-  name: string
+  id?: string
+  token_id?: string
+  user_id?: string
+  user_display_name?: string
+  name?: string
+  roles?: string[]
   last_used_at?: string
   expires_at?: string
   revoked_at?: string
+  status?: 'ACTIVE' | 'REVOKED' | 'EXPIRED'
+  created_at: string
+}
+
+export interface IssuedToken {
+  token_id: string
+  token_value: string
+  user_id: string
+  roles: string[]
+  expires_at?: string | null
   created_at: string
 }
 

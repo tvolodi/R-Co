@@ -1,0 +1,38 @@
+schema_version: 1
+page_name: TokensPage
+page_slug: admin/tokens
+resource_name: token
+requirement_ids: [ADM-UI-06, ADM-UI-07, ADM-UI-08]
+purpose: |
+  List API tokens, surface revocation state, and provide the issue-token flow that
+  reveals the raw value exactly once. The create modal is expected to be extended in
+  CUSTOM blocks so the returned token can be shown once and cleared on close.
+
+# Must reference the queryKeys factory; never an inline array. Lint F030 enforces.
+list_query_key: queryKeys.admin.tokens
+
+api:
+  list_endpoint: /api/v1/auth/tokens
+  create_endpoint: /api/v1/auth/tokens
+  delete_endpoint: /api/v1/auth/tokens/:id
+
+filters: []
+
+columns:
+  - { header: "User", accessor: user_display_name }
+  - { header: "Roles", accessor: roles }
+  - { header: "Expires", accessor: expires_at, format: date }
+  - { header: "Created", accessor: created_at, format: date }
+  - { header: "Revoked", accessor: revoked_at, format: date }
+
+row_actions:
+  - { label: "Revoke", action: archive, requires_role: PLATFORM_ADMIN, confirm: "Revoke this API token?" }
+
+create_form:
+  button_label: "+ Issue token"
+  fields:
+    - { name: target_user, type: text, label: Target user, required: true }
+    - { name: role_set, type: text, label: Role set, required: true, placeholder: "Comma-separated roles" }
+    - { name: expires_at, type: text, label: Expiry date, required: false, placeholder: "YYYY-MM-DD or ISO 8601" }
+  submit_label: "Issue token"
+  on_success_invalidate: queryKeys.admin.tokens

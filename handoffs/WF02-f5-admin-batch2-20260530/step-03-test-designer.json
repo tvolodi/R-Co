@@ -1,0 +1,49 @@
+{
+  "handoff_id": "2efb7406-b084-4c4a-86b5-320d6fbddb05",
+  "run_id": "WF02-f5-admin-batch2-20260530",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-30T17:39:59Z",
+  "started_at": "2026-05-30T17:40:14Z",
+  "completed_at": "2026-05-30T17:49:13Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F5 - Administration (batch 2)",
+    "requirement_ids": ["ADM-UI-05", "ADM-UI-06", "ADM-UI-07", "ADM-UI-08"],
+    "related_handoff_ids": ["4a4402be-72eb-4584-91f6-6aba59d3af4f"],
+    "artifacts_in": [
+      "templates/specs/admin-groups.list-page.yaml",
+      "templates/specs/admin-tokens.list-page.yaml"
+    ]
+  },
+  "task": {
+    "description": "Design tests for Stage F5 batch-2 frontend requirements ADM-UI-05..08.",
+    "acceptance_criteria": ["Test specs cover ADM-UI-05..08"],
+    "functions_to_call": ["fn:design-tests"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test specs and E2E test design completed for ADM-UI-05..08.",
+    "artifacts_out": [
+      "tests/specs/ADM-UI-05.md",
+      "tests/specs/ADM-UI-06.md",
+      "tests/specs/ADM-UI-07.md",
+      "tests/specs/ADM-UI-08.md",
+      "web/tests/e2e/f5-admin-groups-tokens.e2e.spec.ts",
+      "docs/issue-reports/WF02-f5-admin-batch2-20260530-step-03-test-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Local E2E execution for fixture seeding returned HTTP 404 on user-create calls.",
+        "owner": "BACKEND-DEV"
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}
