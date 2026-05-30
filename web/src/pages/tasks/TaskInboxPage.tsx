@@ -169,6 +169,7 @@ export default function TaskInboxPage() {
               <div
                 key={task.id}
                 data-testid="task-row"
+                data-task-id={task.id}
                 onClick={() => setSelectedTaskId(task.id)}
                 style={{
                   background: selectedTaskId === task.id ? '#eff6ff' : '#fff',
