@@ -17,7 +17,7 @@ export const usersApi = {
   get: (id: string) =>
     client.get<User>(`/api/v1/admin/users/${id}`),
 
-  create: (body: { email: string; display_name: string; password: string; role_ids?: string[] }) =>
+  create: (body: { username: string; email: string; display_name: string; password: string; role_ids?: string[] }) =>
     client.post<User>('/api/v1/admin/users', body),
 
   update: (id: string, body: Partial<{ display_name: string; is_active: boolean; role_ids: string[] }>) =>

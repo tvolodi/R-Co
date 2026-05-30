@@ -53,7 +53,7 @@ pub fn handleTenantConfig(
     pool: *db_pool.Pool,
     query_str: []const u8,
 ) HandlerResult {
-    const keycloak_base = getEnvVar(allocator, "KEYCLOAK_BASE_URL", "http://localhost:8081");
+    const keycloak_base = getEnvVar(allocator, "KEYCLOAK_BASE_URL", "http://127.0.0.1:8081");
     const client_id = getEnvVar(allocator, "OIDC_CLIENT_ID", "bpm-platform-api");
 
     var realm_id: []const u8 = "bpm-default";
@@ -75,7 +75,7 @@ pub fn handleTenantConfig(
     const authority = std.fmt.allocPrint(allocator, "{s}/realms/{s}", .{ keycloak_base, realm_id }) catch {
         return .{
             .status_code = 200,
-            .body = "{\"oidc_authority\":\"http://localhost:8081/realms/bpm-default\",\"client_id\":\"bpm-platform-api\"}",
+            .body = "{\"oidc_authority\":\"http://127.0.0.1:8081/realms/bpm-default\",\"client_id\":\"bpm-platform-api\"}",
             .content_type = "application/json",
         };
     };
@@ -87,7 +87,7 @@ pub fn handleTenantConfig(
     ) catch {
         return .{
             .status_code = 200,
-            .body = "{\"oidc_authority\":\"http://localhost:8081/realms/bpm-default\",\"client_id\":\"bpm-platform-api\"}",
+            .body = "{\"oidc_authority\":\"http://127.0.0.1:8081/realms/bpm-default\",\"client_id\":\"bpm-platform-api\"}",
             .content_type = "application/json",
         };
     };

@@ -1,8 +1,38 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-29T18:53:03Z",
-  "next_issue_id": 60,
+  "last_updated": "2026-05-30T15:40:45Z",
+  "next_issue_id": 62,
   "issues": [
+    {
+      "id": "ISS-0061",
+      "title": "WF03 f5 step04 rework2: ADM-UI fixture creation switched to UI flow to remove failing /api/v1/users dependency",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f5-batch1-step04-fail-20260530",
+      "handoff_id": "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
+      "affected_areas": [
+        "web/tests/e2e/f5-admin-users.e2e.spec.ts",
+        "docs/issues/ISS-0061.json"
+      ],
+      "created_at": "2026-05-30T15:40:45Z",
+      "resolved_at": "2026-05-30T15:40:45Z"
+    },
+    {
+      "id": "ISS-0060",
+      "title": "WF03 f5 step04 issue-fix: ADM-UI env/test contract repaired; live OIDC browser reachability remains blocked",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f5-batch1-step04-fail-20260530",
+      "handoff_id": "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
+      "affected_areas": [
+        "web/src/pages/admin/UsersPage.tsx",
+        "web/tests/e2e/f5-admin-users.e2e.spec.ts",
+        "web/tests/e2e/oidcf-login.e2e.spec.ts",
+        "docs/issues/ISS-0060.json"
+      ],
+      "created_at": "2026-05-30T15:08:28Z",
+      "resolved_at": "2026-05-30T15:33:03Z"
+    },
     {
       "id": "ISS-0059",
       "title": "WF03 f3a inui02 fix: login redirect dropped query params and broke definition filter URL persistence after reload",
@@ -235,7 +265,7 @@
     },
     {
       "id": "ISS-0044",
-      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
+      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails \u2014 unique index not upgraded to named constraint",
       "status": "RESOLVED",
       "severity": "CRITICAL",
       "run_id": "WF03-def-store-regression-20260528",

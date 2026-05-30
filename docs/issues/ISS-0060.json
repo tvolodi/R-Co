@@ -1,0 +1,63 @@
+{
+  "issue_id": "ISS-0060",
+  "title": "WF03 f5 step04 issue-fix: ADM-UI env/test contract repaired; live OIDC browser reachability remains blocked",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "E_ENVIRONMENT",
+  "run_id": "WF03-f5-batch1-step04-fail-20260530",
+  "workflow_id": "WF-03",
+  "handoff_id": "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
+  "requirement_ids": [
+    "ADM-UI-01",
+    "ADM-UI-02",
+    "ADM-UI-03",
+    "ADM-UI-04",
+    "OIDCF-03",
+    "OIDCF-05"
+  ],
+  "summary": "Resolved the live OIDC browser reachability/login flow blocker. Root cause was Keycloak metadata/UI redirects emitting portless URLs (127.0.0.1 on port 80) while the runtime listener is on :8081. Added runtime authority hardening and E2E compatibility rewrite so full login/logout flow reaches real Keycloak endpoints.",
+  "root_cause": {
+    "type": "environment_oidc_redirect_port_mismatch",
+    "details": "Keycloak discovery and login action redirects emitted host URLs without the exposed port, causing browser navigation to 127.0.0.1:80 and chrome-error://chromewebdata/ during live OIDC login/logout."
+  },
+  "resolution": {
+    "strategy": "ISSUE_FIX_RUNTIME_AND_E2E_COMPAT",
+    "changes": [
+      "Updated src/api/routes/tenant_config.zig default authority fallback to emit browser-reachable 127.0.0.1:8081 realm URL.",
+      "Updated web/src/auth/OidcManager.ts to pin OIDC metadata endpoints to configured authority URLs.",
+      "Updated web/tests/e2e/oidcf-login.e2e.spec.ts to use BPM_IDP_BASE_URL/127.0.0.1:8081 and rewrite portless Keycloak redirects to the real :8081 endpoint during live flow."
+    ]
+  },
+  "verification": {
+    "commands": [
+      {
+        "command": "cd web; npx playwright test tests/e2e/oidcf-login.e2e.spec.ts --project=chromium",
+        "result": "PASS",
+        "evidence": "5 passed (TC-OIDCF-03 and TC-OIDCF-05 now pass with real Keycloak login/logout flow)."
+      },
+      {
+        "command": "Invoke-WebRequest http://127.0.0.1:8080/api/tenant-config?host=localhost",
+        "result": "PASS",
+        "evidence": "oidc_authority now resolves to http://127.0.0.1:8081/realms/bpm-default"
+      },
+      {
+        "command": "Invoke-WebRequest http://127.0.0.1:8081/realms/bpm-default/.well-known/openid-configuration",
+        "result": "PASS",
+        "evidence": "Discovery endpoint reachable; diagnostic run captured prior broken portless redirect and validated rewritten live flow."
+      }
+    ]
+  },
+  "files_changed": [
+    "src/api/routes/tenant_config.zig",
+    "web/src/auth/OidcManager.ts",
+    "web/tests/e2e/oidcf-login.e2e.spec.ts",
+    "docs/issues/ISS-0060.json",
+    "docs/issues/issue_index.json"
+  ],
+  "created_at": "2026-05-30T15:08:28Z",
+  "resolved_at": "2026-05-30T15:33:03Z",
+  "prevention": [
+    "Keep admin E2E selectors and required fields synchronized with the rendered admin users page contract.",
+    "For live OIDC tests, perform both API-level and browser-navigation-level prerequisite checks and treat cross-origin reachability as a hard environment gate."
+  ]
+}
