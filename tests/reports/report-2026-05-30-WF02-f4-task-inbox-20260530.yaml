@@ -1,116 +1,102 @@
 ---
-execution_date: "2026-05-30"
-run_id: "WF02-f4-task-inbox-20260530"
-test_suite: "F4 Task Inbox UI (TK-UI)"
+run_id: WF02-f4-task-inbox-20260530
+stage: Stage F4 - Task Inbox
+test_date: '2026-05-30T12:09:00Z'
+test_framework: Playwright
+browser: chromium
+duration_seconds: 180
 
 summary:
-  total_tests: 29
-  passed: 2
-  failed: 27
-  skipped: 0
-  pass_rate: "6.9%"
-
-requirements_covered:
-  - TK-UI-01: Task inbox display and filtering
-  - TK-UI-02: Task detail panel display
-  - TK-UI-03: Task form schema rendering
-  - TK-UI-04: Task completion
-  - TK-UI-05: Claim tasks (group assignments)
-  - TK-UI-06: Reassign tasks
-  - TK-UI-07: Sorting and search
-  - TK-UI-08: Navigation badge count
-  - TK-UI-09: Escalated task indicator
-  - TK-UI-10: Mobile responsiveness
+  description: E2E test execution for Stage F4 task inbox (TK-UI-01 through TK-UI-10)
+  total_test_cases: 29
+  passed: 8
+  failed: 21
+  pass_rate: 27.6%
+  status: FAIL
 
 test_results:
-  - test_name: "TK-UI-01-E2E-01: task inbox displays user assigned tasks"
-    status: "FAILED"
-    duration_ms: 374
-    error: "Backend service not available (ECONNREFUSED)"
-    retry_attempts: 1
+  passing:
+    - name: TK-UI-01-E2E-01
+      description: task inbox displays user assigned tasks
+      duration_seconds: 3.2
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-02
+      description: task inbox displays user group-assigned tasks
+      duration_seconds: 3.2
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-03
+      description: My Tasks filter shows only user-assigned tasks
+      duration_seconds: 3.3
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-04
+      description: My Group Tasks filter shows only group-assigned tasks
+      duration_seconds: 3.3
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-05
+      description: All Tasks filter available only to operators
+      duration_seconds: 0.884
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-06
+      description: task list displays required columns
+      duration_seconds: 3.2
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-01-E2E-07
+      description: pagination controls work for task lists
+      duration_seconds: 3.2
+      requirement_id: TK-UI-01
+      status: PASS
+    - name: TK-UI-05-E2E-03
+      description: claim button sends POST request
+      duration_seconds: 0.635
+      requirement_id: TK-UI-05
+      status: PASS
 
-  - test_name: "TK-UI-01-E2E-02: task inbox displays user group-assigned tasks"
-    status: "FAILED"
-    duration_ms: 304
-    error: "Backend service not available (ECONNREFUSED)"
-    retry_attempts: 1
+root_causes:
+  - id: TASK_USER_ID_MISMATCH
+    status: FIXED_IN_THIS_RUN
+    description: Backend was defaulting user ID to all-zeros UUID when x-bpm-user-id header was missing
+    solution: Updated web/src/api/client.ts to extract user ID from JWT and send as header
+    impact: Fixed TK-UI-01 tests - tasks now appear in inbox
 
-  - test_name: "TK-UI-01-E2E-04: My Group Tasks filter shows only group-assigned tasks"
-    status: "PASSED"
-    duration_ms: 3200
-    notes: "Group task fixture working correctly"
+  - id: DETAIL_PANEL_NOT_APPEARING
+    status: NEW_BLOCKING_ISSUE
+    description: Task detail panel component not rendering after clicking task row
+    root_cause_hypothesis: onClick handler may not be properly triggering state update
+    evidence: All detail panel tests fail with element not found after click
+    next_steps: Investigate TaskInboxPage.tsx onClick handler and React hooks
 
-  - test_name: "TK-UI-01-E2E-07: pagination controls work for task lists"
-    status: "PASSED"
-    duration_ms: 3200
-    notes: "Pagination logic working for empty task lists"
+infrastructure_status:
+  backend_api: OPERATIONAL
+  keycloak_auth: OPERATIONAL
+  database: OPERATIONAL
 
-  - test_name: "All remaining TK-UI tests (TK-UI-02 through TK-UI-10)"
-    status: "FAILED"
-    error: "Backend service not available during test run"
+requirements_covered:
+  - id: TK-UI-01
+    name: Task inbox display and filtering
+    coverage: PARTIAL
+    notes: Tests 1-7 pass
+  - id: TK-UI-02
+    name: Task detail panel display
+    coverage: BLOCKED
+    notes: Detail panel not rendering
+  - id: TK-UI-03
+    name: Task form schema rendering
+    coverage: BLOCKED
+  - id: TK-UI-04
+    name: Task completion
+    coverage: BLOCKED
+  - id: TK-UI-05
+    name: Claim tasks
+    coverage: PARTIAL
+    notes: API test passes, UI button blocked
+  - id: TK-UI-06
+    name: Reassign tasks
+    coverage: BLOCKED
 
-root_cause_analysis:
-  backend_issues:
-    - description: "Backend `/api/v1/tasks/inbox` endpoint was missing"
-      status: "RESOLVED"
-      fix_applied: "Implemented handleInbox handler in tasks.zig and wired it in main.zig"
-
-  keycloak_issues:
-    - description: "Keycloak realm missing operator-user account"
-      status: "RESOLVED"
-      fix_applied: "Added operator-user with PLATFORM_ADMIN role to bpm-default.json realm"
-
-  test_fixture_issues:
-    - description: "Task definitions missing required 'role' attribute on HUMAN_TASK nodes"
-      status: "RESOLVED"
-      fix_applied: "Added role field to all task node attributes in test fixtures"
-
-    - description: "Task assignee_ref was using username instead of user UUID"
-      status: "RESOLVED"
-      fix_applied: "Updated test fixtures to extract and use user UUID from Keycloak JWT tokens"
-
-execution_timeline:
-  - "2026-05-30 11:06:31 UTC: Test run initiated"
-  - "2026-05-30 11:06:35 UTC: First tests failing due to missing inbox endpoint"
-  - "2026-05-30 11:06:36 UTC: Implemented /tasks/inbox endpoint in backend"
-  - "2026-05-30 11:06:39 UTC: Added operator-user to Keycloak realm"
-  - "2026-05-30 11:06:39 UTC: Updated test fixtures to use correct user IDs"
-  - "2026-05-30 11:06:40 UTC: Test run continuation with fixed backend"
-  - "2026-05-30 11:07:00 UTC: 2 tests passing, 27 failing due to backend service not running during test"
-
-artifacts:
-  - screenshots/F4-TK01-01-inbox-display.png
-  - test-results/f4-task-inbox.e2e-* (traces and videos)
-
-recommendations:
-  - Ensure backend service (bpm-platform) is running before E2E test execution
-  - Verify all three Docker containers (keycloak, db, db_test) are healthy
-  - Consider adding backend health check to test setup
-  - Add timeout handling for backend service startup in Playwright config
-
-next_steps:
-  - Re-run tests with backend service running
-  - Verify all 29 tests pass
-  - Validate task filtering, sorting, and search functionality
-  - Test mobile viewport scenarios
-  - Validate escalation indicators and role-based visibility
-
-notes: |
-  The test infrastructure is now properly configured. The root causes identified:
-
-  1. **Missing Inbox Endpoint**: The `/api/v1/tasks/inbox` endpoint did not exist in the
-     backend. This was implemented as a wrapper around the existing list handler that
-     automatically filters by the calling user's ID.
-
-  2. **Keycloak Operator User**: Tests require an operator-user with PLATFORM_ADMIN role.
-     This user was added to the Keycloak realm configuration.
-
-  3. **Task Attribute Validation**: The backend now validates that HUMAN_TASK nodes have
-     a 'role' attribute. This was added to all test fixtures.
-
-  4. **User ID Mismatch**: Tasks were being created with username assignee_ref (e.g.,
-     'worker-user') but the backend filters using JWT 'sub' claim (user UUID). Test
-     fixtures were updated to extract the actual user UUID from JWT tokens.
-
-  The test failures in this run are primarily due to the backend service not being
-  available at test start. Once the backend is running, tests should pass.
+next_action: Route to ISSUE-FIXER to diagnose detail panel rendering issue in TaskInboxPage.tsx
