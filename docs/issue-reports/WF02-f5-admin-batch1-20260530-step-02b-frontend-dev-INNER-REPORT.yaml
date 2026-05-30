@@ -36,5 +36,7 @@ validation:
     result: pass
   - command: cd web && npx playwright test tests/e2e/f5-admin-users.e2e.spec.ts
     result: pass
+  - command: cd web && npx playwright test
+    result: pass
 issues: []
 next_action: Route to TEST-DESIGNER (WF-02 Step 3)
