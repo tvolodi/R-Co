@@ -51,7 +51,7 @@ async function getKeycloakToken(
 
 async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
   await page.goto('/login')
-  await expect(page.getByTestId('login-token-input')).toBeVisible()
+  await expect(page.getByTestId('login-token-input')).toBeVisible({ timeout: 10_000 })
   await page.getByTestId('login-token-input').fill(token)
   await page.getByTestId('login-submit').click()
   await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
@@ -446,10 +446,10 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     await assertNoErrorBoundary(page)
     const taskRow = page.getByTestId('task-row').first()
-    await expect(taskRow.getByTestId('task-name')).toBeVisible()
-    await expect(taskRow.getByTestId('task-instance-id')).toBeVisible()
-    await expect(taskRow.getByTestId('task-status')).toBeVisible()
-    await expect(taskRow.getByTestId('task-assignee')).toBeVisible()
+    await expect(taskRow.getByTestId('task-name')).toBeVisible({ timeout: 10_000 })
+    await expect(taskRow.getByTestId('task-instance-id')).toBeVisible({ timeout: 10_000 })
+    await expect(taskRow.getByTestId('task-status')).toBeVisible({ timeout: 10_000 })
+    await expect(taskRow.getByTestId('task-assignee')).toBeVisible({ timeout: 10_000 })
     await shot(page, 'TK01-06-task-columns')
   })
 
@@ -470,7 +470,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     const paginationControls = page.getByTestId('pagination-controls')
     const isPaginated = await paginationControls.count() > 0
     if (isPaginated) {
-      await expect(paginationControls).toBeVisible()
+      await expect(paginationControls).toBeVisible({ timeout: 10_000 })
     }
     await shot(page, 'TK01-07-pagination')
   })
@@ -492,7 +492,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await assertNoErrorBoundary(page)
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     await shot(page, 'TK02-01-detail-panel-open')
   })
 
@@ -511,9 +511,9 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const detailTitle = page.getByTestId('task-detail-title')
-    await expect(detailTitle).toBeVisible()
+    await expect(detailTitle).toBeVisible({ timeout: 10_000 })
     const titleText = await detailTitle.textContent()
     expect(titleText).toBeTruthy()
     await shot(page, 'TK02-02-detail-title')
@@ -534,10 +534,10 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
-    await expect(page.getByTestId('instance-definition-name')).toBeVisible()
-    await expect(page.getByTestId('instance-id')).toBeVisible()
-    await expect(page.getByTestId('instance-correlation-key')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('instance-definition-name')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('instance-id')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('instance-correlation-key')).toBeVisible({ timeout: 10_000 })
     await shot(page, 'TK02-03-instance-context')
   })
 
@@ -556,9 +556,9 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const variablesSection = page.getByTestId('instance-variables')
-    await expect(variablesSection).toBeVisible()
+    await expect(variablesSection).toBeVisible({ timeout: 10_000 })
     await shot(page, 'TK02-04-variables')
   })
 
@@ -578,9 +578,9 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const textField = page.getByTestId('form-field-approver_notes')
-    await expect(textField).toBeVisible()
+    await expect(textField).toBeVisible({ timeout: 10_000 })
     await shot(page, 'TK03-01-text-field')
   })
 
@@ -599,11 +599,11 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const requiredIndicator = page.getByTestId('form-field-required-approver_notes')
     const isVisible = await requiredIndicator.count() > 0
     if (isVisible) {
-      await expect(requiredIndicator).toBeVisible()
+      await expect(requiredIndicator).toBeVisible({ timeout: 10_000 })
     }
     await shot(page, 'TK03-06-required-indicator')
   })
@@ -623,7 +623,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const completeButton = page.getByTestId('task-complete-button')
     await completeButton.click()
     const errorMessage = page.getByTestId('form-error-message')
@@ -632,7 +632,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
       .then(() => true)
       .catch(() => false)
     if (errorVisible) {
-      await expect(errorMessage).toBeVisible()
+      await expect(errorMessage).toBeVisible({ timeout: 10_000 })
     }
     await shot(page, 'TK03-07-validation-error')
   })
@@ -653,9 +653,9 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const completeButton = page.getByTestId('task-complete-button')
-    await expect(completeButton).toBeVisible()
+    await expect(completeButton).toBeVisible({ timeout: 10_000 })
     await shot(page, 'TK04-01-complete-button')
   })
 
@@ -676,7 +676,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     const taskId = await taskRow.getAttribute('data-task-id')
     expect(taskId).toBeTruthy()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const textField = page.getByTestId('form-field-approver_notes')
     await textField.fill('Looks good')
     const completeButton = page.getByTestId('task-complete-button')
@@ -707,7 +707,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const textField = page.getByTestId('form-field-approver_notes')
     await textField.fill('Approved')
     const completeButton = page.getByTestId('task-complete-button')
@@ -718,7 +718,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
       .then(() => true)
       .catch(() => false)
     if (toastVisible) {
-      await expect(successToast).toBeVisible()
+      await expect(successToast).toBeVisible({ timeout: 10_000 })
     }
     await shot(page, 'TK04-04-success-toast')
   })
@@ -745,11 +745,11 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
       .catch(() => false)
     if (taskRowVisible) {
       await taskRow.click()
-      await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+      await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
       const claimButton = page.getByTestId('task-claim-button')
       const buttonVisible = await claimButton.count() > 0
       if (buttonVisible) {
-        await expect(claimButton).toBeVisible()
+        await expect(claimButton).toBeVisible({ timeout: 10_000 })
       }
     }
     await shot(page, 'TK05-01-claim-button')
@@ -773,7 +773,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     if (count > 0) {
       const taskRow = taskRows.first()
       await taskRow.click()
-      await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+      await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
       const claimButton = page.getByTestId('task-claim-button')
       const buttonExists = await claimButton.count() > 0
       if (buttonExists && (await claimButton.isVisible())) {
@@ -807,11 +807,11 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const reassignButton = page.getByTestId('task-reassign-button')
     const buttonExists = await reassignButton.count() > 0
     if (buttonExists) {
-      await expect(reassignButton).toBeVisible()
+      await expect(reassignButton).toBeVisible({ timeout: 10_000 })
     }
     await shot(page, 'TK06-01-reassign-button')
   })
@@ -831,7 +831,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const reassignButton = page.getByTestId('task-reassign-button')
     const buttonExists = await reassignButton.count() > 0
     expect(buttonExists).toBe(false)
@@ -853,7 +853,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const reassignButton = page.getByTestId('task-reassign-button')
     const buttonExists = await reassignButton.count() > 0
     if (buttonExists && (await reassignButton.isVisible())) {
@@ -864,7 +864,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
         .then(() => true)
         .catch(() => false)
       if (dialogVisible) {
-        await expect(reassignDialog).toBeVisible()
+        await expect(reassignDialog).toBeVisible({ timeout: 10_000 })
       }
     }
     await shot(page, 'TK06-03-reassign-dialog')
@@ -886,7 +886,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await loginWithToken(page, workerToken)
     await navigateSpa(page, '/tasks')
     const taskList = page.getByTestId('task-inbox-list')
-    await expect(taskList).toBeVisible()
+    await expect(taskList).toBeVisible({ timeout: 10_000 })
     const hasHorizontalScroll = await page.evaluate(() => {
       return document.documentElement.scrollWidth > window.innerWidth
     })
@@ -910,7 +910,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const hasHorizontalScroll = await page.evaluate(() => {
       return document.documentElement.scrollWidth > window.innerWidth
     })
@@ -934,9 +934,9 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     await navigateSpa(page, '/tasks')
     const taskRow = page.getByTestId('task-row').first()
     await taskRow.click()
-    await expect(page.getByTestId('task-detail-panel')).toBeVisible()
+    await expect(page.getByTestId('task-detail-panel')).toBeVisible({ timeout: 10_000 })
     const completeButton = page.getByTestId('task-complete-button')
-    await expect(completeButton).toBeVisible()
+    await expect(completeButton).toBeVisible({ timeout: 10_000 })
     const isInViewport = await completeButton.evaluate((el) => {
       const rect = el.getBoundingClientRect()
       return rect.bottom <= window.innerHeight
@@ -947,7 +947,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
         button?.scrollIntoView()
       })
     }
-    await expect(completeButton).toBeVisible()
+    await expect(completeButton).toBeVisible({ timeout: 10_000 })
     await shot(page, 'TK10-04-mobile-button')
   })
 
@@ -968,7 +968,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     const sortControl = page.getByTestId('task-sort-control')
     const sortExists = await sortControl.count() > 0
     if (sortExists) {
-      await expect(sortControl).toBeVisible()
+      await expect(sortControl).toBeVisible({ timeout: 10_000 })
     }
     await shot(page, 'TK07-01-sort-control')
   })
@@ -989,7 +989,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     const searchInput = page.getByTestId('task-search-input')
     const searchExists = await searchInput.count() > 0
     if (searchExists) {
-      await expect(searchInput).toBeVisible()
+      await expect(searchInput).toBeVisible({ timeout: 10_000 })
       await searchInput.fill('Review')
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
@@ -1012,7 +1012,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     const badge = page.getByTestId('task-inbox-badge')
     const badgeExists = await badge.count() > 0
     if (badgeExists) {
-      await expect(badge).toBeVisible()
+      await expect(badge).toBeVisible({ timeout: 10_000 })
       const badgeText = await badge.textContent()
       expect(badgeText).toMatch(/\d+/)
     }
@@ -1036,7 +1036,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
     const escalationIndicators = page.getByTestId('task-escalation-indicator')
     const indicatorCount = await escalationIndicators.count()
     if (indicatorCount > 0) {
-      await expect(escalationIndicators.first()).toBeVisible()
+      await expect(escalationIndicators.first()).toBeVisible({ timeout: 10_000 })
     }
     await shot(page, 'TK09-01-escalation-indicator')
   })

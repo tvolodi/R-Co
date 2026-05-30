@@ -2763,4 +2763,158 @@ requirements:
     released_at: '2026-05-30T05:20:31Z'
     release_run: WF02-f3b-inui0910-20260530
     last_updated: '2026-05-30T05:20:31Z'
-total_requirements: 225
+  TK-UI-01:
+    status: RELEASED
+    stage: F4
+    priority: MUST
+    title: Task inbox display and filtering
+    implemented_in:
+    - web/src/pages/tasks/TaskInboxPage.tsx
+    - web/src/api/tasks.ts
+    - web/src/hooks/useTasks.ts
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+  TK-UI-02:
+    status: RELEASED
+    stage: F4
+    priority: MUST
+    title: Task detail panel display
+    implemented_in:
+    - web/src/pages/tasks/TaskInboxPage.tsx
+    - web/src/components/tasks/TaskDetailPanel.tsx
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+  TK-UI-03:
+    status: RELEASED
+    stage: F4
+    priority: MUST
+    title: Dynamic form schema rendering
+    implemented_in:
+    - web/src/components/tasks/TaskDetailPanel.tsx
+    - web/src/components/tasks/DynamicForm.tsx
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+  TK-UI-04:
+    status: RELEASED
+    stage: F4
+    priority: MUST
+    title: Task completion
+    implemented_in:
+    - web/src/hooks/useTasks.ts
+    - src/tasks/store.zig
+    - src/api/routes/tasks.zig
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+  TK-UI-05:
+    status: RELEASED
+    stage: F4
+    priority: MUST
+    title: Claim group-assigned tasks
+    implemented_in:
+    - web/src/hooks/useTasks.ts
+    - web/src/api/tasks.ts
+    - src/api/routes/tasks.zig
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+  TK-UI-06:
+    status: RELEASED
+    stage: F4
+    priority: MUST
+    title: Reassign tasks (operator)
+    implemented_in:
+    - web/src/hooks/useTasks.ts
+    - web/src/components/tasks/ReassignDialog.tsx
+    - src/api/routes/tasks.zig
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+  TK-UI-07:
+    status: RELEASED
+    stage: F4
+    priority: SHOULD
+    title: Sort and free-text search
+    implemented_in:
+    - web/src/pages/tasks/TaskInboxPage.tsx
+    - web/src/hooks/useTasks.ts
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+  TK-UI-08:
+    status: RELEASED
+    stage: F4
+    priority: SHOULD
+    title: Navigation badge count
+    implemented_in:
+    - web/src/components/layout/Sidebar.tsx
+    - web/src/hooks/useTasks.ts
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+  TK-UI-09:
+    status: RELEASED
+    stage: F4
+    priority: SHOULD
+    title: Escalation indicator
+    implemented_in:
+    - web/src/pages/tasks/TaskInboxPage.tsx
+    - web/src/components/tasks/TaskDetailPanel.tsx
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+  TK-UI-10:
+    status: RELEASED
+    stage: F4
+    priority: MUST
+    title: Mobile responsive layout
+    implemented_in:
+    - web/src/pages/tasks/TaskInboxPage.tsx
+    - web/src/components/tasks/TaskDetailPanel.tsx
+    test_spec: web/tests/e2e/f4-task-inbox.e2e.spec.ts
+    test_run: tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+    release_decision: docs/status/release-f4-task-inbox-2026-05-30.yaml
+    tested_at: '2026-05-30'
+    released_at: '2026-05-30'
+    release_run: WF02-f4-task-inbox-20260530
+    last_updated: '2026-05-30T12:05:29Z'
+total_requirements: 235

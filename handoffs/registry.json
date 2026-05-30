@@ -2121,6 +2121,56 @@
       "created_at": "2026-05-30T08:15:00Z",
       "status": "PENDING",
       "stage": "Stage F4 - Task inbox"
+    },
+    {
+      "handoff_id": "cd107847-4132-480d-936a-6e76b7c14af2",
+      "file": "handoffs/WF03-f4-taskdetail-blk-20260530/step-02-test-runner.json",
+      "run_id": "WF03-f4-taskdetail-blk-20260530",
+      "workflow_id": "WF-03",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-05-30T07:41:38Z",
+      "started_at": "2026-05-30T07:41:43Z",
+      "status": "COMPLETED",
+      "stage": "Stage F4 - Task inbox (rework)",
+      "last_updated": "2026-05-30T08:06:21Z",
+      "completed_at": "2026-05-30T08:06:21Z"
+    },
+    {
+      "handoff_id": "10dcd340-a4e3-42ea-b66f-24e939d18ca1",
+      "file": "handoffs/WF02-f4-task-inbox-20260530/step-05-release-validator.json",
+      "run_id": "WF02-f4-task-inbox-20260530",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-05-30T12:02:12Z",
+      "status": "COMPLETED",
+      "stage": "Stage F4 - Task inbox",
+      "completed_at": "2026-05-30T12:03:22Z",
+      "last_updated": "2026-05-30T12:03:22Z"
+    },
+    {
+      "handoff_id": "7a32e243-15d3-4e77-b8d4-8460edf2330f",
+      "file": "handoffs/WF02-f4-task-inbox-20260530/step-06-doc-updater.json",
+      "run_id": "WF02-f4-task-inbox-20260530",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-05-30T12:10:00Z",
+      "status": "COMPLETED",
+      "stage": "Stage F4"
+    },
+    {
+      "handoff_id": "a4650908-512f-49c8-a773-3e3d0ee89e31",
+      "file": "handoffs/WF02-f4-task-inbox-20260530/step-final-frontend-dev.json",
+      "run_id": "WF02-f4-task-inbox-20260530",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-05-30T12:20:00Z",
+      "status": "PENDING",
+      "stage": "Stage F4"
     }
   ]
 }

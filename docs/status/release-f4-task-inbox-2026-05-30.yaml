@@ -1,0 +1,148 @@
+release_id: release-f4-task-inbox-2026-05-30
+run_id: WF02-f4-task-inbox-20260530
+stage: "Stage F4 - Task Inbox"
+decision_date: "2026-05-30T12:03:22Z"
+decision: APPROVED
+decided_by: RELEASE-VALIDATOR
+
+requirements:
+  - id: TK-UI-01
+    name: Task inbox display and filtering
+    priority: MUST
+    test_status: PASS
+    tests_passed: 7
+    tests_total: 7
+    release_status: RELEASED
+
+  - id: TK-UI-02
+    name: Task detail panel display
+    priority: MUST
+    test_status: PASS
+    tests_passed: 4
+    tests_total: 4
+    release_status: RELEASED
+
+  - id: TK-UI-03
+    name: Dynamic form schema rendering
+    priority: MUST
+    test_status: PASS
+    tests_passed: 3
+    tests_total: 3
+    release_status: RELEASED
+
+  - id: TK-UI-04
+    name: Task completion
+    priority: MUST
+    test_status: PASS
+    tests_passed: 3
+    tests_total: 3
+    release_status: RELEASED
+
+  - id: TK-UI-05
+    name: Claim group-assigned tasks
+    priority: MUST
+    test_status: PASS
+    tests_passed: 2
+    tests_total: 2
+    release_status: RELEASED
+
+  - id: TK-UI-06
+    name: Reassign tasks (operator)
+    priority: MUST
+    test_status: PASS
+    tests_passed: 3
+    tests_total: 3
+    release_status: RELEASED
+
+  - id: TK-UI-07
+    name: Sort and free-text search
+    priority: SHOULD
+    test_status: PASS
+    tests_passed: 2
+    tests_total: 2
+    release_status: RELEASED
+
+  - id: TK-UI-08
+    name: Navigation badge count
+    priority: SHOULD
+    test_status: PASS
+    tests_passed: 1
+    tests_total: 1
+    release_status: RELEASED
+
+  - id: TK-UI-09
+    name: Escalation indicator
+    priority: SHOULD
+    test_status: PASS
+    tests_passed: 1
+    tests_total: 1
+    release_status: RELEASED
+
+  - id: TK-UI-10
+    name: Mobile responsive layout
+    priority: MUST
+    test_status: PASS
+    tests_passed: 3
+    tests_total: 3
+    release_status: RELEASED
+
+test_summary:
+  total_tests: 29
+  passed: 29
+  failed: 0
+  pass_rate: 100.0
+  must_requirements_total: 7
+  must_requirements_passing: 7
+  should_requirements_total: 3
+  should_requirements_passing: 3
+
+issues_at_release:
+  blockers: []
+  majors: []
+  minors: []
+
+fixes_applied_before_release:
+  - issue: task_id vs id field mismatch
+    severity: MAJOR
+    resolution: Added normalizeTask() in web/src/api/tasks.ts to map task_id->id at API boundary
+
+  - issue: created_at epoch microseconds not converted to ISO string
+    severity: MAJOR
+    resolution: normalizeTask() converts epoch-us to ISO string via new Date(us/1000).toISOString()
+
+  - issue: form_schema not stored or returned in task detail
+    severity: MAJOR
+    resolution: >
+      Added form_schema_json param to createInTx; getById now fetches t.form_schema::text;
+      serializeTaskDetail includes form_schema and correlation_key in response.
+
+  - issue: operators see empty task inbox
+    severity: MAJOR
+    resolution: >
+      handleInbox passes null assignee_id for operators; TaskInboxPage skips client-side
+      assignee_ref filter for operator roles.
+
+  - issue: useClaimTask using placeholder get() instead of assign endpoint
+    severity: MAJOR
+    resolution: Added tasksApi.assign(); useClaimTask now calls POST /tasks/:id/assign.
+
+  - issue: task-detail-panel testid missing on loading and error states
+    severity: MINOR
+    resolution: Added data-testid="task-detail-panel" to all render branches in TaskDetailPanel.
+
+rationale: >
+  All 7 MUST requirements (TK-UI-01..06, TK-UI-10) have 100% passing E2E test coverage
+  (22/22 tests). All 3 SHOULD requirements (TK-UI-07..09) also pass (7/7 tests).
+  Total test pass rate: 29/29 (100%). No BLOCKER or MAJOR issues remain outstanding.
+  All issues identified during TEST-RUNNER execution were resolved and re-verified in the
+  final test run. Release is approved.
+
+artifacts:
+  - tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml
+  - web/tests/e2e/f4-task-inbox.e2e.spec.ts
+  - web/src/api/tasks.ts
+  - web/src/hooks/useTasks.ts
+  - web/src/pages/tasks/TaskInboxPage.tsx
+  - src/tasks/store.zig
+  - src/engine/instance.zig
+  - src/api/routes/tasks.zig
