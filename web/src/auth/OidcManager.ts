@@ -4,15 +4,33 @@ import { UserManager, WebStorageStateStore, InMemoryWebStorage } from 'oidc-clie
 import type { UserManagerSettings } from 'oidc-client-ts'
 import { fetchTenantConfig } from './tenantConfig'
 
-const _defaultSettings: UserManagerSettings = {
-  authority: (import.meta.env.VITE_OIDC_AUTHORITY as string) ?? 'http://localhost:8081/realms/bpm-default',
-  client_id: (import.meta.env.VITE_OIDC_CLIENT_ID as string) ?? 'bpm-platform-api',
-  redirect_uri: window.location.origin + '/auth/callback',
-  response_type: 'code',
-  scope: 'openid profile',
-  userStore: new WebStorageStateStore({ store: new InMemoryWebStorage() }),
-  automaticSilentRenew: false,
+function buildOidcSettings(authority: string, clientId: string): UserManagerSettings {
+  const normalizedAuthority = authority.replace(/\/+$/, '')
+  return {
+    authority: normalizedAuthority,
+    client_id: clientId,
+    redirect_uri: window.location.origin + '/auth/callback',
+    response_type: 'code',
+    scope: 'openid profile',
+    // Keep endpoint URLs pinned to configured authority. Some local Keycloak setups
+    // advertise discovery metadata without the exposed host port.
+    metadata: {
+      issuer: normalizedAuthority,
+      authorization_endpoint: `${normalizedAuthority}/protocol/openid-connect/auth`,
+      token_endpoint: `${normalizedAuthority}/protocol/openid-connect/token`,
+      userinfo_endpoint: `${normalizedAuthority}/protocol/openid-connect/userinfo`,
+      end_session_endpoint: `${normalizedAuthority}/protocol/openid-connect/logout`,
+      jwks_uri: `${normalizedAuthority}/protocol/openid-connect/certs`,
+    },
+    userStore: new WebStorageStateStore({ store: new InMemoryWebStorage() }),
+    automaticSilentRenew: false,
+  }
 }
+
+const _defaultSettings: UserManagerSettings = buildOidcSettings(
+  (import.meta.env.VITE_OIDC_AUTHORITY as string) ?? 'http://localhost:8081/realms/bpm-default',
+  (import.meta.env.VITE_OIDC_CLIENT_ID as string) ?? 'bpm-platform-api',
+)
 
 /** Backward-compat sync export using default (env-var) config. */
 export const oidcManager = new UserManager(_defaultSettings)
@@ -23,15 +41,7 @@ let _resolvedManager: UserManager | null = null
 export async function getOidcManager(): Promise<UserManager> {
   if (_resolvedManager) return _resolvedManager
   const config = await fetchTenantConfig(window.location.hostname)
-  const settings: UserManagerSettings = {
-    authority: config.oidc_authority,
-    client_id: config.client_id,
-    redirect_uri: window.location.origin + '/auth/callback',
-    response_type: 'code',
-    scope: 'openid profile',
-    userStore: new WebStorageStateStore({ store: new InMemoryWebStorage() }),
-    automaticSilentRenew: false,
-  }
+  const settings: UserManagerSettings = buildOidcSettings(config.oidc_authority, config.client_id)
   _resolvedManager = new UserManager(settings)
   return _resolvedManager
 }

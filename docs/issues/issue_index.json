@@ -1,12 +1,12 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-30T15:08:28Z",
+  "last_updated": "2026-05-30T15:33:03Z",
   "next_issue_id": 61,
   "issues": [
     {
       "id": "ISS-0060",
       "title": "WF03 f5 step04 issue-fix: ADM-UI env/test contract repaired; live OIDC browser reachability remains blocked",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "BLOCKER",
       "run_id": "WF03-f5-batch1-step04-fail-20260530",
       "handoff_id": "c133f4f0-1269-4bc4-b34d-15e4f4b3f410",
@@ -17,7 +17,7 @@
         "docs/issues/ISS-0060.json"
       ],
       "created_at": "2026-05-30T15:08:28Z",
-      "resolved_at": null
+      "resolved_at": "2026-05-30T15:33:03Z"
     },
     {
       "id": "ISS-0059",

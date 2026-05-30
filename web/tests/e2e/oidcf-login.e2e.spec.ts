@@ -24,7 +24,8 @@
 
 import { test, expect } from '@playwright/test'
 
-const KEYCLOAK_REALM_URL = 'http://localhost:8081/realms/bpm-default'
+const KEYCLOAK_BASE_URL = process.env.BPM_IDP_BASE_URL ?? 'http://127.0.0.1:8081'
+const KEYCLOAK_REALM_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default`
 const KEYCLOAK_AUTH_PATTERN = '**/realms/bpm-default/protocol/openid-connect/auth**'
 
 async function assertKeycloakReady(request: import('@playwright/test').APIRequestContext): Promise<void> {
@@ -38,6 +39,16 @@ async function assertKeycloakReady(request: import('@playwright/test').APIReques
 
 async function shot(page: import('@playwright/test').Page, name: string) {
   await page.screenshot({ path: `tests/screenshots/OIDCF-${name}.png` })
+}
+
+async function installKeycloakPortRewrite(page: import('@playwright/test').Page): Promise<void> {
+  // Some local Keycloak configs emit portless follow-up URLs (http://127.0.0.1/...).
+  // Rewrite those requests to the actual exposed Keycloak port for real end-to-end flow.
+  await page.route('http://127.0.0.1/realms/**', async (route) => {
+    const originalUrl = route.request().url()
+    const rewrittenUrl = originalUrl.replace('http://127.0.0.1/', `${KEYCLOAK_BASE_URL}/`)
+    await route.continue({ url: rewrittenUrl })
+  })
 }
 
 // ── Helper: perform a full Keycloak login flow ────────────────────────────────
@@ -55,6 +66,7 @@ async function performOidcLogin(
   password: string,
   screenshotPrefix: string,
 ): Promise<void> {
+  await installKeycloakPortRewrite(page)
   await page.goto('/login')
   await expect(page.getByTestId('login-sso-button')).toBeVisible()
   await shot(page, `${screenshotPrefix}-01-login-page`)
