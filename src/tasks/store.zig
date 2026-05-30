@@ -45,6 +45,10 @@ pub const Task = struct {
     assignee_type: ?[]const u8,
     /// Assignee reference: user_id / group_name / role_name, or null.
     assignee_ref: ?[]const u8,
+    /// JSON-serialized form schema from HUMAN_TASK node definition. Null if none.
+    form_schema: ?[]const u8,
+    /// Correlation key from the parent instance. Null if none.
+    correlation_key: ?[]const u8,
     /// UTC epoch microseconds derived from tasks.created_at.
     created_at: i64,
     /// UTC epoch microseconds derived from tasks.updated_at.
@@ -222,21 +226,25 @@ pub const TaskStore = struct {
         const task_id_hex = uuidToHex(a, task_id) catch return TaskError.InvalidInput;
 
         // Security: $1 = task_id as hex UUID — no SQL string interpolation.
+        // JOIN instance_projections to enrich with correlation_key.
         const rows = conn.query(
             allocator,
             \\SELECT
-            \\    id,
-            \\    instance_id,
-            \\    token_id,
-            \\    node_id,
-            \\    node_name,
-            \\    status,
-            \\    assignee_type,
-            \\    assignee_ref,
-            \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
-            \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
-            \\FROM tasks
-            \\WHERE id = $1::uuid
+            \\    t.id,
+            \\    t.instance_id,
+            \\    t.token_id,
+            \\    t.node_id,
+            \\    t.node_name,
+            \\    t.status,
+            \\    t.assignee_type,
+            \\    t.assignee_ref,
+            \\    (EXTRACT(EPOCH FROM t.created_at) * 1000000)::bigint,
+            \\    (EXTRACT(EPOCH FROM t.updated_at) * 1000000)::bigint,
+            \\    t.form_schema::text,
+            \\    ip.correlation_key
+            \\FROM tasks t
+            \\LEFT JOIN instance_projections ip ON ip.instance_id = t.instance_id
+            \\WHERE t.id = $1::uuid
         ,
             &.{task_id_hex},
         ) catch return TaskError.InvalidInput;
@@ -832,6 +840,8 @@ pub fn freeTask(allocator: std.mem.Allocator, task: Task) void {
     allocator.free(task.node_name);
     if (task.assignee_type) |at| allocator.free(at);
     if (task.assignee_ref) |ar| allocator.free(ar);
+    if (task.form_schema) |fs| allocator.free(fs);
+    if (task.correlation_key) |ck| allocator.free(ck);
 }
 
 /// Parse one DB row into a Task struct.
@@ -847,6 +857,8 @@ pub fn freeTask(allocator: std.mem.Allocator, task: Task) void {
 ///   7  assignee_ref     TEXT or NULL
 ///   8  created_at       bigint (UTC µs)
 ///   9  updated_at       bigint (UTC µs)
+///   10 form_schema      TEXT (JSON) or NULL  — present only in getById detail query
+///   11 correlation_key  TEXT or NULL         — present only in getById detail query
 fn rowToTask(
     allocator: std.mem.Allocator,
     row: []?[]u8,
@@ -876,6 +888,19 @@ fn rowToTask(
     const created_at = std.fmt.parseInt(i64, colGet(row, 8), 10) catch 0;
     const updated_at = std.fmt.parseInt(i64, colGet(row, 9), 10) catch 0;
 
+    // Optional extended columns — only present when getById does the enriched JOIN.
+    const fs_col: ?[]u8 = if (row.len > 10) row[10] else null;
+    const form_schema: ?[]const u8 = if (fs_col) |fs|
+        try allocator.dupe(u8, fs)
+    else
+        null;
+
+    const ck_col: ?[]u8 = if (row.len > 11) row[11] else null;
+    const correlation_key: ?[]const u8 = if (ck_col) |ck|
+        try allocator.dupe(u8, ck)
+    else
+        null;
+
     return Task{
         .task_id = task_id,
         .instance_id = instance_id,
@@ -885,6 +910,8 @@ fn rowToTask(
         .status = status,
         .assignee_type = assignee_type,
         .assignee_ref = assignee_ref,
+        .form_schema = form_schema,
+        .correlation_key = correlation_key,
         .created_at = created_at,
         .updated_at = updated_at,
     };

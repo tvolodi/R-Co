@@ -2292,6 +2292,8 @@ pub const InstanceStore = struct {
                 .status = t_status,
                 .assignee_type = t_assignee_type,
                 .assignee_ref = t_assignee_ref,
+                .form_schema = null,
+                .correlation_key = null,
                 .created_at = t_created_at,
                 .updated_at = t_created_at, // updated_at not fetched; use created_at as stub
             };

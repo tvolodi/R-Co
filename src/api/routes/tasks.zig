@@ -237,12 +237,13 @@ pub fn handleList(
 
         const entry = std.fmt.allocPrint(
             sa,
-            "{{\"task_id\":\"{s}\",\"instance_id\":\"{s}\"," ++
+            "{{\"id\":\"{s}\",\"task_id\":\"{s}\",\"instance_id\":\"{s}\"," ++
                 "\"node_id\":{s},\"node_name\":{s}," ++
                 "\"status\":\"{s}\"," ++
                 "\"assignee_type\":{s},\"assignee_ref\":{s}," ++
                 "\"created_at\":{d}}}",
             .{
+                task_id_hex,
                 task_id_hex,
                 inst_id_hex,
                 node_id_json,
@@ -782,14 +783,26 @@ fn serializeTaskDetail(allocator: std.mem.Allocator, task: task_mod.Task) Handle
     const node_name_json = std.json.Stringify.valueAlloc(a, std.json.Value{ .string = task.node_name }, .{}) catch
         return internalError(allocator);
 
+    // form_schema is already a JSON string (stored as JSONB, returned as text).
+    // Pass it raw into the response body — no extra quoting needed.
+    const form_schema_json: []const u8 = task.form_schema orelse "null";
+
+    const ck_json: []const u8 = if (task.correlation_key) |ck|
+        std.json.Stringify.valueAlloc(a, std.json.Value{ .string = ck }, .{}) catch
+            return internalError(allocator)
+    else
+        "null";
+
     const body = std.fmt.allocPrint(
         allocator,
-        "{{\"task_id\":\"{s}\",\"instance_id\":\"{s}\"," ++
+        "{{\"id\":\"{s}\",\"task_id\":\"{s}\",\"instance_id\":\"{s}\"," ++
             "\"node_id\":{s},\"node_name\":{s}," ++
             "\"status\":\"{s}\"," ++
             "\"assignee_type\":{s},\"assignee_ref\":{s}," ++
+            "\"form_schema\":{s},\"correlation_key\":{s}," ++
             "\"created_at\":{d},\"updated_at\":{d}}}",
         .{
+            task_id_hex,
             task_id_hex,
             inst_id_hex,
             node_id_json,
@@ -797,6 +810,8 @@ fn serializeTaskDetail(allocator: std.mem.Allocator, task: task_mod.Task) Handle
             status_str,
             at_json,
             ar_json,
+            form_schema_json,
+            ck_json,
             task.created_at,
             task.updated_at,
         },
@@ -828,9 +843,15 @@ pub fn handleInbox(
     cursor: ?[]const u8,
     page_size: u16,
 ) HandlerResult {
-    // Delegate to handleList with user_id filter set to the calling user
+    // Operators and above see all tasks (no assignee filter).
+    // Task workers see only tasks assigned to themselves or their groups.
+    const effective_assignee_id: ?[]const u8 = if (actor.is_operator_or_above)
+        null
+    else
+        actor.user_id;
+
     const params = ListTasksParams{
-        .assignee_id = actor.user_id,
+        .assignee_id = effective_assignee_id,
         .status = null,
         .instance_id = null,
         .cursor = cursor,
