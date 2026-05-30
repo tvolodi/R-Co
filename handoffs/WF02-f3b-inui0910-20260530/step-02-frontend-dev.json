@@ -1,0 +1,46 @@
+{
+  "handoff_id": "3760d992-309f-4555-837e-601e1e4600e2",
+  "run_id": "WF02-f3b-inui0910-20260530",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-30T05:13:50.094729Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage F3 \u2014 Instance monitoring UI",
+    "requirement_ids": [
+      "IN-UI-09",
+      "IN-UI-10"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/in-ui-09-active-token-viz.md",
+      "src/design/in-ui-10-history-scrubber.md",
+      "docs/guides/frontend_design_system.md",
+      "web/src/pages/instances/InstanceDetailPage.tsx"
+    ]
+  },
+  "task": {
+    "description": "Implement IN-UI-09 (Active token visualisation) and IN-UI-10 (History scrubber) per the Type E prose designs. Both are SHOULD-priority features for the instance monitoring UI.",
+    "acceptance_criteria": [
+      "ProcessGraphWithTokens component renders process graph with token markers",
+      "Token markers show active, completed, pending, and error states with colour coding",
+      "useProcessGraphWithTokens hook polls instance state every 2 seconds while active",
+      "HistoryScrubber component renders interactive timeline slider at top of Timeline tab",
+      "Scrubber supports click-to-jump, drag interaction, and keyboard navigation",
+      "Scrubbing to past events triggers state reconstruction and displays historical state",
+      "Live mode indicator and 'Resume live' button work correctly",
+      "All E2E tests pass against real backend",
+      "npm run type-check exits 0",
+      "npm run lint exits 0",
+      "npx playwright test passes all tests"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": null,
+  "completed_at": null
+}

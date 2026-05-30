@@ -7,12 +7,15 @@ import { useTasks } from '@/hooks/useTasks'
 import { useDefinition } from '@/hooks/useDefinitions'
 import { useAuth } from '@/auth/AuthContext'
 import { usePolling } from '@/hooks/usePolling'
+import { useHistoryScrubber } from '@/hooks/useHistoryScrubber'
 import { queryKeys } from '@/api/queryKeys'
 import { graphToFlow, type CanvasNodeData, type CanvasEdgeData } from '@/utils/canvas/graphToFlow'
 import { mergeTimelineItems } from './timelineUtils'
 import type { TimelineEntry } from '@/types/api'
 import { EventHistoryPanel } from '@/components/instances/EventHistoryPanel'
 import { TimelineFeed } from '@/components/instances/TimelineFeed'
+import { HistoryScrubber } from '@/components/instances/HistoryScrubber'
+import { ProcessGraphWithTokens } from '@/components/instances/ProcessGraphWithTokens'
 import { CancelInstanceDialog } from '@/components/instances/CancelInstanceDialog'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -84,13 +87,16 @@ export default function InstanceDetailPage() {
   const detailQueryKey = id ? queryKeys.instances.detail(id) : queryKeys.instances.all
   const polling = usePolling({ queryKeyPrefix: detailQueryKey, enabled: !!id })
 
-  const [activeTab, setActiveTab] = useState<'history' | 'timeline'>('history')
+  const [activeTab, setActiveTab] = useState<'graph' | 'history' | 'timeline'>('history')
   const [timelineCursor, setTimelineCursor] = useState<string | undefined>(undefined)
   const [timelineItems, setTimelineItems] = useState<TimelineEntry[]>([])
   const [timelineRequested, setTimelineRequested] = useState(false)
   const [lastAppliedCursor, setLastAppliedCursor] = useState<string | null>(null)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [cancelError, setCancelError] = useState<string | null>(null)
+  const [scrubbedSeqNum, setScrubbedSeqNum] = useState<number | undefined>(undefined)
+
+  const scrubber = useHistoryScrubber(id!, scrubbedSeqNum)
 
   const timelineQuery = useInstanceTimeline(
     id!,
@@ -290,6 +296,20 @@ export default function InstanceDetailPage() {
 
       <div style={{ display: 'flex', gap: '.5rem', borderBottom: '1px solid #e2e8f0', marginBottom: '1rem' }}>
         <button
+          onClick={() => setActiveTab('graph')}
+          style={{
+            border: 'none',
+            borderBottom: activeTab === 'graph' ? '2px solid #2563eb' : '2px solid transparent',
+            background: 'transparent',
+            color: activeTab === 'graph' ? '#1e40af' : '#475569',
+            fontWeight: 600,
+            padding: '.5rem .25rem',
+            cursor: 'pointer',
+          }}
+        >
+          Graph
+        </button>
+        <button
           onClick={() => setActiveTab('history')}
           style={{
             border: 'none',
@@ -319,6 +339,13 @@ export default function InstanceDetailPage() {
         </button>
       </div>
 
+      {activeTab === 'graph' && (
+        <>
+          <h3 style={{ marginBottom: '.75rem' }}>Process Graph with Tokens</h3>
+          <ProcessGraphWithTokens instanceId={id!} />
+        </>
+      )}
+
       {activeTab === 'history' && (
         <>
           <h3 style={{ marginBottom: '.75rem' }}>Event history</h3>
@@ -329,6 +356,18 @@ export default function InstanceDetailPage() {
       {activeTab === 'timeline' && (
         <>
           <h3 style={{ marginBottom: '.75rem' }}>Timeline</h3>
+          {scrubber.error && (
+            <p style={{ color: '#dc2626', marginBottom: '.75rem' }}>Failed to load timeline scrubber.</p>
+          )}
+          <HistoryScrubber
+            instanceId={id!}
+            totalEvents={scrubber.totalEvents}
+            currentPosition={scrubber.currentSeqNum}
+            onPositionChange={setScrubbedSeqNum}
+            isLoading={scrubber.isLoading}
+            isLiveMode={scrubber.isLiveMode}
+            onResumeLive={scrubber.resumeLive}
+          />
           {timelineQuery.error && timelineItems.length === 0 && (
             <p style={{ color: '#dc2626' }}>Failed to load timeline.</p>
           )}
