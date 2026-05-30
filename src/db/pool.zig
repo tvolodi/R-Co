@@ -185,11 +185,24 @@ pub const Conn = struct {
             }
             return PoolError.QueryFailed;
         };
-        defer result.deinit();
-        if (result.rows.len == 0) return null;
-        // Return ownership of first row; caller must free columns and the row slice.
+        if (result.rows.len == 0) {
+            result.deinit();
+            return null;
+        }
+
+        // Transfer ownership of the first row to the caller, then free only
+        // the remaining rows plus the outer slice.
         const row = result.rows[0];
-        result.rows[0] = &.{}; // prevent deinit from freeing the returned row
+        if (result.rows.len > 1) {
+            for (result.rows[1..]) |other_row| {
+                for (other_row) |col| {
+                    if (col) |c| allocator.free(c);
+                }
+                allocator.free(other_row);
+            }
+        }
+        allocator.free(result.rows);
+        result.rows = &.{};
         return row;
     }
 
