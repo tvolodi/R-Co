@@ -11,23 +11,23 @@ import type {
 // ── Users ──────────────────────────────────────────────────────────────────────
 
 export const usersApi = {
-  list: (params?: { page?: number; page_size?: number; search?: string }) =>
-    client.get<PagedResponse<User>>('/api/v1/admin/users', params as Record<string, unknown>),
+  list: (params?: { page?: number; page_size?: number; search?: string; status?: string }) =>
+    client.get<PagedResponse<User>>('/api/v1/users', params as Record<string, unknown>),
 
   get: (id: string) =>
-    client.get<User>(`/api/v1/admin/users/${id}`),
+    client.get<User>(`/api/v1/users/${id}`),
 
-  create: (body: { email: string; display_name: string; password: string; role_ids?: string[] }) =>
-    client.post<User>('/api/v1/admin/users', body),
+  create: (body: { username: string; email: string; display_name: string; status?: 'ACTIVE' | 'INACTIVE'; role_ids?: string[] }) =>
+    client.post<User>('/api/v1/users', body),
 
-  update: (id: string, body: Partial<{ display_name: string; is_active: boolean; role_ids: string[] }>) =>
-    client.patch<User>(`/api/v1/admin/users/${id}`, body),
+  update: (id: string, body: Partial<{ display_name: string; email: string; status: 'ACTIVE' | 'INACTIVE'; is_active: boolean; role_ids: string[]; group_ids: string[] }>) =>
+    client.patch<User>(`/api/v1/users/${id}`, body),
 
   resetPassword: (id: string, newPassword: string) =>
-    client.post<void>(`/api/v1/admin/users/${id}/reset-password`, { password: newPassword }),
+    client.post<void>(`/api/v1/users/${id}/reset-password`, { password: newPassword }),
 
   delete: (id: string) =>
-    client.delete<void>(`/api/v1/admin/users/${id}`),
+    client.delete<void>(`/api/v1/users/${id}`),
 }
 
 // ── Groups ─────────────────────────────────────────────────────────────────────

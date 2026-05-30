@@ -11,6 +11,7 @@ import InstanceBoardPage from '@/pages/instances/InstanceBoardPage'
 import InstanceDetailPage from '@/pages/instances/InstanceDetailPage'
 import TaskInboxPage from '@/pages/tasks/TaskInboxPage'
 import UsersPage from '@/pages/admin/UsersPage'
+import UserDetailPage from '@/pages/admin/UserDetailPage'
 import GroupsPage from '@/pages/admin/GroupsPage'
 import TokensPage from '@/pages/admin/TokensPage'
 import AuditLogPage from '@/pages/admin/AuditLogPage'
@@ -56,6 +57,7 @@ export const router = createBrowserRouter([
       { path: 'instances/:id', element: <InstanceDetailPage /> },
       { path: 'tasks', element: <TaskInboxPage /> },
       { path: 'admin/users', element: <UsersPage /> },
+      { path: 'admin/users/:userId', element: <UserDetailPage /> },
       { path: 'admin/groups', element: <GroupsPage /> },
       { path: 'admin/tokens', element: <TokensPage /> },
       { path: 'admin/audit', element: <AuditLogPage /> },

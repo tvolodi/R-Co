@@ -35,7 +35,6 @@ export function DynamicFormRenderer(props: DynamicFormRendererProps) {
   const [validationSchema, setValidationSchema] = useState<ZodSchema | null>(null)
   const [formFields, setFormFields] = useState<Record<string, TaskFormField>>({})
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const form = useForm<DynamicFormValue>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: validationSchema ? (zodResolver(validationSchema as any) as any) : undefined,
