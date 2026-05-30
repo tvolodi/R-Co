@@ -8,7 +8,9 @@ pub fn build(b: *std.Build) void {
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "platform_version", "0.1.0");
     build_options.addOption(?[]const u8, "adp12_phase", adp12_phase);
+    build_options.addOption([]const u8, "migrations_dir", b.path("migrations").getPath(b));
     const build_options_mod = build_options.createModule();
+    const migrations_dir = b.path("migrations").getPath(b);
 
     // ---------------------------------------------------------------------------
     // Vendor dependencies
@@ -672,6 +674,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_integration_tests = b.addRunArtifact(integration_tests);
+    run_integration_tests.setCwd(b.path("."));
+    run_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
     const xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -682,6 +686,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_xc04_integration_tests = b.addRunArtifact(xc04_integration_tests);
+    run_xc04_integration_tests.setCwd(b.path("."));
+    run_xc04_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
     const stage11_sim_xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -692,6 +698,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_stage11_sim_xc04_integration_tests = b.addRunArtifact(stage11_sim_xc04_integration_tests);
+    run_stage11_sim_xc04_integration_tests.setCwd(b.path("."));
+    run_stage11_sim_xc04_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
     const sim05_08_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -702,6 +710,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_sim05_08_integration_tests = b.addRunArtifact(sim05_08_integration_tests);
+    run_sim05_08_integration_tests.setCwd(b.path("."));
+    run_sim05_08_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
     const obs03_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -712,6 +722,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_obs03_integration_tests = b.addRunArtifact(obs03_integration_tests);
+    run_obs03_integration_tests.setCwd(b.path("."));
+    run_obs03_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
     const obs04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -722,6 +734,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_obs04_integration_tests = b.addRunArtifact(obs04_integration_tests);
+    run_obs04_integration_tests.setCwd(b.path("."));
+    run_obs04_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
     const adp12_regression_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -732,9 +746,12 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_adp12_regression_tests = b.addRunArtifact(adp12_regression_tests);
+    run_adp12_regression_tests.setCwd(b.path("."));
+    run_adp12_regression_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
+    clean_test_db.setCwd(b.path("."));
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
     clean_test_db_step.dependOn(&clean_test_db.step);
 

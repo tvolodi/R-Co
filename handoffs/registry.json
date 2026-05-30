@@ -3,6 +3,66 @@
     "note":  "Active registry — entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
     "entries":  [
         {
+            "handoff_id": "6d3f19d0-4c9f-450e-8e88-1981e4f82010",
+            "file": "handoffs/WF03-f5-step04-r3-intfix-20260530/step-final-backend-dev.json",
+            "run_id": "WF03-f5-step04-r3-intfix-20260530",
+            "workflow_id": "WF-03",
+            "step": "final",
+            "from_agent": "ORCH",
+            "to_agent": "BACKEND-DEV",
+            "created_at": "2026-05-30T16:32:53Z",
+            "started_at": "2026-05-30T16:32:53Z",
+            "completed_at": null,
+            "status": "PENDING",
+            "stage": "WF-03 integration blocker verification",
+            "last_updated": "2026-05-30T16:32:53Z"
+        },
+        {
+            "handoff_id": "8ad1f580-ecf7-49df-9a34-af00f7a695eb",
+            "file": "handoffs/WF03-f5-step04-r3-intfix-20260530/step-02-test-runner.json",
+            "run_id": "WF03-f5-step04-r3-intfix-20260530",
+            "workflow_id": "WF-03",
+            "step": "02",
+            "from_agent": "ORCH",
+            "to_agent": "TEST-RUNNER",
+            "created_at": "2026-05-30T16:26:57Z",
+            "started_at": "2026-05-30T16:26:57Z",
+            "completed_at": "2026-05-30T16:32:12Z",
+            "status": "COMPLETED",
+            "stage": "WF-03 integration blocker verification",
+            "last_updated": "2026-05-30T16:32:12Z"
+        },
+        {
+            "handoff_id": "6c32fb22-a070-434f-a18d-e153745ad164",
+            "file": "handoffs/WF03-f5-step04-r3-intfix-20260530/step-01-issue-fixer.json",
+            "run_id": "WF03-f5-step04-r3-intfix-20260530",
+            "workflow_id": "WF-03",
+            "step": "01",
+            "from_agent": "ORCH",
+            "to_agent": "ISSUE-FIXER",
+            "created_at": "2026-05-30T15:52:33Z",
+            "started_at": "2026-05-30T16:16:58Z",
+            "completed_at": "2026-05-30T16:26:05Z",
+            "status": "COMPLETED",
+            "stage": "WF-03 integration blocker fix",
+            "last_updated": "2026-05-30T16:26:05Z"
+        },
+        {
+            "handoff_id": "ab635098-1241-406c-a38d-681f4b5beab3",
+            "file": "handoffs/WF03-f5-step04-r3-intfix-20260530/step-00-backend-dev.json",
+            "run_id": "WF03-f5-step04-r3-intfix-20260530",
+            "workflow_id": "WF-03",
+            "step": "00",
+            "from_agent": "ORCH",
+            "to_agent": "BACKEND-DEV",
+            "created_at": "2026-05-30T15:51:13Z",
+            "started_at": "2026-05-30T15:51:13Z",
+            "completed_at": "2026-05-30T15:52:08Z",
+            "status": "COMPLETED",
+            "stage": "WF-03 issue resolution for WF02 F5 Step04 rework3 blockers",
+            "last_updated": "2026-05-30T15:52:08Z"
+        },
+        {
             "handoff_id": "eef9502d-fde8-449c-a188-30f748e8797f",
             "file": "handoffs/WF03-f5-batch1-step04-fail-20260530/step-final-frontend-dev.json",
             "run_id": "WF03-f5-batch1-step04-fail-20260530",
@@ -12,10 +72,10 @@
             "to_agent": "FRONTEND-DEV",
             "created_at": "2026-05-30T15:44:48Z",
             "started_at": "2026-05-30T15:44:48Z",
-            "completed_at": null,
-            "status": "IN_PROGRESS",
+            "completed_at": "2026-05-30T15:47:00Z",
+            "status": "COMPLETED",
             "stage": "WF-03 issue resolution retest for F5 batch1",
-            "last_updated": "2026-05-30T15:45:22Z"
+            "last_updated": "2026-05-30T15:47:00Z"
         },
         {
             "handoff_id": "f74070a6-162e-4d8d-89f2-61d31f358f0f",
@@ -101,11 +161,11 @@
                         "from_agent":  "ORCH",
                         "to_agent":  "TEST-RUNNER",
                         "created_at":  "2026-05-30T14:10:19Z",
-                        "started_at":  "2026-05-30T14:25:47Z",
-                        "completed_at":  "2026-05-30T14:40:03Z",
-                        "status":  "COMPLETED",
+                        "started_at": "2026-05-30T15:47:39Z",
+                        "completed_at": "2026-05-30T15:50:24Z",
+                        "status": "COMPLETED",
                         "stage":  "Stage F5 - Administration (batch 1)",
-                        "last_updated":  "2026-05-30T14:40:03Z"
+                        "last_updated": "2026-05-30T15:50:24Z"
                     },
                     {
                         "handoff_id":  "c902deec-1ad8-489e-9ad3-6ff2f0435f50",

@@ -1,0 +1,26 @@
+run_id: WF03-f5-step04-r3-intfix-20260530
+workflow_id: WF-03
+step: "01"
+agent: ISSUE-FIXER
+handoff_id: 6c32fb22-a070-434f-a18d-e153745ad164
+timestamp_utc: 2026-05-30T16:16:05Z
+status: FAIL
+summary: Fixed the two reported Step04 blockers, then reran integration. The original clean_test_db path failure and createInTx signature mismatch are resolved, but the suite still fails in TestHarness migration directory resolution during later integration tests.
+diagnosis:
+  category: E
+  findings:
+    - The original environment blocker was caused by the clean-test-db build step inheriting a web-relative cwd.
+    - The original compile blocker was caused by an outdated createInTx call in tests/integration/ee03_task_store_test.zig missing the form_schema_json argument.
+    - After those fixes, zig build test-integration still fails with runMigrations FileNotFound in tests/integration/helpers.zig for later suites.
+validation:
+  - command: cmd /c "set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration"
+    result: FAIL
+    evidence: clean_test_db.py path blocker removed; createInTx mismatch removed; rerun still fails with runMigrations FileNotFound
+  - command: cmd /c "set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration --cache-dir scratch/zig-cache-wf03-intfix"
+    result: FAIL
+    evidence: fresh-cache rerun reproduces runMigrations FileNotFound
+artifacts:
+  - build.zig
+  - tests/integration/ee03_task_store_test.zig
+  - tests/integration/helpers.zig
+next_action: Route to TEST-RUNNER only after the remaining TestHarness migration path failure is resolved.

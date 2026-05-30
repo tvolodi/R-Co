@@ -12,6 +12,7 @@
 const std = @import("std");
 const pg = @import("pg");
 const root = @import("root");
+const build_options = @import("build_options");
 
 // ---------------------------------------------------------------------------
 // Internal helper: ensure schema_migrations exists, then apply all .sql files
@@ -29,7 +30,44 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         &.{},
     );
 
-    var dir = try std.Io.Dir.cwd().openDir(io, "migrations", .{ .iterate = true });
+    const environ: std.process.Environ = .{ .block = .global };
+    const env_migrations_dir = environ.getAlloc(allocator, "BPM_MIGRATIONS_DIR") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => null,
+        error.OutOfMemory => return error.OutOfMemory,
+        error.InvalidWtf8 => unreachable,
+    };
+    defer if (env_migrations_dir) |path| allocator.free(path);
+
+    const migrations_dir = if (env_migrations_dir) |path| path else build_options.migrations_dir;
+    const migration_candidates = [_][]const u8{
+        "migrations",
+        "../migrations",
+        "../../migrations",
+        "../../../migrations",
+        "../../../../migrations",
+    };
+
+    var dir_open_error: anyerror = error.FileNotFound;
+    var dir: std.Io.Dir = blk: {
+        const opened_absolute = std.Io.Dir.openDirAbsolute(io, migrations_dir, .{ .iterate = true }) catch |abs_err| {
+            dir_open_error = abs_err;
+
+            const opened_relative = std.Io.Dir.cwd().openDir(io, migrations_dir, .{ .iterate = true }) catch |rel_err| {
+                dir_open_error = rel_err;
+                for (migration_candidates) |candidate| {
+                    const opened_candidate = std.Io.Dir.cwd().openDir(io, candidate, .{ .iterate = true }) catch |candidate_err| {
+                        dir_open_error = candidate_err;
+                        if (candidate_err == error.FileNotFound) continue;
+                        return candidate_err;
+                    };
+                    break :blk opened_candidate;
+                }
+                return dir_open_error;
+            };
+            break :blk opened_relative;
+        };
+        break :blk opened_absolute;
+    };
     defer dir.close(io);
 
     var names: std.ArrayList([]u8) = .empty;
@@ -53,7 +91,6 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         }
     }.lt);
 
-    // Collect already-applied versions.
     var applied = std.StringHashMap(void).init(allocator);
     defer {
         var key_iter = applied.keyIterator();
@@ -77,7 +114,6 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         }
     }
 
-    // Apply pending migrations.
     for (names.items) |filename| {
         if (applied.contains(filename)) continue;
 
@@ -90,7 +126,7 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
             return err;
         };
         conn.exec(
-            "INSERT INTO schema_migrations (version) VALUES ($1)",
+            "INSERT INTO schema_migrations(version) VALUES ($1)",
             &.{filename},
         ) catch |err| {
             conn.rollback() catch {};
@@ -98,6 +134,8 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         };
         try conn.commit();
     }
+
+    return;
 }
 
 fn configureSessionTimeouts(conn: *pg.Conn) !void {
