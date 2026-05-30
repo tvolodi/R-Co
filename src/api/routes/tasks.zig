@@ -805,6 +805,40 @@ fn serializeTaskDetail(allocator: std.mem.Allocator, task: task_mod.Task) Handle
     return HandlerResult{ .status_code = 200, .body = body };
 }
 
+// ---------------------------------------------------------------------------
+// handleInbox  (TK-UI / user inbox)
+// ---------------------------------------------------------------------------
+
+/// GET /api/v1/tasks/inbox
+///
+/// Returns tasks assigned to the calling user (inbox).
+/// Wraps handleList with automatic filtering by actor.user_id and actor's groups.
+///
+/// Authorisation: any authenticated role.
+///
+/// Success:              HTTP 200 + JSON TaskListResponse.
+/// Invalid page_size:    HTTP 422 + Problem Details.
+/// Malformed cursor:     HTTP 422 + Problem Details.
+/// Pool exhausted:       HTTP 503 + Problem Details.
+/// Server error:         HTTP 500 + Problem Details.
+pub fn handleInbox(
+    store: *task_mod.TaskStore,
+    allocator: std.mem.Allocator,
+    actor: Actor,
+    cursor: ?[]const u8,
+    page_size: u16,
+) HandlerResult {
+    // Delegate to handleList with user_id filter set to the calling user
+    const params = ListTasksParams{
+        .assignee_id = actor.user_id,
+        .status = null,
+        .instance_id = null,
+        .cursor = cursor,
+        .page_size = page_size,
+    };
+    return handleList(store, allocator, actor, params);
+}
+
 fn errorResult(
     allocator: std.mem.Allocator,
     status_code: u16,

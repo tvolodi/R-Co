@@ -11,6 +11,14 @@ const KEYCLOAK_OPERATOR_USERNAME = 'operator-user'
 const KEYCLOAK_OPERATOR_PASSWORD = 'operator-pass'
 const API_PREFIX = '/api/v1'
 
+// Decode JWT token to extract user ID (sub claim)
+function decodeJwtPayload(token: string): { sub?: string; preferred_username?: string; [key: string]: unknown } {
+  const parts = token.split('.')
+  if (parts.length !== 3) throw new Error('Invalid JWT token')
+  const decoded = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'))
+  return decoded
+}
+
 async function shot(page: import('@playwright/test').Page, name: string): Promise<void> {
   const dir = path.resolve(SCREENSHOTS_DIR)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
@@ -80,6 +88,7 @@ async function assertNoErrorBoundary(page: import('@playwright/test').Page): Pro
 async function createSimpleDefinition(
   request: import('@playwright/test').APIRequestContext,
   token: string,
+  assigneeUserId: string,
 ): Promise<{ id: string; name: string; version: string }> {
   const unique = `f4-task-${Date.now()}`
   const createResponse = await request.post(`${API_PREFIX}/definitions`, {
@@ -102,7 +111,7 @@ async function createSimpleDefinition(
             attributes: JSON.stringify({
               role: 'reviewer',
               assignee_type: 'USER',
-              assignee_ref: 'worker-user',
+              assignee_ref: assigneeUserId,
               form_schema: {
                 type: 'object',
                 properties: {
@@ -269,17 +278,25 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   // Per-test fixtures - no shared state across tests
   let workerToken = ''
   let operatorToken = ''
+  let workerUserId = ''
+  let operatorUserId = ''
 
   test.beforeEach(async ({ request }) => {
     // Authenticate tokens once per test
     workerToken = await getKeycloakToken(request, KEYCLOAK_WORKER_USERNAME, KEYCLOAK_WORKER_PASSWORD)
     operatorToken = await getKeycloakToken(request, KEYCLOAK_OPERATOR_USERNAME, KEYCLOAK_OPERATOR_PASSWORD)
+
+    // Extract user IDs from JWT tokens
+    const workerPayload = decodeJwtPayload(workerToken)
+    const operatorPayload = decodeJwtPayload(operatorToken)
+    workerUserId = workerPayload.sub || KEYCLOAK_WORKER_USERNAME
+    operatorUserId = operatorPayload.sub || KEYCLOAK_OPERATOR_USERNAME
   })
 
   // TK-UI-01: Task inbox display and filtering
   test('TK-UI-01-E2E-01: task inbox displays user assigned tasks', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -324,7 +341,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-01-E2E-03: "My Tasks" filter shows only user-assigned tasks', async ({ page, request }) => {
     // Per-test fixtures: create both simple and group task instances
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const groupDef = await createDefinitionWithGroupTask(request, operatorToken)
 
     const simpleInst = await startInstanceApi(
@@ -355,7 +372,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-01-E2E-04: "My Group Tasks" filter shows only group-assigned tasks', async ({ page, request }) => {
     // Per-test fixtures: create both simple and group task instances
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const groupDef = await createDefinitionWithGroupTask(request, operatorToken)
 
     const simpleInst = await startInstanceApi(
@@ -387,7 +404,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-01-E2E-05: "All Tasks" filter available only to operators', async ({ page, request }) => {
     // Per-test fixture: create a simple task
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -416,7 +433,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-01-E2E-06: task list displays required columns', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -438,7 +455,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-01-E2E-07: pagination controls work for task lists', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -461,7 +478,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   // TK-UI-02: Task detail panel
   test('TK-UI-02-E2E-01: clicking task opens detail panel', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -481,7 +498,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-02-E2E-02: task detail panel displays node name', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -504,7 +521,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-02-E2E-03: panel displays instance context information', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -526,7 +543,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-02-E2E-04: panel displays current instance variables', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -548,7 +565,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   // TK-UI-03: Dynamic form rendering
   test('TK-UI-03-E2E-01: text field from form schema renders as input', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -569,7 +586,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-03-E2E-06: required fields are marked as required', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -593,7 +610,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-03-E2E-07: form submission blocked if required fields empty', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -623,7 +640,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   // TK-UI-04: Complete task
   test('TK-UI-04-E2E-01: complete button is visible on task detail', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -644,7 +661,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-04-E2E-02: complete button submits form to backend', async ({ page, request }) => {
     // Per-test fixture: create SEPARATE simple definition and instance for this test
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -677,7 +694,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-04-E2E-04: success toast shown after task completion', async ({ page, request }) => {
     // Per-test fixture: create SEPARATE simple definition and instance for this test
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -777,7 +794,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   // TK-UI-06: Reassign task
   test('TK-UI-06-E2E-01: reassign button visible for operators', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -801,7 +818,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-06-E2E-02: reassign button not visible for task workers', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -823,7 +840,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-06-E2E-03: reassign button opens search dialog', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -856,7 +873,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   // TK-UI-10: Mobile responsive
   test('TK-UI-10-E2E-01: task inbox displays on 375px mobile viewport', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -879,7 +896,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-10-E2E-02: task detail page renders without horizontal scrolling', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -903,7 +920,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-10-E2E-04: complete button accessible on mobile', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -937,7 +954,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   // TK-UI-07: Sort and search (SHOULD requirement)
   test('TK-UI-07-E2E-01: tasks can be sorted by created time', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -958,7 +975,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
 
   test('TK-UI-07-E2E-03: free-text search filters by task name', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -982,7 +999,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   // TK-UI-08: Badge count (SHOULD requirement)
   test('TK-UI-08-E2E-01: navigation badge displays current task count', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
@@ -1005,7 +1022,7 @@ test.describe('F4 task inbox UI (TK-UI-01..10)', () => {
   // TK-UI-09: Escalation indicator (SHOULD requirement)
   test('TK-UI-09-E2E-01: escalated tasks show visual indicator in list', async ({ page, request }) => {
     // Per-test fixture: create simple definition and instance
-    const simpleDef = await createSimpleDefinition(request, operatorToken)
+    const simpleDef = await createSimpleDefinition(request, operatorToken, workerUserId)
     const simpleInst = await startInstanceApi(
       request,
       operatorToken,
