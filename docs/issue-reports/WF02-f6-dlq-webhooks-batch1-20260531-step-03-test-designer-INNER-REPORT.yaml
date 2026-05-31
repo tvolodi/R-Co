@@ -1,0 +1,38 @@
+report_id: WF02-f6-dlq-webhooks-batch1-20260531-step-03-test-designer
+agent_id: TEST-DESIGNER
+run_id: WF02-f6-dlq-webhooks-batch1-20260531
+step: "03"
+created_at: "2026-05-31T02:44:07Z"
+summary: >-
+  Finalized DLQ-UI-01..04 requirement-level test coverage artifacts by adding
+  dedicated specs and refactoring the F6 DLQ Playwright suite into explicit
+  per-requirement cases with non-deferred fixture assertions. After starting
+  backend services, execution remained blocked by empty DLQ fixture state.
+files_created:
+  - tests/specs/DLQ-UI-01.md
+  - tests/specs/DLQ-UI-02.md
+  - tests/specs/DLQ-UI-03.md
+  - tests/specs/DLQ-UI-04.md
+  - docs/issue-reports/WF02-f6-dlq-webhooks-batch1-20260531-step-03-test-designer-INNER-REPORT.yaml
+files_modified:
+  - web/tests/e2e/f6-dlq.e2e.spec.ts
+  - handoffs/WF02-f6-dlq-webhooks-batch1-20260531/step-03-test-designer.json
+  - handoffs/registry.json
+tests_run:
+  - name: npx playwright test tests/e2e/f6-dlq.e2e.spec.ts
+    status: fail
+    detail: "Initial run failed with ECONNREFUSED on http://127.0.0.1:8080/health/ready before backend startup."
+  - name: powershell -NoProfile -ExecutionPolicy Bypass -File ./start-backend.ps1
+    status: pass
+    detail: "Backend started and reported API server listening on port 8080."
+  - name: npx playwright test tests/e2e/f6-dlq.e2e.spec.ts (post-startup)
+    status: fail
+    detail: "All 4 tests failed with DLQ fixture precondition error due to empty queue (no rows)."
+issues_found:
+  - severity: BLOCKER
+    description: "No DLQ fixtures are present in runtime, so MUST-path detail/retry/discard checks cannot execute against real data."
+    owner: BACKEND-DEV
+next_steps:
+  - Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)
+blockers:
+  - "DLQ queue empty in runtime: expected at least one DLQ row for MUST coverage execution"

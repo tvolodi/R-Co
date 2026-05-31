@@ -1,0 +1,42 @@
+{
+  "stage": "Stage F6 - DLQ + Webhooks (batch 1)",
+  "date": "2026-05-31T04:49:03Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01": {
+      "p99_read_ms": {
+        "target": "<=200",
+        "actual": 2.464,
+        "passed": true
+      },
+      "p99_write_ms": {
+        "target": "<=500",
+        "actual": 5.022,
+        "passed": true
+      }
+    },
+    "NFR-02": {
+      "append_throughput_eps": {
+        "target": ">=1000",
+        "actual": 76455.177,
+        "passed": true
+      }
+    },
+    "NFR-04": {
+      "replay_10000_ms": {
+        "target": "<=5000",
+        "actual": 67.381,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "benchmark_run_id": "bench-1780202917827"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "DLQ-UI-01",
+    "DLQ-UI-02",
+    "DLQ-UI-03",
+    "DLQ-UI-04"
+  ]
+}

@@ -193,9 +193,24 @@ fn extractJsonStringField(
     return try allocator.dupe(u8, body[after..end_rel]);
 }
 
+fn fillRandom(buf: []u8) void {
+    const builtin = @import("builtin");
+    switch (comptime builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
+        else => @compileError("fillRandom: unsupported OS"),
+    }
+}
+
 fn randomUuidString() [36]u8 {
     var bytes = [_]u8{0} ** 16;
-    std.crypto.random.bytes(&bytes);
+    fillRandom(&bytes);
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
 

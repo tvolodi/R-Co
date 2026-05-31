@@ -4,6 +4,16 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage F6 - DLQ + Webhooks (Batch 1)
+
+### DLQ-UI-01..DLQ-UI-04 - Dead-letter queue operator release batch (RELEASED 2026-05-31)
+- **DLQ-UI-01** (MUST): DLQ list - Added a paginated DLQ table showing source type, related instance link, failure reason, retry count, created time, and current status.
+- **DLQ-UI-02** (MUST): DLQ detail panel - Added item detail view exposing full failure reason, context JSON, retry history, and source payload information.
+- **DLQ-UI-03** (MUST): Retry action - Added row-level Retry action wiring to DLQ retry mutation with immediate UI feedback on mutation outcome.
+- **DLQ-UI-04** (MUST): Discard action - Added confirmation-gated Discard action with explicit warning copy when the DLQ item is tied to an instance cancellation path.
+- Validation evidence passed in tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml; release approval is recorded in docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json.
+- Requirements: DLQ-UI-01, DLQ-UI-02, DLQ-UI-03, DLQ-UI-04 (Stage F6) - RELEASED
+
 ### Stage F5 - Administration (Batch 1)
 
 ### ADM-UI-01..ADM-UI-04 - Admin users release batch (RELEASED 2026-05-30)

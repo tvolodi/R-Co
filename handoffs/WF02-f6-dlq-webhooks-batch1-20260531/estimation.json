@@ -1,0 +1,36 @@
+{
+  "run_id": "WF02-f6-dlq-webhooks-batch1-20260531",
+  "created_at": "2026-05-31T01:09:56Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "DLQ-UI-01",
+    "DLQ-UI-02",
+    "DLQ-UI-03",
+    "DLQ-UI-04"
+  ],
+  "difficulty": 3,
+  "difficulty_rationale": "UI work spans multiple new pages/actions and E2E coverage with existing admin/operator routes, but no novel platform algorithm.",
+  "integration_surface": "medium",
+  "integration_surface_rationale": "Touches navigation, DLQ screens, webhook screens, API client calls, and E2E tests across frontend modules.",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "frontend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 33,
+    "code-design-validator": 15,
+    "frontend-dev": 44,
+    "test-designer": 8,
+    "test-design-validator": 13,
+    "test-runner": 4,
+    "release-validator": 4,
+    "doc-updater": 3,
+    "total": 124
+  }
+}

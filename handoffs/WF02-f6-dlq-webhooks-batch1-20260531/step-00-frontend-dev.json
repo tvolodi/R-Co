@@ -1,0 +1,68 @@
+{
+  "handoff_id": "4bc5a6ed-6318-4521-993d-48b966998ac5",
+  "run_id": "WF02-f6-dlq-webhooks-batch1-20260531",
+  "workflow_id": "WF-02",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "file": "handoffs/WF02-f6-dlq-webhooks-batch1-20260531/step-00-frontend-dev.json",
+  "created_at": "2026-05-31T01:09:56Z",
+  "started_at": "2026-05-31T01:09:56Z",
+  "completed_at": "2026-05-31T01:11:28Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F6 - DLQ + Webhooks (batch 1)",
+    "requirement_ids": [
+      "DLQ-UI-01",
+      "DLQ-UI-02",
+      "DLQ-UI-03",
+      "DLQ-UI-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/status/implementation_order.md",
+      "docs/BPM_Platform_Frontend_Requirements.md",
+      "docs/agents/protocols/GIT_SETUP.md"
+    ]
+  },
+  "task": {
+    "description": "Execute fn:git-setup for run WF02-f6-dlq-webhooks-batch1-20260531 per docs/agents/protocols/GIT_SETUP.md. Create/switch to feature/WF02-f6-dlq-webhooks-batch1-20260531, push remote branch, and record git evidence for downstream Stage F6 implementation.",
+    "acceptance_criteria": [
+      "feature branch feature/WF02-f6-dlq-webhooks-batch1-20260531 exists and is pushed",
+      "result.git_evidence.branch_name recorded",
+      "result.git_evidence.push_status is ok"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Executed fn:git-setup for WF02-f6-dlq-webhooks-batch1-20260531: synchronized main, created feature/WF02-f6-dlq-webhooks-batch1-20260531, and pushed it to origin with upstream tracking.",
+    "artifacts_out": [
+      "branch: feature/WF02-f6-dlq-webhooks-batch1-20260531",
+      "docs/issue-reports/WF02-f6-dlq-webhooks-batch1-20260531-step-00-frontend-dev-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-f6-dlq-webhooks-batch1-20260531",
+      "commit_sha_list": [
+        "42cf589"
+      ],
+      "remote_branch": "origin/feature/WF02-f6-dlq-webhooks-batch1-20260531",
+      "push_status": "ok"
+    },
+    "next_action": "Route to ORCH for WF-02 Step 1 dispatch."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "git_evidence": {
+    "branch_name": "feature/WF02-f6-dlq-webhooks-batch1-20260531",
+    "commit_sha_list": [
+      "42cf589"
+    ],
+    "remote_branch": "origin/feature/WF02-f6-dlq-webhooks-batch1-20260531",
+    "push_status": "ok"
+  }
+}
