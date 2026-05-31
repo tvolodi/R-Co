@@ -1,0 +1,49 @@
+{
+  "handoff_id": "c86b72a8-bcea-4b41-901c-7211576abc5e",
+  "run_id": "WF02-f6-dlq-webhooks-batch1-20260531",
+  "workflow_id": "WF-02",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "file": "handoffs/WF02-f6-dlq-webhooks-batch1-20260531/step-02b-frontend-dev.json",
+  "created_at": "2026-05-31T01:16:03Z",
+  "started_at": "2026-05-31T01:16:03Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F6 - DLQ + Webhooks (batch 1)",
+    "requirement_ids": [
+      "DLQ-UI-01",
+      "DLQ-UI-02",
+      "DLQ-UI-03",
+      "DLQ-UI-04"
+    ],
+    "related_handoff_ids": [
+      "2f6d88d8-fccc-4524-8506-db500c546d0c",
+      "2b3068df-11f8-4eea-8862-66f439152705"
+    ],
+    "artifacts_in": [
+      "templates/specs/dlq-items.list-page.yaml",
+      "src/design/f6-dlq-ui-batch1.md",
+      "docs/BPM_Platform_Frontend_Requirements.md",
+      "docs/guides/frontend_developer_guide.md",
+      "docs/guides/frontend_design_system.md"
+    ]
+  },
+  "task": {
+    "description": "Implement Stage F6 batch1 frontend requirements DLQ-UI-01..04 in web/src and web/tests using approved design artifacts. Follow frontend conventions, real backend E2E policy, and complete full validation suite (type-check, lint, tests, build, playwright). Commit and push implementation to feature/WF02-f6-dlq-webhooks-batch1-20260531.\n\nREWORK ITERATION 1:\n- [BLOCKER] npx playwright test failed: 97 failed, 21 passed, 6 did not run.\n- [BLOCKER] Acceptance criterion requiring full validation suite pass is unmet.\nRework directive: resolve root causes for current Playwright failures (including login timeout and /definitions HTTP 500 paths), then rerun the required validation suite to green and update git evidence.\n\nREWORK ITERATION 2:\n- [BLOCKER] Full Playwright suite still not green (29 failed, 21 passed), including login timeouts and POST /definitions HTTP 500 during long-run execution.\n- [MAJOR] Backend crash path in identity group listing was patched but additional failing paths remain.\nRework directive: continue root-cause fixes until full suite passes; prioritize backend 500 and auth/login timeout paths, then rerun complete validation and update git evidence.",
+    "acceptance_criteria": [
+      "DLQ list, detail, retry, and discard behaviors implemented per requirements",
+      "Validation commands pass and evidence recorded in result",
+      "Implementation commit pushed to feature/WF02-f6-dlq-webhooks-batch1-20260531"
+    ],
+    "functions_to_call": [
+      "fn:implement-frontend-feature",
+      "fn:run-frontend-validation"
+    ]
+  },
+  "result": null,
+  "rework_count": 2,
+  "max_rework": 3
+}

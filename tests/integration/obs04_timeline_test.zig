@@ -13,8 +13,6 @@ const PoolConfig = bpm.pool.PoolConfig;
 const Registry = bpm.registry.Registry;
 const EventStore = bpm.store.Store;
 
-var uuid_counter: u64 = 0;
-
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
@@ -197,10 +195,7 @@ fn extractJsonStringField(
 
 fn randomUuidString() [36]u8 {
     var bytes = [_]u8{0} ** 16;
-    const seed = 0x6f62733400000000 ^ uuid_counter;
-    uuid_counter += 1;
-    var prng = std.Random.DefaultPrng.init(seed);
-    prng.random().bytes(&bytes);
+    std.crypto.random.bytes(&bytes);
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
 

@@ -1,0 +1,60 @@
+report_id: WF02-f6-dlq-webhooks-batch1-20260531-step-02b-frontend-dev
+agent_id: FRONTEND-DEV
+run_id: WF02-f6-dlq-webhooks-batch1-20260531
+step: "02b"
+created_at: "2026-05-31T01:40:21Z"
+updated_at: "2026-05-31T02:21:29Z"
+summary: >-
+  Implemented DLQ-UI-01..04 in the frontend with list filters, detail panel,
+  retry/discard action handling, and discard confirmation warning for instance-linked items.
+  Rework iteration fixed a backend crash path in identity group listing
+  (double-free ownership bug in src/identity/registry.zig), which stabilized API uptime.
+  Mandatory validation passed for frontend conventions, test isolation lint, type-check, lint,
+  unit tests, and production build. Full Playwright suite remains red in long-run execution
+  with login timeout and POST /definitions 500 failures.
+files_created:
+  - docs/issue-reports/WF02-f6-dlq-webhooks-batch1-20260531-step-02b-frontend-dev-INNER-REPORT.yaml
+  - web/tests/e2e/f6-dlq.e2e.spec.ts
+files_modified:
+  - web/src/pages/dlq/DlqPage.tsx
+  - web/src/pages/dlq/DlqItemsPage.tsx
+  - web/src/api/dlq.ts
+  - web/src/api/queryKeys.ts
+  - web/src/types/api.ts
+  - tests/integration/helpers.zig
+  - tests/integration/obs04_timeline_test.zig
+  - handoffs/WF02-f6-dlq-webhooks-batch1-20260531/step-02b-frontend-dev.json
+  - handoffs/registry.json
+tests_run:
+  - name: python tools/lint_frontend_conventions.py
+    status: pass
+    detail: "OK — 112 file(s) checked, no convention issues."
+  - name: python tools/lint_test_isolation.py
+    status: pass
+    detail: "OK — 76 file(s) checked, no isolation issues (after fixing 2 MAJOR findings)."
+  - name: npm run type-check
+    status: pass
+    detail: "TypeScript check completed with no errors."
+  - name: npm run lint
+    status: pass
+    detail: "ESLint completed with no errors."
+  - name: npm run test
+    status: pass
+    detail: "Vitest passed: 3 files, 22 tests."
+  - name: npm run build
+    status: pass
+    detail: "Production build succeeded."
+  - name: npx playwright test
+    status: fail
+    detail: "Failing full-run output captured with 29 failed, 21 passed. Remaining failures cluster around login timeout and POST /definitions 500."
+issues_found:
+  - severity: BLOCKER
+    description: Full Playwright suite failed; acceptance criterion requiring full validation pass cannot be met in current workspace state.
+  - severity: BLOCKER
+    description: Long-run E2E still shows token-login navigation timeouts and backend definition creation 500 errors after the crash fix.
+  - severity: MAJOR
+    description: Reproduced and fixed backend segmentation fault in identity group listing by separating borrowed-row/owned-row materialization paths.
+next_steps:
+  - Route to ORCH for backend-focused rework on remaining login/definition API failures before retrying Step 02b validation.
+blockers:
+  - Full E2E suite remains red due unresolved login timeout and POST /definitions 500 under long-run execution.

@@ -47,22 +47,17 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         "../../../../migrations",
     };
 
-    var dir_open_error: anyerror = error.FileNotFound;
     const dir: std.Io.Dir = blk: {
-        const opened_absolute = std.Io.Dir.openDirAbsolute(io, migrations_dir, .{ .iterate = true }) catch |abs_err| {
-            dir_open_error = abs_err;
-
-            const opened_relative = std.Io.Dir.cwd().openDir(io, migrations_dir, .{ .iterate = true }) catch |rel_err| {
-                dir_open_error = rel_err;
+        const opened_absolute = std.Io.Dir.openDirAbsolute(io, migrations_dir, .{ .iterate = true }) catch {
+            const opened_relative = std.Io.Dir.cwd().openDir(io, migrations_dir, .{ .iterate = true }) catch {
                 for (migration_candidates) |candidate| {
-                    const opened_candidate = std.Io.Dir.cwd().openDir(io, candidate, .{ .iterate = true }) catch |candidate_err| {
-                        dir_open_error = candidate_err;
-                        if (candidate_err == error.FileNotFound) continue;
-                        return candidate_err;
+                    const opened_candidate = std.Io.Dir.cwd().openDir(io, candidate, .{ .iterate = true }) catch |candidate_open_err| {
+                        if (candidate_open_err == error.FileNotFound) continue;
+                        return candidate_open_err;
                     };
                     break :blk opened_candidate;
                 }
-                return dir_open_error;
+                return error.FileNotFound;
             };
             break :blk opened_relative;
         };
