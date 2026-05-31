@@ -288,11 +288,22 @@ requirements:
     title: Start instance
     released_at: '2026-05-22'
     release_run: WF02-ee01-20260522
+    implemented_in:
+    - src/definition/snapshot.zig
+    - src/definition/store.zig
+    - migrations/005_instances.sql
+    - src/engine/instance.zig
+    - src/api/routes/instances.zig
+    - tests/integration/ee01_start_instance_test.zig
   EE-02:
     status: RELEASED
     stage: 3
     priority: MUST
     title: Pure transition function
+    implemented_in:
+    - src/engine/transition.zig
+    - src/main.zig
+    - tests/unit/engine_test.zig
   EE-03:
     status: RELEASED
     stage: 3
@@ -300,6 +311,17 @@ requirements:
     title: Task activation
     released_at: '2026-05-22'
     release_run: WF02-ee03-20260522
+    implemented_in:
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - migrations/005_instances.sql
+    - src/tasks/store.zig
+    - src/api/routes/tasks.zig
+    - src/main.zig
+    - src/bpm.zig
+    - tests/unit/test_engine_apply.zig
+    - tests/unit/test_tasks_store.zig
+    - tests/unit/test_tasks_api.zig
   EE-04:
     status: RELEASED
     stage: 3
@@ -371,6 +393,15 @@ requirements:
     title: Variable scoping
     released_at: '2026-05-22T11:44:54Z'
     release_run: WF02-ee09-20260522
+    implemented_in:
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - src/bpm.zig
+    - src/tools/json_schema.zig
+    - src/api/routes/tasks.zig
+    - tests/unit/test_ee09_merge_variables.zig
+    - tests/integration/ee09_merge_variables_test.zig
+    - build.zig
   EE-10:
     status: RELEASED
     stage: 3
@@ -392,6 +423,16 @@ requirements:
     released_at: '2026-05-22T13:24:54Z'
     release_run: WF02-ee11-20260522
     last_updated: '2026-05-22T13:24:54Z'
+    implemented_in:
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - src/event_store/store.zig
+    - src/bpm.zig
+    - migrations/003_event_archive.sql
+    - src/engine/reconstruction.zig
+    - src/api/routes/instances.zig
+    - src/main.zig
+    - tests/unit/reconstruction_test.zig
   EE-12:
     status: RELEASED
     stage: 3
@@ -794,6 +835,15 @@ requirements:
     released_at: '2026-05-24T22:56:58Z'
     release_run: WF02-obs03-20260525
     last_updated: '2026-05-24T23:01:03Z'
+    implemented_in:
+    - migrations/020_obs03_audit_entries.sql
+    - src/obs/audit.zig
+    - src/api/routes/audit.zig
+    - src/main.zig
+    - src/bpm.zig
+    - tests/integration/obs03_audit_log_test.zig
+    - tests/integration/main_test.zig
+    - build.zig
   OBS-04:
     status: RELEASED
     stage: 6
@@ -805,6 +855,24 @@ requirements:
     released_at: '2026-05-25T03:50:29Z'
     release_run: WF02-obs04-20260525
     last_updated: '2026-05-25T03:53:44Z'
+    implemented_in:
+    - src/obs/timeline.zig
+    - src/api/routes/instances.zig
+    - src/api/authorization.zig
+    - src/api/openapi/builder.zig
+    - tests/unit/test_obs04_timeline.zig
+    - build.zig
+    - web/src/types/api.ts
+    - web/src/api/instances.ts
+    - web/src/hooks/useInstances.ts
+    - web/src/pages/instances/InstanceDetailPage.tsx
+    - web/src/pages/instances/timelineUtils.ts
+    - web/src/pages/instances/timelineUtils.test.ts
+    - web/src/api/identity.ts
+    - tests/integration/obs04_timeline_test.zig
+    - tests/integration/main_test.zig
+    - src/main.zig
+    - web/tests/e2e/obs04.timeline.e2e.spec.ts
   OBS-05:
     status: RELEASED
     stage: 6
@@ -816,6 +884,14 @@ requirements:
     released_at: '2026-05-25T17:06:29Z'
     release_run: WF02-obs05-20260525
     last_updated: '2026-05-25T17:10:51Z'
+    implemented_in:
+    - src/dlq/store.zig
+    - src/api/routes/dlq.zig
+    - src/bpm.zig
+    - src/main.zig
+    - migrations/021_obs05_dead_letter_context.sql
+    - tests/integration/obs05_dlq_test.zig
+    - tests/integration/main_test.zig
   OBS-06:
     status: RELEASED
     stage: 6
@@ -827,6 +903,13 @@ requirements:
     released_at: '2026-05-25T07:24:54Z'
     release_run: WF02-obs06-20260525
     last_updated: '2026-05-25T07:29:10Z'
+    implemented_in:
+    - src/obs/alerts.zig
+    - src/main.zig
+    - src/bpm.zig
+    - migrations/022_obs06_alerting_state.sql
+    - tests/integration/obs06_alerts_test.zig
+    - tests/integration/main_test.zig
   EXT-01:
     status: RELEASED
     stage: 6
@@ -838,6 +921,16 @@ requirements:
     released_at: '2026-05-25T10:19:51Z'
     release_run: WF02-ext01-20260525
     last_updated: '2026-05-25T10:22:34Z'
+    implemented_in:
+    - src/definition/graph.zig
+    - tests/unit/graph_node_attributes_test.zig
+    - src/engine/service_task.zig
+    - tests/unit/service_task_test.zig
+    - src/bpm.zig
+    - build.zig
+    - tests/integration/ext01_service_task_test.zig
+    - tests/integration/main_test.zig
+    - tests/integration/obs05_dlq_test.zig
   EXT-02:
     status: RELEASED
     stage: 6
@@ -865,6 +958,15 @@ requirements:
     released_at: '2026-05-25T14:45:21Z'
     release_run: WF02-ext03-20260525
     last_updated: '2026-05-25T14:48:52Z'
+    implemented_in:
+    - src/engine/plugin_interface.zig
+    - src/engine/plugin_registry.zig
+    - src/engine/instance.zig
+    - src/bpm.zig
+    - tests/unit/ext03_plugin_test.zig
+    - build.zig
+    - tests/integration/ext03_plugin_integration_test.zig
+    - tests/integration/main_test.zig
   EXT-04:
     status: RELEASED
     stage: 6
@@ -876,6 +978,20 @@ requirements:
     released_at: '2026-05-25T15:31:00Z'
     release_run: WF02-ext04-20260525
     last_updated: '2026-05-25T15:35:22Z'
+    implemented_in:
+    - src/engine/plugin_interface.zig
+    - src/engine/plugin_registry.zig
+    - src/definition/graph.zig
+    - src/definition/store.zig
+    - src/definition/export_import.zig
+    - src/definition/snapshot.zig
+    - src/api/routes/definitions.zig
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - tests/unit/graph_edge_conditions_test.zig
+    - tests/unit/test_engine_ee05.zig
+    - tests/integration/ext04_variable_transformer_test.zig
+    - tests/integration/main_test.zig
   EXT-05:
     status: RELEASED
     stage: 6
@@ -887,6 +1003,14 @@ requirements:
     released_at: '2026-05-25T16:24:12Z'
     release_run: WF02-ext05-20260525
     last_updated: '2026-05-25T16:26:54Z'
+    implemented_in:
+    - src/engine/instance.zig
+    - src/engine/transition.zig
+    - src/definition/graph.zig
+    - migrations/026_ext05_subprocess_links.sql
+    - tests/unit/graph_node_attributes_test.zig
+    - tests/integration/ext05_sub_process_support_test.zig
+    - tests/integration/main_test.zig
   ADP-01:
     status: RELEASED
     stage: 6.5
@@ -898,6 +1022,11 @@ requirements:
     released_at: '2026-05-25T21:14:14Z'
     release_run: WF02-adp01-20260526
     last_updated: '2026-05-25T21:18:01Z'
+    implemented_in:
+    - src/event_store/store.zig
+    - src/obs/timeline.zig
+    - migrations/027_adp01_event_store_tenant.sql
+    - tests/integration/event_store_integration_test.zig
   ADP-02:
     status: RELEASED
     stage: 6.5
@@ -930,6 +1059,8 @@ requirements:
     released_at: '2026-05-26T02:27:06Z'
     release_run: WF02-adp03-20260526
     last_updated: '2026-05-26T02:30:19Z'
+    implemented_in:
+    - tests/integration/adp03_tenant_context_resolution_test.zig
   ADP-04:
     status: RELEASED
     stage: 6.5
@@ -944,6 +1075,15 @@ requirements:
     release_run: WF02-adp04-20260526
     release_decision: docs/status/release-ADP-04-20260526.json
     last_updated: '2026-05-26T03:30:03Z'
+    implemented_in:
+    - migrations/029_adp04_user_tenant_binding.sql
+    - src/identity/registry.zig
+    - src/identity/service.zig
+    - src/api/routes/identity.zig
+    - src/api/routes/tasks.zig
+    - tests/integration/adp04_user_tenant_binding_test.zig
+    - tests/integration/main_test.zig
+    - tests/integration/idn02_group_management_test.zig
   ADP-04a:
     status: RELEASED
     stage: 6.5
@@ -958,6 +1098,11 @@ requirements:
     release_run: WF02-adp04a-20260526
     release_decision: docs/status/release-ADP-04a-20260526.json
     last_updated: '2026-05-26T04:53:15Z'
+    implemented_in:
+    - migrations/030_adp04a_external_identity_linkage.sql
+    - src/identity/registry.zig
+    - src/identity/service.zig
+    - tests/integration/adp04a_external_identity_linkage_test.zig
   ADP-04b:
     status: RELEASED
     stage: 6.5
@@ -972,6 +1117,14 @@ requirements:
     release_run: WF02-adp04b-20260526
     release_decision: docs/status/release-ADP-04b-20260526.json
     last_updated: '2026-05-26T06:02:24Z'
+    implemented_in:
+    - migrations/031_adp04b_tenant_realm_binding.sql
+    - src/identity/registry.zig
+    - src/identity/service.zig
+    - src/api/routes/identity.zig
+    - tests/integration/adp04a_external_identity_linkage_test.zig
+    - tests/integration/adp04b_tenant_realm_binding_test.zig
+    - tests/integration/main_test.zig
   ADP-05:
     status: RELEASED
     stage: 6.5
@@ -986,6 +1139,12 @@ requirements:
     release_run: WF02-adp05-20260526
     release_decision: docs/status/release-ADP-05-20260526.json
     last_updated: '2026-05-26T07:13:16Z'
+    implemented_in:
+    - migrations/032_adp05_instance_artifact_hash.sql
+    - src/engine/instance.zig
+    - src/engine/reconstruction.zig
+    - tests/integration/adp05_instance_artifact_hash_test.zig
+    - tests/integration/main_test.zig
   ADP-06:
     status: RELEASED
     stage: 6.5
@@ -1000,6 +1159,14 @@ requirements:
     release_run: WF02-adp06-20260526
     release_decision: docs/status/release-ADP-06-20260526.json
     last_updated: '2026-05-26T09:05:16Z'
+    implemented_in:
+    - migrations/033_adp06_pipeline_run_correlation.sql
+    - src/obs/audit.zig
+    - src/event_store/store.zig
+    - src/api/routes/audit.zig
+    - src/api/routes/instances.zig
+    - tests/integration/adp06_pipeline_run_correlation_test.zig
+    - tests/integration/main_test.zig
   ADP-07:
     status: RELEASED
     stage: 6.5
@@ -1014,6 +1181,14 @@ requirements:
     release_run: WF02-adp07-20260526
     release_decision: docs/status/release-ADP-07-20260526.json
     last_updated: '2026-05-26T10:40:16Z'
+    implemented_in:
+    - src/api/middleware/auth.zig
+    - src/identity/service.zig
+    - src/api/routes/identity.zig
+    - src/api/authorization.zig
+    - migrations/034_adp07_agent_role_reserved_usernames.sql
+    - tests/integration/adp07_agent_role_reserved_usernames_test.zig
+    - tests/integration/main_test.zig
   ADP-08:
     status: RELEASED
     stage: 6.5
@@ -1028,6 +1203,13 @@ requirements:
     release_run: WF02-adp08-20260526
     release_decision: docs/status/release-ADP-08-20260526.json
     last_updated: '2026-05-26T11:54:24Z'
+    implemented_in:
+    - src/engine/service_task.zig
+    - src/engine/instance.zig
+    - src/definition/graph.zig
+    - tests/unit/service_task_test.zig
+    - tests/unit/graph_node_attributes_test.zig
+    - tests/integration/ext01_service_task_test.zig
   ADP-09:
     status: RELEASED
     stage: 6.5
@@ -1042,6 +1224,10 @@ requirements:
     release_run: WF02-adp09-20260526
     release_decision: docs/status/release-ADP-09-20260526.json
     last_updated: '2026-05-26T13:38:17Z'
+    implemented_in:
+    - migrations/035_adp09_tamper_evident_audit_chain.sql
+    - tests/integration/adp09_tamper_evident_audit_chain_test.zig
+    - tests/integration/main_test.zig
   ADP-10:
     status: RELEASED
     stage: 6.5
@@ -1056,6 +1242,10 @@ requirements:
     release_run: WF02-adp10-20260526
     release_decision: docs/status/release-ADP-10-20260526.json
     last_updated: '2026-05-26T15:26:37Z'
+    implemented_in:
+    - migrations/036_adp10_agent_io_capture_audit.sql
+    - tests/integration/adp10_agent_io_capture_audit_test.zig
+    - tests/integration/main_test.zig
   ADP-11:
     status: RELEASED
     stage: 6.5
@@ -1070,6 +1260,10 @@ requirements:
     release_run: WF02-adp11-20260526
     release_decision: docs/status/release-ADP-11-20260526.json
     last_updated: '2026-05-26T16:51:05Z'
+    implemented_in:
+    - src/event_store/store.zig
+    - migrations/037_adp11_replay_safe_retention_policy.sql
+    - tests/integration/event_store_integration_test.zig
   ADP-12:
     status: RELEASED
     stage: 6.5
@@ -1084,6 +1278,14 @@ requirements:
     release_run: WF02-adp12-20260526
     release_decision: docs/status/release-ADP-12-20260526.json
     last_updated: '2026-05-26T18:44:37Z'
+    implemented_in:
+    - build.zig
+    - tests/integration/main_test.zig
+    - tests/integration/adp12_default_tenant_regression_test.zig
+    - tests/integration/support/regression_matrix.zig
+    - tests/integration/support/response_canonicalizer.zig
+    - tests/integration/support/migration_window_orchestrator.zig
+    - tests/integration/support/report_writer.zig
   OIDC-01:
     status: RELEASED
     stage: 6.5
@@ -1098,6 +1300,21 @@ requirements:
     release_run: WF02-oidc01-20260527
     release_decision: docs/status/release-OIDC-01-20260526.json
     last_updated: '2026-05-26T19:47:46Z'
+    implemented_in:
+    - src/identity/provider/errors.zig
+    - src/identity/provider/types.zig
+    - src/identity/provider/interface.zig
+    - src/identity/provider/manager.zig
+    - src/identity/provider/mod.zig
+    - src/identity/provider/adapters/keycloak/provider.zig
+    - src/identity/provider/adapters/stub/provider.zig
+    - src/api/middleware/auth.zig
+    - src/api/api_mod.zig
+    - src/identity/service.zig
+    - tests/unit/test_api08_auth.zig
+    - build.zig
+    - tests/unit/test_oidc01_provider_boundary.zig
+    - tests/unit/test_oidc01_provider_stub.zig
   OIDC-02:
     status: RELEASED
     stage: 6.5
@@ -1112,6 +1329,14 @@ requirements:
     release_run: WF02-oidc02-20260527
     release_decision: docs/status/release-OIDC-02-20260526.json
     last_updated: '2026-05-26T20:34:15Z'
+    implemented_in:
+    - src/identity/provider/mod.zig
+    - src/identity/provider/adapters/keycloak/config.zig
+    - src/identity/provider/adapters/keycloak/urls.zig
+    - src/identity/provider/adapters/keycloak/provider.zig
+    - src/identity/provider/test_oidc02_keycloak_adapter.zig
+    - tests/unit/test_oidc01_provider_boundary.zig
+    - build.zig
   OIDC-03:
     status: RELEASED
     stage: 6.5
@@ -1126,6 +1351,12 @@ requirements:
     release_run: WF02-oidc03-20260527
     release_decision: docs/status/release-OIDC-03-20260526.json
     last_updated: '2026-05-26T21:31:39Z'
+    implemented_in:
+    - src/config/identity_provider.zig
+    - src/identity/provider/bootstrap.zig
+    - src/identity/provider/mod.zig
+    - src/main.zig
+    - build.zig
   OIDC-04:
     status: RELEASED
     stage: 6.5
@@ -1140,6 +1371,10 @@ requirements:
     release_run: WF02-oidc04-20260527
     release_decision: docs/status/release-OIDC-04-20260527.json
     last_updated: '2026-05-27T02:25:17Z'
+    implemented_in:
+    - src/identity/provider/oidc/standards_verifier.zig
+    - src/identity/provider/adapters/keycloak/provider.zig
+    - src/identity/provider/test_oidc02_keycloak_adapter.zig
   OIDC-05:
     status: RELEASED
     stage: 6.5
@@ -1154,6 +1389,12 @@ requirements:
     release_run: WF02-oidc05-20260527
     release_decision: docs/status/release-OIDC-05-20260527.json
     last_updated: '2026-05-27T03:12:14Z'
+    implemented_in:
+    - src/api/middleware/auth.zig
+    - src/identity/provider/manager.zig
+    - tests/unit/test_api08_auth.zig
+    - tests/unit/test_oidc01_provider_boundary.zig
+    - tests/unit/test_oidc01_provider_stub.zig
   DSL-01:
     status: RELEASED
     stage: 7
@@ -1167,12 +1408,21 @@ requirements:
     release_run: WF02-dsl01-20260527
     release_decision: docs/status/release-DSL-01-20260526.json
     last_updated: '2026-05-26T21:46:58Z'
+    implemented_in:
+    - src/expr/error.zig
+    - src/expr/ast.zig
+    - src/expr/lexer.zig
+    - src/expr/parser.zig
+    - src/expr/mod.zig
+    - build.zig
   DSL-02:
     status: RELEASED
     stage: 7
     priority: MUST
     title: AST stability
     implementation_run: WF02-dsl02-20260527
+    implemented_in:
+    - src/expr/ast.zig
     test_spec: tests/specs/DSL-02.md
     test_run: tests/reports/report-2026-05-27T05-26-58Z-WF02-dsl02-step04.json
     tested_at: '2026-05-27'
@@ -1192,6 +1442,14 @@ requirements:
     release_run: WF02-dsl03-20260527
     release_decision: docs/status/release-DSL-03-20260527.json
     last_updated: '2026-05-27T06:49:00Z'
+    implemented_in:
+    - src/expr/parser.zig
+    - src/expr/error.zig
+    - src/expr/mod.zig
+    - src/expr/lexer.zig
+    - src/expr/ast.zig
+    - tests/unit/expr_error_recovery_test.zig
+    - build.zig
   DSL-04:
     status: RELEASED
     stage: 7
@@ -1205,6 +1463,9 @@ requirements:
     release_run: WF02-dsl04-20260527
     release_decision: docs/status/release-DSL-04-2026-05-27.json
     last_updated: '2026-05-27T07:30:05Z'
+    implemented_in:
+    - src/expr/ast.zig
+    - src/expr/mod.zig
   DSL-05:
     status: RELEASED
     stage: 7
@@ -1218,6 +1479,10 @@ requirements:
     release_run: WF02-dsl05-20260527
     release_decision: docs/status/release-DSL-05-20260527.json
     last_updated: '2026-05-27T08:18:04Z'
+    implemented_in:
+    - src/expr/ast.zig
+    - src/expr/mod.zig
+    - src/expr/error.zig
   SIM-01:
     status: RELEASED
     stage: 11
@@ -1230,6 +1495,28 @@ requirements:
     release_run: WF02-stage11-sim01-04-20260528
     release_decision: docs/status/release-Stage11-SIM-01-04-2026-05-29.json
     last_updated: '2026-05-29T08:14:52Z'
+    implemented_in:
+    - tests/integration/helpers.zig
+    - tests/integration/sim01_04_simulation_mode_test.zig
+    - tests/integration/xc04_kernel_determinism_test.zig
+    - tests/integration/main_test.zig
+    - tests/integration/stage11_sim_xc04_aggregate_test.zig
+    - tests/integration/oidc31_end_to_end_auth_suite_test.zig
+    - tests/integration/oidc35_onboarding_test.zig
+    - src/simulation/types.zig
+    - src/simulation/context.zig
+    - src/simulation/time_source.zig
+    - src/simulation/uuid_source.zig
+    - src/simulation/mock_catalog.zig
+    - src/simulation/service_interceptor.zig
+    - src/simulation/tenant_store.zig
+    - src/simulation/runtime.zig
+    - src/simulation/mod.zig
+    - src/lua/host_api/now.zig
+    - src/lua/host_api/call_service.zig
+    - src/bpm.zig
+    - src/db/migrations.zig
+    - src/tools/migrate.zig
   SIM-02:
     status: RELEASED
     stage: 11
@@ -1242,6 +1529,28 @@ requirements:
     release_run: WF02-stage11-sim01-04-20260528
     release_decision: docs/status/release-Stage11-SIM-01-04-2026-05-29.json
     last_updated: '2026-05-29T08:14:52Z'
+    implemented_in:
+    - tests/integration/helpers.zig
+    - tests/integration/sim01_04_simulation_mode_test.zig
+    - tests/integration/xc04_kernel_determinism_test.zig
+    - tests/integration/main_test.zig
+    - tests/integration/stage11_sim_xc04_aggregate_test.zig
+    - tests/integration/oidc31_end_to_end_auth_suite_test.zig
+    - tests/integration/oidc35_onboarding_test.zig
+    - src/simulation/types.zig
+    - src/simulation/context.zig
+    - src/simulation/time_source.zig
+    - src/simulation/uuid_source.zig
+    - src/simulation/mock_catalog.zig
+    - src/simulation/service_interceptor.zig
+    - src/simulation/tenant_store.zig
+    - src/simulation/runtime.zig
+    - src/simulation/mod.zig
+    - src/lua/host_api/now.zig
+    - src/lua/host_api/call_service.zig
+    - src/bpm.zig
+    - src/db/migrations.zig
+    - src/tools/migrate.zig
   SIM-03:
     status: RELEASED
     stage: 11
@@ -1254,6 +1563,28 @@ requirements:
     release_run: WF02-stage11-sim01-04-20260528
     release_decision: docs/status/release-Stage11-SIM-01-04-2026-05-29.json
     last_updated: '2026-05-29T08:14:52Z'
+    implemented_in:
+    - tests/integration/helpers.zig
+    - tests/integration/sim01_04_simulation_mode_test.zig
+    - tests/integration/xc04_kernel_determinism_test.zig
+    - tests/integration/main_test.zig
+    - tests/integration/stage11_sim_xc04_aggregate_test.zig
+    - tests/integration/oidc31_end_to_end_auth_suite_test.zig
+    - tests/integration/oidc35_onboarding_test.zig
+    - src/simulation/types.zig
+    - src/simulation/context.zig
+    - src/simulation/time_source.zig
+    - src/simulation/uuid_source.zig
+    - src/simulation/mock_catalog.zig
+    - src/simulation/service_interceptor.zig
+    - src/simulation/tenant_store.zig
+    - src/simulation/runtime.zig
+    - src/simulation/mod.zig
+    - src/lua/host_api/now.zig
+    - src/lua/host_api/call_service.zig
+    - src/bpm.zig
+    - src/db/migrations.zig
+    - src/tools/migrate.zig
   SIM-04:
     status: RELEASED
     stage: 11
@@ -1266,6 +1597,28 @@ requirements:
     release_run: WF02-stage11-sim01-04-20260528
     release_decision: docs/status/release-Stage11-SIM-01-04-2026-05-29.json
     last_updated: '2026-05-29T08:14:52Z'
+    implemented_in:
+    - tests/integration/helpers.zig
+    - tests/integration/sim01_04_simulation_mode_test.zig
+    - tests/integration/xc04_kernel_determinism_test.zig
+    - tests/integration/main_test.zig
+    - tests/integration/stage11_sim_xc04_aggregate_test.zig
+    - tests/integration/oidc31_end_to_end_auth_suite_test.zig
+    - tests/integration/oidc35_onboarding_test.zig
+    - src/simulation/types.zig
+    - src/simulation/context.zig
+    - src/simulation/time_source.zig
+    - src/simulation/uuid_source.zig
+    - src/simulation/mock_catalog.zig
+    - src/simulation/service_interceptor.zig
+    - src/simulation/tenant_store.zig
+    - src/simulation/runtime.zig
+    - src/simulation/mod.zig
+    - src/lua/host_api/now.zig
+    - src/lua/host_api/call_service.zig
+    - src/bpm.zig
+    - src/db/migrations.zig
+    - src/tools/migrate.zig
   SIM-05:
     status: RELEASED
     stage: 11
@@ -1279,6 +1632,13 @@ requirements:
     release_run: WF02-stage11-sim05-08-rerun1-20260529
     release_decision: docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json
     last_updated: '2026-05-29T12:27:02Z'
+    implemented_in:
+    - tests/integration/main_test.zig
+    - tests/integration/sim05_08_scenario_runner_test.zig
+    - tests/integration/helpers.zig
+    - src/simulation/mod.zig
+    - src/main.zig
+    - src/bpm.zig
   SIM-06:
     status: RELEASED
     stage: 11
@@ -1292,6 +1652,13 @@ requirements:
     release_run: WF02-stage11-sim05-08-rerun1-20260529
     release_decision: docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json
     last_updated: '2026-05-29T12:27:02Z'
+    implemented_in:
+    - tests/integration/main_test.zig
+    - tests/integration/sim05_08_scenario_runner_test.zig
+    - tests/integration/helpers.zig
+    - src/simulation/mod.zig
+    - src/main.zig
+    - src/bpm.zig
   SIM-07:
     status: RELEASED
     stage: 11
@@ -1305,6 +1672,13 @@ requirements:
     release_run: WF02-stage11-sim05-08-rerun1-20260529
     release_decision: docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json
     last_updated: '2026-05-29T12:27:02Z'
+    implemented_in:
+    - tests/integration/main_test.zig
+    - tests/integration/sim05_08_scenario_runner_test.zig
+    - tests/integration/helpers.zig
+    - src/simulation/mod.zig
+    - src/main.zig
+    - src/bpm.zig
   SIM-08:
     status: RELEASED
     stage: 11
@@ -1318,6 +1692,13 @@ requirements:
     release_run: WF02-stage11-sim05-08-rerun1-20260529
     release_decision: docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json
     last_updated: '2026-05-29T12:27:02Z'
+    implemented_in:
+    - tests/integration/main_test.zig
+    - tests/integration/sim05_08_scenario_runner_test.zig
+    - tests/integration/helpers.zig
+    - src/simulation/mod.zig
+    - src/main.zig
+    - src/bpm.zig
   REPO-01:
     status: RELEASED
     stage: 10
@@ -2419,6 +2800,9 @@ requirements:
     stage: 11
     priority: MUST
     title: Test result storage
+    implemented_in:
+    - src/simulation/scenario_runner.zig
+    - src/api/routes/simulation_test.zig
     release_run: WF02-stage11-sim05-08-rerun1-20260529
     released_at: '2026-05-29'
     last_updated: '2026-05-29T12:24:56Z'
@@ -2427,6 +2811,10 @@ requirements:
     stage: 11
     priority: MUST
     title: Failure diagnostics
+    implemented_in:
+    - src/simulation/scenario_runner.zig
+    - src/simulation/types.zig
+    - src/api/routes/simulation_test.zig
     release_run: WF02-stage11-sim05-08-rerun1-20260529
     released_at: '2026-05-29'
     last_updated: '2026-05-29T12:24:56Z'
@@ -2435,6 +2823,8 @@ requirements:
     stage: F1
     priority: MUST
     title: Authenticated shell
+    implemented_in:
+    - web/src/components/layout/AppShell.tsx
     release_run: WF02-f1-shell
     released_at: '2026-05-27'
     last_updated: '2026-05-27T00:00:00Z'
@@ -2443,6 +2833,8 @@ requirements:
     stage: F1
     priority: MUST
     title: Navigation
+    implemented_in:
+    - web/src/components/layout/AppShell.tsx
     release_run: WF02-f1-shell
     released_at: '2026-05-27'
     last_updated: '2026-05-27T00:00:00Z'
@@ -2451,6 +2843,8 @@ requirements:
     stage: F1
     priority: MUST
     title: Login page
+    implemented_in:
+    - web/src/pages/LoginPage.tsx
     release_run: WF02-f1-shell
     released_at: '2026-05-27'
     last_updated: '2026-05-27T00:00:00Z'
@@ -2459,6 +2853,9 @@ requirements:
     stage: F1
     priority: MUST
     title: Token storage
+    implemented_in:
+    - web/src/auth/tokenUtils.ts
+    - web/src/auth/AuthProvider.tsx
     release_run: WF02-f1-shell
     released_at: '2026-05-27'
     last_updated: '2026-05-27T00:00:00Z'
@@ -2467,6 +2864,9 @@ requirements:
     stage: F1
     priority: MUST
     title: Session expiry
+    implemented_in:
+    - web/src/auth/tokenUtils.ts
+    - web/src/auth/OidcManager.ts
     release_run: WF02-f1-shell
     released_at: '2026-05-27'
     last_updated: '2026-05-27T00:00:00Z'
@@ -2475,6 +2875,9 @@ requirements:
     stage: F1
     priority: MUST
     title: Role-aware routing
+    implemented_in:
+    - web/src/router.tsx
+    - web/src/auth/ProtectedRoute.tsx
     release_run: WF02-f1-shell
     released_at: '2026-05-27'
     last_updated: '2026-05-27T00:00:00Z'
@@ -2483,6 +2886,8 @@ requirements:
     stage: F1
     priority: MUST
     title: Global error boundary
+    implemented_in:
+    - web/src/components/layout/ErrorBoundary.tsx
     release_run: WF02-f1-shell
     released_at: '2026-05-27'
     last_updated: '2026-05-27T00:00:00Z'
@@ -2491,6 +2896,8 @@ requirements:
     stage: F2
     priority: MUST
     title: Definition list page
+    implemented_in:
+    - web/src/pages/definitions/DefinitionListPage.tsx
     release_run: WF02-f2-batch1
     released_at: '2026-05-28'
     last_updated: '2026-05-28T00:00:00Z'
@@ -2499,6 +2906,9 @@ requirements:
     stage: F2
     priority: MUST
     title: Create definition
+    implemented_in:
+    - web/src/pages/definitions/DefinitionListPage.tsx
+    - web/src/pages/definitions/DefinitionEditorPage.tsx
     release_run: WF02-f2-batch1
     released_at: '2026-05-28'
     last_updated: '2026-05-28T00:00:00Z'
@@ -2507,6 +2917,8 @@ requirements:
     stage: F2
     priority: MUST
     title: Canvas
+    implemented_in:
+    - web/src/components/canvas/ProcessCanvas.tsx
     release_run: WF02-f2-batch1
     released_at: '2026-05-28'
     last_updated: '2026-05-28T00:00:00Z'
@@ -2515,6 +2927,9 @@ requirements:
     stage: F2
     priority: MUST
     title: Add / delete node
+    implemented_in:
+    - web/src/components/canvas/ProcessCanvas.tsx
+    - web/src/components/canvas/NodePalette.tsx
     release_run: WF02-f2-batch1
     released_at: '2026-05-28'
     last_updated: '2026-05-28T00:00:00Z'
@@ -2523,6 +2938,8 @@ requirements:
     stage: F2
     priority: MUST
     title: Node property panel
+    implemented_in:
+    - web/src/components/canvas/PropertyPanel.tsx
     release_run: WF02-f2-batch1
     released_at: '2026-05-28'
     last_updated: '2026-05-28T00:00:00Z'
@@ -2531,6 +2948,9 @@ requirements:
     stage: F2
     priority: MUST
     title: Add / delete edge
+    implemented_in:
+    - web/src/components/canvas/ProcessCanvas.tsx
+    - web/src/components/canvas/edges/ConditionEdge.tsx
     release_run: WF02-f2-batch1
     released_at: '2026-05-28'
     last_updated: '2026-05-28T00:00:00Z'
@@ -2539,6 +2959,8 @@ requirements:
     stage: F2
     priority: MUST
     title: CEL expression editor
+    implemented_in:
+    - web/src/components/canvas/CelExpressionEditor.tsx
     release_run: WF02-f2-batch2
     released_at: '2026-05-29'
     last_updated: '2026-05-29T00:00:00Z'
@@ -2547,6 +2969,9 @@ requirements:
     stage: F2
     priority: MUST
     title: Save definition
+    implemented_in:
+    - web/src/pages/definitions/DefinitionEditorPage.tsx
+    - web/src/api/definitions.ts
     release_run: WF02-f2-batch2
     released_at: '2026-05-29'
     last_updated: '2026-05-29T19:38:00Z'
@@ -2555,6 +2980,8 @@ requirements:
     stage: F2
     priority: MUST
     title: Validation feedback
+    implemented_in:
+    - web/src/components/canvas/ValidationSummaryBar.tsx
     release_run: WF02-f2-batch2
     released_at: '2026-05-29'
     last_updated: '2026-05-29T00:00:00Z'
@@ -2563,6 +2990,8 @@ requirements:
     stage: F2
     priority: MUST
     title: Version list
+    implemented_in:
+    - web/src/pages/definitions/DefinitionListPage.tsx
     release_run: WF02-f2-batch2
     released_at: '2026-05-29'
     last_updated: '2026-05-29T00:00:00Z'
@@ -2571,6 +3000,8 @@ requirements:
     stage: F2
     priority: MUST
     title: Activate version
+    implemented_in:
+    - web/src/pages/definitions/DefinitionListPage.tsx
     release_run: WF02-f2-batch2
     released_at: '2026-05-29'
     last_updated: '2026-05-29T00:00:00Z'
@@ -2579,6 +3010,8 @@ requirements:
     stage: F2
     priority: MUST
     title: Deprecate version
+    implemented_in:
+    - web/src/pages/definitions/DefinitionListPage.tsx
     release_run: WF02-f2-batch2
     released_at: '2026-05-29'
     last_updated: '2026-05-29T00:00:00Z'
@@ -2587,6 +3020,9 @@ requirements:
     stage: F2
     priority: SHOULD
     title: Definition export
+    implemented_in:
+    - web/src/pages/definitions/DefinitionListPage.tsx
+    - web/src/api/definitions.ts
     release_run: WF02-f2-batch3
     released_at: '2026-05-29'
     last_updated: '2026-05-29T00:00:00Z'
@@ -2595,6 +3031,9 @@ requirements:
     stage: F2
     priority: SHOULD
     title: Definition import
+    implemented_in:
+    - web/src/pages/definitions/DefinitionListPage.tsx
+    - web/src/api/definitions.ts
     release_run: WF02-f2-batch3
     released_at: '2026-05-29'
     last_updated: '2026-05-29T00:00:00Z'
@@ -2603,6 +3042,9 @@ requirements:
     stage: F2
     priority: MUST
     title: Read-only canvas
+    implemented_in:
+    - web/src/pages/definitions/DefinitionEditorPage.tsx
+    - web/src/components/canvas/ProcessCanvas.tsx
     release_run: WF02-f2-batch3
     released_at: '2026-05-29'
     last_updated: '2026-05-29T00:00:00Z'
@@ -2611,6 +3053,8 @@ requirements:
     stage: F2
     priority: SHOULD
     title: Diff view
+    implemented_in:
+    - web/src/components/ui/JsonDiffView.tsx
     release_run: WF02-f2b-shoulds-20260529
     released_at: '2026-05-29'
     last_updated: '2026-05-29T19:38:00Z'
@@ -2619,6 +3063,8 @@ requirements:
     stage: F2
     priority: SHOULD
     title: Canvas keyboard shortcuts
+    implemented_in:
+    - web/src/components/canvas/ProcessCanvas.tsx
     release_run: WF02-f2b-shoulds-20260529
     released_at: '2026-05-29'
     last_updated: '2026-05-29T19:38:00Z'
@@ -2627,6 +3073,8 @@ requirements:
     stage: F2
     priority: COULD
     title: Auto-layout
+    implemented_in:
+    - web/src/components/canvas/ProcessCanvas.tsx
     release_run: WF02-f2b-shoulds-20260529
     released_at: '2026-05-29'
     last_updated: '2026-05-29T19:38:00Z'
@@ -2635,6 +3083,8 @@ requirements:
     stage: F2
     priority: COULD
     title: Mini-map
+    implemented_in:
+    - web/src/components/canvas/ProcessCanvas.tsx
     release_run: WF02-f2b-shoulds-20260529
     released_at: '2026-05-29'
     last_updated: '2026-05-29T19:38:00Z'
@@ -2752,6 +3202,8 @@ requirements:
     stage: F3
     priority: SHOULD
     title: Active token visualisation
+    implemented_in:
+    - web/src/components/instances/ProcessGraphWithTokens.tsx
     released_at: '2026-05-30T05:20:31Z'
     release_run: WF02-f3b-inui0910-20260530
     last_updated: '2026-05-30T05:20:31Z'
@@ -2760,6 +3212,8 @@ requirements:
     stage: F3
     priority: SHOULD
     title: History scrubber
+    implemented_in:
+    - web/src/components/instances/HistoryScrubber.tsx
     released_at: '2026-05-30T05:20:31Z'
     release_run: WF02-f3b-inui0910-20260530
     last_updated: '2026-05-30T05:20:31Z'

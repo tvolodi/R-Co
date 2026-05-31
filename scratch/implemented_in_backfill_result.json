@@ -1,0 +1,58 @@
+{
+  "updated_ids": [
+    "ADP-01",
+    "ADP-03",
+    "ADP-04",
+    "ADP-04a",
+    "ADP-04b",
+    "ADP-05",
+    "ADP-06",
+    "ADP-07",
+    "ADP-08",
+    "ADP-09",
+    "ADP-10",
+    "ADP-11",
+    "ADP-12",
+    "DSL-01",
+    "DSL-03",
+    "DSL-04",
+    "DSL-05",
+    "EE-01",
+    "EE-02",
+    "EE-03",
+    "EE-09",
+    "EE-11",
+    "EXT-01",
+    "EXT-03",
+    "EXT-04",
+    "EXT-05",
+    "OBS-03",
+    "OBS-04",
+    "OBS-05",
+    "OBS-06",
+    "OIDC-01",
+    "OIDC-02",
+    "OIDC-03",
+    "OIDC-04",
+    "OIDC-05",
+    "SIM-01",
+    "SIM-02",
+    "SIM-03",
+    "SIM-04",
+    "SIM-05",
+    "SIM-06",
+    "SIM-07",
+    "SIM-08"
+  ],
+  "unresolved": {
+    "DSL-02": "No evidence-backed implementation files found in referenced or local handoffs, and adjacent fallback not conclusive"
+  },
+  "status_counts": {
+    "RELEASED": 194
+  },
+  "not_released_count": 0,
+  "missing_implemented_in_count": 1,
+  "missing_ids_after": [
+    "DSL-02"
+  ]
+}

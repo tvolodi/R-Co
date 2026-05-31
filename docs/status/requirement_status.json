@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-30T23:33:13Z",
+  "last_updated": "2026-05-31T16:29:31Z",
   "requirements": {
     "ES-01": {
       "status": "RELEASED",
@@ -332,13 +332,26 @@
       "priority": "MUST",
       "title": "Start instance",
       "released_at": "2026-05-22",
-      "release_run": "WF02-ee01-20260522"
+      "release_run": "WF02-ee01-20260522",
+      "implemented_in": [
+        "src/definition/snapshot.zig",
+        "src/definition/store.zig",
+        "migrations/005_instances.sql",
+        "src/engine/instance.zig",
+        "src/api/routes/instances.zig",
+        "tests/integration/ee01_start_instance_test.zig"
+      ]
     },
     "EE-02": {
       "status": "RELEASED",
       "stage": 3,
       "priority": "MUST",
-      "title": "Pure transition function"
+      "title": "Pure transition function",
+      "implemented_in": [
+        "src/engine/transition.zig",
+        "src/main.zig",
+        "tests/unit/engine_test.zig"
+      ]
     },
     "EE-03": {
       "status": "RELEASED",
@@ -346,7 +359,19 @@
       "priority": "MUST",
       "title": "Task activation",
       "released_at": "2026-05-22",
-      "release_run": "WF02-ee03-20260522"
+      "release_run": "WF02-ee03-20260522",
+      "implemented_in": [
+        "src/engine/transition.zig",
+        "src/engine/instance.zig",
+        "migrations/005_instances.sql",
+        "src/tasks/store.zig",
+        "src/api/routes/tasks.zig",
+        "src/main.zig",
+        "src/bpm.zig",
+        "tests/unit/test_engine_apply.zig",
+        "tests/unit/test_tasks_store.zig",
+        "tests/unit/test_tasks_api.zig"
+      ]
     },
     "EE-04": {
       "status": "RELEASED",
@@ -428,7 +453,17 @@
       "priority": "MUST",
       "title": "Variable scoping",
       "released_at": "2026-05-22T11:44:54Z",
-      "release_run": "WF02-ee09-20260522"
+      "release_run": "WF02-ee09-20260522",
+      "implemented_in": [
+        "src/engine/transition.zig",
+        "src/engine/instance.zig",
+        "src/bpm.zig",
+        "src/tools/json_schema.zig",
+        "src/api/routes/tasks.zig",
+        "tests/unit/test_ee09_merge_variables.zig",
+        "tests/integration/ee09_merge_variables_test.zig",
+        "build.zig"
+      ]
     },
     "EE-10": {
       "status": "RELEASED",
@@ -452,7 +487,18 @@
       "title": "State reconstruction",
       "released_at": "2026-05-22T13:24:54Z",
       "release_run": "WF02-ee11-20260522",
-      "last_updated": "2026-05-22T13:24:54Z"
+      "last_updated": "2026-05-22T13:24:54Z",
+      "implemented_in": [
+        "src/engine/transition.zig",
+        "src/engine/instance.zig",
+        "src/event_store/store.zig",
+        "src/bpm.zig",
+        "migrations/003_event_archive.sql",
+        "src/engine/reconstruction.zig",
+        "src/api/routes/instances.zig",
+        "src/main.zig",
+        "tests/unit/reconstruction_test.zig"
+      ]
     },
     "EE-12": {
       "status": "RELEASED",
@@ -907,7 +953,17 @@
       "tested_at": "2026-05-24",
       "released_at": "2026-05-24T22:56:58Z",
       "release_run": "WF02-obs03-20260525",
-      "last_updated": "2026-05-24T23:01:03Z"
+      "last_updated": "2026-05-24T23:01:03Z",
+      "implemented_in": [
+        "migrations/020_obs03_audit_entries.sql",
+        "src/obs/audit.zig",
+        "src/api/routes/audit.zig",
+        "src/main.zig",
+        "src/bpm.zig",
+        "tests/integration/obs03_audit_log_test.zig",
+        "tests/integration/main_test.zig",
+        "build.zig"
+      ]
     },
     "OBS-04": {
       "status": "RELEASED",
@@ -919,7 +975,26 @@
       "tested_at": "2026-05-25",
       "released_at": "2026-05-25T03:50:29Z",
       "release_run": "WF02-obs04-20260525",
-      "last_updated": "2026-05-25T03:53:44Z"
+      "last_updated": "2026-05-25T03:53:44Z",
+      "implemented_in": [
+        "src/obs/timeline.zig",
+        "src/api/routes/instances.zig",
+        "src/api/authorization.zig",
+        "src/api/openapi/builder.zig",
+        "tests/unit/test_obs04_timeline.zig",
+        "build.zig",
+        "web/src/types/api.ts",
+        "web/src/api/instances.ts",
+        "web/src/hooks/useInstances.ts",
+        "web/src/pages/instances/InstanceDetailPage.tsx",
+        "web/src/pages/instances/timelineUtils.ts",
+        "web/src/pages/instances/timelineUtils.test.ts",
+        "web/src/api/identity.ts",
+        "tests/integration/obs04_timeline_test.zig",
+        "tests/integration/main_test.zig",
+        "src/main.zig",
+        "web/tests/e2e/obs04.timeline.e2e.spec.ts"
+      ]
     },
     "OBS-05": {
       "status": "RELEASED",
@@ -931,7 +1006,16 @@
       "tested_at": "2026-05-25",
       "released_at": "2026-05-25T17:06:29Z",
       "release_run": "WF02-obs05-20260525",
-      "last_updated": "2026-05-25T17:10:51Z"
+      "last_updated": "2026-05-25T17:10:51Z",
+      "implemented_in": [
+        "src/dlq/store.zig",
+        "src/api/routes/dlq.zig",
+        "src/bpm.zig",
+        "src/main.zig",
+        "migrations/021_obs05_dead_letter_context.sql",
+        "tests/integration/obs05_dlq_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "OBS-06": {
       "status": "RELEASED",
@@ -943,7 +1027,15 @@
       "tested_at": "2026-05-25",
       "released_at": "2026-05-25T07:24:54Z",
       "release_run": "WF02-obs06-20260525",
-      "last_updated": "2026-05-25T07:29:10Z"
+      "last_updated": "2026-05-25T07:29:10Z",
+      "implemented_in": [
+        "src/obs/alerts.zig",
+        "src/main.zig",
+        "src/bpm.zig",
+        "migrations/022_obs06_alerting_state.sql",
+        "tests/integration/obs06_alerts_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "EXT-01": {
       "status": "RELEASED",
@@ -955,7 +1047,18 @@
       "tested_at": "2026-05-25",
       "released_at": "2026-05-25T10:19:51Z",
       "release_run": "WF02-ext01-20260525",
-      "last_updated": "2026-05-25T10:22:34Z"
+      "last_updated": "2026-05-25T10:22:34Z",
+      "implemented_in": [
+        "src/definition/graph.zig",
+        "tests/unit/graph_node_attributes_test.zig",
+        "src/engine/service_task.zig",
+        "tests/unit/service_task_test.zig",
+        "src/bpm.zig",
+        "build.zig",
+        "tests/integration/ext01_service_task_test.zig",
+        "tests/integration/main_test.zig",
+        "tests/integration/obs05_dlq_test.zig"
+      ]
     },
     "EXT-02": {
       "status": "RELEASED",
@@ -985,7 +1088,17 @@
       "tested_at": "2026-05-25",
       "released_at": "2026-05-25T14:45:21Z",
       "release_run": "WF02-ext03-20260525",
-      "last_updated": "2026-05-25T14:48:52Z"
+      "last_updated": "2026-05-25T14:48:52Z",
+      "implemented_in": [
+        "src/engine/plugin_interface.zig",
+        "src/engine/plugin_registry.zig",
+        "src/engine/instance.zig",
+        "src/bpm.zig",
+        "tests/unit/ext03_plugin_test.zig",
+        "build.zig",
+        "tests/integration/ext03_plugin_integration_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "EXT-04": {
       "status": "RELEASED",
@@ -997,7 +1110,22 @@
       "tested_at": "2026-05-25",
       "released_at": "2026-05-25T15:31:00Z",
       "release_run": "WF02-ext04-20260525",
-      "last_updated": "2026-05-25T15:35:22Z"
+      "last_updated": "2026-05-25T15:35:22Z",
+      "implemented_in": [
+        "src/engine/plugin_interface.zig",
+        "src/engine/plugin_registry.zig",
+        "src/definition/graph.zig",
+        "src/definition/store.zig",
+        "src/definition/export_import.zig",
+        "src/definition/snapshot.zig",
+        "src/api/routes/definitions.zig",
+        "src/engine/transition.zig",
+        "src/engine/instance.zig",
+        "tests/unit/graph_edge_conditions_test.zig",
+        "tests/unit/test_engine_ee05.zig",
+        "tests/integration/ext04_variable_transformer_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "EXT-05": {
       "status": "RELEASED",
@@ -1009,7 +1137,16 @@
       "tested_at": "2026-05-25",
       "released_at": "2026-05-25T16:24:12Z",
       "release_run": "WF02-ext05-20260525",
-      "last_updated": "2026-05-25T16:26:54Z"
+      "last_updated": "2026-05-25T16:26:54Z",
+      "implemented_in": [
+        "src/engine/instance.zig",
+        "src/engine/transition.zig",
+        "src/definition/graph.zig",
+        "migrations/026_ext05_subprocess_links.sql",
+        "tests/unit/graph_node_attributes_test.zig",
+        "tests/integration/ext05_sub_process_support_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "ADP-01": {
       "status": "RELEASED",
@@ -1021,7 +1158,13 @@
       "tested_at": "2026-05-25",
       "released_at": "2026-05-25T21:14:14Z",
       "release_run": "WF02-adp01-20260526",
-      "last_updated": "2026-05-25T21:18:01Z"
+      "last_updated": "2026-05-25T21:18:01Z",
+      "implemented_in": [
+        "src/event_store/store.zig",
+        "src/obs/timeline.zig",
+        "migrations/027_adp01_event_store_tenant.sql",
+        "tests/integration/event_store_integration_test.zig"
+      ]
     },
     "ADP-02": {
       "status": "RELEASED",
@@ -1056,7 +1199,10 @@
       "tested_at": "2026-05-26",
       "released_at": "2026-05-26T02:27:06Z",
       "release_run": "WF02-adp03-20260526",
-      "last_updated": "2026-05-26T02:30:19Z"
+      "last_updated": "2026-05-26T02:30:19Z",
+      "implemented_in": [
+        "tests/integration/adp03_tenant_context_resolution_test.zig"
+      ]
     },
     "ADP-04": {
       "status": "RELEASED",
@@ -1071,7 +1217,17 @@
       "released_at": "2026-05-26T03:26:11Z",
       "release_run": "WF02-adp04-20260526",
       "release_decision": "docs/status/release-ADP-04-20260526.json",
-      "last_updated": "2026-05-26T03:30:03Z"
+      "last_updated": "2026-05-26T03:30:03Z",
+      "implemented_in": [
+        "migrations/029_adp04_user_tenant_binding.sql",
+        "src/identity/registry.zig",
+        "src/identity/service.zig",
+        "src/api/routes/identity.zig",
+        "src/api/routes/tasks.zig",
+        "tests/integration/adp04_user_tenant_binding_test.zig",
+        "tests/integration/main_test.zig",
+        "tests/integration/idn02_group_management_test.zig"
+      ]
     },
     "ADP-04a": {
       "status": "RELEASED",
@@ -1086,7 +1242,13 @@
       "released_at": "2026-05-26T04:49:32Z",
       "release_run": "WF02-adp04a-20260526",
       "release_decision": "docs/status/release-ADP-04a-20260526.json",
-      "last_updated": "2026-05-26T04:53:15Z"
+      "last_updated": "2026-05-26T04:53:15Z",
+      "implemented_in": [
+        "migrations/030_adp04a_external_identity_linkage.sql",
+        "src/identity/registry.zig",
+        "src/identity/service.zig",
+        "tests/integration/adp04a_external_identity_linkage_test.zig"
+      ]
     },
     "ADP-04b": {
       "status": "RELEASED",
@@ -1101,7 +1263,16 @@
       "released_at": "2026-05-26T05:58:22Z",
       "release_run": "WF02-adp04b-20260526",
       "release_decision": "docs/status/release-ADP-04b-20260526.json",
-      "last_updated": "2026-05-26T06:02:24Z"
+      "last_updated": "2026-05-26T06:02:24Z",
+      "implemented_in": [
+        "migrations/031_adp04b_tenant_realm_binding.sql",
+        "src/identity/registry.zig",
+        "src/identity/service.zig",
+        "src/api/routes/identity.zig",
+        "tests/integration/adp04a_external_identity_linkage_test.zig",
+        "tests/integration/adp04b_tenant_realm_binding_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "ADP-05": {
       "status": "RELEASED",
@@ -1116,7 +1287,14 @@
       "released_at": "2026-05-26T07:09:18Z",
       "release_run": "WF02-adp05-20260526",
       "release_decision": "docs/status/release-ADP-05-20260526.json",
-      "last_updated": "2026-05-26T07:13:16Z"
+      "last_updated": "2026-05-26T07:13:16Z",
+      "implemented_in": [
+        "migrations/032_adp05_instance_artifact_hash.sql",
+        "src/engine/instance.zig",
+        "src/engine/reconstruction.zig",
+        "tests/integration/adp05_instance_artifact_hash_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "ADP-06": {
       "status": "RELEASED",
@@ -1131,7 +1309,16 @@
       "released_at": "2026-05-26T09:00:49Z",
       "release_run": "WF02-adp06-20260526",
       "release_decision": "docs/status/release-ADP-06-20260526.json",
-      "last_updated": "2026-05-26T09:05:16Z"
+      "last_updated": "2026-05-26T09:05:16Z",
+      "implemented_in": [
+        "migrations/033_adp06_pipeline_run_correlation.sql",
+        "src/obs/audit.zig",
+        "src/event_store/store.zig",
+        "src/api/routes/audit.zig",
+        "src/api/routes/instances.zig",
+        "tests/integration/adp06_pipeline_run_correlation_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "ADP-07": {
       "status": "RELEASED",
@@ -1146,7 +1333,16 @@
       "released_at": "2026-05-26T10:36:37Z",
       "release_run": "WF02-adp07-20260526",
       "release_decision": "docs/status/release-ADP-07-20260526.json",
-      "last_updated": "2026-05-26T10:40:16Z"
+      "last_updated": "2026-05-26T10:40:16Z",
+      "implemented_in": [
+        "src/api/middleware/auth.zig",
+        "src/identity/service.zig",
+        "src/api/routes/identity.zig",
+        "src/api/authorization.zig",
+        "migrations/034_adp07_agent_role_reserved_usernames.sql",
+        "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "ADP-08": {
       "status": "RELEASED",
@@ -1161,7 +1357,15 @@
       "released_at": "2026-05-26T11:50:35Z",
       "release_run": "WF02-adp08-20260526",
       "release_decision": "docs/status/release-ADP-08-20260526.json",
-      "last_updated": "2026-05-26T11:54:24Z"
+      "last_updated": "2026-05-26T11:54:24Z",
+      "implemented_in": [
+        "src/engine/service_task.zig",
+        "src/engine/instance.zig",
+        "src/definition/graph.zig",
+        "tests/unit/service_task_test.zig",
+        "tests/unit/graph_node_attributes_test.zig",
+        "tests/integration/ext01_service_task_test.zig"
+      ]
     },
     "ADP-09": {
       "status": "RELEASED",
@@ -1176,7 +1380,12 @@
       "released_at": "2026-05-26T13:31:17Z",
       "release_run": "WF02-adp09-20260526",
       "release_decision": "docs/status/release-ADP-09-20260526.json",
-      "last_updated": "2026-05-26T13:38:17Z"
+      "last_updated": "2026-05-26T13:38:17Z",
+      "implemented_in": [
+        "migrations/035_adp09_tamper_evident_audit_chain.sql",
+        "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "ADP-10": {
       "status": "RELEASED",
@@ -1191,7 +1400,12 @@
       "released_at": "2026-05-26T15:23:42Z",
       "release_run": "WF02-adp10-20260526",
       "release_decision": "docs/status/release-ADP-10-20260526.json",
-      "last_updated": "2026-05-26T15:26:37Z"
+      "last_updated": "2026-05-26T15:26:37Z",
+      "implemented_in": [
+        "migrations/036_adp10_agent_io_capture_audit.sql",
+        "tests/integration/adp10_agent_io_capture_audit_test.zig",
+        "tests/integration/main_test.zig"
+      ]
     },
     "ADP-11": {
       "status": "RELEASED",
@@ -1206,7 +1420,12 @@
       "released_at": "2026-05-26T16:47:45Z",
       "release_run": "WF02-adp11-20260526",
       "release_decision": "docs/status/release-ADP-11-20260526.json",
-      "last_updated": "2026-05-26T16:51:05Z"
+      "last_updated": "2026-05-26T16:51:05Z",
+      "implemented_in": [
+        "src/event_store/store.zig",
+        "migrations/037_adp11_replay_safe_retention_policy.sql",
+        "tests/integration/event_store_integration_test.zig"
+      ]
     },
     "ADP-12": {
       "status": "RELEASED",
@@ -1221,7 +1440,16 @@
       "released_at": "2026-05-26T18:40:59Z",
       "release_run": "WF02-adp12-20260526",
       "release_decision": "docs/status/release-ADP-12-20260526.json",
-      "last_updated": "2026-05-26T18:44:37Z"
+      "last_updated": "2026-05-26T18:44:37Z",
+      "implemented_in": [
+        "build.zig",
+        "tests/integration/main_test.zig",
+        "tests/integration/adp12_default_tenant_regression_test.zig",
+        "tests/integration/support/regression_matrix.zig",
+        "tests/integration/support/response_canonicalizer.zig",
+        "tests/integration/support/migration_window_orchestrator.zig",
+        "tests/integration/support/report_writer.zig"
+      ]
     },
     "OIDC-01": {
       "status": "RELEASED",
@@ -1236,7 +1464,23 @@
       "released_at": "2026-05-26T19:43:27Z",
       "release_run": "WF02-oidc01-20260527",
       "release_decision": "docs/status/release-OIDC-01-20260526.json",
-      "last_updated": "2026-05-26T19:47:46Z"
+      "last_updated": "2026-05-26T19:47:46Z",
+      "implemented_in": [
+        "src/identity/provider/errors.zig",
+        "src/identity/provider/types.zig",
+        "src/identity/provider/interface.zig",
+        "src/identity/provider/manager.zig",
+        "src/identity/provider/mod.zig",
+        "src/identity/provider/adapters/keycloak/provider.zig",
+        "src/identity/provider/adapters/stub/provider.zig",
+        "src/api/middleware/auth.zig",
+        "src/api/api_mod.zig",
+        "src/identity/service.zig",
+        "tests/unit/test_api08_auth.zig",
+        "build.zig",
+        "tests/unit/test_oidc01_provider_boundary.zig",
+        "tests/unit/test_oidc01_provider_stub.zig"
+      ]
     },
     "OIDC-02": {
       "status": "RELEASED",
@@ -1251,7 +1495,16 @@
       "released_at": "2026-05-26T20:30:22Z",
       "release_run": "WF02-oidc02-20260527",
       "release_decision": "docs/status/release-OIDC-02-20260526.json",
-      "last_updated": "2026-05-26T20:34:15Z"
+      "last_updated": "2026-05-26T20:34:15Z",
+      "implemented_in": [
+        "src/identity/provider/mod.zig",
+        "src/identity/provider/adapters/keycloak/config.zig",
+        "src/identity/provider/adapters/keycloak/urls.zig",
+        "src/identity/provider/adapters/keycloak/provider.zig",
+        "src/identity/provider/test_oidc02_keycloak_adapter.zig",
+        "tests/unit/test_oidc01_provider_boundary.zig",
+        "build.zig"
+      ]
     },
     "OIDC-03": {
       "status": "RELEASED",
@@ -1266,7 +1519,14 @@
       "released_at": "2026-05-26T21:27:45Z",
       "release_run": "WF02-oidc03-20260527",
       "release_decision": "docs/status/release-OIDC-03-20260526.json",
-      "last_updated": "2026-05-26T21:31:39Z"
+      "last_updated": "2026-05-26T21:31:39Z",
+      "implemented_in": [
+        "src/config/identity_provider.zig",
+        "src/identity/provider/bootstrap.zig",
+        "src/identity/provider/mod.zig",
+        "src/main.zig",
+        "build.zig"
+      ]
     },
     "OIDC-04": {
       "status": "RELEASED",
@@ -1281,7 +1541,12 @@
       "released_at": "2026-05-27T02:21:30Z",
       "release_run": "WF02-oidc04-20260527",
       "release_decision": "docs/status/release-OIDC-04-20260527.json",
-      "last_updated": "2026-05-27T02:25:17Z"
+      "last_updated": "2026-05-27T02:25:17Z",
+      "implemented_in": [
+        "src/identity/provider/oidc/standards_verifier.zig",
+        "src/identity/provider/adapters/keycloak/provider.zig",
+        "src/identity/provider/test_oidc02_keycloak_adapter.zig"
+      ]
     },
     "OIDC-05": {
       "status": "RELEASED",
@@ -1296,7 +1561,14 @@
       "released_at": "2026-05-27T03:09:08Z",
       "release_run": "WF02-oidc05-20260527",
       "release_decision": "docs/status/release-OIDC-05-20260527.json",
-      "last_updated": "2026-05-27T03:12:14Z"
+      "last_updated": "2026-05-27T03:12:14Z",
+      "implemented_in": [
+        "src/api/middleware/auth.zig",
+        "src/identity/provider/manager.zig",
+        "tests/unit/test_api08_auth.zig",
+        "tests/unit/test_oidc01_provider_boundary.zig",
+        "tests/unit/test_oidc01_provider_stub.zig"
+      ]
     },
     "DSL-01": {
       "status": "RELEASED",
@@ -1310,7 +1582,15 @@
       "released_at": "2026-05-26T21:46:58Z",
       "release_run": "WF02-dsl01-20260527",
       "release_decision": "docs/status/release-DSL-01-20260526.json",
-      "last_updated": "2026-05-26T21:46:58Z"
+      "last_updated": "2026-05-26T21:46:58Z",
+      "implemented_in": [
+        "src/expr/error.zig",
+        "src/expr/ast.zig",
+        "src/expr/lexer.zig",
+        "src/expr/parser.zig",
+        "src/expr/mod.zig",
+        "build.zig"
+      ]
     },
     "DSL-02": {
       "status": "RELEASED",
@@ -1318,6 +1598,9 @@
       "priority": "MUST",
       "title": "AST stability",
       "implementation_run": "WF02-dsl02-20260527",
+      "implemented_in": [
+        "src/expr/ast.zig"
+      ],
       "test_spec": "tests/specs/DSL-02.md",
       "test_run": "tests/reports/report-2026-05-27T05-26-58Z-WF02-dsl02-step04.json",
       "tested_at": "2026-05-27",
@@ -1337,7 +1620,16 @@
       "tested_at": "2026-05-27",
       "release_run": "WF02-dsl03-20260527",
       "release_decision": "docs/status/release-DSL-03-20260527.json",
-      "last_updated": "2026-05-27T06:49:00Z"
+      "last_updated": "2026-05-27T06:49:00Z",
+      "implemented_in": [
+        "src/expr/parser.zig",
+        "src/expr/error.zig",
+        "src/expr/mod.zig",
+        "src/expr/lexer.zig",
+        "src/expr/ast.zig",
+        "tests/unit/expr_error_recovery_test.zig",
+        "build.zig"
+      ]
     },
     "DSL-04": {
       "status": "RELEASED",
@@ -1351,7 +1643,11 @@
       "released_at": "2026-05-27T07:30:05Z",
       "release_run": "WF02-dsl04-20260527",
       "release_decision": "docs/status/release-DSL-04-2026-05-27.json",
-      "last_updated": "2026-05-27T07:30:05Z"
+      "last_updated": "2026-05-27T07:30:05Z",
+      "implemented_in": [
+        "src/expr/ast.zig",
+        "src/expr/mod.zig"
+      ]
     },
     "DSL-05": {
       "status": "RELEASED",
@@ -1365,7 +1661,12 @@
       "released_at": "2026-05-27T08:16:15Z",
       "release_run": "WF02-dsl05-20260527",
       "release_decision": "docs/status/release-DSL-05-20260527.json",
-      "last_updated": "2026-05-27T08:18:04Z"
+      "last_updated": "2026-05-27T08:18:04Z",
+      "implemented_in": [
+        "src/expr/ast.zig",
+        "src/expr/mod.zig",
+        "src/expr/error.zig"
+      ]
     },
     "SIM-01": {
       "status": "RELEASED",
@@ -1378,7 +1679,30 @@
       "released_at": "2026-05-29T08:09:41Z",
       "release_run": "WF02-stage11-sim01-04-20260528",
       "release_decision": "docs/status/release-Stage11-SIM-01-04-2026-05-29.json",
-      "last_updated": "2026-05-29T08:14:52Z"
+      "last_updated": "2026-05-29T08:14:52Z",
+      "implemented_in": [
+        "tests/integration/helpers.zig",
+        "tests/integration/sim01_04_simulation_mode_test.zig",
+        "tests/integration/xc04_kernel_determinism_test.zig",
+        "tests/integration/main_test.zig",
+        "tests/integration/stage11_sim_xc04_aggregate_test.zig",
+        "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+        "tests/integration/oidc35_onboarding_test.zig",
+        "src/simulation/types.zig",
+        "src/simulation/context.zig",
+        "src/simulation/time_source.zig",
+        "src/simulation/uuid_source.zig",
+        "src/simulation/mock_catalog.zig",
+        "src/simulation/service_interceptor.zig",
+        "src/simulation/tenant_store.zig",
+        "src/simulation/runtime.zig",
+        "src/simulation/mod.zig",
+        "src/lua/host_api/now.zig",
+        "src/lua/host_api/call_service.zig",
+        "src/bpm.zig",
+        "src/db/migrations.zig",
+        "src/tools/migrate.zig"
+      ]
     },
     "SIM-02": {
       "status": "RELEASED",
@@ -1391,7 +1715,30 @@
       "released_at": "2026-05-29T08:09:41Z",
       "release_run": "WF02-stage11-sim01-04-20260528",
       "release_decision": "docs/status/release-Stage11-SIM-01-04-2026-05-29.json",
-      "last_updated": "2026-05-29T08:14:52Z"
+      "last_updated": "2026-05-29T08:14:52Z",
+      "implemented_in": [
+        "tests/integration/helpers.zig",
+        "tests/integration/sim01_04_simulation_mode_test.zig",
+        "tests/integration/xc04_kernel_determinism_test.zig",
+        "tests/integration/main_test.zig",
+        "tests/integration/stage11_sim_xc04_aggregate_test.zig",
+        "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+        "tests/integration/oidc35_onboarding_test.zig",
+        "src/simulation/types.zig",
+        "src/simulation/context.zig",
+        "src/simulation/time_source.zig",
+        "src/simulation/uuid_source.zig",
+        "src/simulation/mock_catalog.zig",
+        "src/simulation/service_interceptor.zig",
+        "src/simulation/tenant_store.zig",
+        "src/simulation/runtime.zig",
+        "src/simulation/mod.zig",
+        "src/lua/host_api/now.zig",
+        "src/lua/host_api/call_service.zig",
+        "src/bpm.zig",
+        "src/db/migrations.zig",
+        "src/tools/migrate.zig"
+      ]
     },
     "SIM-03": {
       "status": "RELEASED",
@@ -1404,7 +1751,30 @@
       "released_at": "2026-05-29T08:09:41Z",
       "release_run": "WF02-stage11-sim01-04-20260528",
       "release_decision": "docs/status/release-Stage11-SIM-01-04-2026-05-29.json",
-      "last_updated": "2026-05-29T08:14:52Z"
+      "last_updated": "2026-05-29T08:14:52Z",
+      "implemented_in": [
+        "tests/integration/helpers.zig",
+        "tests/integration/sim01_04_simulation_mode_test.zig",
+        "tests/integration/xc04_kernel_determinism_test.zig",
+        "tests/integration/main_test.zig",
+        "tests/integration/stage11_sim_xc04_aggregate_test.zig",
+        "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+        "tests/integration/oidc35_onboarding_test.zig",
+        "src/simulation/types.zig",
+        "src/simulation/context.zig",
+        "src/simulation/time_source.zig",
+        "src/simulation/uuid_source.zig",
+        "src/simulation/mock_catalog.zig",
+        "src/simulation/service_interceptor.zig",
+        "src/simulation/tenant_store.zig",
+        "src/simulation/runtime.zig",
+        "src/simulation/mod.zig",
+        "src/lua/host_api/now.zig",
+        "src/lua/host_api/call_service.zig",
+        "src/bpm.zig",
+        "src/db/migrations.zig",
+        "src/tools/migrate.zig"
+      ]
     },
     "SIM-04": {
       "status": "RELEASED",
@@ -1417,7 +1787,30 @@
       "released_at": "2026-05-29T08:09:41Z",
       "release_run": "WF02-stage11-sim01-04-20260528",
       "release_decision": "docs/status/release-Stage11-SIM-01-04-2026-05-29.json",
-      "last_updated": "2026-05-29T08:14:52Z"
+      "last_updated": "2026-05-29T08:14:52Z",
+      "implemented_in": [
+        "tests/integration/helpers.zig",
+        "tests/integration/sim01_04_simulation_mode_test.zig",
+        "tests/integration/xc04_kernel_determinism_test.zig",
+        "tests/integration/main_test.zig",
+        "tests/integration/stage11_sim_xc04_aggregate_test.zig",
+        "tests/integration/oidc31_end_to_end_auth_suite_test.zig",
+        "tests/integration/oidc35_onboarding_test.zig",
+        "src/simulation/types.zig",
+        "src/simulation/context.zig",
+        "src/simulation/time_source.zig",
+        "src/simulation/uuid_source.zig",
+        "src/simulation/mock_catalog.zig",
+        "src/simulation/service_interceptor.zig",
+        "src/simulation/tenant_store.zig",
+        "src/simulation/runtime.zig",
+        "src/simulation/mod.zig",
+        "src/lua/host_api/now.zig",
+        "src/lua/host_api/call_service.zig",
+        "src/bpm.zig",
+        "src/db/migrations.zig",
+        "src/tools/migrate.zig"
+      ]
     },
     "SIM-05": {
       "status": "RELEASED",
@@ -1431,7 +1824,15 @@
       "released_at": "2026-05-29T12:27:02Z",
       "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
       "release_decision": "docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json",
-      "last_updated": "2026-05-29T12:27:02Z"
+      "last_updated": "2026-05-29T12:27:02Z",
+      "implemented_in": [
+        "tests/integration/main_test.zig",
+        "tests/integration/sim05_08_scenario_runner_test.zig",
+        "tests/integration/helpers.zig",
+        "src/simulation/mod.zig",
+        "src/main.zig",
+        "src/bpm.zig"
+      ]
     },
     "SIM-06": {
       "status": "RELEASED",
@@ -1445,7 +1846,15 @@
       "released_at": "2026-05-29T12:27:02Z",
       "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
       "release_decision": "docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json",
-      "last_updated": "2026-05-29T12:27:02Z"
+      "last_updated": "2026-05-29T12:27:02Z",
+      "implemented_in": [
+        "tests/integration/main_test.zig",
+        "tests/integration/sim05_08_scenario_runner_test.zig",
+        "tests/integration/helpers.zig",
+        "src/simulation/mod.zig",
+        "src/main.zig",
+        "src/bpm.zig"
+      ]
     },
     "SIM-07": {
       "status": "RELEASED",
@@ -1459,7 +1868,15 @@
       "released_at": "2026-05-29T12:27:02Z",
       "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
       "release_decision": "docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json",
-      "last_updated": "2026-05-29T12:27:02Z"
+      "last_updated": "2026-05-29T12:27:02Z",
+      "implemented_in": [
+        "tests/integration/main_test.zig",
+        "tests/integration/sim05_08_scenario_runner_test.zig",
+        "tests/integration/helpers.zig",
+        "src/simulation/mod.zig",
+        "src/main.zig",
+        "src/bpm.zig"
+      ]
     },
     "SIM-08": {
       "status": "RELEASED",
@@ -1473,7 +1890,15 @@
       "released_at": "2026-05-29T12:27:02Z",
       "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
       "release_decision": "docs/status/release-Stage11-SIM-05-08-rerun1-2026-05-29.json",
-      "last_updated": "2026-05-29T12:27:02Z"
+      "last_updated": "2026-05-29T12:27:02Z",
+      "implemented_in": [
+        "tests/integration/main_test.zig",
+        "tests/integration/sim05_08_scenario_runner_test.zig",
+        "tests/integration/helpers.zig",
+        "src/simulation/mod.zig",
+        "src/main.zig",
+        "src/bpm.zig"
+      ]
     },
     "REPO-01": {
       "status": "RELEASED",
@@ -1772,7 +2197,9 @@
       "stage": 7,
       "priority": "MUST",
       "title": "Total evaluation",
-      "implemented_in": ["src/expr/evaluator.zig"],
+      "implemented_in": [
+        "src/expr/evaluator.zig"
+      ],
       "test_spec": "tests/specs/DSL-06.md",
       "test_run": "tests/reports/report-WF02-dsl06-20260527-step04.json",
       "release_decision": "docs/status/release-DSL-06-20260527.json",
@@ -1785,7 +2212,10 @@
       "stage": 7,
       "priority": "MUST",
       "title": "Function whitelist",
-      "implemented_in": ["src/expr/lexer.zig", "src/expr/mod.zig"],
+      "implemented_in": [
+        "src/expr/lexer.zig",
+        "src/expr/mod.zig"
+      ],
       "test_spec": "tests/specs/DSL-09.md",
       "test_run": "tests/reports/report-WF02-dsl09-20260527-step04.json",
       "release_decision": "docs/status/release-DSL-09-20260527.json",
@@ -1798,7 +2228,9 @@
       "stage": 7,
       "priority": "MUST",
       "title": "Function purity",
-      "implemented_in": ["src/expr/mod.zig"],
+      "implemented_in": [
+        "src/expr/mod.zig"
+      ],
       "test_spec": "tests/specs/DSL-08.md",
       "test_run": "tests/reports/report-WF02-dsl08-20260527-step04.json",
       "release_decision": "docs/status/release-DSL-08-20260527.json",
@@ -1811,7 +2243,9 @@
       "stage": 7,
       "priority": "MUST",
       "title": "Date built-ins",
-      "implemented_in": ["src/expr/mod.zig"],
+      "implemented_in": [
+        "src/expr/mod.zig"
+      ],
       "test_spec": "tests/specs/DSL-09.md",
       "test_run": "tests/reports/report-WF02-dsl09-20260527-step04.json",
       "release_decision": "docs/status/release-DSL-09-20260527.json",
@@ -1824,7 +2258,9 @@
       "stage": 7,
       "priority": "MUST",
       "title": "Context resolution",
-      "implemented_in": ["src/expr/evaluator.zig"],
+      "implemented_in": [
+        "src/expr/evaluator.zig"
+      ],
       "test_spec": "tests/specs/DSL-10.md",
       "test_run": "tests/reports/report-WF02-dsl10-20260527-step04.json",
       "release_decision": "docs/status/release-DSL-10-20260527.json",
@@ -1837,7 +2273,9 @@
       "stage": 7,
       "priority": "MUST",
       "title": "Dot path traversal",
-      "implemented_in": ["src/expr/evaluator.zig"],
+      "implemented_in": [
+        "src/expr/evaluator.zig"
+      ],
       "test_spec": "tests/specs/DSL-11.md",
       "test_run": "tests/reports/report-WF02-dsl11-20260527-step04.json",
       "release_decision": "docs/status/release-DSL-11-20260527.json",
@@ -1850,7 +2288,9 @@
       "stage": 7,
       "priority": "MUST",
       "title": "Engine API",
-      "implemented_in": ["src/expr/mod.zig"],
+      "implemented_in": [
+        "src/expr/mod.zig"
+      ],
       "test_spec": "tests/specs/DSL-12.md",
       "test_run": "tests/reports/DSL-12-2026-05-27T20-30-47Z.md",
       "released_at": "2026-05-27T20:33:40Z",
@@ -1862,7 +2302,9 @@
       "stage": 7,
       "priority": "SHOULD",
       "title": "Performance target",
-      "implemented_in": ["src/expr/benchmark.zig"],
+      "implemented_in": [
+        "src/expr/benchmark.zig"
+      ],
       "test_spec": "tests/specs/DSL-13.md",
       "test_run": "tests/reports/DSL-13-test-run.json",
       "released_at": "2026-05-27T21:52:30Z",
@@ -1874,7 +2316,9 @@
       "stage": 8,
       "priority": "MUST",
       "title": "LuaJIT integration",
-      "implemented_in": ["src/lua/luajit_bindings.zig"],
+      "implemented_in": [
+        "src/lua/luajit_bindings.zig"
+      ],
       "test_spec": "tests/specs/LUA-01-05.md",
       "test_run": "tests/reports/WF02-lua01-05-test-run.json",
       "release_decision": "docs/status/release-stage8-20260528.json",
@@ -1887,7 +2331,9 @@
       "stage": 8,
       "priority": "MUST",
       "title": "State isolation",
-      "implemented_in": ["src/lua/executor.zig"],
+      "implemented_in": [
+        "src/lua/executor.zig"
+      ],
       "test_spec": "tests/specs/LUA-01-05.md",
       "test_run": "tests/reports/WF02-lua01-05-test-run.json",
       "release_decision": "docs/status/release-stage8-20260528.json",
@@ -1900,7 +2346,9 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Stdlib restriction",
-      "implemented_in": ["src/lua/stdlib.zig"],
+      "implemented_in": [
+        "src/lua/stdlib.zig"
+      ],
       "test_spec": "tests/specs/LUA-01-05.md",
       "test_run": "tests/reports/WF02-lua01-05-test-run.json",
       "release_decision": "docs/status/release-stage8-20260528.json",
@@ -1913,7 +2361,10 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Bytecode loading disabled",
-      "implemented_in": ["src/lua/stdlib.zig", "src/lua/executor.zig"],
+      "implemented_in": [
+        "src/lua/stdlib.zig",
+        "src/lua/executor.zig"
+      ],
       "test_spec": "tests/specs/LUA-01-05.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-stage8-20260528.json",
@@ -1926,7 +2377,9 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Host API registration",
-      "implemented_in": ["src/lua/host_api/mod.zig"],
+      "implemented_in": [
+        "src/lua/host_api/mod.zig"
+      ],
       "test_spec": "tests/specs/LUA-01-05.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-stage8-20260528.json",
@@ -1939,7 +2392,9 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Capability check at call site",
-      "implemented_in": ["src/lua/capabilities.zig"],
+      "implemented_in": [
+        "src/lua/capabilities.zig"
+      ],
       "test_spec": "tests/specs/LUA-06.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -1952,7 +2407,9 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Capability manifest validation",
-      "implemented_in": ["src/lua/manifest.zig"],
+      "implemented_in": [
+        "src/lua/manifest.zig"
+      ],
       "test_spec": "tests/specs/LUA-07.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -1965,7 +2422,9 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Instruction limit",
-      "implemented_in": ["src/lua/instruction_limiter.zig"],
+      "implemented_in": [
+        "src/lua/instruction_limiter.zig"
+      ],
       "test_spec": "tests/specs/LUA-08.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -1978,7 +2437,9 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Memory limit",
-      "implemented_in": ["src/lua/memory_limiter.zig"],
+      "implemented_in": [
+        "src/lua/memory_limiter.zig"
+      ],
       "test_spec": "tests/specs/LUA-09.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -1991,7 +2452,9 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Wall clock timeout",
-      "implemented_in": ["src/lua/timeout.zig"],
+      "implemented_in": [
+        "src/lua/timeout.zig"
+      ],
       "test_spec": "tests/specs/LUA-10.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -2004,7 +2467,11 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Variable read/write",
-      "implemented_in": ["src/lua/executor.zig", "src/lua/host_api/read_variable.zig", "src/lua/host_api/write_variable.zig"],
+      "implemented_in": [
+        "src/lua/executor.zig",
+        "src/lua/host_api/read_variable.zig",
+        "src/lua/host_api/write_variable.zig"
+      ],
       "test_spec": "tests/specs/LUA-11.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -2017,7 +2484,10 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Service call",
-      "implemented_in": ["src/lua/service_catalog.zig", "src/lua/host_api/call_service.zig"],
+      "implemented_in": [
+        "src/lua/service_catalog.zig",
+        "src/lua/host_api/call_service.zig"
+      ],
       "test_spec": "tests/specs/LUA-12.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -2030,7 +2500,10 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Logging",
-      "implemented_in": ["src/lua/structured_logger.zig", "src/lua/host_api/log.zig"],
+      "implemented_in": [
+        "src/lua/structured_logger.zig",
+        "src/lua/host_api/log.zig"
+      ],
       "test_spec": "tests/specs/LUA-13.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -2043,7 +2516,10 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Time source",
-      "implemented_in": ["src/lua/time_source.zig", "src/lua/host_api/now.zig"],
+      "implemented_in": [
+        "src/lua/time_source.zig",
+        "src/lua/host_api/now.zig"
+      ],
       "test_spec": "tests/specs/LUA-14.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -2056,7 +2532,10 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Structured failure",
-      "implemented_in": ["src/lua/host_api/fail.zig", "src/lua/events.zig"],
+      "implemented_in": [
+        "src/lua/host_api/fail.zig",
+        "src/lua/events.zig"
+      ],
       "test_spec": "tests/specs/LUA-15.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -2069,7 +2548,10 @@
       "stage": 8,
       "priority": "MUST",
       "title": "Runtime error capture",
-      "implemented_in": ["src/lua/errors.zig", "src/lua/events.zig"],
+      "implemented_in": [
+        "src/lua/errors.zig",
+        "src/lua/events.zig"
+      ],
       "test_spec": "tests/specs/LUA-16.md",
       "test_run": "tests/reports/WF02-lua06-16-20260528-test-report.json",
       "release_decision": "docs/status/release-LUA-06-16-20260528.json",
@@ -2082,7 +2564,10 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Wasmtime integration",
-      "implemented_in": ["src/wasm/engine.zig", "src/wasm/wasmtime_bindings.zig"],
+      "implemented_in": [
+        "src/wasm/engine.zig",
+        "src/wasm/wasmtime_bindings.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "test_run": "tests/unit/wasm_executor_test.zig",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
@@ -2095,7 +2580,10 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Module ABI",
-      "implemented_in": ["src/wasm/instance.zig", "src/wasm/executor.zig"],
+      "implemented_in": [
+        "src/wasm/instance.zig",
+        "src/wasm/executor.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
       "released_at": "2026-05-28T04:35:00Z",
@@ -2107,7 +2595,9 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Source compilation job",
-      "implemented_in": ["src/wasm/engine.zig"],
+      "implemented_in": [
+        "src/wasm/engine.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
       "released_at": "2026-05-28T04:35:00Z",
@@ -2119,7 +2609,9 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Compile caching",
-      "implemented_in": ["src/wasm/engine.zig"],
+      "implemented_in": [
+        "src/wasm/engine.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
       "released_at": "2026-05-28T04:35:00Z",
@@ -2131,7 +2623,9 @@
       "stage": 9,
       "priority": "SHOULD",
       "title": "Build reproducibility",
-      "implemented_in": ["src/wasm/engine.zig"],
+      "implemented_in": [
+        "src/wasm/engine.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
       "released_at": "2026-05-28T04:35:00Z",
@@ -2143,7 +2637,9 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Import whitelist",
-      "implemented_in": ["src/wasm/capabilities.zig"],
+      "implemented_in": [
+        "src/wasm/capabilities.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "test_run": "tests/unit/wasm_executor_test.zig",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
@@ -2156,7 +2652,9 @@
       "stage": 9,
       "priority": "MUST",
       "title": "No filesystem access",
-      "implemented_in": ["src/wasm/capabilities.zig"],
+      "implemented_in": [
+        "src/wasm/capabilities.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
       "released_at": "2026-05-28T04:35:00Z",
@@ -2168,7 +2666,10 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Memory isolation",
-      "implemented_in": ["src/wasm/instance.zig", "src/wasm/memory.zig"],
+      "implemented_in": [
+        "src/wasm/instance.zig",
+        "src/wasm/memory.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
       "released_at": "2026-05-28T04:35:00Z",
@@ -2180,7 +2681,10 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Fuel-based execution limit",
-      "implemented_in": ["src/wasm/engine.zig", "src/wasm/executor.zig"],
+      "implemented_in": [
+        "src/wasm/engine.zig",
+        "src/wasm/executor.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
       "released_at": "2026-05-28T04:35:00Z",
@@ -2192,7 +2696,9 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Memory cap",
-      "implemented_in": ["src/wasm/memory.zig"],
+      "implemented_in": [
+        "src/wasm/memory.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
       "released_at": "2026-05-28T04:35:00Z",
@@ -2204,7 +2710,9 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Wall clock timeout",
-      "implemented_in": ["src/wasm/timeout.zig"],
+      "implemented_in": [
+        "src/wasm/timeout.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "test_run": "tests/unit/wasm_executor_test.zig",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
@@ -2217,7 +2725,9 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Parity with Lua host API",
-      "implemented_in": ["src/wasm/host_api/mod.zig"],
+      "implemented_in": [
+        "src/wasm/host_api/mod.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
       "released_at": "2026-05-28T04:35:00Z",
@@ -2229,7 +2739,9 @@
       "stage": 9,
       "priority": "SHOULD",
       "title": "Instance pooling",
-      "implemented_in": ["src/wasm/pool.zig"],
+      "implemented_in": [
+        "src/wasm/pool.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "test_run": "tests/unit/wasm_executor_test.zig",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
@@ -2242,7 +2754,9 @@
       "stage": 9,
       "priority": "MUST",
       "title": "Hot reload",
-      "implemented_in": ["src/wasm/module_registry.zig"],
+      "implemented_in": [
+        "src/wasm/module_registry.zig"
+      ],
       "test_spec": "tests/specs/WASM-01-14.md",
       "test_run": "tests/unit/wasm_executor_test.zig",
       "release_decision": "docs/status/release-stage9-wasm-20260528.json",
@@ -2255,7 +2769,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "JWKS caching",
-      "implemented_in": ["src/identity/provider/oidc/jwks_cache.zig"],
+      "implemented_in": [
+        "src/identity/provider/oidc/jwks_cache.zig"
+      ],
       "test_spec": "tests/specs/OIDC-06.md",
       "release_decision": "tests/reports/report-20260527-wf02-oidc06-step04.json",
       "released_at": "docs/status/release-OIDC-06-20260527.json",
@@ -2267,7 +2783,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Claim validation",
-      "implemented_in": ["src/identity/provider/oidc/standards_verifier.zig"],
+      "implemented_in": [
+        "src/identity/provider/oidc/standards_verifier.zig"
+      ],
       "test_spec": "tests/specs/OIDC-07.md",
       "release_decision": "tests/reports/report-2026-05-27-wf02-oidc07.json",
       "released_at": "docs/status/release-OIDC-07-20260527.json",
@@ -2279,7 +2797,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Standard claim mapping",
-      "implemented_in": ["src/oidc/claim_mapping.zig"],
+      "implemented_in": [
+        "src/oidc/claim_mapping.zig"
+      ],
       "test_spec": "tests/specs/OIDC-08.md",
       "release_decision": "tests/reports/report-2026-05-27-WF02-oidc08-step04.json",
       "released_at": "docs/status/release-OIDC-08-20260527.json",
@@ -2291,7 +2811,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "JIT user creation",
-      "implemented_in": ["src/oidc/jit_provisioning.zig"],
+      "implemented_in": [
+        "src/oidc/jit_provisioning.zig"
+      ],
       "test_spec": "tests/specs/OIDC-09.md",
       "release_decision": "tests/reports/report-WF02-oidc09-20260527-step04b.json",
       "released_at": "docs/status/release-OIDC-09-20260527.json",
@@ -2303,7 +2825,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Attribute synchronisation",
-      "implemented_in": ["src/oidc/attribute_sync.zig (inferred)"],
+      "implemented_in": [
+        "src/oidc/attribute_sync.zig (inferred)"
+      ],
       "test_spec": "tests/specs/OIDC-10.md",
       "release_decision": "tests/reports/report-WF02-oidc10-20260527-step04.json",
       "released_at": "docs/status/release-OIDC-10-20260527.json",
@@ -2315,7 +2839,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "External user identity stability",
-      "implemented_in": ["src/oidc/identity_stability.zig"],
+      "implemented_in": [
+        "src/oidc/identity_stability.zig"
+      ],
       "test_spec": "tests/specs/OIDC-11.md",
       "release_decision": "(batch with OIDC-12-15)",
       "released_at": "docs/status/release-OIDC-11-15-20260528.json",
@@ -2327,7 +2853,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Realm-tenant binding",
-      "implemented_in": ["src/oidc/realm_tenant_binding.zig"],
+      "implemented_in": [
+        "src/oidc/realm_tenant_binding.zig"
+      ],
       "test_spec": "tests/specs/OIDC-12.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-11-15-20260528.json",
@@ -2339,7 +2867,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Tenant claim source",
-      "implemented_in": ["src/oidc/tenant_claim_source.zig"],
+      "implemented_in": [
+        "src/oidc/tenant_claim_source.zig"
+      ],
       "test_spec": "tests/specs/OIDC-13.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-11-15-20260528.json",
@@ -2351,7 +2881,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Realm provisioning via adapter",
-      "implemented_in": ["src/oidc/realm_provisioning.zig"],
+      "implemented_in": [
+        "src/oidc/realm_provisioning.zig"
+      ],
       "test_spec": "tests/specs/OIDC-14.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-11-15-20260528.json",
@@ -2363,7 +2895,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Realm deletion safety",
-      "implemented_in": ["src/oidc/realm_deletion.zig"],
+      "implemented_in": [
+        "src/oidc/realm_deletion.zig"
+      ],
       "test_spec": "tests/specs/OIDC-15.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-11-15-20260528.json",
@@ -2375,7 +2909,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Full lifecycle API for agents",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-16.md",
       "release_decision": "tests/reports/report-20260527T223337Z-WF02-oidc16-26-step04.json",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2387,7 +2923,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Provisioning idempotency",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-17.md",
       "release_decision": "(batch with 16-26)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2399,7 +2937,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Provisioning transactional semantics",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-18.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2411,7 +2951,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Provisioning audit",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-19.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2423,7 +2965,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Service accounts for agents",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-20.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2435,7 +2979,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Agent token rotation",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-21.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2447,7 +2993,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Bootstrap agent identity",
-      "implemented_in": ["src/identity/provider/bootstrap.zig"],
+      "implemented_in": [
+        "src/identity/provider/bootstrap.zig"
+      ],
       "test_spec": "tests/specs/OIDC-22.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2459,7 +3007,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "IDP federation support",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-23.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2471,7 +3021,9 @@
       "stage": 6.5,
       "priority": "SHOULD",
       "title": "Federated user attribute mapping",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-24.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2483,7 +3035,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Provider health check",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-25.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2495,7 +3049,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Provider metrics",
-      "implemented_in": ["src/oidc/agent_lifecycle.zig"],
+      "implemented_in": [
+        "src/oidc/agent_lifecycle.zig"
+      ],
       "test_spec": "tests/specs/OIDC-26.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-16-26-20260528.json",
@@ -2507,7 +3063,9 @@
       "stage": 6.5,
       "priority": "SHOULD",
       "title": "Token verification performance",
-      "implemented_in": ["src/oidc/verification_benchmark.zig"],
+      "implemented_in": [
+        "src/oidc/verification_benchmark.zig"
+      ],
       "test_spec": "tests/specs/OIDC-27.md",
       "release_decision": "tests/reports/report-20260528T034634Z-WF02-oidc27-34-step04-rerun.json",
       "released_at": "docs/status/release-OIDC-27-34-20260528.json",
@@ -2519,7 +3077,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Local development realm",
-      "implemented_in": ["src/oidc/realm_seed.zig"],
+      "implemented_in": [
+        "src/oidc/realm_seed.zig"
+      ],
       "test_spec": "tests/specs/OIDC-28.md",
       "release_decision": "(batch with 27-34)",
       "released_at": "docs/status/release-OIDC-27-34-20260528.json",
@@ -2531,7 +3091,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Realm seed as versioned artifact",
-      "implemented_in": ["src/oidc/realm_seed.zig"],
+      "implemented_in": [
+        "src/oidc/realm_seed.zig"
+      ],
       "test_spec": "tests/specs/OIDC-29.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-27-34-20260528.json",
@@ -2543,7 +3105,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Test token issuance helper",
-      "implemented_in": ["src/oidc/test_token_helper.zig"],
+      "implemented_in": [
+        "src/oidc/test_token_helper.zig"
+      ],
       "test_spec": "tests/specs/OIDC-30.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-27-34-20260528.json",
@@ -2555,7 +3119,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "End-to-end authentication test suite",
-      "implemented_in": ["src/oidc/test_token_helper.zig"],
+      "implemented_in": [
+        "src/oidc/test_token_helper.zig"
+      ],
       "test_spec": "tests/specs/OIDC-31.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-27-34-20260528.json",
@@ -2567,7 +3133,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Agent test identities",
-      "implemented_in": ["src/oidc/test_token_helper.zig"],
+      "implemented_in": [
+        "src/oidc/test_token_helper.zig"
+      ],
       "test_spec": "tests/specs/OIDC-32.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-27-34-20260528.json",
@@ -2579,7 +3147,9 @@
       "stage": 6.5,
       "priority": "MUST",
       "title": "Coexistence period",
-      "implemented_in": ["src/oidc/coexistence_auth.zig"],
+      "implemented_in": [
+        "src/oidc/coexistence_auth.zig"
+      ],
       "test_spec": "tests/specs/OIDC-33.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-27-34-20260528.json",
@@ -2591,12 +3161,686 @@
       "stage": 6.5,
       "priority": "SHOULD",
       "title": "Migration helper",
-      "implemented_in": ["src/oidc/migration_helper.zig"],
+      "implemented_in": [
+        "src/oidc/migration_helper.zig"
+      ],
       "test_spec": "tests/specs/OIDC-34.md",
       "release_decision": "(batch)",
       "released_at": "docs/status/release-OIDC-27-34-20260528.json",
       "release_run": "WF02-oidc27-34-20260528",
       "last_updated": "2026-05-28T03:51:00Z"
+    },
+    "SIM-09": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Test result storage",
+      "implemented_in": [
+        "src/simulation/scenario_runner.zig",
+        "src/api/routes/simulation_test.zig"
+      ],
+      "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T12:24:56Z"
+    },
+    "SIM-10": {
+      "status": "RELEASED",
+      "stage": 11,
+      "priority": "MUST",
+      "title": "Failure diagnostics",
+      "implemented_in": [
+        "src/simulation/scenario_runner.zig",
+        "src/simulation/types.zig",
+        "src/api/routes/simulation_test.zig"
+      ],
+      "release_run": "WF02-stage11-sim05-08-rerun1-20260529",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T12:24:56Z"
+    },
+    "SH-01": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Authenticated shell",
+      "implemented_in": [
+        "web/src/components/layout/AppShell.tsx"
+      ],
+      "release_run": "WF02-f1-shell",
+      "released_at": "2026-05-27",
+      "last_updated": "2026-05-27T00:00:00Z"
+    },
+    "SH-02": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Navigation",
+      "implemented_in": [
+        "web/src/components/layout/AppShell.tsx"
+      ],
+      "release_run": "WF02-f1-shell",
+      "released_at": "2026-05-27",
+      "last_updated": "2026-05-27T00:00:00Z"
+    },
+    "SH-03": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Login page",
+      "implemented_in": [
+        "web/src/pages/LoginPage.tsx"
+      ],
+      "release_run": "WF02-f1-shell",
+      "released_at": "2026-05-27",
+      "last_updated": "2026-05-27T00:00:00Z"
+    },
+    "SH-04": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Token storage",
+      "implemented_in": [
+        "web/src/auth/tokenUtils.ts",
+        "web/src/auth/AuthProvider.tsx"
+      ],
+      "release_run": "WF02-f1-shell",
+      "released_at": "2026-05-27",
+      "last_updated": "2026-05-27T00:00:00Z"
+    },
+    "SH-05": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Session expiry",
+      "implemented_in": [
+        "web/src/auth/tokenUtils.ts",
+        "web/src/auth/OidcManager.ts"
+      ],
+      "release_run": "WF02-f1-shell",
+      "released_at": "2026-05-27",
+      "last_updated": "2026-05-27T00:00:00Z"
+    },
+    "SH-06": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Role-aware routing",
+      "implemented_in": [
+        "web/src/router.tsx",
+        "web/src/auth/ProtectedRoute.tsx"
+      ],
+      "release_run": "WF02-f1-shell",
+      "released_at": "2026-05-27",
+      "last_updated": "2026-05-27T00:00:00Z"
+    },
+    "SH-07": {
+      "status": "RELEASED",
+      "stage": "F1",
+      "priority": "MUST",
+      "title": "Global error boundary",
+      "implemented_in": [
+        "web/src/components/layout/ErrorBoundary.tsx"
+      ],
+      "release_run": "WF02-f1-shell",
+      "released_at": "2026-05-27",
+      "last_updated": "2026-05-27T00:00:00Z"
+    },
+    "PD-UI-01": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Definition list page",
+      "implemented_in": [
+        "web/src/pages/definitions/DefinitionListPage.tsx"
+      ],
+      "release_run": "WF02-f2-batch1",
+      "released_at": "2026-05-28",
+      "last_updated": "2026-05-28T00:00:00Z"
+    },
+    "PD-UI-02": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Create definition",
+      "implemented_in": [
+        "web/src/pages/definitions/DefinitionListPage.tsx",
+        "web/src/pages/definitions/DefinitionEditorPage.tsx"
+      ],
+      "release_run": "WF02-f2-batch1",
+      "released_at": "2026-05-28",
+      "last_updated": "2026-05-28T00:00:00Z"
+    },
+    "PD-UI-03": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Canvas",
+      "implemented_in": [
+        "web/src/components/canvas/ProcessCanvas.tsx"
+      ],
+      "release_run": "WF02-f2-batch1",
+      "released_at": "2026-05-28",
+      "last_updated": "2026-05-28T00:00:00Z"
+    },
+    "PD-UI-04": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Add / delete node",
+      "implemented_in": [
+        "web/src/components/canvas/ProcessCanvas.tsx",
+        "web/src/components/canvas/NodePalette.tsx"
+      ],
+      "release_run": "WF02-f2-batch1",
+      "released_at": "2026-05-28",
+      "last_updated": "2026-05-28T00:00:00Z"
+    },
+    "PD-UI-05": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Node property panel",
+      "implemented_in": [
+        "web/src/components/canvas/PropertyPanel.tsx"
+      ],
+      "release_run": "WF02-f2-batch1",
+      "released_at": "2026-05-28",
+      "last_updated": "2026-05-28T00:00:00Z"
+    },
+    "PD-UI-06": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Add / delete edge",
+      "implemented_in": [
+        "web/src/components/canvas/ProcessCanvas.tsx",
+        "web/src/components/canvas/edges/ConditionEdge.tsx"
+      ],
+      "release_run": "WF02-f2-batch1",
+      "released_at": "2026-05-28",
+      "last_updated": "2026-05-28T00:00:00Z"
+    },
+    "PD-UI-07": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "CEL expression editor",
+      "implemented_in": [
+        "web/src/components/canvas/CelExpressionEditor.tsx"
+      ],
+      "release_run": "WF02-f2-batch2",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T00:00:00Z"
+    },
+    "PD-UI-08": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Save definition",
+      "implemented_in": [
+        "web/src/pages/definitions/DefinitionEditorPage.tsx",
+        "web/src/api/definitions.ts"
+      ],
+      "release_run": "WF02-f2-batch2",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T19:38:00Z"
+    },
+    "PD-UI-09": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Validation feedback",
+      "implemented_in": [
+        "web/src/components/canvas/ValidationSummaryBar.tsx"
+      ],
+      "release_run": "WF02-f2-batch2",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T00:00:00Z"
+    },
+    "PD-UI-10": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Version list",
+      "implemented_in": [
+        "web/src/pages/definitions/DefinitionListPage.tsx"
+      ],
+      "release_run": "WF02-f2-batch2",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T00:00:00Z"
+    },
+    "PD-UI-11": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Activate version",
+      "implemented_in": [
+        "web/src/pages/definitions/DefinitionListPage.tsx"
+      ],
+      "release_run": "WF02-f2-batch2",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T00:00:00Z"
+    },
+    "PD-UI-12": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Deprecate version",
+      "implemented_in": [
+        "web/src/pages/definitions/DefinitionListPage.tsx"
+      ],
+      "release_run": "WF02-f2-batch2",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T00:00:00Z"
+    },
+    "PD-UI-13": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "SHOULD",
+      "title": "Definition export",
+      "implemented_in": [
+        "web/src/pages/definitions/DefinitionListPage.tsx",
+        "web/src/api/definitions.ts"
+      ],
+      "release_run": "WF02-f2-batch3",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T00:00:00Z"
+    },
+    "PD-UI-14": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "SHOULD",
+      "title": "Definition import",
+      "implemented_in": [
+        "web/src/pages/definitions/DefinitionListPage.tsx",
+        "web/src/api/definitions.ts"
+      ],
+      "release_run": "WF02-f2-batch3",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T00:00:00Z"
+    },
+    "PD-UI-15": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "MUST",
+      "title": "Read-only canvas",
+      "implemented_in": [
+        "web/src/pages/definitions/DefinitionEditorPage.tsx",
+        "web/src/components/canvas/ProcessCanvas.tsx"
+      ],
+      "release_run": "WF02-f2-batch3",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T00:00:00Z"
+    },
+    "PD-UI-16": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "SHOULD",
+      "title": "Diff view",
+      "implemented_in": [
+        "web/src/components/ui/JsonDiffView.tsx"
+      ],
+      "release_run": "WF02-f2b-shoulds-20260529",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T19:38:00Z"
+    },
+    "PD-UI-17": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "SHOULD",
+      "title": "Canvas keyboard shortcuts",
+      "implemented_in": [
+        "web/src/components/canvas/ProcessCanvas.tsx"
+      ],
+      "release_run": "WF02-f2b-shoulds-20260529",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T19:38:00Z"
+    },
+    "PD-UI-18": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "COULD",
+      "title": "Auto-layout",
+      "implemented_in": [
+        "web/src/components/canvas/ProcessCanvas.tsx"
+      ],
+      "release_run": "WF02-f2b-shoulds-20260529",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T19:38:00Z"
+    },
+    "PD-UI-19": {
+      "status": "RELEASED",
+      "stage": "F2",
+      "priority": "COULD",
+      "title": "Mini-map",
+      "implemented_in": [
+        "web/src/components/canvas/ProcessCanvas.tsx"
+      ],
+      "release_run": "WF02-f2b-shoulds-20260529",
+      "released_at": "2026-05-29",
+      "last_updated": "2026-05-29T19:38:00Z"
+    },
+    "IN-UI-01": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "MUST",
+      "title": "Instance board",
+      "implemented_in": [
+        "web/src/pages/instances/InstanceBoardPage.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f3a-batch1-20260529",
+      "last_updated": "2026-05-30T02:10:57Z"
+    },
+    "IN-UI-02": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "MUST",
+      "title": "Instance filters",
+      "implemented_in": [
+        "web/src/pages/instances/InstanceBoardPage.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f3a-batch1-20260529",
+      "last_updated": "2026-05-30T02:10:57Z"
+    },
+    "IN-UI-03": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "MUST",
+      "title": "Start instance",
+      "implemented_in": [
+        "web/src/pages/instances/InstanceBoardPage.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f3a-batch1-20260529",
+      "last_updated": "2026-05-30T02:10:57Z"
+    },
+    "IN-UI-04": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "MUST",
+      "title": "Instance detail view",
+      "implemented_in": [
+        "web/src/pages/instances/InstanceDetailPage.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f3a-batch1-20260529",
+      "last_updated": "2026-05-30T02:10:57Z"
+    },
+    "IN-UI-05": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "MUST",
+      "title": "Event history tab",
+      "implemented_in": [
+        "web/src/pages/instances/InstanceDetailPage.tsx",
+        "web/src/components/instances/EventHistoryPanel.tsx",
+        "web/src/components/instances/EventJsonExpandable.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f3b-inui0508-20260530",
+      "last_updated": "2026-05-30T04:55:33Z"
+    },
+    "IN-UI-06": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "MUST",
+      "title": "Timeline tab",
+      "implemented_in": [
+        "web/src/pages/instances/InstanceDetailPage.tsx",
+        "web/src/components/instances/TimelineFeed.tsx",
+        "web/src/components/instances/ActorAvatar.tsx",
+        "src/obs/timeline.zig"
+      ],
+      "test_spec": "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f3b-inui0508-20260530",
+      "last_updated": "2026-05-30T04:55:33Z"
+    },
+    "IN-UI-07": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "MUST",
+      "title": "Cancel instance",
+      "implemented_in": [
+        "web/src/pages/instances/InstanceDetailPage.tsx",
+        "web/src/components/instances/CancelInstanceDialog.tsx",
+        "web/src/hooks/useInstances.ts"
+      ],
+      "test_spec": "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f3b-inui0508-20260530",
+      "last_updated": "2026-05-30T04:55:33Z"
+    },
+    "IN-UI-08": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "SHOULD",
+      "title": "Auto-refresh",
+      "implemented_in": [
+        "web/src/hooks/usePolling.ts",
+        "web/src/pages/instances/InstanceBoardPage.tsx",
+        "web/src/pages/instances/InstanceDetailPage.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f3-instance-monitoring.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f3b-inui0508-20260530.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f3b-inui0508-20260530",
+      "last_updated": "2026-05-30T04:55:33Z"
+    },
+    "IN-UI-09": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "SHOULD",
+      "title": "Active token visualisation",
+      "implemented_in": [
+        "web/src/components/instances/ProcessGraphWithTokens.tsx"
+      ],
+      "released_at": "2026-05-30T05:20:31Z",
+      "release_run": "WF02-f3b-inui0910-20260530",
+      "last_updated": "2026-05-30T05:20:31Z"
+    },
+    "IN-UI-10": {
+      "status": "RELEASED",
+      "stage": "F3",
+      "priority": "SHOULD",
+      "title": "History scrubber",
+      "implemented_in": [
+        "web/src/components/instances/HistoryScrubber.tsx"
+      ],
+      "released_at": "2026-05-30T05:20:31Z",
+      "release_run": "WF02-f3b-inui0910-20260530",
+      "last_updated": "2026-05-30T05:20:31Z"
+    },
+    "TK-UI-01": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "MUST",
+      "title": "Task inbox display and filtering",
+      "implemented_in": [
+        "web/src/pages/tasks/TaskInboxPage.tsx",
+        "web/src/api/tasks.ts",
+        "web/src/hooks/useTasks.ts"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
+    },
+    "TK-UI-02": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "MUST",
+      "title": "Task detail panel display",
+      "implemented_in": [
+        "web/src/pages/tasks/TaskInboxPage.tsx",
+        "web/src/components/tasks/TaskDetailPanel.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
+    },
+    "TK-UI-03": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "MUST",
+      "title": "Dynamic form schema rendering",
+      "implemented_in": [
+        "web/src/components/tasks/TaskDetailPanel.tsx",
+        "web/src/components/tasks/DynamicForm.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
+    },
+    "TK-UI-04": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "MUST",
+      "title": "Task completion",
+      "implemented_in": [
+        "web/src/hooks/useTasks.ts",
+        "src/tasks/store.zig",
+        "src/api/routes/tasks.zig"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
+    },
+    "TK-UI-05": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "MUST",
+      "title": "Claim group-assigned tasks",
+      "implemented_in": [
+        "web/src/hooks/useTasks.ts",
+        "web/src/api/tasks.ts",
+        "src/api/routes/tasks.zig"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
+    },
+    "TK-UI-06": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "MUST",
+      "title": "Reassign tasks (operator)",
+      "implemented_in": [
+        "web/src/hooks/useTasks.ts",
+        "web/src/components/tasks/ReassignDialog.tsx",
+        "src/api/routes/tasks.zig"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
+    },
+    "TK-UI-07": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "SHOULD",
+      "title": "Sort and free-text search",
+      "implemented_in": [
+        "web/src/pages/tasks/TaskInboxPage.tsx",
+        "web/src/hooks/useTasks.ts"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
+    },
+    "TK-UI-08": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "SHOULD",
+      "title": "Navigation badge count",
+      "implemented_in": [
+        "web/src/components/layout/Sidebar.tsx",
+        "web/src/hooks/useTasks.ts"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
+    },
+    "TK-UI-09": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "SHOULD",
+      "title": "Escalation indicator",
+      "implemented_in": [
+        "web/src/pages/tasks/TaskInboxPage.tsx",
+        "web/src/components/tasks/TaskDetailPanel.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
+    },
+    "TK-UI-10": {
+      "status": "RELEASED",
+      "stage": "F4",
+      "priority": "MUST",
+      "title": "Mobile responsive layout",
+      "implemented_in": [
+        "web/src/pages/tasks/TaskInboxPage.tsx",
+        "web/src/components/tasks/TaskDetailPanel.tsx"
+      ],
+      "test_spec": "web/tests/e2e/f4-task-inbox.e2e.spec.ts",
+      "test_run": "tests/reports/report-2026-05-30-WF02-f4-task-inbox-20260530-final.yaml",
+      "release_decision": "docs/status/release-f4-task-inbox-2026-05-30.yaml",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f4-task-inbox-20260530",
+      "last_updated": "2026-05-30T12:05:29Z"
     },
     "ADM-UI-01": {
       "status": "RELEASED",
@@ -2663,6 +3907,70 @@
       "release_run": "WF02-f5-admin-batch1-20260530",
       "last_updated": "2026-05-30T16:48:37Z"
     },
+    "ADM-UI-05": {
+      "status": "RELEASED",
+      "stage": "F5",
+      "priority": "MUST",
+      "title": "Group management",
+      "implemented_in": [
+        "web/src/pages/admin/GroupsPage.tsx"
+      ],
+      "test_spec": "tests/specs/ADM-UI-05.md",
+      "test_run": "handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json",
+      "release_decision": "docs/status/release-stage-f5-admin-batch2-2026-05-30.json",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f5-admin-batch2-20260530",
+      "last_updated": "2026-05-30T18:54:15Z"
+    },
+    "ADM-UI-06": {
+      "status": "RELEASED",
+      "stage": "F5",
+      "priority": "MUST",
+      "title": "Token list",
+      "implemented_in": [
+        "web/src/pages/admin/TokensPage.tsx"
+      ],
+      "test_spec": "tests/specs/ADM-UI-06.md",
+      "test_run": "handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json",
+      "release_decision": "docs/status/release-stage-f5-admin-batch2-2026-05-30.json",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f5-admin-batch2-20260530",
+      "last_updated": "2026-05-30T18:54:15Z"
+    },
+    "ADM-UI-07": {
+      "status": "RELEASED",
+      "stage": "F5",
+      "priority": "MUST",
+      "title": "Issue token",
+      "implemented_in": [
+        "web/src/pages/admin/TokensPage.tsx"
+      ],
+      "test_spec": "tests/specs/ADM-UI-07.md",
+      "test_run": "handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json",
+      "release_decision": "docs/status/release-stage-f5-admin-batch2-2026-05-30.json",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f5-admin-batch2-20260530",
+      "last_updated": "2026-05-30T18:54:15Z"
+    },
+    "ADM-UI-08": {
+      "status": "RELEASED",
+      "stage": "F5",
+      "priority": "MUST",
+      "title": "Revoke token",
+      "implemented_in": [
+        "web/src/pages/admin/TokensPage.tsx"
+      ],
+      "test_spec": "tests/specs/ADM-UI-08.md",
+      "test_run": "handoffs/WF02-f5-admin-batch2-20260530/step-04-test-runner.json",
+      "release_decision": "docs/status/release-stage-f5-admin-batch2-2026-05-30.json",
+      "tested_at": "2026-05-30",
+      "released_at": "2026-05-30",
+      "release_run": "WF02-f5-admin-batch2-20260530",
+      "last_updated": "2026-05-30T18:54:15Z"
+    },
     "ADM-UI-09": {
       "status": "RELEASED",
       "stage": "F5",
@@ -2710,6 +4018,151 @@
       "released_at": "2026-05-30",
       "release_run": "WF02-f5-admin-batch3-20260531",
       "last_updated": "2026-05-30T23:33:13Z"
+    },
+    "DLQ-UI-01": {
+      "status": "RELEASED",
+      "stage": "F6",
+      "priority": "MUST",
+      "title": "DLQ list",
+      "implemented_in": [
+        "web/src/pages/dlq/DlqItemsPage.tsx"
+      ],
+      "test_spec": "tests/specs/DLQ-UI-01.md",
+      "test_run": "tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml",
+      "release_decision": "docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json",
+      "tested_at": "2026-05-31",
+      "released_at": "2026-05-31",
+      "release_run": "WF02-f6-dlq-webhooks-batch1-20260531",
+      "last_updated": "2026-05-31T04:50:28Z"
+    },
+    "DLQ-UI-02": {
+      "status": "RELEASED",
+      "stage": "F6",
+      "priority": "MUST",
+      "title": "DLQ item detail",
+      "implemented_in": [
+        "web/src/pages/dlq/DlqPage.tsx"
+      ],
+      "test_spec": "tests/specs/DLQ-UI-02.md",
+      "test_run": "tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml",
+      "release_decision": "docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json",
+      "tested_at": "2026-05-31",
+      "released_at": "2026-05-31",
+      "release_run": "WF02-f6-dlq-webhooks-batch1-20260531",
+      "last_updated": "2026-05-31T04:50:28Z"
+    },
+    "DLQ-UI-03": {
+      "status": "RELEASED",
+      "stage": "F6",
+      "priority": "MUST",
+      "title": "Retry action",
+      "implemented_in": [
+        "web/src/pages/dlq/DlqPage.tsx"
+      ],
+      "test_spec": "tests/specs/DLQ-UI-03.md",
+      "test_run": "tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml",
+      "release_decision": "docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json",
+      "tested_at": "2026-05-31",
+      "released_at": "2026-05-31",
+      "release_run": "WF02-f6-dlq-webhooks-batch1-20260531",
+      "last_updated": "2026-05-31T04:50:28Z"
+    },
+    "DLQ-UI-04": {
+      "status": "RELEASED",
+      "stage": "F6",
+      "priority": "MUST",
+      "title": "Discard action",
+      "implemented_in": [
+        "web/src/pages/dlq/DlqPage.tsx"
+      ],
+      "test_spec": "tests/specs/DLQ-UI-04.md",
+      "test_run": "tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml",
+      "release_decision": "docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json",
+      "tested_at": "2026-05-31",
+      "released_at": "2026-05-31",
+      "release_run": "WF02-f6-dlq-webhooks-batch1-20260531",
+      "last_updated": "2026-05-31T04:50:28Z"
+    },
+    "DLQ-UI-05": {
+      "status": "RELEASED",
+      "stage": "F6",
+      "priority": "MUST",
+      "title": "DLQ nav badge",
+      "implemented_in": [
+        "web/src/components/layout/AppShell.tsx"
+      ],
+      "test_spec": "tests/specs/DLQ-UI-05.md",
+      "test_run": "tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch2-20260531-rerun.yaml",
+      "release_decision": "docs/status/release-stage-f6-dlq-webhooks-batch2-2026-05-31.json",
+      "tested_at": "2026-05-31",
+      "released_at": "2026-05-31",
+      "release_run": "WF02-f6-dlq-webhooks-batch2-20260531",
+      "last_updated": "2026-05-31T09:37:17Z"
+    },
+    "WH-UI-01": {
+      "status": "RELEASED",
+      "stage": "F6",
+      "priority": "MUST",
+      "title": "Webhook list",
+      "implemented_in": [
+        "web/src/pages/dlq/WebhooksPage.tsx"
+      ],
+      "test_spec": "tests/specs/WH-UI-01.md",
+      "test_run": "tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch2-20260531-rerun.yaml",
+      "release_decision": "docs/status/release-stage-f6-dlq-webhooks-batch2-2026-05-31.json",
+      "tested_at": "2026-05-31",
+      "released_at": "2026-05-31",
+      "release_run": "WF02-f6-dlq-webhooks-batch2-20260531",
+      "last_updated": "2026-05-31T09:37:17Z"
+    },
+    "WH-UI-02": {
+      "status": "RELEASED",
+      "stage": "F6",
+      "priority": "MUST",
+      "title": "Webhook pause/resume",
+      "implemented_in": [
+        "web/src/pages/dlq/WebhooksPage.tsx"
+      ],
+      "test_spec": "tests/specs/WH-UI-02.md",
+      "test_run": "tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch2-20260531-rerun.yaml",
+      "release_decision": "docs/status/release-stage-f6-dlq-webhooks-batch2-2026-05-31.json",
+      "tested_at": "2026-05-31",
+      "released_at": "2026-05-31",
+      "release_run": "WF02-f6-dlq-webhooks-batch2-20260531",
+      "last_updated": "2026-05-31T09:37:17Z"
+    },
+    "WH-UI-03": {
+      "status": "RELEASED",
+      "stage": "F6",
+      "priority": "MUST",
+      "title": "Webhook delete",
+      "implemented_in": [
+        "web/src/pages/dlq/WebhooksPage.tsx"
+      ],
+      "test_spec": "tests/specs/WH-UI-03.md",
+      "test_run": "tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch2-20260531-rerun.yaml",
+      "release_decision": "docs/status/release-stage-f6-dlq-webhooks-batch2-2026-05-31.json",
+      "tested_at": "2026-05-31",
+      "released_at": "2026-05-31",
+      "release_run": "WF02-f6-dlq-webhooks-batch2-20260531",
+      "last_updated": "2026-05-31T09:37:17Z"
+    },
+    "WH-UI-04": {
+      "status": "RELEASED",
+      "stage": "F6",
+      "priority": "SHOULD",
+      "title": "Delivery log",
+      "implemented_in": [
+        "web/src/components/webhooks/WebhookSubscriptionDetailPanel.tsx",
+        "web/src/components/webhooks/WebhookDeliveryAttemptsTable.tsx"
+      ],
+      "test_spec": "tests/specs/WH-UI-04.md",
+      "test_run": "tests/reports/report-2026-05-31-WF02-f6-wh-ui-04-20260531-step04.yaml",
+      "release_decision": "docs/status/release-stage-f6-wh-ui-04-2026-05-31.json",
+      "tested_at": "2026-05-31",
+      "released_at": "2026-05-31",
+      "release_run": "WF02-f6-wh-ui-04-20260531",
+      "last_updated": "2026-05-31T16:29:31Z"
     }
   }
 }
