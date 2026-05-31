@@ -100,6 +100,7 @@ export const queryKeys = {
 
   webhooks: {
     all: ['webhooks'] as const,
-    list: () => [...queryKeys.webhooks.all, 'list'] as const,
+    list: (filters?: { search?: string; status?: string }) =>
+      [...queryKeys.webhooks.all, 'list', filters ?? {}] as const,
   },
 }

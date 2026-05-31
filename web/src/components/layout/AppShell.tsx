@@ -1,6 +1,9 @@
 import { Outlet, NavLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/auth/AuthContext'
 import { ApiConnectivityBanner } from './ApiConnectivityBanner'
+import { dlqApi } from '@/api/dlq'
+import { queryKeys } from '@/api/queryKeys'
 
 type Role = 'PLATFORM_ADMIN' | 'PROCESS_DESIGNER' | 'PROCESS_OPERATOR' | 'TASK_WORKER'
 
@@ -26,6 +29,16 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppShell() {
   const { session, logout } = useAuth()
+
+  const dlqThreshold = Number(import.meta.env.VITE_DLQ_ALERT_THRESHOLD ?? '10')
+  const { data: dlqSummary } = useQuery({
+    queryKey: queryKeys.dlq.list({ status: 'pending', page_size: 101 }),
+    queryFn: () => dlqApi.list({ status: 'pending', page_size: 101 }),
+    refetchInterval: 15000,
+  })
+
+  const pendingDlqCount = dlqSummary?.items?.length ?? 0
+  const dlqSeverity = pendingDlqCount <= 0 ? 'none' : (pendingDlqCount > dlqThreshold ? 'critical' : 'warning')
 
   const visibleNav = NAV_ITEMS.filter((n) =>
     n.roles.some((r) => session?.roles.includes(r)),
@@ -64,7 +77,27 @@ export function AppShell() {
                 borderLeft: isActive ? '3px solid #3b82f6' : '3px solid transparent',
               })}
             >
-              {n.label}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.5rem' }}>
+                {n.label}
+                {n.to === '/dlq' && dlqSeverity !== 'none' && (
+                  <span
+                    style={{
+                      minWidth: '1.25rem',
+                      padding: '0 .35rem',
+                      borderRadius: '999px',
+                      fontSize: '.72rem',
+                      lineHeight: '1.15rem',
+                      textAlign: 'center',
+                      fontWeight: 700,
+                      color: '#0f172a',
+                      background: dlqSeverity === 'critical' ? '#ef4444' : '#f59e0b',
+                    }}
+                    aria-label={`DLQ pending count ${pendingDlqCount}`}
+                  >
+                    {pendingDlqCount}
+                  </span>
+                )}
+              </span>
             </NavLink>
           ))}
         </nav>

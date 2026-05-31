@@ -23,15 +23,15 @@ export const dlqApi = {
 }
 
 export const webhooksApi = {
-  list: () =>
-    client.get<WebhookSubscription[]>('/api/v1/webhooks'),
+  list: (params?: { search?: string; status?: string }) =>
+    client.get<{ items?: WebhookSubscription[] } | WebhookSubscription[]>('/api/v1/webhooks/subscriptions', params),
 
-  create: (body: { url: string; secret: string; description?: string; event_types?: string[] }) =>
-    client.post<WebhookSubscription>('/api/v1/webhooks', body),
+  create: (body: { target_url: string; secret?: string | null; event_types: string[] }) =>
+    client.post<WebhookSubscription>('/api/v1/webhooks/subscriptions', body),
 
-  update: (id: string, body: Partial<{ url: string; event_types: string[]; is_active: boolean }>) =>
-    client.patch<WebhookSubscription>(`/api/v1/webhooks/${id}`, body),
+  update: (id: string, body: Partial<{ target_url: string; event_types: string[]; is_active: boolean; status: 'ACTIVE' | 'PAUSED' }>) =>
+    client.patch<WebhookSubscription>(`/api/v1/webhooks/subscriptions/${id}`, body),
 
   delete: (id: string) =>
-    client.delete<void>(`/api/v1/webhooks/${id}`),
+    client.delete<void>(`/api/v1/webhooks/subscriptions/${id}`),
 }
