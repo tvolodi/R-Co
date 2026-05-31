@@ -1,0 +1,39 @@
+report_id: WF03-login-redirect-loop-20260601-step-03-backend-dev
+run_id: WF03-login-redirect-loop-20260601
+handoff_id: 6222d5bd-bdcc-4790-a11c-df0acbc2a40c
+agent_id: BACKEND-DEV
+step: "03"
+created_at: 2026-05-31T21:24:14Z
+status: PASS
+summary: >-
+  Verified the existing WF03 login redirect-loop implementation against ISS-0063
+  and the approved Type E design. The nginx gateway preserves the browser host
+  and port, the backend tenant-config route falls back to the browser-visible
+  localhost authority, and the frontend OIDC manager/callback use sessionStorage
+  plus a callback guard to avoid the redirect loop.
+files_reviewed:
+  - handoffs/WF03-login-redirect-loop-20260601/step-03-backend-dev.json
+  - docs/issues/ISS-0063.json
+  - src/design/oidc-login-redirect-loop.md
+  - infrastructure/keycloak/gateway/nginx.conf
+  - src/api/routes/tenant_config.zig
+  - web/src/auth/OidcManager.ts
+  - web/src/auth/tenantConfig.ts
+  - web/src/pages/OidcCallbackPage.tsx
+checks_run:
+  - name: zig build
+    status: pass
+    detail: "Exited 0."
+  - name: zig build test
+    status: pass
+    detail: "Exited 0."
+  - name: zig build migrate
+    status: pass
+    detail: "Exited 0 after setting BPM_DB_URL=postgres://bpm:bpm@localhost:5432/bpm_dev."
+  - name: error-set scan
+    status: pass
+    detail: "zig build 2>&1 | Select-String -Pattern 'error set' returned no output."
+issues_found: []
+notes:
+  - No source edits were required for this step.
+  - The migration check needed the documented local dev DB URL set explicitly in the shell.

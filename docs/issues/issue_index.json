@@ -1,8 +1,23 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-05-30T22:55:13Z",
-  "next_issue_id": 63,
+  "last_updated": "2026-06-01T21:04:55Z",
+  "next_issue_id": 64,
   "issues": [
+    {
+      "id": "ISS-0063",
+      "title": "OIDC login redirect loop: Keycloak URL port mismatch + InMemoryWebStorage state loss + tenant-config 127.0.0.1 fallback",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-login-redirect-loop-20260601",
+      "handoff_id": null,
+      "affected_areas": [
+        "infrastructure/keycloak/gateway/nginx.conf",
+        "web/src/auth/OidcManager.ts",
+        "src/api/routes/tenant_config.zig"
+      ],
+      "created_at": "2026-06-01T21:04:55Z",
+      "resolved_at": null
+    },
     {
       "id": "ISS-0062",
       "title": "WF03 f5 batch3 step04: PostgreSQL result rows leaked column buffers across OBS-03/OBS-04 and masked TC-IDN-02-05",

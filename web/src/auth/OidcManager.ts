@@ -1,6 +1,6 @@
 /** OIDC Manager — singleton UserManager for authorization code flow via oidc-client-ts */
 
-import { UserManager, WebStorageStateStore, InMemoryWebStorage } from 'oidc-client-ts'
+import { UserManager, WebStorageStateStore } from 'oidc-client-ts'
 import type { UserManagerSettings } from 'oidc-client-ts'
 import { fetchTenantConfig } from './tenantConfig'
 
@@ -22,7 +22,7 @@ function buildOidcSettings(authority: string, clientId: string): UserManagerSett
       end_session_endpoint: `${normalizedAuthority}/protocol/openid-connect/logout`,
       jwks_uri: `${normalizedAuthority}/protocol/openid-connect/certs`,
     },
-    userStore: new WebStorageStateStore({ store: new InMemoryWebStorage() }),
+    userStore: new WebStorageStateStore({ store: window.sessionStorage }),
     automaticSilentRenew: false,
   }
 }
