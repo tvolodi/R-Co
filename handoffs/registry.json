@@ -12,10 +12,10 @@
             "to_agent": "FRONTEND-DEV",
             "created_at": "2026-05-31T01:16:03Z",
             "started_at": "2026-05-31T01:16:03Z",
-            "completed_at": null,
-            "status": "IN_PROGRESS",
+            "completed_at": "2026-05-31T02:38:28Z",
+            "status": "COMPLETED",
             "stage": "Stage F6 - DLQ + Webhooks (batch 1)",
-            "last_updated": "2026-05-31T02:22:49Z"
+            "last_updated": "2026-05-31T02:38:28Z"
         },
         {
             "handoff_id": "2b3068df-11f8-4eea-8862-66f439152705",
