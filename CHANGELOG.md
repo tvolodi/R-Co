@@ -14,6 +14,20 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence passed in tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml; release approval is recorded in docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json.
 - Requirements: DLQ-UI-01, DLQ-UI-02, DLQ-UI-03, DLQ-UI-04 (Stage F6) - RELEASED
 
+### DLQ-UI-05, WH-UI-01..WH-UI-03 - DLQ badge and webhook subscriptions release batch (RELEASED 2026-05-31)
+- **DLQ-UI-05** (MUST): DLQ nav badge - Added a pending-DLQ counter badge in the main app shell navigation with alert colouring when the threshold is exceeded.
+- **WH-UI-01** (MUST): Webhook list - Added the Webhooks page with subscription listing and create flow for target URL, secret, and status.
+- **WH-UI-02** (MUST): Webhook pause/resume - Added ACTIVE/PAUSED toggle actions on each webhook row with immediate list refresh.
+- **WH-UI-03** (MUST): Webhook delete - Added row-level delete action with confirmation and list refresh.
+- Validation evidence passed in tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch2-20260531-rerun.yaml; release approval is recorded in docs/status/release-stage-f6-dlq-webhooks-batch2-2026-05-31.json.
+- Requirements: DLQ-UI-05, WH-UI-01, WH-UI-02, WH-UI-03 (Stage F6) - RELEASED
+
+### WH-UI-04 - Webhook delivery log follow-up release (RELEASED 2026-05-31)
+- **WH-UI-04** (SHOULD): Delivery log - Added subscription detail access with a recent delivery-attempts table showing delivery status, HTTP response code, and timestamp for each webhook attempt.
+- Failed delivery attempts now stay visually highlighted even when a response code is absent, and an explicit empty-state view is shown when a subscription has no delivery history yet.
+- Validation evidence passed in tests/reports/report-2026-05-31-WF02-f6-wh-ui-04-20260531-step04.yaml; release approval is recorded in docs/status/release-stage-f6-wh-ui-04-2026-05-31.json.
+- Requirements: WH-UI-04 (Stage F6) - RELEASED
+
 ### Stage F5 - Administration (Batch 1)
 
 ### ADM-UI-01..ADM-UI-04 - Admin users release batch (RELEASED 2026-05-30)

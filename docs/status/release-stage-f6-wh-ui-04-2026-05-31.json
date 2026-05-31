@@ -1,0 +1,39 @@
+{
+  "stage": "Stage F6 - Webhook Delivery Log",
+  "date": "2026-05-31T16:25:33Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01": {
+      "p99_read_ms": {
+        "target": "<=200",
+        "actual": 1.0,
+        "passed": true
+      },
+      "p99_write_ms": {
+        "target": "<=500",
+        "actual": 2.797,
+        "passed": true
+      }
+    },
+    "NFR-02": {
+      "append_throughput_eps": {
+        "target": ">=1000",
+        "actual": 76418.437,
+        "passed": true
+      }
+    },
+    "NFR-04": {
+      "replay_10000_ms": {
+        "target": "<=5000",
+        "actual": 41.743,
+        "passed": true
+      }
+    },
+    "overall_passed": true,
+    "benchmark_run_id": "bench-1780244694824"
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "WH-UI-04"
+  ]
+}

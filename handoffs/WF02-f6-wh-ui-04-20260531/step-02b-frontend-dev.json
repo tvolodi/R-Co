@@ -1,0 +1,57 @@
+{
+  "handoff_id": "54409e00-fdc0-4fbe-8231-38bfbbd08cc4",
+  "run_id": "WF02-f6-wh-ui-04-20260531",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-05-31T15:16:28Z",
+  "started_at": "2026-05-31T15:16:36Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage F6 - Webhook Delivery Log",
+    "requirement_ids": ["WH-UI-04"],
+    "related_handoff_ids": [
+      "542c1d4a-6741-4674-af5f-8af84ac72f71"
+    ],
+    "artifacts_in": [
+      "src/design/wh-ui-04-delivery-log.md",
+      "web/src/pages/dlq/WebhooksPage.tsx",
+      "web/src/api/dlq.ts",
+      "web/src/types/api.ts"
+    ]
+  },
+  "task": {
+    "description": "Implement WH-UI-04 on the existing F6 webhook UI surface. Add subscription detail access and a delivery-log view showing recent delivery attempts with status, response code, and timestamp, with failed deliveries visually highlighted. Update frontend tests and validation as needed.",
+    "acceptance_criteria": [
+      "WH-UI-04 UI implemented on the F6 webhook surface",
+      "Frontend validation suite passes (type-check, lint, unit, build, relevant Playwright)",
+      "Result records changed artifacts and next step"
+    ],
+    "functions_to_call": ["fn:implement-wh-ui-04"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented WH-UI-04 delivery-log access on the F6 webhook surface, added recent-attempt UI and API wiring, and validated the frontend slice with type-check, lint, unit, build, and focused Playwright coverage.",
+    "artifacts_out": [
+      "web/src/pages/dlq/WebhooksPage.tsx",
+      "web/src/components/webhooks/WebhookSubscriptionDetailPanel.tsx",
+      "web/src/components/webhooks/WebhookDeliveryAttemptsTable.tsx",
+      "web/src/api/dlq.ts",
+      "web/src/api/queryKeys.ts",
+      "web/src/types/api.ts",
+      "web/tests/e2e/f6-webhooks.e2e.spec.ts",
+      "src/api/routes/webhooks.zig",
+      "src/api/routes/tasks.zig",
+      "src/api/authorization.zig",
+      "src/main.zig",
+      "src/webhook/dispatcher.zig",
+      "src/webhook/subscription_store.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (WF-02 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-05-31T16:08:15Z"
+}

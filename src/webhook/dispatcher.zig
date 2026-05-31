@@ -134,6 +134,94 @@ pub fn dispatchDueWebhookAttempts(
     }
 }
 
+pub fn dispatchDueWebhookAttemptsForTrace(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    trace_id: []const u8,
+) DispatchError!void {
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    const due = conn.query(
+        allocator,
+        \\SELECT
+        \\  d.id::text,
+        \\  d.subscription_id::text,
+        \\  COALESCE(d.payload_json::text, '{}'),
+        \\  COALESCE(d.trace_id, ''),
+        \\  COALESCE(d.event_type, ''),
+        \\  d.attempt_count::text,
+        \\  d.max_attempts::text,
+        \\  s.url,
+        \\  COALESCE(s.secret, '')
+        \\FROM webhook_deliveries d
+        \\JOIN webhook_subscriptions s ON s.id = d.subscription_id
+        \\WHERE d.status IN ('pending', 'failed')
+        \\  AND d.next_attempt_at <= NOW()
+        \\  AND s.status = 'ACTIVE'
+        \\  AND d.trace_id = $1
+        \\ORDER BY d.next_attempt_at ASC
+        \\LIMIT 50
+    ,
+        &.{trace_id},
+    ) catch return error.PersistenceFailed;
+    defer {
+        var r = due;
+        r.deinit();
+    }
+
+    for (due.rows) |row| {
+        try dispatchOne(allocator, pool, row);
+    }
+}
+
+pub fn dispatchDueWebhookAttemptsForSubscription(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    subscription_id: []const u8,
+) DispatchError!void {
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    const due = conn.query(
+        allocator,
+        \\SELECT
+        \\  d.id::text,
+        \\  d.subscription_id::text,
+        \\  COALESCE(d.payload_json::text, '{}'),
+        \\  COALESCE(d.trace_id, ''),
+        \\  COALESCE(d.event_type, ''),
+        \\  d.attempt_count::text,
+        \\  d.max_attempts::text,
+        \\  s.url,
+        \\  COALESCE(s.secret, '')
+        \\FROM webhook_deliveries d
+        \\JOIN webhook_subscriptions s ON s.id = d.subscription_id
+        \\WHERE d.status IN ('pending', 'failed')
+        \\  AND d.next_attempt_at <= NOW()
+        \\  AND s.status = 'ACTIVE'
+        \\  AND d.subscription_id = $1::uuid
+        \\ORDER BY d.next_attempt_at ASC
+        \\LIMIT 50
+    ,
+        &.{subscription_id},
+    ) catch return error.PersistenceFailed;
+    defer {
+        var r = due;
+        r.deinit();
+    }
+
+    for (due.rows) |row| {
+        try dispatchOne(allocator, pool, row);
+    }
+}
+
 fn dispatchOne(
     allocator: std.mem.Allocator,
     pool: *db.Pool,
@@ -501,7 +589,17 @@ const CaptureServer = struct {
 
     fn run(self: *CaptureServer) void {
         const listen_address = std.Io.net.IpAddress.parse("127.0.0.1", self.port) catch return;
-        var server = listen_address.listen(std.testing.io, .{ .reuse_address = true }) catch return;
+        var server = blk: {
+            var bind_attempt: usize = 0;
+            while (bind_attempt < 250) : (bind_attempt += 1) {
+                const bound = listen_address.listen(std.testing.io, .{ .reuse_address = true }) catch {
+                    std.Io.sleep(std.Options.debug_io, .fromMilliseconds(20), .awake) catch {};
+                    continue;
+                };
+                break :blk bound;
+            }
+            return;
+        };
         defer server.deinit(std.testing.io);
 
         while (self.request_count < self.max_requests) {

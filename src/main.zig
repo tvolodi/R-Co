@@ -161,6 +161,7 @@ fn runApiServer(io: std.Io, allocator: std.mem.Allocator, config: config_mod.Con
             &ev_store,
             &readiness_svc,
             &id_svc,
+            std.ascii.eqlIgnoreCase(config.env, "production"),
         ) catch |err| {
             const err_fields = [_]obs_logger.LogField{
                 .{ .key = "error", .value = .{ .string = @errorName(err) } },
@@ -182,6 +183,7 @@ fn serveRequest(
     ev_store: *event_store.Store,
     readiness: *api_health_readiness.ReadinessService,
     id_svc: *identity_service.Service,
+    production_mode: bool,
 ) !void {
     var recv_buffer: [8192]u8 = undefined;
     var send_buffer: [8192]u8 = undefined;
@@ -742,6 +744,58 @@ fn serveRequest(
                     const r = dlq_routes.handleDiscard(pool, req_alloc, actor, seg4, discard_reason);
                     resp_status = r.status_code;
                     resp_body = r.body;
+                }
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
+        } else if (std.mem.eql(u8, resource, "webhooks")) {
+            const actor = api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+            };
+
+            if (std.mem.eql(u8, seg4, "subscriptions")) {
+                if (seg5.len == 0) {
+                    if (method == .GET) {
+                        const r = webhooks_routes.handleListSubscriptions(req_alloc, pool, actor);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .POST) {
+                        const r = webhooks_routes.handleCreateSubscription(req_alloc, pool, actor, body, production_mode);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                } else if (seg6.len == 0) {
+                    if (method == .PATCH) {
+                        const r = webhooks_routes.handleUpdateSubscription(req_alloc, pool, actor, seg5, body);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .DELETE) {
+                        const r = webhooks_routes.handleDeleteSubscription(req_alloc, pool, actor, seg5);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                } else if (std.mem.eql(u8, seg6, "deliveries")) {
+                    if (method == .GET) {
+                        const r = webhooks_routes.handleListDeliveries(req_alloc, pool, actor, seg5, QS.get(query_str, "limit"));
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                } else {
+                    resp_status = 404;
+                    resp_body = "{\"type\":\"not_found\",\"status\":404}";
                 }
             } else {
                 resp_status = 404;

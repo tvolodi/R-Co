@@ -96,6 +96,7 @@ pub fn endpointPolicyKey(method: []const u8, path_template: []const u8) Endpoint
     if ((std.mem.eql(u8, method, "GET") or std.mem.eql(u8, method, "POST")) and std.mem.startsWith(u8, path_template, "/dlq")) return .DlqReadRetryDiscard;
     if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/metrics")) return .MetricsRead;
     if ((std.mem.eql(u8, method, "POST") or std.mem.eql(u8, method, "GET")) and std.mem.eql(u8, path_template, "/webhooks/subscriptions")) return .WebhookSubscriptionsManage;
+    if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/webhooks/subscriptions/:id/deliveries")) return .WebhookSubscriptionsManage;
     if (std.mem.eql(u8, method, "DELETE") and std.mem.eql(u8, path_template, "/webhooks/subscriptions/:id")) return .WebhookSubscriptionsManage;
 
     return .Unknown;
@@ -248,6 +249,7 @@ test "TC-IDN-03-05: timeline endpoint maps to InstancesRead" {
 test "TC-IDN-03-06: webhook subscription endpoints map to PLATFORM_ADMIN-only policy" {
     try std.testing.expect(endpointPolicyKey("POST", "/webhooks/subscriptions") == .WebhookSubscriptionsManage);
     try std.testing.expect(endpointPolicyKey("GET", "/webhooks/subscriptions") == .WebhookSubscriptionsManage);
+    try std.testing.expect(endpointPolicyKey("GET", "/webhooks/subscriptions/:id/deliveries") == .WebhookSubscriptionsManage);
     try std.testing.expect(endpointPolicyKey("DELETE", "/webhooks/subscriptions/:id") == .WebhookSubscriptionsManage);
 
     const admin_ctx = AccessContext{ .user_id = "u-admin", .roles = &[_]Role{.PLATFORM_ADMIN} };

@@ -1,0 +1,119 @@
+{
+  "run_id": "WF02-f6-wh-ui-04-20260531",
+  "requirement_ids": [
+    "WH-UI-04"
+  ],
+  "difficulty": 2,
+  "integration_surface": "medium",
+  "rules_version_used": "current",
+  "estimated_minutes_total": 78,
+  "actual_minutes_total": 68.9,
+  "variance_pct": -11.7,
+  "by_step": {
+    "code-designer": {
+      "estimated": 2,
+      "actual": 2.0,
+      "variance_pct": 0.0
+    },
+    "code-design-validator": {
+      "estimated": 10,
+      "actual": 1.3,
+      "variance_pct": -87.0
+    },
+    "frontend-dev": {
+      "estimated": 25,
+      "actual": 51.6,
+      "variance_pct": 106.4
+    },
+    "test-designer": {
+      "estimated": 1,
+      "actual": 1.8,
+      "variance_pct": 80.0
+    },
+    "test-design-validator": {
+      "estimated": 15,
+      "actual": 1.7,
+      "variance_pct": -88.7
+    },
+    "test-runner": {
+      "estimated": 1,
+      "actual": 5.5,
+      "variance_pct": 450.0
+    },
+    "release-validator": {
+      "estimated": 1,
+      "actual": 2.4,
+      "variance_pct": 140.0
+    },
+    "doc-updater": {
+      "estimated": 2,
+      "actual": 2.6,
+      "variance_pct": 30.0
+    }
+  },
+  "step_timings": {
+    "frontend-dev": {
+      "started_at": "2026-05-31T15:16:36Z",
+      "completed_at": "2026-05-31T16:08:15Z",
+      "handoff": "handoffs/WF02-f6-wh-ui-04-20260531/step-02b-frontend-dev.json",
+      "actual_minutes": 51.6
+    },
+    "code-designer": {
+      "started_at": "2026-05-31T15:10:55Z",
+      "completed_at": "2026-05-31T15:12:58Z",
+      "handoff": "handoffs/WF02-f6-wh-ui-04-20260531/step-01-code-designer.json",
+      "actual_minutes": 2.0
+    },
+    "code-design-validator": {
+      "started_at": "2026-05-31T15:13:49Z",
+      "completed_at": "2026-05-31T15:15:06Z",
+      "handoff": "handoffs/WF02-f6-wh-ui-04-20260531/step-01b-code-design-validator.json",
+      "actual_minutes": 1.3
+    },
+    "test-designer": {
+      "started_at": "2026-05-31T16:09:31Z",
+      "completed_at": "2026-05-31T16:11:21Z",
+      "handoff": "handoffs/WF02-f6-wh-ui-04-20260531/step-03-test-designer.json",
+      "actual_minutes": 1.8
+    },
+    "test-design-validator": {
+      "started_at": "2026-05-31T16:12:52Z",
+      "completed_at": "2026-05-31T16:14:36Z",
+      "handoff": "handoffs/WF02-f6-wh-ui-04-20260531/step-03b-test-design-validator.json",
+      "actual_minutes": 1.7
+    },
+    "test-runner": {
+      "started_at": "2026-05-31T16:15:49Z",
+      "completed_at": "2026-05-31T16:21:18Z",
+      "handoff": "handoffs/WF02-f6-wh-ui-04-20260531/step-04-test-runner.json",
+      "actual_minutes": 5.5
+    },
+    "release-validator": {
+      "started_at": "2026-05-31T16:23:11Z",
+      "completed_at": "2026-05-31T16:25:33Z",
+      "handoff": "handoffs/WF02-f6-wh-ui-04-20260531/step-05-release-validator.json",
+      "actual_minutes": 2.4
+    },
+    "doc-updater": {
+      "started_at": "2026-05-31T16:26:52Z",
+      "completed_at": "2026-05-31T16:29:31Z",
+      "handoff": "handoffs/WF02-f6-wh-ui-04-20260531/step-06-doc-updater.json",
+      "actual_minutes": 2.6
+    }
+  },
+  "rework_steps": [
+    {
+      "step": "01",
+      "to_agent": "CODE-DESIGNER",
+      "rework_count": 1
+    },
+    {
+      "step": "01b",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "rework_count": 1
+    }
+  ],
+  "rule_adjustments": [],
+  "completed_at": "2026-05-31T16:29:31Z",
+  "notes": "Retrospective generated from handoff started_at/completed_at timestamps. The run estimation file only recorded total minutes, so by-step estimates were derived from docs/metrics/estimation_rules.json v1.1 for executed WF-02 steps without changing the shared rules."
+}

@@ -307,23 +307,40 @@ export interface DlqEntry {
 // ── Webhooks (Stage 5) ────────────────────────────────────────────────────────
 
 export interface WebhookSubscription {
-  id?: string
+  id: string
   subscription_id?: string
-  owner_id?: string
   target_url?: string
   url?: string
   description?: string
   event_types?: string[]
-  is_active?: boolean
   status?: 'ACTIVE' | 'PAUSED'
+  is_active?: boolean
   consecutive_failures?: number
   max_attempts?: number
   last_attempt_at?: string | null
   last_failure_at?: string | null
   paused_at?: string | null
-  created_at?: string
-  updated_at?: string
   hmac_secret_once?: string
+  created_at: string
+  updated_at?: string
+}
+
+export type WebhookDeliveryAttemptStatus = 'SUCCESS' | 'FAILED'
+
+export interface WebhookDeliveryAttempt {
+  delivery_id: string
+  subscription_id: string
+  event_type: string
+  status: WebhookDeliveryAttemptStatus
+  http_status_code: number | null
+  attempted_at: string
+  attempt_count: number
+  max_attempts: number
+  last_error?: string | null
+}
+
+export interface WebhookDeliveryAttemptListResponse {
+  items: WebhookDeliveryAttempt[]
 }
 
 // ── Audit Log ─────────────────────────────────────────────────────────────────

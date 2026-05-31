@@ -65,6 +65,27 @@ pub const WebhookSubscription = struct {
     }
 };
 
+pub const WebhookDeliveryAttempt = struct {
+    delivery_id: []u8,
+    subscription_id: []u8,
+    event_type: []u8,
+    status: []u8,
+    http_status_code: ?u16,
+    attempted_at: []u8,
+    attempt_count: u8,
+    max_attempts: u8,
+    last_error: ?[]u8,
+
+    pub fn deinit(self: WebhookDeliveryAttempt, allocator: std.mem.Allocator) void {
+        allocator.free(self.delivery_id);
+        allocator.free(self.subscription_id);
+        allocator.free(self.event_type);
+        allocator.free(self.status);
+        allocator.free(self.attempted_at);
+        if (self.last_error) |value| allocator.free(value);
+    }
+};
+
 pub const SubscriptionStoreError = error{
     ValidationFailed,
     InvalidEventType,
@@ -109,6 +130,13 @@ pub fn createSubscription(
     conn.exec("SELECT set_config('bpm.actor_id', $1, true)", &.{actor_id}) catch return error.PersistenceFailed;
     conn.exec("SELECT set_config('bpm.audit_action', 'webhook_subscription.create', true)", &.{}) catch return error.PersistenceFailed;
 
+    const owner_id = resolveOwnerUserId(allocator, conn, actor_id) catch |err| switch (err) {
+        error.NotFound => return error.ValidationFailed,
+        error.OutOfMemory => return error.OutOfMemory,
+        else => return error.PersistenceFailed,
+    };
+    defer allocator.free(owner_id);
+
     const event_types_pg = eventTypesPgArrayLiteral(allocator, req.event_types) catch return error.OutOfMemory;
     defer allocator.free(event_types_pg);
 
@@ -132,7 +160,7 @@ pub fn createSubscription(
         \\  to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
     ,
-        &.{ actor_id, req.target_url, secret_value, event_types_pg },
+        &.{ owner_id, req.target_url, secret_value, event_types_pg },
     ) catch return error.PersistenceFailed;
     if (rows.rows.len == 0) return error.PersistenceFailed;
 
@@ -148,6 +176,46 @@ pub fn createSubscription(
 
     conn.commit() catch return error.PersistenceFailed;
     return created;
+}
+
+fn resolveOwnerUserId(allocator: std.mem.Allocator, conn: anytype, actor_id: []const u8) ![]u8 {
+    if (try querySingleUserId(allocator, conn, "SELECT id::text FROM users WHERE id::text = $1 LIMIT 1", &.{actor_id})) |value| {
+        return value;
+    }
+
+    if (try querySingleUserId(allocator, conn,
+        \\SELECT u.id::text
+        \\FROM users u
+        \\JOIN user_roles ur ON ur.user_id = u.id
+        \\JOIN roles r ON r.id = ur.role_id
+        \\WHERE r.name = 'PLATFORM_ADMIN'
+        \\ORDER BY ur.created_at ASC
+        \\LIMIT 1
+    , &.{})) |value| {
+        return value;
+    }
+
+    if (try querySingleUserId(allocator, conn, "SELECT id::text FROM users ORDER BY created_at ASC LIMIT 1", &.{})) |value| {
+        return value;
+    }
+
+    return error.NotFound;
+}
+
+fn querySingleUserId(
+    allocator: std.mem.Allocator,
+    conn: anytype,
+    sql: []const u8,
+    params: anytype,
+) !?[]u8 {
+    const rows = conn.query(allocator, sql, params) catch return error.PersistenceFailed;
+    defer {
+        var owned_rows = rows;
+        owned_rows.deinit();
+    }
+
+    if (rows.rows.len == 0) return null;
+    return allocator.dupe(u8, rows.rows[0][0] orelse "") catch return error.OutOfMemory;
 }
 
 pub fn listSubscriptions(
@@ -231,6 +299,148 @@ pub fn deleteSubscription(
     conn.exec("DELETE FROM webhook_subscriptions WHERE id = $1::uuid", &.{subscription_id}) catch return error.PersistenceFailed;
 
     conn.commit() catch return error.PersistenceFailed;
+}
+
+pub fn updateSubscriptionStatus(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    actor_id: []const u8,
+    subscription_id: []const u8,
+    status: SubscriptionStatus,
+) SubscriptionStoreError!WebhookSubscription {
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    conn.begin() catch return error.PersistenceFailed;
+    errdefer conn.rollback() catch {};
+
+    conn.exec("SELECT set_config('bpm.actor_id', $1, true)", &.{actor_id}) catch return error.PersistenceFailed;
+    conn.exec("SELECT set_config('bpm.audit_action', 'webhook_subscription.update_status', true)", &.{}) catch return error.PersistenceFailed;
+
+    const status_text = if (status == .PAUSED) "PAUSED" else "ACTIVE";
+    const rows = conn.query(
+        allocator,
+        \\UPDATE webhook_subscriptions
+        \\SET
+        \\  status = $2,
+        \\  is_active = ($2 = 'ACTIVE'),
+        \\  paused_at = CASE WHEN $2 = 'PAUSED' THEN NOW() ELSE NULL END,
+        \\  consecutive_failures = CASE WHEN $2 = 'ACTIVE' THEN 0 ELSE consecutive_failures END,
+        \\  updated_at = NOW()
+        \\WHERE id = $1::uuid
+        \\RETURNING
+        \\  id::text,
+        \\  url,
+        \\  event_types::text,
+        \\  status,
+        \\  consecutive_failures::text,
+        \\  max_attempts::text,
+        \\  to_char(last_attempt_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        \\  to_char(last_failure_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        \\  to_char(paused_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        \\  to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        \\  to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        \\  CASE WHEN secret IS NULL OR secret = '' THEN 'false' ELSE 'true' END
+    ,
+        &.{ subscription_id, status_text },
+    ) catch return error.PersistenceFailed;
+    if (rows.rows.len == 0) return error.NotFound;
+
+    const updated = rowToSubscription(allocator, rows.rows[0], std.mem.eql(u8, rows.rows[0][11] orelse "false", "true")) catch return error.OutOfMemory;
+    errdefer updated.deinit(allocator);
+
+    var updated_rows = rows;
+    updated_rows.deinit();
+
+    conn.commit() catch return error.PersistenceFailed;
+    return updated;
+}
+
+pub fn listDeliveryAttempts(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    subscription_id: []const u8,
+    limit: u8,
+) SubscriptionStoreError![]WebhookDeliveryAttempt {
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    const exists = conn.query(
+        allocator,
+        \\SELECT 1
+        \\FROM webhook_subscriptions
+        \\WHERE id = $1::uuid
+        \\LIMIT 1
+    ,
+        &.{subscription_id},
+    ) catch return error.PersistenceFailed;
+    defer {
+        var rows = exists;
+        rows.deinit();
+    }
+
+    if (exists.rows.len == 0) return error.NotFound;
+
+    const limit_text = std.fmt.allocPrint(allocator, "{d}", .{limit}) catch return error.OutOfMemory;
+    defer allocator.free(limit_text);
+
+    const rows = conn.query(
+        allocator,
+        \\SELECT
+        \\  d.id::text,
+        \\  d.subscription_id::text,
+        \\  COALESCE(d.event_type, ''),
+        \\  CASE WHEN d.status = 'success' THEN 'SUCCESS' ELSE 'FAILED' END,
+        \\  COALESCE(d.last_http_status::text, d.http_status::text),
+        \\  COALESCE(
+        \\    to_char(d.delivered_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        \\    to_char(d.last_attempt_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        \\    to_char(d.updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        \\    to_char(d.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+        \\  ),
+        \\  d.attempt_count::text,
+        \\  d.max_attempts::text,
+        \\  COALESCE(d.last_error, d.error_message)
+        \\FROM webhook_deliveries d
+        \\WHERE d.subscription_id = $1::uuid
+        \\  AND d.attempt_count > 0
+        \\ORDER BY COALESCE(d.last_attempt_at, d.delivered_at, d.updated_at, d.created_at) DESC
+        \\LIMIT $2::int
+    ,
+        &.{ subscription_id, limit_text },
+    ) catch return error.PersistenceFailed;
+    defer {
+        var owned_rows = rows;
+        owned_rows.deinit();
+    }
+
+    const out = allocator.alloc(WebhookDeliveryAttempt, rows.rows.len) catch return error.OutOfMemory;
+    errdefer {
+        for (out) |item| item.deinit(allocator);
+        allocator.free(out);
+    }
+
+    for (rows.rows, 0..) |row, idx| {
+        out[idx] = .{
+            .delivery_id = try allocator.dupe(u8, row[0] orelse ""),
+            .subscription_id = try allocator.dupe(u8, row[1] orelse ""),
+            .event_type = try allocator.dupe(u8, row[2] orelse ""),
+            .status = try allocator.dupe(u8, row[3] orelse "FAILED"),
+            .http_status_code = if (row[4]) |value| std.fmt.parseInt(u16, value, 10) catch null else null,
+            .attempted_at = try allocator.dupe(u8, row[5] orelse ""),
+            .attempt_count = std.fmt.parseInt(u8, row[6] orelse "0", 10) catch 0,
+            .max_attempts = std.fmt.parseInt(u8, row[7] orelse "5", 10) catch 5,
+            .last_error = if (row[8]) |value| try allocator.dupe(u8, value) else null,
+        };
+    }
+
+    return out;
 }
 
 fn rowToSubscription(

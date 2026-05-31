@@ -1,0 +1,37 @@
+report_id: WF02-f6-wh-ui-04-20260531-step-03b-test-design-validator
+agent_id: TEST-DESIGN-VALIDATOR
+run_id: WF02-f6-wh-ui-04-20260531
+step: "03b"
+created_at: "2026-05-31T16:14:36Z"
+summary: >-
+  Validated the WH-UI-04 test design as the hard Step 03b gate. The requirement
+  spec exists, the E2E surface implements TC-WH-UI-04-01 through
+  TC-WH-UI-04-03 with real backend fixture setup and cleanup, and a focused
+  Playwright run confirmed the three cases are runnable with no deferred work or
+  skipped coverage left on this requirement.
+files_reviewed:
+  - tests/specs/WH-UI-04.md
+  - web/tests/e2e/f6-webhooks.e2e.spec.ts
+  - handoffs/WF02-f6-wh-ui-04-20260531/step-03b-test-design-validator.json
+checks_run:
+  - name: spec presence and case mapping
+    status: pass
+    detail: >-
+      tests/specs/WH-UI-04.md exists and defines TC-WH-UI-04-01 through
+      TC-WH-UI-04-03, matching the delivery-log columns, failed-row highlight,
+      and empty-state requirement surface.
+  - name: deferred-work audit
+    status: pass
+    detail: >-
+      web/tests/e2e/f6-webhooks.e2e.spec.ts contains concrete test bodies for
+      TC-WH-UI-04-01..03 and no test.skip, TODO, future-phase, or deferred-work
+      markers on the WH-UI-04 surface.
+  - name: focused playwright validation
+    status: pass
+    detail: >-
+      npm run test:e2e -- tests/e2e/f6-webhooks.e2e.spec.ts --grep
+      "TC-WH-UI-04" --workers=1 --retries=0 passed 3/3 tests in 13.3s.
+issues_found: []
+next_steps:
+  - Route to TEST-RUNNER (WF-02 Step 4).
+blockers: []
