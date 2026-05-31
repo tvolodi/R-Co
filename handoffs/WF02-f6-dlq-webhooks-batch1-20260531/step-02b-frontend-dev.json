@@ -71,7 +71,6 @@
     "git_evidence": {
       "branch": "feature/WF02-f6-dlq-webhooks-batch1-20260531",
       "implementation_commit": "f931a28731a4016b44e7e7907684ce736ce26107",
-      "completion_metadata_commit": "274e090",
       "push": "Pushed to origin/feature/WF02-f6-dlq-webhooks-batch1-20260531"
     },
     "next_action": "Route to TEST-DESIGNER (WF-02 Step 3)"
