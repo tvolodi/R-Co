@@ -1,5 +1,0 @@
-Cleaning test database...
-Test database cleaned.
-error: the following build command failed with exit code 58:
-.zig-cache\o\7df2c43b2c095c128c88a9e3727a4eaf\build.exe E:\Dev\zig-x86_64-windows-0.16.0\zig.exe E:\Dev\zig-x86_64-windows-0.16.0\lib E:\Dev\My-Fab .zig-cache C:\Users\tvolodi\AppData\Local\zig --seed 0x183e1630 -Z360e0e244b2e1c3a test-integration
-^C

@@ -1,2 +1,0 @@
-{"timestamp":"+2026-05-28T10:50:56.235628Z","level":"INFO","trace_id":"","component":"main","message":"startup configuration validated","port":8080,"environment":"development","idp_provider_type":"keycloak"}
-{"timestamp":"+2026-05-28T10:50:56.360687Z","level":"INFO","trace_id":"","component":"main","message":"API server listening","port":8080}

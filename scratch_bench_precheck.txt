@@ -1,7 +1,0 @@
-Environment loaded from .env — running NFR benchmark suite...
-BENCHMARK_SETUP_INFO|db_url_source=primary_env
-NFR_RESULT|NFR-01|p99_read_ms|target=<=200|actual=2.641|unit=ms|passed=true
-NFR_RESULT|NFR-01|p99_write_ms|target=<=500|actual=5.159|unit=ms|passed=true
-NFR_RESULT|NFR-02|append_throughput_eps|target=>=1000|actual=68847.729|unit=events_per_second|passed=true
-NFR_RESULT|NFR-04|replay_10000_ms|target=<=5000|actual=56.855|unit=ms|passed=true
-NFR benchmark suite PASSED (exit code 0)
