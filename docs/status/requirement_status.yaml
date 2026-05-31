@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-05-31T04:50:28Z'
+last_updated: '2026-05-31T16:29:31Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -3128,4 +3128,75 @@ requirements:
     released_at: '2026-05-31'
     release_run: WF02-f6-dlq-webhooks-batch1-20260531
     last_updated: '2026-05-31T04:50:28Z'
-total_requirements: 250
+  DLQ-UI-05:
+    status: RELEASED
+    stage: F6
+    priority: MUST
+    title: DLQ nav badge
+    implemented_in:
+    - web/src/components/layout/AppShell.tsx
+    test_spec: tests/specs/DLQ-UI-05.md
+    test_run: tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch2-20260531-rerun.yaml
+    release_decision: docs/status/release-stage-f6-dlq-webhooks-batch2-2026-05-31.json
+    tested_at: '2026-05-31'
+    released_at: '2026-05-31'
+    release_run: WF02-f6-dlq-webhooks-batch2-20260531
+    last_updated: '2026-05-31T09:37:17Z'
+  WH-UI-01:
+    status: RELEASED
+    stage: F6
+    priority: MUST
+    title: Webhook list
+    implemented_in:
+    - web/src/pages/dlq/WebhooksPage.tsx
+    test_spec: tests/specs/WH-UI-01.md
+    test_run: tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch2-20260531-rerun.yaml
+    release_decision: docs/status/release-stage-f6-dlq-webhooks-batch2-2026-05-31.json
+    tested_at: '2026-05-31'
+    released_at: '2026-05-31'
+    release_run: WF02-f6-dlq-webhooks-batch2-20260531
+    last_updated: '2026-05-31T09:37:17Z'
+  WH-UI-02:
+    status: RELEASED
+    stage: F6
+    priority: MUST
+    title: Webhook pause/resume
+    implemented_in:
+    - web/src/pages/dlq/WebhooksPage.tsx
+    test_spec: tests/specs/WH-UI-02.md
+    test_run: tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch2-20260531-rerun.yaml
+    release_decision: docs/status/release-stage-f6-dlq-webhooks-batch2-2026-05-31.json
+    tested_at: '2026-05-31'
+    released_at: '2026-05-31'
+    release_run: WF02-f6-dlq-webhooks-batch2-20260531
+    last_updated: '2026-05-31T09:37:17Z'
+  WH-UI-03:
+    status: RELEASED
+    stage: F6
+    priority: MUST
+    title: Webhook delete
+    implemented_in:
+    - web/src/pages/dlq/WebhooksPage.tsx
+    test_spec: tests/specs/WH-UI-03.md
+    test_run: tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch2-20260531-rerun.yaml
+    release_decision: docs/status/release-stage-f6-dlq-webhooks-batch2-2026-05-31.json
+    tested_at: '2026-05-31'
+    released_at: '2026-05-31'
+    release_run: WF02-f6-dlq-webhooks-batch2-20260531
+    last_updated: '2026-05-31T09:37:17Z'
+  WH-UI-04:
+    status: RELEASED
+    stage: F6
+    priority: SHOULD
+    title: Delivery log
+    implemented_in:
+    - web/src/components/webhooks/WebhookSubscriptionDetailPanel.tsx
+    - web/src/components/webhooks/WebhookDeliveryAttemptsTable.tsx
+    test_spec: tests/specs/WH-UI-04.md
+    test_run: tests/reports/report-2026-05-31-WF02-f6-wh-ui-04-20260531-step04.yaml
+    release_decision: docs/status/release-stage-f6-wh-ui-04-2026-05-31.json
+    tested_at: '2026-05-31'
+    released_at: '2026-05-31'
+    release_run: WF02-f6-wh-ui-04-20260531
+    last_updated: '2026-05-31T16:29:31Z'
+total_requirements: 255

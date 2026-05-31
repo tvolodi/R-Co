@@ -11,6 +11,7 @@ const std = @import("std");
 const task_mod = @import("../../tasks/store.zig");
 const identity_service = @import("../../identity/service.zig");
 const instance_mod = @import("../../engine/instance.zig");
+const webhook_dispatcher = @import("../../webhook/dispatcher.zig");
 const pagination = @import("../pagination.zig");
 const authorization = @import("../authorization.zig");
 
@@ -490,6 +491,14 @@ pub fn handleComplete(
     const task_id_hex = uuidToHex(allocator, task_id) catch return internalError(allocator);
     defer allocator.free(task_id_hex);
 
+    dispatchTaskCompletedWebhooks(
+        allocator,
+        store.pool,
+        task.instance_id,
+        output_variables_json,
+        task_id_hex,
+    );
+
     const resp_body = std.fmt.allocPrint(
         allocator,
         "{{\"status\":\"ok\",\"task_id\":\"{s}\"}}",
@@ -879,6 +888,74 @@ fn errorResult(
 
 fn internalError(allocator: std.mem.Allocator) HandlerResult {
     return errorResult(allocator, 500, "INTERNAL_ERROR", "Internal server error");
+}
+
+fn dispatchTaskCompletedWebhooks(
+    allocator: std.mem.Allocator,
+    pool: anytype,
+    instance_id: task_mod.Uuid,
+    payload_json: []const u8,
+    trace_id: []const u8,
+) void {
+    const timestamp = formatTimestamp(allocator, currentMicrosecondTimestamp()) catch return;
+    defer allocator.free(timestamp);
+
+    const instance_id_hex = uuidToHex(allocator, instance_id) catch return;
+    defer allocator.free(instance_id_hex);
+
+    const inserted = webhook_dispatcher.enqueueDeliveryAttempts(allocator, pool, .{
+        .event_type = .task_completed,
+        .instance_id = instance_id_hex,
+        .timestamp = timestamp,
+        .payload_json = payload_json,
+        .trace_id = trace_id,
+    }) catch return;
+
+    _ = inserted;
+}
+
+fn currentMicrosecondTimestamp() i64 {
+    const builtin = @import("builtin");
+    if (builtin.os.tag == .windows) {
+        const windows = std.os.windows;
+        const ft: i64 = windows.ntdll.RtlGetSystemTimePrecise();
+        const unix_100ns: i64 = ft - 116_444_736_000_000_000;
+        return @divTrunc(unix_100ns, 10);
+    }
+
+    const posix = std.posix;
+    var ts: posix.timespec = undefined;
+    _ = posix.system.clock_gettime(.REALTIME, &ts);
+    return ts.sec * 1_000_000 + @divTrunc(ts.nsec, 1000);
+}
+
+fn formatTimestamp(allocator: std.mem.Allocator, us: i64) error{OutOfMemory}![]u8 {
+    const abs_us: u64 = if (us < 0) 0 else @as(u64, @intCast(us));
+    const total_secs: u64 = abs_us / 1_000_000;
+    const sub_us: u64 = abs_us % 1_000_000;
+
+    const days: u64 = total_secs / 86400;
+    const time_rem: u64 = total_secs % 86400;
+    const hour: u64 = time_rem / 3600;
+    const minute: u64 = (time_rem % 3600) / 60;
+    const second: u64 = time_rem % 60;
+
+    const z: i64 = @as(i64, @intCast(days)) + 719468;
+    const era: i64 = @divFloor(z, 146097);
+    const doe: u64 = @as(u64, @intCast(z - era * 146097));
+    const yoe: u64 = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    const y: i64 = @as(i64, @intCast(yoe)) + era * 400;
+    const doy: u64 = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    const mp: u64 = (5 * doy + 2) / 153;
+    const d: u64 = doy - (153 * mp + 2) / 5 + 1;
+    const m: u64 = if (mp < 10) mp + 3 else mp - 9;
+    const yr: u64 = @as(u64, @intCast(y + @as(i64, if (m <= 2) 1 else 0)));
+
+    return std.fmt.allocPrint(
+        allocator,
+        "{d:0>4}-{d:0>2}-{d:0>2}T{d:0>2}:{d:0>2}:{d:0>2}.{d:0>6}Z",
+        .{ yr, m, d, hour, minute, second, sub_us },
+    );
 }
 
 /// Render a UUID as lowercase hex with hyphens: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.
