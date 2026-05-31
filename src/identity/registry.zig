@@ -961,7 +961,7 @@ pub const Registry = struct {
         }
 
         for (rows.rows) |row| {
-            items[count] = materializeGroup(allocator, row) catch return error.OutOfMemory;
+            items[count] = materializeGroupBorrowedRow(allocator, row) catch return error.OutOfMemory;
             count += 1;
         }
 
@@ -1285,6 +1285,10 @@ pub const Registry = struct {
 
 fn materializeGroup(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!Group {
     defer freeRow(allocator, row);
+    return materializeGroupBorrowedRow(allocator, row);
+}
+
+fn materializeGroupBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!Group {
     if (row.len < 7) return error.PersistenceFailed;
 
     const group_id = row[0] orelse return error.PersistenceFailed;

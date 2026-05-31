@@ -1,0 +1,49 @@
+schema_version: 1
+page_name: DlqItemsPage
+page_slug: dlq
+resource_name: dlqItem
+requirement_ids: [DLQ-UI-01, DLQ-UI-02, DLQ-UI-03, DLQ-UI-04]
+purpose: |
+  Dead Letter Queue list page baseline for Stage F6 batch1. Covers list/table shape,
+  source type/status filters, row-level actions, and room for custom detail panel
+  interactions handled in the companion Type E design artefact.
+
+list_query_key: queryKeys.dlq.list
+
+api:
+  list_endpoint: /api/v1/dlq
+  create_endpoint: /api/v1/dlq
+  delete_endpoint: /api/v1/dlq/:id
+
+filters:
+  - { name: search, type: text, label: Search, placeholder: "id, reason, or instance" }
+  - { name: status, type: select, label: Status, options: [
+      { value: "", label: "All" },
+      { value: "pending", label: "Pending" },
+      { value: "retrying", label: "Retrying" },
+      { value: "resolved", label: "Resolved" },
+      { value: "discarded", label: "Discarded" }
+    ] }
+  - { name: source_type, type: select, label: Source type, options: [
+      { value: "", label: "All" },
+      { value: "event", label: "Event" },
+      { value: "timer", label: "Timer" },
+      { value: "webhook", label: "Webhook" }
+    ] }
+
+columns:
+  - { header: "Source", accessor: entry_type }
+  - { header: "Instance", accessor: instance_id }
+  - { header: "Failure reason", accessor: reason }
+  - { header: "Retry count", accessor: retry_count }
+  - { header: "Created", accessor: created_at, format: date }
+  - { header: "Status", accessor: status }
+
+row_actions:
+  - { label: "Details", action: view_details, requires_role: null }
+  - { label: "Retry", action: retry_item, requires_role: PROCESS_OPERATOR }
+  - { label: "Retry", action: retry_item, requires_role: PLATFORM_ADMIN }
+  - { label: "Discard", action: discard_item, requires_role: PROCESS_OPERATOR, confirm: "Discard this DLQ item?" }
+  - { label: "Discard", action: discard_item, requires_role: PLATFORM_ADMIN, confirm: "Discard this DLQ item?" }
+
+create_form: null

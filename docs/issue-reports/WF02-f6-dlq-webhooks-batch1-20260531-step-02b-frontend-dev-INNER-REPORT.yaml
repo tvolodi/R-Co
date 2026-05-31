@@ -1,0 +1,63 @@
+report_id: WF02-f6-dlq-webhooks-batch1-20260531-step-02b-frontend-dev
+agent_id: FRONTEND-DEV
+run_id: WF02-f6-dlq-webhooks-batch1-20260531
+step: "02b"
+created_at: "2026-05-31T01:40:21Z"
+updated_at: "2026-05-31T02:38:02Z"
+summary: >-
+  Implemented DLQ-UI-01..04 in the frontend with list filters, detail panel,
+  retry/discard action handling, and discard confirmation warning for instance-linked items.
+  Rework iteration fixed a backend crash path in identity group listing
+  (double-free ownership bug in src/identity/registry.zig), which stabilized API uptime.
+  Rework iteration 2 started backend services before validation, added safe admin credential
+  defaults to observability E2E setup, and hardened debounced-search login navigation
+  retry behavior for transient browser socket exhaustion. The full required validation
+  suite now passes, including the complete Playwright run (124 passed).
+files_created:
+  - docs/issue-reports/WF02-f6-dlq-webhooks-batch1-20260531-step-02b-frontend-dev-INNER-REPORT.yaml
+  - web/tests/e2e/f6-dlq.e2e.spec.ts
+files_modified:
+  - web/src/pages/dlq/DlqPage.tsx
+  - web/src/pages/dlq/DlqItemsPage.tsx
+  - web/src/api/dlq.ts
+  - web/src/api/queryKeys.ts
+  - web/src/types/api.ts
+  - web/tests/e2e/f5-admin-observability.e2e.spec.ts
+  - web/tests/e2e/pdui08-debounced-search.e2e.spec.ts
+  - tests/integration/helpers.zig
+  - tests/integration/obs04_timeline_test.zig
+  - src/identity/registry.zig
+  - handoffs/WF02-f6-dlq-webhooks-batch1-20260531/step-02b-frontend-dev.json
+  - handoffs/registry.json
+tests_run:
+  - name: python tools/lint_frontend_conventions.py
+    status: pass
+    detail: "OK — 112 file(s) checked, no convention issues."
+  - name: python tools/lint_test_isolation.py
+    status: pass
+    detail: "OK — 76 file(s) checked, no isolation issues."
+  - name: npm run type-check
+    status: pass
+    detail: "TypeScript check completed with no errors."
+  - name: npm run lint
+    status: pass
+    detail: "ESLint completed with no errors."
+  - name: npm run test
+    status: pass
+    detail: "Vitest passed: 3 files, 22 tests."
+  - name: npm run build
+    status: pass
+    detail: "Production build succeeded."
+  - name: npx playwright test
+    status: pass
+    detail: "Full suite green: 124 passed (5.3m)."
+issues_found:
+  - severity: MAJOR
+    description: Reproduced and fixed backend segmentation fault in identity group listing by separating borrowed-row/owned-row materialization paths; this removed the /definitions 500 proxy-failure cluster during long-run E2E.
+  - severity: MAJOR
+    description: Observability E2E was blocked by strict required env vars (BPM_E2E_ADMIN_USERNAME/BPM_E2E_ADMIN_PASSWORD); fixed by using safe defaults aligned with the rest of the suite while still honoring explicit overrides.
+  - severity: MINOR
+    description: Debounced-search E2E had a transient ERR_NO_BUFFER_SPACE login navigation failure; mitigated with bounded retry on page navigation for retryable browser network errors.
+next_steps:
+  - Route to TEST-DESIGNER (WF-02 Step 3).
+blockers: []

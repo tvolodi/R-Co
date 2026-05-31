@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-05-30T23:33:13Z'
+last_updated: '2026-05-31T04:50:28Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -3072,4 +3072,60 @@ requirements:
     released_at: '2026-05-30'
     release_run: WF02-f5-admin-batch3-20260531
     last_updated: '2026-05-30T23:33:13Z'
-total_requirements: 246
+  DLQ-UI-01:
+    status: RELEASED
+    stage: F6
+    priority: MUST
+    title: DLQ list
+    implemented_in:
+    - web/src/pages/dlq/DlqItemsPage.tsx
+    test_spec: tests/specs/DLQ-UI-01.md
+    test_run: tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml
+    release_decision: docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json
+    tested_at: '2026-05-31'
+    released_at: '2026-05-31'
+    release_run: WF02-f6-dlq-webhooks-batch1-20260531
+    last_updated: '2026-05-31T04:50:28Z'
+  DLQ-UI-02:
+    status: RELEASED
+    stage: F6
+    priority: MUST
+    title: DLQ item detail
+    implemented_in:
+    - web/src/pages/dlq/DlqPage.tsx
+    test_spec: tests/specs/DLQ-UI-02.md
+    test_run: tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml
+    release_decision: docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json
+    tested_at: '2026-05-31'
+    released_at: '2026-05-31'
+    release_run: WF02-f6-dlq-webhooks-batch1-20260531
+    last_updated: '2026-05-31T04:50:28Z'
+  DLQ-UI-03:
+    status: RELEASED
+    stage: F6
+    priority: MUST
+    title: Retry action
+    implemented_in:
+    - web/src/pages/dlq/DlqPage.tsx
+    test_spec: tests/specs/DLQ-UI-03.md
+    test_run: tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml
+    release_decision: docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json
+    tested_at: '2026-05-31'
+    released_at: '2026-05-31'
+    release_run: WF02-f6-dlq-webhooks-batch1-20260531
+    last_updated: '2026-05-31T04:50:28Z'
+  DLQ-UI-04:
+    status: RELEASED
+    stage: F6
+    priority: MUST
+    title: Discard action
+    implemented_in:
+    - web/src/pages/dlq/DlqPage.tsx
+    test_spec: tests/specs/DLQ-UI-04.md
+    test_run: tests/reports/report-2026-05-31-WF02-f6-dlq-webhooks-batch1-20260531.yaml
+    release_decision: docs/status/release-stage-f6-dlq-webhooks-batch1-2026-05-31.json
+    tested_at: '2026-05-31'
+    released_at: '2026-05-31'
+    release_run: WF02-f6-dlq-webhooks-batch1-20260531
+    last_updated: '2026-05-31T04:50:28Z'
+total_requirements: 250

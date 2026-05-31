@@ -1,9 +1,13 @@
 # Load environment variables from .env and run the NFR benchmark suite.
-# Usage: .vscode\run-zig-bench.ps1
+# Usage: .vscode\run-zig-bench.ps1 [-Precheck]
 # This ensures BPM_DB_URL (and BPM_TEST_DB_URL as fallback) are set
 # before executing `zig build bench`, so the benchmark process finds
 # them directly in its environment rather than relying on .env file
 # parsing logic inside the Zig binary.
+
+param(
+    [switch]$Precheck
+)
 
 $ErrorActionPreference = 'Continue'
 
@@ -35,9 +39,17 @@ if (-not $env:BPM_TEST_DB_URL -or [string]::IsNullOrWhiteSpace($env:BPM_TEST_DB_
 
 Write-Host "Environment loaded from .env — running NFR benchmark suite..."
 Push-Location $projectRoot
-& zig build bench --summary all
+$benchOutput = & zig build bench --summary all 2>&1
 $exitCode = $LASTEXITCODE
 Pop-Location
+
+if ($Precheck) {
+    # Step 04 gate needs a short precheck snapshot while preserving
+    # the benchmark process exit code.
+    $benchOutput | Select-Object -First 5 | ForEach-Object { Write-Output $_ }
+} else {
+    $benchOutput | ForEach-Object { Write-Output $_ }
+}
 
 if ($exitCode -eq 0) {
     Write-Host "NFR benchmark suite PASSED (exit code 0)"

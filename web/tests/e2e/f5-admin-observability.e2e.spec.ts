@@ -20,10 +20,10 @@ async function shot(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: shotPath(name), fullPage: true })
 }
 
-function getRequiredEnv(name: string): string {
+function getEnvOrDefault(name: string, fallback: string): string {
   const value = process.env[name]
   if (!value || !value.trim()) {
-    throw new Error(`${name} must be set for the observability E2E suite`)
+    return fallback
   }
   return value
 }
@@ -41,12 +41,15 @@ async function assertServiceReadiness(request: APIRequestContext): Promise<void>
 }
 
 async function getAdminToken(request: APIRequestContext): Promise<string> {
+  const username = getEnvOrDefault('BPM_E2E_ADMIN_USERNAME', 'admin-user')
+  const password = getEnvOrDefault('BPM_E2E_ADMIN_PASSWORD', 'admin-pass')
+
   const response = await request.post(KEYCLOAK_TOKEN_URL, {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     form: {
       client_id: KEYCLOAK_CLIENT_ID,
-        username: getRequiredEnv('BPM_E2E_ADMIN_USERNAME'),
-        password: getRequiredEnv('BPM_E2E_ADMIN_PASSWORD'),
+      username,
+      password,
       grant_type: 'password',
     },
   })

@@ -93,7 +93,9 @@ export const queryKeys = {
 
   dlq: {
     all: ['dlq'] as const,
-    list: () => [...queryKeys.dlq.all, 'list'] as const,
+    list: (filters?: { search?: string; status?: string; source_type?: string; cursor?: string; page_size?: number }) =>
+      [...queryKeys.dlq.all, 'list', filters ?? {}] as const,
+    detail: (id: string) => [...queryKeys.dlq.all, 'detail', id] as const,
   },
 
   webhooks: {

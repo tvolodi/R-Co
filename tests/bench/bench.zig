@@ -265,7 +265,12 @@ fn writeBenchLine(
         return err;
     };
     defer allocator.free(line);
-    try stdout.writeStreamingAll(io, line);
+    stdout.writeStreamingAll(io, line) catch |err| switch (err) {
+        // Allow precheck consumers that intentionally truncate output
+        // (e.g. head/Select-Object -First 5) without turning bench into failure.
+        error.BrokenPipe => return,
+        else => return err,
+    };
 }
 
 fn cleanupRun(conn: *db.Conn, run_id: []const u8) !void {

@@ -272,18 +272,36 @@ export interface IssuedToken {
 
 export type DlqStatus = 'pending' | 'retrying' | 'resolved' | 'discarded'
 
+export interface DlqRetryAttempt {
+  attempt_no: number
+  attempted_at: string
+  outcome: 'success' | 'failed'
+  error_message?: string
+}
+
 export interface DlqEntry {
   id: string
-  entry_type: string
+  entry_type?: string
+  item_type?: string
   instance_id?: string
   reference_id?: string
-  reason: string
+  reason?: string
+  full_reason?: string
   error_detail?: Record<string, unknown>
+  error_chain?: unknown[]
+  original_payload?: Record<string, unknown>
+  source_payload?: Record<string, unknown>
+  context_json?: Record<string, unknown>
+  processor_metadata?: Record<string, unknown>
+  retry_history?: DlqRetryAttempt[]
   retry_count: number
-  max_retries: number
+  max_retries?: number
+  retry_limit?: number
   next_retry_at?: string
-  status: DlqStatus
+  status?: DlqStatus
   created_at: string
+  first_failed_at?: string
+  last_failed_at?: string
 }
 
 // ── Webhooks (Stage 5) ────────────────────────────────────────────────────────

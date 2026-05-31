@@ -400,14 +400,19 @@ fn serveRequest(
             resp_body = "{\"type\":\"not_found\",\"status\":404}";
         }
     }
-    // ── /api/v1/... ──────────────────────────────────────────────────────────
-    else if (std.mem.startsWith(u8, path, "/api/v1/")) {
+    // ── /api/v1/... (+ legacy /dlq compatibility) ───────────────────────────
+    else if (std.mem.startsWith(u8, path, "/api/v1/") or std.mem.eql(u8, path, "/dlq") or std.mem.startsWith(u8, path, "/dlq/")) {
+        const route_path = if (std.mem.eql(u8, path, "/dlq") or std.mem.startsWith(u8, path, "/dlq/"))
+            (std.fmt.allocPrint(req_alloc, "/api/v1{s}", .{path}) catch path)
+        else
+            path;
+
         // Split path into up to 8 segments.
         // e.g. "/api/v1/definitions/abc/activate"
         //       [0]="" [1]="api" [2]="v1" [3]="definitions" [4]="abc" [5]="activate"
         var segs: [8][]const u8 = @splat(@as([]const u8, ""));
         var seg_count: usize = 0;
-        var seg_it = std.mem.splitScalar(u8, path, '/');
+        var seg_it = std.mem.splitScalar(u8, route_path, '/');
         while (seg_it.next()) |s| {
             if (seg_count >= 8) break;
             segs[seg_count] = s;
@@ -648,6 +653,96 @@ fn serveRequest(
                 const r = task_routes.handleReassign(task_store_inst, req_alloc, actor, seg4, body);
                 resp_status = r.status_code;
                 resp_body = r.body;
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
+        } else if (std.mem.eql(u8, resource, "dlq")) {
+            const actor = dlq_routes.Actor{
+                .user_id = user_id,
+                .roles = null,
+                .is_operator_or_above = true,
+                .is_platform_admin = false,
+            };
+
+            if (seg4.len == 0) {
+                if (method == .GET) {
+                    const item_type_filter = blk: {
+                        const source_type = QS.get(query_str, "source_type");
+                        if (source_type) |raw_source| {
+                            if (std.ascii.eqlIgnoreCase(raw_source, "service_task")) break :blk dlq_store.DlqItemType.SERVICE_TASK;
+                            if (std.ascii.eqlIgnoreCase(raw_source, "webhook")) break :blk dlq_store.DlqItemType.WEBHOOK;
+                            if (std.ascii.eqlIgnoreCase(raw_source, "timer")) break :blk dlq_store.DlqItemType.TIMER;
+                            resp_status = 422;
+                            resp_body = "{\"type\":\"invalid_filter\",\"status\":422,\"detail\":\"source_type must be service_task, webhook, or timer\"}";
+                            break :blk null;
+                        }
+
+                        const item_type = QS.get(query_str, "item_type");
+                        if (item_type) |raw_type| {
+                            if (std.ascii.eqlIgnoreCase(raw_type, "service_task") or std.mem.eql(u8, raw_type, "SERVICE_TASK")) break :blk dlq_store.DlqItemType.SERVICE_TASK;
+                            if (std.ascii.eqlIgnoreCase(raw_type, "webhook") or std.mem.eql(u8, raw_type, "WEBHOOK")) break :blk dlq_store.DlqItemType.WEBHOOK;
+                            if (std.ascii.eqlIgnoreCase(raw_type, "timer") or std.mem.eql(u8, raw_type, "TIMER")) break :blk dlq_store.DlqItemType.TIMER;
+                            resp_status = 422;
+                            resp_body = "{\"type\":\"invalid_filter\",\"status\":422,\"detail\":\"item_type must be SERVICE_TASK, WEBHOOK, or TIMER\"}";
+                            break :blk null;
+                        }
+
+                        break :blk null;
+                    };
+
+                    if (resp_status == 422) {
+                        // Filter validation failed above.
+                    } else {
+                        const r = dlq_routes.handleList(pool, req_alloc, actor, .{
+                            .cursor = QS.get(query_str, "cursor"),
+                            .page_size = if (QS.get(query_str, "page_size")) |ps| std.fmt.parseInt(u16, ps, 10) catch null else null,
+                            .instance_id = QS.get(query_str, "instance_id"),
+                            .item_type = item_type_filter,
+                        });
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    }
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
+            } else if (method == .POST and std.mem.eql(u8, seg5, "retry")) {
+                const r = dlq_routes.handleRetry(pool, req_alloc, actor, seg4);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (method == .POST and std.mem.eql(u8, seg5, "discard")) {
+                var discard_reason: ?[]const u8 = null;
+                if (body.len > 0) {
+                    const parsed = std.json.parseFromSlice(std.json.Value, req_alloc, body, .{ .allocate = .alloc_always, .ignore_unknown_fields = true }) catch {
+                        resp_status = 400;
+                        resp_body = "{\"type\":\"malformed_json\",\"status\":400,\"title\":\"Bad Request\"}";
+                        const ct_hdr = [_]std.http.Header{.{ .name = "content-type", .value = resp_content_type }};
+                        try request.respond(resp_body, .{ .status = @enumFromInt(resp_status), .keep_alive = false, .extra_headers = &ct_hdr });
+                        return;
+                    };
+                    defer parsed.deinit();
+                    if (parsed.value == .object) {
+                        if (parsed.value.object.get("reason")) |raw_reason| {
+                            switch (raw_reason) {
+                                .null => discard_reason = null,
+                                .string => |s| discard_reason = if (s.len == 0) null else s,
+                                else => {
+                                    resp_status = 422;
+                                    resp_body = "{\"type\":\"invalid_body\",\"status\":422,\"detail\":\"reason must be a string when provided\"}";
+                                },
+                            }
+                        }
+                    }
+                }
+
+                if (resp_status == 422) {
+                    // Body validation failed above.
+                } else {
+                    const r = dlq_routes.handleDiscard(pool, req_alloc, actor, seg4, discard_reason);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                }
             } else {
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";

@@ -1,0 +1,91 @@
+{
+  "run_id": "WF02-f6-dlq-webhooks-batch1-20260531",
+  "requirement_ids": [
+    "DLQ-UI-01",
+    "DLQ-UI-02",
+    "DLQ-UI-03",
+    "DLQ-UI-04"
+  ],
+  "difficulty": 3,
+  "integration_surface": "medium",
+  "rules_version_used": "1.1",
+  "estimated_minutes_total": 121.0,
+  "actual_minutes_total": 210.6,
+  "variance_pct": 74.0,
+  "by_step": {
+    "code-designer": {
+      "estimated": 33,
+      "actual": 2.0,
+      "variance_pct": -93.9
+    },
+    "code-design-validator": {
+      "estimated": 15,
+      "actual": 0.8,
+      "variance_pct": -94.7
+    },
+    "frontend-dev": {
+      "estimated": 44,
+      "actual": 83.9,
+      "variance_pct": 90.7
+    },
+    "test-designer": {
+      "estimated": 8,
+      "actual": 45.3,
+      "variance_pct": 466.2
+    },
+    "test-design-validator": {
+      "estimated": 13,
+      "actual": 6.5,
+      "variance_pct": -50.0
+    },
+    "test-runner": {
+      "estimated": 4,
+      "actual": 71.5,
+      "variance_pct": 1687.5
+    },
+    "release-validator": {
+      "estimated": 4,
+      "actual": 0.6,
+      "variance_pct": -85.0
+    }
+  },
+  "rework_steps": [
+    {
+      "step": "02b",
+      "to_agent": "FRONTEND-DEV",
+      "rework_count": 2
+    },
+    {
+      "step": "03",
+      "to_agent": "TEST-DESIGNER",
+      "rework_count": 3
+    },
+    {
+      "step": "03b",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "rework_count": 1
+    },
+    {
+      "step": "04",
+      "to_agent": "TEST-RUNNER",
+      "rework_count": 1
+    }
+  ],
+  "rule_adjustments": [
+    {
+      "step": "test-design-validator",
+      "difficulty": 3,
+      "old_estimate": 10,
+      "new_estimate": 8,
+      "reason": "Observed 2 consecutive runs at D3 with >25% variance"
+    },
+    {
+      "step": "release-validator",
+      "difficulty": 3,
+      "old_estimate": 3,
+      "new_estimate": 2,
+      "reason": "Observed 2 consecutive runs at D3 with >25% variance"
+    }
+  ],
+  "completed_at": "2026-05-31T04:50:28Z"
+}

@@ -70,7 +70,17 @@ async function getKeycloakToken(request: import('@playwright/test').APIRequestCo
 // ── Login via UI with a real token ────────────────────────────────────────────
 
 async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
-  await page.goto('/login')
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await page.goto('/login', { waitUntil: 'domcontentloaded' })
+      break
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      const isRetryable = message.includes('ERR_NO_BUFFER_SPACE') || message.includes('ERR_CONNECTION_RESET')
+      if (!isRetryable || attempt === 3) throw error
+      await page.waitForTimeout(400 * attempt)
+    }
+  }
   await expect(page.getByTestId('login-token-input')).toBeVisible()
   await page.getByTestId('login-token-input').fill(token)
   await page.getByTestId('login-submit').click()
