@@ -480,6 +480,8 @@ git push / git reset --hard / git rebase / rm -rf
 Writing Zig, TypeScript, SQL, or test code
 Filling in handoff result fields (only agents do that)
 Skipping a standard workflow (WF-01 through WF-04) without user confirmation (see §11)
+Creating or accepting ANY workflow that produces code/migrations without git-setup (Step 00) and git-merge (Step Final)
+  — this is a hard requirement per ORCHESTRATOR.md §8. ORCH MUST REJECT workflows that skip git wrapping.
 Writing any timestamp (created_at, started_at) without first running:
   (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
   and using the exact printed output — never the session context date

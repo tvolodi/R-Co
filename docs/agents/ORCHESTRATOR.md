@@ -24,9 +24,13 @@
 
 ---
 
-## 8. Git Wrapper Protocol (Mandatory for WF-02, WF-03, WF-04)
+## 8. Git Wrapper Protocol (Mandatory for ALL Workflows)
 
-Every WF-02, WF-03, and WF-04 run MUST be wrapped with two additional BACKEND-DEV steps. These are **not optional** and are treated as hard pipeline gates.
+**FOUNDATIONAL RULE:** Every WF-01, WF-02, WF-03, WF-04, and ad-hoc workflow that produces code or migrations MUST be wrapped with git protocol steps. These are **not optional** and are treated as hard pipeline gates.
+
+**Exception:** WF-01 (requirements only) skips git wrapper if changes are documentation-only (`docs/` only, no source code or migrations). All other workflows require git wrapping.
+
+**ORCH enforcement:** Any ADHOC workflow or standard workflow submitted without git wrapper steps MUST be rejected. ORCH MUST return the proposal to the initiator with: "This workflow produces [code/migrations]. It requires Step 00 (git-setup) and Step Final (git-merge) per Section 8 of ORCHESTRATOR.md."
 
 ### Step 00 — git-setup (blocking gate before any implementation step)
 
