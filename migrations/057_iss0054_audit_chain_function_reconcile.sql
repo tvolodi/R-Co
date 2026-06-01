@@ -50,18 +50,18 @@ BEGIN
 
     NEW.chain_hash := bpm_audit_compute_chain_hash(
         NEW.tenant_id,
-        NEW.actor_id,
         NEW.audit_id,
+        NEW.actor_id,
         NEW.action,
         NEW.resource_type,
         NEW.resource_id,
         NEW."timestamp",
-        NULL::JSONB,
-        NULL::JSONB,
-        NULL::UUID,
-        NEW.trace_id,
+        NEW.before_state,
+        NEW.after_state,
+        NEW.pipeline_run_id,
+        NEW.payload_full,
         NEW.prev_chain_hash,
-        NULL::TEXT
+        NEW.trace_id
     );
 
     RETURN NEW;
@@ -190,8 +190,8 @@ BEGIN
 
         expected_chain := bpm_audit_compute_chain_hash(
             r.tenant_id,
-            r.actor_id,
             r.audit_id,
+            r.actor_id,
             r.action,
             r.resource_type,
             r.resource_id,
@@ -199,9 +199,9 @@ BEGIN
             r.before_state,
             r.after_state,
             r.pipeline_run_id,
-            r.trace_id,
+            r.payload_full,
             r.prev_chain_hash,
-            NULL::TEXT
+            r.trace_id
         );
 
         IF r.prev_chain_hash IS DISTINCT FROM expected_prev THEN
