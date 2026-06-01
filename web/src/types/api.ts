@@ -203,7 +203,7 @@ export interface UserSession {
   token: string
   display_name: string
   roles: string[]
-  loginSource: 'token' | 'oidc' | null
+  loginSource: 'oidc' | null
 }
 
 export interface User {

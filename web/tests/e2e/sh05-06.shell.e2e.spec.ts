@@ -31,7 +31,8 @@
  *   proves.
  */
 
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import { loginWithToken } from './helpers'
 
 // ── JWT helper ────────────────────────────────────────────────────────────────
 
@@ -51,24 +52,6 @@ const TOKEN_TASK_WORKER = makeFakeJwt({
   roles: ['TASK_WORKER'],
 })
 
-// ── Login helper ──────────────────────────────────────────────────────────────
-
-/**
- * Navigate to /login with an already-configured route on page, fill the token
- * field, and submit.  Waits for navigation away from /login.
- *
- * IMPORTANT: Install the page.route() stub for /health/ready BEFORE calling
- * this helper so that both the login validation request AND the subsequent
- * mount-time connectivity check are intercepted correctly.
- */
-async function performLogin(page: Page, token: string): Promise<void> {
-  await page.goto('/login')
-  await page.getByTestId('login-token-input').fill(token)
-  await page.getByTestId('login-submit').click()
-  // Wait until we've left the login page (shell has mounted)
-  await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 })
-}
-
 // ── SH-06: API Connectivity Banner ───────────────────────────────────────────
 
 test.describe('SH-06 — API Connectivity Banner', () => {
@@ -86,7 +69,7 @@ test.describe('SH-06 — API Connectivity Banner', () => {
       }),
     )
 
-    await performLogin(page, TOKEN_TASK_WORKER)
+    await loginWithToken(page, TOKEN_TASK_WORKER)
 
     // Give the immediate mount check time to resolve and re-render
     await page.waitForTimeout(300)
@@ -123,7 +106,7 @@ test.describe('SH-06 — API Connectivity Banner', () => {
       }
     })
 
-    await performLogin(page, TOKEN_TASK_WORKER)
+    await loginWithToken(page, TOKEN_TASK_WORKER)
 
     // Wait for banner to appear (immediate mount check → 503)
     const banner = page.getByTestId('connectivity-banner')
@@ -161,7 +144,7 @@ test.describe('SH-06 — API Connectivity Banner', () => {
       }
     })
 
-    await performLogin(page, TOKEN_TASK_WORKER)
+    await loginWithToken(page, TOKEN_TASK_WORKER)
 
     const banner = page.getByTestId('connectivity-banner')
     await expect(banner).toBeVisible({ timeout: 5_000 })

@@ -1,0 +1,48 @@
+{
+  "handoff_id": "5b4cedce-8541-420d-a335-1c60ed1484e5",
+  "run_id": "ADHOC-WF03-login-redirect-loop-20260601-infra",
+  "step": "infra",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-05-31T21:37:38Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "ADHOC infrastructure recovery",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "6559ffa5-e49a-4747-ae72-05427eef20ae"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260531-WF03-login-redirect-loop-20260601.yaml",
+      "docs/issue-reports/WF03-login-redirect-loop-20260601-step-05-test-runner-INNER-REPORT.yaml"
+    ],
+    "branch_name": "feature/WF03-login-redirect-loop-20260601"
+  },
+  "task": {
+    "description": "Start all required backend services and restore the app listener for the ISS-0063 regression run.\n\n1. Bring up the backend runtime stack and any missing services needed by the app.\n2. Wait until all required services are healthy.\n3. Verify GET http://localhost:8081/health/ready and psql $BPM_TEST_DB_URL -c \"SELECT 1\".\n4. Run zig build migrate to apply any pending migrations.\n5. Restore the app so http://127.0.0.1:8080/health/ready responds again.\n\nReturn PASS only when the app and backend services are healthy and migration completes successfully.",
+    "acceptance_criteria": [
+      "Backend services healthy",
+      "App listener at 127.0.0.1:8080 responds",
+      "Keycloak ready check passes",
+      "Test DB responds",
+      "zig build migrate exits 0"
+    ],
+    "functions_to_call": [
+      "fn:service-startup",
+      "fn:verify-health",
+      "fn:run-migrations"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Restored the backend runtime stack, confirmed the app listener on 127.0.0.1:8080 is responding, verified Keycloak and the test database are healthy, and applied migrations with no pending changes.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-31T21:37:51Z",
+  "completed_at": "2026-05-31T21:38:49Z"
+}

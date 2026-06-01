@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
+import { loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
 const KEYCLOAK_TOKEN_URL = 'http://localhost:8081/realms/bpm-default/protocol/openid-connect/token'
@@ -47,15 +48,6 @@ async function getKeycloakToken(
 
   const body = (await response.json()) as { access_token: string }
   return body.access_token
-}
-
-async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
-  await page.goto('/login')
-  await expect(page.getByTestId('login-token-input')).toBeVisible({ timeout: 10_000 })
-  await page.getByTestId('login-token-input').fill(token)
-  await page.getByTestId('login-submit').click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
-  await expect(page.getByTestId('user-display-name')).toBeVisible({ timeout: 10_000 })
 }
 
 async function navigateSpa(page: import('@playwright/test').Page, targetPath: string): Promise<void> {

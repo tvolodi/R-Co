@@ -1,0 +1,51 @@
+{
+  "handoff_id": "d4d751ab-80f4-46c3-a920-adc7db264522",
+  "run_id": "WF03-login-redirect-loop-20260601",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-05-31T21:12:08Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c2da0a81-36c6-4b8f-aa0d-99bc9cef761f"
+    ],
+    "artifacts_in": [
+      "docs/issues/issue_index.json",
+      "docs/issues/ISS-0063.json",
+      "handoffs/WF03-login-redirect-loop-20260601/step-00-backend-dev.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 0.5 Issue Registry for login redirect loop issue.\n\n1. Search docs/issues/issue_index.json for matching existing issue by affected files and symptom.\n2. If matched, append occurrence and reopen if needed; if not matched, keep ISS-0063 as canonical issue for this run.\n3. Ensure ISS-0063.json has current handoff_id set to this handoff and accurate occurrence details.\n4. Ensure issue_index.json reflects ISS-0063 as OPEN with correct severity and affected areas.\n5. Write inner report under docs/issue-reports/.\n\nUse trigger context: user_report of OIDC redirect loop after Keycloak login and inability to login.",
+    "acceptance_criteria": [
+      "Issue registry is updated with this run occurrence",
+      "ISS-0063 is canonical issue for this workflow",
+      "Issue index synchronized for ISS-0063",
+      "Inner report created"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed issue registry synchronization for ISS-0063: canonical match confirmed, occurrence appended, and index synced to active OPEN/BLOCKER state.",
+    "artifacts_out": [
+      "docs/issues/ISS-0063.json",
+      "docs/issues/issue_index.json",
+      "docs/issue-reports/WF03-login-redirect-loop-20260601-step-05-issue-fixer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-31T21:12:55Z",
+  "completed_at": "2026-05-31T21:13:25Z"
+}

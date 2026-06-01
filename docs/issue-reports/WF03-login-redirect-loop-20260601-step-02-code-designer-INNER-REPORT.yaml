@@ -1,0 +1,23 @@
+report_id: WF03-login-redirect-loop-20260601-step-02-code-designer
+run_id: WF03-login-redirect-loop-20260601
+handoff_id: 4bab9fc4-457c-4ca8-96fc-1d1879e87538
+agent: CODE-DESIGNER
+step: "02"
+status: PASS
+generated_at: 2026-05-31T21:19:06Z
+summary: >-
+  Classified ISS-0063 as a Type E cross-cutting OIDC redirect-loop fix and wrote
+  the design artefact for nginx host forwarding, backend tenant-config authority
+  resolution, and sessionStorage-backed OIDC state persistence.
+artifacts_in:
+  - docs/issues/ISS-0063.json
+  - docs/issues/issue_index.json
+  - handoffs/WF03-login-redirect-loop-20260601/step-01-issue-fixer.json
+artifacts_out:
+  - src/design/oidc-login-redirect-loop.md
+  - docs/issue-reports/WF03-login-redirect-loop-20260601-step-02-code-designer-INNER-REPORT.yaml
+classification:
+  type: E
+  rationale: Cross-cutting fix spans proxy, backend config lookup, and frontend OIDC runtime state; no CRUD/list/migration/template matched.
+issues: []
+next_action: Route to CODE-DESIGN-VALIDATOR (Step 2b)

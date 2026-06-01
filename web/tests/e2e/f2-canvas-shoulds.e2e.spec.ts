@@ -25,12 +25,9 @@
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
+import { getKeycloakToken, loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
-const KEYCLOAK_TOKEN_URL = 'http://localhost:8081/realms/bpm-default/protocol/openid-connect/token'
-const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
-const KEYCLOAK_USERNAME = 'admin-user'
-const KEYCLOAK_PASSWORD = 'admin-pass'
 const API_PREFIX = '/api/v1'
 
 // ── Screenshot helper ─────────────────────────────────────────────────────────
@@ -39,43 +36,6 @@ async function shot(page: Page, name: string): Promise<void> {
   const dir = path.resolve(SCREENSHOTS_DIR)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   await page.screenshot({ path: path.join(dir, `CanvasShoulds-${name}.png`) })
-}
-
-// ── Token management ──────────────────────────────────────────────────────────
-
-async function getKeycloakToken(request: APIRequestContext): Promise<string> {
-  const response = await request.post(KEYCLOAK_TOKEN_URL, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    form: {
-      client_id: KEYCLOAK_CLIENT_ID,
-      username: KEYCLOAK_USERNAME,
-      password: KEYCLOAK_PASSWORD,
-      grant_type: 'password',
-    },
-  })
-
-  if (!response.ok()) {
-    const body = await response.text()
-    throw new Error(
-      `Keycloak token request failed (${response.status()}): ${body}\n` +
-      `Ensure Keycloak is running at ${KEYCLOAK_TOKEN_URL.replace('/protocol/openid-connect/token', '')}\n` +
-      `and user ${KEYCLOAK_USERNAME} exists.`,
-    )
-  }
-
-  const body = await response.json() as { access_token: string }
-  return body.access_token
-}
-
-// ── Login via UI with a real token ────────────────────────────────────────────
-
-async function loginWithToken(page: Page, token: string): Promise<void> {
-  await page.goto('/login')
-  await expect(page.getByTestId('login-token-input')).toBeVisible()
-  await page.getByTestId('login-token-input').fill(token)
-  await page.getByTestId('login-submit').click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
-  await expect(page.getByTestId('user-display-name')).toBeVisible({ timeout: 10_000 })
 }
 
 // ── API helpers ───────────────────────────────────────────────────────────────

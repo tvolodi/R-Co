@@ -1,47 +1,15 @@
 import { expect, test } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
+import { getKeycloakToken, loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
-const KEYCLOAK_TOKEN_URL = 'http://localhost:8081/realms/bpm-default/protocol/openid-connect/token'
-const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
-const KEYCLOAK_USERNAME = 'admin-user'
-const KEYCLOAK_PASSWORD = 'admin-pass'
 const API_PREFIX = '/api/v1'
 
 async function shot(page: import('@playwright/test').Page, name: string): Promise<void> {
   const dir = path.resolve(SCREENSHOTS_DIR)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   await page.screenshot({ path: path.join(dir, `F3-${name}.png`), fullPage: true })
-}
-
-async function getKeycloakToken(request: import('@playwright/test').APIRequestContext): Promise<string> {
-  const response = await request.post(KEYCLOAK_TOKEN_URL, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    form: {
-      client_id: KEYCLOAK_CLIENT_ID,
-      username: KEYCLOAK_USERNAME,
-      password: KEYCLOAK_PASSWORD,
-      grant_type: 'password',
-    },
-  })
-
-  if (!response.ok()) {
-    const body = await response.text()
-    throw new Error(`Keycloak token request failed (${response.status()}): ${body}`)
-  }
-
-  const body = await response.json() as { access_token: string }
-  return body.access_token
-}
-
-async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
-  await page.goto('/login')
-  await expect(page.getByTestId('login-token-input')).toBeVisible()
-  await page.getByTestId('login-token-input').fill(token)
-  await page.getByTestId('login-submit').click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
-  await expect(page.getByTestId('user-display-name')).toBeVisible({ timeout: 10_000 })
 }
 
 async function navigateSpa(page: import('@playwright/test').Page, targetPath: string): Promise<void> {

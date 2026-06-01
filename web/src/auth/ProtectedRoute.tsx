@@ -1,26 +1,36 @@
-/** Protected route — adapted from ai-dala-forge/frontend/src/core/auth/ProtectedRoute.tsx */
+/** Protected route — redirects unauthenticated users to Keycloak via OIDC */
 
-import { Navigate, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from './AuthContext'
+import { getOidcManager } from './OidcManager'
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
-  const location = useLocation()
+  const [redirecting, setRedirecting] = useState(false)
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated && !redirecting) {
+      setRedirecting(true)
+      void getOidcManager().then(m => {
+        void m.signinRedirect()
+      })
+    }
+  }, [isLoading, isAuthenticated, redirecting])
+
+  if (isLoading || redirecting) {
     return (
       <div
         style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
         data-testid="auth-loading"
       >
-        Loading…
+        Redirecting to login…
       </div>
     )
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return null
   }
 
   return <>{children}</>

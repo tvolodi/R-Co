@@ -1,0 +1,35 @@
+run_id: WF03-login-redirect-loop-20260601
+handoff_id: 6559ffa5-e49a-4747-ae72-05427eef20ae
+workflow_id: WF-03
+step: "05"
+agent: TEST-RUNNER
+created_at: "2026-05-31T21:37:01Z"
+status: PASS
+summary: >-
+  Executed the ISS-0063 Playwright regression suite against the real backend and
+  real browser stack after verifying the DB, Keycloak, and Keycloak gateway
+  services were healthy. The backend readiness check passed, the authorization
+  redirect preserved localhost:8081, and all four ISS-0063 Playwright cases in
+  web/tests/e2e/iss-0063-oidc-redirect-loop.e2e.spec.ts passed.
+actions:
+  - "Verified db, db_test, keycloak, and keycloak_gateway containers were healthy via docker-compose ps"
+  - "Verified the test database with psql postgres://bpm:bpm@localhost:5433/bpm_test -c 'SELECT 1'"
+  - "Used the benchmark precheck result from zig build bench --precheck wrapper"
+  - "Ran Playwright against web/tests/e2e/iss-0063-oidc-redirect-loop.e2e.spec.ts with workers=1 and retries=0"
+artifacts_in:
+  - tests/specs/ISS-0063.md
+  - web/tests/e2e/iss-0063-oidc-redirect-loop.e2e.spec.ts
+  - docs/issues/ISS-0063.json
+artifacts_out:
+  - tests/reports/report-20260531-WF03-login-redirect-loop-20260601.yaml
+issues:
+  - id: ISS-0063-E2E-PASS-001
+    severity: INFO
+    description: >-
+      The regression suite completed successfully against the real backend and
+      real browser flow with no blockers remaining.
+    requirement_id: ISS-0063
+    affected_files:
+      - web/tests/e2e/iss-0063-oidc-redirect-loop.e2e.spec.ts
+      - docs/issues/ISS-0063.json
+next_action: Route to RELEASE-VALIDATOR (WF-03 Step 6)

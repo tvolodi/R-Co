@@ -39,6 +39,7 @@ Every WF-02, WF-03, and WF-04 run MUST be wrapped with two additional BACKEND-DE
 
 - After DOC-UPDATER (Step 06) returns PASS, create a BACKEND-DEV handoff with step ID `final` and task: execute `fn:git-merge` per `docs/agents/protocols/GIT_MERGE.md`.
 - The handoff result MUST contain: `branch_name`, `commit_sha_list` (at least one entry), `remote_branch`, `pr_url` (or `pr_create_error` if gh auth is unavailable), and `push_status: ok`.
+- **ORCH MUST verify that the Step Final handoff result confirms the local repo is on `main` with a clean working tree.** If the result does not include this confirmation, ORCH MUST NOT write the DONE log entry — treat as incomplete.
 - **ORCH MUST NOT write a `DONE` log entry until Step Final returns PASS and `push_status` is `ok`.**
 - If Step Final FAILS, treat as a rework loop (same `max_rework` rules).
 
@@ -65,7 +66,7 @@ WF-01 (requirement drafting) may skip git wrapper steps because it writes only t
 |---|---|---|---|
 | WF-01 | Requirement Development & Validation | New feature request or stage begins | `docs/agents/workflows/WF-01_requirement_development.md` |
 | WF-02 | Requirement Implementation | Requirement status = VALIDATED | `docs/agents/workflows/WF-02_requirement_implementation.md` |
-| WF-03 | Issue Resolving | Test failure or bug report | `docs/agents/workflows/WF-03_issue_resolving.md` |
+| WF-03 | Issue Resolving | User-reported bug/defect, test failure, or regression | `docs/agents/workflows/WF-03_issue_resolving.md` |
 | WF-04 | Full Test Run | Pre-release or full-suite validation | `docs/agents/workflows/WF-04_full_test_run.md` |
 
 **Git protocols** (not workflows — referenced by WF-02, WF-03, WF-04):
@@ -105,24 +106,6 @@ Splitting is cheap. Re-running one requirement due to blast radius from an unrel
 
 ## 3. Orchestrator Decision Tree
 
-| ID | Name | Entry trigger | Document |
-|---|---|---|---|
-| WF-01 | Requirement Development & Validation | New feature request or stage begins | `docs/agents/workflows/WF-01_requirement_development.md` |
-| WF-02 | Requirement Implementation | Requirement status = VALIDATED | `docs/agents/workflows/WF-02_requirement_implementation.md` |
-| WF-03 | Issue Resolving | Test failure or bug report | `docs/agents/workflows/WF-03_issue_resolving.md` |
-| WF-04 | Full Test Run | Pre-release or full-suite validation | `docs/agents/workflows/WF-04_full_test_run.md` |
-
-**Git protocols** (not workflows — referenced by WF-02, WF-03, WF-04):
-
-| Protocol | Function | Document |
-|---|---|---|
-| GIT_SETUP | `fn:git-setup` — pull, branch, push | `docs/agents/protocols/GIT_SETUP.md` |
-| GIT_MERGE | `fn:git-merge` — rebase, PR, merge, cleanup | `docs/agents/protocols/GIT_MERGE.md` |
-
----
-
-## 3. Orchestrator Decision Tree
-
 ```
 INPUT: trigger event
 │
@@ -132,7 +115,14 @@ INPUT: trigger event
 ├─ Is it a VALIDATED requirement ready to build?
 │     └─► Launch WF-02  (always includes Step 00 git-setup and Step Final git-merge)
 │
-├─ Is it a test failure or bug report?
+├─ Is it a user-reported bug, defect, or problem with existing behaviour?
+│     └─► Launch WF-03  (always includes Step 00 git-setup and Step Final git-merge)
+│           WF-03 trigger phrases: "fix this", "there is a problem with",
+│           "X is broken", "resolve this issue", "something is wrong with"
+│           WF-03 vs WF-02 rule: if expected behaviour already exists in the
+│           requirements spec → WF-03. If feature is not yet specified → WF-02.
+│
+├─ Is it a test failure or regression detected by TEST-RUNNER in WF-02/WF-04?
 │     └─► Launch WF-03  (always includes Step 00 git-setup and Step Final git-merge)
 │
 ├─ Is it a pre-release gate or scheduled full test?
@@ -140,6 +130,10 @@ INPUT: trigger event
 │
 └─ Does not match any standard workflow?
       └─► Build ad-hoc workflow (see Section 5)
+
+IMPORTANT: The Orchestrator MUST NOT skip the matched workflow to solve the problem
+  directly. If ORCH believes skipping is justified, it must follow the §11 Workflow
+  Skip Gate procedure (ask the user for explicit confirmation before proceeding).
 ```
 
 ---
@@ -190,8 +184,11 @@ When no standard workflow applies, the Orchestrator constructs a minimal workflo
 **Example triggers for ad-hoc workflows:**
 - A requirement needs to be split into sub-requirements mid-implementation
 - A cross-cutting design decision affects multiple agents simultaneously
-- An urgent hotfix bypasses the standard WF-03 sequence
 - A documentation-only correction with no code change
+
+**Ad-hoc is NOT a shortcut to bypass a standard workflow.** If the trigger matches
+a standard workflow (WF-01 through WF-04), the standard workflow MUST be used. If ORCH
+believes a standard workflow can be skipped, the §11 Workflow Skip Gate applies.
 
 ---
 
@@ -301,7 +298,7 @@ Record `integration_surface` in `estimation.json`:
 - Requirement modifies `src/api/middleware/auth.zig`
 - Requirement requires changes to `tests/integration/main_test.zig` (wiring new suites)
 
-### 7.3 Log the estimation
+### 7.4 Log the estimation
 
 Append to `handoffs/orchestrator.log`:
 ```
@@ -453,3 +450,78 @@ if conflicts:
 else:
     print("CLEAR: no module overlap — proceed with Step 00 dispatch")
 ```
+
+---
+
+## 11. Workflow Skip Gate — Mandatory User Confirmation
+
+**The Orchestrator MUST NEVER skip a standard workflow (WF-01 through WF-04) to solve a
+problem directly, no matter how simple the problem appears.** This is a hard rule with no
+exceptions unless the user explicitly grants permission.
+
+### 11.1 Why this rule exists
+
+Standard workflows have deliberate overhead that provides critical value:
+
+| Overhead | Value delivered |
+|---|---|
+| Git wrapper (Step 00 / Step Final) | Feature branches, PRs, clean merge history, rollback capability |
+| Design artefacts (CODE-DESIGNER) | Architecture decisions are documented and reviewable before implementation |
+| Validation gates (CODE-DESIGN-VALIDATOR, TEST-DESIGN-VALIDATOR) | Catches gaps before they become expensive rework cycles |
+| Test design + execution (TEST-DESIGNER, TEST-RUNNER) | Regression coverage that protects against future breaks |
+| Issue tracking (ISSUE-FIXER) | Knowledge base of past problems and solutions |
+| Documentation updates (DOC-UPDATER) | CHANGELOG, requirement status, and retrospective metrics stay current |
+| Estimation & metrics (estimation.json, retrospective) | Work velocity tracking, estimation accuracy improvement over time |
+| Orchestrator log | Full audit trail of every routing decision and outcome |
+
+Skipping the workflow means **all of these** are lost — not just time saved.
+
+### 11.2 The gate procedure
+
+If the Orchestrator believes a standard workflow can be skipped, it MUST:
+
+1. **STOP** — do not start implementing or diagnosing.
+2. **Identify** which standard workflow applies (WF-01, WF-02, WF-03, or WF-04).
+3. **Ask the user** with a clear, specific message:
+
+```
+This request matches workflow <WF-XX> (<name>). The standard workflow includes:
+  - Git branch + PR + merge tracking
+  - Design artefact creation and validation
+  - Test design, validation, and execution
+  - Documentation updates (CHANGELOG, requirement status)
+  - Work metrics collection (estimation, actuals, retrospective)
+  - Full audit trail in orchestrator.log
+
+Skipping the workflow would save ~<estimated>% of pipeline time but lose all of the above.
+
+Do you want me to:
+  A) Follow the full workflow (recommended)
+  B) Skip the workflow and proceed directly
+```
+
+4. **Wait** for the user's response. Do not proceed until the user explicitly chooses.
+5. **Log** the user's decision in `handoffs/orchestrator.log`:
+   ```
+   <ISO8601> | SKIP_GATE | <RUN-ID> | --- | ORCH | <WF-XX> | <CHOSEN: FOLLOW | SKIP>
+   ```
+6. **If the user chose SKIP**: proceed with a minimal approach, but still:
+   - Create at least one ADHOC handoff file documenting what was done
+   - Log the action to `handoffs/orchestrator.log`
+   - After the fix, inform the user which workflow overheads were skipped
+     so they can decide whether to retroactively run any of them.
+7. **If the user chose FOLLOW**: execute the full workflow normally.
+
+### 11.3 No implicit skipping
+
+The following are **NOT** valid reasons to skip a workflow without asking:
+
+- "The problem is simple / obvious"
+- "The fix is a one-line change"
+- "It's faster to just fix it"
+- "The user seems to want a quick resolution"
+- "I already know the root cause"
+
+Even when the fix itself is trivial, the workflow overhead (git tracking, tests, metrics,
+documentation) still applies and must still be completed. The workflow is not just about
+the code change — it is about the full lifecycle of that change in the project.

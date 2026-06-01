@@ -1,0 +1,43 @@
+report_id: WF03-login-redirect-loop-20260601-step-02b-code-design-validator
+agent_id: CODE-DESIGN-VALIDATOR
+run_id: WF03-login-redirect-loop-20260601
+step: "02b"
+created_at: "2026-05-31T21:21:33Z"
+status: PASS
+summary: >-
+  Validated the OIDC login redirect-loop Type E design against ISS-0063 and the
+  hard-gate validator criteria. The artefact covers the nginx Host/port
+  preservation fix, the backend tenant-config authority consistency contract,
+  and the frontend sessionStorage-backed OIDC callback state flow without
+  leaking implementation code or misclassifying the cross-cutting fix.
+files_reviewed:
+  - docs/issues/ISS-0063.json
+  - src/design/oidc-login-redirect-loop.md
+  - handoffs/WF03-login-redirect-loop-20260601/step-02b-code-design-validator.json
+checks_run:
+  - name: design artifact linter
+    status: pass
+    detail: "python tools/lint_design_artefact.py src/design/oidc-login-redirect-loop.md exited 0 with no issues."
+  - name: classification review
+    status: pass
+    detail: >-
+      The issue is correctly treated as a mixed cross-cutting Type E design.
+      The catalog rules exclude auth / identity / OIDC flows from templated
+      CRUD/list/migration patterns, and the artefact matches that rule.
+  - name: issue diagnosis coverage review
+    status: pass
+    detail: >-
+      The design explicitly covers all three diagnosed root causes: Host header
+      port preservation for the Keycloak gateway, persistent browser callback
+      state via sessionStorage, and tenant-config authority fallback to the
+      browser-visible localhost origin.
+  - name: implementation leakage review
+    status: pass
+    detail: >-
+      The artefact stays at design level: it lists public interfaces and state
+      transitions but includes no function bodies, SQL DDL, or other executable
+      implementation code.
+issues_found: []
+next_steps:
+  - Route to BACKEND-DEV step 2a for implementation from the validated design.
+blockers: []

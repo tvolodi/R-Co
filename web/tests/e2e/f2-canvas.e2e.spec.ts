@@ -25,12 +25,9 @@
 import { test, expect, type Page, type APIRequestContext } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
+import { getKeycloakToken, loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
-const KEYCLOAK_TOKEN_URL = 'http://localhost:8081/realms/bpm-default/protocol/openid-connect/token'
-const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
-const KEYCLOAK_USERNAME = 'admin-user'
-const KEYCLOAK_PASSWORD = 'admin-pass'
 const API_PREFIX = '/api/v1'
 
 // ── Screenshot helper ─────────────────────────────────────────────────────────
@@ -39,49 +36,6 @@ async function shot(page: Page, name: string): Promise<void> {
   const dir = path.resolve(SCREENSHOTS_DIR)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   await page.screenshot({ path: path.join(dir, `Canvas-${name}.png`) })
-}
-
-// ── Token management ──────────────────────────────────────────────────────────
-
-/**
- * Obtains a real JWT from Keycloak via the password grant (direct access) flow.
- * The returned token is a real signed JWT that the backend accepts.
- */
-async function getKeycloakToken(request: APIRequestContext): Promise<string> {
-  const response = await request.post(KEYCLOAK_TOKEN_URL, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    form: {
-      client_id: KEYCLOAK_CLIENT_ID,
-      username: KEYCLOAK_USERNAME,
-      password: KEYCLOAK_PASSWORD,
-      grant_type: 'password',
-    },
-  })
-
-  if (!response.ok()) {
-    const body = await response.text()
-    throw new Error(
-      `Keycloak token request failed (${response.status()}): ${body}\n` +
-      `Ensure Keycloak is running at ${KEYCLOAK_TOKEN_URL.replace('/protocol/openid-connect/token', '')}\n` +
-      `and user ${KEYCLOAK_USERNAME} exists with password ${KEYCLOAK_PASSWORD}.`,
-    )
-  }
-
-  const body = await response.json() as { access_token: string }
-  return body.access_token
-}
-
-// ── Login via UI with a real token ────────────────────────────────────────────
-
-async function loginWithToken(page: Page, token: string): Promise<void> {
-  await page.goto('/login')
-  await expect(page.getByTestId('login-token-input')).toBeVisible()
-  await page.getByTestId('login-token-input').fill(token)
-  await page.getByTestId('login-submit').click()
-  // Wait for navigation away from /login to the workspace
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
-  // Verify workspace is rendered
-  await expect(page.getByTestId('user-display-name')).toBeVisible({ timeout: 10_000 })
 }
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -767,8 +721,7 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
       await shot(page, 'TC12-03-after-save')
       // VERDICT: Screen shows success toast after saving
 
-      // Reload the page — changes should persist (re-authenticate since token is in-memory)
-      await page.reload()
+      // Reload the page — changes should persist (re-authenticate via sessionStorage)
       await loginWithToken(page, authToken)
       await navigateToCanvas(page, def.id)
 
@@ -881,8 +834,7 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
       await page.getByTestId('btn-save-definition').click()
       await expect(page.getByText('Definition saved', { exact: false })).toBeVisible({ timeout: 10_000 })
 
-      // Reload — re-authenticate since token is in-memory
-      await page.reload()
+      // Reload — re-authenticate via sessionStorage
       await loginWithToken(page, authToken)
       await navigateToCanvas(page, def.id)
 
@@ -910,8 +862,8 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
       await startNode.click()
       await page.waitForTimeout(300)
 
-      // Attempt to navigate to a different page (e.g., login)
-      await page.goto('/login')
+      // Attempt to navigate away from the canvas (e.g., to definitions list)
+      await page.goto('/definitions')
       await page.waitForTimeout(1000)
 
       // The unsaved changes dialog should appear
@@ -925,15 +877,15 @@ test.describe('F2 — Process Designer Canvas (PD-UI-09 through PD-UI-12)', () =
         await page.getByTestId('unsaved-discard').click()
         await page.waitForTimeout(500)
 
-        // Should navigate away to /login
-        await expect(page).toHaveURL(/\/login/)
+        // Should navigate away to /definitions
+        await expect(page).toHaveURL(/\/definitions/)
       } else {
         // If no dialog appears (or if page.load cancels the navigation guard),
         // at minimum we verify the navigation attempt didn't break
         console.log('Unsaved changes dialog did not appear (may depend on React Router v7 useBlocker implementation)')
         await shot(page, 'TC-SAVE-02-no-dialog')
       }
-      // VERDICT: Screen navigated to /login (with or without dialog)
+      // VERDICT: Screen navigated to /definitions (with or without dialog)
     })
   })
 })

@@ -2,13 +2,12 @@ import { expect, test } from '@playwright/test'
 import { randomUUID } from 'crypto'
 import * as fs from 'fs'
 import * as path from 'path'
+import { getKeycloakToken, loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
 const API_BASE_URL = process.env.BPM_TEST_URL ?? 'http://127.0.0.1:8080'
 const KEYCLOAK_BASE_URL = process.env.BPM_IDP_BASE_URL ?? 'http://127.0.0.1:8081'
 const KEYCLOAK_DISCOVERY_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default/.well-known/openid-configuration`
-const KEYCLOAK_TOKEN_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default/protocol/openid-connect/token`
-const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
 const API_PREFIX = '/api/v1'
 
 function getEnvOrDefault(name: string, fallback: string): string {
@@ -33,24 +32,6 @@ async function shot(page: import('@playwright/test').Page, name: string): Promis
   await page.screenshot({ path: shotPath(name), fullPage: true })
 }
 
-async function getKeycloakToken(
-  request: import('@playwright/test').APIRequestContext,
-  username: string,
-  password: string,
-): Promise<string> {
-  const response = await request.post(KEYCLOAK_TOKEN_URL, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    form: { client_id: KEYCLOAK_CLIENT_ID, username, password, grant_type: 'password' },
-  })
-
-  if (!response.ok()) {
-    throw new Error(`Failed to fetch token (${response.status()})`)
-  }
-
-  const body = (await response.json()) as { access_token: string }
-  return body.access_token
-}
-
 function decodeJwtPayload(token: string): { sub?: string; preferred_username?: string; [key: string]: unknown } {
   const parts = token.split('.')
   if (parts.length !== 3) throw new Error('Invalid JWT token')
@@ -68,30 +49,6 @@ async function assertServiceReadiness(
   const idpHealth = await request.fetch(KEYCLOAK_DISCOVERY_URL)
   if (!idpHealth.ok()) {
     throw new Error(`Keycloak readiness check failed (${idpHealth.status()}) at ${KEYCLOAK_DISCOVERY_URL}`)
-  }
-}
-
-async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
-  await page.goto('/login')
-  await expect(page.getByTestId('login-token-input')).toBeVisible({ timeout: 10_000 })
-  const tokenInput = page.getByTestId('login-token-input')
-  const submitButton = page.getByTestId('login-submit')
-
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    await tokenInput.fill(token)
-    await submitButton.click()
-
-    try {
-      await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 7_500 })
-      return
-    } catch {
-      const invalidAlert = page.getByText('Invalid token or access denied.')
-      if (attempt < 3 && await invalidAlert.isVisible()) {
-        await page.waitForTimeout(1_000)
-        continue
-      }
-      throw new Error(`Token login did not complete after ${attempt} attempt(s)`)
-    }
   }
 }
 
