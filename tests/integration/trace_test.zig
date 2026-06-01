@@ -79,20 +79,25 @@ fn get(
     url: []const u8,
     extra_headers: []const std.http.Header,
 ) !HttpResult {
+    std.debug.print("[trace_test] get() url={s} n_headers={d}\n", .{ url, extra_headers.len });
     var client: std.http.Client = .{ .io = std.testing.io, .allocator = allocator };
     defer client.deinit();
 
     const uri = try std.Uri.parse(url);
 
+    std.debug.print("[trace_test] calling client.request\n", .{});
     var req = try client.request(.GET, uri, .{
         .extra_headers = extra_headers,
     });
     defer req.deinit();
 
+    std.debug.print("[trace_test] calling sendBodiless\n", .{});
     try req.sendBodiless();
 
+    std.debug.print("[trace_test] calling receiveHead\n", .{});
     var redirect_buffer: [8192]u8 = undefined;
     var response = try req.receiveHead(&redirect_buffer);
+    std.debug.print("[trace_test] receiveHead done, status={d}\n", .{@intFromEnum(response.head.status)});
 
     const status: u16 = @intFromEnum(response.head.status);
 
@@ -110,9 +115,15 @@ fn get(
     errdefer if (trace_id_header) |h| allocator.free(h);
 
     // Read body.  After reader() the Head string pointers are invalidated.
+    // Use appendRemainingUnlimited instead of readAlloc — in Zig 0.16 readAlloc
+    // pre-allocates exactly max_size bytes and requires them all to be filled,
+    // causing error.EndOfStream for any response shorter than max_size.
     var transfer_buffer: [8192]u8 = undefined;
     const body_reader = response.reader(&transfer_buffer);
-    const body = try body_reader.readAlloc(allocator, 4 * 1024 * 1024);
+    var body_list: std.ArrayList(u8) = .empty;
+    errdefer body_list.deinit(allocator);
+    try body_reader.appendRemainingUnlimited(allocator, &body_list);
+    const body = try body_list.toOwnedSlice(allocator);
 
     return HttpResult{
         .status = status,

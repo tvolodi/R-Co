@@ -37,18 +37,11 @@ fn restoreAuditChainTrigger(conn: anytype) !void {
 }
 
 fn restoreAuditPreventUpdateTrigger(conn: anytype) !void {
-    try conn.exec(
-        \\DROP TRIGGER IF EXISTS trg_bpm_audit_prevent_update ON audit_entries
-    ,
-        &.{},
-    );
-    try conn.exec(
-        \\CREATE TRIGGER trg_bpm_audit_prevent_update
-        \\BEFORE UPDATE ON audit_entries
-        \\FOR EACH ROW EXECUTE FUNCTION bpm_audit_enforce_immutability()
-    ,
-        &.{},
-    );
+    // Migration 059 consolidated duplicate immutability triggers.
+    // The old trg_bpm_audit_prevent_update trigger and bpm_audit_enforce_immutability()
+    // function were removed. The sole immutability guard is now trg_audit_entries_no_update
+    // using bpm_audit_immutable_guard(), handled by restoreAuditNoUpdateTrigger().
+    _ = conn;
 }
 
 test "TC-ADP-09-01: migration adds nullable chain columns and validation primitives" {

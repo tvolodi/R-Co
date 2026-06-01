@@ -89,6 +89,8 @@ pub fn main() !void {
     defer idp_boot.active.deinit();
 
     api_auth.configureIdentityProviderManager(idp_boot.active.manager);
+    try api_auth.init(allocator, config.bootstrap_token);
+    defer api_auth.deinit();
 
     const fields = [_]obs_logger.LogField{
         .{ .key = "port", .value = .{ .integer = config.port } },
@@ -232,6 +234,19 @@ fn serveRequest(
         }
         break :blk null;
     };
+
+    // ── API-09 trace middleware ────────────────────────────────────────────────
+    // Must run first (before auth) so that even auth failures are traceable.
+    const x_trace_id_req_header: ?[]const u8 = blk: {
+        var hdr_it = request.iterateHeaders();
+        while (hdr_it.next()) |h| {
+            if (std.ascii.eqlIgnoreCase(h.name, "x-trace-id")) break :blk h.value;
+        }
+        break :blk null;
+    };
+    const trace_result = try api_trace.extractOrGenerate(req_alloc, x_trace_id_req_header);
+    api_trace_context.set(trace_result.trace_id);
+    defer api_trace_context.clear();
 
     // Split path from query string.
     const target = request.head.target;
@@ -404,6 +419,34 @@ fn serveRequest(
     }
     // ── /api/v1/... (+ legacy /dlq compatibility) ───────────────────────────
     else if (std.mem.startsWith(u8, path, "/api/v1/") or std.mem.eql(u8, path, "/dlq") or std.mem.startsWith(u8, path, "/dlq/")) {
+        // ── API-08/API-09 auth gate ───────────────────────────────────────────
+        // Every /api/v1/... request must be authenticated.  Return 401/403
+        // immediately and include X-Trace-Id so the caller can correlate.
+        {
+            const auth_gate_result = api_auth.authenticate(req_alloc, authorization_header, pool);
+            switch (auth_gate_result) {
+                .unauthenticated => |hr| {
+                    const tid = api_trace_context.get();
+                    const auth_hdrs = [_]std.http.Header{
+                        .{ .name = "content-type", .value = "application/json" },
+                        .{ .name = "X-Trace-Id", .value = tid },
+                    };
+                    try request.respond(hr.body, .{ .status = @enumFromInt(hr.status_code), .keep_alive = false, .extra_headers = &auth_hdrs });
+                    return;
+                },
+                .forbidden => |hr| {
+                    const tid = api_trace_context.get();
+                    const auth_hdrs = [_]std.http.Header{
+                        .{ .name = "content-type", .value = "application/json" },
+                        .{ .name = "X-Trace-Id", .value = tid },
+                    };
+                    try request.respond(hr.body, .{ .status = @enumFromInt(hr.status_code), .keep_alive = false, .extra_headers = &auth_hdrs });
+                    return;
+                },
+                .authenticated => {},
+            }
+        }
+
         const route_path = if (std.mem.eql(u8, path, "/dlq") or std.mem.startsWith(u8, path, "/dlq/"))
             (std.fmt.allocPrint(req_alloc, "/api/v1{s}", .{path}) catch path)
         else
@@ -1029,16 +1072,43 @@ fn serveRequest(
             resp_status = 404;
             resp_body = "{\"type\":\"not_found\",\"status\":404}";
         }
+
+        // API-09: emit a structured log entry so trace_id appears in the log
+        // file for every /api/v1/... request (TC-API-09-INT-03).
+        {
+            const req_log_fields = [_]obs_logger.LogField{
+                .{ .key = "method", .value = .{ .string = @tagName(method) } },
+                .{ .key = "path", .value = .{ .string = path } },
+                .{ .key = "status_code", .value = .{ .integer = @as(i64, resp_status) } },
+            };
+            obs_logger.log(req_alloc, .INFO, "api.request", "request completed", &req_log_fields) catch {};
+        }
     } else {
         resp_status = 404;
         resp_body = "{\"type\":\"not_found\",\"status\":404}";
     }
 
-    const ct_hdr = [_]std.http.Header{.{ .name = "content-type", .value = resp_content_type }};
-    try request.respond(resp_body, .{
+    // API-09: inject trace_id into 4xx/5xx JSON error bodies.
+    const trace_id_final = api_trace_context.get();
+    var final_resp_body = resp_body;
+    if (resp_status >= 400 and trace_id_final.len > 0 and
+        resp_body.len > 1 and resp_body[0] == '{' and resp_body[resp_body.len - 1] == '}')
+    {
+        final_resp_body = std.fmt.allocPrint(
+            req_alloc,
+            "{s},\"trace_id\":\"{s}\"}}",
+            .{ resp_body[0 .. resp_body.len - 1], trace_id_final },
+        ) catch resp_body;
+    }
+
+    const resp_hdrs = [_]std.http.Header{
+        .{ .name = "content-type", .value = resp_content_type },
+        .{ .name = "X-Trace-Id", .value = trace_id_final },
+    };
+    try request.respond(final_resp_body, .{
         .status = @enumFromInt(resp_status),
         .keep_alive = false,
-        .extra_headers = &ct_hdr,
+        .extra_headers = &resp_hdrs,
     });
 }
 pub const engine_transition = @import("engine/transition.zig");

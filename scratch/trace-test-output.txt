@@ -1,0 +1,155 @@
+﻿Cleaning test database...
+Test database cleaned.
+zig : test-integration
+At line:1 char:242
++ ... -out\backend-trace-test.log"; zig build test-integration 2>&1 | Out-F ...
++                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (test-integration:String) [], Remo 
+   teException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
++- run test 367 pass, 7 fail (374 total)
+error: 'trace_test.test.TC-API-09-INT-01: X-Trace-Id response header present on
+ 200' failed:
+       error.Unexpected NTSTATUS=0xc000020a (ADDRESS_ALREADY_EXISTS)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f73824b in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7f962e in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7f8ece in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7f8cb8 in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f732547 in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f73179f in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7312d1 in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7311aa in ??? (test.exe)
+       ???:?:?: 0x7ff94775e956 in ??? (KERNEL32.DLL)
+       ???:?:?: 0x7ff948a4427b in ??? (ntdll.dll)
+       [trace_test] get() url=http://127.0.0.1:8080/api/v1/definitions n_header
+s=1
+       [trace_test] calling client.request
+       [trace_test] calling sendBodiless
+       [trace_test] calling receiveHead
+       [trace_test] receiveHead done, status=200
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7fa92f in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63fc0d193 in ??? (test.exe)
+error: 'trace_test.test.TC-API-09-INT-02: caller-supplied X-Trace-Id is echoed 
+back unchanged' failed:
+       [trace_test] get() url=http://127.0.0.1:8080/api/v1/definitions n_header
+s=2
+       [trace_test] calling client.request
+       [trace_test] calling sendBodiless
+       [trace_test] calling receiveHead
+       [trace_test] receiveHead done, status=200
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7fa92f in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63fc0c8b4 in ??? (test.exe)
+error: 'trace_test.test.TC-API-09-INT-03: trace ID appears in structured log ou
+tput' failed:
+       [trace_test] get() url=http://127.0.0.1:8080/api/v1/definitions n_header
+s=2
+       [trace_test] calling client.request
+       [trace_test] calling sendBodiless
+       [trace_test] calling receiveHead
+       [trace_test] receiveHead done, status=200
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7fa92f in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63fc0c26e in ??? (test.exe)
+error: 'trace_test.test.TC-OBS-01-INT-01: health live request emits structured 
+log with propagated trace id' failed:
+       [trace_test] get() url=http://127.0.0.1:8080/health/live n_headers=1
+       [trace_test] calling client.request
+       [trace_test] calling sendBodiless
+       [trace_test] calling receiveHead
+       [trace_test] receiveHead done, status=200
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7fa92f in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63fc0a4aa in ??? (test.exe)
+error: 'trace_test.test.TC-API-09-INT-04: trace ID appears in error response bo
+dy for 404' failed:
+       [trace_test] get() url=http://127.0.0.1:8080/api/v1/definitions/ffffffff
+-ffff-ffff-ffff-ffffffffffff n_headers=1
+       [trace_test] calling client.request
+       [trace_test] calling sendBodiless
+       [trace_test] calling receiveHead
+       [trace_test] receiveHead done, status=404
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7fa92f in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63fc093d2 in ??? (test.exe)
+error: 'trace_test.test.TC-API-09-INT-05: trace ID assigned and returned even o
+n HTTP 401' failed:
+       [trace_test] get() url=http://127.0.0.1:8080/api/v1/definitions n_header
+s=0
+       [trace_test] calling client.request
+       [trace_test] calling sendBodiless
+       [trace_test] calling receiveHead
+       [trace_test] receiveHead done, status=200
+       expected 401, found 200
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7fc0fe in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63fc08b19 in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63fc08bcb in ??? (test.exe)
+error: 'trace_test.test.TC-API-09-INT-06: non-UUID X-Trace-Id propagated unchan
+ged' failed:
+       [trace_test] get() url=http://127.0.0.1:8080/api/v1/definitions n_header
+s=2
+       [trace_test] calling client.request
+       [trace_test] calling sendBodiless
+       [trace_test] calling receiveHead
+       [trace_test] receiveHead done, status=200
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f7fa92f in ??? (test.exe)
+       Failed to read debug info from filesystem, trace may be incomplete
+       
+       ???:?:?: 0x7ff63f99ba94 in ??? (test.exe)
+failed command: cd C:\Users\tvolo\dev\ai-dala\My-Fab && BPM_MIGRATIONS_DIR="C:\
+\Users\\tvolo\\dev\\ai-dala\\My-Fab\\migrations" ".\\.zig-cache\\o\\e4a5799f994
+95ccc3a3076f6eea8bb74\\test.exe" "--cache-dir=.\\.zig-cache" --seed=0xa98c2d4c 
+--listen=-
+
+Build Summary: 5/7 steps succeeded (1 failed); 368/375 tests passed (7 failed)
+test-integration transitive failure
++- run test 367 pass, 7 fail (374 total)
+
+error: the following build command failed with exit code 1:
+.zig-cache\o\b32491166f37865f67b77e78c174257e\build.exe C:\Users\tvolo\AppData\
+Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\z
+ig-x86_64-windows-0.16.0\zig.exe C:\Users\tvolo\AppData\Local\Microsoft\WinGet\
+Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.
+0\lib C:\Users\tvolo\dev\ai-dala\My-Fab .zig-cache C:\Users\tvolo\AppData\Local
+\zig --seed 0xa98c2d4c -Z13c1cc7cee3adea5 test-integration

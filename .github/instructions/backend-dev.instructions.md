@@ -95,6 +95,7 @@ Before marking the handoff complete, verify:
 - [ ] No mocks, stubs, in-memory fakes, or stub return values in any test file (DIRECTIVE T-1)
 - [ ] No `error.SkipZigTest` on any test block that covers a MUST requirement (a skipped MUST test = requirement stays PENDING)
 - [ ] All integration tests connect to real PostgreSQL via `BPM_TEST_DB_URL`
+- [ ] No DB-backed test is placed in `tests/unit/` — any test using `Pool`, `Store`, `Registry`, or any live connection belongs in `tests/integration/`
 - [ ] If the handoff used a parameter file: only `// CUSTOM:` blocks were edited; the YAML was committed alongside the generated artefact
 
 ### 6. Commit implementation to the feature branch (mandatory)
@@ -161,6 +162,7 @@ Use the exact string printed by the command. Then update the handoff JSON file:
 - **Never** modify existing migration files (add a new migration instead)
 - **Never** write code outside `src/` and `migrations/` unless the handoff explicitly permits it
 - **Never** run `zig build test-integration` without `BPM_TEST_DB_URL` set
+- **Never** place DB-backed tests in `tests/unit/`. If a test calls `Pool.init`, acquires a connection, or uses `Store`/`Registry` against a real database, it belongs in `tests/integration/` — not `tests/unit/`. The unit layer is pure (no network I/O, no DB connections). Adding a `bpm` module import to a unit test target just to wire in DB helpers is a sign the test is in the wrong layer.
 - Do not stop only because the workspace has unrelated pre-existing changes; continue and keep edits scoped to handoff files.
 - Stop only for true overlap/conflict on the same target files or a validation blocker that prevents acceptance criteria.
 - Do not spend tokens reporting unrelated pre-existing changes.
