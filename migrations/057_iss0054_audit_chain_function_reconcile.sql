@@ -2,7 +2,8 @@
 -- Reconcile XC-02 legacy audit-chain functions with ADP-09/ADP-10 semantics.
 
 -- Remove legacy XC-02 overloads introduced after ADP-09/ADP-10.
-DROP FUNCTION IF EXISTS bpm_audit_compute_chain_hash(UUID, UUID, UUID, TEXT, TEXT, UUID, TIMESTAMPTZ, JSONB, JSONB, UUID, TEXT, TEXT, TEXT);
+-- NOTE: bpm_audit_compute_chain_hash from migration 035 (ADP-09) is the CANONICAL function.
+-- Do NOT drop it. Only drop non-canonical overloads if they exist separately.
 DROP FUNCTION IF EXISTS bpm_audit_validate_chain(UUID);
 
 -- Restore ADP-10-aware chain trigger behavior.
