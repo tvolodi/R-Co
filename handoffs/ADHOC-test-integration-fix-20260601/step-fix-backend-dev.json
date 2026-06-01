@@ -1,0 +1,41 @@
+{
+    "handoff_id":  "adhoc-testinteg-fix-20260601-001",
+    "run_id":  "ADHOC-test-integration-fix-20260601",
+    "workflow_id":  "ADHOC",
+    "step":  "fix",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "created_at":  "2026-06-01T14:53:09Z",
+    "status":  "PENDING",
+    "priority":  "BLOCKER",
+    "context":  {
+                    "stage":  "Integration test aggregation fix",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "adhoc-testinteg-diag-20260601-001"
+                                            ],
+                    "artifacts_in":  [
+                                         "tests/integration/main_test.zig"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Fix the test aggregation issue in tests/integration/main_test.zig. Root cause: the compiled test executable exits silently with exit code 0 after database cleanup, producing zero test output. Individual focused test modules (e.g., test-integration-oidc31, test-integration-obs03) work correctly. The issue is in how the full test suite aggregates all modules. Task: (1) Review tests/integration/main_test.zig and identify why tests are not being discovered/registered, (2) Check for circular dependencies, missing test discovery logic, or incorrect comptime import patterns, (3) Fix the aggregation so that all test modules are properly included and executed, (4) Verify zig build test-integration exits 0 with proper test output (not silent), (5) Commit the fix.",
+                 "acceptance_criteria":  [
+                                             "zig build test-integration exits 0 with test output (not silent)",
+                                             "Test counts are reported (e.g., \u0027tests passed: N\u0027)",
+                                             "All test modules are discovered and executed",
+                                             "Database cleanup step completes successfully",
+                                             "Fix is committed to feature branch"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:fix-test-aggregation"
+                                       ]
+             },
+    "result":  null,
+    "rework_count":  0,
+    "max_rework":  1,
+    "started_at":  "2026-06-01T14:53:09Z",
+    "completed_at":  null
+}

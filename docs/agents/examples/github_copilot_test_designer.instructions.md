@@ -93,24 +93,13 @@ web/tests/e2e/pipelines/   (list existing pipeline files)
 3. Update the step table in `tests/specs/PIPELINE-<slug>.md`
 
 **Case B — No pipeline file exists, but this is the 2nd+ requirement in a sequential journey:**
-1. Create `tests/specs/PIPELINE-<slug>.md` using this template:
-   ```markdown
-   # Pipeline Spec: <slug> — <title>
-
-   ## Journey
-   <one sentence>
-
-   ## Steps
-   | Step | Name | Produces | Reads | Gate condition |
-   |---|---|---|---|---|
-   | 1 | <REQ-ID>: <name> | <output ids> | <input ids> | <condition> |
-
-   ## Cleanup
-   <what the cleanup handler deactivates/deletes>
-
-   ## Requirement coverage
-   <REQ-ID>, ...
-   ```
+1. Create `tests/specs/PIPELINE-<slug>.md` using the format defined in `docs/guides/test_developer_guide.md §11.4`. The spec must include:
+   - Requirements covered, actor, starting state, ending state
+   - Workflow narrative (2–4 sentences in plain language)
+   - Chain topology diagram (plain text arrows)
+   - One `### Step N` section per step, each with Given/When/Then/Gate/Produces
+   - Cleanup section describing what `pl.onCleanup()` does
+   - Failure behaviour table showing what each step failure leaves behind
 2. Create `web/tests/e2e/pipelines/<slug>.pipeline.e2e.spec.ts` — import from `../pipeline`, not inline helpers
 3. Add a row to the inventory table in `docs/guides/test_developer_guide.md §11.10`
 

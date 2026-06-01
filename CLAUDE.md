@@ -838,7 +838,7 @@ After writing per-requirement specs and island tests, apply the pipeline test ru
 
 2. **If a pipeline file exists** for this feature area: insert a new `pl.step()` at the correct position in the chain and update `tests/specs/PIPELINE-<slug>.md` step table.
 
-3. **If no pipeline file exists yet** AND this is the second or later requirement in a sequential user journey: create both `tests/specs/PIPELINE-<slug>.md` (spec) and `web/tests/e2e/pipelines/<slug>.pipeline.e2e.spec.ts` (implementation), then add a row to the inventory table in `docs/guides/test_developer_guide.md §11.10`.
+3. **If no pipeline file exists yet** AND this is the second or later requirement in a sequential user journey: create both `tests/specs/PIPELINE-<slug>.md` (spec) and `web/tests/e2e/pipelines/<slug>.pipeline.e2e.spec.ts` (implementation), then add a row to the inventory table in `docs/guides/test_developer_guide.md §11.10`. The spec format is defined in `docs/guides/test_developer_guide.md §11.4` — use Given/When/Then per step, a plain-text chain topology diagram, and a failure behaviour table. The spec is human-readable documentation, not just an agent input.
 
 **Pipeline test rules** (see `docs/guides/test_developer_guide.md §11` for full detail):
 - Import helpers from `web/tests/e2e/pipeline.ts` — do not duplicate logic
@@ -894,7 +894,7 @@ Read the test spec files and test source files listed in `context.artifacts_in`.
 
 **Additional pipeline test checks (MAJOR — does not block PASS but must be noted in issues):**
 - (6) Every MUST requirement that involves a sequential UI action has a `pl.step()` in the relevant pipeline file under `web/tests/e2e/pipelines/`. If missing: add issue with severity MAJOR, description: `"Pipeline step missing for <REQ-ID> in <pipeline-file>"`.
-- (7) A `tests/specs/PIPELINE-<slug>.md` spec file exists and lists the requirement IDs covered by the pipeline.
+- (7) A `tests/specs/PIPELINE-<slug>.md` spec file exists, follows the format in `docs/guides/test_developer_guide.md §11.4` (narrative, chain topology, Given/When/Then per step, cleanup section, failure behaviour table), and lists the requirement IDs covered by the pipeline.
 - (8) Pipeline file imports from `web/tests/e2e/pipeline.ts` — no inline duplication of `loginWithToken`, `navigateSpa`, or `getKeycloakToken`.
 - (9) `pl.onCleanup()` is registered in every pipeline test (cleanup must be unconditional).
 - (10) No `test.beforeEach` / `test.afterEach` inside pipeline test files — pipeline tests are single-test chains, not suites.
@@ -914,9 +914,41 @@ cat docs/guides/test_developer_guide.md
 
 Find your handoff, then run the test commands specified in `task.functions_to_call`.
 
-**Pre-checks (run before any test command):**
+### Comprehensive Test Workflow
 
-**1. Backend services check** (required for E2E and integration tests):
+When the handoff task is to "run all tests" or verify a full test suite, execute **ALL three test layers**:
+
+**Layer 1: Unit Tests**
+```bash
+zig build test --summary all
+# Must exit 0. Pure unit tests; no DB required (though some tests skip if BPM_TEST_DB_URL absent).
+```
+
+**Layer 2: Integration Tests** (requires `BPM_TEST_DB_URL=postgres://...` and running backend services)
+```bash
+export BPM_TEST_DB_URL="postgres://bpm:bpm@localhost:5433/bpm_test"
+export BPM_TEST_URL="http://127.0.0.1:8080"
+export BPM_IDP_BASE_URL="http://127.0.0.1:8081"
+zig build test-integration --summary all
+# Must exit 0. Tests persist state to real PostgreSQL and require running Docker services.
+```
+
+**Layer 3: End-to-End Pipeline Tests** (Playwright; requires real backend + database)
+```bash
+cd web
+npm run test  # or: npx playwright test
+# Must exit 0. Tests exercise full user workflows through the UI against real backend.
+```
+
+**Shorthand: Run all three layers**
+```bash
+zig build test-all  # Runs Layer 1 + 2 (unit + integration)
+# Then separately: cd web && npm run test  # Layer 3 (E2E pipeline)
+```
+
+### Pre-checks (run BEFORE any test command)
+
+**1. Backend services check** (required for Layer 2 & 3):
 ```bash
 docker-compose ps 2>/dev/null | grep -E "keycloak|db"
 curl -sf http://localhost:8081/health/ready > /dev/null && echo "KC_OK" || echo "KC_DOWN"
@@ -930,7 +962,23 @@ zig build bench 2>&1 | head -5
 ```
 If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: STOP. Return FAIL with severity BLOCKER.
 
-If both pre-checks pass: proceed to run tests. Write results to `tests/reports/report-<date>-<run_id>.yaml` per the test guide §9 format. Complete your handoff with a full issue list and severity classification.
+### Test Execution Order
+
+Execute in this sequence and STOP on first failure:
+1. Layer 1: Unit tests (`zig build test`)
+2. Layer 2: Integration tests (`zig build test-integration`)
+3. Layer 3: E2E pipeline tests (`cd web && npm run test`)
+
+Only proceed to the next layer if the previous layer exits 0 (all tests pass).
+
+### Test Report
+
+Write results to `tests/reports/report-<date>-<run_id>.yaml` per the test guide §9 format. Include:
+- Layer-by-layer results (pass/fail counts, error summary per layer)
+- Full issue list with severity classification
+- References to any pre-existing vs. new failures
+
+Complete your handoff with the comprehensive report.
 
 ---
 

@@ -456,3 +456,10 @@
 2026-05-31T21:41:39Z | ROUTE | WF03-login-redirect-loop-20260601 | f1032c9d | ORCH → RELEASE-VALIDATOR | PENDING
 2026-05-31T21:44:34Z | ROUTE | WF03-login-redirect-loop-20260601 | 9073b447 | ORCH → DOC-UPDATER | PENDING
 2026-05-31T21:47:57Z | ROUTE | WF03-login-redirect-loop-20260601 | 8d804d49 | ORCH → BACKEND-DEV | PENDING
+2026-06-01T06:00:52Z | ROUTE | ADHOC-full-test-20260601 | adhoc-fulltest-20260601-001 | ORCH → TEST-RUNNER | PENDING
+2026-06-01T06:29:35Z | COMPLETE | ADHOC-full-test-20260601 | adhoc-fulltest-20260601-001 | TEST-RUNNER → ORCH | PASS — all 900 tests passed, 107 skipped, 0 failures
+2026-06-01T07:02:20Z | ROUTE | ADHOC-unit-stub-impl-20260601 | 4b516159 | ORCH -> BACKEND-DEV | PENDING | 71 unit test stubs: event_store_test.zig(25), db_test.zig(10), definition_retrieval_test.zig(15) + ISS-0039 fix
+2026-06-01T08:20:05Z | ROUTE | ADHOC-unit-stub-impl-20260601 | 0603c2da | ORCH -> BACKEND-DEV | PENDING | REWORK: fix TC-ES-01-01, TC-ES-02-02, TC-DB-03-01
+2026-06-01T14:35:17Z | ROUTE | ADHOC-test-all-20260601 | adhoc-testall-20260601-001 | ORCH -> TEST-RUNNER | PENDING
+2026-06-01T14:42:43Z | ROUTE | ADHOC-test-integration-debug-20260601 | adhoc-testinteg-diag-20260601-001 | ORCH -> BACKEND-DEV | PENDING
+2026-06-01T14:53:09Z | ROUTE | ADHOC-test-integration-fix-20260601 | adhoc-testinteg-fix-20260601-001 | ORCH -> BACKEND-DEV | PENDING

@@ -500,9 +500,20 @@ pub const Store = struct {
         // COMMIT
         conn.exec("COMMIT", &.{}) catch return StoreError.TransactionFailed;
 
+        // Extract global_seq from RETURNING data (column 9) while insert_rows
+        // is still alive. This is an integer copy — no string-pointer borrowing.
+        const global_seq_val: i64 = blk: {
+            if (insert_rows.rows.len > 0 and insert_rows.rows[0].len > 9) {
+                if (insert_rows.rows[0][9]) |s|
+                    break :blk std.fmt.parseInt(i64, s, 10) catch 0;
+            }
+            break :blk 0;
+        };
+
         // Build EventRecord from params (stable memory; avoids borrowing from
         // insert_rows which is freed by defer before the caller can read strings).
-        const record = duplicateFromParams(params, sequence_number, metadata);
+        var record = duplicateFromParams(params, sequence_number, metadata);
+        record.global_seq = global_seq_val;
 
         return AppendResult{ .record = record, .is_duplicate = false };
     }

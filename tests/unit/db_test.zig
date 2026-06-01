@@ -18,6 +18,7 @@ const Store = bpm.store.Store;
 const AppendParams = bpm.store.AppendParams;
 const StoreError = bpm.store.StoreError;
 const Registry = bpm.registry.Registry;
+const RegisterParams = bpm.registry.RegisterParams;
 
 // ---------------------------------------------------------------------------
 // Helpers (mirrors the pattern in event_store_test.zig)
@@ -171,7 +172,7 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
     defer pool.deinit();
 
     const inst_str = "db030100-0000-0000-0000-000000000001";
-    const def_str  = "db030100-0000-0000-0000-000000000002";
+    const def_str = "db030100-0000-0000-0000-000000000002";
     const idem_key = "tc-db-03-01-idem";
 
     try insertInstance(&pool, inst_str, def_str);
@@ -179,6 +180,12 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
 
     var registry = Registry.init(alloc, &pool);
     defer registry.deinit();
+    _ = registry.registerType(alloc, RegisterParams{
+        .name = "TC_DB0301_TYPE",
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = null,
+    }) catch {};
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
 
@@ -186,19 +193,14 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
     const actor_id = try parseUuid("00000000-0000-0000-0000-000000000001");
 
     const result = try store.append(alloc, AppendParams{
-        .instance_id     = inst_id,
-        .event_type      = "TC_DB0301_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor_id,
+        .instance_id = inst_id,
+        .event_type = "TC_DB0301_TYPE",
+        .payload = "{}",
+        .actor_id = actor_id,
         .idempotency_key = idem_key,
-        .tenant_id       = bpm.store.DEFAULT_TENANT_ID,
-        .metadata        = null,
+        .tenant_id = bpm.store.DEFAULT_TENANT_ID,
+        .metadata = null,
     });
-    defer if (!result.is_duplicate) {
-        alloc.free(result.record.event_type);
-        alloc.free(result.record.payload);
-        alloc.free(result.record.metadata);
-    };
 
     try std.testing.expect(!result.is_duplicate);
     try std.testing.expect(result.record.sequence_number >= 1);
@@ -207,16 +209,13 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    var evt_rows = try conn.query(alloc,
-        "SELECT COUNT(*) FROM events WHERE idempotency_key = $1", &.{idem_key});
+    var evt_rows = try conn.query(alloc, "SELECT COUNT(*) FROM events WHERE idempotency_key = $1", &.{idem_key});
     defer evt_rows.deinit();
     const cnt_str = if (evt_rows.rows.len > 0) evt_rows.rows[0][0] orelse "0" else "0";
     const cnt = try std.fmt.parseInt(u64, cnt_str, 10);
     try std.testing.expectEqual(@as(u64, 1), cnt);
 
-    var seq_rows = try conn.query(alloc,
-        "SELECT last_event_seq FROM instance_projections WHERE instance_id = $1::uuid",
-        &.{inst_str});
+    var seq_rows = try conn.query(alloc, "SELECT last_event_seq FROM instance_projections WHERE instance_id = $1::uuid", &.{inst_str});
     defer seq_rows.deinit();
     const seq_str = if (seq_rows.rows.len > 0) seq_rows.rows[0][0] orelse "0" else "0";
     const seq = try std.fmt.parseInt(i64, seq_str, 10);

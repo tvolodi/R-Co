@@ -111,12 +111,33 @@ const adp12_default_tenant_regression_integration = @import("adp12_default_tenan
 const adp02_tenant_scope = @import("adp02_tenant_scope_test.zig");
 // Stage 6.5 — OIDC claim validation auth mapping (OIDC-07)
 const oidc07_claim_validation_auth_integration = @import("oidc07_claim_validation_auth_test.zig");
+// NOTE: OIDC-08 through OIDC-15, OIDC-34, OIDC-35 have external module dependencies
+// and are run as standalone focused tests (e.g., test-integration-oidc31)
+// OIDC-31 end-to-end auth suite is run via adm_ui_09_health_test.zig in build.zig
 // Stage 6.5 — Agent lifecycle foundations (OIDC-16..OIDC-26)
 const oidc16_26_agent_lifecycle_foundations_integration = @import("oidc16_26_agent_lifecycle_foundations_test.zig");
 // Stage 11 — Simulation mode foundations (SIM-01..SIM-04)
 const sim01_04_simulation_mode_integration = @import("sim01_04_simulation_mode_test.zig");
 // Stage 11 — Scenario schema/runner and batch execution (SIM-05..SIM-08)
 const sim05_08_scenario_runner_integration = @import("sim05_08_scenario_runner_test.zig");
+// Stage 11 — Stage 11 SIM-XC-04 aggregate tests (SIM + XC-04)
+const stage11_sim_xc04_aggregate_integration = @import("stage11_sim_xc04_aggregate_test.zig");
+// Cross-cutting — Configuration repository (XC-03)
+const xc03_configuration_repository_integration = @import("xc03_configuration_repository_test.zig");
+// Cross-cutting — Trace propagation (XC-01)
+const xc01_trace_propagation_integration = @import("xc01_trace_propagation_test.zig");
+// Cross-cutting — Audit immutability (XC-02)
+const xc02_audit_immutability_integration = @import("xc02_audit_immutability_test.zig");
+// Cross-cutting — Backwards compatibility (XC-06)
+const xc06_backwards_compatibility_integration = @import("xc06_backwards_compatibility_test.zig");
+// Cross-cutting — Deterministic replay (XC-05)
+const xc05_deterministic_replay_integration = @import("xc05_deterministic_replay_test.zig");
+// Cross-cutting — Kernel determinism (XC-04) - also run as focused test
+const xc04_kernel_determinism_integration = @import("xc04_kernel_determinism_test.zig");
+// Admin UI — Health endpoint (ADM-UI-09)
+const adm_ui_09_health_integration = @import("adm_ui_09_health_test.zig");
+// NOTE: repository_test.zig uses std.crypto.random which was removed in Zig 0.16
+// It is run as a standalone focused test
 
 comptime {
     _ = std;
@@ -171,6 +192,14 @@ comptime {
     _ = oidc16_26_agent_lifecycle_foundations_integration;
     _ = sim01_04_simulation_mode_integration;
     _ = sim05_08_scenario_runner_integration;
+    _ = stage11_sim_xc04_aggregate_integration;
+    _ = xc03_configuration_repository_integration;
+    _ = xc01_trace_propagation_integration;
+    _ = xc02_audit_immutability_integration;
+    _ = xc06_backwards_compatibility_integration;
+    _ = xc05_deterministic_replay_integration;
+    _ = xc04_kernel_determinism_integration;
+    _ = adm_ui_09_health_integration;
 }
 
 test "integration placeholder" {

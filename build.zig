@@ -96,16 +96,6 @@ pub fn build(b: *std.Build) void {
     });
     const run_unit_tests = b.addRunArtifact(unit_tests);
 
-    const event_store_tests = b.addTest(.{
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/unit/event_store_test.zig"),
-            .target = target,
-            .optimize = optimize,
-            .imports = vendor_imports,
-        }),
-    });
-    const run_event_store_tests = b.addRunArtifact(event_store_tests);
-
     const graph_mod = b.createModule(.{
         .root_source_file = b.path("src/definition/graph.zig"),
         .target = target,
@@ -166,6 +156,19 @@ pub fn build(b: *std.Build) void {
             .{ .name = "pool", .module = pool_root_mod },
         },
     });
+
+    const event_store_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/event_store_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+                .{ .name = "pool", .module = pool_root_mod },
+            },
+        }),
+    });
+    const run_event_store_tests = b.addRunArtifact(event_store_tests);
 
     const db_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -795,6 +798,21 @@ pub fn build(b: *std.Build) void {
     const test_adp12_regression_step = b.step("test-adp12-regression", "Run ADP-12 default-tenant pre/post regression suite");
     test_adp12_regression_step.dependOn(&clean_test_db.step);
     test_adp12_regression_step.dependOn(&run_adp12_regression_tests.step);
+
+    // ---------------------------------------------------------------------------
+    // `zig build test-all` — run ALL tests (unit + integration + E2E pipeline)
+    // ---------------------------------------------------------------------------
+    // This is the comprehensive test command that ensures complete test coverage.
+    // It includes:
+    //   1. Unit tests (zig build test)
+    //   2. Integration tests with real DB (zig build test-integration)
+    //   3. End-to-end pipeline tests via Playwright (npm run test from web/)
+    //
+    // This step orchestrates the full test suite and is used by TEST-RUNNER agent.
+    const test_all_step = b.step("test-all", "Run ALL tests: unit + integration + E2E pipeline (comprehensive test suite)");
+    test_all_step.dependOn(test_step);                        // Unit tests
+    test_all_step.dependOn(test_integration_step);            // Integration tests
+    // Note: E2E tests (Playwright) must be run via: cd web && npm run test
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

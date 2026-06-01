@@ -405,30 +405,79 @@ Pipeline tests are multi-step E2E workflows where each step's output is the next
 
 ### 11.4 Pipeline spec format
 
-Write a spec file at `tests/specs/PIPELINE-<slug>.md` before writing the test code:
+Write a spec file at `tests/specs/PIPELINE-<slug>.md` before writing the test code.
+The format is designed to be **readable by humans first** — each step tells a story with
+context, action, and observable outcome, using the same Given/When/Then language as the
+existing requirement specs.
 
-```markdown
+````markdown
 # Pipeline Spec: <slug> — <Human-readable title>
 
-## Journey
-<one sentence describing the end-to-end user workflow>
+**Requirements covered:** <REQ-ID>, <REQ-ID>, ...
+**Actor:** <who performs the workflow, e.g. "Platform administrator">
+**Starting state:** <what must already exist before step 1 runs>
+**Ending state:** <what the system looks like after the final step>
+
+## Workflow narrative
+
+<2–4 sentences. Describe the journey in plain language — what the user is trying to
+accomplish and why the steps are in this order. This is the section a product owner or
+QA engineer reads to understand what is being validated.>
+
+## Chain topology
+
+```
+login
+  → [1] verify user list            (ADM-UI-01)
+  → [2] create user                 (ADM-UI-02)  → produces: userId
+  → [3] update display name/email   (ADM-UI-03a) → reads: userId
+  → [4] assign role                 (ADM-UI-03b) → reads: userId
+  → [5] deactivate user             (ADM-UI-04)  → reads: userId  ← also cleanup
+```
+
+A failure at any step aborts the chain. Steps after the failure point are not executed.
+
+---
 
 ## Steps
 
-| Step | Name | Produces | Reads | Gate condition |
-|---|---|---|---|---|
-| 1 | ADM-UI-01: user list columns | — | adminToken | adminToken present |
-| 2 | ADM-UI-02: create user | userId, username | — | userId extracted from URL |
-| 3 | ADM-UI-03a: update profile | — | userId | Saved message visible |
-| 4 | ADM-UI-03b: assign role | — | userId | — |
-| 5 | ADM-UI-04: deactivate user | — | userId | status = INACTIVE |
+### Step 1 — <REQ-ID>: <step name>
+
+**Given:** <what is already set up; reference prior step outputs by name if applicable>  
+**When:** <the user action performed in this step>  
+**Then:** <what the screen must show; be specific about UI elements, not just "no error">  
+**Gate condition:** <the hard assertion that must pass before step 2 can run, or "none">  
+**Produces:** <state values written to `pl.state` for later steps, or "nothing">
+
+### Step 2 — <REQ-ID>: <step name>
+
+**Given:** `userId` from step 1; user is on the user list page  
+**When:** ...  
+**Then:** ...  
+**Gate condition:** `userId` is a non-empty UUID string extracted from the URL  
+**Produces:** nothing (side effect: display name updated in DB)
+
+<!-- Repeat for each step -->
+
+---
 
 ## Cleanup
-<what the cleanup handler deactivates/deletes and via which API>
 
-## Requirement coverage
-ADM-UI-01, ADM-UI-02, ADM-UI-03, ADM-UI-04
-```
+**Handler:** registered via `pl.onCleanup()` — runs unconditionally even if chain aborts mid-way  
+**Action:** PATCH `/api/v1/admin/users/{userId}` with `{ status: "INACTIVE" }`  
+**Fallback:** if `userId` is empty (chain aborted before step 2), no API call is made
+
+---
+
+## Failure behaviour
+
+| Step that fails | Steps skipped | System state left behind |
+|---|---|---|
+| Step 1 | Steps 2–5 | No user created; nothing to clean up |
+| Step 2 | Steps 3–5 | User may be partially created; cleanup handler deactivates |
+| Step 3 or 4 | Remaining steps | User exists and is ACTIVE; cleanup handler deactivates |
+| Step 5 | — | User already deactivated by step 5; cleanup handler is a no-op |
+````
 
 ### 11.5 Checkpoint / resume
 
@@ -485,5 +534,8 @@ When a pipeline test fails, the checkpoint file at `web/tests/e2e/.pipeline-stat
 | File | Journey | Requirement coverage |
 |---|---|---|
 | `pipelines/admin-user-lifecycle.pipeline.e2e.spec.ts` | Login → list users → create → update → assign role → deactivate | ADM-UI-01..04 |
+| `pipelines/admin-groups-tokens.pipeline.e2e.spec.ts` | Create user → groups list → create group → add/remove member → delete group → issue token → verify list → revoke token | ADM-UI-05..08 |
+| `pipelines/process-definition.pipeline.e2e.spec.ts` | List → create definition → verify in list → canvas → rename node → save → reload verify → activate → read-only canvas → ACTIVE in list | PD-UI-01, 02, 04, 09, 10, 12 |
+| `pipelines/instance-task-lifecycle.pipeline.e2e.spec.ts` | Create+activate definition → instance board → start instance → detail panels → wait for task → worker inbox → open task → fill form → complete task → verify COMPLETED | IN-UI-01, 03, 04, 07, TK-UI-01..04 |
 
 Add new rows to this table when creating new pipeline files.

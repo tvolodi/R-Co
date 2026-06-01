@@ -254,7 +254,10 @@ test "TC-ES-08-03: append with 51 metadata entries returns MetadataInvalid" {
     meta_buf[meta_len] = '{';
     meta_len += 1;
     for (0..51) |i| {
-        if (i > 0) { meta_buf[meta_len] = ','; meta_len += 1; }
+        if (i > 0) {
+            meta_buf[meta_len] = ',';
+            meta_len += 1;
+        }
         const written = std.fmt.bufPrint(meta_buf[meta_len..], "\"k{d}\":\"v\"", .{i}) catch unreachable;
         meta_len += written.len;
     }
@@ -295,27 +298,23 @@ test "TC-ES-01-01: valid append returns AppendResult with is_duplicate=false and
     defer store.deinit();
 
     const inst_str = "e5010100-0000-0000-0000-000000000001";
-    const def_str  = "d5010100-0000-0000-0000-000000000001";
+    const def_str = "d5010100-0000-0000-0000-000000000001";
     const idem_key = "tc-es-01-01-idem";
+    cleanupInstance(&pool, inst_str, &.{idem_key});
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{idem_key});
 
     const inst_uuid = try parseUuid(inst_str);
-    const actor:    [16]u8 = [_]u8{0xaa} ** 16;
+    const actor: [16]u8 = [_]u8{0xaa} ** 16;
 
     const result = try store.append(alloc, AppendParams{
-        .instance_id   = inst_uuid,
-        .event_type    = "TC_ES0101_TYPE",
-        .payload       = "{\"x\":1}",
-        .actor_id      = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0101_TYPE",
+        .payload = "{\"x\":1}",
+        .actor_id = actor,
         .idempotency_key = idem_key,
-        .metadata      = null,
+        .metadata = null,
     });
-    defer if (!result.is_duplicate) {
-        alloc.free(result.record.event_type);
-        alloc.free(result.record.payload);
-        alloc.free(result.record.metadata);
-    };
 
     try std.testing.expect(!result.is_duplicate);
     try std.testing.expect(result.record.sequence_number >= 1);
@@ -343,12 +342,12 @@ test "TC-ES-01-02: append to non-existent instance returns InstanceNotFound" {
     const actor: [16]u8 = [_]u8{0xbb} ** 16;
 
     const result = store.append(alloc, AppendParams{
-        .instance_id     = ghost_uuid,
-        .event_type      = "TC_ES0102_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = ghost_uuid,
+        .event_type = "TC_ES0102_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-01-02-idem",
-        .metadata        = null,
+        .metadata = null,
     });
     try std.testing.expectError(StoreError.InstanceNotFound, result);
 }
@@ -371,7 +370,7 @@ test "TC-ES-01-03: append to COMPLETED instance returns InstanceTerminated" {
     defer store.deinit();
 
     const inst_str = "e5010300-0000-0000-0000-000000000001";
-    const def_str  = "d5010300-0000-0000-0000-000000000001";
+    const def_str = "d5010300-0000-0000-0000-000000000001";
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{});
 
@@ -388,12 +387,12 @@ test "TC-ES-01-03: append to COMPLETED instance returns InstanceTerminated" {
     const inst_uuid = try parseUuid(inst_str);
     const actor: [16]u8 = [_]u8{0xcc} ** 16;
     const result = store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0103_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0103_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-01-03-idem",
-        .metadata        = null,
+        .metadata = null,
     });
     try std.testing.expectError(StoreError.InstanceTerminated, result);
 }
@@ -416,7 +415,7 @@ test "TC-ES-01-04: append to CANCELLED instance returns InstanceTerminated" {
     defer store.deinit();
 
     const inst_str = "e5010400-0000-0000-0000-000000000001";
-    const def_str  = "d5010400-0000-0000-0000-000000000001";
+    const def_str = "d5010400-0000-0000-0000-000000000001";
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{});
 
@@ -432,12 +431,12 @@ test "TC-ES-01-04: append to CANCELLED instance returns InstanceTerminated" {
     const inst_uuid = try parseUuid(inst_str);
     const actor: [16]u8 = [_]u8{0xdd} ** 16;
     const result = store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0104_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0104_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-01-04-idem",
-        .metadata        = null,
+        .metadata = null,
     });
     try std.testing.expectError(StoreError.InstanceTerminated, result);
 }
@@ -464,7 +463,7 @@ test "TC-ES-02-01: two sequential appends to same instance receive sequence_numb
     defer store.deinit();
 
     const inst_str = "e5020100-0000-0000-0000-000000000001";
-    const def_str  = "d5020100-0000-0000-0000-000000000001";
+    const def_str = "d5020100-0000-0000-0000-000000000001";
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ "tc-es-02-01-a", "tc-es-02-01-b" });
 
@@ -472,31 +471,21 @@ test "TC-ES-02-01: two sequential appends to same instance receive sequence_numb
     const actor: [16]u8 = [_]u8{0x02} ** 16;
 
     const r1 = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0201_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0201_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-02-01-a",
-        .metadata        = null,
+        .metadata = null,
     });
-    defer if (!r1.is_duplicate) {
-        alloc.free(r1.record.event_type);
-        alloc.free(r1.record.payload);
-        alloc.free(r1.record.metadata);
-    };
     const r2 = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0201_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0201_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-02-01-b",
-        .metadata        = null,
+        .metadata = null,
     });
-    defer if (!r2.is_duplicate) {
-        alloc.free(r2.record.event_type);
-        alloc.free(r2.record.payload);
-        alloc.free(r2.record.metadata);
-    };
 
     try std.testing.expectEqual(@as(i64, 1), r1.record.sequence_number);
     try std.testing.expectEqual(@as(i64, 2), r2.record.sequence_number);
@@ -520,7 +509,7 @@ test "TC-ES-02-02: Store.read returns events sorted by ascending sequence_number
     defer store.deinit();
 
     const inst_str = "e5020200-0000-0000-0000-000000000001";
-    const def_str  = "d5020200-0000-0000-0000-000000000001";
+    const def_str = "d5020200-0000-0000-0000-000000000001";
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ "tc-es-02-02-a", "tc-es-02-02-b", "tc-es-02-02-c" });
 
@@ -529,23 +518,18 @@ test "TC-ES-02-02: Store.read returns events sorted by ascending sequence_number
     const idem_keys = [_][]const u8{ "tc-es-02-02-a", "tc-es-02-02-b", "tc-es-02-02-c" };
 
     for (idem_keys) |k| {
-        const r = try store.append(alloc, AppendParams{
-            .instance_id     = inst_uuid,
-            .event_type      = "TC_ES0202_TYPE",
-            .payload         = "{}",
-            .actor_id        = actor,
+        _ = try store.append(alloc, AppendParams{
+            .instance_id = inst_uuid,
+            .event_type = "TC_ES0202_TYPE",
+            .payload = "{}",
+            .actor_id = actor,
             .idempotency_key = k,
-            .metadata        = null,
+            .metadata = null,
         });
-        if (!r.is_duplicate) {
-            alloc.free(r.record.event_type);
-            alloc.free(r.record.payload);
-            alloc.free(r.record.metadata);
-        }
     }
 
     const events = try store.read(alloc, inst_uuid, ReadOpts{
-        .up_to_sequence  = null,
+        .up_to_sequence = null,
         .up_to_timestamp = null,
     });
     defer freeEventRecords(alloc, events);
@@ -580,8 +564,9 @@ test "TC-ES-03-01: duplicate idempotency_key returns original event with is_dupl
     defer store.deinit();
 
     const inst_str = "e5030100-0000-0000-0000-000000000001";
-    const def_str  = "d5030100-0000-0000-0000-000000000001";
+    const def_str = "d5030100-0000-0000-0000-000000000001";
     const idem_key = "tc-es-03-01-idem";
+    cleanupInstance(&pool, inst_str, &.{idem_key});
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{idem_key});
 
@@ -589,32 +574,22 @@ test "TC-ES-03-01: duplicate idempotency_key returns original event with is_dupl
     const actor: [16]u8 = [_]u8{0x30} ** 16;
 
     const r1 = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0301_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0301_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = idem_key,
-        .metadata        = null,
+        .metadata = null,
     });
-    defer if (!r1.is_duplicate) {
-        alloc.free(r1.record.event_type);
-        alloc.free(r1.record.payload);
-        alloc.free(r1.record.metadata);
-    };
 
     const r2 = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0301_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0301_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = idem_key,
-        .metadata        = null,
+        .metadata = null,
     });
-    defer if (!r2.is_duplicate) {
-        alloc.free(r2.record.event_type);
-        alloc.free(r2.record.payload);
-        alloc.free(r2.record.metadata);
-    };
 
     try std.testing.expect(!r1.is_duplicate);
     try std.testing.expect(r2.is_duplicate);
@@ -643,7 +618,8 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
     defer store.deinit();
 
     const inst_str = "e5040100-0000-0000-0000-000000000001";
-    const def_str  = "d5040100-0000-0000-0000-000000000001";
+    const def_str = "d5040100-0000-0000-0000-000000000001";
+    cleanupInstance(&pool, inst_str, &.{ "tc-es-04-01-a", "tc-es-04-01-b" });
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ "tc-es-04-01-a", "tc-es-04-01-b" });
 
@@ -651,31 +627,21 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
     const actor: [16]u8 = [_]u8{0x04} ** 16;
 
     const r1 = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0401_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0401_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-04-01-a",
-        .metadata        = null,
+        .metadata = null,
     });
-    defer if (!r1.is_duplicate) {
-        alloc.free(r1.record.event_type);
-        alloc.free(r1.record.payload);
-        alloc.free(r1.record.metadata);
-    };
     const r2 = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0401_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0401_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-04-01-b",
-        .metadata        = null,
+        .metadata = null,
     });
-    defer if (!r2.is_duplicate) {
-        alloc.free(r2.record.event_type);
-        alloc.free(r2.record.payload);
-        alloc.free(r2.record.metadata);
-    };
 
     // global_seq must increase between consecutive appends.
     try std.testing.expect(r2.record.global_seq > r1.record.global_seq);
@@ -683,7 +649,7 @@ test "TC-ES-04-01: readGlobal returns events in ascending global_seq order" {
     // readGlobal starting from just before r1 must return events in ascending order.
     const events = try store.readGlobal(alloc, GlobalReadOpts{
         .after_global_seq = r1.record.global_seq - 1,
-        .limit            = 100,
+        .limit = 100,
     });
     defer freeEventRecords(alloc, events);
 
@@ -713,7 +679,7 @@ test "TC-ES-04-02: readGlobal with after_global_seq cursor returns only events a
     defer store.deinit();
 
     const inst_str = "e5040200-0000-0000-0000-000000000001";
-    const def_str  = "d5040200-0000-0000-0000-000000000001";
+    const def_str = "d5040200-0000-0000-0000-000000000001";
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ "tc-es-04-02-a", "tc-es-04-02-b" });
 
@@ -721,36 +687,26 @@ test "TC-ES-04-02: readGlobal with after_global_seq cursor returns only events a
     const actor: [16]u8 = [_]u8{0x42} ** 16;
 
     const r1 = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0402_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0402_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-04-02-a",
-        .metadata        = null,
+        .metadata = null,
     });
-    defer if (!r1.is_duplicate) {
-        alloc.free(r1.record.event_type);
-        alloc.free(r1.record.payload);
-        alloc.free(r1.record.metadata);
-    };
-    const r2 = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0402_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+    _ = try store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0402_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-04-02-b",
-        .metadata        = null,
+        .metadata = null,
     });
-    defer if (!r2.is_duplicate) {
-        alloc.free(r2.record.event_type);
-        alloc.free(r2.record.payload);
-        alloc.free(r2.record.metadata);
-    };
 
     // Cursor = r1.global_seq: must skip r1 and return only events after it.
     const after = try store.readGlobal(alloc, GlobalReadOpts{
         .after_global_seq = r1.record.global_seq,
-        .limit            = 100,
+        .limit = 100,
     });
     defer freeEventRecords(alloc, after);
 
@@ -775,7 +731,7 @@ test "TC-ES-05-01: append with unregistered event_type returns UnknownEventType"
     defer store.deinit();
 
     const inst_str = "e5050100-0000-0000-0000-000000000001";
-    const def_str  = "d5050100-0000-0000-0000-000000000001";
+    const def_str = "d5050100-0000-0000-0000-000000000001";
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{});
 
@@ -783,12 +739,12 @@ test "TC-ES-05-01: append with unregistered event_type returns UnknownEventType"
     const actor: [16]u8 = [_]u8{0x50} ** 16;
 
     const result = store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TOTALLY_UNKNOWN_TYPE_9999_XYZ",
-        .payload         = "{}",
-        .actor_id        = actor,
+        .instance_id = inst_uuid,
+        .event_type = "TOTALLY_UNKNOWN_TYPE_9999_XYZ",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = "tc-es-05-01-idem",
-        .metadata        = null,
+        .metadata = null,
     });
     try std.testing.expectError(StoreError.UnknownEventType, result);
 }
@@ -813,18 +769,18 @@ test "TC-ES-05-04: registerType with duplicate name+version returns DuplicateEve
 
     // First registration (may already exist from a previous run — ignore error).
     _ = registry.registerType(alloc, RegisterParams{
-        .name           = "TC_ES0504_TYPE",
+        .name = "TC_ES0504_TYPE",
         .schema_version = 99,
-        .json_schema    = "{}",
-        .description    = null,
+        .json_schema = "{}",
+        .description = null,
     }) catch {};
 
     // Second registration with identical (name, version) must always fail.
     const result = registry.registerType(alloc, RegisterParams{
-        .name           = "TC_ES0504_TYPE",
+        .name = "TC_ES0504_TYPE",
         .schema_version = 99,
-        .json_schema    = "{}",
-        .description    = null,
+        .json_schema = "{}",
+        .description = null,
     });
     try std.testing.expectError(RegistryError.DuplicateEventTypeVersion, result);
 }
@@ -851,7 +807,7 @@ test "TC-ES-06-01: pointInTime with before timestamp filters out later events" {
     defer store.deinit();
 
     const inst_str = "e5060100-0000-0000-0000-000000000001";
-    const def_str  = "d5060100-0000-0000-0000-000000000001";
+    const def_str = "d5060100-0000-0000-0000-000000000001";
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ "tc-es-06-01-a", "tc-es-06-01-b", "tc-es-06-01-c" });
 
@@ -860,19 +816,14 @@ test "TC-ES-06-01: pointInTime with before timestamp filters out later events" {
     const idem_keys = [_][]const u8{ "tc-es-06-01-a", "tc-es-06-01-b", "tc-es-06-01-c" };
 
     for (idem_keys) |k| {
-        const r = try store.append(alloc, AppendParams{
-            .instance_id     = inst_uuid,
-            .event_type      = "TC_ES0601_TYPE",
-            .payload         = "{}",
-            .actor_id        = actor,
+        _ = try store.append(alloc, AppendParams{
+            .instance_id = inst_uuid,
+            .event_type = "TC_ES0601_TYPE",
+            .payload = "{}",
+            .actor_id = actor,
             .idempotency_key = k,
-            .metadata        = null,
+            .metadata = null,
         });
-        if (!r.is_duplicate) {
-            alloc.free(r.record.event_type);
-            alloc.free(r.record.payload);
-            alloc.free(r.record.metadata);
-        }
     }
 
     // Timestamp 0 (Unix epoch) is before any real event — must return empty.
@@ -904,7 +855,7 @@ test "TC-ES-06-02: read with up_to_sequence returns exactly events 1..K" {
     defer store.deinit();
 
     const inst_str = "e5060200-0000-0000-0000-000000000001";
-    const def_str  = "d5060200-0000-0000-0000-000000000001";
+    const def_str = "d5060200-0000-0000-0000-000000000001";
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{ "tc-es-06-02-a", "tc-es-06-02-b", "tc-es-06-02-c" });
 
@@ -913,23 +864,18 @@ test "TC-ES-06-02: read with up_to_sequence returns exactly events 1..K" {
     const idem_keys = [_][]const u8{ "tc-es-06-02-a", "tc-es-06-02-b", "tc-es-06-02-c" };
 
     for (idem_keys) |k| {
-        const r = try store.append(alloc, AppendParams{
-            .instance_id     = inst_uuid,
-            .event_type      = "TC_ES0602_TYPE",
-            .payload         = "{}",
-            .actor_id        = actor,
+        _ = try store.append(alloc, AppendParams{
+            .instance_id = inst_uuid,
+            .event_type = "TC_ES0602_TYPE",
+            .payload = "{}",
+            .actor_id = actor,
             .idempotency_key = k,
-            .metadata        = null,
+            .metadata = null,
         });
-        if (!r.is_duplicate) {
-            alloc.free(r.record.event_type);
-            alloc.free(r.record.payload);
-            alloc.free(r.record.metadata);
-        }
     }
 
     const events_k2 = try store.read(alloc, inst_uuid, ReadOpts{
-        .up_to_sequence  = 2,
+        .up_to_sequence = 2,
         .up_to_timestamp = null,
     });
     defer freeEventRecords(alloc, events_k2);
@@ -961,7 +907,7 @@ test "TC-ES-07-01: archive moves events past retention period to events_archive"
     defer store.deinit();
 
     const inst_str = "e5070100-0000-0000-0000-000000000001";
-    const def_str  = "d5070100-0000-0000-0000-000000000001";
+    const def_str = "d5070100-0000-0000-0000-000000000001";
     const idem_key = "tc-es-07-01-idem";
     try insertInstance(&pool, inst_str, def_str);
 
@@ -979,25 +925,20 @@ test "TC-ES-07-01: archive moves events past retention period to events_archive"
     // keep_days=0 archives any event with created_at <= NOW().
     try store.upsertRetentionPolicy(alloc, RetentionPolicyUpsertParams{
         .event_type = "TC_ES0701_ARCH",
-        .policy     = RetentionPolicyMode.keep_days,
-        .keep_days  = 0,
+        .policy = RetentionPolicyMode.keep_days,
+        .keep_days = 0,
     });
 
     const inst_uuid = try parseUuid(inst_str);
     const actor: [16]u8 = [_]u8{0x70} ** 16;
-    const r1 = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0701_ARCH",
-        .payload         = "{}",
-        .actor_id        = actor,
+    _ = try store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0701_ARCH",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = idem_key,
-        .metadata        = null,
+        .metadata = null,
     });
-    defer if (!r1.is_duplicate) {
-        alloc.free(r1.record.event_type);
-        alloc.free(r1.record.payload);
-        alloc.free(r1.record.metadata);
-    };
 
     _ = try store.archive(alloc, 0);
 
@@ -1039,8 +980,8 @@ test "TC-ES-07-02: archive returns count of moved policy buckets" {
     // Ensure at least one keep_days policy is registered.
     try store.upsertRetentionPolicy(alloc, RetentionPolicyUpsertParams{
         .event_type = "TC_ES0702_CNT",
-        .policy     = RetentionPolicyMode.keep_days,
-        .keep_days  = 0,
+        .policy = RetentionPolicyMode.keep_days,
+        .keep_days = 0,
     });
 
     const count = try store.archive(alloc, 0);
@@ -1070,7 +1011,7 @@ test "TC-ES-08-04: absent metadata field defaults to empty JSON object in return
     defer store.deinit();
 
     const inst_str = "e5080400-0000-0000-0000-000000000001";
-    const def_str  = "d5080400-0000-0000-0000-000000000001";
+    const def_str = "d5080400-0000-0000-0000-000000000001";
     const idem_key = "tc-es-08-04-idem";
     try insertInstance(&pool, inst_str, def_str);
     defer cleanupInstance(&pool, inst_str, &.{idem_key});
@@ -1078,23 +1019,18 @@ test "TC-ES-08-04: absent metadata field defaults to empty JSON object in return
     const inst_uuid = try parseUuid(inst_str);
     const actor: [16]u8 = [_]u8{0x84} ** 16;
 
-    const r = try store.append(alloc, AppendParams{
-        .instance_id     = inst_uuid,
-        .event_type      = "TC_ES0804_TYPE",
-        .payload         = "{}",
-        .actor_id        = actor,
+    _ = try store.append(alloc, AppendParams{
+        .instance_id = inst_uuid,
+        .event_type = "TC_ES0804_TYPE",
+        .payload = "{}",
+        .actor_id = actor,
         .idempotency_key = idem_key,
-        .metadata        = null,   // no metadata supplied
+        .metadata = null, // no metadata supplied
     });
-    defer if (!r.is_duplicate) {
-        alloc.free(r.record.event_type);
-        alloc.free(r.record.payload);
-        alloc.free(r.record.metadata);
-    };
 
     // Read back and verify metadata stored as "{}".
     const events = try store.read(alloc, inst_uuid, ReadOpts{
-        .up_to_sequence  = null,
+        .up_to_sequence = null,
         .up_to_timestamp = null,
     });
     defer freeEventRecords(alloc, events);

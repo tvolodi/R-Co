@@ -882,4 +882,3 @@ test "TC-PD-07-20: list — cursor pagination second page does not overlap first
     }
     // If no items on page 2 → no overlap by definition
 }
-
