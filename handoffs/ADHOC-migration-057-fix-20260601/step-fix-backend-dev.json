@@ -1,0 +1,41 @@
+{
+    "handoff_id":  "adhoc-mig057-fix-20260601-001",
+    "run_id":  "ADHOC-migration-057-fix-20260601",
+    "workflow_id":  "ADHOC",
+    "step":  "fix",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "created_at":  "2026-06-01T16:44:42Z",
+    "status":  "PENDING",
+    "priority":  "BLOCKER",
+    "context":  {
+                    "stage":  "Migration 057 regression fix",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "adhoc-audit-ch-fix-20260601-001",
+                                                "adhoc-ultimate-20260601-001"
+                                            ],
+                    "artifacts_in":  [
+                                         "tests/reports/report-ADHOC-ultimate-test-20260601.yaml"
+                                     ]
+                },
+    "task":  {
+                 "description":  "CRITICAL REGRESSION: The migration 057 fix introduced by ADHOC-audit-ch-fix-20260601 has broken 255 integration tests (down from 414 passing). All failures are PgError.ServerError, indicating the migration 057 changes broke database operations. Task: (1) Review migration 057 changes made by previous BACKEND-DEV, (2) Identify what broke - likely the trigger function or its SQL syntax, (3) Check if the changes to parameter order and type caused SQL errors, (4) Review the actual PostgreSQL errors if available, (5) Either fix migration 057 correctly or revert it to a known-good state, (6) Verify zig build test-integration passes with 423 tests or close to it.",
+                 "acceptance_criteria":  [
+                                             "zig build test-integration exits 0",
+                                             "At least 410+ integration tests pass (restore previous passing count)",
+                                             "No PgError.ServerError failures across the board",
+                                             "Database operations working correctly"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:fix-migration-057-regression"
+                                       ]
+             },
+    "result":  null,
+    "rework_count":  0,
+    "max_rework":  1,
+    "started_at":  "2026-06-01T16:44:42Z",
+    "completed_at":  null
+}
