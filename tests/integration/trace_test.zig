@@ -79,25 +79,20 @@ fn get(
     url: []const u8,
     extra_headers: []const std.http.Header,
 ) !HttpResult {
-    std.debug.print("[trace_test] get() url={s} n_headers={d}\n", .{ url, extra_headers.len });
     var client: std.http.Client = .{ .io = std.testing.io, .allocator = allocator };
     defer client.deinit();
 
     const uri = try std.Uri.parse(url);
 
-    std.debug.print("[trace_test] calling client.request\n", .{});
     var req = try client.request(.GET, uri, .{
         .extra_headers = extra_headers,
     });
     defer req.deinit();
 
-    std.debug.print("[trace_test] calling sendBodiless\n", .{});
     try req.sendBodiless();
 
-    std.debug.print("[trace_test] calling receiveHead\n", .{});
     var redirect_buffer: [8192]u8 = undefined;
     var response = try req.receiveHead(&redirect_buffer);
-    std.debug.print("[trace_test] receiveHead done, status={d}\n", .{@intFromEnum(response.head.status)});
 
     const status: u16 = @intFromEnum(response.head.status);
 
