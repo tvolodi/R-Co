@@ -227,13 +227,6 @@ pub const Store = struct {
         allocator: std.mem.Allocator,
         params: AppendParams,
     ) StoreError!AppendResult {
-        const append_started_ms: i64 = std.Io.Clock.real.now(self.pool.io).toMilliseconds();
-        defer {
-            const elapsed_ms: i64 = std.Io.Clock.real.now(self.pool.io).toMilliseconds() - append_started_ms;
-            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
-            metrics.recordEventAppendDurationSeconds(elapsed_s);
-        }
-
         var param_arena = std.heap.ArenaAllocator.init(allocator);
         defer param_arena.deinit();
         const param_alloc = param_arena.allocator();
@@ -253,7 +246,7 @@ pub const Store = struct {
 
         // ES-08: metadata constraints (all validated before any SQL).
         const metadata = params.metadata orelse "{}";
-        try validateMetadata(metadata);
+        try validateMetadata(param_alloc, metadata);
 
         const pipeline_run_id = params.pipeline_run_id orelse currentRequestPipelineRunId();
         if (pipeline_run_id.len > 0) {
@@ -275,6 +268,12 @@ pub const Store = struct {
         };
 
         // --- Transaction ---
+        const append_started_ms: i64 = std.Io.Clock.real.now(self.pool.io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self.pool.io).toMilliseconds() - append_started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            metrics.recordEventAppendDurationSeconds(elapsed_s);
+        }
 
         const conn = self.pool.acquire() catch |err| switch (err) {
             PoolError.ExhaustedPool => return StoreError.PoolExhausted,
@@ -1315,11 +1314,25 @@ fn protectedFamilyLabel(event_type: []const u8) []const u8 {
 
 /// Validate metadata JSON object constraints (ES-08).
 /// All checks are in-process before any SQL (Invariant #9).
-fn validateMetadata(metadata: []const u8) StoreError!void {
+/// Enforces: is JSON object, ≤50 entries, keys ≤128 chars, values are strings ≤1024 chars.
+fn validateMetadata(allocator: std.mem.Allocator, metadata: []const u8) StoreError!void {
     if (!isJsonObject(metadata)) return StoreError.MetadataInvalid;
-    // TODO: full JSON parse to enforce ≤50 entries, key ≤128, value ≤1024,
-    //       all-values-are-strings when a JSON parser is available.
-    //       For now, structural check (is JSON object) is the guard.
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, metadata, .{}) catch
+        return StoreError.MetadataInvalid;
+    defer parsed.deinit();
+    const obj = switch (parsed.value) {
+        .object => |o| o,
+        else => return StoreError.MetadataInvalid,
+    };
+    if (obj.count() > 50) return StoreError.MetadataInvalid;
+    var it = obj.iterator();
+    while (it.next()) |entry| {
+        if (entry.key_ptr.*.len > 128) return StoreError.MetadataInvalid;
+        switch (entry.value_ptr.*) {
+            .string => |s| if (s.len > 1024) return StoreError.MetadataInvalid,
+            else => return StoreError.MetadataInvalid,
+        }
+    }
 }
 
 /// Render a UUID as a lowercase hex string with hyphens: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.
