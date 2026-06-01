@@ -1,0 +1,52 @@
+{
+  "handoff_id": "a58cf618-3b5e-4c9d-8af5-dca70a4640e4",
+  "run_id": "WF03-login-redirect-loop-20260601",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-05-31T21:15:43Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "d4d751ab-80f4-46c3-a920-adc7db264522",
+      "c2da0a81-36c6-4b8f-aa0d-99bc9cef761f"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0063.json",
+      "docs/issues/issue_index.json",
+      "handoffs/WF03-login-redirect-loop-20260601/step-05-issue-fixer.json"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 1 Diagnose the OIDC login redirect loop issue.\n\nImportant context: the direct code fix has already been applied in the working tree, but this handoff still needs a formal diagnosis record. Diagnose the root cause from the issue record and the current code state, then ensure the issue file reflects the actual root cause and affected files. Do not make additional unrelated changes.\n\nFocus on the three known symptoms: nginx Host header port stripping, OIDC storage state loss during callback, and tenant-config origin mismatch. Confirm the final root cause(s) and identify the minimal file set that was changed.\n\nUpdate ISS-0063.json with category, final severity, root_cause, and files_to_change. Use the existing change set as the basis of diagnosis.",
+    "acceptance_criteria": [
+      "ISS-0063.json contains final root_cause and files_to_change",
+      "Diagnosis identifies the true redirect-loop cause(s)",
+      "Issue severity is final and consistent with the bug",
+      "Inner report created under docs/issue-reports/"
+    ],
+    "functions_to_call": [
+      "fn:load-handoff",
+      "fn:load-requirements",
+      "fn:check-zig-build",
+      "fn:run-unit-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed ISS-0063 as a mixed OIDC redirect-loop regression. The surviving root causes are nginx Host header port stripping, OIDC callback state loss from in-memory storage, and tenant-config origin mismatch; the minimal fix surface is nginx.conf, OidcManager.ts, and tenant_config.zig.",
+    "artifacts_out": [
+      "docs/issues/ISS-0063.json",
+      "docs/issue-reports/WF03-login-redirect-loop-20260601-step-01-issue-fixer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-05-31T21:15:53Z",
+  "completed_at": "2026-05-31T21:17:14Z"
+}

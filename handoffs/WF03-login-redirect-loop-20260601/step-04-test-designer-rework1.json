@@ -1,0 +1,51 @@
+{
+  "handoff_id": "3c32460b-377a-4644-932f-979f86d76e02",
+  "run_id": "WF03-login-redirect-loop-20260601",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-05-31T21:29:18Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "5b5e1932-2abc-4362-b696-4189d42a6f3a",
+      "2090dee5-396f-41c2-ba33-1632ebea0407"
+    ],
+    "artifacts_in": [
+      "tests/specs/ISS-0063.md",
+      "docs/issues/ISS-0063.json",
+      "docs/issue-reports/WF03-login-redirect-loop-20260601-step-04b-test-design-validator-INNER-REPORT.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 4 rework for the OIDC login redirect loop fix after validator feedback.\n\nThe prose spec exists, but the validator blocked the workflow because there is no runnable test source yet. Create the executable real-backend / real-browser e2e test file for ISS-0063 and revise the spec only where needed to make the runbook explicit.\n\nAddress the validator findings: implement the planned e2e test file, make the Keycloak-return path fully exercised, and spell out the self-sufficient backend/browser startup and failure behavior when required env/services are missing. No mocks or stubs.\n\nThe regression must cover the three root causes end-to-end and be runnable by TEST-RUNNER.",
+    "acceptance_criteria": [
+      "Executable e2e test file exists for ISS-0063",
+      "Spec and test source cover the Keycloak-return path end-to-end",
+      "Real backend/browser startup and env failure behavior are explicit",
+      "No mocks or stubs are used"
+    ],
+    "functions_to_call": [
+      "fn:read-test-guide",
+      "fn:write-test-spec"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Added a runnable ISS-0063 Playwright regression suite with real tenant-config verification, real Keycloak return-path coverage, and callback reload resilience.",
+    "artifacts_out": [
+      "tests/specs/ISS-0063.md",
+      "web/tests/e2e/iss-0063-oidc-redirect-loop.e2e.spec.ts",
+      "docs/issue-reports/WF03-login-redirect-loop-20260601-step-04-rework1-test-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-03 Step 3b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-05-31T21:29:30Z",
+  "completed_at": "2026-05-31T21:31:30Z"
+}

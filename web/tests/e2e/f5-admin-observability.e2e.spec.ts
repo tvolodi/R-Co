@@ -2,6 +2,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import { randomUUID } from 'crypto'
 import * as fs from 'fs'
 import * as path from 'path'
+import { loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
 const API_BASE_URL = process.env.BPM_TEST_URL ?? 'http://127.0.0.1:8080'
@@ -110,14 +111,6 @@ async function deleteDefinitionFixture(request: APIRequestContext, token: string
   if (!response.ok() && response.status() !== 404) {
     throw new Error(`Failed to cleanup ADM-UI-11 fixture definition ${definitionId} (${response.status()})`)
   }
-}
-
-async function loginWithToken(page: Page, token: string): Promise<void> {
-  await page.goto('/login')
-  await expect(page.getByTestId('login-token-input')).toBeVisible({ timeout: 10_000 })
-  await page.getByTestId('login-token-input').fill(token)
-  await page.getByTestId('login-submit').click()
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
 }
 
 async function navigateSpa(page: Page, targetPath: string): Promise<void> {

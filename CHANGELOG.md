@@ -4,6 +4,10 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### ISS-0063 - OIDC login redirect loop closeout (RESOLVED 2026-06-01)
+- Closed out the login redirect loop regression after verified validation passed: the gateway now preserves the exposed port in the Keycloak Host header, OIDC callback state survives reloads, and tenant-config returns the browser-aligned localhost authority.
+- Regression evidence is in tests/reports/report-20260531-WF03-login-redirect-loop-20260601.yaml; release approval is recorded in docs/status/release-WF03-login-redirect-loop-2026-06-01.json.
+
 ### Stage F6 - DLQ + Webhooks (Batch 1)
 
 ### DLQ-UI-01..DLQ-UI-04 - Dead-letter queue operator release batch (RELEASED 2026-05-31)

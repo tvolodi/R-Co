@@ -21,7 +21,7 @@ This document is the root reference for the multi-agent system that develops and
 
 | Agent ID | Name | Responsibility | May write to |
 |---|---|---|---|
-| `ORCH` | **Orchestrator** | Spawns agents, routes handoffs, builds ad-hoc workflows. **Does no implementation work.** | `handoffs/`, `docs/agents/` |
+| `ORCH` | **Orchestrator** | Spawns agents, routes handoffs, builds ad-hoc workflows. **Does no implementation work.** **Must never skip a standard workflow (WF-01–WF-04) without user confirmation — see `docs/agents/ORCHESTRATOR.md §11`.** | `handoffs/`, `docs/agents/` |
 | `REQ-ANALYST` | **Requirement Analyst** | Drafts, refines, and structures requirements | `docs/`, `handoffs/` |
 | `REQ-VALIDATOR` | **Requirement Validator** | Validates requirements for completeness, consistency, testability, and traceability | `handoffs/` |
 | `CODE-DESIGNER` | **Code Designer** | Produces module interfaces, type definitions, data-flow diagrams, and implementation plans before any code is written | `src/design/`, `handoffs/` |
@@ -31,7 +31,7 @@ This document is the root reference for the multi-agent system that develops and
 | `TEST-DESIGNER` | **Test Designer** | Produces test plans, test case specifications, and test data factories | `tests/specs/`, `handoffs/` |
 | `TEST-DESIGN-VALIDATOR` | **Test Design Validator** | Reviews test design produced by TEST-DESIGNER; verifies every MUST requirement has a runnable integration test, no SkipZigTest on MUST tests without a counterpart, fixtures are isolated, and tests are self-sufficient. **Hard gate — TEST-RUNNER must not start until this returns PASS.** | `handoffs/` |
 | `TEST-RUNNER` | **Test Runner** | Executes test suites, collects results, produces a structured test report | `tests/reports/`, `handoffs/` |
-| `ISSUE-FIXER` | **Issue Fixer** | Diagnoses and corrects failing tests or runtime errors | `src/`, `web/`, `tests/`, `handoffs/` |
+| `ISSUE-FIXER` | **Issue Fixer** | Registry lookup (Step 0.5), root-cause diagnosis (Step 1). Does NOT implement fixes — implementation is delegated to BACKEND-DEV or FRONTEND-DEV after CODE-DESIGNER produces the fix design. | `docs/issues/`, `handoffs/` |
 | `RELEASE-VALIDATOR` | **Release Validator** | Validates that a stage increment meets all MUST requirements and all NFRs before release | `handoffs/`, `docs/status/` |
 | `DOC-UPDATER` | **Documentation Updater** | Updates all documentation (guides, requirement status, changelog, OpenAPI spec) after a successful release | `docs/`, `handoffs/` |
 
@@ -49,7 +49,7 @@ This document is the root reference for the multi-agent system that develops and
 | `TEST-DESIGNER` | ✓ | ✓ | ✗ | ✗ | ✗ |
 | `TEST-DESIGN-VALIDATOR` | ✓ | ✓ (handoffs) | ✗ | ✗ | ✗ |
 | `TEST-RUNNER` | ✓ | ✓ (reports) | ✓ (tests only) | ✗ | ✗ |
-| `ISSUE-FIXER` | ✓ | ✓ | ✓ (build, tests) | ✗ | ✗ |
+| `ISSUE-FIXER` | ✓ | ✓ (docs/issues only) | ✗ | ✗ | ✗ |
 | `RELEASE-VALIDATOR` | ✓ | ✓ (status) | ✓ (tests, benchmarks) | ✗ | ✗ |
 | `DOC-UPDATER` | ✓ | ✓ | ✗ | ✗ | ✗ |
 

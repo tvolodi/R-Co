@@ -104,10 +104,17 @@ handoffs/<run-id>/" \
 8. Merge PR immediately (all gates already passed):
    gh pr merge --squash --delete-branch
 
-9. Local cleanup:
+9. Local cleanup — return to main (MANDATORY):
    git checkout main
    git pull --ff-only origin main
    git branch -d feature/<run-id>
+
+   Verify local repo is clean and on main:
+   git branch --show-current          # must output: main
+   git log --oneline -1               # must show the squash-merge commit from step 8
+   git status                         # must show clean working tree
+
+   If any check fails: report as FAIL with details.
 
 10. → fn:register-inner-report
 
@@ -123,7 +130,9 @@ handoffs/<run-id>/" \
 - [ ] `gh pr merge` exited 0
 - [ ] `git branch --show-current` is `main`
 - [ ] `git pull --ff-only` on main after merge exited 0
-- [ ] `git branch -d feature/<run-id>` exited 0
+- [ ] `git branch -d feature/<run-id>` exited 0 (or branch was already deleted by `gh pr merge --delete-branch`)
+- [ ] `git log --oneline -1` shows the squash-merge commit
+- [ ] `git status` shows a clean working tree
 
 ---
 

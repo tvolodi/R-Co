@@ -12,7 +12,7 @@ import { decodeTokenPayload, resolveDisplayName } from '@/auth/tokenUtils'
  *
  * In development, React StrictMode fires useEffect twice (mount → unmount → remount).
  * An PKCE authorization code is single-use — the second call would receive
- * "Code not valid" from Keycloak and erroneously redirect to /login?reason=auth-error.
+ * "Code not valid" from Keycloak and erroneously trigger a re-login attempt.
  *
  * This flag is set before the async call begins. Because it lives at module scope it
  * survives the StrictMode remount. It is reset to false on each full page load (the
@@ -35,7 +35,8 @@ export default function OidcCallbackPage() {
         const token = user.access_token
         const payload = decodeTokenPayload(token)
         if (!payload || !payload.roles || payload.roles.length === 0) {
-          window.location.replace('/login?reason=auth-error')
+          // Invalid token — redirect to root which triggers Keycloak login
+          window.location.replace('/')
           return
         }
         setToken(token)
@@ -47,7 +48,8 @@ export default function OidcCallbackPage() {
         })
         navigate('/', { replace: true })
       } catch {
-        window.location.replace('/login?reason=auth-error')
+        // OIDC callback failed — redirect to root which triggers Keycloak login
+        window.location.replace('/')
       }
     })()
   }, [navigate, setSession])

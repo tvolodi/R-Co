@@ -25,12 +25,9 @@
 import { test, expect } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
+import { getKeycloakToken, loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
-const KEYCLOAK_TOKEN_URL = 'http://localhost:8081/realms/bpm-default/protocol/openid-connect/token'
-const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
-const KEYCLOAK_USERNAME = 'admin-user'
-const KEYCLOAK_PASSWORD = 'admin-pass'
 const API_PREFIX = '/api/v1'
 
 // ── Screenshot helper ─────────────────────────────────────────────────────────
@@ -39,55 +36,6 @@ async function shot(page: import('@playwright/test').Page, name: string): Promis
   const dir = path.resolve(SCREENSHOTS_DIR)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   await page.screenshot({ path: path.join(dir, `PDUI08-${name}.png`) })
-}
-
-// ── Token management ──────────────────────────────────────────────────────────
-
-async function getKeycloakToken(request: import('@playwright/test').APIRequestContext): Promise<string> {
-  const response = await request.post(KEYCLOAK_TOKEN_URL, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    form: {
-      client_id: KEYCLOAK_CLIENT_ID,
-      username: KEYCLOAK_USERNAME,
-      password: KEYCLOAK_PASSWORD,
-      grant_type: 'password',
-    },
-  })
-
-  if (!response.ok()) {
-    const body = await response.text()
-    throw new Error(
-      `Keycloak token request failed (${response.status()}): ${body}\n` +
-      `Ensure Keycloak is running at ${KEYCLOAK_TOKEN_URL.replace('/protocol/openid-connect/token', '')}\n` +
-      `and user ${KEYCLOAK_USERNAME} exists with password ${KEYCLOAK_PASSWORD}.`,
-    )
-  }
-
-  const body = await response.json() as { access_token: string }
-  return body.access_token
-}
-
-// ── Login via UI with a real token ────────────────────────────────────────────
-
-async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    try {
-      await page.goto('/login', { waitUntil: 'domcontentloaded' })
-      break
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      const isRetryable = message.includes('ERR_NO_BUFFER_SPACE') || message.includes('ERR_CONNECTION_RESET')
-      if (!isRetryable || attempt === 3) throw error
-      await page.waitForTimeout(400 * attempt)
-    }
-  }
-  await expect(page.getByTestId('login-token-input')).toBeVisible()
-  await page.getByTestId('login-token-input').fill(token)
-  await page.getByTestId('login-submit').click()
-  // Wait for navigation away from /login to the workspace
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
-  // Verify workspace is rendered
-  await expect(page.getByTestId('user-display-name')).toBeVisible({ timeout: 10_000 })
 }
 
 /** Navigate to /definitions via the sidebar link (SPA navigation). */

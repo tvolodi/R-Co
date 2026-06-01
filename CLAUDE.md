@@ -25,7 +25,9 @@ Do everything yourself. Ask the user only when you have no other choice AND ther
 - "Once you do X, then Y will work"
 - "Apply the migration by..."
 
-**The only valid reason to ask the user** is two or more genuinely equivalent options requiring a business/personal preference the agent cannot infer.
+**The only valid reasons to ask the user** are:
+1. Two or more genuinely equivalent options requiring a business/personal preference the agent cannot infer.
+2. **(ORCH only)** The orchestrator believes a standard workflow (WF-01 through WF-04) can be skipped to solve a problem faster. This requires explicit user confirmation — see §11 of `docs/agents/ORCHESTRATOR.md`.
 
 ### ⛔ Orchestrator Exception
 
@@ -413,11 +415,36 @@ Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** �
 | 6 | DOC-UPDATER | — |
 | Final | BACKEND-DEV / FRONTEND-DEV | Hard gate |
 
+**WF-03 trigger recognition (issue resolving):**
+
+Launch WF-03 when the user prompt describes a bug, defect, or problem with existing behaviour — even without a failing test. Trigger phrases: "fix this", "there is a problem with", "X is broken", "resolve this issue", "something is wrong with". Also launch WF-03 when TEST-RUNNER in WF-02/WF-04 returns FAIL and the failure is not eligible for inline fix.
+
+WF-03 vs WF-02 rule: if the expected behaviour is already in the requirements spec → WF-03. If the feature has not been specified yet → WF-02.
+
+**WF-03 pipeline (issue resolving):**
+
+| Step | Agent | Condition | Gate |
+|---|---|---|---|
+| 00 | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
+| 0.5 | ISSUE-FIXER | Always — registry lookup + create/update ISS file | — |
+| 1 | ISSUE-FIXER | Always — root cause diagnosis | — |
+| 2 | CODE-DESIGNER | Always — fix design artefact | — |
+| **2b** | **CODE-DESIGN-VALIDATOR** | **Always** | **Hard gate — Fix cannot start until PASS** |
+| 3 | BACKEND-DEV / FRONTEND-DEV | Always — implement fix per design | — |
+| 4 | TEST-DESIGNER | Business logic added/modified | — |
+| **4b** | **TEST-DESIGN-VALIDATOR** | **Business logic added/modified** | **Hard gate** |
+| 5 | TEST-RUNNER | Always | — |
+| 6 | RELEASE-VALIDATOR | BLOCKER severity only | — |
+| 7 | DOC-UPDATER | Always | — |
+| Final | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
+
 ### ORCH execution style
 
 **Never explain before acting.** Do not write preamble sentences like "The orchestrator instructions are clear..." or "I'll now create a handoff for...". Just create the handoffs and invoke subagents immediately.
 
-**Never ask the user to invoke an agent.** After creating handoffs, run the pipeline autonomously by calling subagents in sequence. The pipeline is complete only when DOC-UPDATER has set the requirement to RELEASED and Step Final has returned PASS. The user's only valid interaction point is when genuine business-preference ambiguity requires a choice — not for pipeline steps.
+**Never skip a workflow without asking.** If a user request matches a standard workflow (WF-01 through WF-04), ORCH MUST follow that workflow. If ORCH believes the workflow can be skipped to save time, it MUST ask the user for explicit permission first (see §11 of `docs/agents/ORCHESTRATOR.md`). The workflow overhead — git tracking, design validation, test coverage, documentation, metrics, audit trail — is not optional. Skipping it loses all of these, not just time.
+
+**Never ask the user to invoke an agent.** After creating handoffs, run the pipeline autonomously by calling subagents in sequence. The pipeline is complete only when DOC-UPDATER has set the requirement to RELEASED and Step Final has returned PASS. The user's valid interaction points are: (1) genuine business-preference ambiguity, and (2) workflow-skip confirmation per §11 — not for routine pipeline steps.
 
 **Never pause for infrastructure.** Service downtime (DB, Keycloak, bpm-platform) is a technical obstacle, not a pipeline decision point. Create the ADHOC BACKEND-DEV handoff, dispatch it, wait for PASS, then continue — all within the same autonomous run. Zero user interaction.
 
@@ -452,6 +479,7 @@ Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** �
 git push / git reset --hard / git rebase / rm -rf
 Writing Zig, TypeScript, SQL, or test code
 Filling in handoff result fields (only agents do that)
+Skipping a standard workflow (WF-01 through WF-04) without user confirmation (see §11)
 Writing any timestamp (created_at, started_at) without first running:
   (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
   and using the exact printed output — never the session context date
@@ -622,6 +650,11 @@ git push origin feature/<run-id>   # feature branches only — never push to mai
 git branch -d feature/<run-id>     # local cleanup only
 gh pr create
 gh pr merge --squash --delete-branch
+# After Step Final (fn:git-merge), the repo MUST be on main with clean state:
+#   git checkout main
+#   git pull --ff-only origin main
+#   git branch --show-current  →  must output: main
+#   git status  →  must show clean working tree
 ```
 
 ### Forbidden commands
@@ -753,6 +786,11 @@ git push origin feature/<run-id>   # feature branches only
 git branch -d feature/<run-id>
 gh pr create
 gh pr merge --squash --delete-branch
+# After Step Final (fn:git-merge), the repo MUST be on main with clean state:
+#   git checkout main
+#   git pull --ff-only origin main
+#   git branch --show-current  →  must output: main
+#   git status  →  must show clean working tree
 ```
 
 ### Forbidden commands
@@ -1023,4 +1061,17 @@ As the final step in every workflow, you MUST manage the GitHub feature branch t
 
 **If merge fails due to conflicts:** Do NOT give up. Resolve them locally, push, and retry. Branch deletion is non-negotiable.
 
-**Rationale:** Feature branches must not persist on GitHub after merge. Orphaned branches cause confusion and clutter. The repository must remain clean and organized.
+### Return to main — MANDATORY after Step Final
+
+After the feature branch is merged and deleted, the local repository MUST be returned to `main` with a clean state. This is not optional — subsequent workflows or the next handoff expect the repo to be on `main`.
+
+```bash
+git checkout main
+git pull --ff-only origin main
+# Verify:
+git branch --show-current   # must output: main
+git log --oneline -1        # must show the squash-merge commit
+git status                  # must show clean working tree
+```
+
+If `git status` shows leftover files (e.g. handoff JSONs, scratch files), stage and commit or clean them. The working tree must be clean before reporting PASS.

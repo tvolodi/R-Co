@@ -1,0 +1,16 @@
+{
+  "stage": "WF03 login redirect loop",
+  "date": "2026-05-31T21:45:52Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01_p99_read_ms": "1.112 (target <=200ms, PASS)",
+    "NFR-01_p99_write_ms": "3.029 (target <=500ms, PASS)",
+    "NFR-02_append_throughput_eps": "61035.014 (target >=1000 eps, PASS)",
+    "NFR-04_replay_10000_ms": "36.447 (target <=5000ms, PASS)",
+    "benchmark_overall": "PASS",
+    "regression_report": "PASS",
+    "issue_status": "RESOLVED"
+  },
+  "blocking_issues": [],
+  "approved_requirements": []
+}

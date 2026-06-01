@@ -29,6 +29,25 @@ export function tryRestoreE2eToken(): string | null {
   return null
 }
 
+/**
+ * E2E session restore: read session from sessionStorage (written by test runner).
+ * Returns the session object or null.
+ */
+export function tryRestoreE2eSession(): { token: string; display_name: string; roles: string[] } | null {
+  try {
+    const raw = sessionStorage.getItem('__e2e_session')
+    if (!raw) return null
+    const session = JSON.parse(raw) as { token: string; display_name: string; roles: string[] }
+    if (session.token && session.roles?.length > 0) {
+      _token = session.token
+      return session
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 /** Extract user ID (sub claim) from JWT token */
 function extractUserIdFromToken(token: string): string | null {
   try {

@@ -1,33 +1,37 @@
-/** Auth provider — Stage F1: token-based login, in-memory session, role-aware navigation */
+/** Auth provider — OIDC-based login via Keycloak, in-memory session, role-aware navigation */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { clearToken, client, setToken } from '@/api/client'
+import { clearToken, setToken, tryRestoreE2eSession } from '@/api/client'
 import { decodeTokenPayload, resolveDisplayName } from './tokenUtils'
 import type { UserSession } from '@/types/api'
 import { AuthContext, type AuthContextValue } from './AuthContext'
 import { getOidcManager } from './OidcManager'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSessionState] = useState<UserSession | null>(null)
+  const [session, setSessionState] = useState<UserSession | null>(() => {
+    // E2E support: restore session from sessionStorage if present (written by test runner)
+    const e2e = tryRestoreE2eSession()
+    if (e2e) {
+      return { token: e2e.token, display_name: e2e.display_name, roles: e2e.roles, loginSource: 'oidc' }
+    }
+    return null
+  })
   const isLoading = false
-  const navigate = useNavigate()
 
   // React to session-expired events dispatched by the API client.
-  // Use window.location.replace to avoid a React Router ProtectedRoute re-render
-  // race that would strip the ?reason=session-expired query parameter.
+  // Redirect to Keycloak login via OIDC.
   useEffect(() => {
     const handle = () => {
       clearToken()
       setSessionState(null)
-      window.location.replace('/login?reason=session-expired')
+      void getOidcManager().then(m => {
+        void m.signinRedirect()
+      })
     }
     window.addEventListener('auth:session-expired', handle)
     return () => window.removeEventListener('auth:session-expired', handle)
   }, [])
-
-  // E2E support: no-op — session survives via SPA navigation only (FNFR-06).
 
   // Start OIDC silent renew if OIDC authority is configured.
   // On token-expiring event, perform silent renew and update the in-memory token.
@@ -58,22 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = useCallback(async (token: string) => {
-    // Validate token against the health endpoint
-    try {
-      await client.getWithToken<unknown>('/health/ready', token)
-    } catch (error) {
-      const status = typeof error === 'object' && error !== null && 'status' in error
-        ? (error as { status?: number }).status
-        : 401
-      const err = {
-        status: status ?? 401,
-        message: 'Invalid token or access denied.',
-        code: 'LOGIN_HEALTH_CHECK_FAILED',
-        details: undefined,
-      }
-      throw err
-    }
-
     const payload = decodeTokenPayload(token)
     if (payload === null) {
       throw { status: 400, message: 'Token format is invalid.', code: 'TOKEN_DECODE_INVALID', details: undefined }
@@ -83,18 +71,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setToken(token)
-    setSessionState({ token, display_name: resolveDisplayName(payload), roles: payload.roles, loginSource: 'token' })
+    setSessionState({ token, display_name: resolveDisplayName(payload), roles: payload.roles, loginSource: 'oidc' })
   }, [])
 
   const logout = useCallback(() => {
     clearToken()
     setSessionState(null)
-    if (session?.loginSource === 'oidc') {
-      void getOidcManager().then(m => m.signoutRedirect())
-      return
-    }
-    navigate('/login')
-  }, [navigate, session])
+    void getOidcManager().then(m => m.signoutRedirect())
+  }, [])
 
   const setSession = useCallback((s: UserSession) => {
     setSessionState(s)

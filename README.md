@@ -70,7 +70,7 @@ The web UI is available at **http://localhost:5173**.
 
 ## Logging in
 
-The login screen requires a JWT token issued by Keycloak. Use one of the seeded test accounts below.
+The app uses **Keycloak OIDC** for authentication. When you open the web UI, you are automatically redirected to the Keycloak login page. Enter your credentials there, and you'll be redirected back to the app.
 
 ### Test accounts
 
@@ -80,36 +80,15 @@ The login screen requires a JWT token issued by Keycloak. Use one of the seeded 
 | `designer-user` | `designer-pass` | `PROCESS_DESIGNER` | Create/edit process definitions |
 | `worker-user` | `worker-pass` | `TASK_WORKER` | View and complete assigned tasks |
 
-### Get a login token
+### How it works
 
-Open a terminal and run:
+1. Open **http://localhost:5173** in your browser.
+2. The app detects no active session and redirects you to the Keycloak login page.
+3. Enter any test account credentials from the table above.
+4. Keycloak authenticates you and redirects back to the app.
+5. You're now logged in and can use the app.
 
-```bash
-curl -s -X POST \
-  http://localhost:8081/realms/bpm-default/protocol/openid-connect/token \
-  -d "grant_type=password" \
-  -d "client_id=bpm-platform-api" \
-  -d "username=admin-user" \
-  -d "password=admin-pass" \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])"
-```
-
-Replace `admin-user` / `admin-pass` with any pair from the table above.
-
-On Windows PowerShell:
-
-```powershell
-$body = "grant_type=password&client_id=bpm-platform-api&username=admin-user&password=admin-pass"
-$resp = Invoke-RestMethod -Method Post `
-  -Uri "http://localhost:8081/realms/bpm-default/protocol/openid-connect/token" `
-  -ContentType "application/x-www-form-urlencoded" `
-  -Body $body
-$resp.access_token
-```
-
-Copy the printed token, open http://localhost:5173, paste it into the **Token** field, and click **Sign in**.
-
-> **Token lifetime**: Keycloak issues tokens valid for 5 minutes by default. If the session expires the app shows a banner and redirects you back to the login page — just get a fresh token.
+> **Session expiry**: Keycloak tokens expire after 5 minutes by default. If your session expires, the app automatically redirects you back to the Keycloak login page for re-authentication.
 
 ---
 

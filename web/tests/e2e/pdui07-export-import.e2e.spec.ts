@@ -25,12 +25,9 @@
 import { test, expect } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
+import { getKeycloakToken, loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
-const KEYCLOAK_TOKEN_URL = 'http://localhost:8081/realms/bpm-default/protocol/openid-connect/token'
-const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
-const KEYCLOAK_USERNAME = 'admin-user'
-const KEYCLOAK_PASSWORD = 'admin-pass'
 const API_PREFIX = '/api/v1'
 
 // ── Screenshot helper ─────────────────────────────────────────────────────────
@@ -39,45 +36,6 @@ async function shot(page: import('@playwright/test').Page, name: string): Promis
   const dir = path.resolve(SCREENSHOTS_DIR)
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   await page.screenshot({ path: path.join(dir, `PDUI07-${name}.png`) })
-}
-
-// ── Token management ──────────────────────────────────────────────────────────
-
-async function getKeycloakToken(request: import('@playwright/test').APIRequestContext): Promise<string> {
-  const response = await request.post(KEYCLOAK_TOKEN_URL, {
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    form: {
-      client_id: KEYCLOAK_CLIENT_ID,
-      username: KEYCLOAK_USERNAME,
-      password: KEYCLOAK_PASSWORD,
-      grant_type: 'password',
-    },
-  })
-
-  if (!response.ok()) {
-    const body = await response.text()
-    throw new Error(
-      `Keycloak token request failed (${response.status()}): ${body}\n` +
-      `Ensure Keycloak is running at ${KEYCLOAK_TOKEN_URL.replace('/protocol/openid-connect/token', '')}\n` +
-      `and user ${KEYCLOAK_USERNAME} exists with password ${KEYCLOAK_PASSWORD}.`,
-    )
-  }
-
-  const body = await response.json() as { access_token: string }
-  return body.access_token
-}
-
-// ── Login via UI with a real token ────────────────────────────────────────────
-
-async function loginWithToken(page: import('@playwright/test').Page, token: string): Promise<void> {
-  await page.goto('/login')
-  await expect(page.getByTestId('login-token-input')).toBeVisible()
-  await page.getByTestId('login-token-input').fill(token)
-  await page.getByTestId('login-submit').click()
-  // Wait for navigation away from /login to the workspace
-  await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
-  // Verify workspace is rendered
-  await expect(page.getByTestId('user-display-name')).toBeVisible({ timeout: 10_000 })
 }
 
 /** Navigate to /definitions via the sidebar link (SPA navigation — preserves in-memory session). */
@@ -92,18 +50,9 @@ async function navigateToDefinitions(page: import('@playwright/test').Page): Pro
   await page.waitForURL(/\/definitions/, { timeout: 10_000 })
 }
 
-/** Navigate to a specific definition editor page.
- *  Uses direct URL navigation. If redirected to /login, re-authenticates by
- *  pasting the authToken and then re-navigates to the editor.
- */
-async function navigateToDefinitionEditor(page: import('@playwright/test').Page, id: string, authToken: string): Promise<void> {
+/** Navigate to a specific definition editor page. */
+async function navigateToDefinitionEditor(page: import('@playwright/test').Page, id: string): Promise<void> {
   await page.goto(`/definitions/${id}`)
-  // If redirected to /login, re-paste the token and wait for navigation
-  if (await page.getByTestId('login-token-input').isVisible({ timeout: 3_000 }).catch(() => false)) {
-    await page.getByTestId('login-token-input').fill(authToken)
-    await page.getByTestId('login-submit').click()
-    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 15_000 })
-  }
   await page.waitForURL(/\/definitions\/([0-9a-f-]+)/, { timeout: 15_000 })
 }
 
@@ -209,7 +158,7 @@ test.describe('F2 — Export/Import Buttons (PD-UI-07)', () => {
     createdDefinitionIds.push(def.id)
 
     await loginWithToken(page, authToken)
-    await navigateToDefinitionEditor(page, def.id, authToken)
+    await navigateToDefinitionEditor(page, def.id)
 
     // Screen shows Export button in the toolbar
     const exportBtn = page.getByTestId('btn-export-definition')
@@ -230,7 +179,7 @@ test.describe('F2 — Export/Import Buttons (PD-UI-07)', () => {
     createdDefinitionIds.push(def.id)
 
     await loginWithToken(page, authToken)
-    await navigateToDefinitionEditor(page, def.id, authToken)
+    await navigateToDefinitionEditor(page, def.id)
 
     // Verify export via API first (download in browser is hard to assert in headless)
     const doc = await exportDefinition(request, authToken, def.id)
