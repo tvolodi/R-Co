@@ -50,8 +50,8 @@ BEGIN
 
     NEW.chain_hash := bpm_audit_compute_chain_hash(
         NEW.tenant_id,
-        NEW.actor_id,
         NEW.audit_id,
+        NEW.actor_id,
         NEW.action,
         NEW.resource_type,
         NEW.resource_id,
@@ -59,9 +59,9 @@ BEGIN
         NULL::JSONB,
         NULL::JSONB,
         NULL::UUID,
-        NEW.trace_id,
+        NEW.payload_full,
         NEW.prev_chain_hash,
-        NULL::TEXT
+        NEW.trace_id
     );
 
     RETURN NEW;
@@ -190,8 +190,8 @@ BEGIN
 
         expected_chain := bpm_audit_compute_chain_hash(
             r.tenant_id,
-            r.actor_id,
             r.audit_id,
+            r.actor_id,
             r.action,
             r.resource_type,
             r.resource_id,
