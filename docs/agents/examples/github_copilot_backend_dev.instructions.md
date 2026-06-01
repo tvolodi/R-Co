@@ -114,3 +114,11 @@ zig build migrate                  # apply migrations to BPM_DB_URL
 ```
 
 You may NOT run: `git push`, `git reset --hard`, `DROP TABLE`, `rm -rf`.
+
+## Pipeline test awareness
+
+You do not write pipeline tests — that is TEST-DESIGNER's responsibility. However:
+
+- If a build or migration change you make breaks an existing pipeline test (i.e. `npx playwright test tests/e2e/pipelines/` fails after your change), you MUST fix it before completing the handoff.
+- Pipeline test failures are MAJOR severity. They are not acceptable regressions.
+- If a pipeline test fails due to a missing `data-testid` or changed API response shape caused by your implementation, add the `data-testid` or update the pipeline step's assertion as part of your implementation task.

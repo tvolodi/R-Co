@@ -367,3 +367,123 @@ In CI (GitHub Actions or equivalent), tests run in this order:
 ```
 
 Any failure in steps 1–6 blocks steps 7–9 (fail fast).
+
+---
+
+## 11. Pipeline Tests
+
+### 11.1 What pipeline tests are
+
+Pipeline tests are multi-step E2E workflows where each step's output is the next step's input. Unlike island tests (one test = isolated setup → action → teardown), pipeline tests accumulate real system state across steps and intentionally abort the entire chain if any step fails.
+
+**When to write a pipeline test:**
+- The feature involves a sequence of user actions that depend on each other's side effects
+- Testing step N in isolation without steps 1..N-1 is meaningless (e.g. you cannot assign a role to a user that doesn't exist yet)
+- You want to validate the system as a coherent whole, not just individual screens
+
+**Pipeline tests do NOT replace island tests.** Island tests remain required for every MUST requirement. Pipeline tests are the regression guard for user journeys.
+
+### 11.2 File locations
+
+| Artefact | Location |
+|---|---|
+| Shared helper | `web/tests/e2e/pipeline.ts` |
+| Pipeline test files | `web/tests/e2e/pipelines/*.pipeline.e2e.spec.ts` |
+| Pipeline specs | `tests/specs/PIPELINE-<slug>.md` |
+| Checkpoint state (git-ignored) | `web/tests/e2e/.pipeline-state/` |
+| Pipeline screenshots | `tests/screenshots/pipelines/` |
+
+### 11.3 Test structure rules
+
+1. **One `test()` block = one workflow.** All steps live inside a single Playwright `test()` using `test.step()` for named sub-steps.
+2. **State flows forward** through a plain object (`pl.state`). Each step reads values written by earlier steps — no re-setup.
+3. **One login per chain.** Obtain the token once at the top; refresh only if the chain is very long (see `refreshTokenIfNeeded` in `pipeline.ts`).
+4. **Hard gates for chain preconditions.** Use `pl.gate(condition, message)` after the action that produces an ID or state the rest of the chain depends on. A gate failure aborts all remaining steps.
+5. **Soft assertions for UI polish.** Use `expect.soft()` for cosmetic checks (badge visibility, column order) that should not abort the chain.
+6. **Register cleanup with `pl.onCleanup()`** — always, even if the last step is the cleanup action. The cleanup handler runs unconditionally after the chain, whether it passed or aborted.
+7. **Screenshot after each step.** `createPipeline` takes a screenshot automatically at the end of every `pl.step()`. Do not add redundant manual shots.
+
+### 11.4 Pipeline spec format
+
+Write a spec file at `tests/specs/PIPELINE-<slug>.md` before writing the test code:
+
+```markdown
+# Pipeline Spec: <slug> — <Human-readable title>
+
+## Journey
+<one sentence describing the end-to-end user workflow>
+
+## Steps
+
+| Step | Name | Produces | Reads | Gate condition |
+|---|---|---|---|---|
+| 1 | ADM-UI-01: user list columns | — | adminToken | adminToken present |
+| 2 | ADM-UI-02: create user | userId, username | — | userId extracted from URL |
+| 3 | ADM-UI-03a: update profile | — | userId | Saved message visible |
+| 4 | ADM-UI-03b: assign role | — | userId | — |
+| 5 | ADM-UI-04: deactivate user | — | userId | status = INACTIVE |
+
+## Cleanup
+<what the cleanup handler deactivates/deletes and via which API>
+
+## Requirement coverage
+ADM-UI-01, ADM-UI-02, ADM-UI-03, ADM-UI-04
+```
+
+### 11.5 Checkpoint / resume
+
+The pipeline helper automatically saves state to `web/tests/e2e/.pipeline-state/<name>.json` after each step. To resume a chain from step N when debugging:
+
+```typescript
+const pl = createPipeline<MyState>('my-pipeline', { page, request }, { resumeFrom: 'my-pipeline' })
+// State is pre-populated from the checkpoint. Steps that already ran
+// are re-entered but their gate conditions pass immediately.
+```
+
+This directory is git-ignored. Never commit checkpoint files.
+
+### 11.6 TEST-DESIGNER responsibilities
+
+When a new requirement belongs to a feature area that has an existing pipeline journey:
+
+1. Write the per-requirement spec in `tests/specs/<REQ-ID>.md` (unchanged — still required).
+2. Open the relevant `web/tests/e2e/pipelines/*.pipeline.e2e.spec.ts` file and insert the new step at the correct position in the chain.
+3. Update `tests/specs/PIPELINE-<slug>.md` to add the new step row.
+
+When a new requirement starts a new journey (no pipeline file exists yet) AND at least one prior requirement is part of the same sequential user workflow:
+
+1. Create `tests/specs/PIPELINE-<slug>.md` with the chain topology.
+2. Create `web/tests/e2e/pipelines/<slug>.pipeline.e2e.spec.ts`.
+
+### 11.7 TEST-DESIGN-VALIDATOR check
+
+In addition to existing checks, verify:
+- [ ] Every MUST requirement that involves a sequential UI action has a step in the relevant pipeline test (MAJOR if missing — does not block TESTED status but must be addressed before release)
+- [ ] Pipeline spec file exists at `tests/specs/PIPELINE-<slug>.md` and lists all covered requirement IDs
+
+### 11.8 TEST-RUNNER: running pipeline tests
+
+Pipeline tests are discovered automatically by Playwright (they match `**/*.e2e.spec.ts`). No separate command is needed. Pipeline failures are reported as **MAJOR** severity in the test report — they indicate a broken user journey, but individual island tests remain authoritative for per-requirement TESTED status.
+
+In the test report YAML, pipeline results appear under a dedicated section:
+
+```yaml
+pipeline_results:
+  - pipeline: admin-user-lifecycle
+    status: PASS | FAIL
+    failed_step: "ADM-UI-03a: update profile"   # null if PASS
+    checkpoint_state_path: tests/e2e/.pipeline-state/admin-user-lifecycle.json
+    severity: MAJOR
+```
+
+### 11.9 ISSUE-FIXER: using pipeline state for diagnosis
+
+When a pipeline test fails, the checkpoint file at `web/tests/e2e/.pipeline-state/<name>.json` contains the real system state at the point of failure (IDs of created objects, last known token, etc.). ISSUE-FIXER MUST read this file before diagnosing the failure — it eliminates the "reproduce from scratch" step and often directly names the failing precondition.
+
+### 11.10 Current pipeline inventory
+
+| File | Journey | Requirement coverage |
+|---|---|---|
+| `pipelines/admin-user-lifecycle.pipeline.e2e.spec.ts` | Login → list users → create → update → assign role → deactivate | ADM-UI-01..04 |
+
+Add new rows to this table when creating new pipeline files.

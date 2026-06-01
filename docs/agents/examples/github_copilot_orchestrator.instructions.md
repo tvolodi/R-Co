@@ -67,6 +67,22 @@ After an agent completes a handoff, read `result.status`:
 | `FAIL` with `rework_count >= max_rework` | Write to `handoffs/escalations.json`; stop; inform user |
 | `PARTIAL` | Read which criteria failed; decide whether to advance or rework |
 
+### Pipeline test failures in TEST-RUNNER results
+
+When TEST-RUNNER returns with pipeline test failures (in `result.pipeline_results`):
+
+| Pipeline failure type | Severity | Action |
+|---|---|---|
+| Island test FAIL on MUST requirement | BLOCKER | Route to BACKEND-DEV/FRONTEND-DEV for fix → rework TEST-RUNNER |
+| Pipeline test FAIL | MAJOR | Route to ISSUE-FIXER (Step 0.5) with `checkpoint_state_path` from the report; then BACKEND-DEV/FRONTEND-DEV fix → TEST-RUNNER retest |
+| Pipeline test FAIL at cleanup step only | MINOR | Route to FRONTEND-DEV to fix cleanup; do NOT block release |
+
+When routing to ISSUE-FIXER for a pipeline failure, include in the handoff `context.artifacts_in`:
+- The test report YAML: `tests/reports/report-<date>-<run_id>.yaml`
+- The checkpoint state file: `web/tests/e2e/.pipeline-state/<name>.json`
+
+The checkpoint file contains real system IDs at the point of failure — ISSUE-FIXER uses it to skip "reproduce from scratch" and jump directly to diagnosis.
+
 ## Stage gate check
 
 Before launching WF-02 for Stage N+1, verify in `docs/status/requirement_status.json`:

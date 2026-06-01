@@ -824,6 +824,31 @@ grep -rl '"to_agent": "TEST-DESIGNER"' handoffs/ | xargs grep -l '"status": "PEN
 
 Write test spec files to `tests/specs/<REQ-ID>.md` and test source files to the appropriate layer under `tests/` or `web/src/` per the test guide. **⛔ NO DEFERRED WORK.** Every MUST requirement must have a fully implemented integration test. No `error.SkipZigTest` on MUST tests without a separately passing integration test. All integration test fixtures use per-test UUIDs. Tests are self-sufficient (start required services or fail clearly if unavailable). Complete your handoff using the same pattern as BACKEND-DEV. Set `next_action: "Route to TEST-DESIGN-VALIDATOR (Step 3b)"`.
 
+### Pipeline test responsibilities
+
+After writing per-requirement specs and island tests, apply the pipeline test rule:
+
+**If the requirement involves a user-visible sequential action** (i.e. it is a step in a user journey that depends on prior steps having run):
+
+1. Check whether a pipeline file exists for this journey:
+   ```bash
+   ls web/tests/e2e/pipelines/
+   cat docs/guides/test_developer_guide.md   # see §11.10 inventory
+   ```
+
+2. **If a pipeline file exists** for this feature area: insert a new `pl.step()` at the correct position in the chain and update `tests/specs/PIPELINE-<slug>.md` step table.
+
+3. **If no pipeline file exists yet** AND this is the second or later requirement in a sequential user journey: create both `tests/specs/PIPELINE-<slug>.md` (spec) and `web/tests/e2e/pipelines/<slug>.pipeline.e2e.spec.ts` (implementation), then add a row to the inventory table in `docs/guides/test_developer_guide.md §11.10`.
+
+**Pipeline test rules** (see `docs/guides/test_developer_guide.md §11` for full detail):
+- Import helpers from `web/tests/e2e/pipeline.ts` — do not duplicate logic
+- One `test()` block per workflow, steps via `pl.step()`
+- `pl.gate()` after any action that produces an ID or state the rest of the chain depends on
+- `pl.onCleanup()` registered unconditionally — cleanup must survive mid-chain abort
+- No setup/teardown per step — state flows forward through `pl.state`
+
+Add produced pipeline file(s) to `artifacts_out` in the handoff result.
+
 ---
 
 ## AGENT: CODE-DESIGN-VALIDATOR
@@ -866,6 +891,13 @@ grep -rl '"to_agent": "TEST-DESIGN-VALIDATOR"' handoffs/ | xargs grep -l '"statu
 ```
 
 Read the test spec files and test source files listed in `context.artifacts_in`. **⛔ HARD GATE — any failure = FAIL result.** Verify: (1) every MUST requirement has a runnable integration test file, (2) no `error.SkipZigTest` on MUST tests without a counterpart integration test, (3) all fixtures use per-test UUIDs, (4) tests clean up after themselves, (5) tests fail clearly if `BPM_TEST_DB_URL` is absent. Complete handoff with PASS or FAIL. On PASS, set `next_action: "Route to TEST-RUNNER (Step 4)"`.
+
+**Additional pipeline test checks (MAJOR — does not block PASS but must be noted in issues):**
+- (6) Every MUST requirement that involves a sequential UI action has a `pl.step()` in the relevant pipeline file under `web/tests/e2e/pipelines/`. If missing: add issue with severity MAJOR, description: `"Pipeline step missing for <REQ-ID> in <pipeline-file>"`.
+- (7) A `tests/specs/PIPELINE-<slug>.md` spec file exists and lists the requirement IDs covered by the pipeline.
+- (8) Pipeline file imports from `web/tests/e2e/pipeline.ts` — no inline duplication of `loginWithToken`, `navigateSpa`, or `getKeycloakToken`.
+- (9) `pl.onCleanup()` is registered in every pipeline test (cleanup must be unconditional).
+- (10) No `test.beforeEach` / `test.afterEach` inside pipeline test files — pipeline tests are single-test chains, not suites.
 
 ---
 
