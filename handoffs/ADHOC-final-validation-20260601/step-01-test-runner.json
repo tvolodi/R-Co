@@ -1,0 +1,83 @@
+{
+    "handoff_id":  "adhoc-finalval-20260601-001",
+    "run_id":  "ADHOC-final-validation-20260601",
+    "workflow_id":  "ADHOC",
+    "step":  "01",
+    "from_agent":  "ORCH",
+    "to_agent":  "TEST-RUNNER",
+    "created_at":  "2026-06-01T15:53:13Z",
+    "status":  "COMPLETED",
+    "priority":  "NORMAL",
+    "context":  {
+                    "stage":  "Final validation - all fixes applied",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "adhoc-audit-fix-20260601-001"
+                                            ],
+                    "artifacts_in":  [
+
+                                     ]
+                },
+    "task":  {
+                 "description":  "Final comprehensive test run after all fixes applied: (1) integration test aggregation fixed, (2) event store SQL syntax fixed, (3) audit chain hash function restored. Execute all three layers: Layer 1 - zig build test, Layer 2 - zig build test-integration, Layer 3 - cd web \u0026\u0026 npm run test. Target: ALL LAYERS PASS with 100% success (no failures). Create final report in tests/reports/report-ADHOC-final-validation-20260601.yaml.",
+                 "acceptance_criteria":  [
+                                             "Layer 1: zig build test - all tests pass",
+                                             "Layer 2: zig build test-integration - all tests pass (no failures)",
+                                             "Layer 3: cd web \u0026\u0026 npm run test - all tests pass",
+                                             "Final test report documents complete success",
+                                             "Zero failures across all three layers"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:run-final-comprehensive-tests"
+                                       ]
+             },
+    "result":  {
+                   "issues":  [
+                                  {
+                                      "module":  "audit_immutability",
+                                      "test":  "TC-XC-02-07",
+                                      "description":  "Chain hash function test failed with PgError.ServerError during database query",
+                                      "root_cause":  "Chain hash function implementation still has defect - database query fails when retrieving audit data",
+                                      "severity":  "CRITICAL"
+                                  }
+                              ],
+                   "next_action":  "Route to BACKEND-DEV for audit chain hash root cause analysis and fix",
+                   "layer_results":  {
+                                         "layer3":  {
+                                                        "status":  "SKIPPED",
+                                                        "reason":  "Layer 2 failed - E2E tests not executed"
+                                                    },
+                                         "layer2":  {
+                                                        "exit_code":  1,
+                                                        "tests_total":  423,
+                                                        "error_type":  "PgError.ServerError",
+                                                        "tests_skipped":  7,
+                                                        "failed_test":  "xc02_audit_immutability_test.TC-XC-02-07: chain hash incorporates all audit fields",
+                                                        "status":  "FAIL",
+                                                        "tests_failed":  1,
+                                                        "tests_passed":  414
+                                                    },
+                                         "layer1":  {
+                                                        "tests_total":  632,
+                                                        "exit_code":  0,
+                                                        "tests_passed":  540,
+                                                        "tests_skipped":  92,
+                                                        "tests_failed":  0,
+                                                        "status":  "PASS"
+                                                    }
+                                     },
+                   "summary":  "Final validation test run completed: Layer 1 PASS (540/632 tests), Layer 2 FAIL (414/423 tests - 1 failure in audit chain hash test), Layer 3 SKIPPED",
+                   "status":  "FAIL",
+                   "artifacts_out":  [
+                                         "tests/reports/report-ADHOC-final-validation-20260601.yaml",
+                                         "layer1-test.log",
+                                         "layer2-test.log"
+                                     ]
+               },
+    "rework_count":  0,
+    "max_rework":  1,
+    "started_at":  "2026-06-01T15:53:13Z",
+    "completed_at":  "2026-06-01T15:57:47Z"
+}

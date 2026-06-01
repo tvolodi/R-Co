@@ -1,0 +1,41 @@
+{
+    "handoff_id":  "adhoc-audit-fix-20260601-001",
+    "run_id":  "ADHOC-audit-integration-fix-20260601",
+    "workflow_id":  "ADHOC",
+    "step":  "fix",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "created_at":  "2026-06-01T15:35:19Z",
+    "status":  "PENDING",
+    "priority":  "BLOCKER",
+    "context":  {
+                    "stage":  "Audit integration test failures fix",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "adhoc-retest-20260601-001"
+                                            ],
+                    "artifacts_in":  [
+                                         "tests/reports/report-ADHOC-retest-20260601.yaml"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Fix 2 remaining audit-related test failures: (1) TC-XC-02-07 \u0027chain hash incorporates all audit fields\u0027 - fails with PgError.ServerError, suggesting database constraint violation during audit record insertion, (2) TC-XC-06-08 \u0027audit log evolution in backwards compatibility\u0027 - TestUnexpectedResult indicating data state problem. Task: (1) Review xc02_audit_immutability_test and xc06_backwards_compatibility_test to understand test setup, (2) Check audit table schema for any constraints or issues, (3) Review audit record insertion code in src/ for any problems, (4) Check if there are transaction isolation issues or state persistence problems, (5) Verify test fixture cleanup is working properly, (6) Fix the root causes, (7) Verify fixes with zig build test-integration.",
+                 "acceptance_criteria":  [
+                                             "zig build test-integration exits 0 for all tests",
+                                             "TC-XC-02-07 passes (no PgError.ServerError)",
+                                             "TC-XC-06-08 passes (no TestUnexpectedResult)",
+                                             "All 416+ integration tests pass",
+                                             "No regressions in other tests"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:fix-audit-integration-tests"
+                                       ]
+             },
+    "result":  null,
+    "rework_count":  0,
+    "max_rework":  1,
+    "started_at":  "2026-06-01T15:35:19Z",
+    "completed_at":  null
+}

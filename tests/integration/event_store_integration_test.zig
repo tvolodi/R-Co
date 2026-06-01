@@ -82,7 +82,7 @@ fn insertInstance(pool: *Pool, inst_id: []const u8, def_id: []const u8) !void {
     try conn.exec(
         "INSERT INTO instance_projections " ++
             "(instance_id, definition_id, status, last_event_seq) " ++
-            "VALUES ($1::uuid, $2::uuid, 'ACTIVE', 0) ON CONFLICT DO NOTHING",
+            "VALUES ($1::uuid, $2::uuid, 'ACTIVE', 0) ON CONFLICT (instance_id) DO NOTHING",
         &.{ inst_id, def_id },
     );
 }
@@ -832,7 +832,7 @@ test "TC-ES-07-01: archive moves expired events to events_archive" {
     const policy_conn = try pool.acquire();
     try policy_conn.exec(
         "INSERT INTO event_retention_policies (event_type, policy, keep_days) " ++
-            "VALUES ($1, 'keep_days', '0') ON CONFLICT DO NOTHING",
+            "VALUES ($1, 'keep_days', '0') ON CONFLICT (event_type) DO NOTHING",
         &.{"ES07_ARCHIVE"},
     );
     pool.release(policy_conn);

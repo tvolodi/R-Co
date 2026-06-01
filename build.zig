@@ -810,8 +810,8 @@ pub fn build(b: *std.Build) void {
     //
     // This step orchestrates the full test suite and is used by TEST-RUNNER agent.
     const test_all_step = b.step("test-all", "Run ALL tests: unit + integration + E2E pipeline (comprehensive test suite)");
-    test_all_step.dependOn(test_step);                        // Unit tests
-    test_all_step.dependOn(test_integration_step);            // Integration tests
+    test_all_step.dependOn(test_step); // Unit tests
+    test_all_step.dependOn(test_integration_step); // Integration tests
     // Note: E2E tests (Playwright) must be run via: cd web && npm run test
 
     // ---------------------------------------------------------------------------

@@ -1,0 +1,92 @@
+{
+    "handoff_id":  "adhoc-finaltest-20260601-001",
+    "run_id":  "ADHOC-final-test-20260601",
+    "workflow_id":  "ADHOC",
+    "step":  "01",
+    "from_agent":  "ORCH",
+    "to_agent":  "TEST-RUNNER",
+    "created_at":  "2026-06-01T15:06:21Z",
+    "status":  "COMPLETED",
+    "priority":  "NORMAL",
+    "context":  {
+                    "stage":  "Final comprehensive test run (after integration test fix)",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "adhoc-testinteg-fix-20260601-001"
+                                            ],
+                    "artifacts_in":  [
+                                         "tests/reports/report-ADHOC-test-all-20260601.yaml"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Run all tests across all three layers with the integration test aggregation fix applied: (1) zig build test (unit tests), (2) zig build test-integration (integration tests with real DB) - NOW FIXED to produce output, (3) cd web \u0026\u0026 npm run test (E2E pipeline tests with real backend). Report results in tests/reports/report-ADHOC-final-test-20260601.yaml. For any failures, report detailed issues with severity classification. Success = all three layers exit 0.",
+                 "acceptance_criteria":  [
+                                             "Layer 1: zig build test exits 0",
+                                             "Layer 2: zig build test-integration exits 0 (now produces test output, not silent)",
+                                             "Layer 3: cd web \u0026\u0026 npm run test exits 0",
+                                             "Final test report created in tests/reports/",
+                                             "All issues documented with severity and classification"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:run-all-tests-final"
+                                       ]
+             },
+    "result":  {
+                   "summary":  "Comprehensive test run completed. Layer 1 (unit tests): 540/632 passed (92 skipped) - PASS. Layer 2 (integration tests): 410/423 passed (7 skipped, 6 failed) - FAIL. Layer 3 (E2E tests): SKIPPED per TEST-RUNNER protocol due to Layer 2 failures. Root cause analysis indicates 3 failures relate to event store instance initialization (InstanceNotFound), 1 to database transaction atomicity, 1 to PostgreSQL server error during audit operations, and 1 to audit log evolution. All failures are BLOCKER severity.",
+                   "status":  "FAIL",
+                   "issues":  [
+                                  {
+                                      "module":  "db_integration_test",
+                                      "root_cause":  "Transaction isolation or state update persistence issue",
+                                      "test_id":  "TC-DB-03-01",
+                                      "description":  "Database transaction atomicity test failed: projection query returned no rows despite event append",
+                                      "severity":  "BLOCKER"
+                                  },
+                                  {
+                                      "module":  "event_store_integration_test",
+                                      "root_cause":  "Instance not found in instance table during append",
+                                      "test_id":  "TC-ES-01-01",
+                                      "description":  "Event store append failed with StoreError.InstanceNotFound",
+                                      "severity":  "BLOCKER"
+                                  },
+                                  {
+                                      "module":  "event_store_integration_test",
+                                      "root_cause":  "Instance creation issue affecting subsequent operations",
+                                      "test_id":  "TC-ES-02-02",
+                                      "description":  "Event store read test failed due to append failure in setup",
+                                      "severity":  "BLOCKER"
+                                  },
+                                  {
+                                      "module":  "event_store_integration_test",
+                                      "root_cause":  "Event append failures preventing sufficient test data",
+                                      "test_id":  "TC-ES-04-01",
+                                      "description":  "readGlobal test failed: returned fewer events than expected",
+                                      "severity":  "BLOCKER"
+                                  },
+                                  {
+                                      "module":  "xc02_audit_immutability_test",
+                                      "root_cause":  "Database constraint violation or server connectivity issue",
+                                      "test_id":  "TC-XC-02-07",
+                                      "description":  "Audit immutability test failed with PostgreSQL server error",
+                                      "severity":  "BLOCKER"
+                                  },
+                                  {
+                                      "module":  "xc06_backwards_compatibility_test",
+                                      "root_cause":  "Related to audit/event store issues",
+                                      "test_id":  "TC-XC-06-08",
+                                      "description":  "Audit log evolution backwards compatibility test failed",
+                                      "severity":  "BLOCKER"
+                                  }
+                              ],
+                   "artifacts_out":  [
+                                         "tests/reports/report-ADHOC-final-test-20260601.yaml"
+                                     ],
+                   "next_action":  "Route to BACKEND-DEV for investigation of event store instance initialization, database transaction handling, and audit table constraints"
+               },
+    "rework_count":  0,
+    "max_rework":  2,
+    "started_at":  "2026-06-01T15:06:21Z",
+    "completed_at":  "2026-06-01T15:11:39Z"
+}

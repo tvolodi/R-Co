@@ -253,7 +253,7 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
         defer pool.release(setup_conn);
         try setup_conn.exec(
             "INSERT INTO instance_projections (instance_id, definition_id, status, last_event_seq) " ++
-                "VALUES ($1::uuid, $2::uuid, 'ACTIVE', 0) ON CONFLICT DO NOTHING",
+                "VALUES ($1::uuid, $2::uuid, 'ACTIVE', 0) ON CONFLICT (instance_id) DO NOTHING",
             &.{ inst_id_str, def_id_str },
         );
     }

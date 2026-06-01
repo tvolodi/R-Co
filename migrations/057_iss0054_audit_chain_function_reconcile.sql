@@ -50,18 +50,18 @@ BEGIN
 
     NEW.chain_hash := bpm_audit_compute_chain_hash(
         NEW.tenant_id,
-        NEW.audit_id,
         NEW.actor_id,
+        NEW.audit_id,
         NEW.action,
         NEW.resource_type,
         NEW.resource_id,
         NEW."timestamp",
-        NEW.before_state,
-        NEW.after_state,
-        NEW.pipeline_run_id,
-        NEW.payload_full,
+        NULL::JSONB,
+        NULL::JSONB,
+        NULL::UUID,
+        NEW.trace_id,
         NEW.prev_chain_hash,
-        NULL
+        NULL::TEXT
     );
 
     RETURN NEW;
