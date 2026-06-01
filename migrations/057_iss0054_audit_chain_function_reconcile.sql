@@ -190,8 +190,8 @@ BEGIN
 
         expected_chain := bpm_audit_compute_chain_hash(
             r.tenant_id,
-            r.audit_id,
             r.actor_id,
+            r.audit_id,
             r.action,
             r.resource_type,
             r.resource_id,
@@ -199,9 +199,9 @@ BEGIN
             r.before_state,
             r.after_state,
             r.pipeline_run_id,
-            r.payload_full,
+            r.trace_id,
             r.prev_chain_hash,
-            NULL
+            NULL::TEXT
         );
 
         IF r.prev_chain_hash IS DISTINCT FROM expected_prev THEN
