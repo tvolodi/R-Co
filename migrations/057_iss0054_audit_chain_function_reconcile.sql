@@ -56,12 +56,12 @@ BEGIN
         NEW.resource_type,
         NEW.resource_id,
         NEW."timestamp",
-        NULL::JSONB,
-        NULL::JSONB,
-        NULL::UUID,
-        NEW.payload_full,
+        NEW.before_state,
+        NEW.after_state,
+        NEW.pipeline_run_id,
+        NULL,
         NEW.prev_chain_hash,
-        NEW.trace_id
+        NULL
     );
 
     RETURN NEW;
