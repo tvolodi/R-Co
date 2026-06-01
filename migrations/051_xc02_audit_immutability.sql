@@ -26,49 +26,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_entries_tenant_chain
     ON audit_entries (tenant_id, "timestamp" DESC, audit_id DESC)
     WHERE tenant_id IS NOT NULL;
 
--- Function to compute chain hash deterministically using SHA-256
-DROP FUNCTION IF EXISTS bpm_audit_compute_chain_hash(UUID,UUID,UUID,TEXT,TEXT,UUID,TIMESTAMPTZ,JSONB,JSONB,UUID,TEXT,TEXT,TEXT);
-CREATE FUNCTION bpm_audit_compute_chain_hash(
-    p_tenant_id UUID,
-    p_actor_id UUID,
-    p_audit_id UUID,
-    p_action TEXT,
-    p_resource_type TEXT,
-    p_resource_id UUID,
-    p_timestamp TIMESTAMPTZ,
-    p_context JSONB,
-    p_result JSONB,
-    p_ref_id UUID,
-    p_trace_id TEXT,
-    p_prev_hash TEXT,
-    p_request_id TEXT
-)
-RETURNS TEXT
-LANGUAGE sql
-STABLE
-AS $$
-    SELECT encode(
-        digest(
-            CONCAT(
-                COALESCE(p_tenant_id::TEXT, ''),  '|',
-                COALESCE(p_actor_id::TEXT, ''),  '|',
-                COALESCE(p_audit_id::TEXT, ''),  '|',
-                COALESCE(p_action, ''),  '|',
-                COALESCE(p_resource_type, ''),  '|',
-                COALESCE(p_resource_id::TEXT, ''),  '|',
-                COALESCE(p_timestamp::TEXT, ''),  '|',
-                COALESCE(p_context::TEXT, ''),  '|',
-                COALESCE(p_result::TEXT, ''),  '|',
-                COALESCE(p_ref_id::TEXT, ''),  '|',
-                COALESCE(p_trace_id, ''),  '|',
-                COALESCE(p_prev_hash, ''),  '|',
-                COALESCE(p_request_id, '')
-            ),
-            'sha256'
-        ),
-        'hex'
-    );
-$$;
+-- Function to compute chain hash is defined in migration 035 (ADP-09)
+-- Do not redefine it here to avoid overwriting with incompatible signature
 
 -- Drop the trigger first (it depends on the function)
 DROP TRIGGER IF EXISTS trg_bpm_audit_apply_chain_hash ON audit_entries;
@@ -82,24 +41,7 @@ AS $$
 DECLARE
     v_prev_chain_hash TEXT;
 BEGIN
-    -- Compute hash for this entry
-    NEW.chain_hash := bpm_audit_compute_chain_hash(
-        NEW.tenant_id,
-        NEW.actor_id,
-        NEW.audit_id,
-        NEW.action,
-        NEW.resource_type,
-        NEW.resource_id,
-        NEW.timestamp,
-        NULL::JSONB,
-        NULL::JSONB,
-        NULL::UUID,
-        NEW.trace_id,
-        NULL::TEXT,
-        NULL::TEXT
-    );
-
-    -- Find previous entry for this tenant
+    -- Find previous entry for this tenant FIRST, before computing hash
     IF NEW.tenant_id IS NOT NULL THEN
         SELECT chain_hash INTO v_prev_chain_hash
         FROM audit_entries
@@ -110,6 +52,23 @@ BEGIN
 
         NEW.prev_chain_hash := v_prev_chain_hash;
     END IF;
+
+    -- Compute hash for this entry using signature from migration 035
+    NEW.chain_hash := bpm_audit_compute_chain_hash(
+        NEW.tenant_id,
+        NEW.audit_id,
+        NEW.actor_id,
+        NEW.action,
+        NEW.resource_type,
+        NEW.resource_id,
+        NEW.timestamp,
+        NULL::JSONB,
+        NULL::JSONB,
+        NULL::UUID,
+        NULL::JSONB,
+        NEW.prev_chain_hash,
+        NEW.trace_id
+    );
 
     RETURN NEW;
 END;
