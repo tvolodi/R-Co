@@ -485,5 +485,6 @@ When a pipeline test fails, the checkpoint file at `web/tests/e2e/.pipeline-stat
 | File | Journey | Requirement coverage |
 |---|---|---|
 | `pipelines/admin-user-lifecycle.pipeline.e2e.spec.ts` | Login → list users → create → update → assign role → deactivate | ADM-UI-01..04 |
+| `pipelines/onboarding-wizard.pipeline.e2e.spec.ts` | PLATFORM_ADMIN: nav entry → fill form → progress spinner → result screen | ONB-UI-01..04 |
 
 Add new rows to this table when creating new pipeline files.
