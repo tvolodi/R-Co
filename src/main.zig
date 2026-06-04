@@ -87,6 +87,8 @@ pub fn main() !void {
         return err;
     };
     defer idp_boot.active.deinit();
+    // Establish stable provider pointer now that idp_boot is at its final location.
+    idp_boot.active.finalizeLinks();
 
     api_auth.configureIdentityProviderManager(idp_boot.active.manager);
     try api_auth.init(allocator, config.bootstrap_token);
@@ -248,6 +250,15 @@ fn serveRequest(
     api_trace_context.set(trace_result.trace_id);
     defer api_trace_context.clear();
 
+    // Extract Idempotency-Key before body reading (iterateHeaders asserts received_head state).
+    const idempotency_key_hdr: []const u8 = blk: {
+        var hdr_it = request.iterateHeaders();
+        while (hdr_it.next()) |h| {
+            if (std.ascii.eqlIgnoreCase(h.name, "idempotency-key")) break :blk h.value;
+        }
+        break :blk "";
+    };
+
     // Split path from query string.
     const target = request.head.target;
     const q_start = std.mem.indexOf(u8, target, "?");
@@ -318,6 +329,16 @@ fn serveRequest(
     };
 
     const method = request.head.method;
+
+    // DEBUG: log path and method to diagnose routing failures
+    {
+        const dbg_fields = [_]obs_logger.LogField{
+            .{ .key = "debug_path", .value = .{ .string = path } },
+            .{ .key = "debug_method", .value = .{ .string = @tagName(method) } },
+            .{ .key = "debug_path_len", .value = .{ .integer = @as(i64, @intCast(path.len)) } },
+        };
+        obs_logger.log(allocator, .INFO, "debug.routing", "routing check", &dbg_fields) catch {};
+    }
 
     var resp_status: u16 = 200;
     var resp_body: []const u8 = "{}";
@@ -1043,14 +1064,7 @@ fn serveRequest(
 
             if (seg4.len == 0 and method == .POST) {
                 // POST /api/v1/onboarding
-                const idempotency_key = blk: {
-                    var hdr_it = request.iterateHeaders();
-                    while (hdr_it.next()) |h| {
-                        if (std.ascii.eqlIgnoreCase(h.name, "Idempotency-Key")) break :blk h.value;
-                    }
-                    break :blk "";
-                };
-                const r = onboarding_routes.handleOnboarding(id_svc, req_alloc, actor, body, idempotency_key);
+                const r = onboarding_routes.handleOnboarding(id_svc, req_alloc, actor, body, idempotency_key_hdr);
                 resp_status = r.status_code;
                 resp_body = r.body;
             } else if (seg4.len > 0 and seg5.len == 0 and method == .GET) {

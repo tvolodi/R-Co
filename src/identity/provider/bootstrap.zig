@@ -86,6 +86,21 @@ pub const ActiveProvider = struct {
     manager: manager_mod.Manager,
     runtime: Runtime,
 
+    /// Must be called once, after the ActiveProvider is at its final stable
+    /// memory location (i.e. after assignment to the caller's `var`). It
+    /// re-establishes the manager.provider ctx pointer to the in-place adapter
+    /// so that the pointer is never dangling.
+    pub fn finalizeLinks(self: *ActiveProvider) void {
+        switch (self.runtime) {
+            .keycloak => |*adapter| {
+                self.manager.provider = adapter.asIdentityProvider();
+            },
+            .stub => |*runtime| {
+                self.manager.provider = stub.asIdentityProvider(&runtime.ctx);
+            },
+        }
+    }
+
     pub fn deinit(self: *ActiveProvider) void {
         switch (self.runtime) {
             .keycloak => |*adapter| adapter.deinit(),
@@ -161,7 +176,7 @@ fn buildStubProvider(
         null;
     errdefer if (expected_issuer) |v| allocator.free(v);
 
-    var active = ActiveProvider{
+    const active = ActiveProvider{
         .allocator = allocator,
         .manager = .{
             .provider = null,
@@ -175,7 +190,6 @@ fn buildStubProvider(
             .expected_issuer = expected_issuer,
         } },
     };
-    active.manager.provider = stub.asIdentityProvider(&active.runtime.stub.ctx);
     return active;
 }
 
@@ -186,7 +200,7 @@ fn buildKeycloakProvider(
     var secret_resolver = EnvSecretResolver{};
     var clock = SystemClock{};
 
-    var adapter = keycloak.Adapter.init(allocator, .{
+    const adapter = keycloak.Adapter.init(allocator, .{
         .base_url = cfg.base_url,
         .admin_base_url = null,
         .admin_realm = cfg.admin_realm orelse "master",
@@ -200,7 +214,7 @@ fn buildKeycloakProvider(
         .jwks_ttl_seconds = keycloak.Config.defaults.jwks_ttl_seconds,
         .jwks_min_refresh_seconds = keycloak.Config.defaults.jwks_min_refresh_seconds,
     }, .{
-        .transport = .{ .ctx = undefined, .sendFn = noOpTransportSend },
+        .transport = .{ .ctx = undefined, .sendFn = realHttpSend },
         .clock = .{ .ctx = &clock, .nowUnixSecondsFn = SystemClock.nowUnixSeconds },
         .secret_resolver = .{ .ctx = &secret_resolver, .resolveFn = EnvSecretResolver.resolve },
     }) catch |err| switch (err) {
@@ -211,7 +225,7 @@ fn buildKeycloakProvider(
     return .{
         .allocator = allocator,
         .manager = .{
-            .provider = adapter.asIdentityProvider(),
+            .provider = null,
             .auth_mode = .dual_accept,
             .expected_audience = adapter.config.expected_audience,
             .expected_issuer = adapter.config.expected_issuer,
@@ -249,6 +263,153 @@ const EnvSecretResolver = struct {
     }
 };
 
+/// KcHttpCallState carries all state needed for a single outgoing KC HTTP call
+/// that runs on a dedicated OS thread. Running in a fresh thread avoids the
+/// Windows AFD/APC alertable-wait interference that occurs when the same call
+/// is made from the server's main thread (which has accumulated unrelated APC
+/// callbacks from client-connection I/O).
+const KcHttpCallState = struct {
+    allocator: std.mem.Allocator,
+    request: keycloak.HttpRequest,
+    result: keycloak.HttpResponse = undefined,
+    result_err: anyerror = undefined,
+    success: bool = false,
+
+    fn threadFn(self: *KcHttpCallState) void {
+        self.result = doFetch(self.allocator, self.request) catch |e| {
+            self.result_err = e;
+            return;
+        };
+        self.success = true;
+    }
+
+    fn doFetch(allocator: std.mem.Allocator, request: keycloak.HttpRequest) anyerror!keycloak.HttpResponse {
+        // Create a fresh Io.Threaded for this isolated thread. The fresh instance
+        // has no accumulated APC state from server connection I/O, so the
+        // AFD/APC alertable-wait mechanism fires correctly.
+        // Use smp_allocator so the Threaded internals do not depend on the
+        // request-scoped arena (which is released after thread.join() returns).
+        var io_t = std.Io.Threaded.init(std.heap.smp_allocator, .{});
+        defer io_t.deinit();
+
+        var client: std.http.Client = .{
+            .allocator = allocator,
+            .io = io_t.io(),
+        };
+        defer client.deinit();
+
+        const method = switch (request.method) {
+            .GET => std.http.Method.GET,
+            .POST => std.http.Method.POST,
+            .PUT => std.http.Method.PUT,
+            .DELETE => std.http.Method.DELETE,
+        };
+
+        var extra_headers: std.ArrayList(std.http.Header) = .empty;
+        defer extra_headers.deinit(allocator);
+
+        var auth_header_buf: ?[]u8 = null;
+        defer if (auth_header_buf) |v| allocator.free(v);
+
+        if (request.bearer_token) |tok| {
+            auth_header_buf = try std.fmt.allocPrint(allocator, "Bearer {s}", .{tok});
+            try extra_headers.append(allocator, .{ .name = "Authorization", .value = auth_header_buf.? });
+        }
+        if (request.content_type) |ct| {
+            try extra_headers.append(allocator, .{ .name = "Content-Type", .value = ct });
+        }
+
+        // On Windows, Zig resolves "localhost" to ::1 (IPv6) first. Docker on
+        // Windows does not expose container services on IPv6, so the AFD TCP
+        // connect to ::1:PORT hangs for ~83 s (system TCP timeout) before
+        // failing. Rewriting to 127.0.0.1 forces IPv4 and avoids the hang.
+        const effective_url = try rewriteLocalhostToIpv4(allocator, request.url);
+        defer if (effective_url.ptr != request.url.ptr) allocator.free(effective_url);
+
+        const uri = try std.Uri.parse(effective_url);
+
+        var req = try client.request(method, uri, .{
+            .extra_headers = extra_headers.items,
+        });
+        defer req.deinit();
+
+        // Send request body or a bodiless head (GET/DELETE)
+        if (request.body) |payload| {
+            req.transfer_encoding = .{ .content_length = payload.len };
+            var body_writer = try req.sendBodyUnflushed(&.{});
+            try body_writer.writer.writeAll(payload);
+            try body_writer.end();
+            try req.connection.?.flush();
+        } else {
+            try req.sendBodiless();
+        }
+        // Receive the response status line + headers
+        var redirect_buf: [4 * 1024]u8 = undefined;
+        var response = try req.receiveHead(&redirect_buf);
+
+        // Copy response headers into owned slices BEFORE calling readerDecompressing,
+        // which internally calls response.head.invalidateStrings() and makes the
+        // raw header bytes unreadable via iterateHeaders.
+        var headers_list: std.ArrayList(keycloak.Header) = .empty;
+        var hdr_iter = response.head.iterateHeaders();
+        while (hdr_iter.next()) |hdr| {
+            const name = try allocator.dupe(u8, hdr.name);
+            const value = try allocator.dupe(u8, hdr.value);
+            try headers_list.append(allocator, .{ .name = name, .value = value });
+        }
+        const headers_owned = try headers_list.toOwnedSlice(allocator);
+
+        // Read response body
+        var response_body: std.ArrayList(u8) = .empty;
+        var response_writer = std.Io.Writer.Allocating.fromArrayList(allocator, &response_body);
+        defer response_writer.deinit();
+
+        const decompress_buffer: []u8 = switch (response.head.content_encoding) {
+            .identity => &.{},
+            .zstd => try allocator.alloc(u8, std.compress.zstd.default_window_len),
+            .deflate, .gzip => try allocator.alloc(u8, std.compress.flate.max_window_len),
+            .compress => return error.UnsupportedCompressionMethod,
+        };
+        defer if (decompress_buffer.len > 0) allocator.free(decompress_buffer);
+
+        var transfer_buf: [64]u8 = undefined;
+        var decompress: std.http.Decompress = undefined;
+        const reader = response.readerDecompressing(&transfer_buf, &decompress, decompress_buffer);
+        _ = reader.streamRemaining(&response_writer.writer) catch |err| switch (err) {
+            error.ReadFailed => return response.bodyErr() orelse error.UnexpectedBodyReadError,
+            else => |e| return e,
+        };
+
+        const status: u16 = @intCast(@intFromEnum(response.head.status));
+        var body_list = response_writer.toArrayList();
+        const body_owned = try body_list.toOwnedSlice(allocator);
+        return keycloak.HttpResponse{ .status = status, .body = body_owned, .headers = headers_owned };
+    }
+
+    /// Rewrite `://localhost:` to `://127.0.0.1:` in a URL to force IPv4.
+    /// Returns the original slice unchanged (same pointer) when no rewrite is
+    /// needed so the caller can skip the free.
+    fn rewriteLocalhostToIpv4(allocator: std.mem.Allocator, url: []const u8) ![]const u8 {
+        const needle = "://localhost:";
+        const replacement = "://127.0.0.1:";
+        const idx = std.mem.indexOf(u8, url, needle) orelse return url;
+        const new_len = url.len - needle.len + replacement.len;
+        const buf = try allocator.alloc(u8, new_len);
+        @memcpy(buf[0..idx], url[0..idx]);
+        @memcpy(buf[idx..][0..replacement.len], replacement);
+        @memcpy(buf[idx + replacement.len ..], url[idx + needle.len ..]);
+        return buf;
+    }
+};
+
+fn realHttpSend(_: *anyopaque, allocator: std.mem.Allocator, request: keycloak.HttpRequest) anyerror!keycloak.HttpResponse {
+    var state = KcHttpCallState{ .allocator = allocator, .request = request };
+    const thread = try std.Thread.spawn(.{}, KcHttpCallState.threadFn, .{&state});
+    thread.join();
+    if (!state.success) return state.result_err;
+    return state.result;
+}
+
 fn noOpTransportSend(_: *anyopaque, _: std.mem.Allocator, _: keycloak.HttpRequest) anyerror!keycloak.HttpResponse {
     return error.NoTransportConfigured;
 }
@@ -271,6 +432,7 @@ test "TC-OIDC-03-03: provider bootstrap selects stub manager path" {
 
     var active = try initializeActiveProvider(testing.allocator, cfg);
     defer active.deinit();
+    active.finalizeLinks();
 
     try testing.expect(active.manager.provider != null);
     try testing.expectEqual(manager_mod.AuthMode.dual_accept, active.manager.auth_mode);
@@ -294,6 +456,7 @@ test "TC-OIDC-03-05: provider bootstrap selects keycloak adapter path" {
 
     var active = try initializeActiveProvider(testing.allocator, cfg);
     defer active.deinit();
+    active.finalizeLinks();
 
     try testing.expect(active.manager.provider != null);
     switch (active.runtime) {

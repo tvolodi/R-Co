@@ -33,6 +33,10 @@ pub fn usersCollection(allocator: std.mem.Allocator, config: keycloak_config.Con
     return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/users", .{ config.adminBase(), realm_id });
 }
 
+pub fn rolesCollection(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8) ![]u8 {
+    return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/roles", .{ config.adminBase(), realm_id });
+}
+
 pub fn role(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8, role_name: []const u8) ![]u8 {
     return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/roles/{s}", .{ config.adminBase(), realm_id, role_name });
 }

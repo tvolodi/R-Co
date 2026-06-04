@@ -50,7 +50,8 @@ pub fn handleOnboarding(
         &input.value,
     ) catch |err| switch (err) {
         onboarding_mod.OnboardingError.IdempotencyConflict => {
-            const detail = std.fmt.allocPrint(allocator,
+            const detail = std.fmt.allocPrint(
+                allocator,
                 "Idempotency key '{s}' was used with a different request body",
                 .{idempotency_key},
             ) catch return errorResult(allocator, 500, "internal_error");
@@ -220,14 +221,28 @@ fn tryClaimIdempotencyKey(
 
     const hostname = input.hostname;
 
+    // Hex-encode the raw hash bytes so they can be passed as a text parameter
+    // and decoded to bytea via decode($3, 'hex').  Passing raw binary as a
+    // text parameter fails because PostgreSQL's text-format bytea parser
+    // expects hex-escape notation, not arbitrary binary.
+    const request_hash_hex = try allocator.alloc(u8, request_hash.len * 2);
+    errdefer allocator.free(request_hash_hex);
+    {
+        const hex_chars = "0123456789abcdef";
+        for (request_hash, 0..) |byte, idx| {
+            request_hash_hex[idx * 2] = hex_chars[byte >> 4];
+            request_hash_hex[idx * 2 + 1] = hex_chars[byte & 0xf];
+        }
+    }
+
     const insert_row = conn.queryRow(
         allocator,
         \\INSERT INTO onboarding_registry (onboarding_id, idempotency_key, request_hash, tenant_id, hostname, state)
-        \\VALUES ($1::uuid, $2, $3::bytea, NULL, $4, 'pending')
+        \\VALUES ($1::uuid, $2, decode($3, 'hex'), NULL, $4, 'pending')
         \\ON CONFLICT (idempotency_key) DO NOTHING
         \\RETURNING id::text
     ,
-        &[_][]const u8{ onboarding_id, key, request_hash, hostname },
+        &[_][]const u8{ onboarding_id, key, request_hash_hex, hostname },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,
@@ -264,18 +279,9 @@ fn tryClaimIdempotencyKey(
     defer freeRow(allocator, existing_row.?);
 
     const stored_hash_hex = existing_row.?[2] orelse return error.PersistenceFailed;
-    const request_hash_hex = allocator.alloc(u8, request_hash.len * 2) catch
-        return error.OutOfMemory;
-    defer allocator.free(request_hash_hex);
-    {
-        const hex_chars = "0123456789abcdef";
-        for (request_hash, 0..) |byte, idx| {
-            request_hash_hex[idx * 2] = hex_chars[byte >> 4];
-            request_hash_hex[idx * 2 + 1] = hex_chars[byte & 0xf];
-        }
-    }
 
     // Compare request hashes — if different, it's an idempotency conflict.
+    // request_hash_hex was computed above for the INSERT; reuse it here.
     if (!std.mem.eql(u8, stored_hash_hex, request_hash_hex)) {
         return error.IdempotencyConflict;
     }
@@ -540,11 +546,26 @@ fn parseOnboardingInput(allocator: std.mem.Allocator, body: []const u8) !ParsedI
         if (rc != .object) break :blk null;
         const rc_obj = rc.object;
         break :blk onboarding_mod.RealmConfigOverrides{
-            .default_token_lifetime_seconds = if (rc_obj.get("default_token_lifetime_seconds")) |v| switch (v) { .integer => |n| @intCast(n), else => null } else null,
-            .min_password_length = if (rc_obj.get("min_password_length")) |v| switch (v) { .integer => |n| @intCast(n), else => null } else null,
-            .require_uppercase = if (rc_obj.get("require_uppercase")) |v| switch (v) { .bool => |b| b, else => null } else null,
-            .require_digit = if (rc_obj.get("require_digit")) |v| switch (v) { .bool => |b| b, else => null } else null,
-            .signing_key_algorithm = if (rc_obj.get("signing_key_algorithm")) |v| switch (v) { .string => |s| s, else => null } else null,
+            .default_token_lifetime_seconds = if (rc_obj.get("default_token_lifetime_seconds")) |v| switch (v) {
+                .integer => |n| @intCast(n),
+                else => null,
+            } else null,
+            .min_password_length = if (rc_obj.get("min_password_length")) |v| switch (v) {
+                .integer => |n| @intCast(n),
+                else => null,
+            } else null,
+            .require_uppercase = if (rc_obj.get("require_uppercase")) |v| switch (v) {
+                .bool => |b| b,
+                else => null,
+            } else null,
+            .require_digit = if (rc_obj.get("require_digit")) |v| switch (v) {
+                .bool => |b| b,
+                else => null,
+            } else null,
+            .signing_key_algorithm = if (rc_obj.get("signing_key_algorithm")) |v| switch (v) {
+                .string => |s| s,
+                else => null,
+            } else null,
         };
     } else null;
 
@@ -564,7 +585,10 @@ fn parseOnboardingInput(allocator: std.mem.Allocator, body: []const u8) !ParsedI
         } else null;
         break :blk onboarding_mod.ClientConfigOverrides{
             .redirect_uris = redirect_uris,
-            .service_account_enabled = if (cc_obj.get("service_account_enabled")) |v| switch (v) { .bool => |b| b, else => null } else null,
+            .service_account_enabled = if (cc_obj.get("service_account_enabled")) |v| switch (v) {
+                .bool => |b| b,
+                else => null,
+            } else null,
         };
     } else null;
 

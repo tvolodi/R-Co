@@ -1,0 +1,257 @@
+[doFetch] POST http://127.0.0.1:8081/realms/master/protocol/openid-connect/token body=grant_type=client_credentials&client_id=bpm-admin&client_secret=admin
+[doFetch] sent
+[doFetch] status=200
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Type: application/json
+[doFetch] hdr: Content-Length: 2353
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Cache-Control: no-store
+[doFetch] hdr: Pragma: no-cache
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=200 body_len=2353 hdr_count=11
+[doFetch] GET http://127.0.0.1:8081/admin/realms/acme1 body=(none)
+[doFetch] sent
+[doFetch] status=404
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Type: application/json
+[doFetch] hdr: Content-Length: 28
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=404 body_len=28 hdr_count=9 <== ERROR
+[doFetch] error_body={"error":"Realm not found."}
+[doFetch] POST http://127.0.0.1:8081/admin/realms body={"realm":"acme1","displayName":"Acme1 Corp","enabled":true,"accessTokenLifespan":900,"accessCodeLifespan":900,"ssoSessionMaxLifespan":28800,"ssoSessionIdleTimeout":3600,"passwordPolicy":"length(8) and upperCase(1) and digits(1)"}
+[doFetch] sent
+[doFetch] status=201
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Length: 0
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Location: http://127.0.0.1:8081/admin/realms/acme1
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=201 body_len=0 hdr_count=9
+[doFetch] POST http://127.0.0.1:8081/realms/master/protocol/openid-connect/token body=grant_type=client_credentials&client_id=bpm-admin&client_secret=admin
+[doFetch] sent
+[doFetch] status=200
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Type: application/json
+[doFetch] hdr: Content-Length: 2817
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Cache-Control: no-store
+[doFetch] hdr: Pragma: no-cache
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=200 body_len=2817 hdr_count=11
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/roles body={"name":"PLATFORM_ADMIN"}
+[doFetch] sent
+[doFetch] status=201
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Length: 0
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Location: http://127.0.0.1:8081/admin/realms/acme1/roles/PLATFORM_ADMIN
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=201 body_len=0 hdr_count=9
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/roles body={"name":"PROCESS_DESIGNER"}
+[doFetch] sent
+[doFetch] status=201
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Length: 0
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Location: http://127.0.0.1:8081/admin/realms/acme1/roles/PROCESS_DESIGNER
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=201 body_len=0 hdr_count=9
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/roles body={"name":"PROCESS_OPERATOR"}
+[doFetch] sent
+[doFetch] status=201
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Length: 0
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Location: http://127.0.0.1:8081/admin/realms/acme1/roles/PROCESS_OPERATOR
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=201 body_len=0 hdr_count=9
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/roles body={"name":"TASK_WORKER"}
+[doFetch] sent
+[doFetch] status=201
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Length: 0
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Location: http://127.0.0.1:8081/admin/realms/acme1/roles/TASK_WORKER
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=201 body_len=0 hdr_count=9
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/roles body={"name":"VIEWER"}
+[doFetch] sent
+[doFetch] status=201
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Length: 0
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Location: http://127.0.0.1:8081/admin/realms/acme1/roles/VIEWER
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=201 body_len=0 hdr_count=9
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/roles body={"name":"AGENT_RUNNER"}
+[doFetch] sent
+[doFetch] status=201
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Length: 0
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Location: http://127.0.0.1:8081/admin/realms/acme1/roles/AGENT_RUNNER
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=201 body_len=0 hdr_count=9
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/protocol-mappers/models body={"name":"tenant-id-mapper","protocol":"openid-connect","protocolMapper":"oidc-hardcoded-claim-mapper","config":{"claimName":"tenant_id","claimValue":"d1be6209-717f-48ec-bad8-cdddff936f15","jsonTypeLabel":"String","accessTokenClaim":"true","idTokenClaim":"true","userinfoTokenClaim":"true"}}
+[doFetch] sent
+[doFetch] status=404
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Type: application/json
+[doFetch] hdr: Content-Length: 30
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=404 body_len=30 hdr_count=9 <== ERROR
+[doFetch] error_body={"error":"HTTP 404 Not Found"}
+[doFetch] GET http://127.0.0.1:8081/admin/realms/acme1/users?q=external_id:admin@acme1.com&exact=true body=(none)
+[doFetch] sent
+[doFetch] status=200
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Type: application/json;charset=UTF-8
+[doFetch] hdr: Content-Length: 2
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Cache-Control: no-cache
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=200 body_len=2 hdr_count=10
+[doFetch] GET http://127.0.0.1:8081/admin/realms/acme1/users?username=acme1-admin&exact=true body=(none)
+[doFetch] sent
+[doFetch] status=200
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Type: application/json;charset=UTF-8
+[doFetch] hdr: Content-Length: 2
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Cache-Control: no-cache
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=200 body_len=2 hdr_count=10
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/users body={"username":"acme1-admin","email":"admin@acme1.com","enabled":true,"firstName":"Acme1","lastName":"Admin","attributes":{"external_id":["admin@acme1.com"]}}
+[doFetch] sent
+[doFetch] status=201
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Length: 0
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Location: http://127.0.0.1:8081/admin/realms/acme1/users/dfd2bec4-27ab-437c-9fa8-7bbc22ab1b91
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=201 body_len=0 hdr_count=9
+[doFetch] GET http://127.0.0.1:8081/admin/realms/acme1/roles/PLATFORM_ADMIN body=(none)
+[doFetch] sent
+[doFetch] status=200
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Content-Type: application/json;charset=UTF-8
+[doFetch] hdr: Content-Length: 175
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Cache-Control: no-cache
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=200 body_len=175 hdr_count=10
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/users/dfd2bec4-27ab-437c-9fa8-7bbc22ab1b91/role-mappings/realm body=[{"id":"e2588e3e-910f-4fcf-a1a7-5ffa90655c27","name":"PLATFORM_ADMIN"}]
+[doFetch] sent
+[doFetch] status=204
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 03:59:25 GMT
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=204 body_len=0 hdr_count=7
+[doFetch] POST http://127.0.0.1:8081/realms/master/protocol/openid-connect/token body=grant_type=client_credentials&client_id=bpm-admin&client_secret=admin
+[doFetch] sent
+[doFetch] status=200
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 04:00:47 GMT
+[doFetch] hdr: Content-Type: application/json
+[doFetch] hdr: Content-Length: 2817
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Cache-Control: no-store
+[doFetch] hdr: Pragma: no-cache
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=200 body_len=2817 hdr_count=11
+[doFetch] GET http://127.0.0.1:8081/admin/realms/acme1/clients?clientId=bpm-platform-api body=(none)
+[doFetch] sent
+[doFetch] status=200
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 04:00:47 GMT
+[doFetch] hdr: Content-Type: application/json;charset=UTF-8
+[doFetch] hdr: Content-Length: 2
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Cache-Control: no-cache
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=200 body_len=2 hdr_count=10
+[doFetch] POST http://127.0.0.1:8081/admin/realms/acme1/clients body={"clientId":"bpm-platform-api","redirectUris":["http://acme1.localhost:5173/*","http://acme1.localhost/*","https://acme1.localhost/*"],"serviceAccountsEnabled":true,"protocol":"openid-connect"}
+[doFetch] sent
+[doFetch] status=201
+[doFetch] hdr: Server: nginx/1.27.5
+[doFetch] hdr: Date: Thu, 04 Jun 2026 04:00:47 GMT
+[doFetch] hdr: Content-Length: 0
+[doFetch] hdr: Connection: keep-alive
+[doFetch] hdr: Location: http://127.0.0.1:8081/admin/realms/acme1/clients/bc9952c4-3720-4b6b-b160-9f94caa070bf
+[doFetch] hdr: Referrer-Policy: no-referrer
+[doFetch] hdr: Strict-Transport-Security: max-age=31536000; includeSubDomains
+[doFetch] hdr: X-Content-Type-Options: nosniff
+[doFetch] hdr: X-Frame-Options: SAMEORIGIN
+[doFetch] done status=201 body_len=0 hdr_count=9

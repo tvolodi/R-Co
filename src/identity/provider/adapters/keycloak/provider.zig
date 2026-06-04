@@ -279,10 +279,25 @@ fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: prov
     });
     if (create_response.status != 201 and create_response.status != 204) return mapStatus(create_response.status, .provision_realm);
 
-    // Step 2-7: Apply full configuration (token lifetimes, password policy, etc.)
-    try applyRealmConfiguration(self, allocator, bearer, realm_id, input);
+    // The creation body (buildRealmCreateBodyExtended) already includes all
+    // configuration fields (token lifetimes, password policy, etc.), so a
+    // separate PUT update step is not required for fresh realms.
 
-    // Step 8: Create tenant_id protocol mapper (OIDC-13).
+    // Flush the cached admin token: Keycloak issues JWTs that embed the set of
+    // realms the service account can manage. A token obtained BEFORE realm
+    // creation does not carry cross-realm admin grants for the new realm.
+    // Clearing the cache here forces a fresh token to be issued post-creation,
+    // which Keycloak will populate with the correct admin grants.
+    if (self.cached_admin_token) |cache| {
+        self.allocator.free(cache.access_token);
+        self.cached_admin_token = null;
+    }
+    const fresh_bearer = try ensureAdminToken(self, allocator);
+
+    // Step 2: Create standard platform roles in the new realm.
+    try createStandardRoles(self, allocator, fresh_bearer, realm_id);
+
+    // Step 9: Create tenant_id protocol mapper (OIDC-13).
     const mapper_body = try buildTenantIdMapperBodySimple(allocator, input.tenant_id);
     defer allocator.free(mapper_body);
     const mappers_url = keycloak_urls.protocolMappersCollection(allocator, self.config, realm_id) catch return error.OutOfMemory;
@@ -291,7 +306,7 @@ fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: prov
     _ = try sendRequest(self, allocator, .{
         .method = .POST,
         .url = mappers_url,
-        .bearer_token = bearer,
+        .bearer_token = fresh_bearer,
         .content_type = "application/json",
         .body = mapper_body,
     });
@@ -300,6 +315,38 @@ fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: prov
         .realm_id = allocator.dupe(u8, realm_id) catch return error.OutOfMemory,
         .created = true,
     };
+}
+
+/// Create all standard platform roles in a freshly provisioned realm.
+/// Keycloak does not create custom roles automatically — each role must be
+/// POSTed to /admin/realms/{realm}/roles. 409 Conflict means the role already
+/// exists and is safely ignored (idempotent).
+fn createStandardRoles(
+    self: *Adapter,
+    allocator: std.mem.Allocator,
+    bearer: []const u8,
+    realm_id: []const u8,
+) (provider_errors.ProviderError || error{OutOfMemory})!void {
+    const roles_url = keycloak_urls.rolesCollection(allocator, self.config, realm_id) catch return error.OutOfMemory;
+    defer allocator.free(roles_url);
+
+    const all_roles = comptime std.meta.tags(provider_types.ProviderRole);
+    inline for (all_roles) |role_tag| {
+        const role_name = @tagName(role_tag);
+        const role_body = std.fmt.allocPrint(allocator, "{{\"name\":\"{s}\"}}", .{role_name}) catch return error.OutOfMemory;
+        defer allocator.free(role_body);
+        const resp = try sendRequest(self, allocator, .{
+            .method = .POST,
+            .url = roles_url,
+            .bearer_token = bearer,
+            .content_type = "application/json",
+            .body = role_body,
+        });
+        // 201 = created, 409 = already exists (idempotent) — both OK.
+        if (resp.status != 201 and resp.status != 409) {
+            return mapStatus(resp.status, .provision_realm);
+        }
+    }
 }
 
 /// Apply extended realm configuration (token lifetimes, password policy, etc.)
@@ -725,7 +772,12 @@ fn ensureAdminToken(self: *Adapter, allocator: std.mem.Allocator) provider_error
     const obj = payloadlessObject(parsed.value);
     const access_token = valueString(obj, "access_token") orelse return error.UpstreamProtocolError;
     const expires_in = valueInteger(obj.get("expires_in") orelse return error.UpstreamProtocolError) orelse return error.UpstreamProtocolError;
-    const owned_token = allocator.dupe(u8, access_token) catch return error.OutOfMemory;
+    // Always allocate the cached token with self.allocator (the adapter's
+    // long-lived allocator) so that self.allocator.free(cache.access_token)
+    // is valid across multiple requests. Using the per-request arena here
+    // causes a crash when the arena is freed at the end of the request while
+    // the cached token is still referenced.
+    const owned_token = self.allocator.dupe(u8, access_token) catch return error.OutOfMemory;
     self.cached_admin_token = .{
         .access_token = owned_token,
         .expires_at = now + expires_in,

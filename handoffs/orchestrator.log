@@ -459,3 +459,4 @@
 2026-06-01T17:51:52Z | ROUTE | ADHOC-migration-057-simplify-20260601 | adhoc-mig057-simp-20260601-001 | ORCH -> BACKEND-DEV | PENDING
 2026-06-01T19:26:03Z | ROUTE | ADHOC | adhoc-f7-trace-backend-20260601-001 | ORCH -> BACKEND-DEV | PENDING | Reason: 7 trace tests skipping (BPM_TEST_TOKEN+BPM_TEST_LOG_FILE absent, backend not running). Start backend with bootstrap token, run full integration suite, target 375/375.
 2026-06-01T20:40:23Z | RESULT | ADHOC | adhoc-f7-trace-backend-20260601-001 | BACKEND-DEV | PASS | 375/375 tests passed (0 skipped). Fixed: api_auth.init() call in main.zig (bootstrap token init was missing), trace middleware wired up, Zig 0.16 readAlloc->appendRemainingUnlimited fix in trace_test.zig. Commit c7bc879 pushed to origin/main. Debug prints cleaned up by ORCH.
+2026-06-04T01:00:54Z | ROUTE | ADHOC-acme1-onboarding-20260604 | 9c6a690c | ORCH -> BACKEND-DEV | PENDING

@@ -157,9 +157,7 @@ pub fn executeSaga(
     errdefer tenant.deinit(allocator);
     saga.tenant_created = true;
     saga.tenant_id = try allocator.dupe(u8, tenant.tenant_id);
-    errdefer allocator.free(saga.tenant_id.?);
     saga.tenant_slug = try allocator.dupe(u8, tenant.slug);
-    errdefer allocator.free(saga.tenant_slug.?);
 
     // ── 2. Provision Keycloak realm ──────────────────────────────────────────
     const realm_result = manager.provisionRealm(allocator, .{
@@ -195,7 +193,6 @@ pub fn executeSaga(
     };
     saga.realm_provisioned = true;
     saga.realm_id = try allocator.dupe(u8, realm_result.realm_id);
-    errdefer allocator.free(saga.realm_id.?);
 
     // ── 3. Create admin user in realm ────────────────────────────────────────
     const user_result = manager.provisionUser(allocator, .{
@@ -224,7 +221,6 @@ pub fn executeSaga(
     };
     saga.user_provisioned = true;
     saga.admin_user_id = try allocator.dupe(u8, user_result.external_user_id);
-    errdefer allocator.free(saga.admin_user_id.?);
 
     // ── 4. Grant PLATFORM_ADMIN role ─────────────────────────────────────────
     _ = manager.grantRoles(allocator, .{
@@ -275,7 +271,6 @@ pub fn executeSaga(
     };
     saga.client_provisioned = true;
     saga.client_id = try allocator.dupe(u8, client_result.client_id);
-    errdefer allocator.free(saga.client_id.?);
 
     // ── 6. Bind hostname ─────────────────────────────────────────────────────
     bindHostname(allocator, pool, tenant.tenant_id, input.hostname) catch |err| switch (err) {
@@ -334,11 +329,31 @@ fn compensate(
     if (saga.user_provisioned and saga.realm_id != null) {
         // No deleteUser on manager; skip provider-level cleanup for now.
     }
+    if (saga.admin_user_id) |uid| {
+        allocator.free(uid);
+        saga.admin_user_id = null;
+    }
+    if (saga.client_id) |cid| {
+        allocator.free(cid);
+        saga.client_id = null;
+    }
     if (saga.realm_provisioned and saga.realm_id != null) {
         manager.deleteRealm(allocator, .{ .realm_id = saga.realm_id.? }) catch {};
     }
+    if (saga.realm_id) |rid| {
+        allocator.free(rid);
+        saga.realm_id = null;
+    }
     if (saga.tenant_created and saga.tenant_id != null) {
         deleteTenantInDb(pool, saga.tenant_id.?, saga.tenant_slug) catch {};
+    }
+    if (saga.tenant_id) |tid| {
+        allocator.free(tid);
+        saga.tenant_id = null;
+    }
+    if (saga.tenant_slug) |ts| {
+        allocator.free(ts);
+        saga.tenant_slug = null;
     }
 }
 
@@ -476,7 +491,8 @@ fn unbindHostname(pool: *pool_mod.Pool, tenant_id: []const u8) !void {
 // performed by integration tests.
 
 fn verifyDiscovery(allocator: std.mem.Allocator, realm_slug: []const u8) OnboardingError!void {
-    const discovery_url = try std.fmt.allocPrint(allocator,
+    const discovery_url = try std.fmt.allocPrint(
+        allocator,
         "http://keycloak:8081/realms/{s}/.well-known/openid-configuration",
         .{realm_slug},
     );
