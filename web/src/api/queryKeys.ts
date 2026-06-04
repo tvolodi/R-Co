@@ -104,4 +104,10 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.webhooks.all, 'detail', id] as const,
     deliveries: (id: string, limit = 20) => [...queryKeys.webhooks.all, 'deliveries', id, limit] as const,
   },
+
+  onboarding: {
+    all: ['onboarding'] as const,
+    status: (id: string) => ['onboarding', 'status', id] as const,
+    hostname: (h: string) => ['onboarding', 'hostname', h] as const,
+  },
 }

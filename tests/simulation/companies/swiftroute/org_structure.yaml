@@ -1,0 +1,93 @@
+---
+company_id: swiftroute
+
+departments:
+  - id: dept-mgmt
+    name: Management
+  - id: dept-ops
+    name: Operations
+  - id: dept-dispatch
+    name: Dispatch
+  - id: dept-finance
+    name: Finance
+
+roles:
+  - id: role-ceo
+    name: CEO
+    permissions: [approve_shipment, approve_incident, approve_expense, view_all]
+  - id: role-ops-manager
+    name: Operations Manager
+    permissions: [approve_shipment, approve_incident, view_ops]
+  - id: role-dispatcher
+    name: Dispatcher
+    permissions: [create_shipment, assign_driver, view_ops]
+  - id: role-driver
+    name: Driver
+    permissions: [submit_incident, view_own]
+  - id: role-accountant
+    name: Accountant
+    permissions: [approve_expense, view_finance]
+
+people:
+  - id: person-alice
+    name: Alice Bauer
+    email: alice.bauer@swiftroute.example
+    department_id: dept-mgmt
+    role_ids: [role-ceo]
+    actor_id: actor-swiftroute-alice
+
+  - id: person-marco
+    name: Marco Stein
+    email: marco.stein@swiftroute.example
+    department_id: dept-ops
+    role_ids: [role-ops-manager]
+    actor_id: actor-swiftroute-marco
+
+  - id: person-lena
+    name: Lena Vogel
+    email: lena.vogel@swiftroute.example
+    department_id: dept-dispatch
+    role_ids: [role-dispatcher]
+    actor_id: actor-swiftroute-lena
+
+  - id: person-tobias
+    name: Tobias Kern
+    email: tobias.kern@swiftroute.example
+    department_id: dept-dispatch
+    role_ids: [role-dispatcher]
+    actor_id: actor-swiftroute-tobias
+
+  - id: person-jan
+    name: Jan Müller
+    email: jan.mueller@swiftroute.example
+    department_id: dept-ops
+    role_ids: [role-driver]
+    actor_id: actor-swiftroute-jan
+
+  - id: person-petra
+    name: Petra Wolf
+    email: petra.wolf@swiftroute.example
+    department_id: dept-ops
+    role_ids: [role-driver]
+    actor_id: actor-swiftroute-petra
+
+  - id: person-hans
+    name: Hans Richter
+    email: hans.richter@swiftroute.example
+    department_id: dept-finance
+    role_ids: [role-accountant]
+    actor_id: actor-swiftroute-hans
+
+reporting_lines:
+  - subordinate: person-marco
+    manager: person-alice
+  - subordinate: person-lena
+    manager: person-marco
+  - subordinate: person-tobias
+    manager: person-marco
+  - subordinate: person-jan
+    manager: person-marco
+  - subordinate: person-petra
+    manager: person-marco
+  - subordinate: person-hans
+    manager: person-alice

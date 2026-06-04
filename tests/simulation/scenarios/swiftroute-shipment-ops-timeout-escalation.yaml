@@ -1,0 +1,115 @@
+---
+id: swiftroute-shipment-ops-timeout-escalation
+company_id: swiftroute
+process_id: proc-swiftroute-shipment-approval
+title: Shipment escalates to CEO when ops manager does not respond in time
+version: "1.0"
+tags: [escalation, timeout]
+
+description: >
+  When an operations manager does not act on a shipment approval request
+  within 4 hours, the process must automatically escalate to the CEO.
+  This scenario verifies the timer escalation path works correctly —
+  the CEO receives the escalated task and can approve or reject directly,
+  without waiting for the ops manager. This is a critical safety mechanism
+  that prevents time-sensitive deliveries from being stuck indefinitely.
+
+actors:
+  dispatcher: actor-swiftroute-tobias
+  ceo:        actor-swiftroute-alice
+
+preconditions:
+  - description: Shipment approval process definition is active
+    check: process_definition_active
+
+steps:
+  - step: 1
+    actor: dispatcher
+    action: >
+      Submits a shipment request for 5 packages to Berlin,
+      declared value €200, cargo type standard.
+      The operations manager is not available and will not respond.
+    via: api
+    input:
+      shipment_id: sim-ship-002
+      destination: Berlin
+      declared_value: 200
+      cargo_type: standard
+      requesting_actor_id: actor-swiftroute-tobias
+    produces:
+      instance_id: "the process instance ID for this shipment"
+
+  - step: 2
+    actor: system
+    action: >
+      The 4-hour operations manager review timer fires.
+      UAT-RUNNER advances the timer by injecting a timer-fire event
+      rather than waiting 4 real hours.
+    via: api
+    input:
+      timer_node_id: ops-review
+    note: >
+      Requires POST /api/v1/instances/:id/advance-timer endpoint.
+      If not available, this scenario is marked SKIP with severity MINOR.
+
+  - step: 3
+    actor: ceo
+    action: Receives the escalated task and approves the shipment
+    via: gui
+    input:
+      capacity_decision: approve
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      After the 4-hour timer fires, the CEO (not the operations manager)
+      receives an escalated approval task
+    verification:
+      method: task_assigned
+      detail: >
+        After timer-fire event: a task is assigned to role-ceo.
+        No task remains assigned to role-ops-manager.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Shipments can stall indefinitely when an operations manager is
+        unavailable. The escalation path is broken — the CEO has no way
+        to unblock time-sensitive deliveries.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      After the CEO approves, the shipment is released and the process
+      completes successfully. Because the declared value is below €500,
+      no additional CEO co-sign step is required — the escalation
+      approval alone is sufficient.
+    verification:
+      method: instance_state
+      detail: instance status == COMPLETED and end node is 'end-approved'
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Even after CEO escalation approval, the shipment is not released.
+        Escalated deliveries are permanently stuck regardless of who approves.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      The original operations manager task is no longer actionable after
+      the escalation fires — they cannot retroactively approve or reject
+      after the CEO has already acted
+    verification:
+      method: audit_event
+      detail: >
+        Audit log shows ops-review task moved to timeout/cancelled state
+        before ceo-approval task was created
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        Dual-approval risk: if both the ops manager and CEO can act on the
+        same shipment simultaneously, conflicting decisions could occur.
+      suggested_action: route_to_backend_dev
+
+cleanup:
+  cancel_open_instances: true
+  description: Cancel the sim-ship-002 instance if not already completed

@@ -1,0 +1,34 @@
+---
+id: vortex
+name: Vortex Manufacturing GmbH
+domain: discrete-parts-manufacturing
+size: mid
+founded: 2008
+description: >
+  Contract manufacturer of precision metal and plastic components for
+  automotive and industrial OEMs. Operates two production lines, a
+  quality lab, and a supplier management function. ISO 9001 certified.
+  Revenue ~€18 M/year, ~85 employees.
+headquarters:
+  city: Stuttgart
+  country: DE
+timezone: Europe/Berlin
+currency: EUR
+locale: de-DE
+
+contacts:
+  ceo: dirk.haas@vortex-mfg.example
+  quality: quality@vortex-mfg.example
+  procurement: procurement@vortex-mfg.example
+
+integrations:
+  erp: sap-business-one
+  mes: inhouse-mes-v2
+  quality_system: q-pulse
+
+bpm_config:
+  tenant_id: tenant-vortex-002
+  sla_defaults:
+    approval_hours: 8
+    escalation_hours: 16
+  notification_webhook: https://hooks.vortex-mfg.example/bpm

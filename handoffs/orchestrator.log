@@ -460,3 +460,11 @@
 2026-06-01T19:26:03Z | ROUTE | ADHOC | adhoc-f7-trace-backend-20260601-001 | ORCH -> BACKEND-DEV | PENDING | Reason: 7 trace tests skipping (BPM_TEST_TOKEN+BPM_TEST_LOG_FILE absent, backend not running). Start backend with bootstrap token, run full integration suite, target 375/375.
 2026-06-01T20:40:23Z | RESULT | ADHOC | adhoc-f7-trace-backend-20260601-001 | BACKEND-DEV | PASS | 375/375 tests passed (0 skipped). Fixed: api_auth.init() call in main.zig (bootstrap token init was missing), trace middleware wired up, Zig 0.16 readAlloc->appendRemainingUnlimited fix in trace_test.zig. Commit c7bc879 pushed to origin/main. Debug prints cleaned up by ORCH.
 2026-06-04T01:00:54Z | ROUTE | ADHOC-acme1-onboarding-20260604 | 9c6a690c | ORCH -> BACKEND-DEV | PENDING
+2026-06-04T11:01:05Z | ROUTE | WF02-f7-onboard-ui-20260604 | 443dfe3a | ORCH -> BACKEND-DEV | PENDING | Step 00 git-setup
+2026-06-04T11:01:05Z | ROUTE | WF02-f7-onboard-ui-20260604 | a5e17c84 | ORCH -> REQ-ANALYST | PENDING | Step 01 draft ONB-UI-01..04
+2026-06-04T11:01:05Z | ROUTE | WF02-f7-onboard-ui-20260604 | 6e2bf893 | ORCH -> REQ-VALIDATOR | PENDING | Step 01b validate requirements
+2026-06-04T11:01:05Z | ESTIMATE | WF02-f7-onboard-ui-20260604 | D2/low | ~195min | ONB-UI-01,ONB-UI-02,ONB-UI-03,ONB-UI-04
+2026-06-04T11:09:25Z | ROUTE | WF02-f7-onboard-ui-20260604 | ebb95f7d | ORCH -> CODE-DESIGNER | IN_PROGRESS | Step 02 design onboarding GUI
+2026-06-04T11:14:01Z | ROUTE | WF02-f7-onboard-ui-20260604 | 5784fb08 | ORCH -> CODE-DESIGN-VALIDATOR | IN_PROGRESS | Step 02b hard gate
+2026-06-04T11:17:52Z | REWORK | WF02-f7-onboard-ui-20260604 | f9543da9 | CODE-DESIGN-VALIDATOR | REWORK(1/3) re-validate after fixes
+2026-06-04T11:20:50Z | ROUTE | WF02-f7-onboard-ui-20260604 | 536286ee | ORCH -> FRONTEND-DEV | IN_PROGRESS | Step 03 implement ONB-UI-01..04

@@ -1,0 +1,137 @@
+---
+id: proc-swiftroute-shipment-approval
+company_id: swiftroute
+name: Shipment Approval
+version: "1.0"
+description: >
+  Sequential approval chain for high-value or non-standard shipments.
+  Dispatcher raises the request; Operations Manager reviews; if value
+  exceeds €500 the CEO must co-sign. On approval, the shipment is
+  released to the driver pool. Exercises: sequential chain + CEL
+  conditional branch.
+
+bpm_primitive: sequential-chain-with-conditional-branch
+
+variables:
+  shipment_id:    { type: string,  required: true }
+  destination:    { type: string,  required: true }
+  declared_value: { type: number,  required: true }
+  cargo_type:     { type: string,  required: true }   # standard | hazmat | oversized
+  requesting_actor_id: { type: string, required: true }
+
+sla:
+  total_hours: 8
+  escalation_after_hours: 4
+  escalation_target_role: role-ceo
+
+nodes:
+  - id: start
+    type: start
+    name: Shipment Request Submitted
+
+  - id: ops-review
+    type: user-task
+    name: Operations Manager Review
+    assignee_role: role-ops-manager
+    form_fields:
+      - name: ops_decision
+        type: enum
+        values: [approve, reject, request_info]
+      - name: ops_notes
+        type: string
+    timeout_hours: 4
+    on_timeout: escalate-to-ceo
+
+  - id: ceo-approval-gate
+    type: exclusive-gateway
+    name: CEO Sign-off Required?
+    # branch taken when declared_value > 500
+    condition: "variables.declared_value > 500"
+    branches:
+      - id: branch-needs-ceo
+        condition: "variables.declared_value > 500"
+        target: ceo-approval
+      - id: branch-auto-approved
+        condition: "variables.declared_value <= 500"
+        target: release-shipment
+
+  - id: ceo-approval
+    type: user-task
+    name: CEO Co-sign
+    assignee_role: role-ceo
+    form_fields:
+      - name: ceo_decision
+        type: enum
+        values: [approve, reject]
+      - name: ceo_notes
+        type: string
+    timeout_hours: 2
+    on_timeout: auto-reject
+
+  - id: release-shipment
+    type: service-task
+    name: Release to Driver Pool
+    endpoint: POST /internal/shipments/{shipment_id}/release
+    payload_map:
+      shipment_id: variables.shipment_id
+      approved_by: variables.requesting_actor_id
+
+  - id: auto-reject
+    type: service-task
+    name: Auto-reject on Timeout
+    endpoint: POST /internal/shipments/{shipment_id}/reject
+    payload_map:
+      reason: timeout
+
+  - id: notify-requester
+    type: service-task
+    name: Notify Requester
+    endpoint: POST /webhooks/notify
+    payload_map:
+      actor_id: variables.requesting_actor_id
+      outcome: "variables.ops_decision"
+
+  - id: end-approved
+    type: end
+    name: Shipment Approved
+
+  - id: end-rejected
+    type: end
+    name: Shipment Rejected
+
+edges:
+  - from: start
+    to: ops-review
+  - from: ops-review
+    to: ceo-approval-gate
+    condition: "variables.ops_decision == 'approve'"
+  - from: ops-review
+    to: notify-requester
+    condition: "variables.ops_decision == 'reject'"
+  - from: ceo-approval-gate
+    to: ceo-approval
+    via: branch-needs-ceo
+  - from: ceo-approval-gate
+    to: release-shipment
+    via: branch-auto-approved
+  - from: ceo-approval
+    to: release-shipment
+    condition: "variables.ceo_decision == 'approve'"
+  - from: ceo-approval
+    to: auto-reject
+    condition: "variables.ceo_decision == 'reject'"
+  - from: release-shipment
+    to: end-approved
+  - from: auto-reject
+    to: end-rejected
+  - from: notify-requester
+    to: end-rejected
+
+test_actors:
+  happy_path:
+    requester: actor-swiftroute-lena
+    ops_approver: actor-swiftroute-marco
+    ceo_approver: actor-swiftroute-alice
+  low_value_path:
+    requester: actor-swiftroute-tobias
+    ops_approver: actor-swiftroute-marco

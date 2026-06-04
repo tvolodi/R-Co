@@ -24,6 +24,9 @@ Thumbs.db
 *.swp
 *.swo
 
+# ── Scratch (one-off scripts, debug dumps, temp outputs) ─────────────────────
+scratch/
+
 # ── Test artifacts (generated) ───────────────────────────────────────────────
 playwright-report/
 test-results/

@@ -1,0 +1,37 @@
+---
+id: meridian
+name: Meridian Capital AG
+domain: sme-lending
+size: corporate
+founded: 1997
+description: >
+  Regulated SME lender operating in Germany, Austria, and Switzerland.
+  Offers term loans, revolving credit facilities, and trade finance
+  products to businesses with turnover €1 M – €50 M. Supervised by
+  BaFin. ~420 employees across three countries, structured into
+  regional credit centres and a central risk & compliance function.
+headquarters:
+  city: Frankfurt
+  country: DE
+timezone: Europe/Berlin
+currency: EUR
+locale: de-DE
+
+contacts:
+  ceo: eva.kremer@meridian-capital.example
+  cro: risk@meridian-capital.example
+  compliance: compliance@meridian-capital.example
+
+integrations:
+  core_banking: temenos-t24
+  crm: salesforce
+  kyc_provider: complyadvantage
+  document_store: opentext
+
+bpm_config:
+  tenant_id: tenant-meridian-003
+  sla_defaults:
+    approval_hours: 48
+    escalation_hours: 72
+  notification_webhook: https://hooks.meridian-capital.example/bpm
+  regulatory_jurisdiction: DE-BaFin

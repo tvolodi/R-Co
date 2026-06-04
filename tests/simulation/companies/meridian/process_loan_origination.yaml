@@ -1,0 +1,362 @@
+---
+id: proc-meridian-loan-origination
+company_id: meridian
+name: Loan Origination
+version: "1.0"
+description: >
+  Full SME loan origination flow from analyst submission to disbursement.
+  Three parallel tracks run after initial submission: credit memo review,
+  risk assessment, and KYC/AML compliance check. All three must clear
+  before the credit authority gate. Loans ≤ €500 000 need L1+L2 sign-off;
+  loans > €500 000 require a Credit Committee vote (multi-voter task).
+  On approval, Loan Ops disburses via core banking. Exercises: parallel
+  fork-join (3 tracks), multi-voter committee task, amount-driven
+  authority routing, service-task core banking integration.
+
+bpm_primitive: parallel-fork-join-with-multi-voter
+
+variables:
+  application_id:   { type: string,  required: true }
+  applicant_id:     { type: string,  required: true }   # borrower entity ID
+  requested_amount_eur: { type: number, required: true }
+  product_type:     { type: string,  required: true }   # term_loan | revolving | trade_finance
+  tenor_months:     { type: number,  required: true }
+  analyst_actor_id: { type: string,  required: true }
+  purpose:          { type: string,  required: true }
+
+sla:
+  total_hours: 120   # 5 business days
+  escalation_after_hours: 72
+  escalation_target_role: role-ceo
+
+nodes:
+  - id: start
+    type: start
+    name: Loan Application Submitted by Analyst
+
+  - id: parallel-assessment-fork
+    type: parallel-gateway
+    name: Open Assessment Tracks
+    outgoing:
+      - credit-memo-review
+      - risk-assessment
+      - kyc-aml-check
+
+  # ── Track 1: Credit ───────────────────────────────────────────────────────
+  - id: credit-memo-review
+    type: user-task
+    name: Credit Manager — Credit Memo Review
+    assignee_role: role-credit-manager
+    form_fields:
+      - name: credit_decision
+        type: enum
+        values: [pass, fail, needs_more_info]
+      - name: recommended_rate_bps
+        type: number
+      - name: credit_notes
+        type: string
+    timeout_hours: 24
+    on_timeout: credit-memo-timeout
+
+  - id: credit-memo-timeout
+    type: service-task
+    name: Flag Credit Memo Overdue
+    endpoint: POST /internal/applications/{application_id}/flag
+    payload_map:
+      track: credit
+      reason: timeout
+
+  # ── Track 2: Risk ──────────────────────────────────────────────────────────
+  - id: risk-assessment
+    type: user-task
+    name: Risk Manager — Risk Assessment
+    assignee_role: role-risk-manager
+    form_fields:
+      - name: risk_rating
+        type: enum
+        values: [low, medium, high, unacceptable]
+      - name: pd_percent
+        type: number   # probability of default
+      - name: risk_notes
+        type: string
+    timeout_hours: 24
+    on_timeout: risk-assessment-timeout
+
+  - id: risk-assessment-timeout
+    type: service-task
+    name: Flag Risk Assessment Overdue
+    endpoint: POST /internal/applications/{application_id}/flag
+    payload_map:
+      track: risk
+      reason: timeout
+
+  # ── Track 3: KYC/AML ──────────────────────────────────────────────────────
+  - id: kyc-aml-check
+    type: service-task
+    name: KYC/AML Check via ComplyAdvantage
+    endpoint: POST /kyc/screen
+    payload_map:
+      applicant_id: variables.applicant_id
+      application_id: variables.application_id
+    output_map:
+      kyc_status: response.status          # clear | hit | inconclusive
+      kyc_report_ref: response.report_ref
+
+  - id: kyc-manual-review
+    type: user-task
+    name: Compliance Officer — KYC Hit Manual Review
+    assignee_role: role-compliance-officer
+    form_fields:
+      - name: kyc_manual_decision
+        type: enum
+        values: [clear, reject]
+      - name: compliance_notes
+        type: string
+    timeout_hours: 48
+    on_timeout: kyc-timeout
+
+  - id: kyc-timeout
+    type: service-task
+    name: Flag KYC Manual Review Overdue
+    endpoint: POST /internal/applications/{application_id}/flag
+    payload_map:
+      track: kyc
+      reason: timeout
+
+  - id: kyc-routing
+    type: exclusive-gateway
+    name: KYC Result Routing
+    branches:
+      - id: branch-kyc-clear
+        condition: "variables.kyc_status == 'clear'"
+        target: assessment-join
+      - id: branch-kyc-hit
+        condition: "variables.kyc_status == 'hit'"
+        target: kyc-manual-review
+      - id: branch-kyc-inconclusive
+        condition: "variables.kyc_status == 'inconclusive'"
+        target: kyc-manual-review
+
+  # ── Join ───────────────────────────────────────────────────────────────────
+  - id: assessment-join
+    type: parallel-gateway
+    name: All Tracks Complete
+    incoming:
+      - credit-memo-review
+      - credit-memo-timeout
+      - risk-assessment
+      - risk-assessment-timeout
+      - kyc-routing         # branch-kyc-clear
+      - kyc-manual-review
+      - kyc-timeout
+
+  - id: eligibility-gate
+    type: exclusive-gateway
+    name: Application Eligible to Proceed?
+    branches:
+      - id: branch-eligible
+        condition: >
+          variables.credit_decision == 'pass' &&
+          variables.risk_rating != 'unacceptable' &&
+          (variables.kyc_status == 'clear' || variables.kyc_manual_decision == 'clear')
+        target: authority-routing
+      - id: branch-ineligible
+        condition: >
+          variables.credit_decision == 'fail' ||
+          variables.risk_rating == 'unacceptable' ||
+          variables.kyc_manual_decision == 'reject'
+        target: decline-application
+
+  - id: authority-routing
+    type: exclusive-gateway
+    name: Credit Authority Routing
+    branches:
+      - id: branch-standard
+        condition: "variables.requested_amount_eur <= 500000"
+        target: l1-approval
+      - id: branch-committee
+        condition: "variables.requested_amount_eur > 500000"
+        target: credit-committee-vote
+
+  # ── Standard authority (≤ €500 000) ──────────────────────────────────────
+  - id: l1-approval
+    type: user-task
+    name: Credit Manager L1 Approval
+    assignee_role: role-credit-manager
+    form_fields:
+      - name: l1_decision
+        type: enum
+        values: [approve, reject, escalate]
+    timeout_hours: 24
+
+  - id: l2-approval
+    type: user-task
+    name: Credit Director L2 Approval
+    assignee_role: role-credit-director
+    form_fields:
+      - name: l2_decision
+        type: enum
+        values: [approve, reject]
+      - name: approved_amount_eur
+        type: number
+      - name: approved_rate_bps
+        type: number
+    timeout_hours: 24
+
+  # ── Committee authority (> €500 000) ─────────────────────────────────────
+  - id: credit-committee-vote
+    type: multi-voter-task
+    name: Credit Committee Vote
+    voter_role: role-committee-member
+    quorum: 2
+    form_fields:
+      - name: vote
+        type: enum
+        values: [approve, reject, abstain]
+      - name: conditions
+        type: string
+    timeout_hours: 48
+    on_timeout: committee-timeout
+
+  - id: committee-timeout
+    type: service-task
+    name: Committee Vote Timeout — Escalate to CEO
+    endpoint: POST /internal/applications/{application_id}/flag
+    payload_map:
+      track: committee
+      reason: timeout
+
+  # ── Disbursement ──────────────────────────────────────────────────────────
+  - id: create-facility
+    type: service-task
+    name: Create Loan Facility in T24
+    endpoint: POST /core-banking/facilities
+    payload_map:
+      application_id: variables.application_id
+      applicant_id: variables.applicant_id
+      amount_eur: variables.approved_amount_eur
+      rate_bps: variables.approved_rate_bps
+      tenor_months: variables.tenor_months
+    output_map:
+      facility_id: response.facility_id
+
+  - id: disburse-loan
+    type: user-task
+    name: Loan Ops — Disburse Funds
+    assignee_role: role-loan-ops
+    form_fields:
+      - name: disbursement_date
+        type: string   # ISO date
+      - name: disbursement_ref
+        type: string
+    timeout_hours: 24
+
+  - id: decline-application
+    type: service-task
+    name: Decline and Notify Applicant
+    endpoint: POST /crm/applications/{application_id}/decline
+    payload_map:
+      application_id: variables.application_id
+
+  - id: end-disbursed
+    type: end
+    name: Loan Disbursed
+
+  - id: end-declined
+    type: end
+    name: Application Declined
+
+edges:
+  - from: start
+    to: parallel-assessment-fork
+  - from: parallel-assessment-fork
+    to: credit-memo-review
+  - from: parallel-assessment-fork
+    to: risk-assessment
+  - from: parallel-assessment-fork
+    to: kyc-aml-check
+  - from: credit-memo-review
+    to: assessment-join
+  - from: credit-memo-timeout
+    to: assessment-join
+  - from: risk-assessment
+    to: assessment-join
+  - from: risk-assessment-timeout
+    to: assessment-join
+  - from: kyc-aml-check
+    to: kyc-routing
+  - from: kyc-routing
+    to: assessment-join
+    via: branch-kyc-clear
+  - from: kyc-routing
+    to: kyc-manual-review
+    via: branch-kyc-hit
+  - from: kyc-routing
+    to: kyc-manual-review
+    via: branch-kyc-inconclusive
+  - from: kyc-manual-review
+    to: assessment-join
+  - from: kyc-timeout
+    to: assessment-join
+  - from: assessment-join
+    to: eligibility-gate
+  - from: eligibility-gate
+    to: authority-routing
+    via: branch-eligible
+  - from: eligibility-gate
+    to: decline-application
+    via: branch-ineligible
+  - from: authority-routing
+    to: l1-approval
+    via: branch-standard
+  - from: authority-routing
+    to: credit-committee-vote
+    via: branch-committee
+  - from: l1-approval
+    to: l2-approval
+    condition: "variables.l1_decision == 'approve' || variables.l1_decision == 'escalate'"
+  - from: l1-approval
+    to: decline-application
+    condition: "variables.l1_decision == 'reject'"
+  - from: l2-approval
+    to: create-facility
+    condition: "variables.l2_decision == 'approve'"
+  - from: l2-approval
+    to: decline-application
+    condition: "variables.l2_decision == 'reject'"
+  - from: credit-committee-vote
+    to: create-facility
+    condition: "variables.committee_outcome == 'approved'"
+  - from: credit-committee-vote
+    to: decline-application
+    condition: "variables.committee_outcome == 'rejected'"
+  - from: committee-timeout
+    to: decline-application
+  - from: create-facility
+    to: disburse-loan
+  - from: disburse-loan
+    to: end-disbursed
+  - from: decline-application
+    to: end-declined
+
+test_actors:
+  standard_path:
+    analyst: actor-meridian-sophie
+    credit_manager: actor-meridian-ben
+    credit_director: actor-meridian-julia
+    risk_manager: actor-meridian-miriam
+    loan_ops: actor-meridian-marcus
+  committee_path:
+    analyst: actor-meridian-lars
+    credit_manager: actor-meridian-ben
+    credit_director: actor-meridian-julia
+    risk_manager: actor-meridian-miriam
+    committee: [actor-meridian-thomas, actor-meridian-julia, actor-meridian-eva]
+    loan_ops: actor-meridian-marcus
+  kyc_hit_path:
+    analyst: actor-meridian-sophie
+    compliance: actor-meridian-claudia
+    credit_manager: actor-meridian-ben
+    credit_director: actor-meridian-julia
+    risk_manager: actor-meridian-miriam
+    loan_ops: actor-meridian-marcus

@@ -1,0 +1,122 @@
+---
+id: swiftroute-shipment-high-value-happy
+company_id: swiftroute
+process_id: proc-swiftroute-shipment-approval
+title: High-value shipment correctly routed to CEO for co-sign
+version: "1.0"
+tags: [happy_path]
+
+description: >
+  A dispatcher submits a shipment request with declared value above €500.
+  The business rule requires the CEO to co-sign after the operations manager
+  approves. This scenario verifies the full sequential approval chain works
+  correctly end-to-end, including that the shipment is released to the
+  driver pool only after both approvals are given.
+
+actors:
+  dispatcher:  actor-swiftroute-lena
+  ops_manager: actor-swiftroute-marco
+  ceo:         actor-swiftroute-alice
+
+preconditions:
+  - description: Shipment approval process definition is active
+    check: process_definition_active
+  - description: No open shipment approval instances for SwiftRoute
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: dispatcher
+    action: >
+      Submits a shipment request for 20 packages to Munich,
+      declared value €750, cargo type standard
+    via: api
+    input:
+      shipment_id: sim-ship-001
+      destination: Munich
+      declared_value: 750
+      cargo_type: standard
+      requesting_actor_id: actor-swiftroute-lena
+    produces:
+      instance_id: "the process instance ID for this shipment request"
+    sla_context:
+      expected_within_hours: 4
+
+  - step: 2
+    actor: ops_manager
+    action: Reviews the shipment request and approves it
+    via: gui
+    input:
+      ops_decision: approve
+      ops_notes: "Capacity available, standard cargo, approved."
+    sla_context:
+      expected_within_hours: 4
+
+  - step: 3
+    actor: ceo
+    action: Co-signs the shipment approval
+    via: gui
+    input:
+      ceo_decision: approve
+      ceo_notes: "Value within policy limit, co-signed."
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      After the dispatcher submits, the operations manager receives a
+      review task within 4 hours
+    verification:
+      method: task_assigned
+      detail: task type 'ops-review' assigned to role-ops-manager
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Shipments are not being routed for approval. The operations manager
+        cannot see or act on incoming shipment requests. All deliveries stop.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      After the operations manager approves a shipment worth more than €500,
+      the CEO receives a co-sign task — the shipment is NOT auto-approved
+    verification:
+      method: task_assigned
+      detail: task type 'ceo-approval' assigned to role-ceo
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        High-value shipments are being approved without CEO co-sign,
+        violating the company's financial control policy.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      After the CEO approves, the shipment is released to the driver pool
+      and the process completes successfully
+    verification:
+      method: instance_state
+      detail: instance status == COMPLETED and end node is 'end-approved'
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Approved shipments are not being released to drivers. Deliveries
+        are stuck in the approval system after both sign-offs.
+      suggested_action: route_to_backend_dev
+
+  - id: EO-004
+    description: >
+      The full approval journey completes within the 8-hour SLA
+    verification:
+      method: audit_event
+      detail: >
+        Time between CREATED and COMPLETED audit events is less than 8 hours
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        SLA reporting will show the approval exceeded the 8-hour window.
+        Not an operational blocker but a contractual risk with customers.
+      suggested_action: none
+
+cleanup:
+  cancel_open_instances: true
+  description: Cancel the sim-ship-001 instance if not already completed

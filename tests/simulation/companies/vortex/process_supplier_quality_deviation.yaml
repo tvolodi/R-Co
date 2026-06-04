@@ -1,0 +1,190 @@
+---
+id: proc-vortex-supplier-quality-deviation
+company_id: vortex
+name: Supplier Quality Deviation
+version: "1.0"
+description: >
+  Raised when incoming goods fail inspection. Quality Engineer logs the
+  deviation; Quality Manager classifies severity. For CRITICAL severity
+  a sub-process is spawned: 8D corrective action managed by Procurement.
+  For MINOR severity a simple supplier notification is sent and the
+  deviation is closed. Exercises: sub-process spawn, severity-driven
+  branching, compensation (rollback quarantine if deviation closed as
+  false positive).
+
+bpm_primitive: sub-process-with-compensation
+
+variables:
+  deviation_id:    { type: string,  required: true }
+  supplier_id:     { type: string,  required: true }
+  part_number:     { type: string,  required: true }
+  batch_ref:       { type: string,  required: true }
+  quantity_affected: { type: number, required: true }
+  defect_description: { type: string, required: true }
+  reporter_actor_id: { type: string, required: true }
+
+sla:
+  total_hours: 48
+  escalation_after_hours: 24
+  escalation_target_role: role-ceo
+
+nodes:
+  - id: start
+    type: start
+    name: Deviation Raised by QE
+
+  - id: quarantine-batch
+    type: service-task
+    name: Quarantine Affected Batch in MES
+    endpoint: POST /mes/batches/{batch_ref}/quarantine
+    payload_map:
+      batch_ref: variables.batch_ref
+      deviation_id: variables.deviation_id
+    compensation_task: release-quarantine
+
+  - id: severity-classification
+    type: user-task
+    name: QM Severity Classification
+    assignee_role: role-quality-manager
+    form_fields:
+      - name: severity
+        type: enum
+        values: [critical, major, minor]
+      - name: classification_notes
+        type: string
+      - name: false_positive
+        type: boolean
+    timeout_hours: 8
+    on_timeout: default-to-major
+
+  - id: false-positive-check
+    type: exclusive-gateway
+    name: False Positive?
+    branches:
+      - id: branch-false-positive
+        condition: "variables.false_positive == true"
+        target: release-quarantine
+      - id: branch-real-deviation
+        condition: "variables.false_positive == false"
+        target: severity-routing
+
+  - id: release-quarantine
+    type: service-task
+    name: Release Batch from Quarantine (Compensation)
+    endpoint: POST /mes/batches/{batch_ref}/release
+    payload_map:
+      batch_ref: variables.batch_ref
+      reason: false_positive_or_cancelled
+
+  - id: severity-routing
+    type: exclusive-gateway
+    name: Route by Severity
+    branches:
+      - id: branch-critical
+        condition: "variables.severity == 'critical'"
+        target: corrective-action-subprocess
+      - id: branch-major
+        condition: "variables.severity == 'major'"
+        target: supplier-warning
+      - id: branch-minor
+        condition: "variables.severity == 'minor'"
+        target: supplier-notification
+
+  - id: corrective-action-subprocess
+    type: sub-process
+    name: 8D Corrective Action (Critical)
+    definition_ref: proc-vortex-8d-corrective-action
+    input_map:
+      deviation_id: variables.deviation_id
+      supplier_id: variables.supplier_id
+      part_number: variables.part_number
+    output_map:
+      corrective_action_id: sub.corrective_action_id
+      resolution_status: sub.resolution_status
+
+  - id: default-to-major
+    type: service-task
+    name: Default Severity to Major on Timeout
+    endpoint: POST /internal/deviations/{deviation_id}/default-severity
+    payload_map:
+      severity: major
+
+  - id: supplier-warning
+    type: service-task
+    name: Send Formal Supplier Warning
+    endpoint: POST /webhooks/supplier-warning
+    payload_map:
+      supplier_id: variables.supplier_id
+      deviation_id: variables.deviation_id
+      severity: major
+
+  - id: supplier-notification
+    type: service-task
+    name: Send Supplier Notification (Minor)
+    endpoint: POST /webhooks/supplier-notify
+    payload_map:
+      supplier_id: variables.supplier_id
+      deviation_id: variables.deviation_id
+      severity: minor
+
+  - id: close-deviation
+    type: service-task
+    name: Close Deviation Record in Q-Pulse
+    endpoint: POST /quality/deviations/{deviation_id}/close
+    payload_map:
+      deviation_id: variables.deviation_id
+
+  - id: end-closed
+    type: end
+    name: Deviation Closed
+
+  - id: end-false-positive
+    type: end
+    name: Deviation Voided (False Positive)
+
+edges:
+  - from: start
+    to: quarantine-batch
+  - from: quarantine-batch
+    to: severity-classification
+  - from: severity-classification
+    to: false-positive-check
+  - from: false-positive-check
+    to: release-quarantine
+    via: branch-false-positive
+  - from: false-positive-check
+    to: severity-routing
+    via: branch-real-deviation
+  - from: default-to-major
+    to: severity-routing
+  - from: severity-routing
+    to: corrective-action-subprocess
+    via: branch-critical
+  - from: severity-routing
+    to: supplier-warning
+    via: branch-major
+  - from: severity-routing
+    to: supplier-notification
+    via: branch-minor
+  - from: corrective-action-subprocess
+    to: close-deviation
+  - from: supplier-warning
+    to: close-deviation
+  - from: supplier-notification
+    to: close-deviation
+  - from: release-quarantine
+    to: end-false-positive
+  - from: close-deviation
+    to: end-closed
+
+test_actors:
+  critical_path:
+    reporter: actor-vortex-nina
+    qm: actor-vortex-karl
+    procurement: actor-vortex-felix
+  minor_path:
+    reporter: actor-vortex-nina
+    qm: actor-vortex-karl
+  false_positive_path:
+    reporter: actor-vortex-nina
+    qm: actor-vortex-karl

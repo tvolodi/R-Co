@@ -1,0 +1,146 @@
+---
+company_id: meridian
+
+departments:
+  - id: dept-exec
+    name: Executive Board
+  - id: dept-credit-de
+    name: Credit — Germany
+  - id: dept-credit-atch
+    name: Credit — AT/CH
+  - id: dept-risk
+    name: Risk Management
+  - id: dept-compliance
+    name: Compliance & Legal
+  - id: dept-ops
+    name: Loan Operations
+  - id: dept-finance
+    name: Finance & Treasury
+
+roles:
+  - id: role-ceo
+    name: CEO
+    permissions: [approve_all, override_credit, view_all]
+  - id: role-cro
+    name: Chief Risk Officer
+    permissions: [approve_credit_committee, set_risk_appetite, view_risk, escalate_compliance]
+  - id: role-credit-analyst
+    name: Credit Analyst
+    permissions: [create_loan_application, submit_credit_memo, view_own_pipeline]
+  - id: role-credit-manager
+    name: Credit Manager
+    permissions: [approve_loan_l1, reject_loan, request_info, view_team_pipeline]
+  - id: role-credit-director
+    name: Credit Director
+    permissions: [approve_loan_l2, reject_loan, convene_committee, view_regional_pipeline]
+  - id: role-risk-analyst
+    name: Risk Analyst
+    permissions: [create_risk_assessment, view_risk_data]
+  - id: role-risk-manager
+    name: Risk Manager
+    permissions: [approve_risk_assessment, escalate_to_committee, view_risk]
+  - id: role-compliance-officer
+    name: Compliance Officer
+    permissions: [trigger_kyc, review_aml, approve_compliance_check, view_compliance]
+  - id: role-loan-ops
+    name: Loan Operations Specialist
+    permissions: [disburse_loan, create_facility, update_core_banking, view_ops]
+  - id: role-committee-member
+    name: Credit Committee Member
+    permissions: [vote_committee, view_committee_pack]
+
+people:
+  - id: person-eva
+    name: Eva Kremer
+    email: eva.kremer@meridian-capital.example
+    department_id: dept-exec
+    role_ids: [role-ceo]
+    actor_id: actor-meridian-eva
+
+  - id: person-thomas
+    name: Thomas Reiter
+    email: thomas.reiter@meridian-capital.example
+    department_id: dept-risk
+    role_ids: [role-cro, role-committee-member]
+    actor_id: actor-meridian-thomas
+
+  - id: person-julia
+    name: Julia Hartmann
+    email: julia.hartmann@meridian-capital.example
+    department_id: dept-credit-de
+    role_ids: [role-credit-director, role-committee-member]
+    actor_id: actor-meridian-julia
+
+  - id: person-ben
+    name: Benjamin Koch
+    email: benjamin.koch@meridian-capital.example
+    department_id: dept-credit-de
+    role_ids: [role-credit-manager]
+    actor_id: actor-meridian-ben
+
+  - id: person-sophie
+    name: Sophie Weiß
+    email: sophie.weiss@meridian-capital.example
+    department_id: dept-credit-de
+    role_ids: [role-credit-analyst]
+    actor_id: actor-meridian-sophie
+
+  - id: person-lars
+    name: Lars Berger
+    email: lars.berger@meridian-capital.example
+    department_id: dept-credit-de
+    role_ids: [role-credit-analyst]
+    actor_id: actor-meridian-lars
+
+  - id: person-miriam
+    name: Miriam Schäfer
+    email: miriam.schaefer@meridian-capital.example
+    department_id: dept-risk
+    role_ids: [role-risk-manager]
+    actor_id: actor-meridian-miriam
+
+  - id: person-oliver
+    name: Oliver Krug
+    email: oliver.krug@meridian-capital.example
+    department_id: dept-risk
+    role_ids: [role-risk-analyst]
+    actor_id: actor-meridian-oliver
+
+  - id: person-claudia
+    name: Claudia Fuchs
+    email: claudia.fuchs@meridian-capital.example
+    department_id: dept-compliance
+    role_ids: [role-compliance-officer]
+    actor_id: actor-meridian-claudia
+
+  - id: person-marcus
+    name: Marcus Braun
+    email: marcus.braun@meridian-capital.example
+    department_id: dept-ops
+    role_ids: [role-loan-ops]
+    actor_id: actor-meridian-marcus
+
+reporting_lines:
+  - subordinate: person-thomas
+    manager: person-eva
+  - subordinate: person-julia
+    manager: person-eva
+  - subordinate: person-claudia
+    manager: person-eva
+  - subordinate: person-ben
+    manager: person-julia
+  - subordinate: person-sophie
+    manager: person-ben
+  - subordinate: person-lars
+    manager: person-ben
+  - subordinate: person-miriam
+    manager: person-thomas
+  - subordinate: person-oliver
+    manager: person-miriam
+  - subordinate: person-marcus
+    manager: person-julia
+
+credit_committee:
+  members: [person-thomas, person-julia, person-eva]
+  quorum: 2
+  threshold_eur: 500000

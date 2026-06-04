@@ -1,0 +1,154 @@
+---
+id: proc-swiftroute-incident-report
+company_id: swiftroute
+name: Driver Incident Report
+version: "1.0"
+description: >
+  Driver submits a field incident (accident, cargo damage, theft).
+  Three parallel tracks run simultaneously: (1) ops assessment,
+  (2) finance damage estimate, (3) if injury involved, a safety
+  notification is fired immediately via webhook. All tracks must
+  complete before the case is closed. Exercises: parallel fork +
+  join, timer escalation.
+
+bpm_primitive: parallel-fork-join
+
+variables:
+  incident_id:       { type: string,  required: true }
+  driver_id:         { type: string,  required: true }
+  incident_type:     { type: string,  required: true }   # accident | cargo_damage | theft | near_miss
+  injury_involved:   { type: boolean, required: true }
+  estimated_loss_eur: { type: number, required: false, default: 0 }
+  description:       { type: string,  required: true }
+
+sla:
+  total_hours: 24
+  escalation_after_hours: 12
+  escalation_target_role: role-ceo
+
+nodes:
+  - id: start
+    type: start
+    name: Incident Submitted by Driver
+
+  - id: injury-check
+    type: exclusive-gateway
+    name: Injury Involved?
+    branches:
+      - id: branch-injury
+        condition: "variables.injury_involved == true"
+        target: safety-notification
+      - id: branch-no-injury
+        condition: "variables.injury_involved == false"
+        target: parallel-fork
+
+  - id: safety-notification
+    type: service-task
+    name: Immediate Safety Webhook
+    endpoint: POST /webhooks/safety-alert
+    payload_map:
+      incident_id: variables.incident_id
+      driver_id: variables.driver_id
+    next: parallel-fork
+
+  - id: parallel-fork
+    type: parallel-gateway
+    name: Open Parallel Tracks
+    outgoing:
+      - ops-assessment
+      - finance-estimate
+
+  - id: ops-assessment
+    type: user-task
+    name: Ops Manager Assessment
+    assignee_role: role-ops-manager
+    form_fields:
+      - name: ops_verdict
+        type: enum
+        values: [driver_fault, third_party_fault, force_majeure, unclear]
+      - name: ops_notes
+        type: string
+    timeout_hours: 12
+    on_timeout: ops-auto-close
+
+  - id: finance-estimate
+    type: user-task
+    name: Finance Damage Estimate
+    assignee_role: role-accountant
+    form_fields:
+      - name: confirmed_loss_eur
+        type: number
+      - name: insurance_claimable
+        type: boolean
+    timeout_hours: 12
+    on_timeout: finance-auto-close
+
+  - id: ops-auto-close
+    type: service-task
+    name: Ops Track Auto-closed on Timeout
+    endpoint: POST /internal/incidents/{incident_id}/ops-timeout
+
+  - id: finance-auto-close
+    type: service-task
+    name: Finance Track Auto-closed on Timeout
+    endpoint: POST /internal/incidents/{incident_id}/finance-timeout
+
+  - id: parallel-join
+    type: parallel-gateway
+    name: Wait for All Tracks
+    incoming:
+      - ops-assessment
+      - ops-auto-close
+      - finance-estimate
+      - finance-auto-close
+
+  - id: case-summary
+    type: service-task
+    name: Write Case Summary
+    endpoint: POST /internal/incidents/{incident_id}/close
+    payload_map:
+      incident_id: variables.incident_id
+      ops_verdict: variables.ops_verdict
+      confirmed_loss_eur: variables.confirmed_loss_eur
+
+  - id: end
+    type: end
+    name: Incident Case Closed
+
+edges:
+  - from: start
+    to: injury-check
+  - from: injury-check
+    to: safety-notification
+    via: branch-injury
+  - from: injury-check
+    to: parallel-fork
+    via: branch-no-injury
+  - from: safety-notification
+    to: parallel-fork
+  - from: parallel-fork
+    to: ops-assessment
+  - from: parallel-fork
+    to: finance-estimate
+  - from: ops-assessment
+    to: parallel-join
+  - from: ops-auto-close
+    to: parallel-join
+  - from: finance-estimate
+    to: parallel-join
+  - from: finance-auto-close
+    to: parallel-join
+  - from: parallel-join
+    to: case-summary
+  - from: case-summary
+    to: end
+
+test_actors:
+  happy_path:
+    driver: actor-swiftroute-jan
+    ops_assessor: actor-swiftroute-marco
+    accountant: actor-swiftroute-hans
+  injury_path:
+    driver: actor-swiftroute-petra
+    ops_assessor: actor-swiftroute-marco
+    accountant: actor-swiftroute-hans

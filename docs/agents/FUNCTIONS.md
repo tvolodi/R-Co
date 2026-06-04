@@ -93,3 +93,13 @@ Functions may call other functions (noted as `→ fn:name` in the individual fil
 |---|---|---|
 | `fn:git-setup` | [fn-git-setup.md](functions/fn-git-setup.md) | `BACKEND-DEV`, `FRONTEND-DEV` — Step 00 |
 | `fn:git-merge` | [fn-git-merge.md](functions/fn-git-merge.md) | `BACKEND-DEV`, `FRONTEND-DEV` — Step Final |
+
+### Category: UAT & Business Acceptance (UAT)
+
+| Function ID | File | Used by |
+|---|---|---|
+| `fn:run-uat-scenarios` | [fn-run-uat-scenarios.md](functions/fn-run-uat-scenarios.md) | `UAT-RUNNER` — executes scenario scripts via Playwright + API |
+| `fn:write-uat-report` | [fn-write-uat-report.md](functions/fn-write-uat-report.md) | `UAT-RUNNER` — evaluates evidence, writes business-language report |
+| `fn:evaluate-uat-report` | [fn-evaluate-uat-report.md](functions/fn-evaluate-uat-report.md) | `BO-SWIFTROUTE`, `BO-VORTEX`, `BO-MERIDIAN`, `PRODUCT-OWNER` |
+| `fn:author-scenario` | [fn-author-scenario.md](functions/fn-author-scenario.md) | `BO-SWIFTROUTE`, `BO-VORTEX`, `BO-MERIDIAN` — WF-06 |
+| `fn:sign-off-release` | [fn-sign-off-release.md](functions/fn-sign-off-release.md) | `PRODUCT-OWNER` — aggregates BO sign-offs, writes PO verdict |

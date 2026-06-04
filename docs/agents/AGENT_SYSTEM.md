@@ -34,6 +34,11 @@ This document is the root reference for the multi-agent system that develops and
 | `ISSUE-FIXER` | **Issue Fixer** | Registry lookup (Step 0.5), root-cause diagnosis (Step 1). Does NOT implement fixes — implementation is delegated to BACKEND-DEV or FRONTEND-DEV after CODE-DESIGNER produces the fix design. | `docs/issues/`, `handoffs/` |
 | `RELEASE-VALIDATOR` | **Release Validator** | Validates that a stage increment meets all MUST requirements and all NFRs before release | `handoffs/`, `docs/status/` |
 | `DOC-UPDATER` | **Documentation Updater** | Updates all documentation (guides, requirement status, changelog, OpenAPI spec) after a successful release | `docs/`, `handoffs/` |
+| `UAT-RUNNER` | **UAT Runner** | Executes business-language scenario scripts against the running system via Playwright GUI; evaluates outcomes against business expectations; produces a UAT report in business terms. | `tests/simulation/scenarios/`, `tests/uat-reports/`, `handoffs/` |
+| `BO-SWIFTROUTE` | **Business Owner — SwiftRoute** | Represents SwiftRoute Ltd's business interests. Personas: Alice Bauer (CEO) + Marco Stein (Ops Manager). Authors and evaluates UAT scenarios for logistics processes. | `tests/simulation/scenarios/`, `tests/uat-reports/`, `handoffs/` |
+| `BO-VORTEX` | **Business Owner — Vortex** | Represents Vortex Manufacturing's business interests. Personas: Dirk Haas (CEO) + Karl Fischer (QM). Authors and evaluates UAT scenarios for manufacturing/quality processes. ISO 9001 compliance authority. | `tests/simulation/scenarios/`, `tests/uat-reports/`, `handoffs/` |
+| `BO-MERIDIAN` | **Business Owner — Meridian** | Represents Meridian Capital's business interests. **Group agent** — personas: Eva Kremer (CEO) + Thomas Reiter (CRO) + Julia Hartmann (Credit Director). Quorum 2-of-3 required for sign-off. BaFin regulatory authority. | `tests/simulation/scenarios/`, `tests/uat-reports/`, `handoffs/` |
+| `PRODUCT-OWNER` | **Product Owner** | Platform-level business authority. Arbitrates cross-tenant conflicts, checks MUST requirement coverage across all companies, gives final release recommendation. Sits above all BO agents. | `tests/uat-reports/`, `handoffs/` |
 
 ### 3.1 Agent Capability Matrix
 
@@ -52,6 +57,11 @@ This document is the root reference for the multi-agent system that develops and
 | `ISSUE-FIXER` | ✓ | ✓ (docs/issues only) | ✗ | ✗ | ✗ |
 | `RELEASE-VALIDATOR` | ✓ | ✓ (status) | ✓ (tests, benchmarks) | ✗ | ✗ |
 | `DOC-UPDATER` | ✓ | ✓ | ✗ | ✗ | ✗ |
+| `UAT-RUNNER` | ✓ | ✓ (uat-reports, scenarios) | ✓ (Playwright only) | ✗ | ✓ (BPM API + Keycloak) |
+| `BO-SWIFTROUTE` | ✓ | ✓ (scenarios, uat-reports) | ✗ | ✗ | ✗ |
+| `BO-VORTEX` | ✓ | ✓ (scenarios, uat-reports) | ✗ | ✗ | ✗ |
+| `BO-MERIDIAN` | ✓ | ✓ (scenarios, uat-reports) | ✗ | ✗ | ✗ |
+| `PRODUCT-OWNER` | ✓ | ✓ (uat-reports) | ✗ | ✗ | ✗ |
 
 ---
 
@@ -95,7 +105,7 @@ handoffs/WF03-EE05-fix/step-02-test-runner.json
 {
   "handoff_id": "<uuid-v4>",
   "run_id": "<run-id>",
-  "workflow_id": "<WF-01|WF-02|WF-03|WF-04|ADHOC-nnn or null>",
+  "workflow_id": "<WF-01|WF-02|WF-03|WF-04|WF-05|ADHOC-nnn or null>",
   "step": "01",
   "from_agent": "<AGENT_ID>",
   "to_agent": "<AGENT_ID>",
@@ -266,6 +276,11 @@ DRAFT → VALIDATED → DESIGNED → DESIGN-REVIEWED → IMPLEMENTED → TEST-DE
 | Code design artefacts | `src/design/` | `CODE-DESIGNER` | `.md` |
 | Test specs | `tests/specs/` | `TEST-DESIGNER` | `.md` |
 | Test reports | `tests/reports/` | `TEST-RUNNER` | **`.yaml`** |
+| UAT scenarios | `tests/simulation/scenarios/` | `BO-*` agents write; `UAT-RUNNER` reads | `.yaml` |
+| UAT reports (execution) | `tests/uat-reports/uat-*.yaml` | `UAT-RUNNER` | **`.yaml`** |
+| BO sign-off reports | `tests/uat-reports/bo-signoff-<company>-*.yaml` | `BO-SWIFTROUTE`, `BO-VORTEX`, `BO-MERIDIAN` | **`.yaml`** |
+| PO sign-off report | `tests/uat-reports/po-signoff-*.yaml` | `PRODUCT-OWNER` | **`.yaml`** |
+| Agent specs (BO family) | `docs/agents/BO_*.md`, `docs/agents/PRODUCT_OWNER.md` | Read by agents | `.md` |
 | Handoff files | `handoffs/` | All (via `ORCH`) | `.json` (exception) |
 | Requirement status | `docs/status/requirement_status.yaml` | `DOC-UPDATER`, `RELEASE-VALIDATOR` | **`.yaml`** |
 | Release decisions | `docs/status/` | `RELEASE-VALIDATOR` | **`.yaml`** |

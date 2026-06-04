@@ -1,0 +1,124 @@
+---
+company_id: vortex
+
+departments:
+  - id: dept-exec
+    name: Executive
+  - id: dept-production
+    name: Production
+  - id: dept-quality
+    name: Quality Assurance
+  - id: dept-procurement
+    name: Procurement
+  - id: dept-planning
+    name: Production Planning
+  - id: dept-finance
+    name: Finance & Controlling
+
+roles:
+  - id: role-ceo
+    name: CEO / MD
+    permissions: [approve_all, view_all, release_production, reject_supplier]
+  - id: role-production-manager
+    name: Production Manager
+    permissions: [release_production_order, view_production, assign_line]
+  - id: role-quality-engineer
+    name: Quality Engineer
+    permissions: [raise_deviation, approve_deviation, close_deviation, view_quality]
+  - id: role-quality-manager
+    name: Quality Manager
+    permissions: [approve_deviation, escalate_supplier, close_deviation, view_quality]
+  - id: role-procurement-manager
+    name: Procurement Manager
+    permissions: [approve_supplier_action, view_procurement, reject_supplier]
+  - id: role-production-planner
+    name: Production Planner
+    permissions: [create_production_order, view_production, view_planning]
+  - id: role-line-operator
+    name: Line Operator
+    permissions: [update_production_status, view_own]
+  - id: role-controller
+    name: Financial Controller
+    permissions: [approve_budget, view_finance]
+
+people:
+  - id: person-dirk
+    name: Dirk Haas
+    email: dirk.haas@vortex-mfg.example
+    department_id: dept-exec
+    role_ids: [role-ceo]
+    actor_id: actor-vortex-dirk
+
+  - id: person-sabine
+    name: Sabine Lehmann
+    email: sabine.lehmann@vortex-mfg.example
+    department_id: dept-production
+    role_ids: [role-production-manager]
+    actor_id: actor-vortex-sabine
+
+  - id: person-karl
+    name: Karl Fischer
+    email: karl.fischer@vortex-mfg.example
+    department_id: dept-quality
+    role_ids: [role-quality-manager]
+    actor_id: actor-vortex-karl
+
+  - id: person-nina
+    name: Nina Brandt
+    email: nina.brandt@vortex-mfg.example
+    department_id: dept-quality
+    role_ids: [role-quality-engineer]
+    actor_id: actor-vortex-nina
+
+  - id: person-felix
+    name: Felix Wagner
+    email: felix.wagner@vortex-mfg.example
+    department_id: dept-procurement
+    role_ids: [role-procurement-manager]
+    actor_id: actor-vortex-felix
+
+  - id: person-anna
+    name: Anna Schneider
+    email: anna.schneider@vortex-mfg.example
+    department_id: dept-planning
+    role_ids: [role-production-planner]
+    actor_id: actor-vortex-anna
+
+  - id: person-max
+    name: Max Braun
+    email: max.braun@vortex-mfg.example
+    department_id: dept-production
+    role_ids: [role-line-operator]
+    actor_id: actor-vortex-max
+
+  - id: person-claudia
+    name: Claudia Neumann
+    email: claudia.neumann@vortex-mfg.example
+    department_id: dept-production
+    role_ids: [role-line-operator]
+    actor_id: actor-vortex-claudia
+
+  - id: person-stefan
+    name: Stefan Hoffmann
+    email: stefan.hoffmann@vortex-mfg.example
+    department_id: dept-finance
+    role_ids: [role-controller]
+    actor_id: actor-vortex-stefan
+
+reporting_lines:
+  - subordinate: person-sabine
+    manager: person-dirk
+  - subordinate: person-karl
+    manager: person-dirk
+  - subordinate: person-felix
+    manager: person-dirk
+  - subordinate: person-stefan
+    manager: person-dirk
+  - subordinate: person-nina
+    manager: person-karl
+  - subordinate: person-anna
+    manager: person-sabine
+  - subordinate: person-max
+    manager: person-sabine
+  - subordinate: person-claudia
+    manager: person-sabine
