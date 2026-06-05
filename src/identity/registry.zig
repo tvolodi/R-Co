@@ -202,6 +202,7 @@ pub const Registry = struct {
         tenant_id: []const u8,
         input: CreateUserInput,
     ) RegistryError!User {
+        _ = tenant_id; // SPT-02 transitional: column dropped in migration 062; SPT-03 removes this param
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -233,12 +234,11 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\INSERT INTO users (tenant_id, email, display_name, password_hash, is_active, username, status)
-            \\VALUES ($1::uuid, $2, $3, $4, $5::boolean, $6, $7)
+            \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+            \\VALUES ($1, $2, $3, $4::boolean, $5, $6)
             \\RETURNING id::text, username, display_name, email, status, created_at::text
         ,
             &[_][]const u8{
-                tenant_id,
                 input.email,
                 input.display_name,
                 "__API_ONLY__",
@@ -882,6 +882,7 @@ pub const Registry = struct {
         display_name: []const u8,
         description: ?[]const u8,
     ) RegistryError!Group {
+        _ = tenant_id; // SPT-02 transitional: column dropped in migration 062; SPT-03 removes this param
         const conn = self.pool.acquire() catch |err| return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -890,8 +891,8 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\INSERT INTO groups (tenant_id, name, display_name, description, is_system)
-            \\VALUES ($1::uuid, $2, $3, $4, false)
+            \\INSERT INTO groups (name, display_name, description, is_system)
+            \\VALUES ($1, $2, $3, false)
             \\ON CONFLICT (name) DO NOTHING
             \\RETURNING id::text,
             \\          name,
@@ -901,7 +902,7 @@ pub const Registry = struct {
             \\          created_at::text,
             \\          '0'
         ,
-            &[_][]const u8{ tenant_id, name, display_name, description orelse "" },
+            &[_][]const u8{ name, display_name, description orelse "" },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,

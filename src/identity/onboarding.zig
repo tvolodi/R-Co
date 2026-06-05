@@ -437,6 +437,7 @@ fn bindHostname(
     tenant_id: []const u8,
     hostname: []const u8,
 ) (OnboardingError)!void {
+    _ = tenant_id; // SPT-02 transitional: column dropped in migration 062; SPT-03 removes this param
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => return error.PoolExhausted,
         else => return error.PersistenceFailed,
@@ -463,12 +464,12 @@ fn bindHostname(
 
     const row = conn.queryRow(
         allocator,
-        \\INSERT INTO tenant_hostnames (tenant_id, hostname)
-        \\VALUES ($1::uuid, $2)
+        \\INSERT INTO tenant_hostnames (hostname)
+        \\VALUES ($1)
         \\ON CONFLICT (hostname) DO NOTHING
         \\RETURNING id::text
     ,
-        &[_][]const u8{ tenant_id, hostname },
+        &[_][]const u8{ hostname },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,
