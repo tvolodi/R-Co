@@ -10,17 +10,20 @@
   "priority": "NORMAL",
   "context": {
     "stage": "Schema-Per-Tenant Migration — SPT-02",
-    "requirement_ids": ["SPT-02"],
-    "related_handoff_ids": ["c239949a-aa76-4db7-8c49-4d7d00a4999e"],
-    "artifacts_in": []
+    "requirement_ids": ["SPT-02", "SPT-03", "SPT-04"],
+    "related_handoff_ids": ["c239949a-aa76-4db7-8c49-4d7d00a4999e", "38aabe0"],
+    "artifacts_in": [
+      "scratch/run-final.txt",
+      "tests/specs/SPT-04.md"
+    ]
   },
   "task": {
-    "description": "Validate release readiness for SPT-02. Check: (1) all SPT-02 MUST acceptance criteria are covered by passing tests in the test report, (2) no BLOCKER or MAJOR issues in test report, (3) zig build bench exits 0. Write release decision to docs/status/release-spt-02-<date>.yaml.",
+    "description": "Validate release readiness for SPT-02/03/04 unified batch. Check: (1) all SPT-02 MUST acceptance criteria are covered by passing tests in scratch/run-final.txt, (2) no BLOCKER/MAJOR issues in test output, (3) zig build bench exits 0 (NFR check). Write release decision to docs/status/release-spt-02-<date>.yaml.\n\nExpected passing tests: spt01_provisioning, spt02_data_migration (TC-SPT-02-01..05), adp02 schema scope, adp03 context resolution, adp04 user binding, adp05 artifact hash, adp06 pipeline correlation, adp09 audit chain, adp10 agent capture, adp12 default tenant.\n\nNote: zig build bench requires BPM_DB_URL (dev DB). Use: $env:BPM_DB_URL='postgres://bpm:bpm@localhost:5432/bpm_dev'; zig build bench 2>&1 | Select-Object -First 5",
     "acceptance_criteria": [
-      "All 6 SPT-02 acceptance criteria have PASS test results",
-      "No BLOCKER/MAJOR issues",
-      "zig build bench exits 0",
-      "Release decision written to docs/status/"
+      "All SPT-02 acceptance criteria (TC-SPT-02-01..05) have PASS test results",
+      "No BLOCKER/MAJOR issues in scratch/run-final.txt",
+      "zig build bench exits 0 (BPM_DB_URL required)",
+      "Release decision written to docs/status/release-spt02-<date>.yaml"
     ],
     "functions_to_call": []
   },

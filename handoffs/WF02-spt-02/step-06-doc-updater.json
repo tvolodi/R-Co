@@ -10,15 +10,18 @@
   "priority": "NORMAL",
   "context": {
     "stage": "Schema-Per-Tenant Migration — SPT-02",
-    "requirement_ids": ["SPT-02"],
+    "requirement_ids": ["SPT-02", "SPT-03", "SPT-04"],
     "related_handoff_ids": ["c4d424e0-e4c5-4646-bc23-535f5f1a8a4d"],
-    "artifacts_in": []
+    "artifacts_in": [
+      "docs/status/requirement_status.json",
+      "CHANGELOG.md"
+    ]
   },
   "task": {
-    "description": "Update documentation and status for SPT-02 release:\n1. Set SPT-02 status to RELEASED in docs/status/requirement_status.yaml with released_at, release_run: WF02-spt-02, implemented_in list, test_spec, test_run.\n2. Add CHANGELOG.md entry under [Unreleased] or new version section for SPT-02.\n3. Create pull request for feature/WF02-spt-02 and merge to main via gh pr merge --squash --delete-branch.\n4. After merge, return repo to clean main.",
+    "description": "Update documentation and status for SPT-02/03/04 release:\n1. Set SPT-02, SPT-03, SPT-04 status to RELEASED in docs/status/requirement_status.json with released_at, release_run: WF02-spt-02, implemented_in (list of changed files), test_spec, test_run.\n2. Add CHANGELOG.md entry under [Unreleased] or new version section for SPT-02/03/04 (Schema-Per-Tenant Migration).\n3. git add -A; git commit -m 'docs(WF02-spt-02): update requirement status and changelog for SPT-02/03/04 release'; git push origin feature/WF02-spt-02\n4. Create PR: gh pr create --base main --head feature/WF02-spt-02 --title 'feat(SPT): schema-per-tenant migration (SPT-02/03/04)' --body 'Implements schema-per-tenant isolation: drops tenant_id columns, removes bpm.tenant_id session variable, updates test fixtures.\n\nCloses SPT-02, SPT-03, SPT-04'\n5. Merge: gh pr merge --squash --delete-branch\n6. Switch to main: git checkout main; git pull origin main",
     "acceptance_criteria": [
-      "SPT-02 status RELEASED in requirement_status.yaml",
-      "CHANGELOG.md updated",
+      "SPT-02, SPT-03, SPT-04 status RELEASED in docs/status/requirement_status.json",
+      "CHANGELOG.md updated with SPT-02/03/04 section",
       "PR created and merged, branch deleted",
       "git branch --show-current outputs main"
     ],
