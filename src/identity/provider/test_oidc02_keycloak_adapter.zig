@@ -428,14 +428,66 @@ test "TC-OIDC-02-03: keycloak adapter admin contract stays inside adapter-specif
                 .body_contains = &.{ "\"realm\":\"acme\"", "\"displayName\":\"Acme Corp\"" },
                 .response = .{ .status = 201 },
             },
-            // OIDC-14: Apply extended realm configuration (PUT)
+            // Refresh admin token post-realm-creation: Keycloak JWTs embed the
+            // set of realms the service account can manage, so the token obtained
+            // before the realm was created lacks admin grants for the new realm.
+            // The adapter clears the cache and re-fetches after the POST-create.
             .{
-                .method = .PUT,
-                .url = "https://kc.example.com/admin/realms/acme",
+                .method = .POST,
+                .url = "https://kc.example.com/realms/master/protocol/openid-connect/token",
+                .content_type = "application/x-www-form-urlencoded",
+                .body_contains = &.{ "grant_type=client_credentials", "client_id=bpm-admin", "client_secret=super-secret" },
+                .response = .{ .status = 200, .body = "{\"access_token\":\"admin-token\",\"expires_in\":300}" },
+            },
+            // Create standard platform roles in the new realm (PLATFORM_ADMIN,
+            // PROCESS_DESIGNER, PROCESS_OPERATOR, TASK_WORKER, VIEWER, AGENT_RUNNER).
+            .{
+                .method = .POST,
+                .url = "https://kc.example.com/admin/realms/acme/roles",
                 .bearer_token = "admin-token",
                 .content_type = "application/json",
-                .body_contains = &.{ "\"realm\":\"acme\"", "\"accessTokenLifespan\":900" },
-                .response = .{ .status = 204 },
+                .body_contains = &.{"\"name\":\"PLATFORM_ADMIN\""},
+                .response = .{ .status = 201 },
+            },
+            .{
+                .method = .POST,
+                .url = "https://kc.example.com/admin/realms/acme/roles",
+                .bearer_token = "admin-token",
+                .content_type = "application/json",
+                .body_contains = &.{"\"name\":\"PROCESS_DESIGNER\""},
+                .response = .{ .status = 201 },
+            },
+            .{
+                .method = .POST,
+                .url = "https://kc.example.com/admin/realms/acme/roles",
+                .bearer_token = "admin-token",
+                .content_type = "application/json",
+                .body_contains = &.{"\"name\":\"PROCESS_OPERATOR\""},
+                .response = .{ .status = 201 },
+            },
+            .{
+                .method = .POST,
+                .url = "https://kc.example.com/admin/realms/acme/roles",
+                .bearer_token = "admin-token",
+                .content_type = "application/json",
+                .body_contains = &.{"\"name\":\"TASK_WORKER\""},
+                .response = .{ .status = 201 },
+            },
+            .{
+                .method = .POST,
+                .url = "https://kc.example.com/admin/realms/acme/roles",
+                .bearer_token = "admin-token",
+                .content_type = "application/json",
+                .body_contains = &.{"\"name\":\"VIEWER\""},
+                .response = .{ .status = 201 },
+            },
+            .{
+                .method = .POST,
+                .url = "https://kc.example.com/admin/realms/acme/roles",
+                .bearer_token = "admin-token",
+                .content_type = "application/json",
+                .body_contains = &.{"\"name\":\"AGENT_RUNNER\""},
+                .response = .{ .status = 201 },
             },
             // OIDC-13: Create tenant_id protocol mapper (POST)
             .{

@@ -24,13 +24,54 @@ fn currentRequestPipelineRunId() []const u8 {
     return "";
 }
 
+/// Derive the PostgreSQL schema name for a given tenant ID string.
+///
+/// - Empty string  → "tenant_default"
+/// - All-zeros UUID → "tenant_default"
+/// - Any other UUID → "tenant_" + UUID with hyphens stripped
+///
+/// The result is written into buf (must be at least 40 bytes; 7 + 32 = 39 max).
+/// Returns a slice into buf.  The caller must consume it before the frame returns.
+/// This function is allocation-free and safe to call on the hot path.
+pub fn schemaNameForTenant(tenant_id: []const u8, buf: *[80]u8) []const u8 {
+    const default_uuid = "00000000-0000-0000-0000-000000000000";
+    if (tenant_id.len == 0 or std.mem.eql(u8, tenant_id, default_uuid)) {
+        const result = "tenant_default";
+        @memcpy(buf[0..result.len], result);
+        return buf[0..result.len];
+    }
+    // Write "tenant_" prefix then UUID with hyphens stripped.
+    const prefix = "tenant_";
+    @memcpy(buf[0..prefix.len], prefix);
+    var out: usize = prefix.len;
+    for (tenant_id) |c| {
+        if (c != '-') {
+            buf[out] = c;
+            out += 1;
+        }
+    }
+    return buf[0..out];
+}
+
 fn applyRequestTenantContext(conn: *Conn) PoolError!void {
     const tenant_id = currentRequestTenantId();
     const effective_tenant = if (tenant_id.len == 0) "" else tenant_id;
     const pipeline_run_id = currentRequestPipelineRunId();
     const effective_pipeline_run = if (pipeline_run_id.len == 0) "" else pipeline_run_id;
+    // SPT-01 backward compat: keep set_config calls so RLS policies continue working.
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{effective_tenant});
     try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{effective_pipeline_run});
+    // SPT-01: set search_path to the tenant's schema so unqualified table
+    // references resolve to the right schema on every connection checkout.
+    var schema_buf: [80]u8 = undefined;
+    const schema_name = schemaNameForTenant(effective_tenant, &schema_buf);
+    var path_buf: [128]u8 = undefined;
+    const search_path = std.fmt.bufPrint(
+        &path_buf,
+        "SET search_path TO {s},public",
+        .{schema_name},
+    ) catch return PoolError.QueryFailed;
+    try conn.exec(search_path, &.{});
 }
 
 fn recordDbQueryDurationFromSql(sql: []const u8, elapsed_s: f64) void {

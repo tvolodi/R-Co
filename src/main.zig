@@ -4,6 +4,7 @@ const std = @import("std");
 // compile and validate all Stage 1 modules.
 pub const db_pool = @import("pool");
 pub const db_migrations = @import("db/migrations.zig");
+pub const db_provisioning = @import("db/provisioning.zig"); // SPT-01 schema-per-tenant provisioning
 pub const config_mod = @import("config.zig");
 pub const event_store = @import("event_store/store.zig");
 pub const event_registry = @import("event_store/registry.zig");
