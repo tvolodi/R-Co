@@ -12,12 +12,12 @@
 //! Design artefact: src/design/event_store.md
 const std = @import("std");
 const db = @import("pool");
-const root = @import("root");
+const pipeline_context_mod = @import("pipeline_context");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
 const registry_mod = @import("registry.zig");
 const Registry = registry_mod.Registry;
-const metrics = @import("../obs/metrics.zig");
+const metrics = @import("obs_metrics");
 
 // ---------------------------------------------------------------------------
 // Shared type
@@ -1175,10 +1175,7 @@ fn duplicateFromParams(params: AppendParams, sequence_number: i64, metadata: []c
 }
 
 fn currentRequestPipelineRunId() []const u8 {
-    if (@hasDecl(root, "api_pipeline_context")) {
-        return root.api_pipeline_context.get();
-    }
-    return "";
+    return pipeline_context_mod.get();
 }
 
 fn metadataPipelineRunId(allocator: std.mem.Allocator, metadata: []const u8) !?[]u8 {

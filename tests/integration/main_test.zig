@@ -117,6 +117,8 @@ const oidc16_26_agent_lifecycle_foundations_integration = @import("oidc16_26_age
 const sim01_04_simulation_mode_integration = @import("sim01_04_simulation_mode_test.zig");
 // Stage 11 — Scenario schema/runner and batch execution (SIM-05..SIM-08)
 const sim05_08_scenario_runner_integration = @import("sim05_08_scenario_runner_test.zig");
+// SPT-01 — Schema-per-tenant provisioning infrastructure
+const spt01_provisioning_integration = @import("spt01_provisioning_test.zig");
 
 comptime {
     _ = std;
@@ -171,6 +173,7 @@ comptime {
     _ = oidc16_26_agent_lifecycle_foundations_integration;
     _ = sim01_04_simulation_mode_integration;
     _ = sim05_08_scenario_runner_integration;
+    _ = spt01_provisioning_integration;
 }
 
 test "integration placeholder" {

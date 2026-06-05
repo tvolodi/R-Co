@@ -22,12 +22,30 @@ pub fn build(b: *std.Build) void {
     const pg_mod = pg_dep.module("pg");
     const http_mod = http_dep.module("http");
     const cel_mod = cel_dep.module("cel");
+    const tenant_context_mod = b.createModule(.{
+        .root_source_file = b.path("src/api/tenant_context.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const pipeline_context_mod = b.createModule(.{
+        .root_source_file = b.path("src/api/pipeline_context.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const obs_metrics_mod = b.createModule(.{
+        .root_source_file = b.path("src/obs/metrics.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
     const pool_root_mod = b.createModule(.{
         .root_source_file = b.path("src/db/pool.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
             .{ .name = "pg", .module = pg_mod },
+            .{ .name = "tenant_context", .module = tenant_context_mod },
+            .{ .name = "pipeline_context", .module = pipeline_context_mod },
+            .{ .name = "obs_metrics", .module = obs_metrics_mod },
         },
     });
     const idp_config_mod = b.createModule(.{
@@ -58,6 +76,9 @@ pub fn build(b: *std.Build) void {
         .{ .name = "transition", .module = transition_mod },
         .{ .name = "build_options", .module = build_options_mod },
         .{ .name = "identity_provider", .module = identity_provider_mod },
+        .{ .name = "tenant_context", .module = tenant_context_mod },
+        .{ .name = "pipeline_context", .module = pipeline_context_mod },
+        .{ .name = "obs_metrics", .module = obs_metrics_mod },
     };
 
     // ---------------------------------------------------------------------------
@@ -164,6 +185,9 @@ pub fn build(b: *std.Build) void {
             .{ .name = "pg", .module = pg_mod },
             .{ .name = "cel", .module = cel_mod },
             .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "tenant_context", .module = tenant_context_mod },
+            .{ .name = "pipeline_context", .module = pipeline_context_mod },
+            .{ .name = "obs_metrics", .module = obs_metrics_mod },
         },
     });
 
@@ -325,6 +349,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .imports = &.{
             .{ .name = "pg", .module = pg_mod },
+            .{ .name = "tenant_context", .module = tenant_context_mod },
+            .{ .name = "pipeline_context", .module = pipeline_context_mod },
+            .{ .name = "obs_metrics", .module = obs_metrics_mod },
         },
     });
     const api_mod = b.createModule(.{
@@ -335,6 +362,9 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             .{ .name = "pool", .module = pool_module },
             .{ .name = "identity_provider", .module = identity_provider_mod },
+            .{ .name = "tenant_context", .module = tenant_context_mod },
+            .{ .name = "pipeline_context", .module = pipeline_context_mod },
+            .{ .name = "obs_metrics", .module = obs_metrics_mod },
         },
     });
     const api_conventions_tests = b.addTest(.{

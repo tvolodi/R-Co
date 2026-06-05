@@ -3702,4 +3702,19 @@ requirements:
     release_run: WF02-f7-onboard-ui-20260604
     released_at: '2026-06-05'
     last_updated: '2026-06-05T02:37:00Z'
-total_requirements: 259
+  SPT-01:
+    title: Schema-per-tenant provisioning infrastructure
+    status: RELEASED
+    stage: Schema-Per-Tenant Migration
+    priority: MUST
+    released_in: WF02-spt-01
+    released_at: "2026-06-05"
+    implemented_in:
+    - migrations/060_schema_per_tenant_bootstrap.sql
+    - src/db/migrations.zig
+    - src/db/pool.zig
+    - src/db/provisioning.zig
+    test_spec: tests/specs/SPT-01.md
+    test_run: tests/reports/report-20260605-WF02-spt-01.yaml
+    last_updated: '2026-06-05T09:19:00Z'
+total_requirements: 260

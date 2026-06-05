@@ -1,7 +1,7 @@
 const std = @import("std");
 const errors = @import("../errors.zig");
 const response = @import("../response.zig");
-const metrics = @import("../../obs/metrics.zig");
+const metrics = @import("obs_metrics");
 
 pub const HandlerResult = response.HandlerResult;
 

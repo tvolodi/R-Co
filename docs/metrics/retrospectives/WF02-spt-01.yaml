@@ -1,0 +1,40 @@
+run_id: WF02-spt-01
+requirement_ids:
+  - SPT-01
+difficulty: 5
+integration_surface: high
+rules_version_used: '1.1'
+estimated_minutes_total: 38
+actual_minutes_total: 48.4
+variance_pct: 27.4
+notes: >
+  Most steps lack started_at timestamps (ORCH did not stamp them before dispatch),
+  so only test-runner has measurable elapsed time. The by_step section reflects
+  only the one step with complete timing data. The overall variance is computed
+  from that single step's data only.
+by_step:
+  test-runner:
+    estimated: 38
+    actual: 48.4
+    variance_pct: 27.4
+    notes: >
+      TEST-RUNNER ran longer than estimated due to applying 12 source fixes for
+      Zig 0.16 module system changes (named module imports replacing @import(root)
+      and relative paths for tenant_context, pipeline_context, obs_metrics).
+      These were unblocking fixes within scope; the base D5 high-surface estimate
+      of 38 min was slightly under-estimated for a run requiring live source fixes.
+rework_steps:
+  - step: test-designer
+    rework_count: 1
+    reason: >
+      BLOCKER: testDbUrl() used error.SkipZigTest instead of a named error.
+      MAJOR: TC-SPT-01-05 missing cleanup defer for tenant_default schema.
+rule_adjustments: []
+rule_adjustment_rationale: >
+  test-runner variance is +27.4% (above the 25% threshold). However, the two
+  prior D5 test-runner data points show variance of +20.0% (WF02-ee02) and
+  -94.5% (WF02-ext05) — different directions. The most recent D5 test-runner
+  variance was -407.6% (WF02-oidc16-26), which is in the opposite direction.
+  Consecutive-same-direction criterion (2 required) is not met; no rule
+  adjustment triggered.
+completed_at: '2026-06-05T09:21:37Z'

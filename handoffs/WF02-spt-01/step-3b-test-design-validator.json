@@ -1,0 +1,48 @@
+{
+  "handoff_id": "1bb8f075-89ba-4478-9717-8b164355f3ab",
+  "run_id": "WF02-spt-01",
+  "workflow_id": "WF-02",
+  "step": "3b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-05T07:56:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration \u2014 SPT-01: provisioning infrastructure",
+    "requirement_ids": [
+      "SPT-01"
+    ],
+    "related_handoff_ids": [
+      "7b2299c7-4cae-46ca-8ec0-ffd82df03891"
+    ],
+    "artifacts_in": [
+      "tests/specs/SPT-01.md",
+      "tests/integration/spt01_provisioning_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate TEST-DESIGNER output for SPT-01. Verify: all 8 MUST test cases present and runnable, no SkipZigTest on any, all fixtures use per-test UUIDs, tests connect to BPM_TEST_DB_URL. FAIL if any check fails. On PASS set next_action: 'Route to TEST-RUNNER (Step 4)'.",
+    "acceptance_criteria": [
+      "All 8 test cases present",
+      "No error.SkipZigTest on MUST tests",
+      "Per-test UUID fixtures",
+      "BPM_TEST_DB_URL used"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for SPT-01 validated after rework 1 — all 8 MUST test cases present and implemented, testDbUrl() now returns error.MissingTestDatabaseUrl (no SkipZigTest on any MUST test), TC-SPT-01-05 has defer cleanupTenant for tenant_default, all UUID-keyed tests (TC-01..04, TC-06) have cleanup defers, no mocks, BPM_TEST_DB_URL used throughout.",
+    "artifacts_out": [
+      "tests/specs/SPT-01.md",
+      "tests/integration/spt01_provisioning_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-06-05T08:27:22Z"
+}

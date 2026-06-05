@@ -8,20 +8,44 @@
 const std = @import("std");
 
 const pg = @import("pg");
-const root = @import("root");
+const tenant_context_mod = @import("tenant_context");
+const pipeline_context_mod = @import("pipeline_context");
 
 fn currentRequestTenantId() []const u8 {
-    if (@hasDecl(root, "api_tenant_context")) {
-        return root.api_tenant_context.get();
-    }
-    return "";
+    return tenant_context_mod.get();
 }
 
 fn currentRequestPipelineRunId() []const u8 {
-    if (@hasDecl(root, "api_pipeline_context")) {
-        return root.api_pipeline_context.get();
+    return pipeline_context_mod.get();
+}
+
+/// Derive the PostgreSQL schema name for a given tenant ID string.
+///
+/// - Empty string  → "tenant_default"
+/// - All-zeros UUID → "tenant_default"
+/// - Any other UUID → "tenant_" + UUID with hyphens stripped
+///
+/// The result is written into buf (must be at least 40 bytes; 7 + 32 = 39 max).
+/// Returns a slice into buf.  The caller must consume it before the frame returns.
+/// This function is allocation-free and safe to call on the hot path.
+pub fn schemaNameForTenant(tenant_id: []const u8, buf: *[80]u8) []const u8 {
+    const default_uuid = "00000000-0000-0000-0000-000000000000";
+    if (tenant_id.len == 0 or std.mem.eql(u8, tenant_id, default_uuid)) {
+        const result = "tenant_default";
+        @memcpy(buf[0..result.len], result);
+        return buf[0..result.len];
     }
-    return "";
+    // Write "tenant_" prefix then UUID with hyphens stripped.
+    const prefix = "tenant_";
+    @memcpy(buf[0..prefix.len], prefix);
+    var out: usize = prefix.len;
+    for (tenant_id) |c| {
+        if (c != '-') {
+            buf[out] = c;
+            out += 1;
+        }
+    }
+    return buf[0..out];
 }
 
 fn applyRequestTenantContext(conn: *Conn) PoolError!void {
@@ -29,15 +53,29 @@ fn applyRequestTenantContext(conn: *Conn) PoolError!void {
     const effective_tenant = if (tenant_id.len == 0) "" else tenant_id;
     const pipeline_run_id = currentRequestPipelineRunId();
     const effective_pipeline_run = if (pipeline_run_id.len == 0) "" else pipeline_run_id;
+    // SPT-01 backward compat: keep set_config calls so RLS policies continue working.
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{effective_tenant});
     try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{effective_pipeline_run});
+    // SPT-01: set search_path to the tenant's schema so unqualified table
+    // references resolve to the right schema on every connection checkout.
+    var schema_buf: [80]u8 = undefined;
+    const schema_name = schemaNameForTenant(effective_tenant, &schema_buf);
+    var path_buf: [128]u8 = undefined;
+    const search_path = std.fmt.bufPrint(
+        &path_buf,
+        "SET search_path TO {s},public",
+        .{schema_name},
+    ) catch return PoolError.QueryFailed;
+    try conn.exec(search_path, &.{});
 }
 
+const obs_metrics_mod = @import("obs_metrics");
+
 fn recordDbQueryDurationFromSql(sql: []const u8, elapsed_s: f64) void {
-    if (@hasDecl(root, "obs_metrics")) {
-        const m = root.obs_metrics;
-        m.recordDbQueryDurationSeconds(m.classifyQueryType(sql), elapsed_s);
-    }
+    obs_metrics_mod.recordDbQueryDurationSeconds(
+        obs_metrics_mod.classifyQueryType(sql),
+        elapsed_s,
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -246,6 +284,29 @@ pub const Conn = struct {
 
         if (!self._is_valid) return PoolError.StaleConnection;
         self._pg.commit() catch |err| {
+            if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
+                self._is_valid = false;
+                return PoolError.StaleConnection;
+            }
+            return PoolError.QueryFailed;
+        };
+    }
+
+    /// Execute a multi-statement SQL string using the simple query protocol.
+    ///
+    /// Unlike exec(), this method uses PostgreSQL's Simple Query Protocol, which
+    /// accepts semicolon-separated multi-statement SQL.  No parameter binding is
+    /// supported.  Use for migration SQL files which contain multiple DDL statements.
+    pub fn simpleQuery(self: *Conn, sql: []const u8) PoolError!void {
+        const started_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds() - started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            recordDbQueryDurationFromSql(sql, elapsed_s);
+        }
+
+        if (!self._is_valid) return PoolError.StaleConnection;
+        self._pg.simpleQuery(sql) catch |err| {
             if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
                 self._is_valid = false;
                 return PoolError.StaleConnection;

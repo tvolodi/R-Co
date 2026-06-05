@@ -2,6 +2,17 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [SPT-01] — 2026-06-05
+### Added
+- Schema-per-tenant provisioning infrastructure (`migrations/060_schema_per_tenant_bootstrap.sql`)
+- `public.tenant_schemas` registry table for tracking provisioned tenant schemas
+- `public.bpm_provision_tenant_schema(UUID)` PL/pgSQL function for safe concurrent schema creation
+- `src/db/migrations.zig`: `runForSchema()` — applies migrations inside a named tenant schema
+- `src/db/pool.zig`: connection checkout now sets `search_path` to the tenant's schema in addition to the `bpm.tenant_id` session variable (backward-compatible transition)
+- `src/db/provisioning.zig`: `provisionTenantSchema()` — idempotent orchestration of schema creation + migration run
+### Notes
+- Both `search_path` and `bpm.tenant_id` session variable are set during this transition phase; SPT-03 will remove the column-based approach.
+
 ## [Unreleased]
 
 ### Stage F7 - Tenant Onboarding GUI (RELEASED 2026-06-05)
