@@ -597,7 +597,7 @@ test "TC-OIDC-01-01: JWT-like token uses configured IdentityProvider verify path
             .username = "oidc.user",
             .display_name = "OIDC User",
             .email = "oidc.user@example.com",
-            .caller_scope = "11111111-1111-1111-1111-111111111111".*,
+            .tenant_id = "11111111-1111-1111-1111-111111111111".*,
             .roles = provider_roles[0..],
             .external_realm = "tenant-realm",
             .token_id_hint = "oidc-token-id-1",

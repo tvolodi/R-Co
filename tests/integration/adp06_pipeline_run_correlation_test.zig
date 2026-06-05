@@ -93,24 +93,24 @@ test "TC-ADP-06-01: migration adds audit pipeline_run_id and query indexes" {
     try testing.expectEqual(@as(usize, 1), cols.rows.len);
     try testing.expectEqualStrings("YES", cols.rows[0][0] orelse "");
 
-    var idx = try harness.conn.query(
+    // After SPT-02 (migration 062), the tenant-scoped pipeline indexes were dropped.
+    // Verify the pipeline_run_id column still exists on audit_entries (for correlation).
+    var col_check = try harness.conn.query(
         alloc,
-        \\SELECT indexname
-        \\FROM pg_indexes
-        \\WHERE schemaname = 'public'
-        \\  AND tablename IN ('audit_entries', 'events', 'events_archive')
-        \\  AND indexname LIKE '%pipeline%'
-        \\ORDER BY indexname ASC
+        \\SELECT COUNT(*)
+        \\FROM information_schema.columns
+        \\WHERE table_schema = 'public'
+        \\  AND table_name = 'audit_entries'
+        \\  AND column_name = 'pipeline_run_id'
     ,
         &.{},
     );
-    defer idx.deinit();
+    defer col_check.deinit();
 
-    // After SPT-02 (migration 062), the tenant-scoped pipeline indexes were dropped.
-    // The pipeline_run_id column on audit_entries is sufficient for correlation
-    // queries via the global audit chain index.
-    // Verify at least one pipeline-related index or the column still exists.
-    _ = idx; // indexes may or may not exist post-SPT-02; column existence suffices
+    try testing.expectEqual(@as(usize, 1), col_check.rows.len);
+    const count_str = col_check.rows[0][0] orelse "0";
+    const count = try std.fmt.parseInt(i64, count_str, 10);
+    try testing.expectEqual(@as(i64, 1), count);
 }
 
 test "TC-ADP-06-02: trusted pipeline context propagates to event metadata and audit rows" {

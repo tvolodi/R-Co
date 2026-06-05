@@ -1,0 +1,43 @@
+{
+  "handoff_id": "963680fc-3cff-4193-b928-d77b9ae01b33",
+  "run_id": "WF02-spt-02",
+  "step": "2c",
+  "from_agent": "BACKEND-DEV",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-05T12:37:03Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "SPT-02+03+04 unified batch",
+    "requirement_ids": ["SPT-04"],
+    "related_handoff_ids": ["12b1c08"],
+    "artifacts_in": [
+      "tests/integration/*.zig",
+      "migrations/061_spt02_copy_rows_to_tenant_schemas.sql"
+    ]
+  },
+  "task": {
+    "description": "SPT-04: Update integration test suite to work after migration 062 drops tenant_id columns from all public tables and SPT-03 removes bpm.tenant_id session variable references. Fix 35 test files that reference tenant_id in SQL or struct fields.",
+    "acceptance_criteria": [
+      "All test files compile (zig build test-integration exits 0)",
+      "No tenant_id references remain in tests/integration/*.zig (except in comments documenting the change)",
+      "Test pass count increases from 324 to 350+ (removed column errors resolved)",
+      "adp02 test verifies schema-per-tenant isolation instead of RLS",
+      "spt01/spt02 tests verify tenant schema provisioning works correctly"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "IN_PROGRESS",
+    "summary": "In progress: fixed adp06 test to accept post-SPT-02 index structure; fixed migration 061 nested DO block syntax error",
+    "artifacts_out": [
+      "tests/integration/adp06_pipeline_run_correlation_test.zig",
+      "migrations/061_spt02_copy_rows_to_tenant_schemas.sql"
+    ],
+    "issues": []
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-06-05T12:37:15Z",
+  "completed_at": null
+}
