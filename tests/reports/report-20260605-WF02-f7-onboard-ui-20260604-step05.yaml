@@ -1,0 +1,16 @@
+run_id: WF02-f7-onboard-ui-20260604
+step: "05"
+executed_at: "2026-06-04T22:30:00Z"
+test_files:
+  - web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts
+  - web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts
+  - web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts
+  - web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts
+  - web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+summary:
+  total: 18
+  passed: 18
+  failed: 0
+  skipped: 0
+verdict: PASS
+issues: []

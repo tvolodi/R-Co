@@ -30,7 +30,7 @@ import {
 test.setTimeout(120_000)
 
 const API_BASE_URL       = process.env.BPM_TEST_URL     ?? 'http://127.0.0.1:8080'
-const KEYCLOAK_BASE_URL  = process.env.BPM_IDP_BASE_URL ?? 'http://127.0.0.1:8081'
+const KEYCLOAK_BASE_URL  = process.env.BPM_IDP_BASE_URL ?? 'http://localhost:8081'
 const KEYCLOAK_DISCOVERY = `${KEYCLOAK_BASE_URL}/realms/bpm-default/.well-known/openid-configuration`
 
 interface OnboardingWizardState {
@@ -157,8 +157,9 @@ test.describe('Pipeline: onboarding-wizard', () => {
 
     // ── Step 04: Saga completes — result screen shows slug ────────────────────
     await pl.step('04: saga completes - result screen shows slug', async (s) => {
-      // Wait for the saga to reach terminal state — browser navigates to /result
-      await page.waitForURL(/\/admin\/onboarding\/.+\/result/, { timeout: 90_000 })
+      // Wait for the saga to reach terminal state — browser navigates to /result.
+      // Allow 150s because concurrent background sagas may slow Keycloak realm creation.
+      await page.waitForURL(/\/admin\/onboarding\/.+\/result/, { timeout: 150_000 })
 
       const successBanner = page.getByText(/tenant onboarding completed successfully/i)
       const failureBanner = page.getByText(/onboarding failed/i)
@@ -173,7 +174,8 @@ test.describe('Pipeline: onboarding-wizard', () => {
 
       if (successVisible) {
         // Screen shows the tenant slug on the completed result screen
-        await expect(page.getByText(s.slug)).toBeVisible()
+        // exact:true avoids matching same slug inside the oidc_authority URL link
+        await expect(page.getByText(s.slug, { exact: true })).toBeVisible()
         // Screen shows the oidc_authority link
         await expect(page.getByRole('link', { name: /http.*realms/i })).toBeVisible()
       } else {
