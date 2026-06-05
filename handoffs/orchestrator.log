@@ -508,3 +508,4 @@
 2026-06-05T10:33:51Z | ROUTE | WF02-spt-02 | c4d424e0-e4c5-4646-bc23-535f5f1a8a4d | ORCH → RELEASE-VALIDATOR | PENDING (step-05)
 2026-06-05T10:33:51Z | ROUTE | WF02-spt-02 | adc6889a-fb0e-408e-9c22-6cc81f0d9286 | ORCH → DOC-UPDATER | PENDING (step-06)
 2026-06-05T10:33:51Z | ROUTE | WF02-spt-02 | 493af398-98f1-47d3-b583-287c4cd2cef5 | ORCH → BACKEND-DEV | PENDING (step-final)
+2026-06-05T12:37:03Z | BATCH_EXTEND | WF02-spt-02 | --- | ORCH | SPT-03+SPT-04 inseparable from SPT-02 (migration 062 drops tenant_id cols; Zig code still references them). Extending WF02-spt-02 run to cover SPT-02+SPT-03+SPT-04 combined (3 reqs, within batch cap of 4).

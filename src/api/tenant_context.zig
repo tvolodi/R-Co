@@ -1,8 +1,8 @@
 //! Thread-local storage for the current request's resolved tenant ID.
 //!
 //! Owned by authentication middleware; DB pool acquire reads this context and
-//! applies it to PostgreSQL session config (`bpm.tenant_id`) for every checked
-//! out connection.
+//! applies it via search_path to scope every checked-out connection to the
+//! correct tenant schema (SPT-03: bpm session variable removed, search_path only).
 
 const std = @import("std");
 

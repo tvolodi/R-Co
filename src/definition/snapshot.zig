@@ -150,7 +150,6 @@ pub const SnapshotStore = struct {
             \\SELECT id, name, version, graph
             \\FROM process_definitions
             \\WHERE id = $1::uuid
-            \\  AND tenant_id = bpm_effective_tenant_id()
             \\FOR SHARE
         ,
             &.{def_id_hex},

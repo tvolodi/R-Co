@@ -87,34 +87,17 @@ pub fn listTimeline(
 
     const instance_hex = uuidToHex(pa, query.instance_id) catch return TimelineError.OutOfMemory;
 
-    const instance_row = conn.queryRow(
+    // SPT-03: instance_projections.tenant_id dropped in migration 062; verify instance exists via id check.
+    const instance_exists_row = conn.queryRow(
         allocator,
-        "SELECT tenant_id::text FROM instance_projections WHERE instance_id = $1 LIMIT 1",
+        "SELECT 1 FROM instance_projections WHERE instance_id = $1 LIMIT 1",
         &.{instance_hex},
     ) catch return TimelineError.EventStoreFailure;
-    if (instance_row == null) return TimelineError.InstanceNotFound;
+    if (instance_exists_row == null) return TimelineError.InstanceNotFound;
+    freeRow(allocator, instance_exists_row.?);
 
-    var resolved_tenant_owned: ?[]u8 = null;
-    const resolved_tenant_id = blk: {
-        const row = instance_row.?;
-        defer freeRow(allocator, row);
-        if (row.len == 0) break :blk DEFAULT_TENANT_ID;
-        if (row[0]) |tenant_text| {
-            if (std.mem.eql(u8, tenant_text, DEFAULT_TENANT_ID)) {
-                break :blk DEFAULT_TENANT_ID;
-            }
-            const owned = allocator.dupe(u8, tenant_text) catch return TimelineError.OutOfMemory;
-            resolved_tenant_owned = owned;
-            break :blk owned;
-        }
-        break :blk DEFAULT_TENANT_ID;
-    };
-    defer if (resolved_tenant_owned) |owned| allocator.free(owned);
-
-    const tenant_id = if (std.mem.eql(u8, query.tenant_id, DEFAULT_TENANT_ID))
-        resolved_tenant_id
-    else
-        query.tenant_id;
+    // SPT-03: tenant_id resolution removed; search_path already scopes to the correct schema.
+    _ = query.tenant_id;
 
     const after_seq_str: []const u8 = if (query.after_sequence) |v|
         std.fmt.allocPrint(pa, "{d}", .{v}) catch return TimelineError.OutOfMemory
@@ -147,7 +130,6 @@ pub fn listTimeline(
         \\    sequence_number
         \\  FROM events
         \\  WHERE instance_id = $1
-        \\    AND tenant_id = $2::uuid
         \\  UNION ALL
         \\  SELECT
         \\    event_id,
@@ -160,13 +142,12 @@ pub fn listTimeline(
         \\    sequence_number
         \\  FROM events_archive
         \\  WHERE instance_id = $1
-        \\    AND tenant_id = $2::uuid
         \\) AS combined
-        \\WHERE ($3::text = '' OR sequence_number > $3::bigint)
+        \\WHERE ($2::text = '' OR sequence_number > $2::bigint)
         \\ORDER BY created_at_us ASC, sequence_number ASC
-        \\LIMIT $4
+        \\LIMIT $3
     ,
-        &.{ instance_hex, tenant_id, after_seq_str, limit_str },
+        &.{ instance_hex, after_seq_str, limit_str },
     ) catch return TimelineError.EventStoreFailure;
     defer {
         var mr = rows;

@@ -1,6 +1,10 @@
 -- Migration 061: SPT-02 data migration phase 1
 -- Copy all rows from public schema tables into per-tenant schemas.
 --
+-- PUBLIC-SCHEMA-ONLY: This migration is a no-op when runForSchema() executes
+-- it inside a tenant schema.  The guard below ensures the body only runs when
+-- current_schema() = 'public'.
+--
 -- Idempotent:
 --   * ADD COLUMN IF NOT EXISTS guards the status column addition.
 --   * bpm_provision_tenant_schema() uses ON CONFLICT DO NOTHING.
@@ -23,6 +27,13 @@
 --   tenant_id-based composite indexes and constraints in the tenant schema copy.
 --   The row copy uses a dynamically built column list (excluding tenant_id).
 
+DO $guard$
+BEGIN
+    IF current_schema() <> 'public' THEN
+        -- Running inside a tenant schema via runForSchema() — skip entirely.
+        RETURN;
+    END IF;
+
 -- ── Step 1: Add status column to tenant_schemas ──────────────────────────────
 
 ALTER TABLE public.tenant_schemas
@@ -37,6 +48,7 @@ DECLARE
     v_schema        TEXT;
     v_col_list      TEXT;
     has_col         BOOLEAN;
+    col_exists      BOOLEAN;
     -- Tables processed in FK-dependency order:
     --   1. process_definitions  (no FK deps on other tenant tables)
     --   2. instance_projections (FK → process_definitions)
@@ -63,6 +75,20 @@ DECLARE
         'tenant_hostnames'
     ];
 BEGIN
+    -- Guard: if tenant_id was already removed from public.process_definitions
+    -- (i.e. migration 062 ran before this migration in a per-tenant schema
+    -- context), there is nothing to copy — exit early.
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE  table_schema = 'public'
+          AND  table_name   = 'process_definitions'
+          AND  column_name  = 'tenant_id'
+    ) INTO col_exists;
+    IF NOT col_exists THEN
+        RAISE NOTICE 'migration 061: tenant_id already removed from public schema — skipping data copy';
+        RETURN;
+    END IF;
+
     -- Collect all distinct tenant_ids across every affected public table.
     -- UNION (not UNION ALL) deduplicates across tables.
     FOR r_tenant IN
@@ -171,3 +197,6 @@ BEGIN
     END LOOP;
 END;
 $$;
+
+END; -- end of $guard$ block
+$guard$;

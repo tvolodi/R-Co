@@ -136,10 +136,9 @@ pub fn resolveByExternalIdentity(
         \\FROM users
         \\WHERE external_realm = $1
         \\  AND external_id = $2
-        \\  AND tenant_id = $3::uuid
         \\LIMIT 1
     ,
-        &[_][]const u8{ input.external_realm, input.external_id, input.tenant_id },
+        &[_][]const u8{ input.external_realm, input.external_id },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,

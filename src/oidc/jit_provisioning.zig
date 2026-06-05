@@ -429,12 +429,11 @@ fn selectUserByExternalIdentity(
         allocator,
         \\SELECT id::text, username, display_name, email, status, created_at::text
         \\FROM users
-        \\WHERE tenant_id = $1::uuid
-        \\  AND external_realm = $2
-        \\  AND external_id = $3
+        \\WHERE external_realm = $1
+        \\  AND external_id = $2
         \\LIMIT 1
     ,
-        &[_][]const u8{ tenant_id, realm, external_user_id },
+        &[_][]const u8{ realm, external_user_id },
     ) catch |err| switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,
@@ -474,12 +473,12 @@ fn updateUserProfile(
     const row = conn.queryRow(
         allocator,
         \\UPDATE users
-        \\SET display_name = $3, email = $4, status = $5,
-        \\    is_active = $6::boolean, updated_at = NOW()
-        \\WHERE id::text = $1 AND tenant_id = $2::uuid
+        \\SET display_name = $2, email = $3, status = $4,
+        \\    is_active = $5::boolean, updated_at = NOW()
+        \\WHERE id::text = $1
         \\RETURNING id::text, username, display_name, email, status, created_at::text
     ,
-        &[_][]const u8{ user_id, tenant_id, display_name, email, status_str, active_str },
+        &[_][]const u8{ user_id, display_name, email, status_str, active_str },
     ) catch |err| switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,

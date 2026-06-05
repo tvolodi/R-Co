@@ -2,6 +2,10 @@
 -- Remove all row-based tenancy infrastructure from the public schema.
 -- All operations are guarded with IF EXISTS for full idempotency.
 --
+-- PUBLIC-SCHEMA-ONLY: This migration is a no-op when runForSchema() executes
+-- it inside a tenant schema. The guard below ensures the body only runs when
+-- current_schema() = 'public'.
+--
 -- Operations performed in safe order:
 --   1. DROP all known RLS policies (they reference bpm_effective_tenant_id).
 --   2. DISABLE ROW LEVEL SECURITY on all affected tables.
@@ -11,6 +15,13 @@
 --   5. DROP all tenant_id-based composite indexes.
 --   6. DROP COLUMN tenant_id from all affected tables (CASCADE removes
 --      any remaining dependents not caught by earlier steps).
+
+DO $guard$
+BEGIN
+    IF current_schema() <> 'public' THEN
+        -- Running inside a tenant schema via runForSchema() — skip entirely.
+        RETURN;
+    END IF;
 
 -- ── Step 1: Drop all known RLS policies ──────────────────────────────────────
 
@@ -35,10 +46,14 @@ ALTER TABLE IF EXISTS users                 DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS groups                DISABLE ROW LEVEL SECURITY;
 
 -- ── Step 3: Drop bpm_effective_tenant_id() ───────────────────────────────────
--- CASCADE also removes column DEFAULT expressions referencing this function
--- and any RLS policies that were not explicitly listed above.
-
-DROP FUNCTION IF EXISTS bpm_effective_tenant_id() CASCADE;
+-- NOTE: We intentionally do NOT drop bpm_effective_tenant_id() here.
+-- The function must remain in public so that future calls to
+-- provisionTenantSchema() / runForSchema() can still apply migration 028
+-- (which uses bpm_effective_tenant_id() as a column DEFAULT) inside new
+-- tenant schemas.  The function is a pure stub after tenant_id columns are
+-- removed; it will be dropped in SPT-03 when all Zig call sites are cleaned up.
+-- The DROP COLUMN statements in Step 6 (with CASCADE) remove the per-column
+-- DEFAULT expressions that reference this function automatically.
 
 -- ── Step 4: Drop tenant_id-based named constraints ───────────────────────────
 
@@ -113,3 +128,7 @@ ALTER TABLE IF EXISTS audit_log            DROP COLUMN IF EXISTS tenant_id CASCA
 ALTER TABLE IF EXISTS users                DROP COLUMN IF EXISTS tenant_id CASCADE;
 ALTER TABLE IF EXISTS groups               DROP COLUMN IF EXISTS tenant_id CASCADE;
 ALTER TABLE IF EXISTS tenant_hostnames     DROP COLUMN IF EXISTS tenant_id CASCADE;
+
+END; -- end of $guard$ block
+$guard$;
+

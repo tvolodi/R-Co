@@ -53,8 +53,7 @@ fn applyRequestTenantContext(conn: *Conn) PoolError!void {
     const effective_tenant = if (tenant_id.len == 0) "" else tenant_id;
     const pipeline_run_id = currentRequestPipelineRunId();
     const effective_pipeline_run = if (pipeline_run_id.len == 0) "" else pipeline_run_id;
-    // SPT-01 backward compat: keep set_config calls so RLS policies continue working.
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{effective_tenant});
+    // SPT-03: bpm session variable for tenant isolation removed; search_path is the sole tenancy mechanism.
     try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{effective_pipeline_run});
     // SPT-01: set search_path to the tenant's schema so unqualified table
     // references resolve to the right schema on every connection checkout.

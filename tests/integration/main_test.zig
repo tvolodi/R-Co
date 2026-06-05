@@ -119,6 +119,8 @@ const sim01_04_simulation_mode_integration = @import("sim01_04_simulation_mode_t
 const sim05_08_scenario_runner_integration = @import("sim05_08_scenario_runner_test.zig");
 // SPT-01 — Schema-per-tenant provisioning infrastructure
 const spt01_provisioning_integration = @import("spt01_provisioning_test.zig");
+// SPT-02 — Data migration: copy rows into tenant schemas and remove RLS
+const spt02_data_migration_integration = @import("spt02_data_migration_test.zig");
 
 comptime {
     _ = std;
@@ -174,6 +176,7 @@ comptime {
     _ = sim01_04_simulation_mode_integration;
     _ = sim05_08_scenario_runner_integration;
     _ = spt01_provisioning_integration;
+    _ = spt02_data_migration_integration;
 }
 
 test "integration placeholder" {

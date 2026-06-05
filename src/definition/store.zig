@@ -250,9 +250,9 @@ pub const Store = struct {
         const insert_rows = conn.query(
             allocator,
             \\INSERT INTO process_definitions
-            \\  (tenant_id, name, version, description, status, graph, created_by, stage)
-            \\VALUES (bpm_effective_tenant_id(), $1, $2, $3, 'DRAFT', $4::jsonb, $5::uuid, $6)
-            \\ON CONFLICT ON CONSTRAINT uq_definition_tenant_version DO NOTHING
+            \\  (name, version, description, status, graph, created_by, stage)
+            \\VALUES ($1, $2, $3, 'DRAFT', $4::jsonb, $5::uuid, $6)
+            \\ON CONFLICT ON CONSTRAINT uq_definition_name_version DO NOTHING
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -312,7 +312,6 @@ pub const Store = struct {
             \\       stage
             \\FROM process_definitions
             \\WHERE id = $1::uuid
-            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{uuidToHex(a, id) catch return DefinitionError.TransactionFailed},
         ) catch return DefinitionError.TransactionFailed;
@@ -376,7 +375,7 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint,
             \\       stage
             \\FROM process_definitions
-            \\WHERE tenant_id = bpm_effective_tenant_id()
+            \\WHERE TRUE
         ) catch return DefinitionError.TransactionFailed;
 
         if (opts.name) |name| {
@@ -507,7 +506,6 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint
             \\FROM process_definitions
             \\WHERE id = $1::uuid
-            \\  AND tenant_id = bpm_effective_tenant_id()
             \\FOR UPDATE
         ,
             &.{id_hex},
@@ -599,7 +597,6 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'DEPRECATED', updated_at = NOW()
             \\WHERE name = $1 AND status = 'ACTIVE'
-            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{def_name},
         ) catch return DefinitionError.TransactionFailed;
@@ -612,7 +609,6 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'ACTIVE', updated_at = NOW()
             \\WHERE id = $1::uuid AND status = 'DRAFT'
-            \\  AND tenant_id = bpm_effective_tenant_id()
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -682,7 +678,6 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'DEPRECATED', updated_at = NOW()
             \\WHERE id = $1::uuid AND status = 'ACTIVE'
-            \\  AND tenant_id = bpm_effective_tenant_id()
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -702,7 +697,6 @@ pub const Store = struct {
                 allocator,
                 \\SELECT id FROM process_definitions
                 \\WHERE id = $1::uuid
-                \\  AND tenant_id = bpm_effective_tenant_id()
             ,
                 &.{id_hex},
             ) catch return DefinitionError.TransactionFailed;
@@ -769,7 +763,6 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'ARCHIVED', archived_at = NOW(), updated_at = NOW()
             \\WHERE id = $1::uuid AND status = 'DEPRECATED'
-            \\  AND tenant_id = bpm_effective_tenant_id()
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -789,7 +782,6 @@ pub const Store = struct {
                 allocator,
                 \\SELECT id FROM process_definitions
                 \\WHERE id = $1::uuid
-                \\  AND tenant_id = bpm_effective_tenant_id()
             ,
                 &.{id_hex},
             ) catch return DefinitionError.TransactionFailed;
@@ -896,7 +888,6 @@ pub const Store = struct {
             allocator,
             \\SELECT id, status FROM process_definitions
             \\WHERE id = $1::uuid
-            \\  AND tenant_id = bpm_effective_tenant_id()
             \\FOR UPDATE
         ,
             &.{id_hex},
@@ -970,7 +961,7 @@ pub const Store = struct {
         // WHERE clause: id AND status = 'DRAFT' (double-check after SELECT FOR UPDATE).
         sql.appendSlice(a, std.fmt.allocPrint(
             a,
-            " WHERE id = ${d}::uuid AND status = 'DRAFT' AND tenant_id = bpm_effective_tenant_id()",
+            " WHERE id = ${d}::uuid AND status = 'DRAFT'",
             .{pidx},
         ) catch return DefinitionError.TransactionFailed) catch
             return DefinitionError.TransactionFailed;
@@ -1059,7 +1050,6 @@ pub const Store = struct {
             allocator,
             \\SELECT id, status FROM process_definitions
             \\WHERE id = $1::uuid
-            \\  AND tenant_id = bpm_effective_tenant_id()
             \\FOR UPDATE
         ,
             &.{id_hex},
@@ -1086,7 +1076,6 @@ pub const Store = struct {
         conn.exec(
             \\DELETE FROM process_definitions
             \\WHERE id = $1::uuid AND status = 'DRAFT'
-            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{id_hex},
         ) catch return DefinitionError.TransactionFailed;
@@ -1113,7 +1102,7 @@ pub const Store = struct {
     /// Retrieve the currently ACTIVE version of a definition by name.
     /// Returns DefinitionNotFound if no ACTIVE version exists for the given name.
     ///
-    /// SQL: SELECT … FROM process_definitions WHERE tenant_id = bpm_effective_tenant_id() AND name = $1 AND status = 'ACTIVE'
+    /// SQL: SELECT … FROM process_definitions WHERE name = $1 AND status = 'ACTIVE'
     /// The unique partial index uq_active_definition_tenant guarantees at most one row.
     ///
     /// Security: name binds as $1 — no SQL string interpolation.
@@ -1136,8 +1125,7 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint,
             \\       stage
             \\FROM process_definitions
-            \\WHERE tenant_id = bpm_effective_tenant_id()
-            \\  AND name = $1 AND status = 'ACTIVE'
+            \\WHERE name = $1 AND status = 'ACTIVE'
         ,
             &.{name},
         ) catch return DefinitionError.TransactionFailed;
@@ -1221,8 +1209,7 @@ pub const Store = struct {
             \\       stage,
             \\       CASE WHEN name ILIKE $1 THEN 3.0 WHEN name ILIKE $2 THEN 2.0 ELSE 1.0 END AS rank
             \\FROM process_definitions
-            \\WHERE tenant_id = bpm_effective_tenant_id()
-            \\  AND (name ILIKE $2 OR description ILIKE $2)
+            \\WHERE (name ILIKE $2 OR description ILIKE $2)
             \\ORDER BY rank DESC, created_at DESC
             \\LIMIT $3 OFFSET $4
         ,

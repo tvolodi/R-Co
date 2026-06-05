@@ -479,7 +479,6 @@ pub const InstanceStore = struct {
                 allocator,
                 \\SELECT id, status, definition_artifact_hash FROM process_definitions
                 \\WHERE id = $1::uuid
-                \\  AND tenant_id = bpm_effective_tenant_id()
             ,
                 &.{def_id_hex},
             ) catch return InstanceError.TransactionFailed;
@@ -585,13 +584,13 @@ pub const InstanceStore = struct {
         const ins_rows = conn2.query(
             allocator,
             \\INSERT INTO instance_projections
-            \\    (tenant_id, instance_id, definition_id, correlation_key,
+            \\    (instance_id, definition_id, correlation_key,
             \\     definition_artifact_hash, status, variables, current_nodes, started_at, updated_at)
             \\VALUES
-            \\    (bpm_effective_tenant_id(), $1::uuid, $2::uuid, NULLIF($3, ''), NULLIF($4, ''),
+            \\    ($1::uuid, $2::uuid, NULLIF($3, ''), NULLIF($4, ''),
             \\     'ACTIVE', $5::jsonb, '[]'::jsonb, NOW(), NOW())
-            \\ON CONFLICT (tenant_id, definition_id, correlation_key)
-            \\    WHERE correlation_key IS NOT NULL DO NOTHING
+            \\ON CONFLICT ON CONSTRAINT uq_instance_definition_correlation
+            \\    DO NOTHING
             \\RETURNING
             \\    instance_id,
             \\    definition_id,

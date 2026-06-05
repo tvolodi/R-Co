@@ -64,7 +64,8 @@ pub fn provisionTenantSchema(
 
         const result = conn.query(
             allocator,
-            "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
+            // NOTE: public.tenant_schemas.tenant_id is a valid management column (not dropped by migration 062).
+            "SELECT count(*) FROM public.tenant_schemas ts WHERE ts.tenant_id = $1::uuid",
             &.{tenant_id_str},
         ) catch return ProvisionError.QueryFailed;
         defer {
@@ -117,7 +118,8 @@ pub fn provisionTenantSchema(
         defer pool.release(conn);
 
         conn.exec(
-            "UPDATE public.tenant_schemas SET migrations_applied_at = NOW() WHERE tenant_id = $1::uuid",
+            // NOTE: public.tenant_schemas.tenant_id is a valid management column (not dropped by migration 062).
+            "UPDATE public.tenant_schemas ts SET migrations_applied_at = NOW() WHERE ts.tenant_id = $1::uuid",
             &.{tenant_id_str},
         ) catch return ProvisionError.RegistryUpdateFailed;
     }

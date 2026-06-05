@@ -106,7 +106,6 @@ pub fn list(
         \\  trace_id::text
         \\FROM audit_entries
         \\WHERE 1=1
-        \\  AND tenant_id = bpm_effective_tenant_id()
     ) catch return error.OutOfMemory;
 
     var pidx: usize = 1;
@@ -277,13 +276,14 @@ pub fn getPreviousChainHash(
     };
     defer pool.release(conn);
 
+    _ = tenant_id; // SPT-03: tenant_id column dropped from audit_entries in migration 062
     var rows = conn.query(allocator,
         \\SELECT chain_hash
         \\FROM audit_entries
-        \\WHERE tenant_id = $1::uuid AND chain_hash IS NOT NULL
+        \\WHERE chain_hash IS NOT NULL
         \\ORDER BY "timestamp" DESC, audit_id DESC
         \\LIMIT 1
-    , &.{tenant_id}) catch |err| switch (err) {
+    , &.{}) catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return error.PoolExhausted,
         else => return error.PersistenceFailed,
     };
@@ -317,6 +317,7 @@ pub fn validateAuditChain(
     defer pool.release(conn);
 
     // Query all chained rows (chain_hash IS NOT NULL) ordered by timestamp, audit_id
+    _ = tenant_id; // SPT-03: tenant_id column dropped from audit_entries in migration 062
     var rows = conn.query(allocator,
         \\SELECT
         \\  audit_id::text,
@@ -333,9 +334,9 @@ pub fn validateAuditChain(
         \\  payload_full::text,
         \\  trace_id::text
         \\FROM audit_entries
-        \\WHERE tenant_id = $1::uuid AND chain_hash IS NOT NULL
+        \\WHERE chain_hash IS NOT NULL
         \\ORDER BY "timestamp" ASC, audit_id ASC
-    , &.{tenant_id}) catch |err| switch (err) {
+    , &.{}) catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return error.PoolExhausted,
         else => return error.PersistenceFailed,
     };

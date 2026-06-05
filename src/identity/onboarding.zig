@@ -133,6 +133,8 @@ const SagaState = struct {
     realm_id: ?[]const u8 = null,
     admin_user_id: ?[]const u8 = null,
     client_id: ?[]const u8 = null,
+    // SPT-03: track hostname for compensation since tenant_hostnames.tenant_id was dropped.
+    bound_hostname: ?[]const u8 = null,
 };
 
 /// Execute the full onboarding saga. On any step failure, compensating actions
@@ -275,7 +277,7 @@ pub fn executeSaga(
     saga.client_id = try allocator.dupe(u8, client_result.client_id);
 
     // ── 6. Bind hostname ─────────────────────────────────────────────────────
-    bindHostname(allocator, pool, tenant.tenant_id, input.hostname) catch |err| switch (err) {
+    bindHostname(allocator, pool, input.hostname) catch |err| switch (err) {
         error.DuplicateHostname => return error.DuplicateHostname,
         error.PoolExhausted => return error.PoolExhausted,
         error.PersistenceFailed => return error.PersistenceFailed,
@@ -283,6 +285,7 @@ pub fn executeSaga(
         else => return error.HostnameBindingFailed,
     };
     saga.hostname_bound = true;
+    saga.bound_hostname = try allocator.dupe(u8, input.hostname);
 
     // ── 7. Verify realm discovery ────────────────────────────────────────────
     verifyDiscovery(allocator, input.slug) catch return error.VerificationFailed;
@@ -323,8 +326,12 @@ fn compensate(
     saga: *SagaState,
 ) !void {
     // Undo in reverse order.
-    if (saga.hostname_bound and saga.tenant_id != null) {
-        unbindHostname(pool, saga.tenant_id.?) catch {};
+    if (saga.hostname_bound and saga.bound_hostname != null) {
+        unbindHostname(pool, saga.bound_hostname.?) catch {};
+    }
+    if (saga.bound_hostname) |h| {
+        allocator.free(h);
+        saga.bound_hostname = null;
     }
     if (saga.client_provisioned and saga.realm_id != null) {
         // No deleteClient on manager; skip provider-level cleanup for now.
@@ -434,10 +441,8 @@ fn deleteTenantInDb(pool: *pool_mod.Pool, tenant_id: []const u8, tenant_slug: ?[
 fn bindHostname(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
-    tenant_id: []const u8,
     hostname: []const u8,
 ) (OnboardingError)!void {
-    _ = tenant_id; // SPT-02 transitional: column dropped in migration 062; SPT-03 removes this param
     const conn = pool.acquire() catch |err| return switch (err) {
         pool_mod.PoolError.ExhaustedPool => return error.PoolExhausted,
         else => return error.PersistenceFailed,
@@ -483,10 +488,11 @@ fn bindHostname(
     freeRow(allocator, row.?);
 }
 
-fn unbindHostname(pool: *pool_mod.Pool, tenant_id: []const u8) !void {
+fn unbindHostname(pool: *pool_mod.Pool, hostname: []const u8) !void {
+    // SPT-03: tenant_hostnames.tenant_id was dropped in migration 062; delete by hostname.
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
-    conn.exec("DELETE FROM tenant_hostnames WHERE tenant_id::text = $1", &[_][]const u8{tenant_id}) catch {};
+    conn.exec("DELETE FROM tenant_hostnames WHERE hostname = $1", &[_][]const u8{hostname}) catch {};
 }
 
 // ── Discovery verification ────────────────────────────────────────────────────
@@ -575,7 +581,8 @@ pub fn bindHostnameWrapper(
     tenant_id: []const u8,
     hostname: []const u8,
 ) OnboardingError!void {
-    return bindHostname(allocator, pool, tenant_id, hostname);
+    _ = tenant_id; // SPT-03: tenant_id no longer stored in tenant_hostnames.
+    return bindHostname(allocator, pool, hostname);
 }
 
 /// Look up an onboarding record by onboarding_id.

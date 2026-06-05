@@ -67,24 +67,25 @@ pub fn listUnlinkedInternalUsers(
     const limit_text = try std.fmt.allocPrint(allocator, "{d}", .{limit});
     defer allocator.free(limit_text);
 
-    var rows = if (filter.tenant_id) |tenant_id|
+    var rows = if (filter.tenant_id) |_|
+        // SPT-03: tenant_id column dropped from users in migration 062; filter no longer applied.
+        // The search_path already scopes to the correct tenant schema.
         conn.query(
             allocator,
-            \\SELECT u.id::text, u.username, COALESCE(u.email,''), u.tenant_id::text, COALESCE(u.username, '')
+            \\SELECT u.id::text, u.username, COALESCE(u.email,''), '', COALESCE(u.username, '')
             \\FROM users u
             \\WHERE u.auth_source = 'internal'
             \\  AND u.external_id IS NULL
-            \\  AND u.tenant_id = $1::uuid
             \\  AND u.username NOT LIKE 'agent-%'
             \\ORDER BY u.created_at ASC
-            \\LIMIT $2::int
+            \\LIMIT $1::int
         ,
-            &[_][]const u8{ tenant_id, limit_text },
+            &[_][]const u8{ limit_text },
         ) catch return error.CandidateQueryFailed
     else
         conn.query(
             allocator,
-            \\SELECT u.id::text, u.username, COALESCE(u.email,''), COALESCE(u.tenant_id::text, '00000000-0000-0000-0000-000000000000'), COALESCE(u.username, '')
+            \\SELECT u.id::text, u.username, COALESCE(u.email,''), '', COALESCE(u.username, '')
             \\FROM users u
             \\WHERE u.auth_source = 'internal'
             \\  AND u.external_id IS NULL
