@@ -1,0 +1,134 @@
+---
+id: meridian-regulatory-compliance-review-bafin
+company_id: meridian
+process_id: proc-meridian-regulatory-compliance-review
+title: 30-day SLA breach triggers BaFin regulatory notification
+version: "1.0"
+tags:
+  - escalation
+  - timeout
+  - regulatory
+
+description: >
+  A periodic compliance review of the 2026 Q1 loan portfolio is initiated.
+  The compliance officer collects evidence but the risk evaluation is not
+  completed within 21 days. The timer boundary event on the risk evaluation
+  node fires, triggering an automatic regulatory escalation. The system
+  files a BaFin regulatory notice with reason 'sla_breach_30_days' and the
+  process completes on the regulatory escalation terminal path. This scenario
+  verifies the timer boundary event, regulatory notification mechanism, and
+  automatic escalation path work correctly for BaFin-mandated compliance.
+
+actors:
+  compliance_officer: actor-meridian-claudia
+  ceo: actor-meridian-eva
+
+preconditions:
+  - description: Regulatory compliance review process definition is active
+    check: process_definition_active
+  - description: No pending compliance review instances for Meridian
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: compliance_officer
+    action: >
+      Initiates a periodic compliance review for the 2026 Q1 loan portfolio
+    via: api
+    input:
+      review_id: sim-meridian-review-001
+      review_type: periodic
+      portfolio_ref: "MER-PORTFOLIO-2026-Q1"
+      review_period: "2026-Q1"
+      initiator_actor_id: actor-meridian-claudia
+    produces:
+      instance_id: "the process instance ID for this compliance review"
+
+  - step: 2
+    actor: compliance_officer
+    action: >
+      Completes the evidence collection phase, uploading three document
+      packages and noting preliminary findings on incomplete KYC files
+    via: api
+    input:
+      documents_uploaded: true
+      document_refs: "DOC-REF-001,DOC-REF-002,DOC-REF-003"
+      preliminary_findings: >
+        Three loan files have incomplete KYC documentation. Pending
+        further risk evaluation.
+    sla_context:
+      expected_within_hours: 168
+
+  - step: 3
+    actor: ceo
+    action: >
+      The risk evaluation was not completed within 21 days. The timer
+      boundary fires and the system automatically files a BaFin regulatory
+      notice and escalates the matter to the CEO. The process completes
+      on the regulatory escalation path.
+    via: api
+    note: >
+      UAT-RUNNER advances the timer boundary on the risk-evaluation node
+      by calling POST /api/v1/instances/{instance_id}/advance-timer
+      rather than waiting 21 days of real time.
+    input:
+      advance_timer_node: risk-evaluation
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The timer boundary event fires on the risk-evaluation node,
+      triggering the regulatory auto-escalation service task
+    verification:
+      method: audit_event
+      detail: >
+        audit event type 'regulatory-auto-escalation' fired for
+        review sim-meridian-review-001
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Compliance reviews that exceed the 21-day SLA are not being
+        auto-escalated. The system fails to detect stalled reviews,
+        creating regulatory risk for non-compliance with BaFin reporting
+        obligations.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      The BaFin regulatory notice is automatically filed with reason
+      'sla_breach_30_days' via the compliance regulatory notice endpoint
+    verification:
+      method: audit_event
+      detail: >
+        audit event for POST /compliance/regulatory-notice with payload
+        containing reason 'sla_breach_30_days' for review
+        sim-meridian-review-001
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        The regulatory notification to BaFin is not being sent when the
+        30-day SLA is breached. This is a regulatory compliance violation
+        that could result in fines or supervisory action by BaFin.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      The process completes on the regulatory escalation terminal path
+      (end-closed), not through the normal sign-off path
+    verification:
+      method: instance_state
+      detail: >
+        instance status == COMPLETED and end node is 'end-closed' for
+        review sim-meridian-review-001
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        The compliance review process does not terminate correctly after
+        the regulatory escalation. The process may remain open or enter
+        an incorrect terminal state, leaving the company with an unresolved
+        compliance review.
+      suggested_action: route_to_backend_dev
+
+cleanup:
+  cancel_open_instances: true
+  description: Cancel instance sim-meridian-review-001 if not already completed

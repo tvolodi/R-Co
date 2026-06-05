@@ -1,0 +1,148 @@
+---
+id: vortex-supplier-quality-deviation-critical
+company_id: vortex
+process_id: proc-vortex-supplier-quality-deviation
+title: "Supplier quality deviation: CRITICAL path with 8D corrective action"
+version: "1.0"
+tags: [happy_path]
+
+description: >
+  A Quality Engineer discovers defective parts from a supplier and logs a
+  quality deviation. The affected batch is automatically quarantined in the
+  MES system before any severity classification takes place. The Quality
+  Manager reviews and classifies the deviation as CRITICAL severity, which
+  triggers an 8D corrective action sub-process managed by Procurement. After
+  the corrective action is completed, the deviation record is formally closed.
+  This scenario verifies the full CRITICAL path: quarantine-before-classification,
+  severity-driven sub-process spawn, and end-to-end closure.
+
+actors:
+  quality_engineer: actor-vortex-nina
+  quality_manager: actor-vortex-karl
+  procurement_manager: actor-vortex-felix
+
+preconditions:
+  - description: Supplier quality deviation process definition is active
+    check: process_definition_active
+  - description: No open deviation instances for Vortex
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: quality_engineer
+    action: >
+      Logs a quality deviation for defective parts from supplier VX-442,
+      part number PN-8831, batch B-2026-05, quantity affected 150 units,
+      defect described as "surface cracks exceeding tolerance on 12% of sampled units"
+    via: api
+    input:
+      deviation_id: sim-dev-crit-001
+      supplier_id: VX-442
+      part_number: PN-8831
+      batch_ref: B-2026-05
+      quantity_affected: 150
+      defect_description: "Surface cracks exceeding tolerance on 12% of sampled units"
+      reporter_actor_id: actor-vortex-nina
+    produces:
+      instance_id: "the process instance ID for this deviation"
+    sla_context:
+      expected_within_hours: 1
+
+  - step: 2
+    actor: quality_manager
+    action: >
+      Reviews the deviation report, classifies it as CRITICAL severity
+      based on the structural integrity risk from the surface cracks,
+      and confirms it is a genuine quality issue
+    via: api
+    input:
+      severity: critical
+      classification_notes: "Surface cracks on 12% of batch present structural integrity risk. Escalating to 8D corrective action."
+      false_positive: false
+    sla_context:
+      expected_within_hours: 8
+
+  - step: 3
+    actor: procurement_manager
+    action: >
+      As the 8D corrective action sub-process has been spawned, completes the
+      corrective action by confirming root cause identified, corrective
+      measures implemented at the supplier, and effectiveness verified
+    via: api
+    input:
+      corrective_action_result: completed
+      resolution_status: closed
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      After the deviation is logged, the affected batch is automatically
+      quarantined in the MES system before the severity classification task
+      is created for the Quality Manager
+    verification:
+      method: audit_event
+      detail: >
+        Audit log shows quarantine-batch service-task executed before
+        severity-classification user-task was created
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        ISO 9001 violation: suspect material must be isolated before
+        assessment. Without prior quarantine, defective parts could enter
+        the production line and compromise product quality.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      After the Quality Manager classifies the deviation as CRITICAL,
+      an 8D corrective action sub-process is spawned and assigned to the
+      Procurement Manager
+    verification:
+      method: task_assigned
+      detail: >
+        A task referencing the 8D corrective action sub-process
+        (definition_ref proc-vortex-8d-corrective-action) is assigned to
+        role-procurement-manager
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Critical quality deviations are not triggering the required 8D
+        corrective action process, which is the only mechanism to address
+        structural defects at the supplier level. Recurring quality failures
+        will go unaddressed.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      After the 8D corrective action completes, the deviation record is
+      formally closed in the Q-Pulse quality system
+    verification:
+      method: instance_state
+      detail: instance status == COMPLETED and end node is 'end-closed'
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Even after the 8D corrective action completes successfully, the
+        deviation remains open in the system. Quality reporting will show
+        unresolved deviations that have actually been addressed.
+      suggested_action: route_to_backend_dev
+
+  - id: EO-004
+    description: >
+      The quarantine-before-classification ordering is confirmed in the
+      audit trail for downstream compliance reporting
+    verification:
+      method: audit_event
+      detail: >
+        Audit log ordering: TASK_COMPLETED for quarantine-batch event
+        timestamp is earlier than TASK_CREATED for severity-classification
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        The audit trail cannot prove that quarantine preceded classification,
+        making ISO 9001 compliance difficult to demonstrate during audits.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: true
+  description: Cancel the sim-dev-crit-001 instance if not already completed

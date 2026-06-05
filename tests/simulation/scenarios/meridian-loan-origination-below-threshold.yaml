@@ -1,0 +1,156 @@
+---
+id: meridian-loan-origination-below-threshold
+company_id: meridian
+process_id: proc-meridian-loan-origination
+title: Small loan (€50k) approved at L2 without committee
+version: "1.0"
+tags:
+  - happy_path
+  - standard_authority
+
+description: >
+  A loan application for €50,000 (well below the €500,000 committee threshold)
+  is submitted. After the three parallel assessment tracks complete and pass
+  the eligibility gate, the amount qualifies for the standard authority path:
+  L1 credit manager approval followed by L2 credit director approval. The
+  credit committee is never convened. This scenario verifies that the
+  amount-driven authority routing correctly uses the standard path for
+  loans at or below €500,000.
+
+actors:
+  analyst: actor-meridian-sophie
+  credit_manager: actor-meridian-ben
+  risk_manager: actor-meridian-miriam
+  credit_director: actor-meridian-julia
+  loan_ops: actor-meridian-marcus
+
+preconditions:
+  - description: Loan origination process definition is active
+    check: process_definition_active
+  - description: No pending loan origination instances for Meridian
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: analyst
+    action: >
+      Submits a loan application for €50,000 on behalf of a small business
+      borrower, product type term loan with 24-month tenor
+    via: api
+    input:
+      application_id: sim-meridian-loan-002
+      applicant_id: borrower-smb-001
+      requested_amount_eur: 50000
+      product_type: term_loan
+      tenor_months: 24
+      analyst_actor_id: actor-meridian-sophie
+      purpose: "Equipment purchase for bakery expansion"
+    produces:
+      instance_id: "the process instance ID for this loan application"
+
+  - step: 2
+    actor: credit_manager
+    action: >
+      Reviews the credit memo for the small loan and passes it with a
+      recommended rate of 350 basis points
+    via: api
+    input:
+      credit_decision: pass
+      recommended_rate_bps: 350
+      credit_notes: "Small established business, good local reputation. Low risk."
+    sla_context:
+      expected_within_hours: 24
+
+  - step: 3
+    actor: risk_manager
+    action: >
+      Completes the risk assessment for the €50,000 loan, rating the
+      borrower as low risk with 2.5% probability of default
+    via: api
+    input:
+      risk_rating: low
+      pd_percent: 2.5
+      risk_notes: "Stable revenue, low overheads. Acceptable risk for this amount."
+    sla_context:
+      expected_within_hours: 24
+
+  - step: 4
+    actor: credit_manager
+    action: >
+      As L1 credit manager, reviews and approves the loan application
+      at the first level of credit authority
+    via: api
+    input:
+      l1_decision: approve
+
+  - step: 5
+    actor: credit_director
+    action: >
+      As L2 credit director, reviews and approves the loan application,
+      setting the approved amount and interest rate
+    via: api
+    input:
+      l2_decision: approve
+      approved_amount_eur: 50000
+      approved_rate_bps: 350
+
+  - step: 6
+    actor: loan_ops
+    action: >
+      Disburses the approved €50,000 loan, recording the disbursement
+      date and reference
+    via: api
+    input:
+      disbursement_date: "2026-06-12"
+      disbursement_ref: "DISB-MER-2026-002"
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The process routes through the standard authority path (L1 approval
+      then L2 approval), not the credit committee
+    verification:
+      method: task_assigned
+      detail: >
+        task type 'l1-approval' assigned to role-credit-manager,
+        task type 'l2-approval' assigned to role-credit-director
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Small loans are being unnecessarily routed to the credit committee,
+        adding delay and overhead for routine low-value applications.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      No credit committee vote task is created because the requested
+      amount (€50,000) is below the €500,000 threshold
+    verification:
+      method: task_assigned
+      detail: "task type 'credit-committee-vote' is NOT assigned to any actor"
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Small loans are incorrectly triggering the credit committee vote,
+        which is reserved only for amounts above €500,000. This delays
+        routine lending and wastes committee time.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      After L1 and L2 approval, the loan facility is created and the
+      funds (€50,000) are disbursed. The process completes on the
+      'end-disbursed' end node.
+    verification:
+      method: instance_state
+      detail: instance status == COMPLETED and end node is 'end-disbursed'
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Approved small loans are not being disbursed. Small business
+        customers who need quick access to credit are left waiting.
+      suggested_action: route_to_backend_dev
+
+cleanup:
+  cancel_open_instances: true
+  description: Cancel instance sim-meridian-loan-002 if not already completed

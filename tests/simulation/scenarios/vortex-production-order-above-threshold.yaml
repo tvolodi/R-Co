@@ -1,0 +1,148 @@
+---
+id: vortex-production-order-above-threshold
+company_id: vortex
+process_id: proc-vortex-production-order-release
+title: "Production order above EUR 10,000 threshold approved by Financial Controller"
+version: "1.0"
+tags: [happy_path, boundary, timeout]
+
+description: >
+  A Production Planner creates a production order valued at EUR 15,000,
+  which exceeds the built-in threshold of EUR 10,000 that requires Financial
+  Controller budget sign-off. The Production Manager reviews capacity and
+  approves, then the order is routed through the budget gate to the
+  Financial Controller, who signs off on the expenditure. Finally the
+  production line is assigned and execution begins. This scenario verifies
+  the boundary condition: orders above EUR 10,000 must pass through the
+  extra budget approval gate before the line can be assigned.
+
+actors:
+  planner: actor-vortex-anna
+  production_manager: actor-vortex-sabine
+  controller: actor-vortex-stefan
+
+preconditions:
+  - description: Production order release process definition is active
+    check: process_definition_active
+  - description: No open production order instances for Vortex
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: planner
+    action: >
+      Creates a production order for product code VX-TURBO-2000, quantity
+      50 units, order value EUR 15,000 (well above the EUR 10,000 budget
+      threshold), requested start date 2026-06-15
+    via: api
+    input:
+      order_id: sim-order-001
+      product_code: VX-TURBO-2000
+      quantity: 50
+      order_value_eur: 15000
+      requested_start: "2026-06-15"
+      planner_actor_id: actor-vortex-anna
+    produces:
+      instance_id: "the process instance ID for this production order"
+    sla_context:
+      expected_within_hours: 1
+
+  - step: 2
+    actor: production_manager
+    action: >
+      Reviews the production order, confirms capacity is available on Line-A
+      starting June 15, and approves the order for further processing
+    via: api
+    input:
+      capacity_decision: approve
+      assigned_line: Line-A
+      revised_start: "2026-06-15"
+      pm_notes: "Line-A available, no scheduling conflicts for the requested period."
+    sla_context:
+      expected_within_hours: 16
+
+  - step: 3
+    actor: controller
+    action: >
+      Reviews the budget for the EUR 15,000 order against the production
+      cost centre and approves the expenditure, confirming the cost centre
+      has sufficient allocation for the current quarter
+    via: api
+    input:
+      budget_decision: approve
+      cost_centre: CC-PROD-2026
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      After the Production Manager approves, the order is routed to the
+      Financial Controller for budget sign-off (not directly to line
+      assignment), because the order value EUR 15,000 exceeds the EUR 10,000
+      threshold
+    verification:
+      method: task_assigned
+      detail: >
+        A budget-approval user-task is assigned to role-controller
+        (actor-vortex-stefan) after capacity-review is completed with
+        capacity_decision set to approve
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Production orders above EUR 10,000 are bypassing the Financial
+        Controller's budget approval. This exposes the company to
+        unbudgeted expenditure and violates the financial control policy
+        established by management.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      After the Financial Controller approves the budget, the production
+      line is automatically assigned in the MES system and the order is
+      released for execution
+    verification:
+      method: instance_state
+      detail: instance status == COMPLETED and end node is 'end-released'
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Approved production orders are not being assigned to production
+        lines. The order is stuck in the system even though both management
+        and finance have approved it, delaying production.
+      suggested_action: route_to_backend_dev
+
+  - id: EO-003
+    description: >
+      The MES system receives the line assignment instruction (Line-A) as
+      part of the process execution
+    verification:
+      method: audit_event
+      detail: >
+        Audit log shows assign-line service-task executed with assigned_line
+        equal to Line-A after budget-approval completed with approve
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        The production line assignment instruction is never sent to the MES.
+        Even though the process shows as completed, the shop floor will not
+        see the order and no work will start.
+      suggested_action: route_to_backend_dev
+
+  - id: EO-004
+    description: >
+      The planner is notified that the order has been released, completing
+      the full approval-to-execution loop
+    verification:
+      method: audit_event
+      detail: >
+        Audit log shows notify-planner service-task executed before the
+        instance reaches the end-released terminal state
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        The planner may not realise the order has been released, potentially
+        delaying the start of production while waiting for confirmation.
+      suggested_action: route_to_backend_dev
+
+cleanup:
+  cancel_open_instances: true
+  description: Cancel the sim-order-001 instance if not already completed

@@ -1,0 +1,178 @@
+---
+id: meridian-loan-origination-above-threshold
+company_id: meridian
+process_id: proc-meridian-loan-origination
+title: Large loan (€750k) routed through full credit committee with quorum 2-of-3
+version: "1.0"
+tags:
+  - committee
+  - happy_path
+  - parallel
+
+description: >
+  A loan application for €750,000 is submitted by an analyst. The process starts
+  three parallel assessment tracks: credit memo review, risk assessment, and KYC/AML
+  screening. After all three clear the eligibility gate, the amount-driven authority
+  routing directs the application to the credit committee (multi-voter task with
+  quorum 2-of-3) because the requested amount exceeds the €500,000 threshold.
+  Two committee members vote approve, reaching quorum, and the loan is disbursed.
+  This scenario verifies that the committee route and multi-voter quorum mechanism
+  work correctly for large loans.
+
+actors:
+  analyst: actor-meridian-lars
+  credit_manager: actor-meridian-ben
+  risk_manager: actor-meridian-miriam
+  committee_member_cro: actor-meridian-thomas
+  committee_member_director: actor-meridian-julia
+  committee_member_ceo: actor-meridian-eva
+  loan_ops: actor-meridian-marcus
+
+preconditions:
+  - description: Loan origination process definition is active
+    check: process_definition_active
+  - description: No pending loan origination instances for Meridian
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: analyst
+    action: >
+      Submits a loan application for €750,000 on behalf of a corporate
+      borrower, product type term loan with 60-month tenor
+    via: api
+    input:
+      application_id: sim-meridian-loan-001
+      applicant_id: borrower-corp-001
+      requested_amount_eur: 750000
+      product_type: term_loan
+      tenor_months: 60
+      analyst_actor_id: actor-meridian-lars
+      purpose: "Working capital expansion for new production facility"
+    produces:
+      instance_id: "the process instance ID for this loan application"
+
+  - step: 2
+    actor: credit_manager
+    action: >
+      Reviews the credit memo for the €750,000 loan application and
+      passes it with a recommended rate of 425 basis points
+    via: api
+    input:
+      credit_decision: pass
+      recommended_rate_bps: 425
+      credit_notes: "Borrower has strong cash flow and collateral. Approved."
+    sla_context:
+      expected_within_hours: 24
+
+  - step: 3
+    actor: risk_manager
+    action: >
+      Completes the risk assessment for the loan, rating the borrower
+      as low risk with 1.2% probability of default
+    via: api
+    input:
+      risk_rating: low
+      pd_percent: 1.2
+      risk_notes: "Diversified revenue stream, low debt-to-equity. Acceptable risk."
+    sla_context:
+      expected_within_hours: 24
+
+  - step: 4
+    actor: committee_member_cro
+    action: >
+      As a credit committee member, reviews the committee pack and
+      casts an 'approve' vote
+    via: api
+    input:
+      vote: approve
+      conditions: "Standard terms, no special conditions required."
+
+  - step: 5
+    actor: committee_member_director
+    action: >
+      As a credit committee member, also casts an 'approve' vote,
+      reaching quorum 2-of-3
+    via: api
+    input:
+      vote: approve
+      conditions: "Subject to standard covenants."
+
+  - step: 6
+    actor: loan_ops
+    action: >
+      Disburses the approved €750,000 loan, recording the disbursement
+      date and reference
+    via: api
+    input:
+      disbursement_date: "2026-06-10"
+      disbursement_ref: "DISB-MER-2026-001"
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      After submission, the three parallel assessment tracks are all
+      created and assigned to the correct roles
+    verification:
+      method: task_assigned
+      detail: >
+        task type 'credit-memo-review' assigned to role-credit-manager,
+        task type 'risk-assessment' assigned to role-risk-manager
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Loan applications are not being routed for parallel assessment.
+        No credit or risk officer receives tasks for new applications.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      Because the requested amount (€750,000) exceeds the €500,000
+      threshold, the process routes to a credit committee vote and
+      NOT to the standard L1/L2 approval chain
+    verification:
+      method: task_assigned
+      detail: >
+        task type 'credit-committee-vote' assigned to role-committee-member,
+        no task type 'l1-approval' or 'l2-approval' assigned
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Loans above €500,000 are being processed through standard L1/L2
+        approval instead of the mandated credit committee vote, violating
+        the company's credit authority policy and regulatory requirements.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      With two of three committee members voting 'approve', quorum 2-of-3
+      is reached and the committee outcome is 'approved'
+    verification:
+      method: instance_state
+      detail: "variable committee_outcome == 'approved'"
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        The credit committee mechanism is not correctly counting votes
+        or reaching quorum. Loans that should be approved are stuck or
+        incorrectly declined.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      After committee approval, the loan facility is created and the
+      full amount is disbursed. The process completes on the
+      'end-disbursed' end node.
+    verification:
+      method: instance_state
+      detail: instance status == COMPLETED and end node is 'end-disbursed'
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Approved loans are not being disbursed. Corporate borrowers who
+        have been approved by the credit committee do not receive funds.
+      suggested_action: route_to_backend_dev
+
+cleanup:
+  cancel_open_instances: true
+  description: Cancel instance sim-meridian-loan-001 if not already completed

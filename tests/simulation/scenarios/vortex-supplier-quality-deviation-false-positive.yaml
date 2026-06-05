@@ -1,0 +1,121 @@
+---
+id: vortex-supplier-quality-deviation-false-positive
+company_id: vortex
+process_id: proc-vortex-supplier-quality-deviation
+title: "Supplier quality deviation: false positive — batch released from quarantine"
+version: "1.0"
+tags: [compensation, regression]
+
+description: >
+  A Quality Engineer logs a deviation for a batch that initially appears
+  defective. The batch is quarantined automatically as a precaution. Upon
+  review, the Quality Manager determines the initial inspection was a false
+  positive caused by a calibration error in the test equipment. The batch
+  is released from quarantine via the compensation mechanism and the
+  deviation is voided. This scenario verifies the false-positive compensation
+  path: quarantine fires first, severity is assessed, and upon identifying
+  a false positive the batch is released and the deviation voided.
+
+actors:
+  quality_engineer: actor-vortex-nina
+  quality_manager: actor-vortex-karl
+
+preconditions:
+  - description: Supplier quality deviation process definition is active
+    check: process_definition_active
+  - description: No open deviation instances for Vortex
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: quality_engineer
+    action: >
+      Logs a quality deviation for supplier VX-310, part number PN-7720,
+      batch B-2026-05-12, quantity affected 50 units, defect described as
+      threaded connector holes appearing oversized on 3 of 20 sampled units
+    via: api
+    input:
+      deviation_id: sim-dev-fp-001
+      supplier_id: VX-310
+      part_number: PN-7720
+      batch_ref: B-2026-05-12
+      quantity_affected: 50
+      defect_description: "Threaded connector holes appear oversized on 3 of 20 sampled units"
+      reporter_actor_id: actor-vortex-nina
+    produces:
+      instance_id: "the process instance ID for this deviation"
+    sla_context:
+      expected_within_hours: 1
+
+  - step: 2
+    actor: quality_manager
+    action: >
+      Reviews the deviation, determines the initial inspection was a false
+      positive because the thread gauge used (tool #447) was out of
+      calibration, and marks the deviation as a false positive to trigger
+      the batch release
+    via: api
+    input:
+      severity: minor
+      classification_notes: "False positive — thread gauge #447 found out of calibration. Replacement gauge confirms all dimensions within specification."
+      false_positive: true
+    sla_context:
+      expected_within_hours: 8
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      After the deviation is logged, the batch is automatically quarantined
+      in the MES system before the Quality Manager begins the classification
+      process — quarantine is unconditional
+    verification:
+      method: audit_event
+      detail: >
+        Audit log shows quarantine-batch service-task executed immediately
+        after deviation creation and before any classification
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        ISO 9001 violation: the batch was not isolated while under
+        investigation. Suspect material could have entered production
+        before the false positive was confirmed.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      After the Quality Manager marks the deviation as a false positive,
+      the batch is automatically released from quarantine via the
+      compensation path — the release-quarantine service task fires
+    verification:
+      method: audit_event
+      detail: >
+        Audit log shows release-quarantine service-task executed after
+        severity-classification where false_positive was set to true
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Even after a deviation is confirmed as a false positive, the
+        batch remains locked in quarantine. Production cannot use the
+        material, causing unnecessary delays and potential material
+        shortages for downstream orders.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      The deviation record ends in the voided state (end-false-positive),
+      not the closed state (end-closed), so it can be excluded from
+      supplier defect rate calculations
+    verification:
+      method: instance_state
+      detail: instance status == COMPLETED and end node is 'end-false-positive'
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Quality reporting will count false-positive deviations as actual
+        quality issues, inflating defect rates and damaging supplier
+        performance scores unfairly.
+      suggested_action: route_to_backend_dev
+
+cleanup:
+  cancel_open_instances: true
+  description: Cancel the sim-dev-fp-001 instance if not already completed
