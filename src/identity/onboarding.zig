@@ -142,6 +142,8 @@ pub fn executeSaga(
     manager: provider_manager_mod.Manager,
     pool: *pool_mod.Pool,
     input: OnboardingInput,
+    /// Registry onboarding_id to use in the result (hex UUID without dashes, or null to generate one).
+    registry_onboarding_id: ?[]const u8,
 ) (OnboardingError || provider_errors.ProviderError)!OnboardingResult {
     var saga = SagaState{};
     errdefer compensate(allocator, manager, pool, &saga) catch {};
@@ -286,7 +288,11 @@ pub fn executeSaga(
     verifyDiscovery(allocator, input.slug) catch return error.VerificationFailed;
 
     // ── 8. Build result ──────────────────────────────────────────────────────
-    const onboarding_id = try generateUuid(allocator);
+    // Use the registry onboarding_id if provided (async mode), otherwise generate one.
+    const onboarding_id = if (registry_onboarding_id) |rid|
+        try allocator.dupe(u8, rid)
+    else
+        try generateUuid(allocator);
     errdefer allocator.free(onboarding_id);
 
     const oidc_authority = try std.fmt.allocPrint(allocator, "http://keycloak:8081/realms/{s}", .{input.slug});

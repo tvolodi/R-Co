@@ -1,0 +1,97 @@
+{
+  "handoff_id": "d7691527-fe96-454d-a6b4-51155676707b",
+  "run_id": "WF02-f7-onboard-ui-20260604",
+  "step": "04b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-04T11:59:32Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F7 - Tenant Onboarding GUI",
+    "requirement_ids": [
+      "ONB-UI-01",
+      "ONB-UI-02",
+      "ONB-UI-03",
+      "ONB-UI-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/ONB-UI-01.md",
+      "tests/specs/ONB-UI-02.md",
+      "tests/specs/ONB-UI-03.md",
+      "tests/specs/ONB-UI-04.md",
+      "web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+      "tests/specs/PIPELINE-onboarding-wizard.md"
+    ]
+  },
+  "task": {
+    "description": "HARD GATE \u2014 TEST-RUNNER cannot start until this returns PASS. Validate test specs and E2E tests for ONB-UI-01..04.",
+    "acceptance_criteria": [
+      "Every MUST acceptance criterion in ONB-UI-01..04 has a runnable E2E test",
+      "No MSW or HTTP mocking present in any test file",
+      "Per-test UUIDs used for slug/hostname to avoid collisions",
+      "pl.onCleanup registered unconditionally in pipeline test",
+      "No test.skip on any MUST requirement test",
+      "Tests fail clearly if backend is unavailable (not silently pass)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Test design for ONB-UI-01..04 fails validation: one BLOCKER (wrong Keycloak credentials for TASK_WORKER test in onb-ui-01 make AC-02 unrunnable) and four MAJOR issues (three uncovered MUST acceptance criteria across ONB-UI-02, ONB-UI-03, ONB-UI-04, plus missing route-guard test for non-PLATFORM_ADMIN on progress/result URLs).",
+    "artifacts_out": [
+      "tests/specs/ONB-UI-01.md",
+      "tests/specs/ONB-UI-02.md",
+      "tests/specs/ONB-UI-03.md",
+      "tests/specs/ONB-UI-04.md",
+      "web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+      "tests/specs/PIPELINE-onboarding-wizard.md"
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-01",
+        "severity": "BLOCKER",
+        "requirement": "ONB-UI-01 AC-02",
+        "description": "web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts line 79 calls getKeycloakToken(request, 'task-worker-user', 'task-worker-pass'). The Keycloak realm (infrastructure/keycloak/realms/bpm-default.json) defines 'worker-user'/'worker-pass' with the TASK_WORKER role — there is no 'task-worker-user' user. The getKeycloakToken call will return HTTP 401 and throw, making the MUST acceptance criterion (non-PLATFORM_ADMIN does not see 'Register Tenant' nav entry) unrunnable. Fix: change credentials to 'worker-user' / 'worker-pass'."
+      },
+      {
+        "id": "ISSUE-02",
+        "severity": "MAJOR",
+        "requirement": "ONB-UI-02 AC (Idempotency-Key)",
+        "description": "The requirement states: 'GIVEN the user submits the form twice in succession without a page reload, THEN each submission uses a distinct Idempotency-Key.' This is a MUST acceptance criterion. The ONB-UI-02 spec edge-case section acknowledges it but defers verification to 'the network layer in the implementation.' No test block exists for this criterion in onb-ui-02.e2e.spec.ts. A test must be implemented that submits the form twice and verifies distinct Idempotency-Key headers are sent (e.g. via page.route() interception to capture the header values without mocking the response)."
+      },
+      {
+        "id": "ISSUE-03",
+        "severity": "MAJOR",
+        "requirement": "ONB-UI-03 AC (3rd consecutive 5xx shows error banner)",
+        "description": "The requirement states: 'after three consecutive transient errors the user is shown an error message.' This is a MUST acceptance criterion. Neither the ONB-UI-03 spec (which defines only AC-01 and AC-02) nor onb-ui-03.e2e.spec.ts contains any test for this criterion. A test must be added that simulates 3 consecutive 5xx poll responses and asserts the error banner becomes visible."
+      },
+      {
+        "id": "ISSUE-04",
+        "severity": "MAJOR",
+        "requirement": "ONB-UI-03 AC (non-PLATFORM_ADMIN redirect from progress URL) and ONB-UI-04 AC (non-PLATFORM_ADMIN redirect from result URL)",
+        "description": "The requirements for ONB-UI-03 and ONB-UI-04 each include a MUST acceptance criterion: 'a user without PLATFORM_ADMIN navigating directly to the progress/result screen URL MUST be redirected to the login screen.' The ONB-UI-03 spec edge-cases section says this is 'covered by the role-guard test in ONB-UI-01', but onb-ui-01.e2e.spec.ts only verifies the nav sidebar visibility — it does not navigate a non-PLATFORM_ADMIN user directly to /admin/onboarding/:id/progress or /admin/onboarding/:id/result and assert a redirect. These two MUST ACs have no test coverage. Tests must be added (either in onb-ui-01.e2e.spec.ts or dedicated files) that navigate a non-admin user to these URLs and assert redirection."
+      },
+      {
+        "id": "ISSUE-05",
+        "severity": "MAJOR",
+        "requirement": "ONB-UI-01 AC-03 (unauthenticated user redirect)",
+        "description": "The ONB-UI-01 spec notes AC-03 (unauthenticated user accessing /admin/onboarding/new redirects to login) is 'covered by OIDC-F tests.' No OIDC-F test file references /admin/onboarding. The oidcf-login.e2e.spec.ts tests ProtectedRoute generically but does not specifically test the onboarding URL. This is a MUST criterion with no confirmed coverage. The spec must either add a test or cite the exact test that covers it with a file path and test name."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER for rework"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-04T11:59:32Z",
+  "completed_at": "2026-06-04T12:04:19Z"
+}

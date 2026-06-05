@@ -1247,7 +1247,7 @@ pub const Service = struct {
         _: auth.AuthContext,
         input: OnboardingInput,
     ) (ProviderIntegrationError || OnboardingError)!OnboardingResult {
-        return onboarding_mod.executeSaga(allocator, manager, self.registry.pool, &input);
+        return onboarding_mod.executeSaga(allocator, manager, self.registry.pool, &input, null);
     }
 
     /// Verify that a Keycloak realm's OIDC discovery endpoint is reachable.

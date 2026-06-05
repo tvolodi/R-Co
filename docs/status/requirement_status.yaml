@@ -3653,4 +3653,53 @@ requirements:
     released_at: '2026-05-31'
     release_run: WF02-f6-wh-ui-04-20260531
     last_updated: '2026-05-31T16:29:31Z'
-total_requirements: 255
+  ONB-UI-01:
+    status: RELEASED
+    stage: F7
+    priority: MUST
+    title: Register Tenant entry point
+    implemented_in:
+    - web/src/components/layout/AppShell.tsx
+    test_spec: tests/specs/ONB-UI-01.md
+    test_run: tests/reports/report-20260605-WF02-f7-onboard-ui-20260604-step05.yaml
+    release_run: WF02-f7-onboard-ui-20260604
+    released_at: '2026-06-05'
+    last_updated: '2026-06-05T02:37:00Z'
+  ONB-UI-02:
+    status: RELEASED
+    stage: F7
+    priority: MUST
+    title: Tenant registration form
+    implemented_in:
+    - web/src/pages/admin/onboarding/RegisterTenantPage.tsx
+    - web/src/api/onboarding.ts
+    test_spec: tests/specs/ONB-UI-02.md
+    test_run: tests/reports/report-20260605-WF02-f7-onboard-ui-20260604-step05.yaml
+    release_run: WF02-f7-onboard-ui-20260604
+    released_at: '2026-06-05'
+    last_updated: '2026-06-05T02:37:00Z'
+  ONB-UI-03:
+    status: RELEASED
+    stage: F7
+    priority: MUST
+    title: Onboarding progress display
+    implemented_in:
+    - web/src/pages/admin/onboarding/OnboardingProgressPage.tsx
+    test_spec: tests/specs/ONB-UI-03.md
+    test_run: tests/reports/report-20260605-WF02-f7-onboard-ui-20260604-step05.yaml
+    release_run: WF02-f7-onboard-ui-20260604
+    released_at: '2026-06-05'
+    last_updated: '2026-06-05T02:37:00Z'
+  ONB-UI-04:
+    status: RELEASED
+    stage: F7
+    priority: MUST
+    title: Onboarding result screen
+    implemented_in:
+    - web/src/pages/admin/onboarding/OnboardingResultPage.tsx
+    test_spec: tests/specs/ONB-UI-04.md
+    test_run: tests/reports/report-20260605-WF02-f7-onboard-ui-20260604-step05.yaml
+    release_run: WF02-f7-onboard-ui-20260604
+    released_at: '2026-06-05'
+    last_updated: '2026-06-05T02:37:00Z'
+total_requirements: 259

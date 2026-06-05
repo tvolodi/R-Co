@@ -1,0 +1,62 @@
+{
+  "handoff_id": "8339fa79-0808-445b-9a9c-776bba31512d",
+  "run_id": "WF02-f7-onboard-ui-20260604",
+  "step": "04b-r1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-04T12:08:29Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F7 - Tenant Onboarding GUI",
+    "requirement_ids": [
+      "ONB-UI-01",
+      "ONB-UI-02",
+      "ONB-UI-03",
+      "ONB-UI-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/ONB-UI-01.md",
+      "tests/specs/ONB-UI-02.md",
+      "tests/specs/ONB-UI-03.md",
+      "tests/specs/ONB-UI-04.md",
+      "web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+      "tests/specs/PIPELINE-onboarding-wizard.md"
+    ]
+  },
+  "task": {
+    "description": "RE-VALIDATE test suite. Fixes applied since FAIL: (1) BLOCKER fixed: worker-user/worker-pass credentials used in onb-ui-01. (2) ISSUE-02: distinct Idempotency-Key test added to onb-ui-02. (3) ISSUE-03: 3-consecutive-5xx error banner test added to onb-ui-03. (4) ISSUE-04: direct-URL role-guard redirect tests for all 3 screens added to onb-ui-01. (5) ISSUE-05: AC-03 in ONB-UI-01 spec updated to explicitly cite oidcf-login.e2e.spec.ts TC-OIDCF-01 as the covering test.",
+    "acceptance_criteria": [
+      "PASS: no BLOCKER, no MAJOR",
+      "FAIL: list remaining issues"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation of ONB-UI-01..04 test suite passed: all 5 fixes confirmed in place, no BLOCKER or MAJOR issues remain, all 11 checks clear.",
+    "artifacts_out": [
+      "tests/specs/ONB-UI-01.md",
+      "tests/specs/ONB-UI-02.md",
+      "tests/specs/ONB-UI-03.md",
+      "tests/specs/ONB-UI-04.md",
+      "web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+      "tests/specs/PIPELINE-onboarding-wizard.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 05)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-06-04T12:08:29Z",
+  "completed_at": "2026-06-04T12:12:38Z"
+}

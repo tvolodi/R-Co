@@ -22,7 +22,7 @@ import {
 } from '../pipeline'
 
 const API_BASE_URL       = process.env.BPM_TEST_URL     ?? 'http://127.0.0.1:8080'
-const KEYCLOAK_BASE_URL  = process.env.BPM_IDP_BASE_URL ?? 'http://127.0.0.1:8081'
+const KEYCLOAK_BASE_URL  = process.env.BPM_IDP_BASE_URL ?? 'http://localhost:8081'
 const KEYCLOAK_DISCOVERY = `${KEYCLOAK_BASE_URL}/realms/bpm-default/.well-known/openid-configuration`
 
 async function assertServicesReady(request: Parameters<typeof getKeycloakToken>[0]) {
@@ -65,8 +65,9 @@ test.describe('ONB-UI-02 — Tenant registration form', () => {
     await page.screenshot({ path: 'scratch/onb-ui-02-empty-form-errors.png', fullPage: true })
 
     // Screen shows inline error messages for required fields
+    // Use exact:true where the message text is a prefix of another error message
     await expect(page.getByText('Slug is required')).toBeVisible()
-    await expect(page.getByText('Display name is required')).toBeVisible()
+    await expect(page.getByText('Display name is required', { exact: true })).toBeVisible()
     await expect(page.getByText('Admin email is required')).toBeVisible()
     await expect(page.getByText('Admin username is required')).toBeVisible()
     await expect(page.getByText('Admin display name is required')).toBeVisible()
@@ -202,13 +203,14 @@ test.describe('ONB-UI-02 — Tenant registration form', () => {
 
     const id1 = randomUUID().slice(0, 8)
     const fillAndSubmit = async (slug: string) => {
-      await page.fill('[name="slug"], input[placeholder*="slug" i]', slug)
-      await page.fill('[name="display_name"], input[placeholder*="display" i]', `Test ${slug}`)
-      await page.fill('[name="admin_email"], input[type="email"]', `admin@${slug}.example.com`)
-      await page.fill('[name="admin_username"], input[placeholder*="username" i]', `admin-${slug}`)
-      await page.fill('[name="admin_display_name"], input[placeholder*="display name" i]', `Admin ${slug}`)
-      await page.fill('[name="hostname"], input[placeholder*="hostname" i]', `${slug}.localhost`)
-      const uriInputs = await page.locator('input[placeholder*="redirect" i]').all()
+      // Use id-based selectors matching RegisterTenantPage's DOM structure
+      await page.locator('#slug').fill(slug)
+      await page.locator('#display_name').fill(`Test ${slug}`)
+      await page.locator('#admin_email').fill(`admin@${slug}.example.com`)
+      await page.locator('#admin_username').fill(`admin-${slug}`)
+      await page.locator('#admin_display_name').fill(`Admin ${slug}`)
+      await page.locator('#hostname').fill(`${slug}.localhost`)
+      const uriInputs = await page.locator('input[placeholder*="callback"]').all()
       if (uriInputs.length > 0) await uriInputs[0].fill(`http://${slug}.localhost/*`)
       await page.click('button[type="submit"]')
       await page.waitForTimeout(500)

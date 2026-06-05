@@ -1,0 +1,78 @@
+{
+  "handoff_id": "0e0e38bd-d430-40a7-8fd3-e8002f7df1da",
+  "run_id": "WF02-f7-onboard-ui-20260604",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-04T11:52:10Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F7 - Tenant Onboarding GUI",
+    "requirement_ids": [
+      "ONB-UI-01",
+      "ONB-UI-02",
+      "ONB-UI-03",
+      "ONB-UI-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/design/onboarding_gui.md",
+      "web/src/pages/admin/onboarding/RegisterTenantPage.tsx",
+      "web/src/pages/admin/onboarding/OnboardingProgressPage.tsx",
+      "web/src/pages/admin/onboarding/OnboardingResultPage.tsx",
+      "web/src/api/onboarding.ts",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Write test specs and Playwright E2E tests for Stage F7 - Tenant Onboarding GUI (ONB-UI-01..04).\n\nRead:\n- docs/BPM_Platform_Functional_Requirements.md (## Stage F7 section)\n- src/design/onboarding_gui.md (the validated design)\n- docs/guides/test_developer_guide.md\n- web/src/pages/admin/onboarding/ (the implemented pages)\n- web/src/api/onboarding.ts\n\nWrite per-requirement spec files:\n  tests/specs/ONB-UI-01.md\n  tests/specs/ONB-UI-02.md\n  tests/specs/ONB-UI-03.md\n  tests/specs/ONB-UI-04.md\n\nWrite Playwright E2E tests:\n  web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts  - nav entry visible for PLATFORM_ADMIN only\n  web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts  - form validation and submission\n  web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts  - progress polling lifecycle\n  web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts  - result screen (success + failure + page-reload restore)\n\nAll tests MUST:\n- Run against real backend (no mocks, no MSW)\n- Use real Keycloak tokens via loginWithToken() helper\n- Take a screenshot after every significant UI action\n- Pass verdict as \"screen shows X after Y\" not \"no error was thrown\"\n- Use per-test UUIDs for slug/hostname to avoid collisions\n- Clean up: deactivate or delete any tenant created during the test\n\nFor ONB-UI-01: test that a non-PLATFORM_ADMIN user does NOT see \"Register Tenant\" in the nav.\nFor ONB-UI-02: test at minimum - required field validation, slug format validation, successful submit navigates to progress screen.\nFor ONB-UI-03: the saga runs asynchronously - test that the spinner appears after submit and that after completion the result screen is shown. Use a real POST to the onboarding API.\nFor ONB-UI-04: test the success view (slug + oidc_authority shown); the \"Try Again\" flow (navigates back with prefill); and page-reload restore via ?hostname=<h>.\n\nAlso check whether this is a sequential user journey requiring a pipeline test:\n- ONB-UI-01 through ONB-UI-04 form a linear wizard (entry \u2192 form \u2192 progress \u2192 result)\n- Create a pipeline test: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts\n- Create spec: tests/specs/PIPELINE-onboarding-wizard.md\n- Add row to docs/guides/test_developer_guide.md \u00a711.10 pipeline inventory\n\nThe pipeline test steps:\n  pl.step('01: PLATFORM_ADMIN sees Register Tenant nav entry')\n  pl.step('02: fill and submit registration form')\n  pl.step('03: progress screen shows spinner')\n  pl.step('04: saga completes - result screen shows slug + oidc_authority')\n  pl.onCleanup() - delete the created tenant or mark it inactive\n\nAfter writing all files, update the handoff:\n- status: COMPLETED\n- result.status: PASS\n- result.summary: brief description\n- result.artifacts_out: all spec and test files created\n- result.issues: any deferred items\n- result.next_action: Route to TEST-DESIGN-VALIDATOR (Step 04b)\n- completed_at: run python -c \"import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))\" and use exact output\n\nUpdate handoffs/registry.json status to COMPLETED.\n",
+    "acceptance_criteria": [
+      "tests/specs/ONB-UI-01.md through ONB-UI-04.md exist with GIVEN/THEN criteria",
+      "Playwright E2E tests exist for each of the four requirements",
+      "Pipeline test web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts exists",
+      "tests/specs/PIPELINE-onboarding-wizard.md exists",
+      "All tests use real backend (no MSW, no mocks)",
+      "Per-test UUIDs used for slug/hostname",
+      "pl.onCleanup() registered unconditionally in pipeline test"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Wrote 4 spec files (ONB-UI-01..04), 4 island E2E tests, 1 pipeline test (onboarding-wizard), and 1 pipeline spec for Stage F7 Tenant Onboarding GUI.",
+    "artifacts_out": [
+      "tests/specs/ONB-UI-01.md",
+      "tests/specs/ONB-UI-02.md",
+      "tests/specs/ONB-UI-03.md",
+      "tests/specs/ONB-UI-04.md",
+      "web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+      "tests/specs/PIPELINE-onboarding-wizard.md",
+      "docs/guides/test_developer_guide.md (\u00a711.10 updated)"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "onb-ui-01.e2e.spec.ts uses username task-worker-user/task-worker-pass for the non-PLATFORM_ADMIN test; actual Keycloak test credentials for a TASK_WORKER user must be confirmed against the test realm seed. If different credentials are used, update those two string literals before running."
+      },
+      {
+        "severity": "MINOR",
+        "description": "onb-ui-04.e2e.spec.ts Try-Again test injects router state via page.evaluate + window.history.replaceState. If the React Router version does not pick up state from replaceState via PopStateEvent, the test will need to navigate normally through a real failed saga. Mark for verification during TEST-RUNNER execution."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Pipeline cleanup cannot delete the created Keycloak tenant realm because no DELETE /api/v1/admin/tenants endpoint exists in this version. The cleanup function logs the slug for manual purge. When the delete endpoint is implemented, update pl.onCleanup in the pipeline test."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 04b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-04T11:52:10Z",
+  "completed_at": "2026-06-04T11:58:38Z"
+}

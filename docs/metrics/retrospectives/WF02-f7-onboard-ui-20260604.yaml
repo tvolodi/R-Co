@@ -1,0 +1,61 @@
+run_id: WF02-f7-onboard-ui-20260604
+created_at: '2026-06-05T02:38:30Z'
+requirements:
+  - ONB-UI-01
+  - ONB-UI-02
+  - ONB-UI-03
+  - ONB-UI-04
+estimated_minutes:
+  total: 195
+steps:
+  req-analyst:
+    estimated: 20
+    actual: 2.0
+    variance_pct: -90.2
+  req-validator:
+    estimated: 15
+    actual: 0.5
+    variance_pct: -97.0
+  code-designer:
+    estimated: 20
+    actual: 4.1
+    variance_pct: -79.7
+  code-design-validator:
+    estimated: 15
+    actual: 2.8
+    variance_pct: -81.5
+  frontend-dev:
+    estimated: 40
+    actual: 31.3
+    variance_pct: -21.7
+  test-designer:
+    estimated: 20
+    actual: 6.5
+    variance_pct: -67.7
+  test-design-validator:
+    estimated: 15
+    actual: 8.9
+    variance_pct: -40.5
+  test-runner:
+    estimated: 25
+    actual: 12.9
+    variance_pct: -48.6
+  release-validator:
+    estimated: 15
+    actual: 0.7
+    variance_pct: -95.3
+  doc-updater:
+    estimated: 10
+    actual: 5.0
+    variance_pct: -50.0
+actual_minutes:
+  total: 74.6
+variance_pct: -61.7
+variance_rationale: >
+  All steps completed faster than estimated because the onboarding GUI
+  is an additive frontend-only feature (difficulty 2, low integration surface)
+  building on already-complete backend APIs. The frontend-dev step was the
+  closest to estimate (31.3 vs 40 min, -21.7%) as it required actual component
+  implementation. Smaller auxiliary steps (req-analyst, req-validator,
+  release-validator) were overestimated by 3-5x due to the fixed base cost in
+  the estimation model.
