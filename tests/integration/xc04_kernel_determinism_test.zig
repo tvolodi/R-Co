@@ -82,20 +82,20 @@ test "TC-XC-04-03: scheduler fires timers in deterministic order" {
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
     const definition_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
         alloc.free(definition_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
     }
 
     _ = try harness.conn.exec(
         \\INSERT INTO instance_projections (
         \\  instance_id, definition_id, status, current_nodes,
-        \\  variables, last_event_seq, tenant_id, started_at, updated_at
-        \\) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, NOW(), NOW())
+        \\  variables, last_event_seq, started_at, updated_at
+        \\) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, NOW(), NOW())
     ,
-        &.{ instance_id, definition_id, "ACTIVE", "[]", "{}", "0", tenant_id },
+        &.{ instance_id, definition_id, "ACTIVE", "[]", "{}", "0" },
     );
 
     // Insert timers with known fire times
@@ -171,12 +171,12 @@ test "TC-XC-04-04: audit chain hash computation is deterministic" {
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     const actor_id = try uuid_mod.newUuidV4(alloc);
     const resource_id = try uuid_mod.newUuidV4(alloc);
     const ref_id = try uuid_mod.newUuidV4(alloc);
     defer {
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
         alloc.free(actor_id);
         alloc.free(resource_id);
         alloc.free(ref_id);
@@ -202,7 +202,7 @@ test "TC-XC-04-04: audit chain hash computation is deterministic" {
             \\    'trace-123'
             \\  ) AS hash
         ,
-            &.{ tenant_id, ref_id, actor_id, resource_id, ref_id },
+            &.{ scope_id, ref_id, actor_id, resource_id, ref_id },
         );
         defer query.deinit();
 
@@ -227,12 +227,12 @@ test "TC-XC-04-05: event append preserves deterministic ordering" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     const definition_id = try uuid_mod.newUuidV4(alloc);
     const actor_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
         alloc.free(definition_id);
         alloc.free(actor_id);
     }
@@ -241,11 +241,11 @@ test "TC-XC-04-05: event append preserves deterministic ordering" {
     _ = try harness.conn.exec(
         \\INSERT INTO instance_projections (
         \\  instance_id, definition_id, status, current_nodes,
-        \\  variables, last_event_seq, tenant_id, definition_artifact_hash,
+        \\  variables, last_event_seq, definition_artifact_hash,
         \\  started_at, updated_at
-        \\) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, $8, NOW(), NOW())
+        \\) VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6, $7, NOW(), NOW())
     ,
-        &.{ instance_id, definition_id, "ACTIVE", "[]", "{}", "0", tenant_id, "def-hash" },
+        &.{ instance_id, definition_id, "ACTIVE", "[]", "{}", "0", "def-hash" },
     );
 
     // Append events
@@ -264,8 +264,8 @@ test "TC-XC-04-05: event append preserves deterministic ordering" {
         _ = try harness.conn.exec(
             \\INSERT INTO events (
             \\  event_id, instance_id, event_type, payload, actor_id,
-            \\  created_at, sequence_number, idempotency_key, metadata, tenant_id
-            \\) VALUES ($1, $2, $3, $4::jsonb, $5, NOW(), $6, $7, $8::jsonb, $9)
+            \\  created_at, sequence_number, idempotency_key, metadata
+            \\) VALUES ($1, $2, $3, $4::jsonb, $5, NOW(), $6, $7, $8::jsonb)
         ,
             &.{
                 event_id,
@@ -276,7 +276,6 @@ test "TC-XC-04-05: event append preserves deterministic ordering" {
                 sequence_number,
                 idempotency_key,
                 "{}",
-                tenant_id,
             },
         );
     }

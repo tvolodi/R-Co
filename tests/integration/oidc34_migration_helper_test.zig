@@ -45,13 +45,14 @@ fn cleanupUserByUsername(pool: *pool_mod.Pool, username: []const u8) void {
 }
 
 fn insertInternalUser(pool: *pool_mod.Pool, username: []const u8, email: []const u8, tenant_id: []const u8) !void {
+    _ = tenant_id;
     const conn = try pool.acquire();
     defer pool.release(conn);
 
     try conn.exec(
-        \\INSERT INTO users (tenant_id, email, display_name, password_hash, is_active, username, status)
-        \\VALUES ($1::uuid, $2, $3, '', TRUE, $4, 'ACTIVE')
-    , &[_][]const u8{ tenant_id, email, username, username });
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, '', TRUE, $3, 'ACTIVE')
+    , &[_][]const u8{ email, username, username });
 }
 
 fn userExistsInCandidates(candidates: []const migration_helper.UnlinkedUserCandidate, username: []const u8) bool {

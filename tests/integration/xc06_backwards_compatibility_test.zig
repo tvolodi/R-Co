@@ -58,23 +58,22 @@ test "TC-XC-06-02: instance records from prior version load correctly" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
     }
 
     // Create instance (simulating V1 instance)
     // V1 instances may not have newer columns like trace_id
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\) VALUES ($1, $2, $3, $4, NOW())
     ,
         &.{
             instance_id,
-            tenant_id,
             "old-def-hash",
             "ACTIVE",
             "{\"state\":\"old_format\"}",
@@ -84,7 +83,7 @@ test "TC-XC-06-02: instance records from prior version load correctly" {
     // Load instance (new version reading old schema)
     var query = try harness.conn.query(
         alloc,
-        \\SELECT instance_id, tenant_id, status, variables FROM instances
+        \\SELECT instance_id, status, variables FROM instances
         \\WHERE instance_id = $1
     ,
         &.{instance_id},
@@ -93,9 +92,8 @@ test "TC-XC-06-02: instance records from prior version load correctly" {
 
     try testing.expectEqual(@as(usize, 1), query.rows.len);
     try testing.expectEqualStrings(instance_id, query.rows[0][0] orelse "");
-    try testing.expectEqualStrings(tenant_id, query.rows[0][1] orelse "");
-    try testing.expectEqualStrings("ACTIVE", query.rows[0][2] orelse "");
-    const variables_json = query.rows[0][3] orelse "";
+    try testing.expectEqualStrings("ACTIVE", query.rows[0][1] orelse "");
+    const variables_json = query.rows[0][2] orelse "";
     try testing.expect(std.mem.containsAtLeast(u8, variables_json, 1, "old_format"));
 }
 
@@ -109,20 +107,20 @@ test "TC-XC-06-03: instance continues normally after schema upgrade" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
     }
 
     // Create V1-style instance
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\) VALUES ($1, $2, $3, $4, NOW())
     ,
-        &.{ instance_id, tenant_id, "def-hash", "ACTIVE", "{}" },
+        &.{ instance_id, "def-hash", "ACTIVE", "{}" },
     );
 
     // V2 appends event (with new fields like trace_id)
@@ -132,14 +130,13 @@ test "TC-XC-06-03: instance continues normally after schema upgrade" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
-        \\  event_id, instance_id, tenant_id, event_type,
+        \\  event_id, instance_id, event_type,
         \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\) VALUES ($1, $2, $3, $4, $5, NOW())
     ,
         &.{
             event_id,
             instance_id,
-            tenant_id,
             "v2.event",
             "{\"v2_field\":true}",
             idem_key,
@@ -226,20 +223,20 @@ test "TC-XC-06-05: event type evolution is backwards compatible" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
     }
 
     // Create instance
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\) VALUES ($1, $2, $3, NOW())
     ,
-        &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
+        &.{ instance_id, "def-hash", "ACTIVE" },
     );
 
     // Insert V1-format event (missing V2 fields)
@@ -248,14 +245,13 @@ test "TC-XC-06-05: event type evolution is backwards compatible" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
-        \\  event_id, instance_id, tenant_id, event_type,
+        \\  event_id, instance_id, event_type,
         \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\) VALUES ($1, $2, $3, $4, $5, NOW())
     ,
         &.{
             event_id_v1,
             instance_id,
-            tenant_id,
             "order.created",
             "{\"order_id\":\"order-123\",\"amount\":100}",
             "v1-event-1",
@@ -287,20 +283,20 @@ test "TC-XC-06-06: archived events remain queryable after upgrade" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
     }
 
     // Create instance
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\) VALUES ($1, $2, $3, NOW())
     ,
-        &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
+        &.{ instance_id, "def-hash", "ACTIVE" },
     );
 
     // Insert and archive events
@@ -316,14 +312,13 @@ test "TC-XC-06-06: archived events remain queryable after upgrade" {
 
         _ = try harness.conn.exec(
             \\INSERT INTO events (
-            \\  event_id, instance_id, tenant_id, event_type,
+            \\  event_id, instance_id, event_type,
             \\  payload, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            \\) VALUES ($1, $2, $3, $4, $5, NOW())
         ,
             &.{
                 event_id,
                 instance_id,
-                tenant_id,
                 "test.event",
                 payload,
                 idem_key,
@@ -389,22 +384,21 @@ test "TC-XC-06-07: multi-step schema evolution is supported" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
     }
 
     // V1: Create instance
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\) VALUES ($1, $2, $3, $4, NOW())
     ,
         &.{
             instance_id,
-            tenant_id,
             "def-hash-v1",
             "ACTIVE",
             "{\"v1_field\":\"value\"}",
@@ -421,14 +415,13 @@ test "TC-XC-06-07: multi-step schema evolution is supported" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
-        \\  event_id, instance_id, tenant_id, event_type,
+        \\  event_id, instance_id, event_type,
         \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\) VALUES ($1, $2, $3, $4, $5, NOW())
     ,
         &.{
             event_v2_id,
             instance_id,
-            tenant_id,
             "migration.v2_event",
             "{\"v2_field\":\"extended\"}",
             "v2-event-1",
@@ -441,14 +434,13 @@ test "TC-XC-06-07: multi-step schema evolution is supported" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
-        \\  event_id, instance_id, tenant_id, event_type,
+        \\  event_id, instance_id, event_type,
         \\  payload, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\) VALUES ($1, $2, $3, $4, $5, NOW())
     ,
         &.{
             event_v3_id,
             instance_id,
-            tenant_id,
             "migration.v3_event",
             "{\"v3_field\":\"evolved\"}",
             "v3-event-1",
@@ -491,8 +483,8 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
-    defer alloc.free(tenant_id);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(scope_id);
 
     // Insert legacy audit entry (V1: no chain fields)
     const legacy_id = try uuid_mod.newUuidV4(alloc);
@@ -506,13 +498,12 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp, chain_hash, prev_chain_hash
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NULL, NULL)
+        \\) VALUES ($1, $2, $3, $4, $5, NOW(), NULL, NULL)
     ,
         &.{
             legacy_id,
-            tenant_id,
             legacy_actor,
             "v1.action",
             "test",
@@ -532,20 +523,20 @@ test "TC-XC-06-08: audit log evolution maintains chain integrity" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\) VALUES ($1, $2, $3, $4, $5, NOW())
     ,
-        &.{ v2_id, tenant_id, v2_actor, "v2.action", "test", v2_resource },
+        &.{ v2_id, v2_actor, "v2.action", "test", v2_resource },
     );
 
     // Query both entries
     var query = try harness.conn.query(
         alloc,
         \\SELECT action, chain_hash, prev_chain_hash FROM audit_entries
-        \\WHERE tenant_id = $1 ORDER BY timestamp, audit_id
+        \\WHERE action IN ('v1.action', 'v2.action') ORDER BY timestamp, audit_id
     ,
-        &.{tenant_id},
+        &.{},
     );
     defer query.deinit();
 
@@ -572,26 +563,26 @@ test "TC-XC-06-09: backward-compatible defaults satisfy constraints" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
     }
 
     // Create instance with minimal V1 fields
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\) VALUES ($1, $2, $3, NOW())
     ,
-        &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
+        &.{ instance_id, "def-hash", "ACTIVE" },
     );
 
     // Query instance (V2 schema may have added nullable columns with defaults)
     var query = try harness.conn.query(
         alloc,
-        \\SELECT instance_id, tenant_id, status FROM instances
+        \\SELECT instance_id, status FROM instances
         \\WHERE instance_id = $1
     ,
         &.{instance_id},
@@ -602,6 +593,5 @@ test "TC-XC-06-09: backward-compatible defaults satisfy constraints" {
 
     // All required fields should be present
     try testing.expectEqualStrings(instance_id, query.rows[0][0] orelse "");
-    try testing.expectEqualStrings(tenant_id, query.rows[0][1] orelse "");
-    try testing.expectEqualStrings("ACTIVE", query.rows[0][2] orelse "");
+    try testing.expectEqualStrings("ACTIVE", query.rows[0][1] orelse "");
 }

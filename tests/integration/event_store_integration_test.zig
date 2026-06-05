@@ -1174,7 +1174,11 @@ test "TC-ADP-01-01: default-tenant behavior remains backward compatible" {
     try std.testing.expectEqual(@as(usize, 1), explicit_default.len);
 }
 
-test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
+test "TC-ADP-01-02: schema-per-tenant architecture replaces row-level isolation" {
+    // After SPT-02 (migration 062), scope columns were removed from events.
+    // Isolation is now via PostgreSQL schema-per-tenant rather than row-level RLS.
+    // This test verifies that both appends succeed and that all events for the
+    // instance are readable (schema-level isolation is tested in SPT-01/adp02 tests).
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -1225,39 +1229,27 @@ test "TC-ADP-01-02: tenant-scoped reads isolate events by tenant_id" {
         .metadata = null,
     });
 
-    const default_events = try store.read(alloc, inst_uuid, ReadOpts{
-        .tenant_id = bpm.store.DEFAULT_TENANT_ID,
+    // In the public schema (no tenant schema provisioned), both events are visible
+    // when reading by instance_id since the scope column is gone.
+    const all_events = try store.read(alloc, inst_uuid, ReadOpts{
         .up_to_sequence = null,
         .up_to_timestamp = null,
     });
     defer {
-        for (default_events) |rec| {
+        for (all_events) |rec| {
             alloc.free(rec.event_type);
             alloc.free(rec.payload);
             alloc.free(rec.metadata);
         }
-        alloc.free(default_events);
+        alloc.free(all_events);
     }
 
-    const alt_events = try store.read(alloc, inst_uuid, ReadOpts{
-        .tenant_id = alt_tenant,
-        .up_to_sequence = null,
-        .up_to_timestamp = null,
-    });
-    defer {
-        for (alt_events) |rec| {
-            alloc.free(rec.event_type);
-            alloc.free(rec.payload);
-            alloc.free(rec.metadata);
-        }
-        alloc.free(alt_events);
-    }
-
-    try std.testing.expectEqual(@as(usize, 1), default_events.len);
-    try std.testing.expectEqual(@as(usize, 1), alt_events.len);
+    try std.testing.expectEqual(@as(usize, 2), all_events.len);
 }
 
-test "TC-ADP-01-03: migration provisions tenant columns/defaults and tenant indexes" {
+test "TC-ADP-01-03: migration removed tenant columns and indexes from events tables" {
+    // After SPT-02 (migration 062), scope columns were dropped from events and events_archive.
+    // Verify the columns are gone and tenant-scoped indexes were dropped.
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -1271,9 +1263,10 @@ test "TC-ADP-01-03: migration provisions tenant columns/defaults and tenant inde
     const conn = try pool.acquire();
     defer pool.release(conn);
 
+    // Verify scope columns no longer exist in events or events_archive.
     const cols = try conn.query(
         alloc,
-        \\SELECT table_name, is_nullable, column_default
+        \\SELECT table_name
         \\FROM information_schema.columns
         \\WHERE table_schema = 'public'
         \\  AND column_name = 'tenant_id'
@@ -1287,15 +1280,9 @@ test "TC-ADP-01-03: migration provisions tenant columns/defaults and tenant inde
         mr.deinit();
     }
 
-    try std.testing.expectEqual(@as(usize, 2), cols.rows.len);
+    try std.testing.expectEqual(@as(usize, 0), cols.rows.len);
 
-    for (cols.rows) |row| {
-        const nullable = row[1] orelse "";
-        const default_expr = row[2] orelse "";
-        try std.testing.expectEqualStrings("NO", nullable);
-        try std.testing.expect(std.mem.indexOf(u8, default_expr, bpm.store.DEFAULT_TENANT_ID) != null);
-    }
-
+    // Verify tenant-scoped indexes were dropped.
     const idx = try conn.query(
         alloc,
         \\SELECT indexname
@@ -1316,11 +1303,22 @@ test "TC-ADP-01-03: migration provisions tenant columns/defaults and tenant inde
         mr.deinit();
     }
 
-    try std.testing.expectEqual(@as(usize, 4), idx.rows.len);
-    try std.testing.expectEqualStrings("idx_events_archive_tenant_global_seq", idx.rows[0][0] orelse "");
-    try std.testing.expectEqualStrings("idx_events_archive_tenant_instance_seq", idx.rows[1][0] orelse "");
-    try std.testing.expectEqualStrings("idx_events_tenant_global_seq", idx.rows[2][0] orelse "");
-    try std.testing.expectEqualStrings("idx_events_tenant_instance_seq", idx.rows[3][0] orelse "");
+    try std.testing.expectEqual(@as(usize, 0), idx.rows.len);
+
+    // Verify schema-per-tenant registry exists.
+    const registry = try conn.query(
+        alloc,
+        \\SELECT COUNT(*) FROM information_schema.tables
+        \\WHERE table_schema = 'public' AND table_name = 'tenant_schemas'
+    ,
+        &.{},
+    );
+    defer {
+        var mr = registry;
+        mr.deinit();
+    }
+    const reg_count = std.fmt.parseInt(i64, registry.rows[0][0] orelse "0", 10) catch 0;
+    try std.testing.expectEqual(@as(i64, 1), reg_count);
 }
 
 test "TC-ADP-01-04: append rejects empty tenant context deterministically" {

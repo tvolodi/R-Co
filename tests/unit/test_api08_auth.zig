@@ -597,7 +597,7 @@ test "TC-OIDC-01-01: JWT-like token uses configured IdentityProvider verify path
             .username = "oidc.user",
             .display_name = "OIDC User",
             .email = "oidc.user@example.com",
-            .tenant_id = "11111111-1111-1111-1111-111111111111".*,
+            .caller_scope = "11111111-1111-1111-1111-111111111111".*,
             .roles = provider_roles[0..],
             .external_realm = "tenant-realm",
             .token_id_hint = "oidc-token-id-1",
@@ -623,7 +623,7 @@ test "TC-OIDC-01-01: JWT-like token uses configured IdentityProvider verify path
             try testing.expectEqual(auth.Role.PROCESS_OPERATOR, ctx.role);
             try testing.expectEqualStrings("provider-subject-1", ctx.user_id);
             try testing.expectEqualStrings("oidc-token-id-1", ctx.token_id);
-            try testing.expectEqualStrings("11111111-1111-1111-1111-111111111111", ctx.tenant_id[0..]);
+            try testing.expectEqualStrings("11111111-1111-1111-1111-111111111111", ctx.caller_scope[0..]);
             try testing.expectEqual(auth.TenantContextSource.token_claim, ctx.tenant_source);
         },
         else => return error.TestUnexpectedResult,

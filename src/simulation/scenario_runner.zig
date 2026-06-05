@@ -103,7 +103,7 @@ pub const BatchRunResult = struct {
 
 pub const ScenarioRunInput = struct {
     actor_user_id: []const u8,
-    actor_tenant_id: []const u8,
+    actor_realm_id: []const u8,
     actor_permissions: []const []const u8,
     schema_name: []const u8,
     schema_version: []const u8,
@@ -114,7 +114,7 @@ pub const ScenarioRunInput = struct {
 
 pub const BatchRunInput = struct {
     actor_user_id: []const u8,
-    actor_tenant_id: []const u8,
+    actor_realm_id: []const u8,
     actor_permissions: []const []const u8,
     schema_name: []const u8,
     schema_version: []const u8,
@@ -329,7 +329,7 @@ pub fn runScenario(
     input: ScenarioRunInput,
 ) (ScenarioSchemaError || AssertionError || RunnerError || error{OutOfMemory})!ScenarioRunResult {
     if (!hasPermission(input.actor_permissions, "simulation:run")) return error.Forbidden;
-    if (input.actor_user_id.len == 0 or input.actor_tenant_id.len == 0) return error.Unauthorized;
+    if (input.actor_user_id.len == 0 or input.actor_realm_id.len == 0) return error.Unauthorized;
     if (input.definition_id.len == 0) return error.DefinitionNotFound;
     if (input.definition_version.len == 0) return error.DefinitionVersionNotFound;
 
@@ -347,7 +347,7 @@ pub fn runScenario(
 
     const tenant_guard = extractDefinitionTenant(parsed.value) orelse null;
     if (tenant_guard) |tenant_id| {
-        if (!std.mem.eql(u8, tenant_id, input.actor_tenant_id)) return error.TenantAccessDenied;
+        if (!std.mem.eql(u8, tenant_id, input.actor_realm_id)) return error.TenantAccessDenied;
     }
 
     const started_ms = currentMillisecondTimestamp();
@@ -504,7 +504,7 @@ pub fn runScenarioBatch(
 
         const run = try runScenario(allocator, .{
             .actor_user_id = input.actor_user_id,
-            .actor_tenant_id = input.actor_tenant_id,
+            .actor_realm_id = input.actor_realm_id,
             .actor_permissions = input.actor_permissions,
             .schema_name = input.schema_name,
             .schema_version = input.schema_version,
@@ -794,7 +794,7 @@ test "validateScenarioSubmissionDetailed rejects malformed schema metadata" {
 
     var report = try validateScenarioSubmissionDetailed(std.testing.allocator, .{
         .actor_user_id = "u1",
-        .actor_tenant_id = "t1",
+        .actor_realm_id = "t1",
         .actor_permissions = &. {"simulation:run"},
         .schema_name = SCHEMA_NAME,
         .schema_version = SCHEMA_VERSION,
@@ -826,7 +826,7 @@ test "runScenario evaluates final_status and forbidden_events assertions" {
 
     const result = try runScenario(std.testing.allocator, .{
         .actor_user_id = "user-a",
-        .actor_tenant_id = "tenant-a",
+        .actor_realm_id = "tenant-a",
         .actor_permissions = &. {"simulation:run"},
         .schema_name = SCHEMA_NAME,
         .schema_version = SCHEMA_VERSION,

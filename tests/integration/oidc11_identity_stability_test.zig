@@ -115,22 +115,24 @@ fn cleanupTenantFixture(pool: *pool_mod.Pool, tenant_id: []const u8, slug: []con
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
 
+    // tenant_id was dropped from users by migration 062; clean up by realm instead.
     conn.exec(
         \\DELETE FROM group_members
-        \\WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1::uuid)
-    , &[_][]const u8{tenant_id}) catch {};
+        \\WHERE user_id IN (SELECT id FROM users WHERE external_realm = $1)
+    , &[_][]const u8{realm}) catch {};
 
     conn.exec(
         \\DELETE FROM api_tokens
-        \\WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1::uuid)
-    , &[_][]const u8{tenant_id}) catch {};
+        \\WHERE user_id IN (SELECT id FROM users WHERE external_realm = $1)
+    , &[_][]const u8{realm}) catch {};
 
     conn.exec(
         \\DELETE FROM user_roles
-        \\WHERE user_id IN (SELECT id FROM users WHERE tenant_id = $1::uuid)
-    , &[_][]const u8{tenant_id}) catch {};
+        \\WHERE user_id IN (SELECT id FROM users WHERE external_realm = $1)
+    , &[_][]const u8{realm}) catch {};
 
-    conn.exec("DELETE FROM users WHERE tenant_id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
+    conn.exec("DELETE FROM users WHERE external_realm = $1", &[_][]const u8{realm}) catch {};
+    _ = tenant_id;
     conn.exec("DELETE FROM tenant WHERE id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
     conn.exec("DELETE FROM tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
     conn.exec("DELETE FROM tenant WHERE idp_realm_id = $1", &[_][]const u8{realm}) catch {};

@@ -50,24 +50,27 @@ fn parseUuidString(s: []const u8) ![16]u8 {
     return out;
 }
 
+// SPT-02 (migration 062): instance_projections no longer has a row-level scope column.
+// The scope_id parameter is kept for API backward compatibility but not used in SQL.
 fn insertProjection(
     pool: *Pool,
     instance_id: []const u8,
     definition_id: []const u8,
-    tenant_id: []const u8,
+    scope_id: []const u8,
 ) !void {
+    _ = scope_id;
     const conn = try pool.acquire();
     defer pool.release(conn);
 
     _ = try conn.exec(
         \\INSERT INTO instance_projections (
         \\  instance_id, definition_id, status, current_nodes,
-        \\  variables, last_event_seq, tenant_id, definition_artifact_hash,
+        \\  variables, last_event_seq, definition_artifact_hash,
         \\  started_at, updated_at
-        \\) VALUES ($1::uuid, $2::uuid, 'ACTIVE', $3::jsonb, $4::jsonb, $5, $6::uuid, $7, NOW(), NOW())
+        \\) VALUES ($1::uuid, $2::uuid, 'ACTIVE', $3::jsonb, $4::jsonb, $5, $6, NOW(), NOW())
         \\ON CONFLICT (instance_id) DO NOTHING
     ,
-        &.{ instance_id, definition_id, "[]", "{}", "0", tenant_id, "sim-def-hash" },
+        &.{ instance_id, definition_id, "[]", "{}", "0", "sim-def-hash" },
     );
 }
 
@@ -75,18 +78,19 @@ fn cleanupSim01IsolationFixtures(
     pool: *Pool,
     sim_instance_id: []const u8,
     real_instance_id: []const u8,
-    sim_tenant_id: []const u8,
-    real_tenant_id: []const u8,
+    sim_scope: []const u8,
+    real_scope: []const u8,
     sim_idempotency_key: []const u8,
     real_idempotency_key: []const u8,
 ) void {
+    _ = sim_scope;
+    _ = real_scope;
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
 
     conn.exec("DELETE FROM events WHERE idempotency_key IN ($1, $2)", &.{ sim_idempotency_key, real_idempotency_key }) catch {};
     conn.exec("DELETE FROM instance_sequence WHERE instance_id IN ($1::uuid, $2::uuid)", &.{ sim_instance_id, real_instance_id }) catch {};
     conn.exec("DELETE FROM instance_projections WHERE instance_id IN ($1::uuid, $2::uuid)", &.{ sim_instance_id, real_instance_id }) catch {};
-    conn.exec("DELETE FROM instance_projections WHERE tenant_id IN ($1::uuid, $2::uuid)", &.{ sim_tenant_id, real_tenant_id }) catch {};
 }
 
 fn cleanupEventTypeFixture(pool: *Pool, event_type: []const u8) void {
@@ -96,12 +100,12 @@ fn cleanupEventTypeFixture(pool: *Pool, event_type: []const u8) void {
     conn.exec("DELETE FROM event_type_registry WHERE name = $1", &.{event_type}) catch {};
 }
 
-fn cleanupTenantFixtures(pool: *Pool, tenant_id: []const u8) void {
-    const conn = pool.acquire() catch return;
-    defer pool.release(conn);
-
-    conn.exec("DELETE FROM events WHERE tenant_id = $1::uuid", &.{tenant_id}) catch {};
-    conn.exec("DELETE FROM instance_projections WHERE tenant_id = $1::uuid", &.{tenant_id}) catch {};
+// SPT-02 (migration 062): events and instance_projections no longer have row-level scope columns.
+// This cleanup now uses idempotency_key and instance_id instead.
+fn cleanupTenantFixtures(pool: *Pool, scope_id: []const u8) void {
+    _ = scope_id;
+    _ = pool;
+    // Cleanup is now handled per-test via cleanupSim01IsolationFixtures using instance_id
 }
 
 fn freeEventRecords(allocator: std.mem.Allocator, records: []EventRecord) void {

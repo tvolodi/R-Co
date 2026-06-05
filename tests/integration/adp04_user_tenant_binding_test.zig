@@ -35,7 +35,7 @@ fn actorForTenant(tenant_id: []const u8, token_id: []const u8) auth_mod.AuthCont
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = token_id,
-        .tenant_id = uuid36ToArray(tenant_id),
+        .caller_scope = uuid36ToArray(tenant_id),
         .tenant_source = .token_claim,
     };
 }
@@ -111,7 +111,7 @@ fn cleanupGroupByName(pool: *pool_mod.Pool, name: []const u8) void {
     conn.exec("DELETE FROM groups WHERE name = $1", &[_][]const u8{name}) catch {};
 }
 
-test "TC-ADP-04-01: user creation without explicit tenant_id binds to actor tenant" {
+test "TC-ADP-04-01: user creation without explicit scope binds to actor tenant" {
     const alloc = testing.allocator;
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
@@ -144,15 +144,16 @@ test "TC-ADP-04-01: user creation without explicit tenant_id binds to actor tena
     const conn = try pool.acquire();
     defer pool.release(conn);
 
+    // Verify the user row exists (users.tenant_id column was dropped by migration 062).
     const row = (try conn.queryRow(
         alloc,
-        "SELECT tenant_id::text FROM users WHERE id = $1::uuid",
+        "SELECT id::text FROM users WHERE id = $1::uuid",
         &[_][]const u8{user_id},
     )) orelse return error.TestUnexpectedResult;
     defer freeRow(alloc, row);
 
-    const persisted_tenant = row[0] orelse return error.TestUnexpectedResult;
-    try testing.expectEqualStrings(auth_mod.DEFAULT_TENANT_ID, persisted_tenant);
+    const persisted_id = row[0] orelse return error.TestUnexpectedResult;
+    try testing.expectEqualStrings(user_id, persisted_id);
 }
 
 test "TC-ADP-04-02: cross-tenant group membership add is blocked" {
@@ -267,14 +268,13 @@ test "TC-ADP-04-03: legacy user row defaults to default tenant and remains tenan
 
     const row = (try conn.queryRow(
         alloc,
-        "SELECT id::text, tenant_id::text FROM users WHERE username = $1",
+        "SELECT id::text FROM users WHERE username = $1",
         &[_][]const u8{legacy_username},
     )) orelse return error.TestUnexpectedResult;
     defer freeRow(alloc, row);
 
     const user_id = row[0] orelse return error.TestUnexpectedResult;
-    const persisted_tenant = row[1] orelse return error.TestUnexpectedResult;
-    try testing.expectEqualStrings(auth_mod.DEFAULT_TENANT_ID, persisted_tenant);
+    // SPT-02 (migration 062): users no longer has a row-level scope column; no per-row check needed.
 
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);

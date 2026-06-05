@@ -319,12 +319,12 @@ test "TC-OIDC-15-07: markUsersInactiveByRealm updates affected OIDC users" {
         defer pool.release(conn);
 
         try conn.exec(
-            \\INSERT INTO users (id, tenant_id, username, display_name, email,
+            \\INSERT INTO users (id, username, display_name, email,
             \\                   external_realm, external_id, auth_source,
             \\                   password_hash, status, is_active)
-            \\VALUES (gen_random_uuid(), $1::uuid, $2, $3, $4, $5, $6, 'oidc',
+            \\VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'oidc',
             \\        '__OIDC_ONLY__', 'ACTIVE', true)
-        , &[_][]const u8{ tenant_a, username, "OIDC15 User 07", "oidc15-07@example.com", realm_id, "sub-oidc15-07" });
+        , &[_][]const u8{ username, "OIDC15 User 07", "oidc15-07@example.com", realm_id, "sub-oidc15-07" });
     }
 
     // Mark users as inactive.

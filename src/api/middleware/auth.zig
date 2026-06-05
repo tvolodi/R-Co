@@ -173,7 +173,7 @@ pub const AuthContext = struct {
     /// Caller owns this string; freed with the same allocator passed to authenticate().
     token_id: []const u8,
     /// Resolved tenant context for the request lifecycle.
-    tenant_id: [36]u8 = DEFAULT_TENANT_ID.*,
+    caller_scope: [36]u8 = DEFAULT_TENANT_ID.*,
     tenant_source: TenantContextSource = .default_fallback,
 };
 
@@ -705,7 +705,7 @@ pub fn postAuthJitProvision(
     const jit_result = create_user_fn(
         allocator,
         db_pool,
-        auth_ctx.tenant_id[0..],
+        auth_ctx.caller_scope[0..],
         realm,
         identity_ctx.external_user_id,
         identity_ctx.preferred_username,
@@ -735,7 +735,7 @@ pub fn postAuthJitProvision(
             allocator,
             db_pool,
             &identity_ctx,
-            auth_ctx.tenant_id[0..],
+            auth_ctx.caller_scope[0..],
         ) catch |err| {
             std.log.warn("OIDC-10 sync failed: {s}", .{@errorName(err)});
         };
@@ -762,7 +762,7 @@ pub fn postAuthJitProvision(
         .role = role,
         .is_bootstrap = auth_ctx.is_bootstrap,
         .token_id = new_token_id,
-        .tenant_id = auth_ctx.tenant_id,
+        .caller_scope = auth_ctx.caller_scope,
         .tenant_source = auth_ctx.tenant_source,
     } };
 }
@@ -1069,7 +1069,7 @@ pub fn authenticate(
             .role = primaryProviderRole(principal.roles),
             .is_bootstrap = false,
             .token_id = token_id,
-            .tenant_id = resolved_tenant.tenant_id,
+            .caller_scope = resolved_tenant.tenant_id,
             .tenant_source = resolved_tenant.source,
         } };
     }
@@ -1103,7 +1103,7 @@ pub fn authenticate(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = true,
                 .token_id = token_id_boot,
-                .tenant_id = resolved_tenant.tenant_id,
+                .caller_scope = resolved_tenant.tenant_id,
                 .tenant_source = resolved_tenant.source,
             } };
         }
@@ -1282,7 +1282,7 @@ pub fn authenticate(
         .role = role,
         .is_bootstrap = false,
         .token_id = token_id,
-        .tenant_id = resolved_tenant.tenant_id,
+        .caller_scope = resolved_tenant.tenant_id,
         .tenant_source = resolved_tenant.source,
     } };
 }

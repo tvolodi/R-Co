@@ -27,19 +27,18 @@
 --   tenant_id-based composite indexes and constraints in the tenant schema copy.
 --   The row copy uses a dynamically built column list (excluding tenant_id).
 
-DO $guard$
-BEGIN
-    IF current_schema() <> 'public' THEN
-        -- Running inside a tenant schema via runForSchema() — skip entirely.
-        RETURN;
-    END IF;
-
 -- ── Step 1: Add status column to tenant_schemas ──────────────────────────────
+-- Explicitly schema-qualified and idempotent (ADD COLUMN IF NOT EXISTS).
+-- Safe to run in any schema context.
 
 ALTER TABLE public.tenant_schemas
     ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
 
 -- ── Step 2: Per-tenant copy loop ─────────────────────────────────────────────
+-- PUBLIC-SCHEMA-ONLY: the body begins with a current_schema() guard so that
+-- runForSchema() applying this migration inside a tenant schema is a no-op.
+-- (A nested DO block inside another DO block is not valid in PL/pgSQL, so
+--  the guard lives directly inside this single DO block.)
 
 DO $$
 DECLARE
@@ -75,6 +74,11 @@ DECLARE
         'tenant_hostnames'
     ];
 BEGIN
+    -- Public-schema guard: exit early when running inside a tenant schema.
+    IF current_schema() <> 'public' THEN
+        RETURN;
+    END IF;
+
     -- Guard: if tenant_id was already removed from public.process_definitions
     -- (i.e. migration 062 ran before this migration in a per-tenant schema
     -- context), there is nothing to copy — exit early.
@@ -197,6 +201,3 @@ BEGIN
     END LOOP;
 END;
 $$;
-
-END; -- end of $guard$ block
-$guard$;

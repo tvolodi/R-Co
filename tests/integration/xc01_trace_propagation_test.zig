@@ -89,8 +89,8 @@ test "TC-XC-01-03: trace ID flows through audit entries" {
     defer harness.deinit();
 
     const trace_id = "trace-001";
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
-    defer alloc.free(tenant_id);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(scope_id);
     const actor_id = try uuid_mod.newUuidV4(alloc);
     defer alloc.free(actor_id);
     const resource_id = try uuid_mod.newUuidV4(alloc);
@@ -104,15 +104,17 @@ test "TC-XC-01-03: trace ID flows through audit entries" {
     const audit_id = try uuid_mod.newUuidV4(alloc);
     defer alloc.free(audit_id);
 
+    // SPT-02 (migration 062): audit_entries no longer has a row-level scope column.
+    _ = scope_id;
+
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp, trace_id
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+        \\) VALUES ($1, $2, $3, $4, $5, NOW(), $6)
     ,
         &.{
             audit_id,
-            tenant_id,
             actor_id,
             "instance.create",
             "instance",
@@ -159,11 +161,10 @@ test "TC-XC-01-04: scheduler tasks generate distinct trace IDs" {
     try testing.expectEqual(@as(usize, 36), scheduler_trace_2.len);
 
     // Record both tasks' operations in audit with distinct trace IDs
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    // SPT-02 (migration 062): audit_entries no longer has a row-level scope column.
     const actor_id = try uuid_mod.newUuidV4(alloc);
     const resource_id = try uuid_mod.newUuidV4(alloc);
     defer {
-        alloc.free(tenant_id);
         alloc.free(actor_id);
         alloc.free(resource_id);
     }
@@ -174,11 +175,11 @@ test "TC-XC-01-04: scheduler tasks generate distinct trace IDs" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp, trace_id
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+        \\) VALUES ($1, $2, $3, $4, $5, NOW(), $6)
     ,
-        &.{ audit_1, tenant_id, actor_id, "scheduler.fire", "timer", resource_id, scheduler_trace_1 },
+        &.{ audit_1, actor_id, "scheduler.fire", "timer", resource_id, scheduler_trace_1 },
     );
 
     // Task 2 audit entry
@@ -187,11 +188,11 @@ test "TC-XC-01-04: scheduler tasks generate distinct trace IDs" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp, trace_id
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+        \\) VALUES ($1, $2, $3, $4, $5, NOW(), $6)
     ,
-        &.{ audit_2, tenant_id, actor_id, "scheduler.fire", "timer", resource_id, scheduler_trace_2 },
+        &.{ audit_2, actor_id, "scheduler.fire", "timer", resource_id, scheduler_trace_2 },
     );
 
     // Query both tasks' entries and verify they have distinct trace IDs
@@ -290,23 +291,26 @@ test "TC-XC-01-07: trace ID is included in error responses" {
 
     // Error audit entry would also carry this trace_id
     const audit_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     const actor_id = try uuid_mod.newUuidV4(alloc);
     const resource_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(audit_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
         alloc.free(actor_id);
         alloc.free(resource_id);
     }
 
+    // SPT-02 (migration 062): audit_entries no longer has a row-level scope column.
+    _ = scope_id;
+
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp, trace_id
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+        \\) VALUES ($1, $2, $3, $4, $5, NOW(), $6)
     ,
-        &.{ audit_id, tenant_id, actor_id, "error.occurred", "error", resource_id, trace_id },
+        &.{ audit_id, actor_id, "error.occurred", "error", resource_id, trace_id },
     );
 
     // Query to verify trace_id is in error audit entry

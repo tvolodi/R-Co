@@ -279,11 +279,10 @@ test "TC-OIDC-09-02: subsequent auth returns existing user no duplicate" {
         alloc,
         \\SELECT COUNT(*)::text
         \\FROM users
-        \\WHERE tenant_id = $1::uuid
-        \\  AND external_realm = $2
-        \\  AND external_id = $3
+        \\WHERE external_realm = $1
+        \\  AND external_id = $2
     ,
-        &[_][]const u8{ tenant_02, realm, external_id },
+        &[_][]const u8{ realm, external_id },
     )) orelse return error.TestUnexpectedResult;
     defer freeRow(alloc, count_row);
 
@@ -381,11 +380,10 @@ test "TC-OIDC-09-05: duplicate preferred_username with existing internal user" {
     defer pool.release(conn);
 
     try conn.exec(
-        \\INSERT INTO users (tenant_id, email, display_name, password_hash, is_active, username, status)
-        \\VALUES ($1::uuid, $2, $3, '', TRUE, $4, 'ACTIVE')
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, '', TRUE, $3, 'ACTIVE')
     ,
         &[_][]const u8{
-            tenant_05,
             "tc-oidc-09-05-internal@example.com",
             "OIDC09 Existing Internal",
             existing_username,

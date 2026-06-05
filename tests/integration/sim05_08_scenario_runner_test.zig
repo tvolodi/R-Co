@@ -56,14 +56,14 @@ fn fixtureUuid(test_case: []const u8, field: []const u8) [36]u8 {
 
 fn baseRunInput(
     actor_user_id: []const u8,
-    tenant_id: []const u8,
+    actor_tenant: []const u8,
     definition_id: []const u8,
     definition_version: []const u8,
     payload: []const u8,
 ) scenario_runner.ScenarioRunInput {
     return .{
         .actor_user_id = actor_user_id,
-        .actor_tenant_id = tenant_id,
+        .actor_realm_id = actor_tenant,
         .actor_permissions = &.{"simulation:run"},
         .schema_name = "simulation-scenario",
         .schema_version = "1.0",
@@ -75,7 +75,7 @@ fn baseRunInput(
 
 fn buildScenarioPayload(
     allocator: std.mem.Allocator,
-    tenant_id: []const u8,
+    actor_tenant: []const u8,
     definition_id: []const u8,
     definition_version: []const u8,
     actual_fields_json: []const u8,
@@ -84,7 +84,7 @@ fn buildScenarioPayload(
     return std.fmt.allocPrint(
         allocator,
         "{{\"schema\":{{\"name\":\"simulation-scenario\",\"version\":\"1.0\"}},\"definitionRef\":{{\"definitionId\":\"{s}\",\"version\":\"{s}\",\"tenantId\":\"{s}\"}},\"initialVariables\":{{\"amount\":100,\"currency\":\"USD\"}},\"actions\":[{{\"type\":\"start\"}},{{\"type\":\"approve\"}}],\"mocks\":[],{s}\"assertions\":[{s}]}}",
-        .{ definition_id, definition_version, tenant_id, actual_fields_json, assertion_json },
+        .{ definition_id, definition_version, actor_tenant, actual_fields_json, assertion_json },
     );
 }
 
@@ -93,7 +93,7 @@ fn buildRouteBody(
     schema_version: []const u8,
     definition_version: []const u8,
     definition_id: []const u8,
-    tenant_id: []const u8,
+    actor_tenant: []const u8,
     initial_variables_field_json: []const u8,
     actions_json: []const u8,
     actual_fields_json: []const u8,
@@ -102,14 +102,14 @@ fn buildRouteBody(
     return std.fmt.allocPrint(
         allocator,
         "{{\"schema\":{{\"name\":\"simulation-scenario\",\"version\":\"{s}\"}},\"definitionRef\":{{\"definitionId\":\"{s}\",\"version\":\"{s}\",\"tenantId\":\"{s}\"}},{s}\"actions\":{s},\"mocks\":[],{s}\"assertions\":[{s}]}}",
-        .{ schema_version, definition_id, definition_version, tenant_id, initial_variables_field_json, actions_json, actual_fields_json, assertions_json },
+        .{ schema_version, definition_id, definition_version, actor_tenant, initial_variables_field_json, actions_json, actual_fields_json, assertions_json },
     );
 }
 
 fn buildBatchScenariosJson(
     allocator: std.mem.Allocator,
     count: usize,
-    tenant_id: []const u8,
+    actor_tenant: []const u8,
     definition_id: []const u8,
     definition_version: []const u8,
 ) ![]u8 {
@@ -129,7 +129,7 @@ fn buildBatchScenariosJson(
 
         const scenario_json = try buildScenarioPayload(
             allocator,
-            tenant_id,
+            actor_tenant,
             definition_id,
             definition_version,
             "\"actualFinalStatus\":\"COMPLETED\",",
@@ -148,7 +148,7 @@ test "TC-SIM-05-01: schema submission succeeds for valid versioned payload" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-05-01", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-05-01", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-05-01", "actor");
     const definition_id = fixtureUuid("TC-SIM-05-01", "definition_id");
 
     const body = try buildRouteBody(
@@ -156,7 +156,7 @@ test "TC-SIM-05-01: schema submission succeeds for valid versioned payload" {
         "1.0",
         "v1",
         definition_id[0..],
-        tenant_id[0..],
+        actor_tenant[0..],
         "\"initialVariables\":{},",
         "[{\"type\":\"start\"}]",
         "",
@@ -168,7 +168,7 @@ test "TC-SIM-05-01: schema submission succeeds for valid versioned payload" {
         testing.allocator,
         "Bearer test-token",
         actor_user_id[0..],
-        tenant_id[0..],
+        actor_tenant[0..],
         "simulation:validate",
         body,
     );
@@ -182,7 +182,7 @@ test "TC-SIM-05-02: invalid schema payload is rejected with structured errors" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-05-02", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-05-02", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-05-02", "actor");
     const definition_id = fixtureUuid("TC-SIM-05-02", "definition_id");
 
     const body = try buildRouteBody(
@@ -190,7 +190,7 @@ test "TC-SIM-05-02: invalid schema payload is rejected with structured errors" {
         "1.0",
         "v1",
         definition_id[0..],
-        tenant_id[0..],
+        actor_tenant[0..],
         "",
         "[{\"type\":\"start\"}]",
         "",
@@ -202,7 +202,7 @@ test "TC-SIM-05-02: invalid schema payload is rejected with structured errors" {
         testing.allocator,
         "Bearer test-token",
         actor_user_id[0..],
-        tenant_id[0..],
+        actor_tenant[0..],
         "simulation:validate",
         body,
     );
@@ -217,7 +217,7 @@ test "TC-SIM-05-03: unsupported schema version is rejected" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-05-03", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-05-03", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-05-03", "actor");
     const definition_id = fixtureUuid("TC-SIM-05-03", "definition_id");
 
     const body = try buildRouteBody(
@@ -225,7 +225,7 @@ test "TC-SIM-05-03: unsupported schema version is rejected" {
         "2.0",
         "v1",
         definition_id[0..],
-        tenant_id[0..],
+        actor_tenant[0..],
         "\"initialVariables\":{},",
         "[{\"type\":\"start\"}]",
         "",
@@ -237,7 +237,7 @@ test "TC-SIM-05-03: unsupported schema version is rejected" {
         testing.allocator,
         "Bearer test-token",
         actor_user_id[0..],
-        tenant_id[0..],
+        actor_tenant[0..],
         "simulation:validate",
         body,
     );
@@ -251,12 +251,12 @@ test "TC-SIM-06-01: event_sequence assertion passes with wildcard match" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-01", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-01", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-01", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-01", "definition_id");
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         "\"actualEventTrace\":[{\"eventType\":\"action:start\",\"payload\":{}},{\"eventType\":\"action:approve\",\"payload\":{}}],",
@@ -266,7 +266,7 @@ test "TC-SIM-06-01: event_sequence assertion passes with wildcard match" {
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -278,12 +278,12 @@ test "TC-SIM-06-02: event_sequence assertion fails on mismatch" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-02", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-02", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-02", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-02", "definition_id");
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         "\"actualEventTrace\":[{\"eventType\":\"action:start\",\"payload\":{}},{\"eventType\":\"action:approve\",\"payload\":{}}],",
@@ -293,7 +293,7 @@ test "TC-SIM-06-02: event_sequence assertion fails on mismatch" {
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -305,12 +305,12 @@ test "TC-SIM-06-03: final_variables assertion passes on exact match" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-03", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-03", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-03", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-03", "definition_id");
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         "\"actualFinalVariables\":{\"amount\":100,\"currency\":\"USD\"},",
@@ -320,7 +320,7 @@ test "TC-SIM-06-03: final_variables assertion passes on exact match" {
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -332,12 +332,12 @@ test "TC-SIM-06-04: final_variables assertion fails on mismatch" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-04", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-04", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-04", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-04", "definition_id");
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         "\"actualFinalVariables\":{\"amount\":99,\"currency\":\"USD\"},",
@@ -347,7 +347,7 @@ test "TC-SIM-06-04: final_variables assertion fails on mismatch" {
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -359,12 +359,12 @@ test "TC-SIM-06-05: final_status assertion passes on exact status" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-05", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-05", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-05", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-05", "definition_id");
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         "\"actualFinalStatus\":\"COMPLETED\",",
@@ -374,7 +374,7 @@ test "TC-SIM-06-05: final_status assertion passes on exact status" {
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -386,12 +386,12 @@ test "TC-SIM-06-06: final_status assertion fails on status mismatch" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-06", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-06", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-06", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-06", "definition_id");
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         "\"actualFinalStatus\":\"FAILED\",",
@@ -401,7 +401,7 @@ test "TC-SIM-06-06: final_status assertion fails on status mismatch" {
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -413,7 +413,7 @@ test "TC-SIM-06-07: task_assignments assertion passes on exact assignment set" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-07", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-07", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-07", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-07", "definition_id");
     const task_id = fixtureUuid("TC-SIM-06-07", "task_id");
 
@@ -433,7 +433,7 @@ test "TC-SIM-06-07: task_assignments assertion passes on exact assignment set" {
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         actual_fields_json,
@@ -443,7 +443,7 @@ test "TC-SIM-06-07: task_assignments assertion passes on exact assignment set" {
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -455,7 +455,7 @@ test "TC-SIM-06-08: task_assignments assertion fails on assignment mismatch" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-08", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-08", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-08", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-08", "definition_id");
     const actual_task_id = fixtureUuid("TC-SIM-06-08", "actual_task_id");
     const expected_task_id = fixtureUuid("TC-SIM-06-08", "expected_task_id");
@@ -476,7 +476,7 @@ test "TC-SIM-06-08: task_assignments assertion fails on assignment mismatch" {
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         actual_fields_json,
@@ -486,7 +486,7 @@ test "TC-SIM-06-08: task_assignments assertion fails on assignment mismatch" {
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -498,12 +498,12 @@ test "TC-SIM-06-09: forbidden_events assertion passes when forbidden events are 
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-09", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-09", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-09", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-09", "definition_id");
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         "\"actualEventTrace\":[{\"eventType\":\"action:start\",\"payload\":{}},{\"eventType\":\"action:approve\",\"payload\":{}}],",
@@ -513,7 +513,7 @@ test "TC-SIM-06-09: forbidden_events assertion passes when forbidden events are 
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -525,12 +525,12 @@ test "TC-SIM-06-10: forbidden_events assertion fails when forbidden event is pre
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-06-10", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-06-10", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-06-10", "actor");
     const definition_id = fixtureUuid("TC-SIM-06-10", "definition_id");
 
     const payload = try buildScenarioPayload(
         testing.allocator,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v1",
         "\"actualEventTrace\":[{\"eventType\":\"action:start\",\"payload\":{}},{\"eventType\":\"action:reject\",\"payload\":{}}],",
@@ -540,7 +540,7 @@ test "TC-SIM-06-10: forbidden_events assertion fails when forbidden event is pre
 
     const run = try scenario_runner.runScenario(
         testing.allocator,
-        baseRunInput(actor_user_id[0..], tenant_id[0..], definition_id[0..], "v1", payload),
+        baseRunInput(actor_user_id[0..], actor_tenant[0..], definition_id[0..], "v1", payload),
     );
     defer run.deinit(testing.allocator);
 
@@ -552,13 +552,13 @@ test "TC-SIM-07-01: run API returns structured result fields" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-07-01", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-07-01", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-07-01", "actor");
     const definition_id = fixtureUuid("TC-SIM-07-01", "definition_id");
 
     const body = try std.fmt.allocPrint(
         testing.allocator,
         "{{\"schema\":{{\"name\":\"simulation-scenario\",\"version\":\"1.0\"}},\"definitionRef\":{{\"definitionId\":\"{s}\",\"version\":\"v3\",\"tenantId\":\"{s}\"}},\"initialVariables\":{{\"amount\":10}},\"actions\":[{{\"type\":\"start\"}},{{\"type\":\"approve\"}}],\"mocks\":[],\"actualFinalStatus\":\"COMPLETED\",\"assertions\":[{{\"id\":\"sim07-run\",\"type\":\"final_status\",\"expected\":\"COMPLETED\"}}]}}",
-        .{ definition_id[0..], tenant_id[0..] },
+        .{ definition_id[0..], actor_tenant[0..] },
     );
     defer testing.allocator.free(body);
 
@@ -566,7 +566,7 @@ test "TC-SIM-07-01: run API returns structured result fields" {
         testing.allocator,
         "Bearer test-token",
         actor_user_id[0..],
-        tenant_id[0..],
+        actor_tenant[0..],
         "simulation:run",
         body,
     );
@@ -591,13 +591,13 @@ test "TC-SIM-07-02: run API includes per-assertion pass/fail rows" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-07-02", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-07-02", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-07-02", "actor");
     const definition_id = fixtureUuid("TC-SIM-07-02", "definition_id");
 
     const body = try std.fmt.allocPrint(
         testing.allocator,
         "{{\"schema\":{{\"name\":\"simulation-scenario\",\"version\":\"1.0\"}},\"definitionRef\":{{\"definitionId\":\"{s}\",\"version\":\"v3\",\"tenantId\":\"{s}\"}},\"initialVariables\":{{\"amount\":10}},\"actions\":[{{\"type\":\"start\"}}],\"mocks\":[],\"actualFinalStatus\":\"FAILED\",\"assertions\":[{{\"id\":\"sim07-pass\",\"type\":\"event_sequence\",\"expected\":[\"action:start\"]}},{{\"id\":\"sim07-fail\",\"type\":\"final_status\",\"expected\":\"COMPLETED\"}}]}}",
-        .{ definition_id[0..], tenant_id[0..] },
+        .{ definition_id[0..], actor_tenant[0..] },
     );
     defer testing.allocator.free(body);
 
@@ -605,7 +605,7 @@ test "TC-SIM-07-02: run API includes per-assertion pass/fail rows" {
         testing.allocator,
         "Bearer test-token",
         actor_user_id[0..],
-        tenant_id[0..],
+        actor_tenant[0..],
         "simulation:run",
         body,
     );
@@ -632,13 +632,13 @@ test "TC-SIM-08-01: batch runner executes 100 scenarios and reports aggregate co
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-08-01", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-08-01", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-08-01", "actor");
     const definition_id = fixtureUuid("TC-SIM-08-01", "definition_id");
 
     const scenarios_json = try buildBatchScenariosJson(
         testing.allocator,
         100,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v5",
     );
@@ -646,7 +646,7 @@ test "TC-SIM-08-01: batch runner executes 100 scenarios and reports aggregate co
 
     const batch = try scenario_runner.runScenarioBatch(testing.allocator, .{
         .actor_user_id = actor_user_id[0..],
-        .actor_tenant_id = tenant_id[0..],
+        .actor_realm_id = actor_tenant[0..],
         .actor_permissions = &.{"simulation:run_batch", "simulation:run"},
         .schema_name = "simulation-scenario",
         .schema_version = "1.0",
@@ -666,13 +666,13 @@ test "TC-SIM-08-02: batch elapsed time is less than sequential aggregate under p
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-08-02", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-08-02", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-08-02", "actor");
     const definition_id = fixtureUuid("TC-SIM-08-02", "definition_id");
 
     const scenarios_json = try buildBatchScenariosJson(
         testing.allocator,
         100,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v5",
     );
@@ -680,7 +680,7 @@ test "TC-SIM-08-02: batch elapsed time is less than sequential aggregate under p
 
     const batch = try scenario_runner.runScenarioBatch(testing.allocator, .{
         .actor_user_id = actor_user_id[0..],
-        .actor_tenant_id = tenant_id[0..],
+        .actor_realm_id = actor_tenant[0..],
         .actor_permissions = &.{"simulation:run_batch", "simulation:run"},
         .schema_name = "simulation-scenario",
         .schema_version = "1.0",
@@ -706,13 +706,13 @@ test "TC-SIM-08-03: batch runner rejects invalid per-tenant parallelism" {
     try requireIntegrationHarness(testing.allocator);
 
     const actor_user_id = fixtureUuid("TC-SIM-08-03", "actor_user_id");
-    const tenant_id = fixtureUuid("TC-SIM-08-03", "tenant_id");
+    const actor_tenant = fixtureUuid("TC-SIM-08-03", "actor");
     const definition_id = fixtureUuid("TC-SIM-08-03", "definition_id");
 
     const scenarios_json = try buildBatchScenariosJson(
         testing.allocator,
         1,
-        tenant_id[0..],
+        actor_tenant[0..],
         definition_id[0..],
         "v5",
     );
@@ -722,7 +722,7 @@ test "TC-SIM-08-03: batch runner rejects invalid per-tenant parallelism" {
         scenario_runner.RunnerError.InvalidParallelism,
         scenario_runner.runScenarioBatch(testing.allocator, .{
             .actor_user_id = actor_user_id[0..],
-            .actor_tenant_id = tenant_id[0..],
+            .actor_realm_id = actor_tenant[0..],
             .actor_permissions = &.{"simulation:run_batch", "simulation:run"},
             .schema_name = "simulation-scenario",
             .schema_version = "1.0",

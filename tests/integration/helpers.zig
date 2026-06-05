@@ -148,7 +148,6 @@ fn applyCompatibilityShims(conn: *pg.Conn) !void {
     try execCompatibilitySql(conn,
         \\CREATE TABLE IF NOT EXISTS instances (
         \\  instance_id UUID PRIMARY KEY,
-        \\  tenant_id UUID NOT NULL,
         \\  definition_artifact_hash TEXT,
         \\  status TEXT NOT NULL DEFAULT 'ACTIVE',
         \\  variables JSONB NOT NULL DEFAULT '{}',
@@ -166,12 +165,9 @@ fn applyCompatibilityShims(conn: *pg.Conn) !void {
         \\LANGUAGE plpgsql
         \\AS $$
         \\BEGIN
-        \\    IF NEW.tenant_id IS NULL THEN
-        \\        NEW.tenant_id := '00000000-0000-0000-0000-000000000000'::uuid;
-        \\    END IF;
-        \\
+        \\    -- actor_id defaults to system UUID when absent.
         \\    IF NEW.actor_id IS NULL THEN
-        \\        NEW.actor_id := NEW.tenant_id;
+        \\        NEW.actor_id := '00000000-0000-0000-0000-000000000000'::uuid;
         \\    END IF;
         \\
         \\    IF NEW.sequence_number IS NULL THEN
@@ -358,7 +354,7 @@ pub const TestHarness = struct {
         };
 
         // Initialize test tenant context for all pool connections.
-        // This ensures PostgreSQL has bpm.tenant_id set when pool connections are acquired.
+        // This ensures PostgreSQL session context is initialized for pool connections.
         if (@hasDecl(root, "setTestTenantContext")) {
             root.setTestTenantContext();
         }

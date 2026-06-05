@@ -101,7 +101,7 @@ fn makeAuthContext(allocator: std.mem.Allocator) bpm.api_auth.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = true,
         .token_id = "test-token",
-        .tenant_id = bpm.api_auth.DEFAULT_TENANT_ID.*,
+        .caller_scope = bpm.api_auth.DEFAULT_TENANT_ID.*,
         .tenant_source = .default_fallback,
     };
 }
@@ -734,38 +734,36 @@ test "TC-OIDC-35-10: hostname binding enforces uniqueness" {
 
     const hostname = "unique-host-test-10.example.com";
     const tenant_slug = "unique-host-test-10";
-    const tenant_id_1 = try generateUuidHex(alloc);
-    defer alloc.free(tenant_id_1);
-    const tenant_id_2 = try generateUuidHex(alloc);
-    defer alloc.free(tenant_id_2);
+    const owner_id = try generateUuidHex(alloc);
+    defer alloc.free(owner_id);
 
-    // Create a real tenant first (FK requirement for tenant_hostnames).
+    // Create a real tenant first.
     try harness.conn.exec(
         \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
         \\VALUES ($1::uuid, $2, 'TC-10 Tenant', 'ACTIVE', $2)
         \\ON CONFLICT (slug) DO NOTHING
     ,
-        &[_][]const u8{ tenant_id_1, tenant_slug },
+        &[_][]const u8{ owner_id, tenant_slug },
     );
 
     // Create first hostname binding.
     try harness.conn.exec(
-        \\INSERT INTO tenant_hostnames (tenant_id, hostname)
-        \\VALUES ($1::uuid, $2)
+        \\INSERT INTO tenant_hostnames (hostname)
+        \\VALUES ($1)
         \\ON CONFLICT (hostname) DO NOTHING
     ,
-        &[_][]const u8{ tenant_id_1, hostname },
+        &[_][]const u8{ hostname },
     );
 
     // Create second binding with same hostname — should be prevented by ON CONFLICT.
     var q = try harness.conn.query(
         alloc,
-        \\INSERT INTO tenant_hostnames (tenant_id, hostname)
-        \\VALUES ($1::uuid, $2)
+        \\INSERT INTO tenant_hostnames (hostname)
+        \\VALUES ($1)
         \\ON CONFLICT (hostname) DO NOTHING
         \\RETURNING id::text
     ,
-        &[_][]const u8{ tenant_id_2, hostname },
+        &[_][]const u8{ hostname },
     );
     defer q.deinit();
     try testing.expectEqual(@as(usize, 0), q.rows.len);

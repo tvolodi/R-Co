@@ -126,10 +126,9 @@ test "TC-ADP-04a-01: legacy/internal users keep auth_source=internal and NULL ex
     defer pool.release(conn);
 
     try conn.exec(
-        \\INSERT INTO users (tenant_id, email, display_name, password_hash, is_active, username, status)
-        \\VALUES ($1::uuid, $2, $3, '', TRUE, $4, 'ACTIVE')
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, '', TRUE, $3, 'ACTIVE')
     , &[_][]const u8{
-        tenant_a,
         "tc-adp-04a-01@example.com",
         "ADP04a Legacy Internal",
         username,
@@ -273,11 +272,10 @@ test "TC-ADP-04a-03: createOrGetJitOidcUser is idempotent for same tenant+realm+
         alloc,
         \\SELECT COUNT(*)::text
         \\FROM users
-        \\WHERE tenant_id = $1::uuid
-        \\  AND external_realm = $2
-        \\  AND external_id = $3
+        \\WHERE external_realm = $1
+        \\  AND external_id = $2
     ,
-        &[_][]const u8{ tenant_a, realm, external_id },
+        &[_][]const u8{ realm, external_id },
     )) orelse return error.TestUnexpectedResult;
     defer freeRow(alloc, count_row);
 
@@ -373,20 +371,18 @@ test "TC-ADP-04a-06: multiple internal NULL-linkage rows coexist while duplicate
     defer pool.release(conn);
 
     try conn.exec(
-        \\INSERT INTO users (tenant_id, email, display_name, password_hash, is_active, username, status)
-        \\VALUES ($1::uuid, $2, $3, '', TRUE, $4, 'ACTIVE')
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, '', TRUE, $3, 'ACTIVE')
     , &[_][]const u8{
-        tenant_a,
         "tc-adp-04a-06-internal-1@example.com",
         "ADP04a Internal One",
         internal_user_1,
     });
 
     try conn.exec(
-        \\INSERT INTO users (tenant_id, email, display_name, password_hash, is_active, username, status)
-        \\VALUES ($1::uuid, $2, $3, '', TRUE, $4, 'ACTIVE')
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1, $2, '', TRUE, $3, 'ACTIVE')
     , &[_][]const u8{
-        tenant_a,
         "tc-adp-04a-06-internal-2@example.com",
         "ADP04a Internal Two",
         internal_user_2,
@@ -442,10 +438,9 @@ test "TC-ADP-04a-06: multiple internal NULL-linkage rows coexist while duplicate
     try testing.expect(std.mem.indexOf(u8, index_def, "WHERE (external_id IS NOT NULL)") != null);
 
     try testing.expectError(pool_mod.PoolError.QueryFailed, conn.exec(
-        \\INSERT INTO users (tenant_id, email, display_name, password_hash, is_active, username, status, auth_source, external_realm, external_id)
-        \\VALUES ($1::uuid, $2, $3, '', TRUE, $4, 'ACTIVE', 'oidc', $5, $6)
+        \\INSERT INTO users (email, display_name, password_hash, is_active, username, status, auth_source, external_realm, external_id)
+        \\VALUES ($1, $2, '', TRUE, $3, 'ACTIVE', 'oidc', $4, $5)
     , &[_][]const u8{
-        tenant_a,
         "tc-adp-04a-06-duplicate@example.com",
         "ADP04a Duplicate OIDC",
         duplicate_user,

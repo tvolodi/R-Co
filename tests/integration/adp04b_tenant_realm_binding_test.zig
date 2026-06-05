@@ -40,7 +40,7 @@ fn adminActor() auth_mod.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "adp04b-test-token",
-        .tenant_id = uuid36ToArray(default_tenant),
+        .caller_scope = uuid36ToArray(default_tenant),
         .tenant_source = .default_fallback,
     };
 }
@@ -56,13 +56,7 @@ fn cleanupTenantBySlug(pool: *pool_mod.Pool, slug: []const u8) void {
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
 
-    conn.exec(
-        \\DELETE FROM users
-        \\WHERE tenant_id IN (SELECT id FROM tenant WHERE slug = $1)
-    ,
-        &[_][]const u8{slug},
-    ) catch {};
-
+    // SPT-02 (migration 062): users scope column was dropped; clean up tenant row only.
     conn.exec("DELETE FROM tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
 }
 

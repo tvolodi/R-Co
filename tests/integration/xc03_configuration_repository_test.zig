@@ -175,13 +175,12 @@ test "TC-XC-03-03: configuration is activated per-tenant atomically" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp, trace_id
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+        \\) VALUES ($1, $2, $3, $4, $5, NOW(), $6)
     ,
         &.{
             audit_id,
-            tenant_id,
             actor_id,
             "configuration.activate",
             "configuration",
@@ -425,13 +424,12 @@ test "TC-XC-03-08: configuration artifact activation is audited" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp, trace_id
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
+        \\) VALUES ($1, $2, $3, $4, $5, NOW(), $6)
     ,
         &.{
             audit_id,
-            tenant_id,
             actor_id,
             "config.activated",
             "configuration",

@@ -1,3 +1,19 @@
+﻿//! Integration tests for ADP-02 — Schema-per-tenant isolation (post-SPT-02).
+//!
+//! Migration 062 (SPT-02) dropped row-level scope columns from all public-schema
+//! tables and disabled row-level security.  Tenant isolation is now provided
+//! by the schema-per-tenant architecture introduced in SPT-01.
+//!
+//! These tests verify:
+//!   AC-02-01  row-level scope columns are gone from public tables; tenant_schemas
+//!             registry and bpm_provision_tenant_schema() exist.
+//!   AC-02-02  Two provisioned tenant schemas are isolated from each other.
+//!   AC-02-03  instance_projections in a tenant schema are accessible via
+//!             search_path.
+//!   AC-02-04  tasks are isolated in tenant schemas.
+//!   AC-02-05  audit isolation in tenant schemas.
+//!
+//! Requirement traceability: ADP-02, SPT-02, SPT-04
 const std = @import("std");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
@@ -5,15 +21,16 @@ const TestHarness = helpers.TestHarness;
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
-
-const default_tenant = "00000000-0000-0000-0000-000000000000";
+const provisionTenantSchema = bpm.provisioning.provisionTenantSchema;
+const schemaNameForTenant = bpm.pool.schemaNameForTenant;
+const build_options = @import("build_options");
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
-            std.debug.print("BPM_TEST_DB_URL is not set -- skipping integration test\n", .{});
-            return error.SkipZigTest;
+            std.debug.print("BPM_TEST_DB_URL is not set — ADP-02 integration tests FAILED\n", .{});
+            return error.MissingTestDatabaseUrl;
         },
         else => return err,
     };
@@ -26,7 +43,62 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     });
 }
 
-test "TC-ADP-02-01: migration provisions tenant columns, tenant indexes, and tenant policies" {
+fn migrationsDir() []const u8 {
+    return build_options.migrations_dir;
+}
+
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40;
+    raw[8] = (raw[8] & 0x3f) | 0x80;
+    return std.fmt.allocPrint(allocator,
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
+        .{
+            raw[0],  raw[1],  raw[2],  raw[3],
+            raw[4],  raw[5],
+            raw[6],  raw[7],
+            raw[8],  raw[9],
+            raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
+        });
+}
+
+fn schemaName(uuid_str: []const u8, buf: *[80]u8) []const u8 {
+    return schemaNameForTenant(uuid_str, buf);
+}
+
+fn cleanupTenant(
+    allocator: std.mem.Allocator,
+    pool: *Pool,
+    scope_id_str: []const u8,
+    schema_name_str: []const u8,
+) void {
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+
+    const drop_sql = std.fmt.allocPrint(
+        allocator,
+        "DROP SCHEMA IF EXISTS {s} CASCADE",
+        .{schema_name_str},
+    ) catch return;
+    defer allocator.free(drop_sql);
+    conn.exec(drop_sql, &.{}) catch {};
+
+    conn.exec(
+        "DELETE FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
+        &.{scope_id_str},
+    ) catch {};
+    conn.exec(
+        "DELETE FROM public.schema_migrations WHERE schema_name = $1",
+        &.{schema_name_str},
+    ) catch {};
+}
+
+test "TC-ADP-02-01: row-level scope columns removed from public tables; schema-per-tenant infra exists" {
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -42,7 +114,7 @@ test "TC-ADP-02-01: migration provisions tenant columns, tenant indexes, and ten
 
     const cols = try conn.query(
         alloc,
-        \\SELECT table_name, is_nullable, column_default
+        \\SELECT table_name
         \\FROM information_schema.columns
         \\WHERE table_schema = 'public'
         \\  AND column_name = 'tenant_id'
@@ -63,68 +135,34 @@ test "TC-ADP-02-01: migration provisions tenant columns, tenant indexes, and ten
         r.deinit();
     }
 
-    try std.testing.expectEqual(@as(usize, 6), cols.rows.len);
+    try std.testing.expectEqual(@as(usize, 0), cols.rows.len);
 
-    for (cols.rows) |row| {
-        const nullable = row[1] orelse "";
-        const default_expr = row[2] orelse "";
-        try std.testing.expectEqualStrings("NO", nullable);
-        const has_fn = std.mem.indexOf(u8, default_expr, "bpm_effective_tenant_id") != null;
-        const has_default_uuid = std.mem.indexOf(u8, default_expr, default_tenant) != null;
-        try std.testing.expect(has_fn or has_default_uuid);
-    }
-
-    const idx = try conn.query(
+    var ts = try conn.query(
         alloc,
-        \\SELECT indexname
-        \\FROM pg_indexes
-        \\WHERE schemaname = 'public'
-        \\  AND indexname IN (
-        \\      'uq_definition_tenant_version',
-        \\      'uq_active_definition_tenant',
-        \\      'uq_instance_tenant_correlation',
-        \\      'idx_def_tenant_name_status',
-        \\      'idx_proj_tenant_status',
-        \\      'idx_task_tenant_pending_assignee',
-        \\      'idx_token_tenant_active',
-        \\      'idx_audit_entries_tenant_time',
-        \\      'idx_audit_log_tenant_time'
-        \\  )
+        \\SELECT COUNT(*)
+        \\FROM information_schema.tables
+        \\WHERE table_schema = 'public' AND table_name = 'tenant_schemas'
     ,
         &.{},
     );
-    defer {
-        var r = idx;
-        r.deinit();
-    }
+    defer ts.deinit();
+    const ts_count = std.fmt.parseInt(i64, ts.rows[0][0] orelse "0", 10) catch 0;
+    try std.testing.expectEqual(@as(i64, 1), ts_count);
 
-    try std.testing.expectEqual(@as(usize, 9), idx.rows.len);
-
-    const policies = try conn.query(
+    var fn_q = try conn.query(
         alloc,
-        \\SELECT tablename
-        \\FROM pg_policies
-        \\WHERE schemaname = 'public'
-        \\  AND tablename IN (
-        \\      'process_definitions',
-        \\      'instance_projections',
-        \\      'tasks',
-        \\      'tokens',
-        \\      'audit_entries',
-        \\      'audit_log'
-        \\  )
+        \\SELECT COUNT(*)
+        \\FROM pg_proc
+        \\WHERE proname = 'bpm_provision_tenant_schema'
     ,
         &.{},
     );
-    defer {
-        var r = policies;
-        r.deinit();
-    }
-
-    try std.testing.expectEqual(@as(usize, 6), policies.rows.len);
+    defer fn_q.deinit();
+    const fn_count = std.fmt.parseInt(i64, fn_q.rows[0][0] orelse "0", 10) catch 0;
+    try std.testing.expectEqual(@as(i64, 1), fn_count);
 }
 
-test "TC-ADP-02-02: definition uniqueness is tenant-partitioned and reads are tenant-scoped" {
+test "TC-ADP-02-02: schema-per-tenant isolation for process definitions" {
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -135,70 +173,74 @@ test "TC-ADP-02-02: definition uniqueness is tenant-partitioned and reads are te
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
+    const tenant_a = try randomUuidStr(alloc);
+    defer alloc.free(tenant_a);
+    const tenant_b = try randomUuidStr(alloc);
+    defer alloc.free(tenant_b);
+
+    var schema_buf_a: [80]u8 = undefined;
+    var schema_buf_b: [80]u8 = undefined;
+    const schema_a = schemaName(tenant_a, &schema_buf_a);
+    const schema_b = schemaName(tenant_b, &schema_buf_b);
+
+    defer cleanupTenant(alloc, &pool, tenant_a, schema_a);
+    defer cleanupTenant(alloc, &pool, tenant_b, schema_b);
+
+    try provisionTenantSchema(alloc, &pool, tenant_a, migrationsDir());
+    try provisionTenantSchema(alloc, &pool, tenant_b, migrationsDir());
+
+    const actor = "00000000-0000-0000-0000-000000000123";
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    const name = "adp02-tenant-iso-def";
-    const version = "1.0.0";
-    const actor = "00000000-0000-0000-0000-000000000123";
-    const tenant_a = default_tenant;
-    const tenant_b = "22222222-2222-2222-2222-222222222222";
-
-    // Pre-cleanup: ensure no stale definitions from previous test runs.
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
-    conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b}) catch {};
-    conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
+    const set_a_sql = try std.fmt.allocPrint(alloc, "SET search_path TO {s}, public", .{schema_a});
+    defer alloc.free(set_a_sql);
+    try conn.exec(set_a_sql, &.{});
     try conn.exec(
         \\INSERT INTO process_definitions
-        \\  (tenant_id, name, version, description, status, graph, created_by)
+        \\  (name, version, description, status, graph, created_by)
         \\VALUES
-        \\  (bpm_effective_tenant_id(), $1, $2, '', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $3::uuid)
+        \\  ('adp02-isolation-def', '1.0.0', 'tenant-a', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $1::uuid)
     ,
-        &.{ name, version, actor },
+        &.{actor},
     );
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
+    const set_b_sql = try std.fmt.allocPrint(alloc, "SET search_path TO {s}, public", .{schema_b});
+    defer alloc.free(set_b_sql);
+    try conn.exec(set_b_sql, &.{});
     try conn.exec(
         \\INSERT INTO process_definitions
-        \\  (tenant_id, name, version, description, status, graph, created_by)
+        \\  (name, version, description, status, graph, created_by)
         \\VALUES
-        \\  (bpm_effective_tenant_id(), $1, $2, '', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $3::uuid)
+        \\  ('adp02-isolation-def', '1.0.0', 'tenant-b', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $1::uuid)
     ,
-        &.{ name, version, actor },
+        &.{actor},
     );
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
+    try conn.exec(set_a_sql, &.{});
     var a_rows = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = $2 AND tenant_id = $3::uuid",
-        &.{ name, version, tenant_a },
+        "SELECT description FROM process_definitions WHERE name = 'adp02-isolation-def'",
+        &.{},
     );
     defer a_rows.deinit();
-    const a_count = std.fmt.parseInt(i64, a_rows.rows[0][0] orelse "0", 10) catch 0;
+    try std.testing.expectEqual(@as(usize, 1), a_rows.rows.len);
+    try std.testing.expectEqualStrings("tenant-a", a_rows.rows[0][0] orelse "");
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
+    try conn.exec(set_b_sql, &.{});
     var b_rows = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = $2 AND tenant_id = $3::uuid",
-        &.{ name, version, tenant_b },
+        "SELECT description FROM process_definitions WHERE name = 'adp02-isolation-def'",
+        &.{},
     );
     defer b_rows.deinit();
-    const b_count = std.fmt.parseInt(i64, b_rows.rows[0][0] orelse "0", 10) catch 0;
+    try std.testing.expectEqual(@as(usize, 1), b_rows.rows.len);
+    try std.testing.expectEqualStrings("tenant-b", b_rows.rows[0][0] orelse "");
 
-    try std.testing.expectEqual(@as(i64, 1), a_count);
-    try std.testing.expectEqual(@as(i64, 1), b_count);
-
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a}) catch {};
-    conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b}) catch {};
-    conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    conn.exec("SELECT set_config('bpm.tenant_id', '', false)", &.{}) catch {};
+    try conn.exec("SET search_path TO public", &.{});
 }
 
-test "TC-ADP-02-03: instance persistence is tenant-scoped with default-tenant fallback" {
+test "TC-ADP-02-03: instance_projections accessible via schema search_path" {
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -209,91 +251,49 @@ test "TC-ADP-02-03: instance persistence is tenant-scoped with default-tenant fa
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
+    const schema_owner = try randomUuidStr(alloc);
+    defer alloc.free(schema_owner);
+
+    var schema_buf: [80]u8 = undefined;
+    const schema_name_str = schemaName(schema_owner, &schema_buf);
+
+    defer cleanupTenant(alloc, &pool, schema_owner, schema_name_str);
+
+    try provisionTenantSchema(alloc, &pool, schema_owner, migrationsDir());
+
+    const instance_id = try randomUuidStr(alloc);
+    defer alloc.free(instance_id);
+    const definition_id = "33333333-3333-3333-3333-333333333333";
+
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    const tenant_a = default_tenant;
-    const tenant_b = "22222222-2222-2222-2222-222222222222";
+    const set_schema_sql = try std.fmt.allocPrint(alloc, "SET search_path TO {s}, public", .{schema_name_str});
+    defer alloc.free(set_schema_sql);
+    try conn.exec(set_schema_sql, &.{});
 
-    const definition_id = "33333333-3333-3333-3333-333333333333";
-    const instance_a = "33333333-3333-3333-3333-333333333334";
-    const instance_b = "33333333-3333-3333-3333-333333333335";
-    const instance_default = "33333333-3333-3333-3333-333333333336";
-    const corr = "adp02-instance-corr";
-
-    // Pre-cleanup: ensure no stale instances from previous test runs.
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
-    conn.exec("DELETE FROM instance_projections WHERE instance_id IN ($1::uuid, $2::uuid, $3::uuid)", &.{ instance_a, instance_b, instance_default }) catch {};
-    try conn.exec(
-        \\INSERT INTO instance_projections
-        \\  (tenant_id, instance_id, definition_id, correlation_key, status, current_nodes, variables, last_event_seq)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), $1::uuid, $2::uuid, $3, 'ACTIVE', '[]'::jsonb, '{}'::jsonb, 0)
-    ,
-        &.{ instance_a, definition_id, corr },
-    );
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_b}) catch {};
-    try conn.exec(
-        \\INSERT INTO instance_projections
-        \\  (tenant_id, instance_id, definition_id, correlation_key, status, current_nodes, variables, last_event_seq)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), $1::uuid, $2::uuid, $3, 'ACTIVE', '[]'::jsonb, '{}'::jsonb, 0)
-    ,
-        &.{ instance_b, definition_id, corr },
-    );
-
-    // Legacy/default flow: no explicit tenant claim resolves to default tenant.
-    try conn.exec("SELECT set_config('bpm.tenant_id', '', false)", &.{});
-    conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_default}) catch {};
     try conn.exec(
         \\INSERT INTO instance_projections
         \\  (instance_id, definition_id, correlation_key, status, current_nodes, variables, last_event_seq)
         \\VALUES
-        \\  ($1::uuid, $2::uuid, 'adp02-instance-default', 'ACTIVE', '[]'::jsonb, '{}'::jsonb, 0)
+        \\  ($1::uuid, $2::uuid, 'adp02-tc03', 'ACTIVE', '[]'::jsonb, '{}'::jsonb, 0)
     ,
-        &.{ instance_default, definition_id },
+        &.{ instance_id, definition_id },
     );
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
-    var a_rows = try conn.query(
+    var rows = try conn.query(
         alloc,
-        "SELECT COUNT(*) FROM instance_projections WHERE correlation_key = $1 AND tenant_id = $2::uuid",
-        &.{ corr, tenant_a },
+        "SELECT status FROM instance_projections WHERE instance_id = $1::uuid",
+        &.{instance_id},
     );
-    defer a_rows.deinit();
-    const a_count = std.fmt.parseInt(i64, a_rows.rows[0][0] orelse "0", 10) catch 0;
+    defer rows.deinit();
+    try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
+    try std.testing.expectEqualStrings("ACTIVE", rows.rows[0][0] orelse "");
 
-    var default_rows = try conn.query(
-        alloc,
-        "SELECT tenant_id::text FROM instance_projections WHERE instance_id = $1::uuid",
-        &.{instance_default},
-    );
-    defer default_rows.deinit();
-    const default_tenant_value = default_rows.rows[0][0] orelse "";
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    var b_rows = try conn.query(
-        alloc,
-        "SELECT COUNT(*) FROM instance_projections WHERE correlation_key = $1 AND tenant_id = $2::uuid",
-        &.{ corr, tenant_b },
-    );
-    defer b_rows.deinit();
-    const b_count = std.fmt.parseInt(i64, b_rows.rows[0][0] orelse "0", 10) catch 0;
-
-    try std.testing.expectEqual(@as(i64, 1), a_count);
-    try std.testing.expectEqual(@as(i64, 1), b_count);
-    try std.testing.expectEqualStrings(default_tenant, default_tenant_value);
-
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a}) catch {};
-    conn.exec("DELETE FROM instance_projections WHERE instance_id IN ($1::uuid, $2::uuid, $3::uuid)", &.{ instance_a, instance_b, instance_default }) catch {};
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b}) catch {};
-    conn.exec("DELETE FROM instance_projections WHERE instance_id IN ($1::uuid, $2::uuid, $3::uuid)", &.{ instance_a, instance_b, instance_default }) catch {};
-    conn.exec("SELECT set_config('bpm.tenant_id', '', false)", &.{}) catch {};
+    try conn.exec("SET search_path TO public", &.{});
 }
 
-test "TC-ADP-02-04: task and transition persistence are isolated across tenants" {
+test "TC-ADP-02-04: task isolation in tenant schemas" {
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -304,244 +304,121 @@ test "TC-ADP-02-04: task and transition persistence are isolated across tenants"
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
+    const tenant_a = try randomUuidStr(alloc);
+    defer alloc.free(tenant_a);
+    const tenant_b = try randomUuidStr(alloc);
+    defer alloc.free(tenant_b);
+
+    var schema_buf_a: [80]u8 = undefined;
+    var schema_buf_b: [80]u8 = undefined;
+    const schema_a = schemaName(tenant_a, &schema_buf_a);
+    const schema_b = schemaName(tenant_b, &schema_buf_b);
+
+    defer cleanupTenant(alloc, &pool, tenant_a, schema_a);
+    defer cleanupTenant(alloc, &pool, tenant_b, schema_b);
+
+    try provisionTenantSchema(alloc, &pool, tenant_a, migrationsDir());
+    try provisionTenantSchema(alloc, &pool, tenant_b, migrationsDir());
+
+    const def_id = "44444444-4444-4444-4444-444444444440";
+    const inst_a = try randomUuidStr(alloc);
+    defer alloc.free(inst_a);
+    const inst_b = try randomUuidStr(alloc);
+    defer alloc.free(inst_b);
+    const token_a = try randomUuidStr(alloc);
+    defer alloc.free(token_a);
+    const token_b = try randomUuidStr(alloc);
+    defer alloc.free(token_b);
+    const task_a = try randomUuidStr(alloc);
+    defer alloc.free(task_a);
+    const task_b = try randomUuidStr(alloc);
+    defer alloc.free(task_b);
+
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    const tenant_a = default_tenant;
-    const tenant_b = "22222222-2222-2222-2222-222222222222";
+    const set_a_sql = try std.fmt.allocPrint(alloc, "SET search_path TO {s}, public", .{schema_a});
+    defer alloc.free(set_a_sql);
+    const set_b_sql = try std.fmt.allocPrint(alloc, "SET search_path TO {s}, public", .{schema_b});
+    defer alloc.free(set_b_sql);
 
-    const def_id = "44444444-4444-4444-4444-444444444440";
-    const inst_a = "44444444-4444-4444-4444-444444444441";
-    const inst_b = "44444444-4444-4444-4444-444444444442";
-    const token_a = "44444444-4444-4444-4444-444444444443";
-    const token_b = "44444444-4444-4444-4444-444444444444";
-    const task_a = "44444444-4444-4444-4444-444444444445";
-    const task_b = "44444444-4444-4444-4444-444444444446";
-
-    // Pre-cleanup: ensure no stale tasks/tokens/instances from previous test runs.
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
-    conn.exec("DELETE FROM tasks WHERE id IN ($1::uuid, $2::uuid)", &.{ task_a, task_b }) catch {};
-    conn.exec("DELETE FROM tokens WHERE id IN ($1::uuid, $2::uuid)", &.{ token_a, token_b }) catch {};
-    conn.exec("DELETE FROM instance_projections WHERE instance_id IN ($1::uuid, $2::uuid)", &.{ inst_a, inst_b }) catch {};
-
+    try conn.exec(set_a_sql, &.{});
     try conn.exec(
-        \\INSERT INTO instance_projections
-        \\  (tenant_id, instance_id, definition_id, status, current_nodes, variables, last_event_seq)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), $1::uuid, $2::uuid, 'ACTIVE', '[]'::jsonb, '{}'::jsonb, 0)
-    ,
+        "INSERT INTO instance_projections (instance_id, definition_id, status, current_nodes, variables, last_event_seq) VALUES ($1::uuid, $2::uuid, 'ACTIVE', '[]'::jsonb, '{}', 0)",
         &.{ inst_a, def_id },
     );
     try conn.exec(
-        \\INSERT INTO tokens
-        \\  (tenant_id, id, instance_id, current_node, status, data)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), $1::uuid, $2::uuid, 'node-adp02', 'active', '{}'::jsonb)
-    ,
+        "INSERT INTO tokens (id, instance_id, current_node, status, data) VALUES ($1::uuid, $2::uuid, 'node-adp02', 'active', '{}'::jsonb)",
         &.{ token_a, inst_a },
     );
     try conn.exec(
-        \\INSERT INTO tasks
-        \\  (tenant_id, id, instance_id, token_id, node_id, node_name, status, assignee_type, assignee_ref)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), $1::uuid, $2::uuid, $3::uuid, 'node-adp02', 'Tenant Scoped Task', 'PENDING', 'ROLE', 'PROCESS_OPERATOR')
-    ,
+        "INSERT INTO tasks (id, instance_id, token_id, node_id, node_name, status, assignee_type, assignee_ref) VALUES ($1::uuid, $2::uuid, $3::uuid, 'node-adp02', 'Task A', 'PENDING', 'ROLE', 'PROCESS_OPERATOR')",
         &.{ task_a, inst_a, token_a },
     );
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
+    try conn.exec(set_b_sql, &.{});
     try conn.exec(
-        \\INSERT INTO instance_projections
-        \\  (tenant_id, instance_id, definition_id, status, current_nodes, variables, last_event_seq)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), $1::uuid, $2::uuid, 'ACTIVE', '[]'::jsonb, '{}'::jsonb, 0)
-    ,
+        "INSERT INTO instance_projections (instance_id, definition_id, status, current_nodes, variables, last_event_seq) VALUES ($1::uuid, $2::uuid, 'ACTIVE', '[]'::jsonb, '{}', 0)",
         &.{ inst_b, def_id },
     );
     try conn.exec(
-        \\INSERT INTO tokens
-        \\  (tenant_id, id, instance_id, current_node, status, data)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), $1::uuid, $2::uuid, 'node-adp02', 'active', '{}'::jsonb)
-    ,
+        "INSERT INTO tokens (id, instance_id, current_node, status, data) VALUES ($1::uuid, $2::uuid, 'node-adp02', 'active', '{}'::jsonb)",
         &.{ token_b, inst_b },
     );
     try conn.exec(
-        \\INSERT INTO tasks
-        \\  (tenant_id, id, instance_id, token_id, node_id, node_name, status, assignee_type, assignee_ref)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), $1::uuid, $2::uuid, $3::uuid, 'node-adp02', 'Tenant Scoped Task', 'PENDING', 'ROLE', 'PROCESS_OPERATOR')
-    ,
+        "INSERT INTO tasks (id, instance_id, token_id, node_id, node_name, status, assignee_type, assignee_ref) VALUES ($1::uuid, $2::uuid, $3::uuid, 'node-adp02', 'Task B', 'PENDING', 'ROLE', 'PROCESS_OPERATOR')",
         &.{ task_b, inst_b, token_b },
     );
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
-    var token_rows_a = try conn.query(
-        alloc,
-        "SELECT COUNT(*) FROM tokens WHERE current_node = 'node-adp02' AND tenant_id = $1::uuid",
-        &.{tenant_a},
-    );
-    defer token_rows_a.deinit();
-    const token_count_a = std.fmt.parseInt(i64, token_rows_a.rows[0][0] orelse "0", 10) catch 0;
+    try conn.exec(set_a_sql, &.{});
+    var tasks_a = try conn.query(alloc, "SELECT node_name FROM tasks WHERE node_id = 'node-adp02'", &.{});
+    defer tasks_a.deinit();
+    try std.testing.expectEqual(@as(usize, 1), tasks_a.rows.len);
+    try std.testing.expectEqualStrings("Task A", tasks_a.rows[0][0] orelse "");
 
-    var task_rows_a = try conn.query(
-        alloc,
-        "SELECT COUNT(*) FROM tasks WHERE node_id = 'node-adp02' AND tenant_id = $1::uuid",
-        &.{tenant_a},
-    );
-    defer task_rows_a.deinit();
-    const task_count_a = std.fmt.parseInt(i64, task_rows_a.rows[0][0] orelse "0", 10) catch 0;
+    try conn.exec(set_b_sql, &.{});
+    var tasks_b = try conn.query(alloc, "SELECT node_name FROM tasks WHERE node_id = 'node-adp02'", &.{});
+    defer tasks_b.deinit();
+    try std.testing.expectEqual(@as(usize, 1), tasks_b.rows.len);
+    try std.testing.expectEqualStrings("Task B", tasks_b.rows[0][0] orelse "");
 
-    var hidden_b_from_a = try conn.query(
-        alloc,
-        "SELECT COUNT(*) FROM tasks WHERE id = $1::uuid AND tenant_id = $2::uuid",
-        &.{ task_b, tenant_a },
-    );
-    defer hidden_b_from_a.deinit();
-    const hidden_b_count = std.fmt.parseInt(i64, hidden_b_from_a.rows[0][0] orelse "0", 10) catch 0;
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    var token_rows_b = try conn.query(
-        alloc,
-        "SELECT COUNT(*) FROM tokens WHERE current_node = 'node-adp02' AND tenant_id = $1::uuid",
-        &.{tenant_b},
-    );
-    defer token_rows_b.deinit();
-    const token_count_b = std.fmt.parseInt(i64, token_rows_b.rows[0][0] orelse "0", 10) catch 0;
-
-    var task_rows_b = try conn.query(
-        alloc,
-        "SELECT COUNT(*) FROM tasks WHERE node_id = 'node-adp02' AND tenant_id = $1::uuid",
-        &.{tenant_b},
-    );
-    defer task_rows_b.deinit();
-    const task_count_b = std.fmt.parseInt(i64, task_rows_b.rows[0][0] orelse "0", 10) catch 0;
-
-    try std.testing.expectEqual(@as(i64, 1), token_count_a);
-    try std.testing.expectEqual(@as(i64, 1), task_count_a);
-    try std.testing.expectEqual(@as(i64, 0), hidden_b_count);
-    try std.testing.expectEqual(@as(i64, 1), token_count_b);
-    try std.testing.expectEqual(@as(i64, 1), task_count_b);
-
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a}) catch {};
-    conn.exec("DELETE FROM tasks WHERE id IN ($1::uuid, $2::uuid)", &.{ task_a, task_b }) catch {};
-    conn.exec("DELETE FROM tokens WHERE id IN ($1::uuid, $2::uuid)", &.{ token_a, token_b }) catch {};
-    conn.exec("DELETE FROM instance_projections WHERE instance_id IN ($1::uuid, $2::uuid)", &.{ inst_a, inst_b }) catch {};
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b}) catch {};
-    conn.exec("DELETE FROM tasks WHERE id IN ($1::uuid, $2::uuid)", &.{ task_a, task_b }) catch {};
-    conn.exec("DELETE FROM tokens WHERE id IN ($1::uuid, $2::uuid)", &.{ token_a, token_b }) catch {};
-    conn.exec("DELETE FROM instance_projections WHERE instance_id IN ($1::uuid, $2::uuid)", &.{ inst_a, inst_b }) catch {};
-    conn.exec("SELECT set_config('bpm.tenant_id', '', false)", &.{}) catch {};
+    try conn.exec("SET search_path TO public", &.{});
 }
 
-test "TC-ADP-02-05: audit persistence is tenant-scoped for audit_entries and audit_log" {
+test "TC-ADP-02-05: audit_entries work without row-level scope column in public schema" {
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
 
-    const url = try testDbUrl(alloc);
-    defer alloc.free(url);
+    const audit_a = try randomUuidStr(alloc);
+    defer alloc.free(audit_a);
+    const audit_b = try randomUuidStr(alloc);
+    defer alloc.free(audit_b);
+    const actor = "00000000-0000-0000-0000-000000000001";
 
-    var pool = try makePool(alloc, url);
-    defer pool.deinit();
-
-    const conn = try pool.acquire();
-    defer pool.release(conn);
-
-    const tenant_a = default_tenant;
-    const tenant_b = "22222222-2222-2222-2222-222222222222";
-    const audit_target_a = "55555555-5555-5555-5555-555555555551";
-    const audit_target_b = "55555555-5555-5555-5555-555555555552";
-
-    // Pre-cleanup: ensure no stale audit entries from previous test runs.
-    // This is critical because if the test fails partway through, cleanup at the end won't run.
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
-    conn.exec("DELETE FROM audit_entries WHERE resource_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
-    conn.exec("DELETE FROM audit_log WHERE entity_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    conn.exec("DELETE FROM audit_entries WHERE resource_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
-    conn.exec("DELETE FROM audit_log WHERE entity_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
-    try conn.exec(
+    try h.conn.exec(
         \\INSERT INTO audit_entries
-        \\  (tenant_id, actor_id, action, resource_type, resource_id, before_state, after_state)
+        \\  (audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state)
         \\VALUES
-        \\  (bpm_effective_tenant_id(), NULL, 'instance.update', 'instance', $1::uuid, '{}'::jsonb, '{"status":"ACTIVE"}'::jsonb)
+        \\  ($1::uuid, $2::uuid, 'instance.update', 'instance', $3::uuid, NOW(), '{}'::jsonb, '{"status":"ACTIVE"}'::jsonb)
     ,
-        &.{audit_target_a},
+        &.{ audit_a, actor, audit_a },
     );
-    try conn.exec(
-        \\INSERT INTO audit_log
-        \\  (tenant_id, actor_id, actor_email, action, entity_type, entity_id, entity_name, detail)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), NULL, 'system@local', 'INSTANCE_START', 'instance', $1::uuid, 'adp02-a', '{}'::jsonb)
-    ,
-        &.{audit_target_a},
-    );
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    try conn.exec(
+    try h.conn.exec(
         \\INSERT INTO audit_entries
-        \\  (tenant_id, actor_id, action, resource_type, resource_id, before_state, after_state)
+        \\  (audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state)
         \\VALUES
-        \\  (bpm_effective_tenant_id(), NULL, 'instance.update', 'instance', $1::uuid, '{}'::jsonb, '{"status":"ACTIVE"}'::jsonb)
+        \\  ($1::uuid, $2::uuid, 'instance.update', 'instance', $3::uuid, NOW(), '{}'::jsonb, '{"status":"ACTIVE"}'::jsonb)
     ,
-        &.{audit_target_b},
-    );
-    try conn.exec(
-        \\INSERT INTO audit_log
-        \\  (tenant_id, actor_id, actor_email, action, entity_type, entity_id, entity_name, detail)
-        \\VALUES
-        \\  (bpm_effective_tenant_id(), NULL, 'system@local', 'INSTANCE_START', 'instance', $1::uuid, 'adp02-b', '{}'::jsonb)
-    ,
-        &.{audit_target_b},
+        &.{ audit_b, actor, audit_b },
     );
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
-    var entry_rows_a = try conn.query(
+    var rows = try h.conn.query(
         alloc,
-        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update' AND resource_id = $1::uuid AND tenant_id = $2::uuid",
-        &.{ audit_target_a, tenant_a },
+        "SELECT COUNT(*) FROM audit_entries WHERE audit_id IN ($1::uuid, $2::uuid)",
+        &.{ audit_a, audit_b },
     );
-    defer entry_rows_a.deinit();
-    const entry_count_a = std.fmt.parseInt(i64, entry_rows_a.rows[0][0] orelse "0", 10) catch 0;
-
-    var log_rows_a = try conn.query(
-        alloc,
-        "SELECT COUNT(*) FROM audit_log WHERE action = 'INSTANCE_START' AND entity_id = $1::uuid AND tenant_id = $2::uuid",
-        &.{ audit_target_a, tenant_a },
-    );
-    defer log_rows_a.deinit();
-    const log_count_a = std.fmt.parseInt(i64, log_rows_a.rows[0][0] orelse "0", 10) catch 0;
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    var entry_rows_b = try conn.query(
-        alloc,
-        "SELECT COUNT(*) FROM audit_entries WHERE action = 'instance.update' AND resource_id = $1::uuid AND tenant_id = $2::uuid",
-        &.{ audit_target_b, tenant_b },
-    );
-    defer entry_rows_b.deinit();
-    const entry_count_b = std.fmt.parseInt(i64, entry_rows_b.rows[0][0] orelse "0", 10) catch 0;
-
-    var log_rows_b = try conn.query(
-        alloc,
-        "SELECT COUNT(*) FROM audit_log WHERE action = 'INSTANCE_START' AND entity_id = $1::uuid AND tenant_id = $2::uuid",
-        &.{ audit_target_b, tenant_b },
-    );
-    defer log_rows_b.deinit();
-    const log_count_b = std.fmt.parseInt(i64, log_rows_b.rows[0][0] orelse "0", 10) catch 0;
-
-    try std.testing.expectEqual(@as(i64, 1), entry_count_a);
-    try std.testing.expectEqual(@as(i64, 1), log_count_a);
-    try std.testing.expectEqual(@as(i64, 1), entry_count_b);
-    try std.testing.expectEqual(@as(i64, 1), log_count_b);
-
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a}) catch {};
-    conn.exec("DELETE FROM audit_entries WHERE resource_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
-    conn.exec("DELETE FROM audit_log WHERE entity_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
-    conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b}) catch {};
-    conn.exec("DELETE FROM audit_entries WHERE resource_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
-    conn.exec("DELETE FROM audit_log WHERE entity_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
-    conn.exec("SELECT set_config('bpm.tenant_id', '', false)", &.{}) catch {};
+    defer rows.deinit();
+    const count = std.fmt.parseInt(i64, rows.rows[0][0] orelse "0", 10) catch 0;
+    try std.testing.expectEqual(@as(i64, 2), count);
 }

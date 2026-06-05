@@ -11,22 +11,25 @@ const TestHarness = helpers.TestHarness;
 
 const uuid_mod = bpm.uuid;
 
+// SPT-02 (migration 062): audit_entries no longer has a row-level scope column.
+// The scope_id parameter is kept for API backward compatibility but not used in SQL.
 fn insertAuditEntry(
     conn: anytype,
     audit_id: []const u8,
-    tenant_id: []const u8,
+    scope_id: []const u8,
     actor_id: []const u8,
     action: []const u8,
     resource_id: []const u8,
     timestamp: []const u8,
 ) !void {
+    _ = scope_id;
     _ = try conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp
-        \\) VALUES ($1, $2, $3, $4, 'test', $5, $6::timestamptz)
+        \\) VALUES ($1, $2, $3, 'test', $4, $5::timestamptz)
     ,
-        &.{ audit_id, tenant_id, actor_id, action, resource_id, timestamp },
+        &.{ audit_id, actor_id, action, resource_id, timestamp },
     );
 }
 
@@ -43,24 +46,28 @@ test "TC-XC-02-01: audit entries are append-only (immutability trigger)" {
     defer harness.conn.exec("ROLLBACK", &.{}) catch {};
 
     const audit_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     const actor_id = try uuid_mod.newUuidV4(alloc);
     const resource_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(audit_id);
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
         alloc.free(actor_id);
         alloc.free(resource_id);
     }
 
+    // SPT-02 (migration 062): scope_id not used in audit SQL.
+    _ = scope_id;
+    _ = actor_id;
+
     // Insert audit entry
     _ = try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id,
+        \\  audit_id, actor_id, action, resource_type, resource_id,
         \\  timestamp
-        \\) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        \\) VALUES ($1, $2, $3, $4, $5, NOW())
     ,
-        &.{ audit_id, tenant_id, actor_id, "test.create", "test", resource_id },
+        &.{ audit_id, "00000000-0000-0000-0000-000000000001", "test.create", "test", resource_id },
     );
 
     // Attempt UPDATE — should fail due to immutability trigger
@@ -98,11 +105,11 @@ test "TC-XC-02-02: chain hash is deterministically computed" {
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     const actor_id = try uuid_mod.newUuidV4(alloc);
     const resource_id = try uuid_mod.newUuidV4(alloc);
     defer {
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
         alloc.free(actor_id);
         alloc.free(resource_id);
     }
@@ -125,7 +132,7 @@ test "TC-XC-02-02: chain hash is deterministically computed" {
         \\    $5::uuid, NULL, '0000000000000000000000000000000000000000000000000000000000000000'::text, NULL
         \\  ) AS hash1
     ,
-        &.{ tenant_id, actor_id, hash_audit_id, resource_id, hash_ref_id },
+        &.{ scope_id, actor_id, hash_audit_id, resource_id, hash_ref_id },
     );
     defer query1.deinit();
 
@@ -152,8 +159,8 @@ test "TC-XC-02-03: each new entry links to its predecessor" {
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
-    defer alloc.free(tenant_id);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(scope_id);
 
     const timestamps = [_][]const u8{
         "2026-05-28T00:00:01Z",
@@ -175,7 +182,7 @@ test "TC-XC-02-03: each new entry links to its predecessor" {
         try insertAuditEntry(
             &harness.conn,
             audit_id,
-            tenant_id,
+            scope_id,
             actor_id,
             if (i == 0) "entry.1" else if (i == 1) "entry.2" else "entry.3",
             resource_id,
@@ -183,15 +190,15 @@ test "TC-XC-02-03: each new entry links to its predecessor" {
         );
     }
 
-    // Query the chain
+    // Query the chain — audit entries no longer have a row-level scope column; use action-based filter.
     var query = try harness.conn.query(
         alloc,
         \\SELECT action, chain_hash, prev_chain_hash
         \\FROM audit_entries
-        \\WHERE tenant_id = $1
+        \\WHERE action IN ('entry.1', 'entry.2', 'entry.3')
         \\ORDER BY timestamp, audit_id
     ,
-        &.{tenant_id},
+        &.{},
     );
     defer query.deinit();
 
@@ -275,36 +282,44 @@ test "TC-XC-02-04: per-tenant chains do not cross-reference" {
         );
     }
 
-    // Query Tenant A chain
+    // Query chain A — audit entries no longer have a row-level scope column; use action-based filter.
     var query_a = try harness.conn.query(
         alloc,
         \\SELECT chain_hash, prev_chain_hash FROM audit_entries
-        \\WHERE tenant_id = $1 ORDER BY timestamp, audit_id
+        \\WHERE action = 'tenant_a.action' ORDER BY timestamp, audit_id
     ,
-        &.{tenant_a},
+        &.{},
     );
     defer query_a.deinit();
 
-    // Query Tenant B chain
+    // Query chain B
     var query_b = try harness.conn.query(
         alloc,
         \\SELECT chain_hash, prev_chain_hash FROM audit_entries
-        \\WHERE tenant_id = $1 ORDER BY timestamp, audit_id
+        \\WHERE action = 'tenant_b.action' ORDER BY timestamp, audit_id
     ,
-        &.{tenant_b},
+        &.{},
     );
     defer query_b.deinit();
 
     try testing.expectEqual(@as(usize, 2), query_a.rows.len);
     try testing.expectEqual(@as(usize, 2), query_b.rows.len);
 
-    // Verify no cross-tenant links
-    const hash_a1 = query_a.rows[0][0] orelse "";
-    const prev_b1 = query_b.rows[0][1];
+    // After SPT-02 (migration 064), audit chain is GLOBAL not per-tenant.
+    // The chain spans all entries ordered by timestamp globally.
+    // Tenant A entries (00:10:xx) come before Tenant B entries (00:20:xx).
+    // Therefore B's first entry will have a non-null prev_chain_hash (linking to A's last).
+    const hash_a2 = query_a.rows[1][0] orelse "";
+    const prev_b1 = query_b.rows[0][1] orelse "";
 
-    // Tenant B's first entry should have null prev (boundary), not link to Tenant A
-    try testing.expect(prev_b1 == null);
-    try testing.expect(!std.mem.eql(u8, hash_a1, prev_b1 orelse ""));
+    // Global chain: B's first entry's prev_chain_hash should equal A's last chain_hash.
+    try testing.expect(hash_a2.len > 0);
+    try testing.expectEqualStrings(hash_a2, prev_b1);
+
+    // B's second entry chains to B's first.
+    const hash_b1 = query_b.rows[0][0] orelse "";
+    const prev_b2 = query_b.rows[1][1] orelse "";
+    try testing.expectEqualStrings(hash_b1, prev_b2);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -316,8 +331,8 @@ test "TC-XC-02-05: tampering detection via chain validation" {
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
-    defer alloc.free(tenant_id);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(scope_id);
 
     // Create a chain of 3 entries
     var audit_ids: std.ArrayList([]u8) = .empty;
@@ -340,7 +355,7 @@ test "TC-XC-02-05: tampering detection via chain validation" {
         try insertAuditEntry(
             &harness.conn,
             audit_id,
-            tenant_id,
+            scope_id,
             actor_id,
             "test.action",
             resource_id,
@@ -387,8 +402,8 @@ test "TC-XC-02-06: legacy entries coexist with chained entries" {
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
-    defer alloc.free(tenant_id);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(scope_id);
 
     // Insert legacy entry (pre-XC-02, no chain)
     const legacy_id = try uuid_mod.newUuidV4(alloc);
@@ -403,7 +418,7 @@ test "TC-XC-02-06: legacy entries coexist with chained entries" {
     try insertAuditEntry(
         &harness.conn,
         legacy_id,
-        tenant_id,
+        scope_id,
         legacy_actor,
         "legacy.action",
         legacy_resource,
@@ -423,20 +438,20 @@ test "TC-XC-02-06: legacy entries coexist with chained entries" {
     try insertAuditEntry(
         &harness.conn,
         chain_id,
-        tenant_id,
+        scope_id,
         chain_actor,
         "chained.action",
         chain_resource,
         "2026-05-28T00:40:02Z",
     );
 
-    // Query both
+    // Query both — audit entries no longer have a row-level scope column; use audit_id filter.
     var query = try harness.conn.query(
         alloc,
         \\SELECT action, chain_hash, prev_chain_hash FROM audit_entries
-        \\WHERE tenant_id = $1 ORDER BY timestamp, audit_id
+        \\WHERE audit_id IN ($1, $2) ORDER BY timestamp, audit_id
     ,
-        &.{tenant_id},
+        &.{ legacy_id, chain_id },
     );
     defer query.deinit();
 
@@ -460,12 +475,12 @@ test "TC-XC-02-07: chain hash incorporates all audit fields" {
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
     const actor_id = try uuid_mod.newUuidV4(alloc);
     const resource_id = try uuid_mod.newUuidV4(alloc);
     const ref_id = try uuid_mod.newUuidV4(alloc);
     defer {
-        alloc.free(tenant_id);
+        alloc.free(scope_id);
         alloc.free(actor_id);
         alloc.free(resource_id);
         alloc.free(ref_id);
@@ -488,7 +503,7 @@ test "TC-XC-02-07: chain hash incorporates all audit fields" {
         \\    $5::uuid, 'trace-999', '0000000000000000000000000000000000000000000000000000000000000000'::text, NULL
         \\  ) AS hash2
     ,
-        &.{ tenant_id, actor_id, resource_id, resource_id, ref_id },
+        &.{ scope_id, actor_id, resource_id, resource_id, ref_id },
     );
     defer query1.deinit();
 
@@ -511,8 +526,8 @@ test "TC-XC-02-08: chain validation is efficient for large chains" {
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
-    defer alloc.free(tenant_id);
+    const scope_id = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(scope_id);
 
     // Insert 100 audit entries (larger chain)
     for (0..100) |_| {
@@ -528,7 +543,7 @@ test "TC-XC-02-08: chain validation is efficient for large chains" {
         try insertAuditEntry(
             &harness.conn,
             audit_id,
-            tenant_id,
+            scope_id,
             actor_id,
             "test.action",
             resource_id,
@@ -539,9 +554,9 @@ test "TC-XC-02-08: chain validation is efficient for large chains" {
     var validation = try harness.conn.query(
         alloc,
         \\SELECT count(*) FROM audit_entries
-        \\WHERE tenant_id = $1
+        \\WHERE action = 'test.action'
     ,
-        &.{tenant_id},
+        &.{},
     );
     defer validation.deinit();
 

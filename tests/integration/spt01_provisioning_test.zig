@@ -93,7 +93,7 @@ fn schemaName(uuid_str: []const u8, buf: *[80]u8) []const u8 {
 fn cleanupTenant(
     allocator: std.mem.Allocator,
     pool: *Pool,
-    tenant_id_str: []const u8,
+    scope_id_str: []const u8,
     schema_name_str: []const u8,
 ) void {
     const conn = pool.acquire() catch return;
@@ -113,9 +113,9 @@ fn cleanupTenant(
     // Remove registry row.
     conn.exec(
         "DELETE FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
-        &.{tenant_id_str},
+        &.{scope_id_str},
     ) catch |err| {
-        std.debug.print("cleanup: DELETE tenant_schemas for {s} failed: {}\n", .{ tenant_id_str, err });
+        std.debug.print("cleanup: DELETE schema for {s} failed: {}\n", .{ scope_id_str, err });
     };
 
     // Remove schema_migrations rows for this schema.
@@ -144,16 +144,16 @@ test "TC-SPT-01-01: provisionTenantSchema creates schema named tenant_<uuid_no_h
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const tenant_id = try randomUuidStr(alloc);
-    defer alloc.free(tenant_id);
+    const schema_owner = try randomUuidStr(alloc);
+    defer alloc.free(schema_owner);
 
     var schema_buf: [80]u8 = undefined;
-    const schema_name_str = schemaName(tenant_id, &schema_buf);
+    const schema_name_str = schemaName(schema_owner, &schema_buf);
 
     // Ensure cleanup even if the test fails mid-way.
-    defer cleanupTenant(alloc, &pool, tenant_id, schema_name_str);
+    defer cleanupTenant(alloc, &pool, schema_owner, schema_name_str);
 
-    try provisionTenantSchema(alloc, &pool, tenant_id, migrationsDir());
+    try provisionTenantSchema(alloc, &pool, schema_owner, migrationsDir());
 
     // Query information_schema.schemata to verify the schema was created.
     const conn = try pool.acquire();
@@ -189,19 +189,19 @@ test "TC-SPT-01-02: provisionTenantSchema is idempotent" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const tenant_id = try randomUuidStr(alloc);
-    defer alloc.free(tenant_id);
+    const schema_owner = try randomUuidStr(alloc);
+    defer alloc.free(schema_owner);
 
     var schema_buf: [80]u8 = undefined;
-    const schema_name_str = schemaName(tenant_id, &schema_buf);
+    const schema_name_str = schemaName(schema_owner, &schema_buf);
 
-    defer cleanupTenant(alloc, &pool, tenant_id, schema_name_str);
+    defer cleanupTenant(alloc, &pool, schema_owner, schema_name_str);
 
     // First call — should provision.
-    try provisionTenantSchema(alloc, &pool, tenant_id, migrationsDir());
+    try provisionTenantSchema(alloc, &pool, schema_owner, migrationsDir());
 
     // Second call — should be a silent no-op.
-    try provisionTenantSchema(alloc, &pool, tenant_id, migrationsDir());
+    try provisionTenantSchema(alloc, &pool, schema_owner, migrationsDir());
 
     // Exactly one row must exist in public.tenant_schemas.
     const conn = try pool.acquire();
@@ -210,7 +210,7 @@ test "TC-SPT-01-02: provisionTenantSchema is idempotent" {
     var result = try conn.query(
         alloc,
         "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
-        &.{tenant_id},
+        &.{schema_owner},
     );
     defer result.deinit();
 
@@ -238,15 +238,15 @@ test "TC-SPT-01-03: runForSchema applies migrations inside the new schema" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const tenant_id = try randomUuidStr(alloc);
-    defer alloc.free(tenant_id);
+    const schema_owner = try randomUuidStr(alloc);
+    defer alloc.free(schema_owner);
 
     var schema_buf: [80]u8 = undefined;
-    const schema_name_str = schemaName(tenant_id, &schema_buf);
+    const schema_name_str = schemaName(schema_owner, &schema_buf);
 
-    defer cleanupTenant(alloc, &pool, tenant_id, schema_name_str);
+    defer cleanupTenant(alloc, &pool, schema_owner, schema_name_str);
 
-    try provisionTenantSchema(alloc, &pool, tenant_id, migrationsDir());
+    try provisionTenantSchema(alloc, &pool, schema_owner, migrationsDir());
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -286,15 +286,15 @@ test "TC-SPT-01-04: schema_migrations records (schema_name, version) per applied
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const tenant_id = try randomUuidStr(alloc);
-    defer alloc.free(tenant_id);
+    const schema_owner = try randomUuidStr(alloc);
+    defer alloc.free(schema_owner);
 
     var schema_buf: [80]u8 = undefined;
-    const schema_name_str = schemaName(tenant_id, &schema_buf);
+    const schema_name_str = schemaName(schema_owner, &schema_buf);
 
-    defer cleanupTenant(alloc, &pool, tenant_id, schema_name_str);
+    defer cleanupTenant(alloc, &pool, schema_owner, schema_name_str);
 
-    try provisionTenantSchema(alloc, &pool, tenant_id, migrationsDir());
+    try provisionTenantSchema(alloc, &pool, schema_owner, migrationsDir());
 
     const conn = try pool.acquire();
     defer pool.release(conn);

@@ -6,7 +6,7 @@ pub const api_tenant_context = bpm.api_tenant_context;
 pub const api_pipeline_context = bpm.api_pipeline_context;
 
 // Initialize default test tenant context (nil UUID) for all integration tests.
-// This ensures PostgreSQL pool connections have bpm.tenant_id set correctly.
+// This ensures PostgreSQL session context is initialized correctly.
 pub fn setTestTenantContext() void {
     api_tenant_context.set("00000000-0000-0000-0000-000000000000");
 }

@@ -100,7 +100,8 @@ test "TC-ADP-09-01: migration adds nullable chain columns and validation primiti
     );
     defer idx.deinit();
 
-    try testing.expectEqual(@as(usize, 2), idx.rows.len);
+    // These tenant-scoped indexes were dropped by migration 062 (SPT-02).
+    try testing.expectEqual(@as(usize, 0), idx.rows.len);
 }
 
 test "TC-ADP-09-05: canonical hash computation is stable for semantically equal JSON" {
@@ -159,17 +160,20 @@ test "TC-ADP-09-02: new rows chain deterministically with tenant-scoped predeces
     const tenant_a = "a9000000-0000-0000-0000-000000000001";
     const tenant_b = "b9000000-0000-0000-0000-000000000001";
 
+    // SPT-02 (migration 062): audit_entries no longer has a row-level scope column.
+    _ = tenant_a;
+    _ = tenant_b;
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state, pipeline_run_id
+        \\  audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state, pipeline_run_id
         \\)
         \\VALUES
-        \\  ('a9000000-0000-0000-0000-000000000101'::uuid, $1::uuid, 'a9000000-0000-0000-0000-000000000201'::uuid, 'definition.create', 'definition', 'a9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:00:01Z'::timestamptz, NULL, '{"status":"DRAFT"}'::jsonb, NULL),
-        \\  ('a9000000-0000-0000-0000-000000000102'::uuid, $1::uuid, 'a9000000-0000-0000-0000-000000000201'::uuid, 'definition.update', 'definition', 'a9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:00:02Z'::timestamptz, '{"status":"DRAFT"}'::jsonb, '{"status":"ACTIVE"}'::jsonb, '11111111-2222-3333-4444-555555555555'::uuid),
-        \\  ('b9000000-0000-0000-0000-000000000101'::uuid, $2::uuid, 'b9000000-0000-0000-0000-000000000201'::uuid, 'task.create', 'task', 'b9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:00:03Z'::timestamptz, NULL, '{"status":"PENDING"}'::jsonb, NULL),
-        \\  ('b9000000-0000-0000-0000-000000000102'::uuid, $2::uuid, 'b9000000-0000-0000-0000-000000000201'::uuid, 'task.complete', 'task', 'b9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:00:04Z'::timestamptz, '{"status":"PENDING"}'::jsonb, '{"status":"COMPLETED"}'::jsonb, NULL)
+        \\  ('a9000000-0000-0000-0000-000000000101'::uuid, 'a9000000-0000-0000-0000-000000000201'::uuid, 'definition.create', 'definition', 'a9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:00:01Z'::timestamptz, NULL, '{"status":"DRAFT"}'::jsonb, NULL),
+        \\  ('a9000000-0000-0000-0000-000000000102'::uuid, 'a9000000-0000-0000-0000-000000000201'::uuid, 'definition.update', 'definition', 'a9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:00:02Z'::timestamptz, '{"status":"DRAFT"}'::jsonb, '{"status":"ACTIVE"}'::jsonb, '11111111-2222-3333-4444-555555555555'::uuid),
+        \\  ('b9000000-0000-0000-0000-000000000101'::uuid, 'b9000000-0000-0000-0000-000000000201'::uuid, 'task.create', 'task', 'b9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:00:03Z'::timestamptz, NULL, '{"status":"PENDING"}'::jsonb, NULL),
+        \\  ('b9000000-0000-0000-0000-000000000102'::uuid, 'b9000000-0000-0000-0000-000000000201'::uuid, 'task.complete', 'task', 'b9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:00:04Z'::timestamptz, '{"status":"PENDING"}'::jsonb, '{"status":"COMPLETED"}'::jsonb, NULL)
     ,
-        &.{ tenant_a, tenant_b },
+        &.{},
     );
 
     var first_a_q = try harness.conn.query(
@@ -223,7 +227,7 @@ test "TC-ADP-09-02: new rows chain deterministically with tenant-scoped predeces
     var deterministic_q = try harness.conn.query(
         alloc,
         \\SELECT bpm_audit_compute_chain_hash(
-        \\  tenant_id,
+        \\  NULL::uuid,
         \\  audit_id,
         \\  actor_id,
         \\  action,
@@ -257,16 +261,18 @@ test "TC-ADP-09-03: chain validation reports tampered row first and descendants 
 
     const tenant = "c9000000-0000-0000-0000-000000000001";
 
+    // SPT-02 (migration 062): audit_entries no longer has a row-level scope column.
+    // tenant UUID is still passed to bpm_audit_validate_chain for API compatibility.
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
+        \\  audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
         \\)
         \\VALUES
-        \\  ('c9000000-0000-0000-0000-000000000101'::uuid, $1::uuid, 'c9000000-0000-0000-0000-000000000201'::uuid, 'definition.create', 'definition', 'c9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:10:01Z'::timestamptz, NULL, '{"status":"DRAFT"}'::jsonb),
-        \\  ('c9000000-0000-0000-0000-000000000102'::uuid, $1::uuid, 'c9000000-0000-0000-0000-000000000201'::uuid, 'definition.update', 'definition', 'c9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:10:02Z'::timestamptz, '{"status":"DRAFT"}'::jsonb, '{"status":"ACTIVE"}'::jsonb),
-        \\  ('c9000000-0000-0000-0000-000000000103'::uuid, $1::uuid, 'c9000000-0000-0000-0000-000000000201'::uuid, 'definition.archive', 'definition', 'c9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:10:03Z'::timestamptz, '{"status":"ACTIVE"}'::jsonb, '{"status":"ARCHIVED"}'::jsonb)
+        \\  ('c9000000-0000-0000-0000-000000000101'::uuid, 'c9000000-0000-0000-0000-000000000201'::uuid, 'definition.create', 'definition', 'c9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:10:01Z'::timestamptz, NULL, '{"status":"DRAFT"}'::jsonb),
+        \\  ('c9000000-0000-0000-0000-000000000102'::uuid, 'c9000000-0000-0000-0000-000000000201'::uuid, 'definition.update', 'definition', 'c9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:10:02Z'::timestamptz, '{"status":"DRAFT"}'::jsonb, '{"status":"ACTIVE"}'::jsonb),
+        \\  ('c9000000-0000-0000-0000-000000000103'::uuid, 'c9000000-0000-0000-0000-000000000201'::uuid, 'definition.archive', 'definition', 'c9000000-0000-0000-0000-000000000301'::uuid, '2026-05-26T10:10:03Z'::timestamptz, '{"status":"ACTIVE"}'::jsonb, '{"status":"ARCHIVED"}'::jsonb)
     ,
-        &.{tenant},
+        &.{},
     );
 
     try harness.conn.exec(
@@ -322,13 +328,14 @@ test "TC-ADP-09-04: legacy pre-chain rows remain valid and boundary row starts c
     );
     defer restoreAuditChainTrigger(&harness.conn) catch {};
 
+    // SPT-02 (migration 062): audit_entries no longer has a row-level scope column.
+    // tenant UUID is still passed to bpm_audit_validate_chain for API compatibility.
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state, chain_hash, prev_chain_hash
+        \\  audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state, chain_hash, prev_chain_hash
         \\)
         \\VALUES (
         \\  'd9000000-0000-0000-0000-000000000101'::uuid,
-        \\  $1::uuid,
         \\  'd9000000-0000-0000-0000-000000000201'::uuid,
         \\  'definition.legacy',
         \\  'definition',
@@ -340,18 +347,17 @@ test "TC-ADP-09-04: legacy pre-chain rows remain valid and boundary row starts c
         \\  NULL
         \\)
     ,
-        &.{tenant},
+        &.{},
     );
 
     try restoreAuditChainTrigger(&harness.conn);
 
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
+        \\  audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
         \\)
         \\VALUES (
         \\  'd9000000-0000-0000-0000-000000000102'::uuid,
-        \\  $1::uuid,
         \\  'd9000000-0000-0000-0000-000000000201'::uuid,
         \\  'definition.create',
         \\  'definition',
@@ -361,7 +367,7 @@ test "TC-ADP-09-04: legacy pre-chain rows remain valid and boundary row starts c
         \\  '{"status":"DRAFT"}'::jsonb
         \\)
     ,
-        &.{tenant},
+        &.{},
     );
 
     var boundary_q = try harness.conn.query(

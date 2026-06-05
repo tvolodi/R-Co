@@ -45,14 +45,13 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = "00000000-0000-0000-0000-000000000000";
+    // SPT-02 (migration 062): users and audit_entries no longer have row-level scope columns.
     const agent_user_id = "a1000000-0000-0000-0000-000000000001";
 
     try harness.conn.exec(
-        \\INSERT INTO users (id, tenant_id, email, display_name, password_hash, is_active, username, status)
-        \\VALUES ($1::uuid, $2::uuid, 'adp10.agent@example.test', 'ADP10 Agent', 'hash', true, 'agent:adp10', 'ACTIVE')
+        \\INSERT INTO users (id, email, display_name, password_hash, is_active, username, status)
+        \\VALUES ($1::uuid, 'adp10.agent@example.test', 'ADP10 Agent', 'hash', true, 'agent:adp10', 'ACTIVE')
         \\ON CONFLICT (id) DO UPDATE SET
-        \\  tenant_id = EXCLUDED.tenant_id,
         \\  email = EXCLUDED.email,
         \\  display_name = EXCLUDED.display_name,
         \\  password_hash = EXCLUDED.password_hash,
@@ -60,7 +59,7 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
         \\  username = EXCLUDED.username,
         \\  status = EXCLUDED.status
     ,
-        &.{ agent_user_id, tenant_id },
+        &.{agent_user_id},
     );
 
     try harness.conn.exec(
@@ -83,12 +82,11 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
 
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
+        \\  audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
         \\)
         \\VALUES (
         \\  'a1000000-0000-0000-0000-000000000101'::uuid,
         \\  $1::uuid,
-        \\  $2::uuid,
         \\  'definition.update',
         \\  'definition',
         \\  'a1000000-0000-0000-0000-000000000301'::uuid,
@@ -97,7 +95,7 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
         \\  '{"status":"ACTIVE"}'::jsonb
         \\)
     ,
-        &.{ tenant_id, agent_user_id },
+        &.{agent_user_id},
     );
 
     try harness.conn.exec(
@@ -107,11 +105,10 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
 
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
-        \\  audit_id, tenant_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
+        \\  audit_id, actor_id, action, resource_type, resource_id, timestamp, before_state, after_state
         \\)
         \\VALUES (
         \\  'a1000000-0000-0000-0000-000000000102'::uuid,
-        \\  $1::uuid,
         \\  'a1000000-0000-0000-0000-000000000002'::uuid,
         \\  'definition.update',
         \\  'definition',
@@ -121,7 +118,7 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
         \\  '{"status":"ARCHIVED"}'::jsonb
         \\)
     ,
-        &.{tenant_id},
+        &.{},
     );
 
     var rows = try harness.conn.query(
@@ -137,7 +134,7 @@ test "TC-ADP-10-02: agent rows persist payload_full while non-agent rows stay NU
         \\  payload_full->>'capture_mode',
         \\  payload_full->'tool_calls' IS NOT NULL,
         \\  bpm_audit_compute_chain_hash(
-        \\      tenant_id,
+        \\      NULL::uuid,
         \\      audit_id,
         \\      actor_id,
         \\      action,

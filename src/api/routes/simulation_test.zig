@@ -40,7 +40,7 @@ pub fn handleValidateScenario(
 
     var report = scenario_runner.validateScenarioSubmissionDetailed(allocator, .{
         .actor_user_id = actor.user_id,
-        .actor_tenant_id = actor.tenant_id,
+        .actor_realm_id = actor.tenant_id,
         .actor_permissions = actor.permissions,
         .schema_name = schema_name,
         .schema_version = schema_version,
@@ -99,7 +99,7 @@ pub fn handleRunScenario(
 
     const result = scenario_runner.runScenario(allocator, .{
         .actor_user_id = actor.user_id,
-        .actor_tenant_id = actor.tenant_id,
+        .actor_realm_id = actor.tenant_id,
         .actor_permissions = actor.permissions,
         .schema_name = schema_name,
         .schema_version = schema_version,
@@ -110,7 +110,7 @@ pub fn handleRunScenario(
         if (err == scenario_runner.ScenarioSchemaError.ScenarioValidationFailed) {
             var report = scenario_runner.validateScenarioSubmissionDetailed(allocator, .{
                 .actor_user_id = actor.user_id,
-                .actor_tenant_id = actor.tenant_id,
+                .actor_realm_id = actor.tenant_id,
                 .actor_permissions = actor.permissions,
                 .schema_name = schema_name,
                 .schema_version = schema_version,
@@ -193,7 +193,7 @@ pub fn handleRunBatch(
 
     const batch_result = scenario_runner.runScenarioBatch(allocator, .{
         .actor_user_id = actor.user_id,
-        .actor_tenant_id = actor.tenant_id,
+        .actor_realm_id = actor.tenant_id,
         .actor_permissions = actor.permissions,
         .schema_name = schema_name,
         .schema_version = schema_version,

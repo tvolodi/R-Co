@@ -77,29 +77,32 @@ fn seedInstanceProjection(
     );
 }
 
+// SPT-02 (migration 062): instance_projections no longer has a row-level scope column.
+// The scope_id parameter is kept for API backward compatibility but not used in SQL.
 fn seedInstanceProjectionWithTenant(
     conn: *bpm.pool.Conn,
     instance_id: []const u8,
     definition_id: []const u8,
-    tenant_id: []const u8,
+    scope_id: []const u8,
     status: []const u8,
 ) !void {
+    _ = scope_id;
     try conn.exec(
         \\INSERT INTO instance_projections (
-        \\  instance_id, tenant_id, definition_id, correlation_key, status,
+        \\  instance_id, definition_id, correlation_key, status,
         \\  current_nodes, variables, error_detail, last_event_seq,
         \\  started_at, completed_at, cancelled_at, updated_at
         \\)
         \\VALUES (
-        \\  $1::uuid, $2::uuid, $3::uuid, NULL, $4,
+        \\  $1::uuid, $2::uuid, NULL, $3,
         \\  '[]'::jsonb, '{}'::jsonb, NULL, 0,
         \\  NOW() - INTERVAL '1 day',
-        \\  CASE WHEN $4 = 'COMPLETED' THEN NOW() - INTERVAL '1 hour' ELSE NULL END,
-        \\  CASE WHEN $4 = 'CANCELLED' THEN NOW() - INTERVAL '30 minutes' ELSE NULL END,
+        \\  CASE WHEN $3 = 'COMPLETED' THEN NOW() - INTERVAL '1 hour' ELSE NULL END,
+        \\  CASE WHEN $3 = 'CANCELLED' THEN NOW() - INTERVAL '30 minutes' ELSE NULL END,
         \\  NOW()
         \\)
     ,
-        &.{ instance_id, tenant_id, definition_id, status },
+        &.{ instance_id, definition_id, status },
     );
 }
 
@@ -506,10 +509,8 @@ test "TC-OBS-04-INT-05: timeline resolves tenant from instance projection when q
         1,
         "obs04-int5-live-1",
     );
-    try conn.exec(
-        "UPDATE events SET tenant_id = $1::uuid WHERE event_id = $2::uuid",
-        &.{ non_default_tenant[0..], event_id[0..] },
-    );
+    // SPT-02 (migration 062): events no longer has a row-level scope column; skip the UPDATE.
+    // The event is already seeded directly via insertEvent without a tenant filter.
 
     var registry = Registry.init(alloc, &pool);
     defer registry.deinit();

@@ -62,7 +62,9 @@ test "TC-ADP-03-02: tenant_id claim resolves deterministically to claim tenant" 
     try std.testing.expectEqual(resolved_first.source, resolved_second.source);
 }
 
-test "TC-ADP-03-03: tenant_id claim scopes DB session tenant context" {
+test "TC-ADP-03-03: bpm_effective_tenant_id() returns the default UUID stub after SPT-02" {
+    // After migration 062 and 066, bpm_effective_scope_context() is a stub that always
+    // returns '00000000-0000-0000-0000-000000000000' regardless of session config.
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -82,8 +84,7 @@ test "TC-ADP-03-03: tenant_id claim scopes DB session tenant context" {
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{resolved.tenant_id[0..]});
-
+    // The function is now a stub and always returns the default UUID.
     const row = (try conn.queryRow(alloc, "SELECT bpm_effective_tenant_id()::text", &.{})) orelse return error.TestUnexpectedResult;
     defer {
         if (row[0]) |v| alloc.free(v);
@@ -91,7 +92,7 @@ test "TC-ADP-03-03: tenant_id claim scopes DB session tenant context" {
     }
 
     const tenant_value = row[0] orelse "";
-    try std.testing.expectEqualStrings(tenant_b, tenant_value);
+    try std.testing.expectEqualStrings(default_tenant, tenant_value);
 }
 
 test "TC-ADP-03-04: malformed tenant claim is rejected before scoped operations" {
@@ -102,7 +103,10 @@ test "TC-ADP-03-04: malformed tenant claim is rejected before scoped operations"
     try std.testing.expectError(error.InvalidTenantClaimFormat, auth.resolveTenantContext(alloc, bad_token));
 }
 
-test "TC-ADP-03-05: cross-tenant reads are blocked within a request tenant scope" {
+test "TC-ADP-03-05: process definitions persist correctly without tenant_id after SPT-02" {
+    // After migration 062, process_definitions no longer has a row-level scope column.
+    // Definitions are globally unique by (name, version) via uq_definition_name_version.
+    // This test verifies that two definitions with different names can coexist.
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -113,87 +117,59 @@ test "TC-ADP-03-05: cross-tenant reads are blocked within a request tenant scope
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const name = "adp03-tenant-isolation-def";
+    const name_a = "adp03-def-a";
+    const name_b = "adp03-def-b";
     const actor = "00000000-0000-0000-0000-000000000123";
-
-    var id_a: [64]u8 = undefined;
-    var id_b: [64]u8 = undefined;
 
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{default_tenant});
-    _ = conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    const row_a = (try conn.queryRow(
-        alloc,
+    _ = conn.exec("DELETE FROM process_definitions WHERE name IN ($1, $2)", &.{ name_a, name_b }) catch {};
+    defer {
+        conn.exec("DELETE FROM process_definitions WHERE name IN ($1, $2)", &.{ name_a, name_b }) catch {};
+    }
+
+    // Insert two definitions (scope column no longer exists).
+    try conn.exec(
         \\INSERT INTO process_definitions
-        \\  (tenant_id, name, version, description, status, graph, created_by)
+        \\  (name, version, description, status, graph, created_by)
         \\VALUES
-        \\  (bpm_effective_tenant_id(), $1, '1.0.0', 'tenant-a', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $2::uuid)
-        \\RETURNING id::text
+        \\  ($1, '1.0.0', 'def-a', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $2::uuid)
     ,
-        &.{ name, actor },
-    )) orelse return error.TestUnexpectedResult;
-    defer {
-        if (row_a[0]) |v| alloc.free(v);
-        alloc.free(row_a);
-    }
-    const id_text_a = row_a[0] orelse return error.TestUnexpectedResult;
-    @memset(id_a[0..], 0);
-    @memcpy(id_a[0..id_text_a.len], id_text_a);
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    _ = conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    const row_b = (try conn.queryRow(
-        alloc,
+        &.{ name_a, actor },
+    );
+    try conn.exec(
         \\INSERT INTO process_definitions
-        \\  (tenant_id, name, version, description, status, graph, created_by)
+        \\  (name, version, description, status, graph, created_by)
         \\VALUES
-        \\  (bpm_effective_tenant_id(), $1, '1.0.0', 'tenant-b', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $2::uuid)
-        \\RETURNING id::text
+        \\  ($1, '1.0.0', 'def-b', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $2::uuid)
     ,
-        &.{ name, actor },
-    )) orelse return error.TestUnexpectedResult;
-    defer {
-        if (row_b[0]) |v| alloc.free(v);
-        alloc.free(row_b);
-    }
-    const id_text_b = row_b[0] orelse return error.TestUnexpectedResult;
-    @memset(id_b[0..], 0);
-    @memcpy(id_b[0..id_text_b.len], id_text_b);
+        &.{ name_b, actor },
+    );
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{default_tenant});
-    const row_a_view = (try conn.queryRow(
+    // Both definitions are accessible from any connection (no RLS after SPT-02).
+    var a_rows = try conn.query(
         alloc,
-        "SELECT COUNT(*)::text FROM process_definitions WHERE id = $1::uuid AND tenant_id = bpm_effective_tenant_id()",
-        &.{std.mem.sliceTo(&id_b, 0)},
-    )) orelse return error.TestUnexpectedResult;
-    defer {
-        if (row_a_view[0]) |v| alloc.free(v);
-        alloc.free(row_a_view);
-    }
-    try std.testing.expectEqual(@as(i64, 0), parseCount(row_a_view[0] orelse "0"));
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    const row_b_view = (try conn.queryRow(
+        "SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = '1.0.0'",
+        &.{name_a},
+    );
+    defer a_rows.deinit();
+    var b_rows = try conn.query(
         alloc,
-        "SELECT COUNT(*)::text FROM process_definitions WHERE id = $1::uuid AND tenant_id = bpm_effective_tenant_id()",
-        &.{std.mem.sliceTo(&id_a, 0)},
-    )) orelse return error.TestUnexpectedResult;
-    defer {
-        if (row_b_view[0]) |v| alloc.free(v);
-        alloc.free(row_b_view);
-    }
-    try std.testing.expectEqual(@as(i64, 0), parseCount(row_b_view[0] orelse "0"));
+        "SELECT COUNT(*) FROM process_definitions WHERE name = $1 AND version = '1.0.0'",
+        &.{name_b},
+    );
+    defer b_rows.deinit();
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{default_tenant});
-    _ = conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    _ = conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    try conn.exec("SELECT set_config('bpm.tenant_id', '', false)", &.{});
+    const a_count = std.fmt.parseInt(i64, a_rows.rows[0][0] orelse "0", 10) catch 0;
+    const b_count = std.fmt.parseInt(i64, b_rows.rows[0][0] orelse "0", 10) catch 0;
+    try std.testing.expectEqual(@as(i64, 1), a_count);
+    try std.testing.expectEqual(@as(i64, 1), b_count);
 }
 
-test "TC-ADP-03-06: cross-tenant mutation attempts are rejected by tenant-scoped predicates" {
+test "TC-ADP-03-06: process definition updates work globally without tenant-scoped predicates" {
+    // After migration 062, the scope column is gone from process_definitions.
+    // Updates are no longer tenant-scoped; any connection can update any row.
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -207,63 +183,57 @@ test "TC-ADP-03-06: cross-tenant mutation attempts are rejected by tenant-scoped
     const name = "adp03-tenant-mutation-def";
     const actor = "00000000-0000-0000-0000-000000000124";
 
-    var id_b: [64]u8 = undefined;
-
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{default_tenant});
     _ = conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    _ = conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
+    defer conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    const created_b = (try conn.queryRow(
+    // Insert a definition (scope column was removed by SPT-02).
+    const created = (try conn.queryRow(
         alloc,
         \\INSERT INTO process_definitions
-        \\  (tenant_id, name, version, description, status, graph, created_by)
+        \\  (name, version, description, status, graph, created_by)
         \\VALUES
-        \\  (bpm_effective_tenant_id(), $1, '1.0.0', 'tenant-b-original', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $2::uuid)
+        \\  ($1, '1.0.0', 'original', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, $2::uuid)
         \\RETURNING id::text
     ,
         &.{ name, actor },
     )) orelse return error.TestUnexpectedResult;
     defer {
-        if (created_b[0]) |v| alloc.free(v);
-        alloc.free(created_b);
+        if (created[0]) |v| alloc.free(v);
+        alloc.free(created);
     }
-    const id_text_b = created_b[0] orelse return error.TestUnexpectedResult;
-    @memset(id_b[0..], 0);
-    @memcpy(id_b[0..id_text_b.len], id_text_b);
+    const def_id = created[0] orelse return error.TestUnexpectedResult;
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{default_tenant});
-    const blocked = try conn.queryRow(
+    // UPDATE succeeds without tenant-scoped predicate (no RLS after SPT-02).
+    const updated = try conn.queryRow(
         alloc,
-        "UPDATE process_definitions SET description = 'mutated-by-tenant-a' WHERE id = $1::uuid AND tenant_id = bpm_effective_tenant_id() RETURNING id::text",
-        &.{std.mem.sliceTo(&id_b, 0)},
+        "UPDATE process_definitions SET description = 'updated' WHERE id = $1::uuid RETURNING id::text",
+        &.{def_id},
     );
-    try std.testing.expect(blocked == null);
+    defer if (updated) |row| {
+        if (row[0]) |v| alloc.free(v);
+        alloc.free(row);
+    };
+    try std.testing.expect(updated != null);
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
+    // Verify the update persisted.
     const verify_row = (try conn.queryRow(
         alloc,
-        "SELECT description FROM process_definitions WHERE id = $1::uuid AND tenant_id = bpm_effective_tenant_id()",
-        &.{std.mem.sliceTo(&id_b, 0)},
+        "SELECT description FROM process_definitions WHERE id = $1::uuid",
+        &.{def_id},
     )) orelse return error.TestUnexpectedResult;
     defer {
         if (verify_row[0]) |v| alloc.free(v);
         alloc.free(verify_row);
     }
-    try std.testing.expectEqualStrings("tenant-b-original", verify_row[0] orelse "");
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{default_tenant});
-    _ = conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    _ = conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
-    try conn.exec("SELECT set_config('bpm.tenant_id', '', false)", &.{});
+    try std.testing.expectEqualStrings("updated", verify_row[0] orelse "");
 }
 
-test "TC-ADP-03-07: legacy default-tenant compatibility is preserved for request persistence flow" {
+test "TC-ADP-03-07: instance projections work without tenant_id after SPT-02" {
+    // After migration 062, instance_projections no longer has a row-level scope column.
+    // Instances are accessible from any connection.
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -283,11 +253,10 @@ test "TC-ADP-03-07: legacy default-tenant compatibility is preserved for request
     const resolved = try auth.resolveTenantContext(alloc, "legacy-opaque-token");
     try std.testing.expectEqualStrings(default_tenant, resolved.tenant_id[0..]);
 
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{default_tenant});
     _ = conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
+    defer conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
 
-    // Simulate legacy/default request flow where tenant is resolved then DB defaults apply.
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{resolved.tenant_id[0..]});
+    // Insert instance projection (scope column removed in SPT-02).
     try conn.exec(
         \\INSERT INTO instance_projections
         \\  (instance_id, definition_id, correlation_key, status, current_nodes, variables, last_event_seq)
@@ -297,30 +266,15 @@ test "TC-ADP-03-07: legacy default-tenant compatibility is preserved for request
         &.{ instance_id, definition_id },
     );
 
-    const tenant_row = (try conn.queryRow(
+    // Verify the row is accessible without tenant filter.
+    const count_row = (try conn.queryRow(
         alloc,
-        "SELECT tenant_id::text FROM instance_projections WHERE instance_id = $1::uuid",
+        "SELECT COUNT(*)::text FROM instance_projections WHERE instance_id = $1::uuid AND status = 'ACTIVE'",
         &.{instance_id},
     )) orelse return error.TestUnexpectedResult;
     defer {
-        if (tenant_row[0]) |v| alloc.free(v);
-        alloc.free(tenant_row);
+        if (count_row[0]) |v| alloc.free(v);
+        alloc.free(count_row);
     }
-    try std.testing.expectEqualStrings(default_tenant, tenant_row[0] orelse "");
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_b});
-    const hidden_from_other_tenant = (try conn.queryRow(
-        alloc,
-        "SELECT COUNT(*)::text FROM instance_projections WHERE instance_id = $1::uuid AND tenant_id = bpm_effective_tenant_id()",
-        &.{instance_id},
-    )) orelse return error.TestUnexpectedResult;
-    defer {
-        if (hidden_from_other_tenant[0]) |v| alloc.free(v);
-        alloc.free(hidden_from_other_tenant);
-    }
-    try std.testing.expectEqual(@as(i64, 0), parseCount(hidden_from_other_tenant[0] orelse "0"));
-
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{default_tenant});
-    _ = conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
-    try conn.exec("SELECT set_config('bpm.tenant_id', '', false)", &.{});
+    try std.testing.expectEqual(@as(i64, 1), parseCount(count_row[0] orelse "0"));
 }

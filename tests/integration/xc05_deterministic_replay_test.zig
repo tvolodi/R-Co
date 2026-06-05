@@ -21,22 +21,21 @@ test "TC-XC-05-01: point-in-time reconstruction produces matching state" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(actor_id);
     }
 
     // Create instance with initial state
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\) VALUES ($1, $2, $3, $4, NOW())
     ,
         &.{
             instance_id,
-            tenant_id,
             "def-hash",
             "ACTIVE",
             "{\"counter\":0}",
@@ -56,17 +55,16 @@ test "TC-XC-05-01: point-in-time reconstruction produces matching state" {
 
         _ = try harness.conn.exec(
             \\INSERT INTO events (
-            \\  event_id, instance_id, tenant_id, event_type,
+            \\  event_id, instance_id, event_type,
             \\  payload, actor_id, sequence_number, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
         ,
             &.{
                 event_id,
                 instance_id,
-                tenant_id,
                 "counter.incremented",
                 "{\"delta\":1}",
-                tenant_id,
+                actor_id,
                 seq_text,
                 idem_key,
             },
@@ -113,22 +111,21 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(actor_id);
     }
 
     // Create instance
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\) VALUES ($1, $2, $3, $4, NOW())
     ,
         &.{
             instance_id,
-            tenant_id,
             "def-hash",
             "ACTIVE",
             "{\"state\":\"initial\"}",
@@ -150,17 +147,16 @@ test "TC-XC-05-02: repeated reconstruction produces identical state" {
 
         _ = try harness.conn.exec(
             \\INSERT INTO events (
-            \\  event_id, instance_id, tenant_id, event_type,
+            \\  event_id, instance_id, event_type,
             \\  payload, actor_id, sequence_number, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
         ,
             &.{
                 event_id,
                 instance_id,
-                tenant_id,
                 "state.updated",
                 payload,
-                tenant_id,
+                actor_id,
                 seq_text,
                 idem_key,
             },
@@ -204,20 +200,20 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(actor_id);
     }
 
     // Create instance
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\) VALUES ($1, $2, $3, NOW())
     ,
-        &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
+        &.{ instance_id, "def-hash", "ACTIVE" },
     );
 
     for (0..5) |i| {
@@ -236,17 +232,16 @@ test "TC-XC-05-03: timestamp-based reconstruction works correctly" {
 
         _ = try harness.conn.exec(
             \\INSERT INTO events (
-            \\  event_id, instance_id, tenant_id, event_type,
+            \\  event_id, instance_id, event_type,
             \\  payload, actor_id, idempotency_key, created_at, sequence_number
-            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW() + ($8::bigint * INTERVAL '1 milliseconds'), $9)
+            \\) VALUES ($1, $2, $3, $4, $5, $6, NOW() + ($7::bigint * INTERVAL '1 milliseconds'), $8)
         ,
             &.{
                 event_id,
                 instance_id,
-                tenant_id,
                 "test.event",
                 payload,
-                tenant_id,
+                actor_id,
                 idem_key,
                 offset_ms,
                 sequence_number,
@@ -282,20 +277,20 @@ test "TC-XC-05-04: archived events are included in reconstruction" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(actor_id);
     }
 
     // Create instance
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\) VALUES ($1, $2, $3, NOW())
     ,
-        &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
+        &.{ instance_id, "def-hash", "ACTIVE" },
     );
 
     // Insert 100 events
@@ -313,17 +308,16 @@ test "TC-XC-05-04: archived events are included in reconstruction" {
 
         _ = try harness.conn.exec(
             \\INSERT INTO events (
-            \\  event_id, instance_id, tenant_id, event_type,
+            \\  event_id, instance_id, event_type,
             \\  payload, actor_id, sequence_number, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
         ,
             &.{
                 event_id,
                 instance_id,
-                tenant_id,
                 "test.event",
                 payload,
-                tenant_id,
+                actor_id,
                 seq_text,
                 idem_key,
             },
@@ -396,22 +390,21 @@ test "TC-XC-05-05: reconstruction accuracy across instance timeline" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(actor_id);
     }
 
     // Create instance with initial counter at 0
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\) VALUES ($1, $2, $3, $4, NOW())
     ,
         &.{
             instance_id,
-            tenant_id,
             "def-hash",
             "ACTIVE",
             "{\"counter\":0}",
@@ -431,17 +424,16 @@ test "TC-XC-05-05: reconstruction accuracy across instance timeline" {
 
         _ = try harness.conn.exec(
             \\INSERT INTO events (
-            \\  event_id, instance_id, tenant_id, event_type,
+            \\  event_id, instance_id, event_type,
             \\  payload, actor_id, sequence_number, idempotency_key, created_at
-            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+            \\) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
         ,
             &.{
                 event_id,
                 instance_id,
-                tenant_id,
                 "counter.inc",
                 "{\"value\":1}",
-                tenant_id,
+                actor_id,
                 seq_text,
                 idem_key,
             },
@@ -496,22 +488,22 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
     const task_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(actor_id);
         alloc.free(task_id);
     }
 
     // Create instance
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, created_at
-        \\) VALUES ($1, $2, $3, $4, NOW())
+        \\) VALUES ($1, $2, $3, NOW())
     ,
-        &.{ instance_id, tenant_id, "def-hash", "ACTIVE" },
+        &.{ instance_id, "def-hash", "ACTIVE" },
     );
 
     // Create service task invocation event
@@ -526,17 +518,16 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
-        \\  event_id, instance_id, tenant_id, event_type,
+        \\  event_id, instance_id, event_type,
         \\  payload, actor_id, sequence_number, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        \\) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
     ,
         &.{
             task_event_id,
             instance_id,
-            tenant_id,
             "service_task.invoked",
             task_payload,
-            tenant_id,
+            actor_id,
             "1",
             task_idem_key,
         },
@@ -554,17 +545,16 @@ test "TC-XC-05-06: service task outputs are replayed from recorded events" {
 
     _ = try harness.conn.exec(
         \\INSERT INTO events (
-        \\  event_id, instance_id, tenant_id, event_type,
+        \\  event_id, instance_id, event_type,
         \\  payload, actor_id, sequence_number, idempotency_key, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        \\) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
     ,
         &.{
             output_event_id,
             instance_id,
-            tenant_id,
             "service_task.completed",
             output_payload,
-            tenant_id,
+            actor_id,
             "2",
             output_idem_key,
         },
@@ -598,21 +588,21 @@ test "TC-XC-05-07: empty instance reconstruction returns initial state" {
     defer harness.deinit();
 
     const instance_id = try uuid_mod.newUuidV4(alloc);
-    const tenant_id = try uuid_mod.newUuidV4(alloc);
+    const actor_id = try uuid_mod.newUuidV4(alloc);
     defer {
         alloc.free(instance_id);
-        alloc.free(tenant_id);
+        alloc.free(actor_id);
     }
 
     // Create instance with no events
     const initial_state = "{\"status\":\"ACTIVE\",\"counter\":0}";
     _ = try harness.conn.exec(
         \\INSERT INTO instances (
-        \\  instance_id, tenant_id, definition_artifact_hash,
+        \\  instance_id, definition_artifact_hash,
         \\  status, variables, created_at
-        \\) VALUES ($1, $2, $3, $4, $5, NOW())
+        \\) VALUES ($1, $2, $3, $4, NOW())
     ,
-        &.{ instance_id, tenant_id, "def-hash", "ACTIVE", initial_state },
+        &.{ instance_id, "def-hash", "ACTIVE", initial_state },
     );
 
     // Query instance state (should be initial)
