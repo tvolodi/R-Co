@@ -3789,6 +3789,20 @@
       "stage": "Schema-Per-Tenant Migration \u2014 SPT-02"
     },
     {
+      "handoff_id": "12b1c08-spt03-backend-dev-001",
+      "file": "handoffs/WF02-spt-02/step-2b-spt03-backend-dev.json",
+      "run_id": "WF02-spt-02",
+      "workflow_id": "WF-02",
+      "step": "2b",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-05T11:45:00Z",
+      "started_at": "2026-06-05T11:45:15Z",
+      "completed_at": "2026-06-05T12:30:00Z",
+      "status": "COMPLETED",
+      "stage": "SPT-03: Remove tenant_id from Zig code"
+    },
+    {
       "handoff_id": "e09582d2-eca9-482e-b465-0beaeeebbda9",
       "file": "handoffs/WF02-spt-02/step-03-test-designer.json",
       "run_id": "WF02-spt-02",
@@ -3799,6 +3813,20 @@
       "created_at": "2026-06-05T10:33:51Z",
       "status": "COMPLETED",
       "stage": "Schema-Per-Tenant Migration \u2014 SPT-02"
+    },
+    {
+      "handoff_id": "a9796b8-spt04-backend-dev-001",
+      "file": "handoffs/WF02-spt-02/step-2c-spt04-test-updates.json",
+      "run_id": "WF02-spt-02",
+      "workflow_id": "WF-02",
+      "step": "2c",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-05T12:30:00Z",
+      "started_at": "2026-06-05T12:30:15Z",
+      "completed_at": "2026-06-05T13:15:00Z",
+      "status": "COMPLETED",
+      "stage": "SPT-04: Update test fixtures"
     },
     {
       "handoff_id": "549c8e51-7df5-42ba-9534-64d8bc309d35",
