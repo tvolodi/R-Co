@@ -3249,8 +3249,77 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 
 ---
 
+## Stage SPT — Schema-Per-Tenant Migration
+
+**Goal:** Replace the row-based `tenant_id` + RLS tenancy model (introduced in earlier stages) with a PostgreSQL schema-per-tenant architecture, where every tenant's data lives in an isolated schema named `tenant_<uuid_no_hyphens>` (or `tenant_default` for the all-zeros UUID). The migration proceeds in four phases across four WF-02 runs: SPT-01 (bootstrap, done), SPT-02 (data migration), SPT-03 (code cleanup), SPT-04 (test suite update).
+
+**Background:** SPT-01 (already RELEASED) added the `public.tenant_schemas` registry table, the `bpm_provision_tenant_schema()` PL/pgSQL function, the `runForSchema()` migration runner, and dual-mode connection checkout (sets both the legacy `bpm.tenant_id` session variable and the new `search_path`). Stages SPT-02 through SPT-04 complete the transition.
+
+**Invariants (apply to all SPT requirements):**
+
+- At no point during the migration shall the system lose data for any tenant.
+- At no point shall a connection be able to read or write another tenant's rows (isolation must hold throughout the transition).
+- Every migration step is idempotent: running it twice produces the same result as running it once.
+- Rollback to row-based tenancy must be possible until SPT-03 is applied; after SPT-03, backward compatibility is dropped by design.
+
+---
+
+### SPT-02 — Data migration: copy rows into tenant schemas and remove RLS `[MUST]`
+
+> The platform MUST migrate all existing tenant data from the `public` schema into per-tenant schemas. For every distinct `tenant_id` present in the system, the platform MUST call `bpm_provision_tenant_schema()` to create the schema if it does not already exist, copy all rows belonging to that tenant from every table in `public` into the corresponding table in the tenant schema, and then drop the `tenant_id` columns, the `bpm_effective_tenant_id()` function, all RLS policies, and all tenant-scoped composite indexes from the `public` schema tables. The migration MUST be atomic per tenant (all tables for one tenant in a single transaction).
+
+**Acceptance Criteria:**
+
+- GIVEN the platform has N distinct tenant IDs in the `public` schema, WHEN migration 061 is applied, THEN `public.tenant_schemas` contains exactly N rows and N schemas named `tenant_<uuid_no_hyphens>` (or `tenant_default` for the all-zeros UUID) exist in the database.
+- GIVEN any tenant schema exists after migration 061, WHEN that schema's tables are queried, THEN each table contains exactly the rows that belonged to that tenant in the `public` schema (no data loss, no cross-tenant contamination).
+- GIVEN migration 061 has completed, WHEN migration 062 is applied, THEN every table in the `public` schema no longer has a `tenant_id` column, the `bpm_effective_tenant_id()` function no longer exists, all RLS policies on all public tables are dropped, and all `tenant_id`-based composite indexes are dropped.
+- GIVEN migration 062 has completed, WHEN migration 063 is applied, THEN `DROP POLICY IF EXISTS` is executed for every previously known policy on every affected table (belt-and-suspenders idempotency check).
+- GIVEN a re-run of migrations 061–063 on a database where the migration has already been applied, THEN no error is raised and the database state is unchanged (full idempotency).
+- GIVEN the migration is interrupted mid-way through a tenant's data copy, WHEN the migration runner retries, THEN the partially-migrated tenant's data is detected via the `public.tenant_schemas` row and the copy is either skipped or re-attempted cleanly without duplicating rows.
+
+**Tables affected (all tables with a `tenant_id` column as of SPT-01 baseline):** `process_definitions`, `process_instances`, `events`, `tasks`, `timers`, `audit_log`, `tenant_hostnames`, `tokens`, `sessions`, and any other table that carries `tenant_id NOT NULL`.
+
+**See:** SPT-01, DB-01, DB-03, OIDC-17
+
+---
+
+### SPT-03 — Remove legacy `bpm.tenant_id` session variable and tenant_id predicates `[MUST]`
+
+> After SPT-02 is applied and all data lives in tenant schemas, the platform MUST remove all backward-compatibility shims that reference the old row-based tenancy model. Specifically: (1) `applyRequestTenantContext()` in `src/db/pool.zig` MUST stop calling `set_config('bpm.tenant_id', ...)` and MUST stop calling `SET bpm.tenant_id`; it MUST only set `search_path TO <schema_name>,public`. (2) All `WHERE tenant_id = $N` predicates, all `tenant_id` bind parameters, and all `tenant_id` INSERT column references MUST be removed from every Zig source file. (3) The `bpm_effective_tenant_id()` SQL function MUST be dropped (covered by migration 062, but Zig call sites referencing it must also be removed). (4) The `tenant_id` column definition in every affected Zig struct or constant MUST be removed.
+
+**Acceptance Criteria:**
+
+- GIVEN the SPT-03 implementation, WHEN `grep -r "bpm\.tenant_id\|set_config.*tenant\|WHERE tenant_id\|tenant_id = \$" src/` is run, THEN no matches are found.
+- GIVEN the SPT-03 implementation, WHEN `zig build` is run, THEN it exits 0 with no unused-field warnings relating to `tenant_id`.
+- GIVEN a running system after SPT-03, WHEN any API endpoint is called with a valid tenant JWT, THEN the correct tenant schema is active (verified by querying `current_schema()` inside a request handler) and no `bpm.tenant_id` session variable is set.
+- GIVEN a running system after SPT-03, WHEN two concurrent requests arrive for different tenants, THEN each connection's `search_path` is set to its own tenant schema and neither request can read the other tenant's rows.
+- GIVEN `zig build test` after SPT-03, THEN all existing unit and integration tests pass (no test regressions introduced by removing `tenant_id` predicates).
+
+**Scope:** `src/db/pool.zig` plus all `.zig` files under `src/` that contain `tenant_id` column references (estimated 37 files based on SPT-01 analysis).
+
+**See:** SPT-02, DB-01
+
+---
+
+### SPT-04 — Test suite update and ADP-12 regression `[MUST]`
+
+> The integration test suite MUST be updated to reflect schema-per-tenant isolation: all tests that previously inserted rows with an explicit `tenant_id` value MUST be updated to use per-test provisioned schemas via `provisionTenantSchema()` (or the test helper wrapper), and the `tenant_id` column references MUST be removed from all test fixtures and assertions. After the suite update, the full ADP-12 regression suite MUST pass against the `tenant_default` schema.
+
+**Acceptance Criteria:**
+
+- GIVEN the updated test suite, WHEN `grep -r "tenant_id" tests/integration/` is run, THEN no matches are found (no residual `tenant_id` fixture references).
+- GIVEN the updated test suite, WHEN `zig build test-integration` is run against a real PostgreSQL instance, THEN all integration tests pass without skips on MUST-coverage tests.
+- GIVEN the ADP-12 regression, WHEN all ADP-12 scenarios are executed against the `tenant_default` schema, THEN every scenario returns PASS with no BLOCKER or MAJOR issue.
+- GIVEN a test run that provisions a tenant schema, WHEN the test completes (pass or fail), THEN the provisioned schema and its `public.tenant_schemas` row are cleaned up (no schema leakage between tests).
+- GIVEN `zig build test` (unit tests only), THEN it exits 0 with no test failures.
+
+**See:** SPT-03, ADP-12, DB-01, DB-03
+
+---
+
 ## Appendix A — Requirement Count Summary
 
+<!-- CHANGE: Added Stage SPT (SPT-01..SPT-04 = 4 MUST); Grand Total updated 2026-06-05 -->
 <!-- CHANGE: Corrected Stage 6.5 (31/3→ was 30/4), Stage 8 (16 → was 14), Stage 9 (12 MUST/2 SHOULD → was 13/1), ADP (14 entries including ADP-04a and ADP-04b → was 12); Grand Total recalculated accordingly, 2026-05-26 -->
 | Stage | MUST | SHOULD | COULD | Total |
 |---|---|---|---|---|
@@ -3270,7 +3339,9 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 | Stage 12 — Agent Pipeline | — | — | — | (deferred) |
 | Cross-Cutting (XC-01..XC-06) | **5** | 1 | 0 | **6** |
 | Adaptation Requirements (ADP-01..ADP-12 incl. ADP-04a, ADP-04b = 14 entries) | **13** | 1 | 0 | **14** |
-| **Grand Total** | **169** | **21** | **1** | **191** |
+| Stage F7 — Tenant Onboarding GUI (ONB-UI-01..04) | **4** | 0 | 0 | **4** |
+| Stage SPT — Schema-Per-Tenant Migration (SPT-01..SPT-04) | **4** | 0 | 0 | **4** |
+| **Grand Total** | **177** | **21** | **1** | **199** |
 
 NFRs and constraints are not counted in the table above as they are cross-cutting.
 

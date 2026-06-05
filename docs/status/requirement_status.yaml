@@ -3717,4 +3717,28 @@ requirements:
     test_spec: tests/specs/SPT-01.md
     test_run: tests/reports/report-20260605-WF02-spt-01.yaml
     last_updated: '2026-06-05T09:19:00Z'
-total_requirements: 260
+  SPT-02:
+    title: Data migration — copy rows into tenant schemas and remove RLS
+    status: PENDING
+    stage: Schema-Per-Tenant Migration
+    priority: MUST
+    implemented_in: []
+    test_spec: null
+    last_updated: '2026-06-05'
+  SPT-03:
+    title: Remove legacy bpm.tenant_id session variable and tenant_id predicates
+    status: PENDING
+    stage: Schema-Per-Tenant Migration
+    priority: MUST
+    implemented_in: []
+    test_spec: null
+    last_updated: '2026-06-05'
+  SPT-04:
+    title: Test suite update and ADP-12 regression
+    status: PENDING
+    stage: Schema-Per-Tenant Migration
+    priority: MUST
+    implemented_in: []
+    test_spec: null
+    last_updated: '2026-06-05'
+total_requirements: 263
