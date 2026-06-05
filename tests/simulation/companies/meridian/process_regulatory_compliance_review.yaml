@@ -1,0 +1,244 @@
+---
+id: proc-meridian-regulatory-compliance-review
+company_id: meridian
+name: Regulatory Compliance Review
+version: "1.0"
+description: >
+  Periodic BaFin-mandated compliance review of active loan portfolios.
+  Triggered on a calendar schedule or by a risk event. Compliance Officer
+  collects evidence; Risk Manager evaluates findings; if any finding is
+  CRITICAL the process spawns a remediation sub-process and pauses until
+  it resolves. Non-critical findings are logged and the review is closed.
+  Uses a timer boundary event: if no response after 30 days the review
+  auto-escalates to the CEO and a regulatory notification is filed.
+  Exercises: timer boundary event, event-based pause-and-resume,
+  sub-process spawned conditionally, DLQ path for timeout.
+
+bpm_primitive: timer-boundary-event-with-conditional-sub-process
+
+variables:
+  review_id:        { type: string,  required: true }
+  review_type:      { type: string,  required: true }   # periodic | triggered
+  trigger_reason:   { type: string,  required: false }
+  portfolio_ref:    { type: string,  required: true }
+  review_period:    { type: string,  required: true }   # e.g. "2026-Q1"
+  initiator_actor_id: { type: string, required: true }
+
+sla:
+  total_hours: 720   # 30 calendar days
+  escalation_after_hours: 504   # 21 days
+  escalation_target_role: role-ceo
+
+nodes:
+  - id: start
+    type: start
+    name: Compliance Review Initiated
+
+  - id: evidence-collection
+    type: user-task
+    name: Compliance Officer — Collect Evidence Package
+    assignee_role: role-compliance-officer
+    form_fields:
+      - name: documents_uploaded
+        type: boolean
+      - name: document_refs
+        type: string   # comma-separated document store IDs
+      - name: preliminary_findings
+        type: string
+    timeout_hours: 168   # 7 days
+    on_timeout: evidence-collection-timeout
+
+  - id: evidence-collection-timeout
+    type: service-task
+    name: Flag Evidence Collection Overdue
+    endpoint: POST /internal/reviews/{review_id}/flag
+    payload_map:
+      stage: evidence_collection
+      reason: timeout
+
+  - id: risk-evaluation
+    type: user-task
+    name: Risk Manager — Evaluate Findings
+    assignee_role: role-risk-manager
+    form_fields:
+      - name: highest_severity
+        type: enum
+        values: [none, low, medium, high, critical]
+      - name: finding_count
+        type: number
+      - name: risk_notes
+        type: string
+      - name: remediation_required
+        type: boolean
+    timeout_hours: 120   # 5 days
+    on_timeout: risk-evaluation-timeout
+    timer_boundary:
+      duration_hours: 504   # 21 days from process start — fires if overall review stalls
+      action: regulatory-auto-escalation
+
+  - id: risk-evaluation-timeout
+    type: service-task
+    name: Flag Risk Evaluation Overdue
+    endpoint: POST /internal/reviews/{review_id}/flag
+    payload_map:
+      stage: risk_evaluation
+      reason: timeout
+
+  - id: regulatory-auto-escalation
+    type: service-task
+    name: Auto-escalate to CEO + File Regulatory Notice
+    endpoint: POST /compliance/regulatory-notice
+    payload_map:
+      review_id: variables.review_id
+      portfolio_ref: variables.portfolio_ref
+      reason: sla_breach_30_days
+
+  - id: severity-routing
+    type: exclusive-gateway
+    name: Route by Highest Finding Severity
+    branches:
+      - id: branch-critical
+        condition: "variables.highest_severity == 'critical'"
+        target: remediation-subprocess
+      - id: branch-non-critical
+        condition: >
+          variables.highest_severity == 'none' ||
+          variables.highest_severity == 'low' ||
+          variables.highest_severity == 'medium' ||
+          variables.highest_severity == 'high'
+        target: findings-sign-off
+
+  - id: remediation-subprocess
+    type: sub-process
+    name: Critical Finding Remediation
+    definition_ref: proc-meridian-critical-finding-remediation
+    input_map:
+      review_id: variables.review_id
+      portfolio_ref: variables.portfolio_ref
+      risk_notes: variables.risk_notes
+    output_map:
+      remediation_id: sub.remediation_id
+      remediation_status: sub.status   # resolved | unresolved
+
+  - id: post-remediation-check
+    type: exclusive-gateway
+    name: Remediation Resolved?
+    branches:
+      - id: branch-resolved
+        condition: "variables.remediation_status == 'resolved'"
+        target: findings-sign-off
+      - id: branch-unresolved
+        condition: "variables.remediation_status == 'unresolved'"
+        target: regulatory-auto-escalation
+
+  - id: findings-sign-off
+    type: user-task
+    name: CRO Sign-off on Review Findings
+    assignee_role: role-cro
+    form_fields:
+      - name: cro_decision
+        type: enum
+        values: [sign_off, reject_and_reopen]
+      - name: cro_notes
+        type: string
+    timeout_hours: 72
+    on_timeout: cro-sign-off-timeout
+
+  - id: cro-sign-off-timeout
+    type: service-task
+    name: Flag CRO Sign-off Overdue — Escalate to CEO
+    endpoint: POST /internal/reviews/{review_id}/escalate
+    payload_map:
+      to_role: role-ceo
+
+  - id: ceo-override
+    type: user-task
+    name: CEO Override Sign-off
+    assignee_role: role-ceo
+    form_fields:
+      - name: ceo_decision
+        type: enum
+        values: [sign_off, reject_and_reopen]
+    timeout_hours: 48
+
+  - id: archive-review
+    type: service-task
+    name: Archive Review in OpenText + Notify BaFin Portal
+    endpoint: POST /compliance/reviews/{review_id}/archive
+    payload_map:
+      review_id: variables.review_id
+      period: variables.review_period
+      outcome: signed_off
+
+  - id: reopen-review
+    type: service-task
+    name: Reopen Review — Create New Cycle
+    endpoint: POST /compliance/reviews/{review_id}/reopen
+
+  - id: end-closed
+    type: end
+    name: Compliance Review Closed
+
+  - id: end-reopened
+    type: end
+    name: Review Reopened for New Cycle
+
+edges:
+  - from: start
+    to: evidence-collection
+  - from: evidence-collection
+    to: risk-evaluation
+  - from: evidence-collection-timeout
+    to: risk-evaluation
+  - from: risk-evaluation
+    to: severity-routing
+  - from: risk-evaluation-timeout
+    to: severity-routing
+  - from: regulatory-auto-escalation
+    to: end-closed   # regulatory escalation is a terminal path; manual follow-up outside BPM
+  - from: severity-routing
+    to: remediation-subprocess
+    via: branch-critical
+  - from: severity-routing
+    to: findings-sign-off
+    via: branch-non-critical
+  - from: remediation-subprocess
+    to: post-remediation-check
+  - from: post-remediation-check
+    to: findings-sign-off
+    via: branch-resolved
+  - from: post-remediation-check
+    to: regulatory-auto-escalation
+    via: branch-unresolved
+  - from: findings-sign-off
+    to: archive-review
+    condition: "variables.cro_decision == 'sign_off'"
+  - from: findings-sign-off
+    to: reopen-review
+    condition: "variables.cro_decision == 'reject_and_reopen'"
+  - from: cro-sign-off-timeout
+    to: ceo-override
+  - from: ceo-override
+    to: archive-review
+    condition: "variables.ceo_decision == 'sign_off'"
+  - from: ceo-override
+    to: reopen-review
+    condition: "variables.ceo_decision == 'reject_and_reopen'"
+  - from: archive-review
+    to: end-closed
+  - from: reopen-review
+    to: end-reopened
+
+test_actors:
+  clean_path:
+    initiator: actor-meridian-claudia
+    risk_manager: actor-meridian-miriam
+    cro: actor-meridian-thomas
+  critical_finding_path:
+    initiator: actor-meridian-claudia
+    risk_manager: actor-meridian-miriam
+    cro: actor-meridian-thomas
+    ceo: actor-meridian-eva
+  timer_escalation_path:
+    initiator: actor-meridian-claudia
+    ceo: actor-meridian-eva

@@ -1,0 +1,32 @@
+---
+id: swiftroute
+name: SwiftRoute Ltd
+domain: last-mile-logistics
+size: small
+founded: 2019
+description: >
+  B2B courier and last-mile delivery operator serving urban retailers.
+  Runs a fleet of 40 vans and 12 bike couriers. Main revenue from
+  same-day and next-day delivery SLAs contracted with e-commerce shops.
+headquarters:
+  city: Berlin
+  country: DE
+timezone: Europe/Berlin
+currency: EUR
+locale: de-DE
+
+contacts:
+  ceo: alice.bauer@swiftroute.example
+  ops: ops@swiftroute.example
+
+integrations:
+  erp: none
+  crm: hubspot-starter
+  tracking: internal-gps
+
+bpm_config:
+  tenant_id: tenant-swiftroute-001
+  sla_defaults:
+    approval_hours: 4
+    escalation_hours: 8
+  notification_webhook: https://hooks.swiftroute.example/bpm

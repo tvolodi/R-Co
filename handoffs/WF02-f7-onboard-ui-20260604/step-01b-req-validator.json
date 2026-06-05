@@ -1,0 +1,51 @@
+{
+  "handoff_id": "6e2bf893-0da6-4c4b-981a-3ac4e5f2bb26",
+  "run_id": "WF02-f7-onboard-ui-20260604",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-VALIDATOR",
+  "created_at": "2026-06-04T11:01:05Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F7 - Tenant Onboarding GUI",
+    "requirement_ids": [
+      "ONB-UI-01",
+      "ONB-UI-02",
+      "ONB-UI-03",
+      "ONB-UI-04"
+    ],
+    "related_handoff_ids": [
+      "a5e17c84-07f3-40ef-99b9-58647b0b3f65"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the Stage F7 - Tenant Onboarding GUI requirements (ONB-UI-01 through ONB-UI-04) that REQ-ANALYST just added to docs/BPM_Platform_Functional_Requirements.md.\n\nRun the completeness and consistency checks from WF-01 Step 2:\n- Each requirement has a unique ID, priority, stage, and GIVEN/THEN acceptance criteria\n- No requirement conflicts with existing requirements\n- All referenced API endpoints exist in the codebase (check src/api/routes/onboarding.zig)\n- Role guard (PLATFORM_ADMIN) is consistent with the permission matrix (IDN-03)\n- Behaviour-only: no implementation code leaked into requirement text\n- ONB-UI-02 form fields cover all required fields of POST /api/v1/onboarding\n- ONB-UI-03 polling is consistent with GET /api/v1/onboarding/:id response schema\n\nPASS only if all checks clear. FAIL with specific issues otherwise.",
+    "acceptance_criteria": [
+      "PASS: all four requirements are complete, consistent, and unambiguous",
+      "FAIL: specific issues listed with severity and suggested fix"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All four ONB-UI-01 through ONB-UI-04 requirements pass completeness and consistency checks; one MINOR issue noted in ONB-UI-03 (missing explicit PLATFORM_ADMIN role guard statement).",
+    "artifacts_out": ["docs/BPM_Platform_Functional_Requirements.md"],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "requirement_id": "ONB-UI-03",
+        "check": "Role guard",
+        "description": "ONB-UI-03 does not explicitly state that the progress display is restricted to PLATFORM_ADMIN. The prose and all five acceptance criteria omit a role-guard clause. The backend code (handleGetOnboarding) enforces PLATFORM_ADMIN at the API layer, and the user can only reach this screen via ONB-UI-02 (which is PLATFORM_ADMIN-only), but the requirement text itself should explicitly state the role restriction for unambiguity and test traceability. Suggested fix: add 'Only a PLATFORM_ADMIN may view the progress display' to the ONB-UI-03 prose, and add a criterion: 'GIVEN a user without the PLATFORM_ADMIN role navigates directly to the progress URL, THEN the platform hides the progress data and redirects to the login screen.'"
+      }
+    ],
+    "next_action": "Route to CODE-DESIGNER (Step 02)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-04T11:06:47Z",
+  "completed_at": "2026-06-04T11:07:14Z"
+}

@@ -17,6 +17,9 @@ import HealthDashboardPage from '@/pages/admin/HealthDashboardPage'
 import MetricsPage from '@/pages/admin/MetricsPage'
 import DlqPage from '@/pages/dlq/DlqPage'
 import WebhooksPage from '@/pages/dlq/WebhooksPage'
+import RegisterTenantPage from '@/pages/admin/onboarding/RegisterTenantPage'
+import OnboardingProgressPage from '@/pages/admin/onboarding/OnboardingProgressPage'
+import OnboardingResultPage from '@/pages/admin/onboarding/OnboardingResultPage'
 
 export const router = createBrowserRouter([
   {
@@ -53,6 +56,10 @@ export const router = createBrowserRouter([
       { path: 'admin/audit', element: <AuditLogPage /> },
       { path: 'admin/health', element: <HealthDashboardPage /> },
       { path: 'admin/metrics', element: <MetricsPage /> },
+      { path: 'admin/onboarding', element: <RegisterTenantPage /> },
+      { path: 'admin/onboarding/new', element: <RegisterTenantPage /> },
+      { path: 'admin/onboarding/:onboardingId/progress', element: <OnboardingProgressPage /> },
+      { path: 'admin/onboarding/:onboardingId/result', element: <OnboardingResultPage /> },
       { path: 'dlq', element: <DlqPage /> },
       { path: 'webhooks', element: <WebhooksPage /> },
     ],

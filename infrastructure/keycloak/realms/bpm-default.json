@@ -9,10 +9,18 @@
   },
   "roles": {
     "realm": [
-      { "name": "PLATFORM_ADMIN" },
-      { "name": "PROCESS_DESIGNER" },
-      { "name": "TASK_WORKER" },
-      { "name": "AGENT_RUNNER" }
+      {
+        "name": "PLATFORM_ADMIN"
+      },
+      {
+        "name": "PROCESS_DESIGNER"
+      },
+      {
+        "name": "TASK_WORKER"
+      },
+      {
+        "name": "AGENT_RUNNER"
+      }
     ]
   },
   "clients": [
@@ -25,8 +33,12 @@
       "directAccessGrantsEnabled": true,
       "standardFlowEnabled": true,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["*"],
-      "webOrigins": ["*"],
+      "redirectUris": [
+        "*"
+      ],
+      "webOrigins": [
+        "*"
+      ],
       "protocolMappers": [
         {
           "name": "realm-roles",
@@ -40,6 +52,17 @@
             "access.token.claim": "true",
             "claim.name": "roles",
             "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "bpm-platform-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
           }
         }
       ]
@@ -82,9 +105,15 @@
       "emailVerified": true,
       "requiredActions": [],
       "credentials": [
-        { "type": "password", "value": "admin-pass", "temporary": false }
+        {
+          "type": "password",
+          "value": "admin-pass",
+          "temporary": false
+        }
       ],
-      "realmRoles": ["PLATFORM_ADMIN"]
+      "realmRoles": [
+        "PLATFORM_ADMIN"
+      ]
     },
     {
       "username": "designer-user",
@@ -95,9 +124,15 @@
       "emailVerified": true,
       "requiredActions": [],
       "credentials": [
-        { "type": "password", "value": "designer-pass", "temporary": false }
+        {
+          "type": "password",
+          "value": "designer-pass",
+          "temporary": false
+        }
       ],
-      "realmRoles": ["PROCESS_DESIGNER"]
+      "realmRoles": [
+        "PROCESS_DESIGNER"
+      ]
     },
     {
       "username": "worker-user",
@@ -108,9 +143,15 @@
       "emailVerified": true,
       "requiredActions": [],
       "credentials": [
-        { "type": "password", "value": "worker-pass", "temporary": false }
+        {
+          "type": "password",
+          "value": "worker-pass",
+          "temporary": false
+        }
       ],
-      "realmRoles": ["TASK_WORKER"]
+      "realmRoles": [
+        "TASK_WORKER"
+      ]
     },
     {
       "username": "operator-user",
@@ -121,9 +162,15 @@
       "emailVerified": true,
       "requiredActions": [],
       "credentials": [
-        { "type": "password", "value": "operator-pass", "temporary": false }
+        {
+          "type": "password",
+          "value": "operator-pass",
+          "temporary": false
+        }
       ],
-      "realmRoles": ["PLATFORM_ADMIN"]
+      "realmRoles": [
+        "PLATFORM_ADMIN"
+      ]
     }
   ]
 }

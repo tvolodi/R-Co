@@ -1,0 +1,66 @@
+{
+  "handoff_id": "536286ee-bfd6-437d-b00c-3e9fb9defd99",
+  "run_id": "WF02-f7-onboard-ui-20260604",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-06-04T11:20:50Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F7 - Tenant Onboarding GUI",
+    "requirement_ids": [
+      "ONB-UI-01",
+      "ONB-UI-02",
+      "ONB-UI-03",
+      "ONB-UI-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/onboarding_gui.md",
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/frontend_developer_guide.md",
+      "docs/guides/frontend_design_system.md"
+    ]
+  },
+  "task": {
+    "description": "Implement Stage F7 - Tenant Onboarding GUI per the design in src/design/onboarding_gui.md.\n\nThe design is Type E. Implement all screens and wiring from scratch - no codegen.\n\nKEY NOTES FROM DESIGN REVIEW:\n- Backend uses state values: pending / completed / failed (NOT fresh/in_progress as in requirements text)\n- Role guard: per-page Navigate redirect to /instances (not a route wrapper)\n- Polling: manual setInterval in useEffect, NOT TanStack Query refetchInterval\n- Idempotency-Key: generated fresh per submission in RegisterTenantPage (not in client.ts globally)\n- HTTP 502 = Keycloak provisioning failure (specific banner message per error taxonomy section 9.2)\n\nFiles to create/modify:\n  NEW: web/src/api/onboarding.ts\n  NEW: web/src/pages/admin/onboarding/RegisterTenantPage.tsx\n  NEW: web/src/pages/admin/onboarding/OnboardingProgressPage.tsx\n  NEW: web/src/pages/admin/onboarding/OnboardingResultPage.tsx\n  MODIFY: web/src/api/queryKeys.ts (add onboarding keys)\n  MODIFY: web/src/components/layout/AppShell.tsx (add Register Tenant to NAV_ITEMS)\n  MODIFY: web/src/router.tsx (add three new routes)\n\nAfter implementing, run:\n  cd web && npm run type-check\n  cd web && npm run lint\n  cd web && npm run build\nAll three must exit 0.\n\nCommit to the feature branch:\n  git branch --show-current  # must be feature/WF02-f7-onboard-ui-20260604\n  git add -A\n  git commit -m \"feat(WF02-f7): implement tenant onboarding GUI ONB-UI-01..04\"\n  git push origin feature/WF02-f7-onboard-ui-20260604\n",
+    "acceptance_criteria": [
+      "RegisterTenantPage renders with all fields; PLATFORM_ADMIN check redirects to /instances otherwise",
+      "Form client-side validation fires per design section 9.1",
+      "POST /api/v1/onboarding called on submit with Idempotency-Key; navigates to progress screen on 201",
+      "OnboardingProgressPage polls GET /api/v1/onboarding/:id; stops on completed/failed; clears interval on unmount",
+      "After 3 consecutive transient poll errors: error banner + Retry button",
+      "OnboardingResultPage shows slug + oidc_authority on completed; failure reason + Try Again on failed",
+      "Try Again navigates to RegisterTenantPage with prefill values",
+      "Page-reload restore: calls GET /api/v1/onboarding?hostname=<h> from URL search param",
+      "Register Tenant entry hidden from non-PLATFORM_ADMIN in AppShell",
+      "npm run type-check exits 0",
+      "npm run lint exits 0",
+      "npm run build exits 0"
+    ],
+    "functions_to_call": [
+      "fn:check-frontend-build",
+      "fn:lint-frontend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented RegisterTenantPage, OnboardingProgressPage, OnboardingResultPage + API module + router/nav wiring (ONB-UI-01..04). type-check PASS, lint PASS, build PASS.",
+    "artifacts_out": [
+      "web/src/api/onboarding.ts",
+      "web/src/pages/admin/onboarding/RegisterTenantPage.tsx",
+      "web/src/pages/admin/onboarding/OnboardingProgressPage.tsx",
+      "web/src/pages/admin/onboarding/OnboardingResultPage.tsx",
+      "web/src/api/queryKeys.ts",
+      "web/src/components/layout/AppShell.tsx",
+      "web/src/router.tsx"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 04)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-04T11:20:50Z",
+  "completed_at": "2026-06-04T11:52:10Z"
+}

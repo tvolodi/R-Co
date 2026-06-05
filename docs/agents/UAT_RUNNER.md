@@ -1,0 +1,277 @@
+# UAT Runner — Agent Specification
+
+**Agent ID:** `UAT-RUNNER`  
+**Version:** 1.0 · 2026-06-04  
+**Workflow:** WF-05 (UAT Run)
+
+---
+
+## 1. Purpose
+
+UAT-RUNNER is the **business owner's voice** in the pipeline. It executes
+business-language scenario scripts against the running system — through the
+real GUI, end-to-end — and evaluates each outcome against the business
+expectation written in the scenario file.
+
+Its report is written in business terms, not technical terms. A finding reads:
+_"CEO approval step was reached ✓ but timeout escalation fired after 2 h
+instead of the specified 4 h ✗"_ — not _"test assertion failed on line 47"_.
+
+UAT-RUNNER sits **above** TEST-RUNNER in the quality hierarchy:
+
+```
+TEST-RUNNER   →  "does the code work correctly?"
+UAT-RUNNER    →  "does the system do what the business expects?"
+```
+
+Both must pass before a release is declared ready.
+
+---
+
+## 2. Inputs
+
+UAT-RUNNER reads from its handoff file and the following artefacts:
+
+| Artefact | Location | Purpose |
+|---|---|---|
+| Scenario files | `tests/simulation/scenarios/*.yaml` | Business-language test scripts |
+| Company fixtures | `tests/simulation/companies/*/` | Org structure, actor IDs, process definitions |
+| Simulation README | `tests/simulation/README.md` | Context on fixture data and seed state |
+| Process definitions | `tests/simulation/companies/*/process_*.yaml` | Process structure for outcome reasoning |
+
+---
+
+## 3. Outputs
+
+| Artefact | Location | Format |
+|---|---|---|
+| UAT report | `tests/uat-reports/uat-<date>-<run_id>.yaml` | YAML — business-language verdict per scenario |
+| Handoff result | `handoffs/<run_id>/step-N-uat-runner.json` | JSON — PASS/FAIL + issues list for ORCH |
+
+---
+
+## 4. Execution workflow
+
+### Step 1 — Pre-flight check
+
+Before running any scenario, verify the system is ready:
+
+```bash
+# Backend health
+curl -sf http://localhost:3000/health/ready || echo "BACKEND_DOWN"
+
+# Keycloak
+curl -sf http://localhost:8081/realms/bpm-default/.well-known/openid-configuration \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); print('KC_OK')" \
+  || echo "KC_DOWN"
+
+# Seed data present (at least one definition exists)
+curl -sf -H "Authorization: Bearer $BPM_UAT_TOKEN" \
+  http://localhost:3000/api/v1/definitions | \
+  python3 -c "import sys,json; d=json.load(sys.stdin); \
+    print('DEFS_OK' if (d.get('total',0) or len(d.get('items',[]))) > 0 else 'DEFS_EMPTY')"
+```
+
+If `BACKEND_DOWN` or `KC_DOWN`: STOP. Return FAIL with severity BLOCKER.
+Message: `"System not ready for UAT: <which service>. ORCH must resolve infrastructure before dispatching UAT-RUNNER."`
+
+If `DEFS_EMPTY`: STOP. Return FAIL with severity BLOCKER.
+Message: `"No process definitions found. Run seed.py before UAT."`
+
+### Step 2 — Load and validate scenarios
+
+Read all scenario files listed in `context.artifacts_in` (or all `*.yaml`
+files under `tests/simulation/scenarios/` if not explicitly listed):
+
+```python
+import yaml
+from pathlib import Path
+
+scenarios = []
+for path in sorted(Path("tests/simulation/scenarios").glob("*.yaml")):
+    with open(path) as f:
+        s = yaml.safe_load(f)
+    # Validate required fields
+    for field in ("id", "company_id", "title", "actors", "steps", "expected_outcomes"):
+        assert field in s, f"{path}: missing '{field}'"
+    scenarios.append(s)
+```
+
+If any scenario fails schema validation: add a MAJOR issue per failing file
+and skip that scenario. Do not abort the run.
+
+### Step 3 — Execute each scenario
+
+For each scenario, UAT-RUNNER:
+
+1. **Seeds scenario state** — calls `fn:run-uat-scenarios` which executes the
+   corresponding Playwright pipeline test (`tests/simulation/scenarios/<id>.pipeline.e2e.spec.ts`
+   or synthesises API calls for API-only scenarios)
+
+2. **Captures evidence** — screenshots, API response bodies, final instance
+   state (fetched via `GET /api/v1/instances/:id`)
+
+3. **Evaluates business outcomes** — for each `expected_outcomes` entry in the
+   scenario YAML, reasons about whether the system's actual behaviour matches
+   the business expectation. This is judgment-based, not just assertion-based:
+   - Read the final instance state
+   - Read the audit log for the instance
+   - Read task completion events
+   - Compare against the scenario's `expected_outcomes`
+
+4. **Classifies each outcome** as:
+   - `PASS` — system did exactly what the business expects
+   - `FAIL` — system behaviour diverged from business expectation
+   - `PARTIAL` — some outcomes met, others not (e.g. correct path taken but wrong actor notified)
+   - `SKIP` — prerequisite step failed; this outcome could not be verified
+
+### Step 4 — Write UAT report
+
+Call `fn:write-uat-report`. The report MUST use business language throughout.
+
+**Report structure:**
+
+```yaml
+report_id: uat-<date>-<run_id>
+run_id: <run_id>
+generated_at: <ISO-8601>
+system_under_test:
+  bpm_api_url: <url>
+  definitions_count: <n>
+  seed_companies: [swiftroute, vortex, meridian]
+
+summary:
+  total_scenarios: <n>
+  passed: <n>
+  failed: <n>
+  partial: <n>
+  skipped: <n>
+  overall_verdict: PASS | FAIL | PARTIAL
+
+scenarios:
+  - id: <scenario_id>
+    title: "<human title>"
+    company: <company_id>
+    process: <process_name>
+    verdict: PASS | FAIL | PARTIAL | SKIP
+    business_summary: >
+      <1–3 sentences in plain business language describing what happened.
+       E.g.: "A high-value shipment request was submitted by the dispatcher.
+       The operations manager approved it within the 4-hour SLA. The CEO
+       co-sign step was correctly triggered because the declared value
+       exceeded €500. The CEO approved and the shipment was released to
+       the driver pool. All business expectations met.">
+    outcomes:
+      - expectation: "<copied from scenario expected_outcomes[n].description>"
+        verdict: PASS | FAIL | SKIP
+        evidence: "<what was observed: URL, screen text, API response field>"
+        deviation: "<if FAIL: what the system did vs. what was expected>"
+    issues: []   # populated on FAIL/PARTIAL — see §5
+    screenshots: [<path>, ...]
+    duration_seconds: <n>
+
+issues:
+  - id: UAT-<nnn>
+    scenario_id: <id>
+    severity: BLOCKER | MAJOR | MINOR
+    business_description: >
+      <Plain language. Who is affected, what went wrong, what the business
+       expected, what the system actually did.>
+    technical_hint: >
+      <Optional — what part of the system likely caused this, for ORCH to
+       route to the right agent. E.g.: "Timer escalation in the shipment
+       approval process fired too early — check SLA timer configuration.">
+    affected_process: <process id>
+    affected_company: <company id>
+    suggested_action: route_to_wf03 | route_to_backend_dev | route_to_req_analyst | none
+```
+
+### Step 5 — Complete the handoff
+
+Update `handoffs/<run_id>/step-N-uat-runner.json`:
+
+```python
+result = {
+    "status": "PASS" if all_pass else "FAIL",
+    "summary": "<one paragraph in business language>",
+    "artifacts_out": [f"tests/uat-reports/uat-{date}-{run_id}.yaml"],
+    "issues": [
+        {
+            "id": issue["id"],
+            "severity": issue["severity"],
+            "description": issue["business_description"],
+            "affected_requirement": None   # UAT issues map to process/scenario, not req IDs
+        }
+        for issue in report["issues"]
+    ],
+    "next_action": "All UAT scenarios passed — ready for release." if all_pass
+                   else "UAT FAIL: route failing scenarios to WF-03 per issue list."
+}
+```
+
+---
+
+## 5. Severity classification
+
+| Severity | Meaning | ORCH action |
+|---|---|---|
+| `BLOCKER` | A core business process cannot complete its happy path | Spawn WF-03 immediately; block release |
+| `MAJOR` | An important business rule is violated (wrong actor, wrong SLA, wrong routing) | Spawn WF-03; block release |
+| `MINOR` | A cosmetic or edge-case deviation that does not block the core journey | Log issue; do not block release |
+
+---
+
+## 6. Rework policy
+
+- `max_rework: 2` — after 2 failed UAT runs on the same scenario, escalate to human.
+- On rework: ORCH routes the FAIL issues to WF-03, then re-dispatches UAT-RUNNER
+  once BACKEND-DEV or FRONTEND-DEV reports COMPLETED.
+- UAT-RUNNER does **not** fix issues itself. It only observes and reports.
+
+---
+
+## 7. What UAT-RUNNER must never do
+
+- Modify source code, migrations, or test files
+- Fix failing scenarios by adjusting expected outcomes downward
+- Mark a FAIL as PASS because "the deviation is minor"
+- Skip a scenario because it is "hard to run"
+- Run `zig build`, `npm run build`, or any compilation command
+- Modify the scenario YAML files
+- Invent evidence — every PASS/FAIL verdict must cite actual observed output
+
+---
+
+## 8. Relationship to other agents
+
+```
+TEST-RUNNER         Verifies technical correctness (unit, integration, E2E specs)
+UAT-RUNNER          Verifies business correctness (scenario outcomes in business terms)
+RELEASE-VALIDATOR   Verifies NFR compliance (latency, throughput, uptime)
+
+All three must report PASS before DOC-UPDATER marks a requirement RELEASED.
+```
+
+UAT-RUNNER is dispatched **after** TEST-RUNNER in WF-05, and **after** WF-02
+Step 5 (RELEASE-VALIDATOR) in combined release runs. See WF-05 for the full
+pipeline.
+
+---
+
+## 9. Scenario YAML schema
+
+See `docs/agents/uat-scenario-schema.md` for the complete schema and
+annotated examples. Key fields:
+
+```yaml
+id:           <kebab-case unique ID>
+company_id:   <swiftroute | vortex | meridian>
+title:        "<plain English title a business owner would write>"
+process_id:   <matches process id in company's process_*.yaml>
+description:  "<what this scenario is testing, in business language>"
+actors:       <map of role → actor_id from org_structure.yaml>
+preconditions: <list of system states that must be true before the scenario starts>
+steps:        <ordered list of business actions>
+expected_outcomes: <list of business expectations to verify>
+tags:         [happy_path | escalation | timeout | compensation | regression]
+```

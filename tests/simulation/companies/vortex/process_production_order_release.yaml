@@ -1,0 +1,165 @@
+---
+id: proc-vortex-production-order-release
+company_id: vortex
+name: Production Order Release
+version: "1.0"
+description: >
+  Multi-level release gate for a new production order. Planner creates
+  the order in MES; Production Manager reviews capacity and approves;
+  if the order value exceeds €10 000 the Financial Controller must
+  sign off on budget; then the line is assigned and execution begins.
+  A timer fires after 16 h if the Production Manager has not acted,
+  escalating to CEO. Exercises: sequential chain, timer escalation,
+  conditional branch, service-task MES integration.
+
+bpm_primitive: sequential-chain-with-timer-escalation
+
+variables:
+  order_id:         { type: string,  required: true }
+  product_code:     { type: string,  required: true }
+  quantity:         { type: number,  required: true }
+  order_value_eur:  { type: number,  required: true }
+  requested_start:  { type: string,  required: true }   # ISO 8601 date
+  planner_actor_id: { type: string,  required: true }
+
+sla:
+  total_hours: 24
+  escalation_after_hours: 16
+  escalation_target_role: role-ceo
+
+nodes:
+  - id: start
+    type: start
+    name: Production Order Created in MES
+
+  - id: capacity-review
+    type: user-task
+    name: Production Manager Capacity Review
+    assignee_role: role-production-manager
+    form_fields:
+      - name: capacity_decision
+        type: enum
+        values: [approve, reject, defer]
+      - name: assigned_line
+        type: string   # e.g. "Line-A", "Line-B"
+      - name: revised_start
+        type: string   # ISO date, optional override
+      - name: pm_notes
+        type: string
+    timeout_hours: 16
+    on_timeout: escalate-to-ceo
+
+  - id: escalate-to-ceo
+    type: user-task
+    name: CEO Escalation — Capacity Review Overdue
+    assignee_role: role-ceo
+    form_fields:
+      - name: capacity_decision
+        type: enum
+        values: [approve, reject]
+      - name: assigned_line
+        type: string
+    timeout_hours: 4
+    on_timeout: auto-reject-order
+
+  - id: budget-gate
+    type: exclusive-gateway
+    name: Budget Sign-off Required?
+    branches:
+      - id: branch-needs-budget
+        condition: "variables.order_value_eur > 10000"
+        target: budget-approval
+      - id: branch-no-budget
+        condition: "variables.order_value_eur <= 10000"
+        target: assign-line
+
+  - id: budget-approval
+    type: user-task
+    name: Financial Controller Budget Sign-off
+    assignee_role: role-controller
+    form_fields:
+      - name: budget_decision
+        type: enum
+        values: [approve, reject]
+      - name: cost_centre
+        type: string
+    timeout_hours: 8
+    on_timeout: auto-reject-order
+
+  - id: assign-line
+    type: service-task
+    name: Assign Production Line in MES
+    endpoint: POST /mes/orders/{order_id}/assign
+    payload_map:
+      order_id: variables.order_id
+      assigned_line: variables.assigned_line
+      start_date: variables.revised_start
+
+  - id: auto-reject-order
+    type: service-task
+    name: Auto-reject Order on Timeout
+    endpoint: POST /mes/orders/{order_id}/reject
+    payload_map:
+      reason: approval_timeout
+
+  - id: notify-planner
+    type: service-task
+    name: Notify Planner of Outcome
+    endpoint: POST /webhooks/notify
+    payload_map:
+      actor_id: variables.planner_actor_id
+      order_id: variables.order_id
+
+  - id: end-released
+    type: end
+    name: Production Order Released
+
+  - id: end-rejected
+    type: end
+    name: Production Order Rejected
+
+edges:
+  - from: start
+    to: capacity-review
+  - from: capacity-review
+    to: budget-gate
+    condition: "variables.capacity_decision == 'approve'"
+  - from: capacity-review
+    to: notify-planner
+    condition: "variables.capacity_decision == 'reject'"
+  - from: escalate-to-ceo
+    to: budget-gate
+    condition: "variables.capacity_decision == 'approve'"
+  - from: escalate-to-ceo
+    to: auto-reject-order
+    condition: "variables.capacity_decision == 'reject'"
+  - from: budget-gate
+    to: budget-approval
+    via: branch-needs-budget
+  - from: budget-gate
+    to: assign-line
+    via: branch-no-budget
+  - from: budget-approval
+    to: assign-line
+    condition: "variables.budget_decision == 'approve'"
+  - from: budget-approval
+    to: auto-reject-order
+    condition: "variables.budget_decision == 'reject'"
+  - from: assign-line
+    to: notify-planner
+  - from: notify-planner
+    to: end-released
+  - from: auto-reject-order
+    to: end-rejected
+
+test_actors:
+  happy_path_low_value:
+    planner: actor-vortex-anna
+    pm_approver: actor-vortex-sabine
+  happy_path_high_value:
+    planner: actor-vortex-anna
+    pm_approver: actor-vortex-sabine
+    controller: actor-vortex-stefan
+  escalation_path:
+    planner: actor-vortex-anna
+    ceo: actor-vortex-dirk

@@ -1,0 +1,58 @@
+{
+  "handoff_id": "f9543da9-e250-42b9-8495-09db20edab59",
+  "run_id": "WF02-f7-onboard-ui-20260604",
+  "step": "02b-r1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-04T11:17:52Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F7 - Tenant Onboarding GUI",
+    "requirement_ids": [
+      "ONB-UI-01",
+      "ONB-UI-02",
+      "ONB-UI-03",
+      "ONB-UI-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/onboarding_gui.md",
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "RE-VALIDATE src/design/onboarding_gui.md. The following fixes have been applied since the FAIL:\n1. Section 6.1: NAV_ITEMS object literal (code block) removed and replaced with prose.\n2. Section 9.2: Spurious HTTP 400 row removed.\n3. Section 9.2: HTTP 502 row added for Keycloak provisioning failures.\n\nConfirm all three fixes are present. Also confirm the two MINOR issues still apply and add clarifying notes if they are not already present. Run the same 8-check matrix as before. PASS if no BLOCKER and no more than 2 MINOR issues remain.",
+    "acceptance_criteria": [
+      "PASS: no BLOCKER, no MAJOR issues",
+      "FAIL: list remaining blockers/majors with specific location in the document"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/onboarding_gui.md passes all 8 checks after rework: implementation code removed from section 6.1, spurious HTTP 400 row removed, HTTP 502 row added with all 5 provisioning error variants named; no BLOCKER, no MAJOR issues remain.",
+    "artifacts_out": [
+      "src/design/onboarding_gui.md"
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-004",
+        "severity": "MINOR",
+        "description": "Design uses \"pending\" as the ongoing saga state (sections 4.2, 7.2) but ONB-UI-03 requirement text uses \"fresh\" and \"in_progress\". No explicit clarifying note was added in this rework. The design is consistent with the actual backend implementation (onboarding.zig OnboardingState uses pending/completed/failed). FRONTEND-DEV should note that the backend state enum does not use the requirement terminology.",
+        "affected_requirement": "ONB-UI-03"
+      },
+      {
+        "id": "ISSUE-005",
+        "severity": "MINOR",
+        "description": "ONB-UI-03 and ONB-UI-04 requirements say non-PLATFORM_ADMIN access redirects to \"the login screen\"; section 6.2 redirects to \"/instances\". Section 9.5 now explains that unauthenticated users are handled upstream by ProtectedRoute (real login redirect), while the per-page check only fires for authenticated users without PLATFORM_ADMIN (routed to /instances). This clarification is sufficient.",
+        "affected_requirement": "ONB-UI-03"
+      }
+    ],
+    "next_action": "Route to FRONTEND-DEV (Step 03)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-06-04T11:17:52Z",
+  "completed_at": "2026-06-04T11:19:43Z"
+}

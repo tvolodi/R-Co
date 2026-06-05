@@ -9,8 +9,10 @@
 
 import type { Page, APIRequestContext } from '@playwright/test'
 
+// Use localhost (not 127.0.0.1) so that issued JWT tokens have iss=http://localhost:8081/...
+// which matches the backend's configured BPM_IDP_BASE_URL.
 const KEYCLOAK_BASE_URL =
-  (process.env.BPM_IDP_BASE_URL ?? 'http://127.0.0.1:8081').replace(/\/$/, '')
+  (process.env.BPM_IDP_BASE_URL ?? 'http://localhost:8081').replace(/\/$/, '')
 const KEYCLOAK_TOKEN_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default/protocol/openid-connect/token`
 const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
 

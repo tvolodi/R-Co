@@ -3175,6 +3175,80 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 
 ---
 
+## Stage F7 — Tenant Onboarding GUI
+
+**Goal:** Provide a browser-based flow that enables a PLATFORM_ADMIN to register a new tenant through the existing onboarding API (`POST /api/v1/onboarding`, `GET /api/v1/onboarding/:id`, `GET /api/v1/onboarding?hostname=<h>`) without issuing raw API calls.
+
+---
+
+### ONB-UI-01 — Register Tenant entry point `[MUST]`
+
+> A "Register Tenant" navigation item (or button) MUST be visible in the admin section exclusively to authenticated users holding the `PLATFORM_ADMIN` role. Users who do not hold `PLATFORM_ADMIN` MUST NOT see the entry point — it MUST be hidden from the DOM, not merely disabled.
+
+**Acceptance Criteria:**
+- GIVEN a user authenticated with the `PLATFORM_ADMIN` role, WHEN they view the admin navigation, THEN a "Register Tenant" entry point is visible and navigable.
+- GIVEN a user authenticated with any role other than `PLATFORM_ADMIN`, WHEN they view the admin navigation, THEN no "Register Tenant" entry point is present in the rendered page.
+- GIVEN an unauthenticated user, WHEN they access the admin section, THEN they are redirected to the login screen and no onboarding entry point is shown.
+
+**See:** OIDC-17, OIDC-18, ONB-UI-02
+
+---
+
+### ONB-UI-02 — Tenant registration form `[MUST]`
+
+> A `PLATFORM_ADMIN` MUST be able to fill and submit a tenant registration form. The form MUST capture the following fields: `slug` (company short identifier, URL-safe, unique), `display_name`, `admin_email`, `admin_username`, `admin_display_name`, `hostname` (the tenant's subdomain), and `redirect_uris` (at least one entry). The form MUST perform client-side validation before submission. On submit, the platform MUST call `POST /api/v1/onboarding` with the collected values. An Idempotency-Key MUST be generated client-side per submission attempt.
+
+**Validation rules (enforced client-side before submission):**
+- `slug`: lowercase alphanumeric characters and hyphens only; 3–63 characters.
+- `hostname`: valid hostname format (non-empty, no protocol prefix, no path).
+- `admin_email`: valid email address format (contains `@` and a domain part).
+- `redirect_uris`: at least one non-empty URI entry.
+- All other fields: non-empty.
+
+**Acceptance Criteria:**
+- GIVEN a `PLATFORM_ADMIN` viewing the registration form, WHEN all fields are valid and the form is submitted, THEN the platform issues `POST /api/v1/onboarding` with the field values and a freshly generated `Idempotency-Key` header, and the user is advanced to the progress display (ONB-UI-03).
+- GIVEN a form where `slug` contains uppercase letters or non-alphanumeric characters (other than hyphens), WHEN the user attempts to submit, THEN the submission is blocked and a validation error is shown on the `slug` field.
+- GIVEN a form where `admin_email` does not contain an `@`, WHEN the user attempts to submit, THEN the submission is blocked and a validation error is shown on the `admin_email` field.
+- GIVEN a form where `hostname` is empty, WHEN the user attempts to submit, THEN the submission is blocked and a validation error is shown on the `hostname` field.
+- GIVEN a form where all `redirect_uris` entries are empty or none have been added, WHEN the user attempts to submit, THEN the submission is blocked and a validation error is shown on the `redirect_uris` field.
+- GIVEN any required field is empty, WHEN the user attempts to submit, THEN the submission is blocked and a validation error is shown on the empty field.
+- GIVEN the user submits the form twice in succession without a page reload, THEN each submission uses a distinct `Idempotency-Key`.
+
+**See:** OIDC-17, OIDC-18, ONB-UI-01, ONB-UI-03
+
+---
+
+### ONB-UI-03 — Onboarding progress display `[MUST]`
+
+> After form submission, the platform MUST display the current saga state to the user by polling `GET /api/v1/onboarding/:onboarding_id` at a reasonable interval (suggested: every 2 seconds). The displayed state MUST reflect the saga's `status` field (`fresh`, `in_progress`, `completed`, `failed`). While status is `in_progress` the user MUST see a progress indicator. Polling MUST stop automatically when status reaches `completed` or `failed`. The progress screen MUST be accessible only to authenticated `PLATFORM_ADMIN` users; direct URL navigation by any other role MUST redirect to the login screen.
+
+**Acceptance Criteria:**
+- GIVEN a successful `POST /api/v1/onboarding` response containing an `onboarding_id`, WHEN the user is advanced to the progress screen, THEN the platform begins polling `GET /api/v1/onboarding/:onboarding_id` at the configured interval.
+- GIVEN the saga status is `fresh` or `in_progress`, WHEN the progress screen is displayed, THEN a visible progress indicator is shown to the user.
+- GIVEN the saga status transitions to `completed`, WHEN the next poll response is received, THEN polling stops and the user is advanced to the result screen (ONB-UI-04) showing the completed outcome.
+- GIVEN the saga status transitions to `failed`, WHEN the next poll response is received, THEN polling stops and the user is advanced to the result screen (ONB-UI-04) showing the failure outcome.
+- GIVEN polling is active and the API returns a transient error (5xx), WHEN the error is received, THEN the platform retries at the next interval without showing an error to the user; after three consecutive transient errors the user is shown an error message.
+- GIVEN a user without the `PLATFORM_ADMIN` role navigates directly to the progress screen URL, THEN the platform hides the progress content and redirects to the login screen.
+
+**See:** OIDC-17, OIDC-18, ONB-UI-02, ONB-UI-04
+
+---
+
+### ONB-UI-04 — Onboarding result screen `[MUST]`
+
+> On `completed`: the platform MUST show the new tenant's `slug` and the Keycloak realm URL (`oidc_authority`) to the `PLATFORM_ADMIN`. On `failed`: the platform MUST show the failure reason from the saga response and offer a "Try Again" action that returns the user to the pre-filled registration form (ONB-UI-02). The result screen MUST be reachable via `GET /api/v1/onboarding?hostname=<h>` so that a page reload does not lose state.
+
+**Acceptance Criteria:**
+- GIVEN a completed onboarding saga, WHEN the result screen is shown, THEN the tenant's `slug` and the `oidc_authority` URL are displayed to the user.
+- GIVEN a failed onboarding saga, WHEN the result screen is shown, THEN the failure reason from the API response is displayed, and a "Try Again" action is present.
+- GIVEN the user activates "Try Again", WHEN the registration form is shown, THEN it is pre-filled with the values from the previous submission attempt.
+- GIVEN a user reloads the page on the result screen, WHEN the page loads, THEN the platform calls `GET /api/v1/onboarding?hostname=<h>` to restore the saga state, and the correct completed or failed result is shown without requiring the user to resubmit.
+- GIVEN a user without the `PLATFORM_ADMIN` role navigates directly to the result screen URL, THEN the platform hides the result data and redirects to the login screen.
+
+**See:** OIDC-17, OIDC-18, ONB-UI-02, ONB-UI-03
+
+---
+
 ## Appendix A — Requirement Count Summary
 
 <!-- CHANGE: Corrected Stage 6.5 (31/3→ was 30/4), Stage 8 (16 → was 14), Stage 9 (12 MUST/2 SHOULD → was 13/1), ADP (14 entries including ADP-04a and ADP-04b → was 12); Grand Total recalculated accordingly, 2026-05-26 -->

@@ -1,9 +1,30 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const auth = @import("../middleware/auth.zig");
 const identity_service = @import("../../identity/service.zig");
 const onboarding_mod = @import("../../identity/onboarding.zig");
 const pool_mod = @import("pool");
 const errors = @import("../errors.zig");
+
+/// Fill buf with cryptographically secure random bytes (platform-aware, thread-safe).
+fn fillRandom(buf: []u8) void {
+    switch (comptime builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        else => {
+            // Fallback: use timestamp + address mix for entropy
+            const ts: u64 = @truncate(@as(u128, @intCast(std.time.nanoTimestamp())));
+            const addr: u64 = @truncate(@intFromPtr(buf.ptr));
+            var prng = std.Random.DefaultPrng.init(ts ^ addr);
+            prng.random().bytes(buf);
+        },
+    }
+}
 
 pub const HandlerResult = struct {
     status_code: u16,
@@ -76,55 +97,166 @@ pub fn handleOnboarding(
         .duplicate => |record| {
             // Idempotent replay: return cached response.
             if (record.state == .pending) {
-                return errorResult(allocator, 409, "onboarding_in_progress");
+                // Include onboarding_id so the frontend can navigate to the progress screen.
+                const in_progress_body = std.fmt.allocPrint(
+                    allocator,
+                    "{{\"error\":\"onboarding_in_progress\",\"onboarding_id\":\"{s}\"}}",
+                    .{record.onboarding_id},
+                ) catch return errorResult(allocator, 500, "internal_error");
+                return .{ .status_code = 409, .body = in_progress_body };
             }
             const cached_body = allocator.dupe(u8, record.response_body_json) catch
                 return errorResult(allocator, 500, "internal_error");
             return .{ .status_code = record.response_status, .body = cached_body };
         },
         .fresh => |onboarding_id| {
-            // Fresh request: execute the saga.
-            const manager = auth.getIdentityProviderManager();
-            const result = onboarding_mod.executeSaga(
-                allocator,
-                manager,
-                service.registry.pool,
-                input.value,
-            ) catch |err| {
-                // Persist failure and return error.
-                const err_status: u16 = onboardingErrorToStatus(err);
-                const err_body = if (err == onboarding_mod.OnboardingError.ValidationFailed)
-                    "{\"error\":\"validation_failed\"}"
-                else
-                    "{\"error\":\"onboarding_failed\"}";
-
-                persistOnboardingResult(
-                    service.registry.pool,
-                    onboarding_id,
-                    err_status,
-                    err_body,
-                    .failed,
-                ) catch {};
-
-                return .{ .status_code = err_status, .body = err_body };
+            // Fresh request: spawn the saga in a background thread and return 201
+            // immediately with the onboarding_id. The frontend polls GET
+            // /api/v1/onboarding/:id until state changes from 'pending' to
+            // 'completed' or 'failed'.
+            //
+            // Memory: all saga data is duplicated onto the global smp_allocator so
+            // it survives after the request arena is freed. The background thread
+            // owns and frees this memory.
+            const gpa = std.heap.smp_allocator;
+            const saga_ctx = gpa.create(SagaContext) catch {
+                return errorResult(allocator, 500, "internal_error");
             };
-            defer result.deinit(allocator);
+            saga_ctx.* = SagaContext{
+                .pool = service.registry.pool,
+                .manager = auth.getIdentityProviderManager(),
+                .onboarding_id = gpa.dupe(u8, onboarding_id) catch {
+                    gpa.destroy(saga_ctx);
+                    return errorResult(allocator, 500, "internal_error");
+                },
+                .input = dupeOnboardingInput(gpa, input.value) catch {
+                    gpa.free(saga_ctx.onboarding_id);
+                    gpa.destroy(saga_ctx);
+                    return errorResult(allocator, 500, "internal_error");
+                },
+            };
 
-            const json_body = serializeOnboardingResult(allocator, &result) catch
-                return errorResult(allocator, 500, "serialization_failed");
+            const thread = std.Thread.spawn(.{}, runSagaBackground, .{saga_ctx}) catch {
+                // Cleanup and fall back to synchronous execution on thread spawn failure.
+                freeOnboardingInput(gpa, saga_ctx.input);
+                gpa.free(saga_ctx.onboarding_id);
+                gpa.destroy(saga_ctx);
+                return errorResult(allocator, 500, "internal_error");
+            };
+            thread.detach();
 
-            // Persist success.
-            persistOnboardingResult(
-                service.registry.pool,
-                onboarding_id,
-                201,
-                json_body,
-                .completed,
-            ) catch {};
-
-            return .{ .status_code = 201, .body = json_body };
+            // Return 201 immediately — the frontend will poll GET for status.
+            const pending_body = std.fmt.allocPrint(allocator,
+                "{{\"onboarding_id\":\"{s}\"}}",
+                .{onboarding_id},
+            ) catch return errorResult(allocator, 500, "internal_error");
+            return .{ .status_code = 201, .body = pending_body };
         },
     }
+}
+
+// ── Background saga ────────────────────────────────────────────────────────────
+
+const identity_provider = @import("identity_provider");
+
+const SagaContext = struct {
+    pool: *pool_mod.Pool,
+    manager: identity_provider.manager.Manager,
+    onboarding_id: []u8,
+    input: onboarding_mod.OnboardingInput,
+};
+
+fn dupeOnboardingInput(
+    allocator: std.mem.Allocator,
+    src: onboarding_mod.OnboardingInput,
+) !onboarding_mod.OnboardingInput {
+    // Dupe optional nested string slices so they remain valid after the request
+    // arena (which owns the original pointers) is freed.
+    const realm_config: ?onboarding_mod.RealmConfigOverrides = if (src.realm_config) |rc| blk: {
+        break :blk onboarding_mod.RealmConfigOverrides{
+            .default_token_lifetime_seconds = rc.default_token_lifetime_seconds,
+            .min_password_length            = rc.min_password_length,
+            .require_uppercase              = rc.require_uppercase,
+            .require_digit                  = rc.require_digit,
+            .signing_key_algorithm          = if (rc.signing_key_algorithm) |s|
+                try allocator.dupe(u8, s)
+            else null,
+        };
+    } else null;
+
+    const client_config: ?onboarding_mod.ClientConfigOverrides = if (src.client_config) |cc| blk: {
+        const duped_uris: ?[]const []const u8 = if (cc.redirect_uris) |uris| inner: {
+            const out = try allocator.alloc([]const u8, uris.len);
+            for (uris, 0..) |uri, i| {
+                out[i] = try allocator.dupe(u8, uri);
+            }
+            break :inner out;
+        } else null;
+        break :blk onboarding_mod.ClientConfigOverrides{
+            .redirect_uris           = duped_uris,
+            .service_account_enabled = cc.service_account_enabled,
+        };
+    } else null;
+
+    return onboarding_mod.OnboardingInput{
+        .slug               = try allocator.dupe(u8, src.slug),
+        .display_name       = try allocator.dupe(u8, src.display_name),
+        .admin_email        = try allocator.dupe(u8, src.admin_email),
+        .admin_username     = try allocator.dupe(u8, src.admin_username),
+        .admin_display_name = try allocator.dupe(u8, src.admin_display_name),
+        .hostname           = try allocator.dupe(u8, src.hostname),
+        .realm_config       = realm_config,
+        .client_config      = client_config,
+    };
+}
+
+fn freeOnboardingInput(allocator: std.mem.Allocator, input: onboarding_mod.OnboardingInput) void {
+    allocator.free(input.slug);
+    allocator.free(input.display_name);
+    allocator.free(input.admin_email);
+    allocator.free(input.admin_username);
+    allocator.free(input.admin_display_name);
+    allocator.free(input.hostname);
+    if (input.realm_config) |rc| {
+        if (rc.signing_key_algorithm) |s| allocator.free(s);
+    }
+    if (input.client_config) |cc| {
+        if (cc.redirect_uris) |uris| {
+            for (uris) |uri| allocator.free(uri);
+            allocator.free(uris);
+        }
+    }
+}
+
+fn runSagaBackground(ctx: *SagaContext) void {
+    const gpa = std.heap.smp_allocator;
+    defer {
+        freeOnboardingInput(gpa, ctx.input);
+        gpa.free(ctx.onboarding_id);
+        gpa.destroy(ctx);
+    }
+
+    const result = onboarding_mod.executeSaga(
+        gpa,
+        ctx.manager,
+        ctx.pool,
+        ctx.input,
+        ctx.onboarding_id,
+    ) catch |err| {
+        const err_status: u16 = onboardingErrorToStatus(err);
+        const err_body = if (err == onboarding_mod.OnboardingError.ValidationFailed)
+            "{\"state\":\"failed\",\"error\":\"validation_failed\"}"
+        else
+            "{\"state\":\"failed\",\"error\":\"onboarding_failed\"}";
+        persistOnboardingResult(ctx.pool, ctx.onboarding_id, err_status, err_body, .failed) catch {};
+        return;
+    };
+    defer result.deinit(gpa);
+
+    const json_body = serializeOnboardingResult(gpa, &result) catch return;
+    defer gpa.free(json_body);
+
+    persistOnboardingResult(ctx.pool, ctx.onboarding_id, 201, json_body, .completed) catch {};
 }
 
 // ── GET /api/v1/onboarding/:onboarding_id ─────────────────────────────────────
@@ -237,8 +369,8 @@ fn tryClaimIdempotencyKey(
 
     const insert_row = conn.queryRow(
         allocator,
-        \\INSERT INTO onboarding_registry (onboarding_id, idempotency_key, request_hash, tenant_id, hostname, state)
-        \\VALUES ($1::uuid, $2, decode($3, 'hex'), NULL, $4, 'pending')
+        \\INSERT INTO onboarding_registry (onboarding_id, idempotency_key, request_hash, tenant_id, hostname, state, response_body)
+        \\VALUES ($1::uuid, $2, decode($3, 'hex'), NULL, $4, 'pending', '{"state":"pending"}'::jsonb)
         \\ON CONFLICT (idempotency_key) DO NOTHING
         \\RETURNING id::text
     ,
@@ -327,7 +459,7 @@ fn persistOnboardingResult(
         std.heap.page_allocator,
         \\UPDATE onboarding_registry
         \\SET response_status = $2::smallint, response_body = $3::jsonb, state = $4, completed_at = NOW()
-        \\WHERE onboarding_id::text = $1
+        \\WHERE onboarding_id = $1::uuid
         \\RETURNING id::text
     ,
         &[_][]const u8{ onboarding_id, status_str, body_json, state.asString() },
@@ -351,7 +483,7 @@ fn selectOnboardingById(
         allocator,
         \\SELECT onboarding_id::text, idempotency_key, ''::text, encode(request_hash, 'hex'), response_status, COALESCE(response_body::text, '{}'), state, created_at::text, completed_at::text
         \\FROM onboarding_registry
-        \\WHERE onboarding_id::text = $1
+        \\WHERE onboarding_id = $1::uuid
         \\LIMIT 1
     ,
         &[_][]const u8{onboarding_id},
@@ -442,7 +574,8 @@ fn serializeOnboardingResult(allocator: std.mem.Allocator, result: *const onboar
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(allocator);
 
-    try buf.appendSlice(allocator, "{\"onboarding_id\":");
+    // Include "state":"completed" so the frontend polling check (result.state === 'completed') works.
+    try buf.appendSlice(allocator, "{\"state\":\"completed\",\"onboarding_id\":");
     try appendJsonStr(allocator, &buf, result.onboarding_id);
     try buf.appendSlice(allocator, ",\"tenant_id\":");
     try appendJsonStr(allocator, &buf, result.tenant_id);
@@ -456,6 +589,9 @@ fn serializeOnboardingResult(allocator: std.mem.Allocator, result: *const onboar
     try appendJsonStr(allocator, &buf, result.hostname);
     try buf.appendSlice(allocator, ",\"oidc_authority\":");
     try appendJsonStr(allocator, &buf, result.oidc_authority);
+    // slug is the same as idp_realm_id (the realm is created with the input slug).
+    try buf.appendSlice(allocator, ",\"slug\":");
+    try appendJsonStr(allocator, &buf, result.idp_realm_id);
     try buf.appendSlice(allocator, ",\"discovery_url\":");
     try appendJsonStr(allocator, &buf, result.discovery_url);
     try buf.appendSlice(allocator, ",\"created\":");
@@ -482,14 +618,12 @@ fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []con
 
 fn generateUuidHex(allocator: std.mem.Allocator) ![]u8 {
     var raw: [16]u8 = undefined;
-    // Fill with bytes from a simple PRNG seeded from timestamp.
-    const seed: u64 = @truncate(@intFromPtr(&raw));
-    var prng = std.Random.DefaultPrng.init(seed);
-    prng.random().bytes(&raw);
+    // Use cryptographically secure random bytes (thread-safe, platform-aware).
+    fillRandom(&raw);
     // Set UUID v4 bits
     raw[6] = (raw[6] & 0x0f) | 0x40;
     raw[8] = (raw[8] & 0x3f) | 0x80;
-    // Encode as hex string
+    // Encode as hex string (no dashes, 32 chars)
     const hex_chars = "0123456789abcdef";
     const out = try allocator.alloc(u8, 32);
     for (raw, 0..) |byte, idx| {

@@ -4,6 +4,14 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage F7 - Tenant Onboarding GUI (RELEASED 2026-06-05)
+
+- **ONB-UI-01** (MUST): Register Tenant entry point — PLATFORM_ADMIN-only nav item in the admin sidebar, DOM-hidden for non-admin users. Direct URL access to admin onboarding screens is role-guarded with redirect to /instances.
+- **ONB-UI-02** (MUST): Tenant registration form — RegisterTenantPage with fields for slug, display name, hostname, admin email, admin username, admin display name, and redirect URIs. Client-side validation, Idempotency-Key generation per submission, and POST /api/v1/onboarding on submit with navigation to the progress screen on 201.
+- **ONB-UI-03** (MUST): Onboarding progress display — OnboardingProgressPage polling GET /api/v1/onboarding/:id at a fixed interval. Stops polling on terminal states (completed/failed). Shows a spinner during progress and clears the interval on unmount. After three consecutive 5xx transient poll errors, displays an error banner with Retry button.
+- **ONB-UI-04** (MUST): Onboarding result screen — OnboardingResultPage showing slug and oidc_authority on success; failure reason and Try Again button on failure. Try Again navigates to RegisterTenantPage with form prefill values. Page-reload restore via GET /api/v1/onboarding?hostname= query on mount.
+- Validation evidence: 18/18 E2E tests passing (ONB-UI-01: 5, ONB-UI-02: 6, ONB-UI-03: 3, ONB-UI-04: 3, onboarding-wizard pipeline: 1). Release approval: docs/status/release-stage-f7-tenant-onboarding-2026-06-05.json.
+
 ### ISS-0063 - OIDC login redirect loop closeout (RESOLVED 2026-06-01)
 - Closed out the login redirect loop regression after verified validation passed: the gateway now preserves the exposed port in the Keycloak Host header, OIDC callback state survives reloads, and tenant-config returns the browser-aligned localhost authority.
 - Regression evidence is in tests/reports/report-20260531-WF03-login-redirect-loop-20260601.yaml; release approval is recorded in docs/status/release-WF03-login-redirect-loop-2026-06-01.json.

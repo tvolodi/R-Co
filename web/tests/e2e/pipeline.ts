@@ -24,7 +24,10 @@ import type { Page, APIRequestContext } from '@playwright/test'
 import { test, expect } from '@playwright/test'
 
 const STATE_DIR = path.resolve('tests/e2e/.pipeline-state')
-const KEYCLOAK_BASE_URL = (process.env.BPM_IDP_BASE_URL ?? 'http://127.0.0.1:8081').replace(/\/$/, '')
+// Use localhost (not 127.0.0.1) so that issued JWT tokens have iss=http://localhost:8081/...
+// which matches the backend's configured BPM_IDP_BASE_URL. Tokens issued via 127.0.0.1
+// would have a mismatched issuer and be rejected by the backend with 401.
+const KEYCLOAK_BASE_URL = (process.env.BPM_IDP_BASE_URL ?? 'http://localhost:8081').replace(/\/$/, '')
 const KEYCLOAK_TOKEN_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default/protocol/openid-connect/token`
 const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
 
