@@ -102,6 +102,9 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     for (existing.rows) |row| {
         if (row.len > 0) {
             if (row[0]) |ver| {
+                // Skip if already in the map (schema_migrations may have duplicate rows
+                // from parallel test runs or retry logic — deduplicate here to prevent leaks).
+                if (applied.contains(ver)) continue;
                 const ver_copy = try allocator.dupe(u8, ver);
                 errdefer allocator.free(ver_copy);
                 try applied.put(ver_copy, {});

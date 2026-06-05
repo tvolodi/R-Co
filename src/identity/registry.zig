@@ -463,7 +463,7 @@ pub const Registry = struct {
         const row = conn.queryRow(
             allocator,
             "SELECT status, is_active::text FROM users WHERE id::text = $1",
-            &[_][]const u8{ user_id },
+            &[_][]const u8{user_id},
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -505,7 +505,7 @@ pub const Registry = struct {
             \\WHERE id::text = $1
             \\LIMIT 1
         ,
-            &[_][]const u8{ user_id },
+            &[_][]const u8{user_id},
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -995,7 +995,7 @@ pub const Registry = struct {
             \\  )
             \\RETURNING 1::text
         ,
-            &[_][]const u8{ group_id },
+            &[_][]const u8{group_id},
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,
@@ -1028,7 +1028,7 @@ pub const Registry = struct {
         const row = conn.queryRow(
             allocator,
             "SELECT id::text FROM groups WHERE id::text = $1 LIMIT 1",
-            &[_][]const u8{ group_id },
+            &[_][]const u8{group_id},
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
             pool_mod.PoolError.ConnectionFailed,

@@ -474,7 +474,7 @@ fn bindHostname(
         \\ON CONFLICT (hostname) DO NOTHING
         \\RETURNING id::text
     ,
-        &[_][]const u8{ hostname },
+        &[_][]const u8{hostname},
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,

@@ -623,18 +623,15 @@ fn buildEventTrace(allocator: std.mem.Allocator, root: std.json.Value) ![]Scenar
     }
 
     for (actions.array.items, 0..) |action, idx| {
-        const event_type = if (action == .object)
-            blk: {
-                const action_type = action.object.get("type");
-                if (action_type) |value| {
-                    if (value == .string and value.string.len > 0) {
-                        break :blk try std.fmt.allocPrint(allocator, "action:{s}", .{value.string});
-                    }
+        const event_type = if (action == .object) blk: {
+            const action_type = action.object.get("type");
+            if (action_type) |value| {
+                if (value == .string and value.string.len > 0) {
+                    break :blk try std.fmt.allocPrint(allocator, "action:{s}", .{value.string});
                 }
-                break :blk try std.fmt.allocPrint(allocator, "action:{d}", .{idx});
             }
-        else
-            try std.fmt.allocPrint(allocator, "action:{d}", .{idx});
+            break :blk try std.fmt.allocPrint(allocator, "action:{d}", .{idx});
+        } else try std.fmt.allocPrint(allocator, "action:{d}", .{idx});
         errdefer allocator.free(event_type);
 
         try entries.append(allocator, .{
@@ -795,7 +792,7 @@ test "validateScenarioSubmissionDetailed rejects malformed schema metadata" {
     var report = try validateScenarioSubmissionDetailed(std.testing.allocator, .{
         .actor_user_id = "u1",
         .actor_realm_id = "t1",
-        .actor_permissions = &. {"simulation:run"},
+        .actor_permissions = &.{"simulation:run"},
         .schema_name = SCHEMA_NAME,
         .schema_version = SCHEMA_VERSION,
         .definition_id = "def-1",
@@ -827,7 +824,7 @@ test "runScenario evaluates final_status and forbidden_events assertions" {
     const result = try runScenario(std.testing.allocator, .{
         .actor_user_id = "user-a",
         .actor_realm_id = "tenant-a",
-        .actor_permissions = &. {"simulation:run"},
+        .actor_permissions = &.{"simulation:run"},
         .schema_name = SCHEMA_NAME,
         .schema_version = SCHEMA_VERSION,
         .definition_id = "def-1",

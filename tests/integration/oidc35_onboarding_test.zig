@@ -493,9 +493,7 @@ test "TC-OIDC-35-06: onboarding saga creates tenant and binds hostname" {
     // Verify hostname binding exists.
     var conn2 = try pool.acquire();
     defer pool.release(conn2);
-    var hostname_q = try conn2.query(alloc,
-        "SELECT hostname FROM tenant_hostnames WHERE hostname = $1 LIMIT 1",
-        &[_][]const u8{hostname});
+    var hostname_q = try conn2.query(alloc, "SELECT hostname FROM tenant_hostnames WHERE hostname = $1 LIMIT 1", &[_][]const u8{hostname});
     defer hostname_q.deinit();
     try testing.expectEqual(@as(usize, 1), hostname_q.rows.len);
     try testing.expectEqualStrings(hostname, hostname_q.rows[0][0] orelse "");
@@ -558,18 +556,14 @@ test "TC-OIDC-35-07: saga compensation cleans up tenant on failure" {
     // Verify the tenant was cleaned up by compensation.
     var conn = try pool.acquire();
     defer pool.release(conn);
-    var tenant_q = try conn.query(alloc,
-        "SELECT id::text FROM tenant WHERE slug = $1 LIMIT 1",
-        &[_][]const u8{slug});
+    var tenant_q = try conn.query(alloc, "SELECT id::text FROM tenant WHERE slug = $1 LIMIT 1", &[_][]const u8{slug});
     defer tenant_q.deinit();
     try testing.expectEqual(@as(usize, 0), tenant_q.rows.len);
 
     // Verify hostname was also cleaned up.
     var conn2 = try pool.acquire();
     defer pool.release(conn2);
-    var hostname_q = try conn2.query(alloc,
-        "SELECT id::text FROM tenant_hostnames WHERE hostname = $1 LIMIT 1",
-        &[_][]const u8{hostname});
+    var hostname_q = try conn2.query(alloc, "SELECT id::text FROM tenant_hostnames WHERE hostname = $1 LIMIT 1", &[_][]const u8{hostname});
     defer hostname_q.deinit();
     try testing.expectEqual(@as(usize, 0), hostname_q.rows.len);
 }
@@ -631,10 +625,10 @@ test "TC-OIDC-35-09: slug validation rejects invalid formats" {
 
     // Test invalid slug formats.
     const invalid_slugs = [_][]const u8{
-        "AB",   // too short (< 3 chars)
-        "ab",   // too short (< 3 chars)
-        "a",    // too short (< 3 chars)
-        "",     // empty
+        "AB", // too short (< 3 chars)
+        "ab", // too short (< 3 chars)
+        "a", // too short (< 3 chars)
+        "", // empty
     };
 
     // Test slugs with uppercase (not allowed).
@@ -752,7 +746,7 @@ test "TC-OIDC-35-10: hostname binding enforces uniqueness" {
         \\VALUES ($1)
         \\ON CONFLICT (hostname) DO NOTHING
     ,
-        &[_][]const u8{ hostname },
+        &[_][]const u8{hostname},
     );
 
     // Create second binding with same hostname — should be prevented by ON CONFLICT.
@@ -763,7 +757,7 @@ test "TC-OIDC-35-10: hostname binding enforces uniqueness" {
         \\ON CONFLICT (hostname) DO NOTHING
         \\RETURNING id::text
     ,
-        &[_][]const u8{ hostname },
+        &[_][]const u8{hostname},
     );
     defer q.deinit();
     try testing.expectEqual(@as(usize, 0), q.rows.len);

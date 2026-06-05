@@ -837,11 +837,17 @@ fn computeReconcileSets(
 
     // Duplicate results to owned memory.
     const added = try allocator.alloc([]const u8, add_list.items.len);
-    errdefer { for (added) |r| allocator.free(r); allocator.free(added); }
+    errdefer {
+        for (added) |r| allocator.free(r);
+        allocator.free(added);
+    }
     for (add_list.items, 0..) |slug, i| added[i] = try allocator.dupe(u8, slug);
 
     const removed = try allocator.alloc([]const u8, remove_list.items.len);
-    errdefer { for (removed) |r| allocator.free(r); allocator.free(removed); }
+    errdefer {
+        for (removed) |r| allocator.free(r);
+        allocator.free(removed);
+    }
     for (remove_list.items, 0..) |slug, i| removed[i] = try allocator.dupe(u8, slug);
 
     return .{ .added = added, .removed = removed };
@@ -851,7 +857,7 @@ test "TC-OIDC-10-11: reconciliation algorithm adds new role, removes no roles" {
     const alloc = std.testing.allocator;
     const oidc_slugs = &[_][]const u8{"TASK_WORKER"};
     const local_slugs = &[_][]const u8{"VIEWER"};
-    const token_roles = &[_][]const u8{"TASK_WORKER", "PROCESS_OPERATOR"};
+    const token_roles = &[_][]const u8{ "TASK_WORKER", "PROCESS_OPERATOR" };
 
     const result = try computeReconcileSets(alloc, oidc_slugs, local_slugs, token_roles);
     defer {
@@ -868,7 +874,7 @@ test "TC-OIDC-10-11: reconciliation algorithm adds new role, removes no roles" {
 
 test "TC-OIDC-10-12: empty token roles removes all OIDC roles" {
     const alloc = std.testing.allocator;
-    const oidc_slugs = &[_][]const u8{"TASK_WORKER", "PROCESS_OPERATOR"};
+    const oidc_slugs = &[_][]const u8{ "TASK_WORKER", "PROCESS_OPERATOR" };
     const local_slugs = &[_][]const u8{};
     const token_roles = &[_][]const u8{};
 

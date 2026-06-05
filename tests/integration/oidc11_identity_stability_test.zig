@@ -62,19 +62,22 @@ fn cleanupUserByExternalIdentity(pool: *pool_mod.Pool, realm: []const u8, extern
     conn.exec(
         \\DELETE FROM group_members
         \\WHERE user_id IN (SELECT id FROM users WHERE external_realm = $1 AND external_id = $2)
-    , &[_][]const u8{ realm, external_id },
+    ,
+        &[_][]const u8{ realm, external_id },
     ) catch {};
 
     conn.exec(
         \\DELETE FROM api_tokens
         \\WHERE user_id IN (SELECT id FROM users WHERE external_realm = $1 AND external_id = $2)
-    , &[_][]const u8{ realm, external_id },
+    ,
+        &[_][]const u8{ realm, external_id },
     ) catch {};
 
     conn.exec(
         \\DELETE FROM user_roles
         \\WHERE user_id IN (SELECT id FROM users WHERE external_realm = $1 AND external_id = $2)
-    , &[_][]const u8{ realm, external_id },
+    ,
+        &[_][]const u8{ realm, external_id },
     ) catch {};
 
     conn.exec(

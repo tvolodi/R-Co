@@ -39,19 +39,16 @@ fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
     // Set version 4 and variant bits per RFC 4122.
     raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
     raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
-    return std.fmt.allocPrint(allocator,
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
         "{x:0>2}{x:0>2}-" ++
-        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
-        .{
-            raw[0],  raw[1],  raw[2],  raw[3],
-            raw[4],  raw[5],
-            raw[6],  raw[7],
-            raw[8],  raw[9],
-            raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
-        });
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
 }
 
 /// Derive the PostgreSQL schema name for a tenant UUID using the same logic
@@ -88,36 +85,28 @@ test "TC-SPT-02-01: N tenants provisioned produce N rows in tenant_schemas and N
     try h.conn.exec("SELECT public.bpm_provision_tenant_schema($1::uuid)", &.{uuid_b});
 
     // Verify tenant_schemas row for tenant A.
-    var reg_a = try h.conn.query(alloc,
-        "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
-        &.{uuid_a});
+    var reg_a = try h.conn.query(alloc, "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid", &.{uuid_a});
     defer reg_a.deinit();
     try std.testing.expect(reg_a.rows.len > 0);
     const count_a = try std.fmt.parseInt(i64, reg_a.rows[0][0] orelse return error.TestUnexpectedResult, 10);
     try std.testing.expectEqual(@as(i64, 1), count_a);
 
     // Verify tenant_schemas row for tenant B.
-    var reg_b = try h.conn.query(alloc,
-        "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
-        &.{uuid_b});
+    var reg_b = try h.conn.query(alloc, "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid", &.{uuid_b});
     defer reg_b.deinit();
     try std.testing.expect(reg_b.rows.len > 0);
     const count_b = try std.fmt.parseInt(i64, reg_b.rows[0][0] orelse return error.TestUnexpectedResult, 10);
     try std.testing.expectEqual(@as(i64, 1), count_b);
 
     // Verify schema A exists in pg_namespace.
-    var schema_a_result = try h.conn.query(alloc,
-        "SELECT count(*) FROM information_schema.schemata WHERE schema_name = $1",
-        &.{schema_a});
+    var schema_a_result = try h.conn.query(alloc, "SELECT count(*) FROM information_schema.schemata WHERE schema_name = $1", &.{schema_a});
     defer schema_a_result.deinit();
     try std.testing.expect(schema_a_result.rows.len > 0);
     const schema_a_count = try std.fmt.parseInt(i64, schema_a_result.rows[0][0] orelse return error.TestUnexpectedResult, 10);
     try std.testing.expectEqual(@as(i64, 1), schema_a_count);
 
     // Verify schema B exists in pg_namespace.
-    var schema_b_result = try h.conn.query(alloc,
-        "SELECT count(*) FROM information_schema.schemata WHERE schema_name = $1",
-        &.{schema_b});
+    var schema_b_result = try h.conn.query(alloc, "SELECT count(*) FROM information_schema.schemata WHERE schema_name = $1", &.{schema_b});
     defer schema_b_result.deinit();
     try std.testing.expect(schema_b_result.rows.len > 0);
     const schema_b_count = try std.fmt.parseInt(i64, schema_b_result.rows[0][0] orelse return error.TestUnexpectedResult, 10);
@@ -152,30 +141,22 @@ test "TC-SPT-02-02: data inserted into one tenant schema is not visible from ano
 
     // Create a minimal isolation test table in schema A.
     // Schema names are UUID-derived (format: tenant_<32hex>) — safe to embed in DDL.
-    const create_a = try std.fmt.allocPrint(alloc,
-        "CREATE TABLE {s}.spt02_iso_check (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), marker TEXT NOT NULL)",
-        .{schema_a});
+    const create_a = try std.fmt.allocPrint(alloc, "CREATE TABLE {s}.spt02_iso_check (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), marker TEXT NOT NULL)", .{schema_a});
     defer alloc.free(create_a);
     try h.conn.exec(create_a, &.{});
 
     // Create the same table in schema B.
-    const create_b = try std.fmt.allocPrint(alloc,
-        "CREATE TABLE {s}.spt02_iso_check (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), marker TEXT NOT NULL)",
-        .{schema_b});
+    const create_b = try std.fmt.allocPrint(alloc, "CREATE TABLE {s}.spt02_iso_check (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), marker TEXT NOT NULL)", .{schema_b});
     defer alloc.free(create_b);
     try h.conn.exec(create_b, &.{});
 
     // Insert a marker row into schema A only.
-    const insert_a = try std.fmt.allocPrint(alloc,
-        "INSERT INTO {s}.spt02_iso_check (marker) VALUES ('tenant-a-exclusive')",
-        .{schema_a});
+    const insert_a = try std.fmt.allocPrint(alloc, "INSERT INTO {s}.spt02_iso_check (marker) VALUES ('tenant-a-exclusive')", .{schema_a});
     defer alloc.free(insert_a);
     try h.conn.exec(insert_a, &.{});
 
     // Schema A must contain exactly 1 row.
-    const count_a_sql = try std.fmt.allocPrint(alloc,
-        "SELECT count(*) FROM {s}.spt02_iso_check",
-        .{schema_a});
+    const count_a_sql = try std.fmt.allocPrint(alloc, "SELECT count(*) FROM {s}.spt02_iso_check", .{schema_a});
     defer alloc.free(count_a_sql);
     var result_a = try h.conn.query(alloc, count_a_sql, &.{});
     defer result_a.deinit();
@@ -187,9 +168,7 @@ test "TC-SPT-02-02: data inserted into one tenant schema is not visible from ano
     try std.testing.expectEqual(@as(i64, 1), count_a);
 
     // Schema B must have 0 rows — marker from schema A must not have leaked.
-    const count_b_sql = try std.fmt.allocPrint(alloc,
-        "SELECT count(*) FROM {s}.spt02_iso_check",
-        .{schema_b});
+    const count_b_sql = try std.fmt.allocPrint(alloc, "SELECT count(*) FROM {s}.spt02_iso_check", .{schema_b});
     defer alloc.free(count_b_sql);
     var result_b = try h.conn.query(alloc, count_b_sql, &.{});
     defer result_b.deinit();
@@ -332,12 +311,12 @@ test "TC-SPT-02-04: migration 063 DROP POLICY IF EXISTS statements are no-ops wh
     // Re-execute all 6 DROP POLICY IF EXISTS from migration 063.
     // These are no-ops since migration 062 already dropped the policies.
     // Use explicit public.* qualification to avoid search_path ambiguity.
-    try h.conn.exec("DROP POLICY IF EXISTS process_definitions_tenant_policy   ON public.process_definitions",  &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS process_definitions_tenant_policy   ON public.process_definitions", &.{});
     try h.conn.exec("DROP POLICY IF EXISTS instance_projections_tenant_policy  ON public.instance_projections", &.{});
-    try h.conn.exec("DROP POLICY IF EXISTS tasks_tenant_policy                 ON public.tasks",                &.{});
-    try h.conn.exec("DROP POLICY IF EXISTS tokens_tenant_policy                ON public.tokens",               &.{});
-    try h.conn.exec("DROP POLICY IF EXISTS audit_entries_tenant_policy         ON public.audit_entries",        &.{});
-    try h.conn.exec("DROP POLICY IF EXISTS audit_log_tenant_policy             ON public.audit_log",            &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS tasks_tenant_policy                 ON public.tasks", &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS tokens_tenant_policy                ON public.tokens", &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS audit_entries_tenant_policy         ON public.audit_entries", &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS audit_log_tenant_policy             ON public.audit_log", &.{});
 
     // Post-verify: 0 known policies remain (state is unchanged).
     var check = try h.conn.query(alloc,
@@ -371,47 +350,45 @@ test "TC-SPT-02-05: re-running migrations 062 and 063 DDL on already-applied dat
     defer h.deinit();
 
     // ── Re-run migration 063 statements ───────────────────────────────────────
-    try h.conn.exec("DROP POLICY IF EXISTS process_definitions_tenant_policy   ON public.process_definitions",  &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS process_definitions_tenant_policy   ON public.process_definitions", &.{});
     try h.conn.exec("DROP POLICY IF EXISTS instance_projections_tenant_policy  ON public.instance_projections", &.{});
-    try h.conn.exec("DROP POLICY IF EXISTS tasks_tenant_policy                 ON public.tasks",                &.{});
-    try h.conn.exec("DROP POLICY IF EXISTS tokens_tenant_policy                ON public.tokens",               &.{});
-    try h.conn.exec("DROP POLICY IF EXISTS audit_entries_tenant_policy         ON public.audit_entries",        &.{});
-    try h.conn.exec("DROP POLICY IF EXISTS audit_log_tenant_policy             ON public.audit_log",            &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS tasks_tenant_policy                 ON public.tasks", &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS tokens_tenant_policy                ON public.tokens", &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS audit_entries_tenant_policy         ON public.audit_entries", &.{});
+    try h.conn.exec("DROP POLICY IF EXISTS audit_log_tenant_policy             ON public.audit_log", &.{});
 
     // ── Re-run migration 062 DROP INDEX IF EXISTS statements ──────────────────
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_tenant_instance_seq",                 &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_tenant_global_seq",                   &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_archive_tenant_instance_seq",         &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_archive_tenant_global_seq",           &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_tenant_pipeline_run_seq",             &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_archive_tenant_pipeline_run_seq",     &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS uq_active_definition_tenant",                    &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_def_tenant_name_status",                     &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_def_tenant_created",                         &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS uq_instance_tenant_correlation",                 &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_proj_tenant_status",                         &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_proj_tenant_definition",                     &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_proj_tenant_instance",                       &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_task_tenant_instance",                       &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_task_tenant_pending_assignee",               &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_task_tenant_status",                         &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_token_tenant_instance",                      &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_token_tenant_active",                        &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_token_tenant_waiting",                       &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_time",                  &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_resource_time",         &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_pipeline_time",         &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_chain_lookup",          &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS uq_audit_entries_tenant_chain_hash",             &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_chain",                 &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_log_tenant_time",                      &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_users_tenant_status_created",                &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_groups_tenant_name",                         &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_events_tenant_instance_seq", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_events_tenant_global_seq", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_events_archive_tenant_instance_seq", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_events_archive_tenant_global_seq", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_events_tenant_pipeline_run_seq", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_events_archive_tenant_pipeline_run_seq", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS uq_active_definition_tenant", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_def_tenant_name_status", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_def_tenant_created", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS uq_instance_tenant_correlation", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_proj_tenant_status", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_proj_tenant_definition", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_proj_tenant_instance", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_task_tenant_instance", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_task_tenant_pending_assignee", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_task_tenant_status", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_token_tenant_instance", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_token_tenant_active", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_token_tenant_waiting", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_time", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_resource_time", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_pipeline_time", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_chain_lookup", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS uq_audit_entries_tenant_chain_hash", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_entries_tenant_chain", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_audit_log_tenant_time", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_users_tenant_status_created", &.{});
+    try h.conn.exec("DROP INDEX IF EXISTS idx_groups_tenant_name", &.{});
 
     // ── Re-run migration 062 DROP CONSTRAINT IF EXISTS ────────────────────────
-    try h.conn.exec(
-        "ALTER TABLE IF EXISTS public.process_definitions DROP CONSTRAINT IF EXISTS uq_definition_tenant_version",
-        &.{});
+    try h.conn.exec("ALTER TABLE IF EXISTS public.process_definitions DROP CONSTRAINT IF EXISTS uq_definition_tenant_version", &.{});
 
     // ── Re-run migration 062 DROP FUNCTION IF EXISTS ───────────────────────────
     try h.conn.exec("DROP FUNCTION IF EXISTS public.bpm_effective_tenant_id() CASCADE", &.{});
@@ -513,9 +490,7 @@ test "TC-SPT-02-06: tenant_schemas status column enables interrupted copy detect
     try h.conn.exec("SELECT public.bpm_provision_tenant_schema($1::uuid)", &.{uuid_test});
 
     // Step 2: Verify initial status = 'pending' (incomplete migration state).
-    var status_result = try h.conn.query(alloc,
-        "SELECT status FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
-        &.{uuid_test});
+    var status_result = try h.conn.query(alloc, "SELECT status FROM public.tenant_schemas WHERE tenant_id = $1::uuid", &.{uuid_test});
     defer status_result.deinit();
     try std.testing.expect(status_result.rows.len > 0);
     const initial_status = status_result.rows[0][0] orelse return error.TestUnexpectedResult;
@@ -524,9 +499,7 @@ test "TC-SPT-02-06: tenant_schemas status column enables interrupted copy detect
     // Step 3: Verify "skip if active" guard: a 'pending' tenant is NOT in the
     // skip set → migration 061's CONTINUE WHEN EXISTS (...status='active')
     // would NOT skip it → the copy would be retried.
-    var pending_guard = try h.conn.query(alloc,
-        "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid AND status = 'active'",
-        &.{uuid_test});
+    var pending_guard = try h.conn.query(alloc, "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid AND status = 'active'", &.{uuid_test});
     defer pending_guard.deinit();
     try std.testing.expect(pending_guard.rows.len > 0);
     const pending_guard_count = try std.fmt.parseInt(i64, pending_guard.rows[0][0] orelse return error.TestUnexpectedResult, 10);
@@ -539,34 +512,26 @@ test "TC-SPT-02-06: tenant_schemas status column enables interrupted copy detect
     try h.conn.exec("SELECT public.bpm_provision_tenant_schema($1::uuid)", &.{uuid_test});
 
     // Verify exactly 1 row in tenant_schemas (no duplication).
-    var dedup_result = try h.conn.query(alloc,
-        "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
-        &.{uuid_test});
+    var dedup_result = try h.conn.query(alloc, "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid", &.{uuid_test});
     defer dedup_result.deinit();
     try std.testing.expect(dedup_result.rows.len > 0);
     const dedup_count = try std.fmt.parseInt(i64, dedup_result.rows[0][0] orelse return error.TestUnexpectedResult, 10);
     try std.testing.expectEqual(@as(i64, 1), dedup_count);
 
     // Verify exactly 1 schema in pg_namespace (no duplicate schema created).
-    var schema_count_result = try h.conn.query(alloc,
-        "SELECT count(*) FROM information_schema.schemata WHERE schema_name = $1",
-        &.{schema_name_str});
+    var schema_count_result = try h.conn.query(alloc, "SELECT count(*) FROM information_schema.schemata WHERE schema_name = $1", &.{schema_name_str});
     defer schema_count_result.deinit();
     try std.testing.expect(schema_count_result.rows.len > 0);
     const schema_count = try std.fmt.parseInt(i64, schema_count_result.rows[0][0] orelse return error.TestUnexpectedResult, 10);
     try std.testing.expectEqual(@as(i64, 1), schema_count);
 
     // Step 5: Simulate migration copy completion — update status to 'active'.
-    try h.conn.exec(
-        "UPDATE public.tenant_schemas SET status = 'active' WHERE tenant_id = $1::uuid",
-        &.{uuid_test});
+    try h.conn.exec("UPDATE public.tenant_schemas SET status = 'active' WHERE tenant_id = $1::uuid", &.{uuid_test});
 
     // Step 6: Verify "skip if active" guard now returns 1 → migration 061's
     // CONTINUE WHEN EXISTS (...status='active') WOULD skip this tenant.
     // This means a re-run of the migration would not duplicate data.
-    var active_guard = try h.conn.query(alloc,
-        "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid AND status = 'active'",
-        &.{uuid_test});
+    var active_guard = try h.conn.query(alloc, "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid AND status = 'active'", &.{uuid_test});
     defer active_guard.deinit();
     try std.testing.expect(active_guard.rows.len > 0);
     const active_guard_count = try std.fmt.parseInt(i64, active_guard.rows[0][0] orelse return error.TestUnexpectedResult, 10);
@@ -577,9 +542,7 @@ test "TC-SPT-02-06: tenant_schemas status column enables interrupted copy detect
     // and 1 schema — idempotency holds after migration completion.
     try h.conn.exec("SELECT public.bpm_provision_tenant_schema($1::uuid)", &.{uuid_test});
 
-    var final_row_count = try h.conn.query(alloc,
-        "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
-        &.{uuid_test});
+    var final_row_count = try h.conn.query(alloc, "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid", &.{uuid_test});
     defer final_row_count.deinit();
     try std.testing.expect(final_row_count.rows.len > 0);
     const final_count = try std.fmt.parseInt(i64, final_row_count.rows[0][0] orelse return error.TestUnexpectedResult, 10);

@@ -80,7 +80,7 @@ pub fn listUnlinkedInternalUsers(
             \\ORDER BY u.created_at ASC
             \\LIMIT $1::int
         ,
-            &[_][]const u8{ limit_text },
+            &[_][]const u8{limit_text},
         ) catch return error.CandidateQueryFailed
     else
         conn.query(

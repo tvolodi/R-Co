@@ -28,7 +28,7 @@ fn insertConfigArtifactRoot(
         \\  'application/json',
         \\  octet_length($4::text),
         \\  $1::uuid, $2::uuid, 'config', $3,
-            \\  $4::jsonb, NULL, NOW()
+        \\  $4::jsonb, NULL, NOW()
         \\)
     ,
         &.{ artifact_id, version_id, artifact_name, content_json },
@@ -53,7 +53,7 @@ fn insertConfigArtifactChild(
         \\  'application/json',
         \\  octet_length($4::text),
         \\  $1::uuid, $2::uuid, 'config', $3,
-            \\  $4::jsonb, $5::uuid, NOW()
+        \\  $4::jsonb, $5::uuid, NOW()
         \\)
     ,
         &.{ artifact_id, version_id, artifact_name, content_json, parent_version_id },
