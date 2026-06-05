@@ -1,0 +1,20 @@
+run_id: WF02-spt-01
+date: "2026-06-05"
+requirement_ids:
+  - SPT-01
+
+test_report: tests/reports/report-20260605-WF02-spt-01.yaml
+
+nfr_results:
+  nfr_01_p99_read_ms: 0.904
+  nfr_01_p99_write_ms: 1.954
+  nfr_02_throughput_eps: 86107.353
+  nfr_04_replay_ms: 29.462
+
+nfr_passed: true
+test_passed: true
+release_decision: APPROVED
+rationale: >
+  All 8 SPT-01 test cases passed (0 failures), all NFR thresholds are met with
+  substantial margin (p99 read 0.9ms vs 200ms limit, throughput 86107 eps vs 1000
+  eps limit, replay 29ms vs 5000ms limit), and no open blockers remain.

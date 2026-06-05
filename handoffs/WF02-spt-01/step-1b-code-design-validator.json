@@ -1,0 +1,43 @@
+{
+  "handoff_id": "e298a8f8-1cea-4325-a839-03c69b14b760",
+  "run_id": "WF02-spt-01",
+  "workflow_id": "WF-02",
+  "step": "1b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-05T07:56:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration \u2014 SPT-01: provisioning infrastructure",
+    "requirement_ids": [
+      "SPT-01"
+    ],
+    "related_handoff_ids": [
+      "69a1d16e-8914-46d3-8d19-13ae7f6b5703"
+    ],
+    "artifacts_in": [
+      "src/design/spt-01-schema-per-tenant-provisioning.md"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate src/design/spt-01-schema-per-tenant-provisioning.md. Run python tools/lint_design_artefact.py src/design/spt-01-schema-per-tenant-provisioning.md. Verify: (1) all 5 design points covered, (2) all public Zig function signatures present with full error sets, (3) SQL DDL for migration 060 complete, (4) backward compatibility documented, (5) no implementation code. FAIL if any check fails. On PASS set next_action: 'Route to BACKEND-DEV (Step 2a)'.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 with no BLOCKER or MAJOR",
+      "All 5 design points covered",
+      "No implementation code present"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for spt-01-schema-per-tenant-provisioning validated. All 10 checks pass: schema naming convention (tenant_<uuid_no_hyphens>, tenant_default) documented in \u00a72; bpm_provision_tenant_schema PL/pgSQL function fully specified with advisory lock, CREATE SCHEMA IF NOT EXISTS, INSERT tenant_schemas, no migration-runner call in \u00a73 and \u00a74; runForSchema(allocator, pool, migrations_dir, schema_name) MigrationError!void with full behaviour and run() backward-compat wrapper in \u00a75; schemaNameForTenant() and applyRequestTenantContext() with both set_config AND search_path in \u00a76; provisionTenantSchema() with ProvisionError error set and idempotency in \u00a77; migration 060 DDL fully specified (tenant_schemas, schema_migrations.schema_name, composite PK, bpm_provision_tenant_schema body) in \u00a73.1; backward compatibility explicitly documented in \u00a711; no Zig function bodies present (run() wrapper is a delegation intent expression, not implementation); no SQL DML migration rows present; all public function signatures carry full error sets. lint_design_artefact.py: 0 BLOCKER, 0 MAJOR, 24 MINOR (E030 schema-qualified names in design prose \u2014 acceptable in a design document).",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-06-05T08:06:40Z"
+}

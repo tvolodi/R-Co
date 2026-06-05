@@ -18,7 +18,7 @@ const plugin_interface_mod = @import("plugin_interface.zig");
 const plugin_registry_mod = @import("plugin_registry.zig");
 const scheduler_store_mod = @import("../scheduler/store.zig");
 const dlq_store_mod = @import("../dlq/store.zig");
-const metrics = @import("../obs/metrics.zig");
+const metrics = @import("obs_metrics");
 const json_schema = @import("../tools/json_schema.zig");
 
 // ---------------------------------------------------------------------------

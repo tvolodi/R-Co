@@ -1,5 +1,5 @@
 const std = @import("std");
-const metrics = @import("../obs/metrics.zig");
+const metrics = @import("obs_metrics");
 
 pub const IdpScope = enum {
     realm_read,

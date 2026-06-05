@@ -8,20 +8,15 @@
 const std = @import("std");
 
 const pg = @import("pg");
-const root = @import("root");
+const tenant_context_mod = @import("tenant_context");
+const pipeline_context_mod = @import("pipeline_context");
 
 fn currentRequestTenantId() []const u8 {
-    if (@hasDecl(root, "api_tenant_context")) {
-        return root.api_tenant_context.get();
-    }
-    return "";
+    return tenant_context_mod.get();
 }
 
 fn currentRequestPipelineRunId() []const u8 {
-    if (@hasDecl(root, "api_pipeline_context")) {
-        return root.api_pipeline_context.get();
-    }
-    return "";
+    return pipeline_context_mod.get();
 }
 
 /// Derive the PostgreSQL schema name for a given tenant ID string.
@@ -74,11 +69,13 @@ fn applyRequestTenantContext(conn: *Conn) PoolError!void {
     try conn.exec(search_path, &.{});
 }
 
+const obs_metrics_mod = @import("obs_metrics");
+
 fn recordDbQueryDurationFromSql(sql: []const u8, elapsed_s: f64) void {
-    if (@hasDecl(root, "obs_metrics")) {
-        const m = root.obs_metrics;
-        m.recordDbQueryDurationSeconds(m.classifyQueryType(sql), elapsed_s);
-    }
+    obs_metrics_mod.recordDbQueryDurationSeconds(
+        obs_metrics_mod.classifyQueryType(sql),
+        elapsed_s,
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -287,6 +284,29 @@ pub const Conn = struct {
 
         if (!self._is_valid) return PoolError.StaleConnection;
         self._pg.commit() catch |err| {
+            if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
+                self._is_valid = false;
+                return PoolError.StaleConnection;
+            }
+            return PoolError.QueryFailed;
+        };
+    }
+
+    /// Execute a multi-statement SQL string using the simple query protocol.
+    ///
+    /// Unlike exec(), this method uses PostgreSQL's Simple Query Protocol, which
+    /// accepts semicolon-separated multi-statement SQL.  No parameter binding is
+    /// supported.  Use for migration SQL files which contain multiple DDL statements.
+    pub fn simpleQuery(self: *Conn, sql: []const u8) PoolError!void {
+        const started_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds();
+        defer {
+            const elapsed_ms: i64 = std.Io.Clock.real.now(self._io).toMilliseconds() - started_ms;
+            const elapsed_s: f64 = @as(f64, @floatFromInt(elapsed_ms)) / 1000.0;
+            recordDbQueryDurationFromSql(sql, elapsed_s);
+        }
+
+        if (!self._is_valid) return PoolError.StaleConnection;
+        self._pg.simpleQuery(sql) catch |err| {
             if (err == pg.PgError.ConnectionFailed or err == pg.PgError.ProtocolError) {
                 self._is_valid = false;
                 return PoolError.StaleConnection;

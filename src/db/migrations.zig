@@ -107,9 +107,9 @@ pub const Migrations = struct {
         ) catch return MigrationError.MigrationFailed;
 
         // Open the migrations directory.
-        var dir = std.fs.openDirAbsolute(migrations_dir, .{ .iterate = true }) catch
+        var dir = std.Io.Dir.openDirAbsolute(pool.io, migrations_dir, .{ .iterate = true }) catch
             return MigrationError.MigrationsDirectoryNotFound;
-        defer dir.close();
+        defer dir.close(pool.io);
 
         // Collect *.sql filenames.
         var names: std.ArrayList([]u8) = .empty;
@@ -119,7 +119,7 @@ pub const Migrations = struct {
         }
 
         var it = dir.iterate();
-        while (it.next() catch return MigrationError.MigrationsDirectoryNotFound) |entry| {
+        while (it.next(pool.io) catch return MigrationError.MigrationsDirectoryNotFound) |entry| {
             if (entry.kind != .file) continue;
             if (!std.mem.endsWith(u8, entry.name, ".sql")) continue;
             const name_copy = allocator.dupe(u8, entry.name) catch
@@ -190,15 +190,18 @@ pub const Migrations = struct {
             }
 
             // Read SQL file contents.
-            const sql_bytes = dir.readFileAlloc(allocator, filename, 16 * 1024 * 1024) catch
+            const sql_bytes = dir.readFileAlloc(pool.io, filename, allocator, std.Io.Limit.limited(16 * 1024 * 1024)) catch
                 return MigrationError.MigrationFailed;
             defer allocator.free(sql_bytes);
 
             // BEGIN transaction.
             conn.exec("BEGIN", &.{}) catch return MigrationError.MigrationFailed;
 
-            // Execute the migration SQL.  On failure, roll back.
-            conn.exec(sql_bytes, &.{}) catch {
+            // Execute the migration SQL via the simple query protocol.
+            // Migration files contain multi-statement DDL separated by semicolons;
+            // the extended query protocol (used by exec()) rejects multi-statement
+            // input, so simpleQuery() is required here.
+            conn.simpleQuery(sql_bytes) catch {
                 conn.exec("ROLLBACK", &.{}) catch {};
                 return MigrationError.MigrationFailed;
             };

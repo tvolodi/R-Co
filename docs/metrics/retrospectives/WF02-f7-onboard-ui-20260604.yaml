@@ -46,11 +46,11 @@ steps:
     variance_pct: -95.3
   doc-updater:
     estimated: 10
-    actual: 5.0
-    variance_pct: -50.0
+    actual: 2.4
+    variance_pct: -76.0
 actual_minutes:
-  total: 74.6
-variance_pct: -61.7
+  total: 71.9
+variance_pct: -63.1
 variance_rationale: >
   All steps completed faster than estimated because the onboarding GUI
   is an additive frontend-only feature (difficulty 2, low integration surface)

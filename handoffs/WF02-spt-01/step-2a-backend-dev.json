@@ -1,0 +1,54 @@
+{
+  "handoff_id": "0ed913fb-45b2-413f-aca0-b65565c79d25",
+  "run_id": "WF02-spt-01",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-05T07:56:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration \u2014 SPT-01: provisioning infrastructure",
+    "requirement_ids": [
+      "SPT-01"
+    ],
+    "related_handoff_ids": [
+      "e298a8f8-1cea-4325-a839-03c69b14b760"
+    ],
+    "artifacts_in": [
+      "src/design/spt-01-schema-per-tenant-provisioning.md"
+    ]
+  },
+  "task": {
+    "description": "Implement SPT-01 per src/design/spt-01-schema-per-tenant-provisioning.md.\n\nFiles to create/modify:\n1. migrations/060_schema_per_tenant_bootstrap.sql:\n   - CREATE TABLE public.tenant_schemas(id UUID PK DEFAULT gen_random_uuid(), tenant_id UUID NOT NULL UNIQUE, schema_name TEXT NOT NULL UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), migrations_applied_at TIMESTAMPTZ).\n   - ALTER TABLE public.schema_migrations ADD COLUMN IF NOT EXISTS schema_name TEXT NOT NULL DEFAULT 'public'.\n   - Drop old UNIQUE constraint on schema_migrations(version) if it exists; add UNIQUE(schema_name, version).\n   - CREATE OR REPLACE FUNCTION bpm_provision_tenant_schema(p_tenant_id UUID) RETURNS void as PL/pgSQL: compute schema name (strip hyphens; default UUID -> 'tenant_default'), advisory lock, CREATE SCHEMA IF NOT EXISTS, INSERT INTO tenant_schemas ON CONFLICT DO NOTHING.\n\n2. src/db/migrations.zig \u2014 add pub fn runForSchema(allocator, pool, migrations_dir, schema_name) MigrationError!void that sets search_path before iterating and records (schema_name, version) in public.schema_migrations. Existing run() must continue working (passes schema_name='public').\n\n3. src/db/pool.zig \u2014 modify applyRequestTenantContext(): add schemaNameForTenant() helper, then SET search_path TO <schema_name>,public. KEEP the existing set_config('bpm.tenant_id',...) line \u2014 both must be present.\n\n4. src/db/provisioning.zig (new) \u2014 pub fn provisionTenantSchema(allocator, pool, tenant_id_str, migrations_dir) !void: idempotency check via SELECT from tenant_schemas, then call bpm_provision_tenant_schema() SQL, then call migrations.runForSchema().\n\nValidation: zig build && zig build test && zig build migrate \u2014 all exit 0. Commit to feature/WF02-spt-01.",
+    "acceptance_criteria": [
+      "migrations/060_schema_per_tenant_bootstrap.sql is valid SQL",
+      "src/db/migrations.zig exports runForSchema with correct signature",
+      "src/db/pool.zig sets search_path AND keeps bpm.tenant_id set_config",
+      "src/db/provisioning.zig exists and is idempotent",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build migrate exits 0"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented SPT-01 schema-per-tenant provisioning infrastructure: migration 060, runForSchema in migrations.zig, search_path in pool.zig, and provisioning.zig orchestrator.",
+    "artifacts_out": [
+      "migrations/060_schema_per_tenant_bootstrap.sql",
+      "src/db/migrations.zig",
+      "src/db/pool.zig",
+      "src/db/provisioning.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 03)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-06-05T08:16:32Z"
+}
