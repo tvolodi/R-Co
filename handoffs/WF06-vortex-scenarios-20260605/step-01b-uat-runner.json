@@ -1,0 +1,52 @@
+{
+  "handoff_id": "b0798f80-d442-43df-87d9-d7309521b4b0",
+  "run_id": "WF06-vortex-scenarios-20260605",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "UAT-RUNNER",
+  "created_at": "2026-06-05T02:40:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-06 Scenario Authoring - vortex",
+    "requirement_ids": [
+      "vortex-supplier-quality-deviation-critical.yaml",
+      "vortex-supplier-quality-deviation-false-positive.yaml",
+      "vortex-production-order-above-threshold.yaml"
+    ],
+    "related_handoff_ids": [
+      "aa7e28df-55ed-40ad-a73e-26e10aea282a"
+    ],
+    "artifacts_in": [
+      "tests/simulation/scenarios/vortex-supplier-quality-deviation-critical.yaml.yaml",
+      "tests/simulation/scenarios/vortex-supplier-quality-deviation-false-positive.yaml.yaml",
+      "tests/simulation/scenarios/vortex-production-order-above-threshold.yaml.yaml"
+    ]
+  },
+  "task": {
+    "description": "HARD GATE \u2014 validate scenario YAML schemas. Do NOT execute scenarios, only validate YAML structure against docs/agents/uat-scenario-schema.md.",
+    "acceptance_criteria": [
+      "Each YAML file is valid YAML",
+      "Every required schema field is present (id, company, title, steps, expected_outcomes, cleanup)",
+      "All actor_id values exist in the company org_structure.yaml",
+      "Step types are valid (api, gui, system, delay)",
+      "Expected outcome verification methods are valid"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated 3 Vortex scenarios: all PASS",
+    "artifacts_out": [
+      "tests/simulation/scenarios/vortex-supplier-quality-deviation-critical.yaml",
+      "tests/simulation/scenarios/vortex-supplier-quality-deviation-false-positive.yaml",
+      "tests/simulation/scenarios/vortex-production-order-above-threshold.yaml"
+    ],
+    "issues": [],
+    "next_action": "WF-06 complete for Vortex. ORCH: scenarios ready for main branch."
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-06-05T03:19:13Z",
+  "completed_at": "2026-06-05T03:20:11Z"
+}

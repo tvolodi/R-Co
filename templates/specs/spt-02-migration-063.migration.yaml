@@ -1,0 +1,63 @@
+schema_version: 1
+migration_number: 63
+name: spt02_idempotency_cleanup
+requirement_ids: [SPT-02]
+purpose: |
+  SPT-02 data migration phase 3: belt-and-suspenders idempotency guard.
+
+  Executes DROP POLICY IF EXISTS for every previously known tenant policy on
+  every affected table, regardless of whether migration 062 has already dropped
+  them. This ensures that any database that skipped or partially applied
+  migration 062 reaches a clean state with no lingering tenant RLS policies.
+
+  No structural DDL. All statements are DROP POLICY IF EXISTS (no-ops if the
+  policy is already absent). Safe to run multiple times.
+
+  Policies explicitly covered (matching names from migration 028):
+    process_definitions_tenant_policy   ON process_definitions
+    instance_projections_tenant_policy  ON instance_projections
+    tasks_tenant_policy                 ON tasks
+    tokens_tenant_policy                ON tokens
+    audit_entries_tenant_policy         ON audit_entries
+    audit_log_tenant_policy             ON audit_log
+
+  NOTE: All DDL in this migration is -- CUSTOM: blocks. The codegen generates
+  only the header scaffold; BACKEND-DEV writes the DROP POLICY IF EXISTS stmts.
+
+# No standard CREATE/ALTER table DDL; all statements are DROP POLICY IF EXISTS.
+tables: []
+
+fixtures:
+  - name: tenant_id
+    kind: uuid
+
+test_cases:
+  - name: idempotent_on_clean_database_no_policies_present
+    description: |
+      Given migrations 061 and 062 have been applied (no tenant policies remain),
+      when migration 063 is applied, then no error is raised and pg_policies
+      still returns 0 rows for all affected tables.
+    requirement_ref: SPT-02
+    arrange: |
+      // CUSTOM: ensure migrations 061 and 062 have been applied
+    act: |
+      // CUSTOM: apply migration 063 SQL via helpers.applyMigration(h.conn, "063_spt02_idempotency_cleanup.sql")
+    assertions: |
+      // CUSTOM: assert no error raised
+      // CUSTOM: assert pg_policies returns 0 rows for all 6 affected tables
+
+  - name: idempotent_on_database_where_policies_still_exist
+    description: |
+      Given a database where migration 062 was NOT applied (tenant RLS policies
+      are still present), when migration 063 is applied, then no error is raised,
+      all 6 known tenant policies are dropped, and pg_policies returns 0 rows
+      for all affected tables.
+    requirement_ref: SPT-02
+    arrange: |
+      // CUSTOM: ensure migration 061 was applied but migration 062 was NOT applied
+      //         (simulate by re-creating one or more of the tenant policies)
+    act: |
+      // CUSTOM: apply migration 063 SQL via helpers.applyMigration(h.conn, "063_spt02_idempotency_cleanup.sql")
+    assertions: |
+      // CUSTOM: assert no error raised
+      // CUSTOM: assert pg_policies returns 0 rows for all affected tables

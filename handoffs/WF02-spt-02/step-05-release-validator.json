@@ -1,0 +1,32 @@
+{
+  "handoff_id": "c4d424e0-e4c5-4646-bc23-535f5f1a8a4d",
+  "run_id": "WF02-spt-02",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-06-05T10:33:51Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration — SPT-02",
+    "requirement_ids": ["SPT-02"],
+    "related_handoff_ids": ["c239949a-aa76-4db7-8c49-4d7d00a4999e"],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Validate release readiness for SPT-02. Check: (1) all SPT-02 MUST acceptance criteria are covered by passing tests in the test report, (2) no BLOCKER or MAJOR issues in test report, (3) zig build bench exits 0. Write release decision to docs/status/release-spt-02-<date>.yaml.",
+    "acceptance_criteria": [
+      "All 6 SPT-02 acceptance criteria have PASS test results",
+      "No BLOCKER/MAJOR issues",
+      "zig build bench exits 0",
+      "Release decision written to docs/status/"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}

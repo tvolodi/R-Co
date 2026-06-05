@@ -1,0 +1,69 @@
+{
+  "handoff_id": "4b81bf04-77ad-4a70-8ed7-5183f321e12b",
+  "run_id": "WF02-spt-02",
+  "workflow_id": "WF-02",
+  "step": "1b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-05T10:33:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration — SPT-02",
+    "requirement_ids": ["SPT-02"],
+    "related_handoff_ids": ["2cb81d96-5de0-4e7c-b878-babd622976ba"],
+    "artifacts_in": [
+      "templates/specs/spt-02-migration-061.migration.yaml",
+      "templates/specs/spt-02-migration-062.migration.yaml",
+      "templates/specs/spt-02-migration-063.migration.yaml",
+      "src/design/spt-02.md",
+      "docs/BPM_Platform_Functional_Requirements.md#SPT-02"
+    ]
+  },
+  "task": {
+    "description": "Hard gate: validate CODE-DESIGNER output for SPT-02 before BACKEND-DEV begins implementation. Verify: (1) all SPT-02 acceptance criteria from requirements doc are covered by design elements, (2) no implementation code in prose design, (3) all three migration YAMLs are syntactically valid and can produce correct artefacts via codegen --dry-run, (4) error taxonomy covers duplicate rows, interrupted copy, missing schema, (5) rollback strategy is present.",
+    "acceptance_criteria": [
+      "All 6 SPT-02 acceptance criteria mapped to design elements",
+      "python tools/codegen_migration.py templates/specs/spt-02-migration-06{1,2,3}.migration.yaml --dry-run exits 0 for each",
+      "python tools/lint_design_artefact.py src/design/spt-02.md exits 0 (no BLOCKER/MAJOR)",
+      "No SQL DDL or Zig code blocks in src/design/spt-02.md",
+      "Result: PASS or FAIL with issues list"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefacts for SPT-02 validated — all 6 acceptance criteria mapped, error taxonomy complete (E-061-DUP, E-061-SCHEMA-MISSING, E-061-INTERRUPTED, E-062-COLUMN-IN-USE, E-062-FUNCTION-IN-USE, E-062-RLS-STILL-ACTIVE, E-063-POLICY-NOT-FOUND), rollback strategy present, no SQL DDL in prose design, all three codegen --dry-run exits 0, lint exits 0 (BLOCKER=0, MAJOR=0, MINOR=4).",
+    "artifacts_out": [
+      "templates/specs/spt-02-migration-061.migration.yaml",
+      "templates/specs/spt-02-migration-062.migration.yaml",
+      "templates/specs/spt-02-migration-063.migration.yaml",
+      "src/design/spt-02.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "code": "E030",
+        "description": "src/design/spt-02.md uses schema-qualified names (information_schema.columns, pg_catalog.pg_namespace, public.tenant_schemas) in diagnostic context — style issue only, does not affect implementation.",
+        "lines": [52, 169, 274, 322]
+      },
+      {
+        "severity": "MINOR",
+        "code": "OPEN-Q-1",
+        "description": "tenant_hostnames scope: whether to copy rows to tenant schemas is flagged as an open question. Design recommends leaving in public. BACKEND-DEV must confirm with product ownership.",
+        "lines": []
+      },
+      {
+        "severity": "MINOR",
+        "code": "OPEN-Q-4",
+        "description": "Table name discrepancy: requirements doc lists process_instances/timers/sessions; actual DB tables are instance_projections; timers and sessions lack tenant_id. BACKEND-DEV must verify via information_schema.columns and raise WF-03 if requirements doc needs updating.",
+        "lines": []
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-05T10:49:33Z",
+  "completed_at": "2026-06-05T10:52:05Z"
+}

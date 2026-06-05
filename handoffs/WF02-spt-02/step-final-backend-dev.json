@@ -1,0 +1,31 @@
+{
+  "handoff_id": "493af398-98f1-47d3-b583-287c4cd2cef5",
+  "run_id": "WF02-spt-02",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-05T10:33:51Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration — SPT-02",
+    "requirement_ids": ["SPT-02"],
+    "related_handoff_ids": ["adc6889a-fb0e-408e-9c22-6cc81f0d9286"],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "fn:git-merge hard gate — verify feature/WF02-spt-02 is merged, branch deleted, and local repo is on clean main. If DOC-UPDATER already merged, confirm and report PASS.",
+    "acceptance_criteria": [
+      "git branch --show-current outputs main",
+      "git status shows clean working tree",
+      "No feature/WF02-spt-02 branch on origin"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}

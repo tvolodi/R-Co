@@ -1,0 +1,97 @@
+schema_version: 1
+migration_number: 62
+name: spt02_drop_tenant_id_rls
+requirement_ids: [SPT-02]
+purpose: |
+  SPT-02 data migration phase 2: remove all row-based tenancy infrastructure
+  from the public schema, now that all tenant data has been copied into
+  per-tenant schemas by migration 061.
+
+  Operations performed (all guarded with IF EXISTS for idempotency):
+    1. DROP POLICY IF EXISTS for all known tenant policies on every affected table.
+    2. ALTER TABLE ... DISABLE ROW LEVEL SECURITY on each affected table.
+    3. DROP FUNCTION IF EXISTS bpm_effective_tenant_id() CASCADE.
+    4. DROP INDEX IF EXISTS for all tenant_id-based composite indexes.
+    5. DROP CONSTRAINT IF EXISTS for all tenant_id-based unique constraints.
+    6. ALTER TABLE ... DROP COLUMN IF EXISTS tenant_id on every affected table.
+
+  Affected tables: process_definitions, instance_projections, tasks, tokens,
+    audit_entries, audit_log, events, events_archive, users, groups.
+
+  Known RLS policies dropped:
+    process_definitions_tenant_policy ON process_definitions
+    instance_projections_tenant_policy ON instance_projections
+    tasks_tenant_policy ON tasks
+    tokens_tenant_policy ON tokens
+    audit_entries_tenant_policy ON audit_entries
+    audit_log_tenant_policy ON audit_log
+
+  Known tenant_id composite indexes dropped:
+    idx_events_tenant_instance_seq, idx_events_tenant_global_seq,
+    idx_events_archive_tenant_instance_seq, idx_events_archive_tenant_global_seq,
+    uq_active_definition_tenant, idx_def_tenant_name_status, idx_def_tenant_created,
+    uq_instance_tenant_correlation, idx_proj_tenant_status, idx_proj_tenant_definition,
+    idx_proj_tenant_instance, idx_task_tenant_instance, idx_task_tenant_pending_assignee,
+    idx_task_tenant_status, idx_token_tenant_instance, idx_token_tenant_active,
+    idx_token_tenant_waiting, idx_audit_entries_tenant_time,
+    idx_audit_entries_tenant_resource_time, idx_audit_log_tenant_time,
+    idx_users_tenant_status_created, idx_groups_tenant_name.
+
+  Known tenant_id-based constraints dropped:
+    uq_definition_tenant_version (UNIQUE constraint on process_definitions).
+
+  NOTE: All DDL in this migration is -- CUSTOM: blocks. The codegen generates
+  only the header scaffold; BACKEND-DEV writes all DROP/ALTER SQL explicitly.
+
+# No standard CREATE/ALTER table DDL is generated for this migration.
+# All operations are DROP/DISABLE which the codegen does not template.
+tables: []
+
+fixtures:
+  - name: tenant_id
+    kind: uuid
+
+test_cases:
+  - name: tenant_id_columns_dropped_from_all_tables
+    description: |
+      Given migration 061 has been applied (data in tenant schemas, status='active'),
+      when migration 062 is applied, then every affected public table no longer
+      has a tenant_id column (verified via information_schema.columns).
+    requirement_ref: SPT-02
+    arrange: |
+      // CUSTOM: ensure migration 061 has been applied (tenant data in tenant schemas)
+    act: |
+      // CUSTOM: apply migration 062 SQL via helpers.applyMigration(h.conn, "062_spt02_drop_tenant_id_rls.sql")
+    assertions: |
+      // CUSTOM: for each affected table, assert no row in information_schema.columns
+      //         with table_name = '<table>' AND column_name = 'tenant_id'
+      // CUSTOM: assert process_definitions, instance_projections, tasks, tokens,
+      //         audit_entries, audit_log, events, events_archive, users, groups
+      //         all pass the column-absent check
+
+  - name: bpm_effective_tenant_id_function_dropped
+    description: |
+      Given migration 062 has been applied, when pg_proc is queried for
+      bpm_effective_tenant_id, then no row is found.
+    requirement_ref: SPT-02
+    arrange: |
+      // CUSTOM: ensure migration 062 has been applied
+    act: |
+      // CUSTOM: query pg_proc for proname = 'bpm_effective_tenant_id'
+    assertions: |
+      // CUSTOM: assert row count = 0 (function no longer exists)
+
+  - name: rls_policies_and_indexes_dropped
+    description: |
+      Given migration 062 has been applied, when pg_policies and pg_indexes are
+      queried for tenant-related entries, then no tenant policy and no
+      tenant_id-based composite index exists on any affected public table.
+    requirement_ref: SPT-02
+    arrange: |
+      // CUSTOM: ensure migration 062 has been applied
+    act: |
+      // CUSTOM: query pg_policies WHERE tablename IN (affected_tables)
+      //         query pg_indexes WHERE indexname LIKE '%tenant%' AND tablename IN (affected_tables)
+    assertions: |
+      // CUSTOM: assert pg_policies returns 0 rows for affected tables
+      // CUSTOM: assert pg_indexes returns 0 rows matching the known tenant_id index names

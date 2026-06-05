@@ -1,0 +1,40 @@
+{
+  "handoff_id": "e09582d2-eca9-482e-b465-0beaeeebbda9",
+  "run_id": "WF02-spt-02",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-05T10:33:51Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration — SPT-02",
+    "requirement_ids": ["SPT-02"],
+    "related_handoff_ids": ["c828b084-67f6-4800-8ffa-7908d6dfc483"],
+    "artifacts_in": [
+      "src/design/spt-02.md",
+      "migrations/061_spt02_copy_rows_to_tenant_schemas.sql",
+      "migrations/062_spt02_drop_tenant_id_columns.sql",
+      "migrations/063_spt02_idempotency_belt_suspenders.sql",
+      "docs/BPM_Platform_Functional_Requirements.md#SPT-02"
+    ]
+  },
+  "task": {
+    "description": "Write test spec and integration test for SPT-02. Tests must:\n1. Insert rows with tenant_id into affected public tables (before migration 061).\n2. Run migration 061 and verify: N rows per table appear in tenant schemas, tenant_schemas registry is populated, re-running 061 produces identical state (idempotency).\n3. Run migration 062 and verify: tenant_id columns are gone from public tables, bpm_effective_tenant_id() function does not exist, RLS policies are dropped, composite indexes are dropped.\n4. Run migration 063 and verify: no-error on re-run.\n5. Interrupted copy simulation: if a tenant's copy is partially done (simulate by inserting only some rows), re-running 061 must not duplicate or lose rows.\n\nWrite:\n- tests/specs/SPT-02.md (test spec)\n- tests/integration/spt02_data_migration_test.zig (integration test, using BPM_TEST_DB_URL)\n\nAll fixtures must use per-test UUIDs. Test must clean up provisioned schemas after completion.",
+    "acceptance_criteria": [
+      "tests/specs/SPT-02.md covers all 6 SPT-02 acceptance criteria",
+      "tests/integration/spt02_data_migration_test.zig exists and compiles",
+      "All integration test fixtures use per-test UUIDs",
+      "Test cleans up tenant schemas after completion (no schema leakage)",
+      "No error.SkipZigTest on any MUST-coverage test block",
+      "next_action: Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}

@@ -1,0 +1,51 @@
+{
+  "handoff_id": "178addda-7d1a-44f7-a6a4-0a7e2ed6cd2a",
+  "run_id": "WF06-meridian-scenarios-20260605",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BO-MERIDIAN",
+  "created_at": "2026-06-05T02:40:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-06 Scenario Authoring - meridian",
+    "requirement_ids": [
+      "meridian-loan-origination-above-threshold.yaml",
+      "meridian-loan-origination-below-threshold.yaml",
+      "meridian-regulatory-compliance-review-bafin.yaml"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/simulation/companies/meridian/",
+      "docs/agents/uat-scenario-schema.md"
+    ]
+  },
+  "task": {
+    "description": "Author 3 UAT scenarios for Meridian Capital AG.\n\nRead the process definitions in tests/simulation/companies/meridian/:\n- process_loan_origination.yaml\n- process_regulatory_compliance_review.yaml\n\nRead docs/agents/uat-scenario-schema.md for the required YAML format.\nRead tests/simulation/companies/meridian/org_structure.yaml for actor IDs.\n\nSCENARIO 1 \u2014 meridian-loan-origination-above-threshold.yaml\nTitle: \"Large loan (\u20ac750k) routed through full credit committee\"\nA loan application for \u20ac750,000 (above \u20ac500k threshold) is submitted.\nL1 credit officer (Julia Hartmann, actor-meridian-julia) assesses.\nL2 credit director reviews.\nSince amount >\u20ac500k, credit committee vote is triggered with quorum 2-of-3.\nLoan is approved and disbursed.\nvia: api steps.\n\nSCENARIO 2 \u2014 meridian-loan-origination-below-threshold.yaml\nTitle: \"Small loan (\u20ac50k) approved at L2 without committee\"\nA loan application for \u20ac50,000 is submitted.\nL1 credit officer assesses and approves.\nL2 credit director reviews and approves.\nSince amount \u2264\u20ac500k, no committee is needed \u2014 loan is disbursed directly.\nvia: api steps.\n\nSCENARIO 3 \u2014 meridian-regulatory-compliance-review-bafin.yaml\nTitle: \"30-day SLA breach triggers BaFin regulatory notice\"\nAn ongoing compliance review exceeds the 30-day SLA.\nThe system detects the SLA breach.\nBaFin regulatory notification is automatically filed.\nEscalation is triggered to senior management (Eva Kremer).\nvia: api steps.\n\nMANDATORY BUSINESS RULES from BO-MERIDIAN agent instructions:\n- Loan >\u20ac500k MUST trigger committee vote (quorum 2-of-3).\n- 30-day SLA breach MUST file BaFin regulatory notice.\n- KYC hit without manual compliance review is BLOCKER.\n- Committee quorum of <2 is BLOCKER.\n",
+    "acceptance_criteria": [
+      "Scenario YAML files created at tests/simulation/scenarios/meridian-loan-origination-above-threshold.yaml.yaml and meridian-loan-origination-below-threshold.yaml.yaml (or meridian-regulatory-compliance-review-bafin.yaml.yaml if three)",
+      "Each scenario follows the schema from docs/agents/uat-scenario-schema.md",
+      "Mandatory business rules from BO agent instructions are tested",
+      "Via field contains realistic API instructions for each step",
+      "Cleanup section removes any test artifacts"
+    ],
+    "functions_to_call": [
+      "fn:author-scenario"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Authored 3 Meridian UAT scenarios: large-loan (above-threshold), small-loan (below-threshold), compliance-bafin",
+    "artifacts_out": [
+      "tests/simulation/scenarios/meridian-loan-origination-above-threshold.yaml",
+      "tests/simulation/scenarios/meridian-loan-origination-below-threshold.yaml",
+      "tests/simulation/scenarios/meridian-regulatory-compliance-review-bafin.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to UAT-RUNNER for schema validation (WF-06 Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-06-05T02:40:00Z",
+  "completed_at": "2026-06-05T03:18:36Z"
+}

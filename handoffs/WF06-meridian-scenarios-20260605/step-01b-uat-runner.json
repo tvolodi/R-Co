@@ -1,0 +1,58 @@
+{
+  "handoff_id": "d8b68f55-4779-45a7-8eec-0a9f0c515249",
+  "run_id": "WF06-meridian-scenarios-20260605",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "UAT-RUNNER",
+  "created_at": "2026-06-05T02:40:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-06 Scenario Authoring - meridian",
+    "requirement_ids": [
+      "meridian-loan-origination-above-threshold.yaml",
+      "meridian-loan-origination-below-threshold.yaml",
+      "meridian-regulatory-compliance-review-bafin.yaml"
+    ],
+    "related_handoff_ids": [
+      "178addda-7d1a-44f7-a6a4-0a7e2ed6cd2a"
+    ],
+    "artifacts_in": [
+      "tests/simulation/scenarios/meridian-loan-origination-above-threshold.yaml.yaml",
+      "tests/simulation/scenarios/meridian-loan-origination-below-threshold.yaml.yaml",
+      "tests/simulation/scenarios/meridian-regulatory-compliance-review-bafin.yaml.yaml"
+    ]
+  },
+  "task": {
+    "description": "HARD GATE \u2014 validate scenario YAML schemas. Do NOT execute scenarios, only validate YAML structure against docs/agents/uat-scenario-schema.md.",
+    "acceptance_criteria": [
+      "Each YAML file is valid YAML",
+      "Every required schema field is present (id, company, title, steps, expected_outcomes, cleanup)",
+      "All actor_id values exist in the company org_structure.yaml",
+      "Step types are valid (api, gui, system, delay)",
+      "Expected outcome verification methods are valid"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated 3 Meridian scenarios: all PASS",
+    "artifacts_out": [
+      "tests/simulation/scenarios/meridian-loan-origination-above-threshold.yaml",
+      "tests/simulation/scenarios/meridian-loan-origination-below-threshold.yaml",
+      "tests/simulation/scenarios/meridian-regulatory-compliance-review-bafin.yaml"
+    ],
+    "issues": [
+      {
+        "id": "HANDOFF-FILE-TYPO-001",
+        "severity": "MINOR",
+        "description": "Handoff context.artifacts_in lists files with double .yaml.yaml extension (e.g. meridian-loan-origination-above-threshold.yaml.yaml). Actual files on disk use single .yaml extension. This does not affect scenario validation but ORCH should correct the handoff file's artifacts_in entries."
+      }
+    ],
+    "next_action": "WF-06 complete for Meridian. ORCH: scenarios ready for main branch."
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-06-05T03:19:13Z",
+  "completed_at": "2026-06-05T03:20:48Z"
+}

@@ -1,0 +1,44 @@
+{
+  "handoff_id": "c828b084-67f6-4800-8ffa-7908d6dfc483",
+  "run_id": "WF02-spt-02",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-05T10:33:51Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration — SPT-02",
+    "requirement_ids": ["SPT-02"],
+    "related_handoff_ids": ["4b81bf04-77ad-4a70-8ed7-5183f321e12b"],
+    "artifacts_in": [
+      "templates/specs/spt-02-migration-061.migration.yaml",
+      "templates/specs/spt-02-migration-062.migration.yaml",
+      "templates/specs/spt-02-migration-063.migration.yaml",
+      "src/design/spt-02.md",
+      "migrations/060_schema_per_tenant_bootstrap.sql",
+      "src/db/provisioning.zig",
+      "src/db/migrations.zig",
+      "src/db/pool.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement SPT-02 data migration. Run codegen for each migration YAML, then implement the custom blocks:\n\nmigrations/061_spt02_copy_rows_to_tenant_schemas.sql:\n  - For each distinct tenant_id in process_definitions (or any affected table), call bpm_provision_tenant_schema() to create tenant schema if not registered.\n  - For each tenant, in a transaction: INSERT INTO tenant_<uuid>.process_definitions SELECT ... FROM public.process_definitions WHERE tenant_id = <tid>; repeat for ALL affected tables (process_instances, events, tasks, timers, audit_log, tenant_hostnames, tokens, sessions).\n  - Skip tenants whose tenant_schemas.status is already 'active' (idempotency via tenant_schemas registry).\n  - Mark tenant_schemas.status = 'active' after all tables are copied.\n\nmigrations/062_spt02_drop_tenant_id_columns.sql:\n  - DROP COLUMN tenant_id from all affected tables in public.\n  - DROP FUNCTION IF EXISTS bpm_effective_tenant_id().\n  - DROP POLICY ... on all public tables (all known RLS policies).\n  - DROP INDEX IF EXISTS on all tenant-based composite indexes.\n\nmigrations/063_spt02_idempotency_belt_suspenders.sql:\n  - DROP POLICY IF EXISTS for every previously known policy name on every affected table (belt-and-suspenders).\n\nAfter writing migrations:\n- Run: zig build migrate\n- Run: zig build test\n- Run: zig build (error-set check)\n- All must exit 0.\n- Commit to feature/WF02-spt-02 and push.",
+    "acceptance_criteria": [
+      "migrations/061_spt02_copy_rows_to_tenant_schemas.sql exists and is idempotent",
+      "migrations/062_spt02_drop_tenant_id_columns.sql exists and removes all tenant_id cols and RLS",
+      "migrations/063_spt02_idempotency_belt_suspenders.sql exists",
+      "zig build migrate exits 0",
+      "zig build test exits 0",
+      "zig build exits 0 with no error-set output",
+      "git push origin feature/WF02-spt-02 exits 0"
+    ],
+    "functions_to_call": ["fn:read-backend-conventions", "fn:check-zig-build"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-05T10:52:51Z",
+  "completed_at": null
+}

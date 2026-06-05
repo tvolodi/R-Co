@@ -1,0 +1,64 @@
+{
+  "handoff_id": "2cb81d96-5de0-4e7c-b878-babd622976ba",
+  "run_id": "WF02-spt-02",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-05T10:33:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Schema-Per-Tenant Migration — SPT-02",
+    "requirement_ids": ["SPT-02"],
+    "related_handoff_ids": ["91edf684-a7f3-43cc-9561-794a240f1033"],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md#SPT-02",
+      "migrations/060_schema_per_tenant_bootstrap.sql",
+      "src/db/provisioning.zig",
+      "src/db/migrations.zig",
+      "src/db/pool.zig"
+    ]
+  },
+  "task": {
+    "description": "Design the SPT-02 data migration artefacts. SPT-02 must copy all existing tenant rows from the public schema into per-tenant schemas (via bpm_provision_tenant_schema()), then remove tenant_id columns, the bpm_effective_tenant_id() function, all RLS policies, and tenant-scoped composite indexes from public tables.\n\nRequirements summary:\n- Migration 061: for every distinct tenant_id in any affected table, call bpm_provision_tenant_schema() if schema not yet registered, then INSERT-SELECT all rows for that tenant into the corresponding tenant-schema table. Must be atomic per tenant (per-tenant transaction). Idempotent (skip already-migrated tenants via tenant_schemas registry).\n- Migration 062: DROP tenant_id columns from all public tables (process_definitions, process_instances, events, tasks, timers, audit_log, tenant_hostnames, tokens, sessions). DROP bpm_effective_tenant_id() function. DROP all RLS policies on those tables. DROP tenant-id-based composite indexes.\n- Migration 063: Belt-and-suspenders idempotency — DROP POLICY IF EXISTS for every previously known policy on every affected table.\n\nClassify each migration per lego-catalog.md (Type C — migration + test). Produce templates/specs/spt-02-migration-061.migration.yaml, templates/specs/spt-02-migration-062.migration.yaml, templates/specs/spt-02-migration-063.migration.yaml, and a prose design src/design/spt-02.md covering error taxonomy, rollback strategy, and data-integrity invariants.\n\nTables affected: process_definitions, process_instances, events, tasks, timers, audit_log, tenant_hostnames, tokens, sessions (any table with tenant_id NOT NULL as of migration 060 baseline).",
+    "acceptance_criteria": [
+      "Three migration YAML specs exist at templates/specs/spt-02-migration-06{1,2,3}.migration.yaml",
+      "src/design/spt-02.md covers all SPT-02 acceptance criteria from requirements doc",
+      "Error taxonomy defined: what happens on duplicate rows, missing schema, interrupted copy",
+      "Rollback strategy documented (only possible before SPT-03)",
+      "python tools/codegen_migration.py templates/specs/spt-02-migration-061.migration.yaml --dry-run exits 0",
+      "No implementation code in prose design"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for SPT-02 data migration — types: [C, C, C, E]. Three migration YAML specs produced (061 copy rows, 062 drop RLS/columns, 063 idempotency cleanup) plus prose design. All codegen dry-runs exit 0; lint 0 BLOCKERs 0 MAJORs. Key open questions documented: tenant_hostnames scope, users/groups copy decision, FK insert order, table name discrepancy (process_instances vs instance_projections).",
+    "artifacts_out": [
+      "templates/specs/spt-02-migration-061.migration.yaml",
+      "templates/specs/spt-02-migration-062.migration.yaml",
+      "templates/specs/spt-02-migration-063.migration.yaml",
+      "src/design/spt-02.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Requirement doc names 'process_instances', 'timers', 'sessions' as affected tables; actual DB tables are 'instance_projections' (no tenant_id on timers or sessions found in migrations). Design uses actual table names and flags this for BACKEND-DEV verification."
+      },
+      {
+        "severity": "MINOR",
+        "description": "tenant_hostnames has tenant_id as an FK, not an RLS isolation column. Recommended to leave in public schema; BACKEND-DEV must confirm."
+      },
+      {
+        "severity": "MINOR",
+        "description": "users/groups tables have tenant_id but no RLS policies and are not in requirement explicit list. Design recommends copying to tenant schemas; BACKEND-DEV must confirm."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-05T10:39:51Z",
+  "completed_at": "2026-06-05T10:48:52Z"
+}
