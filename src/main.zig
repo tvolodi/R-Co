@@ -1094,6 +1094,17 @@ fn serveRequest(
                     resp_status = 405;
                     resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
                 }
+            } else if (method == .POST and seg6.len == 0 and std.mem.eql(u8, seg5, "deactivate")) {
+                const r = identity_routes.handleDeactivateTenant(id_svc, req_alloc, actor, seg4, body);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (method == .POST and seg6.len == 0 and std.mem.eql(u8, seg5, "reactivate")) {
+                const r = identity_routes.handleReactivateTenant(id_svc, req_alloc, actor, seg4, body);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (method == .POST and seg6.len == 0) {
+                resp_status = 400;
+                resp_body = "{\"error\":\"invalid_lifecycle_action\"}";
             } else {
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";

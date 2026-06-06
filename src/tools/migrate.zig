@@ -67,11 +67,7 @@ pub fn main(init: std.process.Init) !void {
 
     // Fetch already-applied versions.
     var applied = std.StringHashMap(void).init(allocator);
-    defer {
-        var key_it = applied.keyIterator();
-        while (key_it.next()) |k| allocator.free(k.*);
-        applied.deinit();
-    }
+    defer applied.deinit();
 
     var result = conn.query(
         allocator,
@@ -86,10 +82,7 @@ pub fn main(init: std.process.Init) !void {
     for (result.rows) |row| {
         if (row.len > 0) {
             if (row[0]) |ver| {
-                const ver_copy = allocator.dupe(u8, ver) catch continue;
-                applied.put(ver_copy, {}) catch {
-                    allocator.free(ver_copy);
-                };
+                applied.put(ver, {}) catch {};
             }
         }
     }

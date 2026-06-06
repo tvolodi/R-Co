@@ -574,6 +574,40 @@ fn buildForbidden(allocator: std.mem.Allocator, detail: []const u8) HandlerResul
     return .{ .status_code = pd.status, .body = body };
 }
 
+fn isTenantInactive(
+    allocator: std.mem.Allocator,
+    db_pool: *pool_mod.Pool,
+    tenant_id: []const u8,
+) (error{ PoolExhausted, PersistenceFailed, OutOfMemory } || pool_mod.PoolError)!bool {
+    const conn = db_pool.acquire() catch |err| switch (err) {
+        pool_mod.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer db_pool.release(conn);
+
+    const row = conn.queryRow(
+        allocator,
+        "SELECT status FROM tenant WHERE id = $1::uuid LIMIT 1",
+        &[_][]const u8{tenant_id},
+    ) catch |err| switch (err) {
+        pool_mod.PoolError.StaleConnection,
+        pool_mod.PoolError.ConnectionFailed,
+        pool_mod.PoolError.QueryFailed,
+        => return error.PersistenceFailed,
+        pool_mod.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+
+    if (row == null) return false;
+    defer {
+        if (row.?[0]) |v| allocator.free(v);
+        allocator.free(row.?);
+    }
+
+    const status_txt = row.?[0] orelse "ACTIVE";
+    return std.mem.eql(u8, status_txt, "INACTIVE");
+}
+
 // ── JIT provisioning helpers ──────────────────────────────────────────────────
 
 /// Decode the JWT payload segment (2nd segment) from a raw bearer token.
@@ -1064,9 +1098,11 @@ pub fn authenticate(
             return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
         };
 
+        const role = primaryProviderRole(principal.roles);
+
         return .{ .authenticated = .{
             .user_id = user_id,
-            .role = primaryProviderRole(principal.roles),
+            .role = role,
             .is_bootstrap = false,
             .token_id = token_id,
             .tenant_id = resolved_tenant.tenant_id,
@@ -1275,6 +1311,19 @@ pub fn authenticate(
     };
     tenant_context.set(resolved_tenant.tenant_id[0..]);
     if (pipeline_run_id) |rid| pipeline_context.set(rid[0..]);
+
+    if (role != .PLATFORM_ADMIN) {
+        const inactive = isTenantInactive(allocator, db_pool, resolved_tenant.tenant_id[0..]) catch {
+            allocator.free(token_id);
+            allocator.free(user_id);
+            return .{ .unauthenticated = buildUnauthorized(allocator, "service unavailable") };
+        };
+        if (inactive) {
+            allocator.free(token_id);
+            allocator.free(user_id);
+            return .{ .forbidden = buildForbidden(allocator, "tenant_inactive") };
+        }
+    }
 
     // Step 10: Return authenticated.
     return .{ .authenticated = .{
