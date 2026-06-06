@@ -70,14 +70,16 @@ test "TC-ADP-09-01: migration adds nullable chain columns and validation primiti
 
     var funcs = try harness.conn.query(
         alloc,
-        \\SELECT proname
-        \\FROM pg_proc
-        \\WHERE proname IN (
-        \\  'bpm_audit_compute_chain_hash',
-        \\  'bpm_audit_apply_chain_hash',
-        \\  'bpm_audit_validate_chain'
-        \\)
-        \\ORDER BY proname ASC
+        \\SELECT p.proname
+        \\FROM pg_proc p
+        \\JOIN pg_namespace n ON n.oid = p.pronamespace
+        \\WHERE n.nspname = 'public'
+        \\  AND p.proname IN (
+        \\    'bpm_audit_compute_chain_hash',
+        \\    'bpm_audit_apply_chain_hash',
+        \\    'bpm_audit_validate_chain'
+        \\  )
+        \\ORDER BY p.proname ASC
     ,
         &.{},
     );
@@ -218,8 +220,11 @@ test "TC-ADP-09-02: new rows chain deterministically with tenant-scoped predeces
     try testing.expect(second_a[1] != null);
     try testing.expectEqualStrings(first_a[1].?, second_a[0].?);
 
-    try testing.expect(first_b[0] == null);
+    // SPT-02 (migration 064): audit chain is now global (no per-tenant predecessor).
+    // first_b chains to second_a (the immediately preceding row globally).
+    try testing.expect(first_b[0] != null);
     try testing.expect(first_b[1] != null);
+    try testing.expectEqualStrings(second_a[1].?, first_b[0].?);
     try testing.expect(second_b[0] != null);
     try testing.expect(second_b[1] != null);
     try testing.expectEqualStrings(first_b[1].?, second_b[0].?);

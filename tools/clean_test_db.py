@@ -12,10 +12,11 @@ DB = "bpm_test"
 USER = "bpm"
 
 # Tables in FK-safe deletion order (children before parents).
-# NOTE: schema_migrations is deliberately excluded — we clean test DATA only,
-# not the migration tracking table. This allows migrations to remain idempotent:
-# TestHarness.init() will see which migrations have already run and skip them.
+# Reset migration bookkeeping as well as application data so migration SQL is
+# re-applied from a clean state on every integration run.
 TABLES = [
+    "public.schema_migrations",
+    "tenant_schemas",
     "instance_definition_snapshots",
     "process_events",
     "tasks",

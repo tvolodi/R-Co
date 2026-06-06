@@ -3249,6 +3249,89 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 
 ---
 
+## Stage F8 — Tenant Management GUI
+
+**Goal:** Extend the Admin section with a full CRUD management interface for registered tenants. A `PLATFORM_ADMIN` can list all tenants, initiate registration (reusing the Stage F7 flow), edit mutable tenant attributes, and deactivate or reactivate a tenant without destroying its data.
+
+**Background:** Stage F7 (ONB-UI-01..04, RELEASED) provides the tenant registration flow. Stage F8 layers a persistent management surface on top. Deactivation is a soft-delete operation (status flag + Keycloak realm user suspension); hard deletion of PostgreSQL schemas and Keycloak realms is intentionally out of scope and requires a separate, explicitly confirmed workflow.
+
+---
+
+### TM-01 — Tenant list page `[MUST]`
+
+> A `PLATFORM_ADMIN` MUST be able to navigate to a dedicated "Tenants" page in the Admin section that lists all registered tenants. The list MUST display the following columns for each tenant: `slug`, `display_name`, `idp_realm_id`, status (`active` / `inactive`), and `created_at`. The list MUST be paginated using the same pattern as the existing Users list page. The page MUST be restricted to `PLATFORM_ADMIN`: all other authenticated roles MUST be redirected to the login screen, and the navigation entry MUST be hidden from the DOM (not merely disabled).
+
+**Acceptance Criteria:**
+- GIVEN a user authenticated with the `PLATFORM_ADMIN` role, WHEN they navigate to the Admin section, THEN a "Tenants" navigation entry is visible and leads to the Tenant list page.
+- GIVEN a user with any role other than `PLATFORM_ADMIN`, WHEN the Admin navigation is rendered, THEN no "Tenants" entry is present in the DOM.
+- GIVEN an unauthenticated user, WHEN they navigate directly to the Tenants page URL, THEN they are redirected to the login screen.
+- GIVEN the `PLATFORM_ADMIN` is on the Tenant list page, WHEN the page loads, THEN the platform calls `GET /api/v1/tenants` and renders a paginated table showing `slug`, `display_name`, `idp_realm_id`, status, and `created_at` for each tenant.
+- GIVEN the tenant list contains more entries than the configured page size, WHEN the page loads, THEN pagination controls are displayed and allow the user to navigate between pages.
+
+**See:** ONB-UI-01, TM-02, TM-03, TM-04, TM-05, OIDC-17, OIDC-18
+
+---
+
+### TM-02 — Add tenant from list page `[MUST]`
+
+> From the Tenant list page, a `PLATFORM_ADMIN` MUST be able to initiate tenant registration via a clearly labelled button or link. This action MUST open the existing ONB-UI-02 registration form (no new form is introduced). The complete Stage F7 onboarding flow (ONB-UI-02 → ONB-UI-03 → ONB-UI-04) MUST complete normally; on success the user is returned to the Tenant list page and the newly registered tenant appears in the list.
+
+**Acceptance Criteria:**
+- GIVEN the `PLATFORM_ADMIN` is on the Tenant list page, WHEN they click the "Add Tenant" (or equivalent) button, THEN they are navigated to the ONB-UI-02 tenant registration form.
+- GIVEN the `PLATFORM_ADMIN` completes a successful tenant registration via the Stage F7 flow, WHEN the ONB-UI-04 result screen is dismissed or a "Back to Tenants" action is taken, THEN the user is returned to the Tenant list page.
+- GIVEN the user returns to the Tenant list page after a successful registration, WHEN the list reloads, THEN the newly registered tenant appears in the list with status `active`.
+
+**See:** ONB-UI-01, ONB-UI-02, ONB-UI-03, ONB-UI-04, TM-01
+
+---
+
+### TM-03 — Edit tenant `[MUST]`
+
+> From the Tenant list page, a `PLATFORM_ADMIN` MUST be able to navigate to an Edit Tenant form for any listed tenant. The form MUST allow editing the following mutable fields: `display_name`, `hostname`, and `redirect_uris`. The `slug` and `idp_realm_id` fields MUST be displayed as read-only (immutable after creation). On save, the platform MUST call `PATCH /api/v1/tenants/:slug` with the updated values. The backend MUST persist the changes to `public.tenant` and propagate any `redirect_uris` changes to the corresponding Keycloak realm client.
+
+**Acceptance Criteria:**
+- GIVEN the `PLATFORM_ADMIN` is on the Tenant list page, WHEN they select "Edit" for a tenant, THEN they are navigated to the Edit Tenant form pre-populated with the tenant's current values.
+- GIVEN the Edit Tenant form is rendered, WHEN the form loads, THEN `slug` and `idp_realm_id` fields are displayed as read-only and cannot be modified.
+- GIVEN the `PLATFORM_ADMIN` modifies `display_name`, `hostname`, or `redirect_uris` and submits the form, WHEN the form is submitted, THEN the platform calls `PATCH /api/v1/tenants/:slug` with the changed values and a success confirmation is shown.
+- GIVEN a successful `PATCH /api/v1/tenants/:slug` response, WHEN the user returns to the Tenant list page, THEN the updated `display_name` is reflected in the list.
+- GIVEN a `redirect_uris` update is submitted, WHEN `PATCH /api/v1/tenants/:slug` is processed by the backend, THEN the Keycloak realm client for the tenant is updated with the new redirect URIs.
+- GIVEN a `PATCH /api/v1/tenants/:slug` request where `display_name` is empty or `hostname` is malformed, WHEN the backend validates the payload, THEN the backend returns a 422 error and the frontend displays the validation message to the user.
+
+**See:** TM-01, ONB-UI-02, OIDC-17, OIDC-18
+
+---
+
+### TM-04 — Deactivate tenant `[MUST]`
+
+> A `PLATFORM_ADMIN` MUST be able to deactivate a tenant from the Tenant list page or the Edit Tenant form. Deactivation MUST: (1) set the tenant's `status` column in `public.tenant` to `'inactive'`; (2) disable all user accounts in the corresponding Keycloak realm; (3) NOT delete the PostgreSQL tenant schema or the Keycloak realm. A confirmation dialog MUST be shown before the deactivation is applied. The tenant with `slug = 'default'` MUST NOT be deactivatable — the deactivate action MUST be hidden from the DOM (not merely disabled) for the default tenant.
+
+**Acceptance Criteria:**
+- GIVEN the `PLATFORM_ADMIN` is on the Tenant list page or Edit Tenant form for a non-default tenant, WHEN they select "Deactivate", THEN a confirmation dialog is displayed before any action is taken.
+- GIVEN the `PLATFORM_ADMIN` confirms the deactivation dialog, WHEN the confirmation is accepted, THEN the platform calls `POST /api/v1/tenants/:slug/deactivate` and the tenant's status is set to `inactive` in `public.tenant`.
+- GIVEN a successful deactivation, WHEN the backend processes the request, THEN all user accounts in the corresponding Keycloak realm are disabled.
+- GIVEN a successful deactivation, WHEN the backend processes the request, THEN the PostgreSQL tenant schema and the Keycloak realm are NOT deleted or removed.
+- GIVEN the `PLATFORM_ADMIN` is on the Tenant list page or Edit Tenant form, WHEN the tenant has `slug = 'default'`, THEN no deactivate action is present in the DOM.
+- GIVEN the `PLATFORM_ADMIN` dismisses the confirmation dialog without confirming, WHEN the dialog is dismissed, THEN no deactivation request is issued and the tenant's status remains unchanged.
+
+**See:** TM-01, TM-05, OIDC-17, OIDC-18
+
+---
+
+### TM-05 — Reactivate tenant `[MUST]`
+
+> A `PLATFORM_ADMIN` MUST be able to reactivate a previously deactivated tenant from the Tenant list page or the Edit Tenant form. Reactivation MUST: (1) set the tenant's `status` column in `public.tenant` back to `'active'`; (2) re-enable all previously disabled user accounts in the corresponding Keycloak realm. Inactive tenants MUST be visually distinct in the Tenant list (e.g. greyed-out row, `Inactive` badge) so the `PLATFORM_ADMIN` can clearly identify them.
+
+**Acceptance Criteria:**
+- GIVEN the `PLATFORM_ADMIN` is on the Tenant list page or Edit Tenant form for a deactivated tenant, WHEN they select "Reactivate", THEN the platform calls `POST /api/v1/tenants/:slug/reactivate` and the tenant's status is set to `active` in `public.tenant`.
+- GIVEN a successful reactivation, WHEN the backend processes the request, THEN all user accounts that were disabled during deactivation are re-enabled in the corresponding Keycloak realm.
+- GIVEN the Tenant list page contains at least one inactive tenant, WHEN the list is rendered, THEN inactive tenants are visually distinct from active tenants (e.g. greyed-out row, `Inactive` badge).
+- GIVEN a tenant with status `inactive`, WHEN the Edit Tenant form is displayed for that tenant, THEN a "Reactivate" action is clearly visible.
+- GIVEN a tenant with status `active`, WHEN the Tenant list or Edit Tenant form is rendered, THEN no "Reactivate" action is visible for that tenant.
+
+**See:** TM-01, TM-04, OIDC-17, OIDC-18
+
+---
+
 ## Stage SPT — Schema-Per-Tenant Migration
 
 **Goal:** Replace the row-based `tenant_id` + RLS tenancy model (introduced in earlier stages) with a PostgreSQL schema-per-tenant architecture, where every tenant's data lives in an isolated schema named `tenant_<uuid_no_hyphens>` (or `tenant_default` for the all-zeros UUID). The migration proceeds in four phases across four WF-02 runs: SPT-01 (bootstrap, done), SPT-02 (data migration), SPT-03 (code cleanup), SPT-04 (test suite update).
@@ -3319,6 +3402,7 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 
 ## Appendix A — Requirement Count Summary
 
+<!-- CHANGE: Added Stage F8 (TM-01..TM-05 = 5 MUST); Grand Total updated 2026-06-06 -->
 <!-- CHANGE: Added Stage SPT (SPT-01..SPT-04 = 4 MUST); Grand Total updated 2026-06-05 -->
 <!-- CHANGE: Corrected Stage 6.5 (31/3→ was 30/4), Stage 8 (16 → was 14), Stage 9 (12 MUST/2 SHOULD → was 13/1), ADP (14 entries including ADP-04a and ADP-04b → was 12); Grand Total recalculated accordingly, 2026-05-26 -->
 | Stage | MUST | SHOULD | COULD | Total |
@@ -3340,8 +3424,9 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 | Cross-Cutting (XC-01..XC-06) | **5** | 1 | 0 | **6** |
 | Adaptation Requirements (ADP-01..ADP-12 incl. ADP-04a, ADP-04b = 14 entries) | **13** | 1 | 0 | **14** |
 | Stage F7 — Tenant Onboarding GUI (ONB-UI-01..04) | **4** | 0 | 0 | **4** |
+| Stage F8 — Tenant Management GUI (TM-01..TM-05) | **5** | 0 | 0 | **5** |
 | Stage SPT — Schema-Per-Tenant Migration (SPT-01..SPT-04) | **4** | 0 | 0 | **4** |
-| **Grand Total** | **177** | **21** | **1** | **199** |
+| **Grand Total** | **182** | **21** | **1** | **204** |
 
 NFRs and constraints are not counted in the table above as they are cross-cutting.
 

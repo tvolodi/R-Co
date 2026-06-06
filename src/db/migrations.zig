@@ -140,7 +140,11 @@ pub const Migrations = struct {
         // Fetch already-applied versions for this specific schema.
         // Filters by schema_name so per-tenant migration state is independent.
         var applied = std.StringHashMap(void).init(allocator);
-        defer applied.deinit();
+        defer {
+            var applied_iter = applied.keyIterator();
+            while (applied_iter.next()) |k| allocator.free(k.*);
+            applied.deinit();
+        }
 
         const existing = conn.query(
             allocator,

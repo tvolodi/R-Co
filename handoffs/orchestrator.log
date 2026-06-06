@@ -511,3 +511,10 @@
 2026-06-05T12:37:03Z | BATCH_EXTEND | WF02-spt-02 | --- | ORCH | SPT-03+SPT-04 inseparable from SPT-02 (migration 062 drops tenant_id cols; Zig code still references them). Extending WF02-spt-02 run to cover SPT-02+SPT-03+SPT-04 combined (3 reqs, within batch cap of 4).
 2026-06-05T16:10:44Z | ROUTE | WF02-spt-02 | fb2a7c40-d891-45e3-8b2a-9f6a82e9d1c5 | ORCH → BACKEND-DEV | PENDING | SPT-04 full fixture fix — 24 files with tenant_id refs causing 249 test failures
 2026-06-05T16:30:15Z | TEST_RUN | WF02-spt-02 | c239949a-aa76-4db7-8c49-4d7d00a4999e | ORCH | TEST-RUNNER executed integration tests: 327/389 passing (84%), 54 failures due to tenant_id column references on dropped tables. SPT-04 fixture cleanup in progress.
+2026-06-06T04:19:11Z | ROUTE | ADHOC-swiftroute-register-20260606 | adhoc-swiftroute-register-20260606-001 | ORCH -> UAT-RUNNER | PENDING
+2026-06-06T04:45:00Z | DONE | ADHOC-swiftroute-register-20260606 | adhoc-swiftroute-register-20260606-001 | UAT-RUNNER PASS | SwiftRoute tenant registered and verified in DB + Keycloak
+2026-06-06T05:10:15Z | ROUTE | WF01-f8-tenant-mgmt-20260606 | wf01-f8-tenant-mgmt-20260606-001 | ORCH -> REQ-ANALYST | PENDING
+2026-06-06T05:14:41Z | ROUTE | WF01-f8-tenant-mgmt-20260606 | wf01-f8-tenant-mgmt-20260606-002 | ORCH -> REQ-VALIDATOR | PENDING
+2026-06-06T05:18:27Z | ROUTE | WF01-f8-tenant-mgmt-20260606 | wf01-f8-tenant-mgmt-20260606-003 | ORCH -> DOC-UPDATER | PENDING
+2026-06-06T05:19:26Z | DONE | WF01-f8-tenant-mgmt-20260606 | --- | PIPELINE COMPLETE | TM-01..TM-05 VALIDATED
+2026-06-06T05:33:18Z | ROUTE | WF02-f8-batch1-20260606 | wf02-f8-b1-20260606-000 | ORCH -> BACKEND-DEV | PENDING (Step 00 git-setup)

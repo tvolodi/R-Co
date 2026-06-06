@@ -33,6 +33,6 @@ DROP POLICY IF EXISTS tokens_tenant_policy                ON tokens;
 DROP POLICY IF EXISTS audit_entries_tenant_policy         ON audit_entries;
 DROP POLICY IF EXISTS audit_log_tenant_policy             ON audit_log;
 
-END; -- end of $guard$ block
+END;
 $guard$;
 

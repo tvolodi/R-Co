@@ -20,6 +20,11 @@ const build_options = @import("build_options");
 // ---------------------------------------------------------------------------
 
 fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void {
+    // Always run migration DDL in the public schema. The integration harness
+    // may inherit a tenant-scoped search_path from earlier sessions, which would
+    // otherwise cause the SPT-02 public-schema cleanup to be skipped.
+    try conn.exec("SET search_path TO public", &.{});
+
     // Bootstrap table.
     try conn.exec(
         \\CREATE TABLE IF NOT EXISTS schema_migrations (

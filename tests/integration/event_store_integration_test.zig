@@ -1247,9 +1247,10 @@ test "TC-ADP-01-02: schema-per-tenant architecture replaces row-level isolation"
     try std.testing.expectEqual(@as(usize, 2), all_events.len);
 }
 
-test "TC-ADP-01-03: migration removed tenant columns and indexes from events tables" {
-    // After SPT-02 (migration 062), scope columns were dropped from events and events_archive.
-    // Verify the columns are gone and tenant-scoped indexes were dropped.
+test "TC-ADP-01-03: migration dropped tenant_id from all public event-store tables" {
+    // After SPT-02 (migration 062) + SPT-03 (migration 068), all public tables
+    // including events/events_archive have no tenant_id column.
+    // Isolation is provided by schema-per-tenant search_path instead.
     const alloc = std.testing.allocator;
     var h = try TestHarness.init(alloc);
     defer h.deinit();
@@ -1263,7 +1264,7 @@ test "TC-ADP-01-03: migration removed tenant columns and indexes from events tab
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    // Verify scope columns no longer exist in events or events_archive.
+    // Verify events and events_archive have NO tenant_id after migration 068.
     const cols = try conn.query(
         alloc,
         \\SELECT table_name
@@ -1280,9 +1281,15 @@ test "TC-ADP-01-03: migration removed tenant columns and indexes from events tab
         mr.deinit();
     }
 
+    if (cols.rows.len != 0) {
+        std.debug.print(
+            "TC-ADP-01-03 FAIL: expected 0 tables with tenant_id, found {} (migration 068 should have dropped them)\n",
+            .{cols.rows.len},
+        );
+    }
     try std.testing.expectEqual(@as(usize, 0), cols.rows.len);
 
-    // Verify tenant-scoped indexes were dropped.
+    // Verify tenant-scoped indexes were dropped (migration 062).
     const idx = try conn.query(
         alloc,
         \\SELECT indexname

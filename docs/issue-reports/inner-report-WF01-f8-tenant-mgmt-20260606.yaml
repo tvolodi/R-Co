@@ -1,0 +1,45 @@
+run_id: WF01-f8-tenant-mgmt-20260606
+agent: REQ-ANALYST
+created_at: '2026-06-06T05:13:45Z'
+step: '01'
+title: Stage F8 — Tenant Management GUI requirements drafted (TM-01..TM-05)
+status: PASS
+
+summary: >
+  Five new MUST requirements (TM-01..TM-05) drafted for Stage F8 — Tenant Management GUI.
+  The section was appended to docs/BPM_Platform_Functional_Requirements.md immediately after
+  Stage F7 (ONB-UI-04). All requirements follow the same GIVEN/WHEN/THEN acceptance-criteria
+  format used by ONB-UI-01..04. TM-01..TM-05 added to docs/status/requirement_status.yaml
+  with status PENDING, stage F8, priority MUST. Appendix A count table updated (Grand Total
+  177 → 182 MUST, 199 → 204 total).
+
+artifacts_out:
+  - docs/BPM_Platform_Functional_Requirements.md
+  - docs/status/requirement_status.yaml
+
+issues: []
+
+completeness_check:
+  every_must_has_acceptance_criteria: true
+  every_must_has_given_when_then: true
+  cross_references_present: true
+  tm02_cross_references_onb_ui_01_02: true
+  tm03_notes_patch_endpoint: true
+  tm04_notes_deactivate_endpoint_and_default_guard: true
+  tm05_notes_reactivate_endpoint: true
+  no_contradictions_with_released_requirements: true
+
+notes:
+  - >
+    Backend API endpoints implied by TM-01..TM-05 (GET /api/v1/tenants,
+    PATCH /api/v1/tenants/:slug, POST /api/v1/tenants/:slug/deactivate,
+    POST /api/v1/tenants/:slug/reactivate) do not yet exist. These will become
+    Type A or Type E design artefacts in a subsequent WF-02 run.
+  - >
+    TM-04 specifies that the default tenant (slug='default') MUST NOT be
+    deactivatable and the action MUST be hidden from the DOM — not merely
+    disabled — consistent with the DOM-hiding pattern used in ONB-UI-01.
+  - >
+    Deactivation is deliberately scoped to soft-delete (status flag + Keycloak
+    user suspension). Hard deletion of schemas and Keycloak realms is out of
+    scope for Stage F8 and requires a separate explicitly confirmed workflow.

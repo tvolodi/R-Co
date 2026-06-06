@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "run_id": "WF01-f8-tenant-mgmt-20260606",
+  "entries": [
+    {
+      "handoff_id": "wf01-f8-tenant-mgmt-20260606-003",
+      "file": "handoffs/WF01-f8-tenant-mgmt-20260606/step-03-doc-updater.json",
+      "run_id": "WF01-f8-tenant-mgmt-20260606",
+      "workflow_id": "WF-01",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-06-06T05:18:27Z",
+      "started_at": "2026-06-06T05:18:58Z",
+      "completed_at": null,
+      "status": "COMPLETED",
+      "stage": "F8 \u2014 Tenant Management GUI"
+    },
+    {
+      "handoff_id": "wf01-f8-tenant-mgmt-20260606-002",
+      "file": "handoffs/WF01-f8-tenant-mgmt-20260606/step-02-req-validator.json",
+      "run_id": "WF01-f8-tenant-mgmt-20260606",
+      "workflow_id": "WF-01",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "REQ-VALIDATOR",
+      "created_at": "2026-06-06T05:14:41Z",
+      "started_at": "2026-06-06T05:15:06Z",
+      "completed_at": "2026-06-06T05:17:21Z",
+      "status": "COMPLETED",
+      "stage": "F8 \u2014 Tenant Management GUI"
+    },
+    {
+      "handoff_id": "wf01-f8-tenant-mgmt-20260606-001",
+      "file": "handoffs/WF01-f8-tenant-mgmt-20260606/step-01-req-analyst.json",
+      "run_id": "WF01-f8-tenant-mgmt-20260606",
+      "workflow_id": "WF-01",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "REQ-ANALYST",
+      "created_at": "2026-06-06T05:10:15Z",
+      "started_at": "2026-06-06T05:11:09Z",
+      "completed_at": "2026-06-06T05:13:45Z",
+      "status": "COMPLETED",
+      "stage": "F8 \u2014 Tenant Management GUI"
+    }
+  ]
+}

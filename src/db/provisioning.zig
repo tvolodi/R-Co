@@ -54,6 +54,11 @@ pub fn provisionTenantSchema(
     if (tenant_id_str.len == 0) return ProvisionError.InvalidTenantId;
     if (tenant_id_str.len != 36) return ProvisionError.InvalidTenantId;
 
+    // Derive schema name early — used for both the idempotency check and
+    // the registry update, avoiding tenant_id predicates on public.tenant_schemas.
+    var schema_buf_early: [80]u8 = undefined;
+    const schema_name_early = pool_mod.schemaNameForTenant(tenant_id_str, &schema_buf_early);
+
     // Step 2: Idempotency check.
     {
         const conn = pool.acquire() catch |err| switch (err) {
@@ -62,11 +67,12 @@ pub fn provisionTenantSchema(
         };
         defer pool.release(conn);
 
+        // Query by schema_name (unique column) to avoid a tenant_id = $N predicate
+        // on the management registry table (SPT-03 code-cleanup requirement).
         const result = conn.query(
             allocator,
-            // NOTE: public.tenant_schemas.tenant_id is a valid management column (not dropped by migration 062).
-            "SELECT count(*) FROM public.tenant_schemas ts WHERE ts.tenant_id = $1::uuid",
-            &.{tenant_id_str},
+            "SELECT count(*) FROM public.tenant_schemas WHERE schema_name = $1",
+            &.{schema_name_early},
         ) catch return ProvisionError.QueryFailed;
         defer {
             var r = result;
@@ -118,9 +124,9 @@ pub fn provisionTenantSchema(
         defer pool.release(conn);
 
         conn.exec(
-            // NOTE: public.tenant_schemas.tenant_id is a valid management column (not dropped by migration 062).
-            "UPDATE public.tenant_schemas ts SET migrations_applied_at = NOW() WHERE ts.tenant_id = $1::uuid",
-            &.{tenant_id_str},
+            // Query by schema_name to avoid tenant_id predicates (SPT-03).
+            "UPDATE public.tenant_schemas SET migrations_applied_at = NOW() WHERE schema_name = $1",
+            &.{schema_name},
         ) catch return ProvisionError.RegistryUpdateFailed;
     }
 }

@@ -1,0 +1,131 @@
+run_id: WF01-f8-tenant-mgmt-20260606
+agent: REQ-VALIDATOR
+created_at: '2026-06-06T05:17:21Z'
+step: '02'
+title: Stage F8 — Tenant Management GUI requirements validated (TM-01..TM-05)
+status: PASS
+
+summary: >
+  All five MUST requirements TM-01..TM-05 passed the WF-01 Step 2 completeness and
+  consistency checks. Each requirement has a unique ID, priority tag, description
+  paragraph, at least one GIVEN/WHEN/THEN acceptance criterion, and a See:
+  cross-reference block. All cross-referenced IDs (ONB-UI-01..04, OIDC-17,
+  OIDC-18, TM-01..TM-05) exist in the document and are RELEASED or in-set.
+  No orphaned references. No contradictions with released requirements.
+  TM-02 correctly references ONB-UI-01 and ONB-UI-02. TM-04 includes the default
+  tenant guard (slug='default' MUST NOT be deactivatable; action hidden from DOM).
+  TM-03/04/05 all include acceptance criteria referencing their respective backend
+  API endpoints. All five requirements appear in docs/status/requirement_status.yaml
+  with status: PENDING. Two MINOR issues noted (do not block PASS).
+
+requirement_ids_validated:
+  - TM-01
+  - TM-02
+  - TM-03
+  - TM-04
+  - TM-05
+
+completeness_checks:
+  TM-01:
+    id_unique_format: PASS
+    priority_tag_present: PASS  # [MUST]
+    description_paragraph: PASS
+    given_when_then_ac_count: 5
+    see_cross_references: PASS  # ONB-UI-01, TM-02..TM-05, OIDC-17, OIDC-18
+    vague_language: PASS
+  TM-02:
+    id_unique_format: PASS
+    priority_tag_present: PASS  # [MUST]
+    description_paragraph: PASS
+    given_when_then_ac_count: 3
+    see_cross_references: PASS  # ONB-UI-01, ONB-UI-02, ONB-UI-03, ONB-UI-04, TM-01
+    references_onb_ui_01: PASS
+    references_onb_ui_02: PASS
+    vague_language: PASS
+  TM-03:
+    id_unique_format: PASS
+    priority_tag_present: PASS  # [MUST]
+    description_paragraph: PASS
+    given_when_then_ac_count: 6
+    see_cross_references: PASS  # TM-01, ONB-UI-02, OIDC-17, OIDC-18
+    backend_endpoint_in_ac: PASS  # PATCH /api/v1/tenants/:slug
+    vague_language: PASS
+  TM-04:
+    id_unique_format: PASS
+    priority_tag_present: PASS  # [MUST]
+    description_paragraph: PASS
+    given_when_then_ac_count: 6
+    see_cross_references: PASS  # TM-01, TM-05, OIDC-17, OIDC-18
+    backend_endpoint_in_ac: PASS  # POST /api/v1/tenants/:slug/deactivate
+    default_tenant_guard: PASS   # slug='default' hidden from DOM explicitly
+    vague_language: PASS
+  TM-05:
+    id_unique_format: PASS
+    priority_tag_present: PASS  # [MUST]
+    description_paragraph: PASS
+    given_when_then_ac_count: 5
+    see_cross_references: PASS  # TM-01, TM-04, OIDC-17, OIDC-18
+    backend_endpoint_in_ac: PASS  # POST /api/v1/tenants/:slug/reactivate
+    vague_language: PASS
+
+consistency_checks:
+  no_orphaned_cross_references: PASS
+  # ONB-UI-01: RELEASED (F7) ✓
+  # ONB-UI-02: RELEASED (F7) ✓
+  # ONB-UI-03: RELEASED (F7) ✓
+  # ONB-UI-04: RELEASED (F7) ✓
+  # OIDC-17: RELEASED (6.5) ✓
+  # OIDC-18: RELEASED (6.5) ✓
+  # TM-01..TM-05: in-set ✓
+  no_contradiction_onb_ui_01: PASS  # TM-01 adds Tenants page alongside Register Tenant — complementary
+  no_contradiction_onb_ui_02: PASS  # TM-02 reuses the existing form, no new form introduced
+  no_contradiction_oidc_17: PASS    # No new provisioning endpoint conflicts
+  no_contradiction_oidc_18: PASS    # Deactivation/reactivation are management ops, not provisioning
+  no_contradiction_oidc_19: PASS    # No contradiction; see MINOR issue below
+  change_comment_present: PASS      # <!-- CHANGE: Added Stage F8 (TM-01..TM-05 = 5 MUST); ... -->
+  status_yaml_all_pending: PASS     # All 5 present with status: PENDING
+
+security_checks:
+  TM-01_access_control_specified: PASS   # PLATFORM_ADMIN only; others hidden from DOM
+  TM-02_access_control_specified: PASS   # inherits TM-01 / ONB-UI-01 PLATFORM_ADMIN guard
+  TM-03_access_control_specified: PASS   # PLATFORM_ADMIN guard on Tenant list
+  TM-04_access_control_specified: PASS   # PLATFORM_ADMIN; confirmation dialog required
+  TM-05_access_control_specified: PASS   # PLATFORM_ADMIN
+  TM-03_input_validation_specified: PASS # 422 error on empty display_name or malformed hostname
+
+issues:
+  - id: WF01-f8-VAL-01
+    severity: MINOR
+    requirement_ids: [TM-04, TM-05]
+    description: >
+      TM-04 and TM-05 both involve Keycloak adapter calls (disable/re-enable realm users)
+      but neither references OIDC-19 (Provisioning audit), which mandates that all adapter
+      calls be recorded in the platform audit log. There is no acceptance criterion requiring
+      that deactivation/reactivation operations appear in the audit log. This is not a
+      contradiction (the requirements do not prohibit auditing), but explicit coverage
+      would improve traceability.
+    recommendation: >
+      Add OIDC-19 to the See: block of TM-04 and TM-05, and add an AC to each:
+      "GIVEN a successful deactivation/reactivation, WHEN the audit log is queried,
+      THEN an audit entry recording the actor, operation, and outcome is present."
+
+  - id: WF01-f8-VAL-02
+    severity: MINOR
+    requirement_ids: [TM-04]
+    description: >
+      TM-04 specifies two backend operations: (1) set public.tenant status to 'inactive'
+      and (2) disable all Keycloak realm users. No acceptance criterion addresses partial
+      failure (e.g. DB write succeeds but Keycloak call fails). The requirement does not
+      contradict OIDC-18 (which is scoped to provisioning endpoints), but the absence of
+      an explicit error-handling AC leaves ambiguity for BACKEND-DEV implementation.
+    recommendation: >
+      Add an AC: "GIVEN the Keycloak user-disable step fails during deactivation, WHEN
+      the error occurs, THEN the tenant status in public.tenant is NOT changed and the
+      endpoint returns an appropriate error response to the caller."
+
+verdict: PASS
+verdict_rationale: >
+  All mandatory completeness and consistency checks pass. The two MINOR issues identified
+  (missing OIDC-19 cross-reference in TM-04/TM-05; missing partial-failure AC in TM-04)
+  do not block downstream implementation. They are noted for REQ-ANALYST awareness on the
+  next rework cycle or as advisory guidance for BACKEND-DEV.

@@ -695,6 +695,28 @@ pub fn build(b: *std.Build) void {
         .{ .name = "build_options", .module = build_options_mod },
     };
 
+    const apply_integration_env = struct {
+        fn apply(run: *std.Build.Step.Run, allocator: std.mem.Allocator) void {
+            const env = std.process.Environ{ .block = .global };
+            var env_map = std.process.Environ.createMap(env, allocator) catch |err| {
+                std.log.err("failed to read parent environment for integration tests: {s}", .{@errorName(err)});
+                return;
+            };
+            errdefer env_map.deinit();
+
+            inline for (.{ "BPM_DB_URL", "BPM_TEST_DB_URL", "BPM_TEST_URL", "BPM_IDP_BASE_URL" }) |name| {
+                if (env_map.get(name)) |value| {
+                    const owned = allocator.dupe(u8, value) catch {
+                        std.log.err("failed to copy env var {s} for integration tests", .{name});
+                        return;
+                    };
+                    run.setEnvironmentVariable(name, owned);
+                }
+            }
+            env_map.deinit();
+        }
+    }.apply;
+
     const integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/main_test.zig"),
@@ -706,6 +728,7 @@ pub fn build(b: *std.Build) void {
     const run_integration_tests = b.addRunArtifact(integration_tests);
     run_integration_tests.setCwd(b.path("."));
     run_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    apply_integration_env(run_integration_tests, b.allocator);
 
     const xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -718,6 +741,7 @@ pub fn build(b: *std.Build) void {
     const run_xc04_integration_tests = b.addRunArtifact(xc04_integration_tests);
     run_xc04_integration_tests.setCwd(b.path("."));
     run_xc04_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    apply_integration_env(run_xc04_integration_tests, b.allocator);
 
     const stage11_sim_xc04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -730,6 +754,7 @@ pub fn build(b: *std.Build) void {
     const run_stage11_sim_xc04_integration_tests = b.addRunArtifact(stage11_sim_xc04_integration_tests);
     run_stage11_sim_xc04_integration_tests.setCwd(b.path("."));
     run_stage11_sim_xc04_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    apply_integration_env(run_stage11_sim_xc04_integration_tests, b.allocator);
 
     const sim05_08_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -742,6 +767,7 @@ pub fn build(b: *std.Build) void {
     const run_sim05_08_integration_tests = b.addRunArtifact(sim05_08_integration_tests);
     run_sim05_08_integration_tests.setCwd(b.path("."));
     run_sim05_08_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    apply_integration_env(run_sim05_08_integration_tests, b.allocator);
 
     const obs03_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -754,6 +780,7 @@ pub fn build(b: *std.Build) void {
     const run_obs03_integration_tests = b.addRunArtifact(obs03_integration_tests);
     run_obs03_integration_tests.setCwd(b.path("."));
     run_obs03_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    apply_integration_env(run_obs03_integration_tests, b.allocator);
 
     const adm_ui_09_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -766,6 +793,7 @@ pub fn build(b: *std.Build) void {
     const run_adm_ui_09_integration_tests = b.addRunArtifact(adm_ui_09_integration_tests);
     run_adm_ui_09_integration_tests.setCwd(b.path("."));
     run_adm_ui_09_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    apply_integration_env(run_adm_ui_09_integration_tests, b.allocator);
 
     const obs04_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -778,6 +806,7 @@ pub fn build(b: *std.Build) void {
     const run_obs04_integration_tests = b.addRunArtifact(obs04_integration_tests);
     run_obs04_integration_tests.setCwd(b.path("."));
     run_obs04_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    apply_integration_env(run_obs04_integration_tests, b.allocator);
 
     const adp12_regression_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -790,6 +819,7 @@ pub fn build(b: *std.Build) void {
     const run_adp12_regression_tests = b.addRunArtifact(adp12_regression_tests);
     run_adp12_regression_tests.setCwd(b.path("."));
     run_adp12_regression_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    apply_integration_env(run_adp12_regression_tests, b.allocator);
 
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });

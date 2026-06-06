@@ -108,7 +108,7 @@ pub const AppendResult = struct {
 };
 
 pub const ReadOpts = struct {
-    tenant_id: []const u8 = DEFAULT_TENANT_ID,
+    tenant_id: ?[]const u8 = null,
     /// Return events with sequence_number ≤ value; null = no upper limit (ES-06).
     up_to_sequence: ?i64,
     /// Return events with created_at ≤ value (UTC µs); null = no upper limit (ES-06).
@@ -117,7 +117,7 @@ pub const ReadOpts = struct {
 };
 
 pub const GlobalReadOpts = struct {
-    tenant_id: []const u8 = DEFAULT_TENANT_ID,
+    tenant_id: ?[]const u8 = null,
     /// Resume cursor: return events with global_seq > value; null = from start (ES-04).
     after_global_seq: ?i64,
     /// Optional correlation filter for ADP-06 metadata propagation.
@@ -127,7 +127,7 @@ pub const GlobalReadOpts = struct {
 };
 
 pub const HistoryReadOpts = struct {
-    tenant_id: []const u8 = DEFAULT_TENANT_ID,
+    tenant_id: ?[]const u8 = null,
     /// Optional: filter to a specific event_type name. Null = all types.
     event_type: ?[]const u8,
     /// Optional: inclusive lower bound on created_at (UTC µs). Null = no lower bound.
@@ -379,8 +379,9 @@ pub const Store = struct {
         else
             params.payload;
 
-        const insert_rows = conn.query(
-            allocator,
+        // SPT-03: tenant_id column removed from public.events by migration 068.
+        // Schema-per-tenant search_path is the sole isolation boundary.
+        const insert_sql =
             \\INSERT INTO events
             \\  (instance_id, event_type, payload, actor_id,
             \\sequence_number, idempotency_key, metadata,
@@ -398,17 +399,24 @@ pub const Store = struct {
             \\  event_id, instance_id, event_type, payload, actor_id,
             \\  (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
             \\  sequence_number, idempotency_key, metadata, global_seq
-        ,
-            &.{
-                uuidToHex(param_alloc, params.instance_id) catch return StoreError.TransactionFailed,
-                params.event_type,
-                stored_payload,
-                uuidToHex(param_alloc, params.actor_id) catch return StoreError.TransactionFailed,
-                intToStr(param_alloc, sequence_number) catch return StoreError.TransactionFailed,
-                params.idempotency_key,
-                metadata,
-                effective_pipeline_run_id,
-            },
+        ;
+
+        var insert_params = std.ArrayList([]const u8).empty;
+        defer insert_params.deinit(allocator);
+
+        insert_params.append(allocator, uuidToHex(param_alloc, params.instance_id) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
+        insert_params.append(allocator, params.event_type) catch return StoreError.TransactionFailed;
+        insert_params.append(allocator, stored_payload) catch return StoreError.TransactionFailed;
+        insert_params.append(allocator, uuidToHex(param_alloc, params.actor_id) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
+        insert_params.append(allocator, intToStr(param_alloc, sequence_number) catch return StoreError.TransactionFailed) catch return StoreError.TransactionFailed;
+        insert_params.append(allocator, params.idempotency_key) catch return StoreError.TransactionFailed;
+        insert_params.append(allocator, metadata) catch return StoreError.TransactionFailed;
+        insert_params.append(allocator, effective_pipeline_run_id) catch return StoreError.TransactionFailed;
+
+        const insert_rows = conn.query(
+            allocator,
+            insert_sql,
+            insert_params.items,
         ) catch {
             conn.exec("ROLLBACK", &.{}) catch {};
             return StoreError.TransactionFailed;
@@ -540,6 +548,9 @@ pub const Store = struct {
         }
         if (check.rows.len == 0) return StoreError.InstanceNotFound;
 
+        // SPT-03: tenant_id column removed from events by migration 068.
+        // search_path is the sole tenancy isolation boundary.
+
         // Build the filter clause.  up_to_sequence takes precedence (ES-06).
         if (opts.up_to_sequence != null) {
             const rows = conn.query(
@@ -633,6 +644,9 @@ pub const Store = struct {
         const page_size: u32 = if (opts.limit == 0 or opts.limit > 1000) 100 else opts.limit;
         const cursor: i64 = opts.after_global_seq orelse 0;
         const pipeline_filter = opts.pipeline_run_id orelse "";
+        // SPT-03: tenant_id column removed from events by migration 068.
+        // search_path is the sole tenancy isolation boundary.
+        _ = opts.tenant_id;
 
         // Parameterised query — no string interpolation. (ES-04, security)
         const rows = conn.query(
@@ -1317,6 +1331,16 @@ fn validateMetadata(allocator: std.mem.Allocator, metadata: []const u8) StoreErr
             else => return StoreError.MetadataInvalid,
         }
     }
+}
+
+fn hasColumn(conn: anytype, allocator: std.mem.Allocator, table_name: []const u8, column_name: []const u8) bool {
+    var rows = conn.query(
+        allocator,
+        "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1 AND column_name = $2",
+        &.{ table_name, column_name },
+    ) catch return false;
+    defer rows.deinit();
+    return rows.rows.len > 0 and rows.rows[0].len > 0 and rows.rows[0][0] != null;
 }
 
 /// Render a UUID as a lowercase hex string with hyphens: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.

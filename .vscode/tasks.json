@@ -60,6 +60,38 @@
 				"-Precheck"
 			],
 			"isBackground": false
+		},
+		{
+			"label": "zig-test-targeted",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"cd /d c:\\Users\\tvolo\\dev\\ai-dala\\My-Fab && set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test && set BPM_TEST_URL=http://127.0.0.1:8080 && set BPM_IDP_BASE_URL=http://127.0.0.1:8081 && zig build test-integration -- --test-filter TC-ES-01-01"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "zig-test-filter-adp01-03",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration -- --test-filter \"TC-ADP-01-03\" > test-adp01-03.log 2>&1"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "zig-test-integration-filter-spt02",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test && set BPM_TEST_URL=http://127.0.0.1:8080 && set BPM_IDP_BASE_URL=http://127.0.0.1:8081 && zig build test-integration -- --test-filter TC-SPT-02-03"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
 		}
 	]
 }

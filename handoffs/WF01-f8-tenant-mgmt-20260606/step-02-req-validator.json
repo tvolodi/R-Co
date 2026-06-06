@@ -1,0 +1,77 @@
+{
+  "handoff_id": "wf01-f8-tenant-mgmt-20260606-002",
+  "run_id": "WF01-f8-tenant-mgmt-20260606",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-VALIDATOR",
+  "created_at": "2026-06-06T05:14:41Z",
+  "started_at": "2026-06-06T05:15:06Z",
+  "completed_at": "2026-06-06T05:17:21Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F8 \u2014 Tenant Management GUI",
+    "requirement_ids": [
+      "TM-01",
+      "TM-02",
+      "TM-03",
+      "TM-04",
+      "TM-05"
+    ],
+    "related_handoff_ids": [
+      "wf01-f8-tenant-mgmt-20260606-001"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/requirement_status.yaml",
+      "docs/issue-reports/inner-report-WF01-f8-tenant-mgmt-20260606.yaml"
+    ]
+  },
+  "task": {
+    "description": "Validate requirements TM-01 through TM-05 in docs/BPM_Platform_Functional_Requirements.md (Stage F8 \u2014 Tenant Management GUI). Run the full completeness and consistency checks from WF-01 Step 2. Return PASS or FAIL with a detailed issue list.",
+    "acceptance_criteria": [
+      "Each of TM-01..TM-05 has: ID, priority tag, description paragraph, at least one GIVEN/WHEN/THEN acceptance criterion, See: cross-references",
+      "No orphaned cross-references (all mentioned IDs exist in the document)",
+      "TM-02 references ONB-UI-01 and ONB-UI-02",
+      "TM-03/TM-04/TM-05 reference the new backend API endpoints as acceptance criteria",
+      "TM-04 includes the default tenant guard",
+      "No contradictions with RELEASED requirements ONB-UI-01..04, OIDC-17, OIDC-18, OIDC-19",
+      "All 5 requirements appear in docs/status/requirement_status.yaml with status: PENDING"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:check-requirement-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Requirements TM-01..TM-05 validated. All completeness and consistency checks pass. Two MINOR issues noted (missing OIDC-19 cross-reference in TM-04/TM-05; missing partial-failure AC in TM-04) \u2014 neither blocks downstream implementation.",
+    "artifacts_out": [
+      "docs/issue-reports/inner-report-WF01-f8-tenant-mgmt-20260606-step02.yaml"
+    ],
+    "issues": [
+      {
+        "id": "WF01-f8-VAL-01",
+        "severity": "MINOR",
+        "requirement_ids": [
+          "TM-04",
+          "TM-05"
+        ],
+        "description": "TM-04 and TM-05 do not reference OIDC-19 (Provisioning audit). No AC requires Keycloak adapter calls during deactivation/reactivation to appear in the audit log."
+      },
+      {
+        "id": "WF01-f8-VAL-02",
+        "severity": "MINOR",
+        "requirement_ids": [
+          "TM-04"
+        ],
+        "description": "TM-04 has no partial-failure AC: if DB status update succeeds but Keycloak user-disable fails, expected system behaviour is unspecified."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER (Step 3 \u2014 set TM-01..05 to VALIDATED)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

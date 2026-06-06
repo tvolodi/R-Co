@@ -21,11 +21,11 @@ pub const ConfigKind = enum {
 
 /// Per-node capability timeouts (milliseconds).
 pub const CapabilityConfig = struct {
-    tier1_node_timeout_ms: u32 = 30_000,    // 30 seconds
-    tier2_node_timeout_ms: u32 = 120_000,   // 2 minutes
-    tier3_node_timeout_ms: u32 = 300_000,   // 5 minutes
+    tier1_node_timeout_ms: u32 = 30_000, // 30 seconds
+    tier2_node_timeout_ms: u32 = 120_000, // 2 minutes
+    tier3_node_timeout_ms: u32 = 300_000, // 5 minutes
     user_task_timeout_ms: u32 = 86_400_000, // 24 hours
-    service_task_timeout_ms: u32 = 60_000,  // 1 minute
+    service_task_timeout_ms: u32 = 60_000, // 1 minute
 };
 
 /// Tier selection rules for LLM model selection.
@@ -82,10 +82,13 @@ pub const ConfigError = error{
 ///
 /// Configuration is NOT cached; reads from repository on every call.
 /// Callers may wrap this in a TTL cache if high-frequency reads are needed.
+///
+/// SPT-03: tenant_id parameter removed. The pool connection's search_path is
+/// already set to the correct tenant schema, so unqualified table references
+/// resolve to the right tenant automatically.
 pub fn loadActiveConfig(
     allocator: std.mem.Allocator,
     pool: *db.Pool,
-    tenant_id: []const u8,
 ) ConfigError!PlatformConfig {
     var config = PlatformConfig{
         .capabilities = CapabilityConfig{},
@@ -94,27 +97,27 @@ pub fn loadActiveConfig(
         .monitoring = MonitoringConfig{},
     };
 
-    if (loadConfigArtifact(allocator, pool, tenant_id, .capabilities, "capabilities")) |maybe_json| {
+    if (loadConfigArtifact(allocator, pool, .capabilities, "capabilities")) |maybe_json| {
         if (maybe_json) |json| {
             defer allocator.free(json);
             parseCapabilities(json, &config.capabilities) catch {};
         }
     } else |_| {}
 
-    if (loadConfigArtifact(allocator, pool, tenant_id, .tier_rules, "tier_rules")) |maybe_json| {
+    if (loadConfigArtifact(allocator, pool, .tier_rules, "tier_rules")) |maybe_json| {
         if (maybe_json) |json| {
             defer allocator.free(json);
         }
     } else |_| {}
 
-    if (loadConfigArtifact(allocator, pool, tenant_id, .budget_limits, "budget_limits")) |maybe_json| {
+    if (loadConfigArtifact(allocator, pool, .budget_limits, "budget_limits")) |maybe_json| {
         if (maybe_json) |json| {
             defer allocator.free(json);
             parseBudgetLimits(json, &config.budget_limits) catch {};
         }
     } else |_| {}
 
-    if (loadConfigArtifact(allocator, pool, tenant_id, .monitoring_config, "monitoring_config")) |maybe_json| {
+    if (loadConfigArtifact(allocator, pool, .monitoring_config, "monitoring_config")) |maybe_json| {
         if (maybe_json) |json| {
             defer allocator.free(json);
             parseMonitoringConfig(json, &config.monitoring) catch {};
@@ -125,8 +128,6 @@ pub fn loadActiveConfig(
 }
 
 fn parseU32FromJson(key: []const u8, json: []const u8) ?u32 {
-    const pattern_start = "\"";
-    const pattern_mid = "\":";
     var search: []const u8 = json;
     while (search.len > 0) {
         const key_start = std.mem.indexOf(u8, search, key) orelse return null;
@@ -183,10 +184,10 @@ fn parseMonitoringConfig(json: []const u8, out: *MonitoringConfig) error{}!void 
 }
 
 /// Load a specific configuration artifact by kind and name.
+/// SPT-03: tenant_id parameter removed; search_path isolation is sufficient.
 pub fn loadConfigArtifact(
     allocator: std.mem.Allocator,
     pool: *db.Pool,
-    tenant_id: []const u8,
     kind: ConfigKind,
     artifact_name: []const u8,
 ) ConfigError!?[]const u8 {
@@ -206,12 +207,11 @@ pub fn loadConfigArtifact(
         \\SELECT ra.content_json::text
         \\FROM tenant_artifact_activations taa
         \\JOIN repository_artifacts ra ON ra.version_id = taa.active_version_id
-        \\WHERE taa.tenant_id = $1
-        \\  AND taa.artifact_kind = $2
-        \\  AND taa.artifact_name = $3
+        \\WHERE taa.artifact_kind = $1
+        \\  AND taa.artifact_name = $2
         \\LIMIT 1
     ,
-        &.{ tenant_id, kind_name, artifact_name },
+        &.{ kind_name, artifact_name },
     ) catch return ConfigError.DatabaseError;
     defer rows.deinit();
 
@@ -260,7 +260,7 @@ pub fn validateConfigArtifact(
 const testing = std.testing;
 
 test "loadActiveConfig: returns default safe values" {
-    const config = try loadActiveConfig(testing.allocator, undefined, "00000000-0000-0000-0000-000000000000");
+    const config = try loadActiveConfig(testing.allocator, undefined);
     try testing.expectEqual(@as(u32, 30_000), config.capabilities.tier1_node_timeout_ms);
     try testing.expectEqual(@as(u32, 120_000), config.capabilities.tier2_node_timeout_ms);
 }

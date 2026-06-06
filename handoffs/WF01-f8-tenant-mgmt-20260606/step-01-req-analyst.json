@@ -1,0 +1,54 @@
+{
+  "handoff_id": "wf01-f8-tenant-mgmt-20260606-001",
+  "run_id": "WF01-f8-tenant-mgmt-20260606",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-ANALYST",
+  "created_at": "2026-06-06T05:10:15Z",
+  "started_at": "2026-06-06T05:11:09Z",
+  "completed_at": "2026-06-06T05:13:45Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F8 \u2014 Tenant Management GUI",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "adhoc-swiftroute-register-20260606-001"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/requirement_status.yaml"
+    ]
+  },
+  "task": {
+    "description": "Draft a new stage 'F8 \u2014 Tenant Management GUI' in docs/BPM_Platform_Functional_Requirements.md. This stage extends Stage F7 (Tenant Onboarding GUI, ONB-UI-01..04 RELEASED) with a full CRUD management interface for registered tenants.\n\n## User request (verbatim)\n\"A user with correspondent roles/permissions can view registered tenants in the system GUI. From this form he also can add, edit and delete (deactivate) tenant.\"\n\n## Business context\n- The platform is multi-tenant. Each tenant is stored in public.tenant and has an isolated PostgreSQL schema + a dedicated Keycloak realm.\n- Tenant registration already works via the ONB-UI flow (F7). That flow remains. The new feature adds a management surface on top.\n- 'Delete' means deactivation (soft-delete), NOT hard deletion, because removing a tenant's schema and Keycloak realm is a destructive, irreversible operation that must be handled separately with explicit confirmation.\n- The role that can manage tenants is PLATFORM_ADMIN (already defined in the system).\n\n## Requirements to draft (ID prefix: TM, stage: F8)\n\nDraft the following requirements. Use exactly this ID prefix and numbering:\n\n**TM-01 \u2014 Tenant list page [MUST]**\nA PLATFORM_ADMIN can navigate to a 'Tenants' page in the Admin section that lists all registered tenants. The list must show: slug, display_name, idp_realm_id, status (active/inactive), created_at. The list must be paginated (same pattern as the existing Users list page). Non-PLATFORM_ADMIN users must not see the page (hidden from DOM, redirect to login).\n\n**TM-02 \u2014 Add tenant from list page [MUST]**\nFrom the Tenant list page, PLATFORM_ADMIN can initiate tenant registration via a button/link that opens the existing ONB-UI-02 registration form (no new form needed \u2014 reuse Stage F7). Cross-reference ONB-UI-01, ONB-UI-02.\n\n**TM-03 \u2014 Edit tenant [MUST]**\nFrom the Tenant list page, PLATFORM_ADMIN can navigate to an Edit Tenant form for any listed tenant. The form must allow editing: display_name, hostname, redirect_uris. The slug and idp_realm_id are immutable after creation. On save, the platform calls a PATCH /api/v1/tenants/:slug endpoint. The backend must update the tenant record and propagate redirect_uri changes to the corresponding Keycloak realm client.\n\n**TM-04 \u2014 Deactivate tenant [MUST]**\nFrom the Tenant list page or Edit Tenant form, PLATFORM_ADMIN can deactivate a tenant. Deactivation must: (1) set a status column on the tenant record to 'inactive'; (2) disable all users in the corresponding Keycloak realm; (3) NOT delete the PostgreSQL schema or the Keycloak realm. A confirmation dialog must be shown before deactivation ('This will prevent all SwiftRoute users from logging in. Continue?'). The default tenant (slug='default') MUST NOT be deactivatable \u2014 the UI must hide the deactivate action for it.\n\n**TM-05 \u2014 Reactivate tenant [MUST]**\nFrom the Tenant list page or Edit Tenant form, PLATFORM_ADMIN can reactivate a previously deactivated tenant. Reactivation must: re-enable all previously disabled users in the corresponding Keycloak realm; set status back to 'active'. A deactivated tenant's status must be visually distinct in the list (e.g. greyed out row, 'Inactive' badge).\n\n## Backend API implications (note for REQ-ANALYST to include as cross-references)\nThese requirements imply new backend endpoints that do not yet exist:\n- GET /api/v1/tenants \u2014 list all tenants (paginated)\n- PATCH /api/v1/tenants/:slug \u2014 update display_name, hostname, redirect_uris\n- POST /api/v1/tenants/:slug/deactivate \u2014 soft-delete\n- POST /api/v1/tenants/:slug/reactivate \u2014 re-enable\n\nREQ-ANALYST must note these as acceptance criteria items \u2014 they will become Type A or Type E design artefacts in a subsequent WF-02 run.\n\n## Instructions for REQ-ANALYST\n1. Read the end of docs/BPM_Platform_Functional_Requirements.md (after Stage F7 / ONB-UI-04)\n2. Append a new '## Stage F8 \u2014 Tenant Management GUI' section after Stage F7\n3. Write TM-01 through TM-05 using the same format as ONB-UI-01..04 (ID, priority tag, description, acceptance criteria in GIVEN/WHEN/THEN format, See: cross-references)\n4. Add TM-01..TM-05 entries to docs/status/requirement_status.yaml with status: PENDING\n5. Call fn:register-inner-report then fn:complete-handoff\n6. Set next_action: 'Route to REQ-VALIDATOR'",
+    "acceptance_criteria": [
+      "Stage F8 section appended to docs/BPM_Platform_Functional_Requirements.md after Stage F7",
+      "TM-01 through TM-05 each have: ID, [MUST] priority, description paragraph, GIVEN/WHEN/THEN acceptance criteria, See: cross-references",
+      "TM-02 cross-references ONB-UI-01 and ONB-UI-02",
+      "TM-03 and TM-04/TM-05 note the new backend API endpoints as acceptance criteria",
+      "TM-04 includes the default tenant guard (slug='default' cannot be deactivated)",
+      "TM-01..TM-05 added to docs/status/requirement_status.yaml with status: PENDING, stage: F8",
+      "No contradictions with existing RELEASED requirements (ONB-UI-01..04, OIDC-17..19)"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Drafted Stage F8 requirements TM-01..TM-05 (Tenant Management GUI). Section appended to docs/BPM_Platform_Functional_Requirements.md after Stage F7. TM-01..TM-05 added to requirement_status.yaml with status PENDING. Appendix A Grand Total updated to 182 MUST / 204 total.",
+    "artifacts_out": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/requirement_status.yaml",
+      "docs/issue-reports/inner-report-WF01-f8-tenant-mgmt-20260606.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to REQ-VALIDATOR"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

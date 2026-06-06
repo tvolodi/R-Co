@@ -4,8 +4,9 @@
 //! Covers all 6 SPT-02 acceptance criteria. Tests operate against the
 //! post-migration state (migrations 061, 062, 063 already applied by
 //! TestHarness.init()):
-//!   - public tables have no tenant_id column (dropped by 062)
-//!   - bpm_effective_tenant_id() function does not exist (dropped by 062)
+//!   - legacy public tables no longer carry tenant_id after 062
+//!   - public event-store tables still keep tenant_id for runtime compatibility
+//!   - bpm_effective_tenant_id() exists as a compatibility stub after 066
 //!   - all 6 tenant RLS policies are absent (dropped by 062 + 063)
 //!   - public.tenant_schemas has a status TEXT column (added by 061)
 //!
@@ -183,8 +184,9 @@ test "TC-SPT-02-02: data inserted into one tenant schema is not visible from ano
 // ---------------------------------------------------------------------------
 // TC-SPT-02-03 (AC-3)
 // GIVEN migration 062 was applied, THEN:
-//   (a) No tenant_id column exists on any affected public table.
-//   (b) bpm_effective_tenant_id() function does not exist in the public schema.
+//   (a) legacy public tables no longer carry tenant_id, while public
+//       events/events_archive still keep tenant_id for runtime compatibility.
+//   (b) bpm_effective_tenant_id() exists in public as a compatibility stub.
 //   (c) All 6 known tenant RLS policies are absent.
 //   (d) RLS is disabled on all affected tables.
 //   (e) All known tenant_id composite indexes are absent.
@@ -195,26 +197,44 @@ test "TC-SPT-02-03: migration 062 removed tenant_id columns, bpm_effective_tenan
     var h = try TestHarness.init(alloc);
     defer h.deinit();
 
-    // ── (a) No tenant_id column on any affected public table ──────────────────
-    var col_result = try h.conn.query(alloc,
+    // ── (a) Legacy public tables dropped tenant_id. After migration 068 (SPT-03),
+    //       events/events_archive also no longer carry tenant_id. All counts must be 0.
+    var legacy_col_result = try h.conn.query(alloc,
         \\SELECT count(*) FROM information_schema.columns
         \\WHERE table_schema = 'public'
         \\  AND column_name  = 'tenant_id'
         \\  AND table_name IN (
-        \\      'events', 'events_archive', 'process_definitions',
-        \\      'instance_projections', 'tasks', 'tokens',
+        \\      'process_definitions', 'instance_projections', 'tasks', 'tokens',
         \\      'audit_entries', 'audit_log', 'users', 'groups', 'tenant_hostnames'
         \\  )
     , &.{});
-    defer col_result.deinit();
-    try std.testing.expect(col_result.rows.len > 0);
-    const col_count = try std.fmt.parseInt(i64, col_result.rows[0][0] orelse return error.TestUnexpectedResult, 10);
-    if (col_count != 0) {
-        std.debug.print("TC-SPT-02-03 (a): expected 0 tenant_id columns on public tables, found {}\n", .{col_count});
+    defer legacy_col_result.deinit();
+    try std.testing.expect(legacy_col_result.rows.len > 0);
+    const legacy_col_count = try std.fmt.parseInt(i64, legacy_col_result.rows[0][0] orelse return error.TestUnexpectedResult, 10);
+    if (legacy_col_count != 0) {
+        std.debug.print("TC-SPT-02-03 (a): expected 0 tenant_id columns on legacy public tables, found {}\n", .{legacy_col_count});
     }
-    try std.testing.expectEqual(@as(i64, 0), col_count);
+    try std.testing.expectEqual(@as(i64, 0), legacy_col_count);
 
-    // ── (b) bpm_effective_tenant_id() function does not exist ─────────────────
+    // Migration 068 (SPT-03) dropped tenant_id from events/events_archive too.
+    var runtime_col_result = try h.conn.query(alloc,
+        \\SELECT count(*) FROM information_schema.columns
+        \\WHERE table_schema = 'public'
+        \\  AND column_name  = 'tenant_id'
+        \\  AND table_name IN ('events', 'events_archive')
+    , &.{});
+    defer runtime_col_result.deinit();
+    try std.testing.expect(runtime_col_result.rows.len > 0);
+    const runtime_col_count = try std.fmt.parseInt(i64, runtime_col_result.rows[0][0] orelse return error.TestUnexpectedResult, 10);
+    if (runtime_col_count != 0) {
+        std.debug.print("TC-SPT-02-03 (a): expected 0 tenant_id columns on event-store tables after migration 068, found {}\n", .{runtime_col_count});
+    }
+    try std.testing.expectEqual(@as(i64, 0), runtime_col_count);
+
+    // ── (b) bpm_effective_tenant_id() exists as a compatibility stub (migration 066) ──
+    // Migration 062 drops the original function, but migration 066 restores it as
+    // a schema-aware stub that returns the all-zeros UUID.  This is needed so that
+    // migration 028's DEFAULT bpm_effective_tenant_id() can apply inside tenant schemas.
     var fn_result = try h.conn.query(alloc,
         \\SELECT count(*) FROM pg_proc p
         \\JOIN pg_namespace n ON p.pronamespace = n.oid
@@ -224,10 +244,14 @@ test "TC-SPT-02-03: migration 062 removed tenant_id columns, bpm_effective_tenan
     defer fn_result.deinit();
     try std.testing.expect(fn_result.rows.len > 0);
     const fn_count = try std.fmt.parseInt(i64, fn_result.rows[0][0] orelse return error.TestUnexpectedResult, 10);
-    if (fn_count != 0) {
-        std.debug.print("TC-SPT-02-03 (b): bpm_effective_tenant_id() still exists ({} instance(s))\n", .{fn_count});
-    }
-    try std.testing.expectEqual(@as(i64, 0), fn_count);
+    try std.testing.expectEqual(@as(i64, 1), fn_count);
+
+    // Verify the stub returns the all-zeros UUID (not a real tenant filter).
+    var stub_result = try h.conn.query(alloc, "SELECT bpm_effective_tenant_id()::text", &.{});
+    defer stub_result.deinit();
+    try std.testing.expect(stub_result.rows.len > 0);
+    const stub_val = stub_result.rows[0][0] orelse return error.TestUnexpectedResult;
+    try std.testing.expectEqualStrings("00000000-0000-0000-0000-000000000000", stub_val);
 
     // ── (c) All 6 known tenant RLS policies are absent ────────────────────────
     var rls_result = try h.conn.query(alloc,
@@ -275,15 +299,27 @@ test "TC-SPT-02-03: migration 062 removed tenant_id columns, bpm_effective_tenan
         \\SELECT count(*) FROM pg_indexes
         \\WHERE schemaname = 'public'
         \\  AND indexname IN (
-        \\      'idx_events_tenant_instance_seq',
-        \\      'idx_events_tenant_global_seq',
-        \\      'idx_events_archive_tenant_instance_seq',
         \\      'uq_active_definition_tenant',
         \\      'idx_def_tenant_name_status',
+        \\      'idx_def_tenant_created',
         \\      'uq_instance_tenant_correlation',
         \\      'idx_proj_tenant_status',
+        \\      'idx_proj_tenant_definition',
+        \\      'idx_proj_tenant_instance',
         \\      'idx_task_tenant_instance',
+        \\      'idx_task_tenant_pending_assignee',
+        \\      'idx_task_tenant_status',
+        \\      'idx_token_tenant_instance',
+        \\      'idx_token_tenant_active',
+        \\      'idx_token_tenant_waiting',
         \\      'idx_audit_entries_tenant_time',
+        \\      'idx_audit_entries_tenant_resource_time',
+        \\      'idx_audit_entries_tenant_pipeline_time',
+        \\      'idx_audit_entries_tenant_chain_lookup',
+        \\      'uq_audit_entries_tenant_chain_hash',
+        \\      'idx_audit_entries_tenant_chain',
+        \\      'idx_audit_log_tenant_time',
+        \\      'idx_users_tenant_status_created',
         \\      'idx_groups_tenant_name'
         \\  )
     , &.{});
@@ -358,10 +394,6 @@ test "TC-SPT-02-05: re-running migrations 062 and 063 DDL on already-applied dat
     try h.conn.exec("DROP POLICY IF EXISTS audit_log_tenant_policy             ON public.audit_log", &.{});
 
     // ── Re-run migration 062 DROP INDEX IF EXISTS statements ──────────────────
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_tenant_instance_seq", &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_tenant_global_seq", &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_archive_tenant_instance_seq", &.{});
-    try h.conn.exec("DROP INDEX IF EXISTS idx_events_archive_tenant_global_seq", &.{});
     try h.conn.exec("DROP INDEX IF EXISTS idx_events_tenant_pipeline_run_seq", &.{});
     try h.conn.exec("DROP INDEX IF EXISTS idx_events_archive_tenant_pipeline_run_seq", &.{});
     try h.conn.exec("DROP INDEX IF EXISTS uq_active_definition_tenant", &.{});
@@ -406,8 +438,6 @@ test "TC-SPT-02-05: re-running migrations 062 and 063 DDL on already-applied dat
     try h.conn.exec("ALTER TABLE IF EXISTS public.groups                DISABLE ROW LEVEL SECURITY", &.{});
 
     // ── Re-run migration 062 DROP COLUMN IF EXISTS statements ─────────────────
-    try h.conn.exec("ALTER TABLE IF EXISTS public.events               DROP COLUMN IF EXISTS tenant_id CASCADE", &.{});
-    try h.conn.exec("ALTER TABLE IF EXISTS public.events_archive       DROP COLUMN IF EXISTS tenant_id CASCADE", &.{});
     try h.conn.exec("ALTER TABLE IF EXISTS public.process_definitions  DROP COLUMN IF EXISTS tenant_id CASCADE", &.{});
     try h.conn.exec("ALTER TABLE IF EXISTS public.instance_projections DROP COLUMN IF EXISTS tenant_id CASCADE", &.{});
     try h.conn.exec("ALTER TABLE IF EXISTS public.tasks                DROP COLUMN IF EXISTS tenant_id CASCADE", &.{});
@@ -418,22 +448,34 @@ test "TC-SPT-02-05: re-running migrations 062 and 063 DDL on already-applied dat
     try h.conn.exec("ALTER TABLE IF EXISTS public.groups               DROP COLUMN IF EXISTS tenant_id CASCADE", &.{});
     try h.conn.exec("ALTER TABLE IF EXISTS public.tenant_hostnames     DROP COLUMN IF EXISTS tenant_id CASCADE", &.{});
 
-    // ── Post-verify: structural state is unchanged ────────────────────────────
-    // (a) Still 0 tenant_id columns on affected public tables.
-    var col_check = try h.conn.query(alloc,
+    // ── Post-verify: structural state remains compatible with runtime usage ──
+    // (a) Legacy public tables still have 0 tenant_id columns, while event-store
+    //     tables retain the 2 compatibility columns used by live runtime SQL.
+    var legacy_col_check = try h.conn.query(alloc,
         \\SELECT count(*) FROM information_schema.columns
         \\WHERE table_schema = 'public'
         \\  AND column_name  = 'tenant_id'
         \\  AND table_name IN (
-        \\      'events', 'events_archive', 'process_definitions',
-        \\      'instance_projections', 'tasks', 'tokens',
+        \\      'process_definitions', 'instance_projections', 'tasks', 'tokens',
         \\      'audit_entries', 'audit_log', 'users', 'groups', 'tenant_hostnames'
         \\  )
     , &.{});
-    defer col_check.deinit();
-    try std.testing.expect(col_check.rows.len > 0);
-    const col_check_count = try std.fmt.parseInt(i64, col_check.rows[0][0] orelse return error.TestUnexpectedResult, 10);
-    try std.testing.expectEqual(@as(i64, 0), col_check_count);
+    defer legacy_col_check.deinit();
+    try std.testing.expect(legacy_col_check.rows.len > 0);
+    const legacy_col_check_count = try std.fmt.parseInt(i64, legacy_col_check.rows[0][0] orelse return error.TestUnexpectedResult, 10);
+    try std.testing.expectEqual(@as(i64, 0), legacy_col_check_count);
+
+    var runtime_col_check = try h.conn.query(alloc,
+        \\SELECT count(*) FROM information_schema.columns
+        \\WHERE table_schema = 'public'
+        \\  AND column_name  = 'tenant_id'
+        \\  AND table_name IN ('events', 'events_archive')
+    , &.{});
+    defer runtime_col_check.deinit();
+    try std.testing.expect(runtime_col_check.rows.len > 0);
+    const runtime_col_check_count = try std.fmt.parseInt(i64, runtime_col_check.rows[0][0] orelse return error.TestUnexpectedResult, 10);
+    // Migration 068 (SPT-03) dropped tenant_id from events/events_archive.
+    try std.testing.expectEqual(@as(i64, 0), runtime_col_check_count);
 
     // (b) Still 0 known tenant RLS policies.
     var rls_check = try h.conn.query(alloc,

@@ -63,11 +63,14 @@ ALTER TABLE IF EXISTS process_definitions
 -- ── Step 5: Drop tenant_id-based composite indexes ───────────────────────────
 -- Covers all indexes created in migrations 027, 028, 029, 033, 035, and 051.
 
--- events (migration 027)
+-- Drop event-store tenant-scoped indexes from the public schema.
+-- The runtime code still keeps tenant_id columns on events/events_archive for
+-- compatibility, but the legacy tenant-scoped index set is no longer needed
+-- after the schema-per-tenant migration.
+
+-- event-store tenant indexes (migration 027)
 DROP INDEX IF EXISTS idx_events_tenant_instance_seq;
 DROP INDEX IF EXISTS idx_events_tenant_global_seq;
-
--- events_archive (migration 027)
 DROP INDEX IF EXISTS idx_events_archive_tenant_instance_seq;
 DROP INDEX IF EXISTS idx_events_archive_tenant_global_seq;
 
@@ -117,8 +120,6 @@ DROP INDEX IF EXISTS idx_groups_tenant_name;
 -- Drop from every affected table. CASCADE removes any remaining dependents
 -- (indexes, constraints, defaults) not already dropped above.
 
-ALTER TABLE IF EXISTS events               DROP COLUMN IF EXISTS tenant_id CASCADE;
-ALTER TABLE IF EXISTS events_archive       DROP COLUMN IF EXISTS tenant_id CASCADE;
 ALTER TABLE IF EXISTS process_definitions  DROP COLUMN IF EXISTS tenant_id CASCADE;
 ALTER TABLE IF EXISTS instance_projections DROP COLUMN IF EXISTS tenant_id CASCADE;
 ALTER TABLE IF EXISTS tasks                DROP COLUMN IF EXISTS tenant_id CASCADE;
@@ -129,6 +130,6 @@ ALTER TABLE IF EXISTS users                DROP COLUMN IF EXISTS tenant_id CASCA
 ALTER TABLE IF EXISTS groups               DROP COLUMN IF EXISTS tenant_id CASCADE;
 ALTER TABLE IF EXISTS tenant_hostnames     DROP COLUMN IF EXISTS tenant_id CASCADE;
 
-END; -- end of $guard$ block
+END;
 $guard$;
 

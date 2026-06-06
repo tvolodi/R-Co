@@ -15,6 +15,15 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage F8 - Tenant Management GUI — Requirements VALIDATED (2026-06-06)
+
+- **TM-01** (MUST): Tenant list page — requirement drafted and validated. Status: PENDING → VALIDATED.
+- **TM-02** (MUST): Add tenant from list page — requirement drafted and validated. Status: PENDING → VALIDATED.
+- **TM-03** (MUST): Edit tenant — requirement drafted and validated. Status: PENDING → VALIDATED.
+- **TM-04** (MUST): Deactivate tenant — requirement drafted and validated. Status: PENDING → VALIDATED.
+- **TM-05** (MUST): Reactivate tenant — requirement drafted and validated. Status: PENDING → VALIDATED.
+- Validated by REQ-VALIDATOR (PASS, 2 MINOR notes) in run WF01-f8-tenant-mgmt-20260606. Ready for WF-02 implementation.
+
 ### Stage F7 - Tenant Onboarding GUI (RELEASED 2026-06-05)
 
 - **ONB-UI-01** (MUST): Register Tenant entry point — PLATFORM_ADMIN-only nav item in the admin sidebar, DOM-hidden for non-admin users. Direct URL access to admin onboarding screens is role-guarded with redirect to /instances.

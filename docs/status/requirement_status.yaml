@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-05-31T16:29:31Z'
+last_updated: '2026-06-06T05:19:26Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -3702,6 +3702,41 @@ requirements:
     release_run: WF02-f7-onboard-ui-20260604
     released_at: '2026-06-05'
     last_updated: '2026-06-05T02:37:00Z'
+  TM-01:
+    status: VALIDATED
+    stage: F8
+    priority: MUST
+    title: Tenant list page
+    validated_in: WF01-f8-tenant-mgmt-20260606
+    last_updated: '2026-06-06T05:19:26Z'
+  TM-02:
+    status: VALIDATED
+    stage: F8
+    priority: MUST
+    title: Add tenant from list page
+    validated_in: WF01-f8-tenant-mgmt-20260606
+    last_updated: '2026-06-06T05:19:26Z'
+  TM-03:
+    status: VALIDATED
+    stage: F8
+    priority: MUST
+    title: Edit tenant
+    validated_in: WF01-f8-tenant-mgmt-20260606
+    last_updated: '2026-06-06T05:19:26Z'
+  TM-04:
+    status: VALIDATED
+    stage: F8
+    priority: MUST
+    title: Deactivate tenant
+    validated_in: WF01-f8-tenant-mgmt-20260606
+    last_updated: '2026-06-06T05:19:26Z'
+  TM-05:
+    status: VALIDATED
+    stage: F8
+    priority: MUST
+    title: Reactivate tenant
+    validated_in: WF01-f8-tenant-mgmt-20260606
+    last_updated: '2026-06-06T05:19:26Z'
   SPT-01:
     title: Schema-per-tenant provisioning infrastructure
     status: RELEASED
@@ -3719,26 +3754,52 @@ requirements:
     last_updated: '2026-06-05T09:19:00Z'
   SPT-02:
     title: Data migration — copy rows into tenant schemas and remove RLS
-    status: PENDING
+    status: RELEASED
     stage: Schema-Per-Tenant Migration
     priority: MUST
-    implemented_in: []
-    test_spec: null
-    last_updated: '2026-06-05'
+    released_in: WF02-spt-02-04
+    released_at: "2026-06-06"
+    implemented_in:
+    - migrations/061_spt02_copy_rows_to_tenant_schemas.sql
+    - migrations/062_spt02_drop_tenant_id_rls.sql
+    - migrations/063_spt02_idempotency_cleanup.sql
+    - migrations/064_spt02_fix_audit_chain_trigger.sql
+    - migrations/065_spt02_replace_tenant_constraints.sql
+    - migrations/066_spt02_restore_tenant_id_stub.sql
+    test_spec: tests/specs/SPT-02.md
+    test_run: tests/reports/report-20260606-WF02-spt-02-04.yaml
+    last_updated: '2026-06-06T02:35:09Z'
   SPT-03:
     title: Remove legacy bpm.tenant_id session variable and tenant_id predicates
-    status: PENDING
+    status: RELEASED
     stage: Schema-Per-Tenant Migration
     priority: MUST
-    implemented_in: []
-    test_spec: null
-    last_updated: '2026-06-05'
+    released_in: WF02-spt-02-04
+    released_at: "2026-06-06"
+    implemented_in:
+    - migrations/068_spt03_drop_events_tenant_id.sql
+    - src/event_store/store.zig
+    - src/db/provisioning.zig
+    - src/config/loader.zig
+    - src/db/pool.zig
+    test_spec: tests/specs/SPT-03.md
+    test_run: tests/reports/report-20260606-WF02-spt-02-04.yaml
+    last_updated: '2026-06-06T02:35:09Z'
   SPT-04:
     title: Test suite update and ADP-12 regression
-    status: PENDING
+    status: RELEASED
     stage: Schema-Per-Tenant Migration
     priority: MUST
-    implemented_in: []
-    test_spec: null
-    last_updated: '2026-06-05'
+    released_in: WF02-spt-02-04
+    released_at: "2026-06-06"
+    implemented_in:
+    - tests/integration/spt03_code_cleanup_test.zig
+    - tests/integration/spt04_test_suite_update_test.zig
+    - tests/integration/sim01_04_simulation_mode_test.zig
+    - tests/integration/main_test.zig
+    - tests/specs/SPT-03.md
+    - tests/specs/SPT-04.md
+    test_spec: tests/specs/SPT-04.md
+    test_run: tests/reports/report-20260606-WF02-spt-02-04.yaml
+    last_updated: '2026-06-06T02:35:09Z'
 total_requirements: 263

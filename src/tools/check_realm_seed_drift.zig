@@ -6,9 +6,11 @@ pub fn main() !void {
     const expected = try std.fs.cwd().readFileAlloc(allocator, "infrastructure/keycloak/realms/bpm-default.json", 8 * 1024 * 1024);
     defer allocator.free(expected);
 
-    const runtime_path_owned = std.process.getEnvVarOwned(allocator, "BPM_RUNTIME_REALM_EXPORT_PATH") catch null;
-    defer if (runtime_path_owned) |p| allocator.free(p);
-    const runtime_path = if (runtime_path_owned) |p| p else "infrastructure/keycloak/realms/bpm-default.json";
+    const env = std.process.Environ{ .block = .global };
+    const env_map = try std.process.Environ.createMap(env, allocator);
+    defer env_map.deinit();
+
+    const runtime_path = if (env_map.get("BPM_RUNTIME_REALM_EXPORT_PATH")) |p| p else "infrastructure/keycloak/realms/bpm-default.json";
 
     const runtime_seed = try std.fs.cwd().readFileAlloc(allocator, runtime_path, 8 * 1024 * 1024);
     defer allocator.free(runtime_seed);

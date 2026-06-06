@@ -3,8 +3,11 @@
 const std = @import("std");
 const testing = std.testing;
 const bpm = @import("bpm");
+const pool_mod = bpm.db_pool;
+const tenant_context = bpm.api_tenant_context;
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
+const build_options = @import("build_options");
 
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
@@ -15,6 +18,7 @@ const Registry = bpm.registry.Registry;
 const RegisterParams = bpm.registry.RegisterParams;
 const simulation = bpm.simulation;
 const uuid_mod = bpm.uuid;
+const provisioning = bpm.provisioning;
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
@@ -32,6 +36,33 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
         .url = url,
         .pool_size = 4,
     });
+}
+
+/// SPT-04: full provisioning (runs migrations) so the tenant schema gets
+/// all tables including events, enabling search_path-based isolation.
+fn provisionTenantSchema(allocator: std.mem.Allocator, pool: *pool_mod.Pool, tenant_id: []const u8) !void {
+    try provisioning.provisionTenantSchema(
+        allocator,
+        pool,
+        tenant_id,
+        build_options.migrations_dir,
+    );
+}
+
+fn dropTenantSchema(pool: *pool_mod.Pool, tenant_id: []const u8) void {
+    var name_buf: [80]u8 = undefined;
+    const schema_name = bpm.pool.schemaNameForTenant(tenant_id, &name_buf);
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+    var drop_buf: [128]u8 = undefined;
+    const drop_sql = std.fmt.bufPrint(
+        &drop_buf,
+        "DROP SCHEMA IF EXISTS {s} CASCADE",
+        .{schema_name},
+    ) catch return;
+    conn.exec(drop_sql, &.{}) catch {};
+    conn.exec("DELETE FROM public.tenant_schemas WHERE schema_name = $1", &.{schema_name}) catch {};
+    conn.exec("DELETE FROM public.schema_migrations WHERE schema_name = $1", &.{schema_name}) catch {};
 }
 
 fn parseUuidString(s: []const u8) ![16]u8 {
@@ -140,12 +171,8 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
 
     var registry = Registry.init(alloc, &pool);
     defer registry.deinit();
-    _ = try registry.registerType(alloc, RegisterParams{
-        .name = event_type,
-        .schema_version = 1,
-        .json_schema = "{}",
-        .description = "simulation event fixture",
-    });
+    // SPT-04: event type registration happens below, per tenant schema,
+    // after both tenant schemas are provisioned.
 
     var store = Store.init(alloc, &pool, &registry);
     defer store.deinit();
@@ -155,6 +182,29 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
 
     const real_tenant_str = try uuid_mod.newUuidV4(alloc);
     const sim_tenant_str = simulation.tenant_store.tenantIdToString(ctx.simulation_tenant_id);
+
+    try provisionTenantSchema(alloc, &pool, real_tenant_str);
+    defer dropTenantSchema(&pool, real_tenant_str);
+    try provisionTenantSchema(alloc, &pool, sim_tenant_str[0..]);
+    defer dropTenantSchema(&pool, sim_tenant_str[0..]);
+
+    // SPT-04: register the event type in each tenant schema where it will be used.
+    // With schema-per-tenant and full provisioning, each schema has its own
+    // event_type_registry; the entry must be present in both sim and real schemas.
+    tenant_context.set(real_tenant_str);
+    _ = try registry.registerType(alloc, RegisterParams{
+        .name = event_type,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = "simulation event fixture",
+    });
+    tenant_context.set(sim_tenant_str[0..]);
+    _ = try registry.registerType(alloc, RegisterParams{
+        .name = event_type,
+        .schema_version = 1,
+        .json_schema = "{}",
+        .description = "simulation event fixture",
+    });
 
     const sim_instance_id = try uuid_mod.newUuidV4(alloc);
     const real_instance_id = try uuid_mod.newUuidV4(alloc);
@@ -180,7 +230,11 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
     cleanupSim01IsolationFixtures(&pool, sim_instance_id, real_instance_id, sim_tenant_str[0..], real_tenant_str, sim_idempotency_key, real_idempotency_key);
     defer cleanupSim01IsolationFixtures(&pool, sim_instance_id, real_instance_id, sim_tenant_str[0..], real_tenant_str, sim_idempotency_key, real_idempotency_key);
 
+    // SPT-04: set tenant context before insertProjection so rows go into
+    // the correct tenant schema (not the public fallback).
+    tenant_context.set(sim_tenant_str[0..]);
     try insertProjection(&pool, sim_instance_id, definition_id, sim_tenant_str[0..]);
+    tenant_context.set(real_tenant_str);
     try insertProjection(&pool, real_instance_id, definition_id, real_tenant_str);
 
     const actor_id = try parseUuidString(actor_id_str);
@@ -188,6 +242,8 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
     const real_instance_uuid = try parseUuidString(real_instance_id);
     const real_tenant_id = try simulation.tenant_store.parseTenantId(real_tenant_str);
 
+    tenant_context.set(sim_tenant_str[0..]);
+    defer tenant_context.clear();
     _ = try simulation.appendSimulationEvent(alloc, &store, &ctx, .{
         .instance_id = sim_instance_uuid,
         .event_type = event_type,
@@ -198,6 +254,7 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
         .pipeline_run_id = null,
     });
 
+    tenant_context.set(real_tenant_str);
     _ = try store.append(alloc, AppendParams{
         .tenant_id = real_tenant_str,
         .instance_id = real_instance_uuid,
@@ -209,6 +266,7 @@ test "TC-SIM-01-01: simulation events are isolated from real tenant queries" {
         .pipeline_run_id = null,
     });
 
+    tenant_context.set(real_tenant_str);
     const real_events = try simulation.queryTenantEvents(alloc, &store, real_tenant_id, .{
         .after_global_seq = null,
         .limit = 50,

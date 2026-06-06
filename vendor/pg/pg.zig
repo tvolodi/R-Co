@@ -732,37 +732,43 @@ fn pbkdf2HmacSha256(out: *[32]u8, password: []const u8, salt: []const u8, iterat
 
 fn parseUrl(url: []const u8) !ConnectOptions {
     const scheme = "postgres://";
-    if (!mem.startsWith(u8, url, scheme)) return error.InvalidUrl;
+    const trimmed = mem.trim(u8, url, " \t\r\n");
+    if (!mem.startsWith(u8, trimmed, scheme)) return error.InvalidUrl;
 
-    var rest = url[scheme.len..];
+    var rest = trimmed[scheme.len..];
 
-    // Split on last '@' to get user:pass and host:port/db.
-    const at_idx = mem.lastIndexOf(u8, rest, "@") orelse return error.InvalidUrl;
-    const user_pass = rest[0..at_idx];
-    rest = rest[at_idx + 1 ..];
+    // Split on the last '@' to separate credentials from host/database.
+    const at_idx = mem.lastIndexOfScalar(u8, rest, '@') orelse return error.InvalidUrl;
+    var user_pass = mem.trim(u8, rest[0..at_idx], " \t\r\n");
+    rest = mem.trim(u8, rest[at_idx + 1 ..], " \t\r\n");
 
     var user: []const u8 = user_pass;
     var password: []const u8 = "";
-    if (mem.indexOf(u8, user_pass, ":")) |colon| {
-        user = user_pass[0..colon];
-        password = user_pass[colon + 1 ..];
+    if (mem.lastIndexOfScalar(u8, user_pass, ':')) |colon| {
+        user = mem.trim(u8, user_pass[0..colon], " \t\r\n");
+        password = mem.trim(u8, user_pass[colon + 1 ..], " \t\r\n");
     }
 
     var host: []const u8 = rest;
     var port: u16 = 5432;
     var database: []const u8 = "";
 
-    if (mem.indexOf(u8, rest, "/")) |slash| {
-        host = rest[0..slash];
-        database = rest[slash + 1 ..];
-        // Strip query parameters.
-        if (mem.indexOf(u8, database, "?")) |q| database = database[0..q];
+    if (mem.indexOfScalar(u8, rest, '/')) |slash| {
+        host = mem.trim(u8, rest[0..slash], " \t\r\n");
+        database = mem.trim(u8, rest[slash + 1 ..], " \t\r\n");
+        if (mem.indexOfScalar(u8, database, '?')) |q| {
+            database = mem.trim(u8, database[0..q], " \t\r\n");
+        }
     }
 
+    host = mem.trim(u8, host, " \t\r\n");
+    database = mem.trim(u8, database, " \t\r\n");
+
     // host:port
-    if (mem.lastIndexOf(u8, host, ":")) |colon| {
-        port = std.fmt.parseInt(u16, host[colon + 1 ..], 10) catch return error.InvalidUrl;
-        host = host[0..colon];
+    if (mem.lastIndexOfScalar(u8, host, ':')) |colon| {
+        const raw_port = mem.trim(u8, host[colon + 1 ..], " \t\r\n");
+        port = std.fmt.parseInt(u16, raw_port, 10) catch return error.InvalidUrl;
+        host = mem.trim(u8, host[0..colon], " \t\r\n");
     }
 
     if (user.len == 0 or host.len == 0 or database.len == 0)
@@ -775,4 +781,14 @@ fn parseUrl(url: []const u8) !ConnectOptions {
         .user = user,
         .password = password,
     };
+}
+
+test "parseUrl trims whitespace around all components" {
+    const opts = try parseUrl("  postgres://  user : pass  @  localhost : 5433 / bpm_test  ?sslmode=disable  ");
+
+    try std.testing.expectEqualStrings("user", opts.user);
+    try std.testing.expectEqualStrings("pass", opts.password);
+    try std.testing.expectEqualStrings("localhost", opts.host);
+    try std.testing.expectEqual(@as(u16, 5433), opts.port);
+    try std.testing.expectEqualStrings("bpm_test", opts.database);
 }

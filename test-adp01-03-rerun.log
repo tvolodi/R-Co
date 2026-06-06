@@ -1,0 +1,4 @@
+Cleaning test database...
+Test database cleaned.
+error: the following build command failed with exit code 58:
+.zig-cache\o\0089b5c0660ba79120bde8cbb52543ca\build.exe C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\zig.exe C:\Users\tvolo\AppData\Local\Microsoft\WinGet\Packages\zig.zig_Microsoft.Winget.Source_8wekyb3d8bbwe\zig-x86_64-windows-0.16.0\lib C:\Users\tvolo\dev\ai-dala\My-Fab .zig-cache C:\Users\tvolo\AppData\Local\zig --seed 0xc5c41d7b -Z95f9708d0ae4162a test-integration -- --test-filter 'TC-ADP-01-03'^C

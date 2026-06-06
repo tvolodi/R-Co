@@ -121,6 +121,10 @@ const sim05_08_scenario_runner_integration = @import("sim05_08_scenario_runner_t
 const spt01_provisioning_integration = @import("spt01_provisioning_test.zig");
 // SPT-02 — Data migration: copy rows into tenant schemas and remove RLS
 const spt02_data_migration_integration = @import("spt02_data_migration_test.zig");
+// SPT-03 — Remove legacy bpm.tenant_id session variable and tenant_id predicates
+const spt03_code_cleanup_integration = @import("spt03_code_cleanup_test.zig");
+// SPT-04 — Test suite update and ADP-12 regression
+const spt04_test_suite_update_integration = @import("spt04_test_suite_update_test.zig");
 
 comptime {
     _ = std;
@@ -177,6 +181,8 @@ comptime {
     _ = sim05_08_scenario_runner_integration;
     _ = spt01_provisioning_integration;
     _ = spt02_data_migration_integration;
+    _ = spt03_code_cleanup_integration;
+    _ = spt04_test_suite_update_integration;
 }
 
 test "integration placeholder" {

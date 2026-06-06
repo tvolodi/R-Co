@@ -210,6 +210,7 @@ BEGIN
     END IF;
 
     payload := jsonb_build_object(
+        'schema_version', 'adp10.v1',
         'capture_mode', capture_mode,
         'policy_id', policy_id,
         'actor', jsonb_build_object(
