@@ -663,6 +663,145 @@ pub fn handleRevokeToken(
     return .{ .status_code = 204, .body = allocator.alloc(u8, 0) catch return errorResult(allocator, 500, "serialization_failed") };
 }
 
+pub const ListTenantsQueryParams = struct {
+    search: ?[]const u8,
+    limit: u16,
+    offset: u32,
+};
+
+pub fn handleListTenants(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    params: ListTenantsQueryParams,
+) HandlerResult {
+    const page = service.listTenantsAdmin(allocator, actor, .{
+        .search = params.search,
+        .limit = params.limit,
+        .offset = params.offset,
+    }) catch |err| switch (err) {
+        identity_service.IdentityError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.IdentityError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer page.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeTenantListPage(allocator, page) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handleGetTenant(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    slug: []const u8,
+) HandlerResult {
+    const tenant = service.getTenantAdmin(allocator, actor, slug) catch |err| switch (err) {
+        identity_service.IdentityError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.IdentityError.TenantNotFound => return errorResult(allocator, 404, "tenant_not_found"),
+        identity_service.IdentityError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer tenant.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeTenant(allocator, tenant) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handlePatchTenant(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    slug: []const u8,
+    body: []const u8,
+) HandlerResult {
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        body,
+        .{ .allocate = .alloc_always },
+    ) catch return errorResult(allocator, 400, "malformed_json");
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return errorResult(allocator, 422, "invalid_body");
+    const obj = parsed.value.object;
+
+    // Immutability check: reject slug/idp_realm_id in body.
+    if (obj.contains("slug")) {
+        return .{
+            .status_code = 422,
+            .body = std.fmt.allocPrint(allocator, "{{\"error\":\"immutable_field_update\",\"field\":\"slug\"}}", .{}) catch
+                "{\"error\":\"immutable_field_update\"}",
+        };
+    }
+    if (obj.contains("idp_realm_id")) {
+        return .{
+            .status_code = 422,
+            .body = std.fmt.allocPrint(allocator, "{{\"error\":\"immutable_field_update\",\"field\":\"idp_realm_id\"}}", .{}) catch
+                "{\"error\":\"immutable_field_update\"}",
+        };
+    }
+
+    const display_name: ?[]const u8 = blk: {
+        const raw = obj.get("display_name") orelse break :blk null;
+        break :blk switch (raw) {
+            .null => null,
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "display_name_invalid"),
+        };
+    };
+
+    const hostname: ?[]const u8 = blk: {
+        const raw = obj.get("hostname") orelse break :blk null;
+        break :blk switch (raw) {
+            .null => null,
+            .string => |s| s,
+            else => return errorResult(allocator, 422, "hostname_invalid"),
+        };
+    };
+
+    // Parse redirect_uris array.
+    const redirect_uris_buf: ?[][]const u8 = blk: {
+        const raw = obj.get("redirect_uris") orelse break :blk null;
+        if (raw == .null) break :blk null;
+        if (raw != .array) return errorResult(allocator, 422, "redirect_uris_invalid");
+        const arr = raw.array.items;
+        const uris = allocator.alloc([]const u8, arr.len) catch return errorResult(allocator, 500, "internal_error");
+        for (arr, 0..) |item, i| {
+            uris[i] = switch (item) {
+                .string => |s| s,
+                else => {
+                    allocator.free(uris);
+                    return errorResult(allocator, 422, "redirect_uris_invalid");
+                },
+            };
+        }
+        break :blk uris;
+    };
+    defer if (redirect_uris_buf) |uris| allocator.free(uris);
+
+    const manager = auth.getIdentityProviderManager();
+
+    const tenant = service.patchTenant(allocator, actor, manager, .{
+        .slug = slug,
+        .display_name = display_name,
+        .hostname = hostname,
+        .redirect_uris = if (redirect_uris_buf) |uris| uris else null,
+    }) catch |err| switch (err) {
+        error.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        error.TenantNotFound => return errorResult(allocator, 404, "tenant_not_found"),
+        error.ImmutableFieldUpdate => return errorResult(allocator, 422, "immutable_field_update"),
+        error.NoRealmBound => return errorResult(allocator, 422, "no_realm_bound"),
+        error.KeycloakSyncFailed => return errorResult(allocator, 502, "keycloak_sync_failed"),
+        error.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer tenant.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeTenant(allocator, tenant) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
 fn serializeUser(allocator: std.mem.Allocator, user: identity_registry.User) ![]u8 {
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(allocator);
@@ -713,19 +852,44 @@ fn serializeUserListPage(allocator: std.mem.Allocator, page: identity_service.Us
 }
 
 fn serializeTenant(allocator: std.mem.Allocator, tenant: identity_registry.Tenant) ![]u8 {
-    var body = std.ArrayList(u8).empty;
-    defer body.deinit(allocator);
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
 
-    try std.json.stringify(.{
-        .tenant_id = tenant.tenant_id,
-        .slug = tenant.slug,
-        .display_name = tenant.display_name,
-        .status = tenant.status.asString(),
-        .idp_realm_id = tenant.idp_realm_id,
-        .created_at = tenant.created_at,
-    }, .{}, body.writer(allocator));
+    try buf.appendSlice(allocator, "{\"tenant_id\":");
+    try appendJsonStr(allocator, &buf, tenant.tenant_id);
+    try buf.appendSlice(allocator, ",\"slug\":");
+    try appendJsonStr(allocator, &buf, tenant.slug);
+    try buf.appendSlice(allocator, ",\"display_name\":");
+    try appendJsonStr(allocator, &buf, tenant.display_name);
+    try buf.appendSlice(allocator, ",\"status\":");
+    try appendJsonStr(allocator, &buf, tenant.status.asString());
+    try buf.appendSlice(allocator, ",\"idp_realm_id\":");
+    try appendNullableJsonStr(allocator, &buf, tenant.idp_realm_id);
+    try buf.appendSlice(allocator, ",\"created_at\":");
+    try appendJsonStr(allocator, &buf, tenant.created_at);
+    try buf.append(allocator, '}');
 
-    return body.toOwnedSlice(allocator);
+    return buf.toOwnedSlice(allocator);
+}
+
+fn serializeTenantListPage(allocator: std.mem.Allocator, page: identity_registry.TenantListPage) ![]u8 {
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    try buf.appendSlice(allocator, "{\"items\":[");
+    for (page.items, 0..) |tenant, idx| {
+        if (idx > 0) try buf.append(allocator, ',');
+        const tenant_json = try serializeTenant(allocator, tenant);
+        defer allocator.free(tenant_json);
+        try buf.appendSlice(allocator, tenant_json);
+    }
+    try buf.appendSlice(allocator, "],\"total\":");
+    const total_text = try std.fmt.allocPrint(allocator, "{d}", .{page.total});
+    defer allocator.free(total_text);
+    try buf.appendSlice(allocator, total_text);
+    try buf.append(allocator, '}');
+
+    return buf.toOwnedSlice(allocator);
 }
 
 fn appendJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), s: []const u8) !void {

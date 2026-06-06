@@ -1,0 +1,57 @@
+{
+  "handoff_id": "wf02-f8-b1-20260606-001",
+  "run_id": "WF02-f8-batch1-20260606",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-06T05:36:03Z",
+  "started_at": "2026-06-06T05:36:46Z",
+  "completed_at": "2026-06-06T05:43:13Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F8 \u2014 Tenant Management GUI (Batch 1: TM-01, TM-02, TM-03)",
+    "requirement_ids": [
+      "TM-01",
+      "TM-02",
+      "TM-03"
+    ],
+    "related_handoff_ids": [
+      "wf02-f8-b1-20260606-000",
+      "wf01-f8-tenant-mgmt-20260606-003"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/guides/backend_developer_guide.md",
+      "docs/guides/frontend_developer_guide.md",
+      "templates/lego-catalog.md"
+    ]
+  },
+  "task": {
+    "description": "Produce design artefacts for TM-01, TM-02, and TM-03 (Stage F8 \u2014 Tenant Management GUI, Batch 1).\n\n## Requirements summary\n\n**TM-01 \u2014 Tenant list page [MUST]**\nPLATFORM_ADMIN can view a paginated list of all registered tenants showing: slug, display_name, idp_realm_id, status (active/inactive), created_at. Hidden from non-PLATFORM_ADMIN.\n\n**TM-02 \u2014 Add tenant from list page [MUST]**\nFrom the Tenant list page, a button/link opens the existing ONB-UI-02 registration form (no new form \u2014 reuse Stage F7).\n\n**TM-03 \u2014 Edit tenant [MUST]**\nPLATFORM_ADMIN can edit display_name, hostname, redirect_uris for any tenant via an Edit Tenant form. Slug and idp_realm_id are immutable. On save, calls PATCH /api/v1/tenants/:slug. Backend propagates redirect_uri changes to the Keycloak realm client.\n\n## Lego classification\n\nTM-01 is a Type B (admin list page) \u2014 use templates/specs/list-page.yaml template.\nTM-02 has no new code \u2014 it is a link/button added to TM-01's page pointing to the existing /admin/onboarding/new route.\nTM-03 is Type E (novel/cross-cutting) \u2014 prose design required because it touches the tenant table, the Keycloak adapter, and a new PATCH endpoint.\n\nAlso required: a Type C (migration) for the new backend endpoints (GET /api/v1/tenants needs a new route; the tenant table already has slug, display_name, idp_realm_id, created_at \u2014 but needs a `status` column added \u2014 that goes in batch 2 for TM-04/05). For TM-03, no new migration is needed (hostname/redirect_uris live in Keycloak, not the DB).\n\n## What to produce\n\n1. **templates/specs/tenant-list.list-page.yaml** \u2014 Type B parameter file for the tenant list page (TM-01). Model it after existing list-page specs. Fields: slug, display_name, idp_realm_id, status, created_at. API source: GET /api/v1/tenants. Role gate: PLATFORM_ADMIN.\n\n2. **src/design/tenant-management.md** \u2014 Type E prose design for TM-03. Must include:\n   - New backend route: `PATCH /api/v1/tenants/:slug` \n   - Request body: `{ display_name?: string, hostname?: string, redirect_uris?: string[] }`\n   - Response: updated tenant object\n   - Immutability contract: slug and idp_realm_id rejected with 422 if present in body\n   - Keycloak propagation: on redirect_uris change, call identity provider's updateClient() to update the realm client's redirectUris list\n   - Error taxonomy: TenantNotFound (404), ImmutableFieldUpdate (422), KeycloakSyncFailed (502)\n   - All public function signatures\n   - Data flow: request -> validation -> DB update -> Keycloak sync -> response\n   - Cross-references: TM-03, OIDC-17, OIDC-18, OIDC-19\n\n3. Run --dry-run on the Type B YAML to verify it is well-formed.\n\n## Instructions\n- Classify each requirement per templates/lego-catalog.md\n- Do NOT write implementation code in prose designs\n- Complete the handoff with artifacts_out listing all produced files\n- next_action: 'Route to CODE-DESIGN-VALIDATOR (Step 1b)'",
+    "acceptance_criteria": [
+      "templates/specs/tenant-list.list-page.yaml exists and passes codegen --dry-run",
+      "src/design/tenant-management.md exists with PATCH /api/v1/tenants/:slug fully specified",
+      "Design includes error taxonomy (TenantNotFound, ImmutableFieldUpdate, KeycloakSyncFailed)",
+      "Design specifies Keycloak propagation for redirect_uri changes",
+      "No implementation code in design artefacts",
+      "TM-02 is documented as a navigation link to existing /admin/onboarding/new (no new artefact needed)"
+    ],
+    "functions_to_call": [
+      "fn:load-requirements",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for tenant management (TM-01, TM-02, TM-03) \u2014 types: [B, E]",
+    "artifacts_out": [
+      "templates/specs/tenant-list.list-page.yaml",
+      "src/design/tenant-management.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

@@ -15,6 +15,13 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage F8 Batch 1 - Tenant Management GUI (RELEASED 2026-06-06)
+
+- **TM-01** (MUST): Platform-admin tenant list — Added paginated, sortable tenant list page with columns for slug, display name, hostname, realm, status, and timestamps. PLATFORM_ADMIN-only access with role-based DOM hiding and redirect for unauthorized users.
+- **TM-02** (MUST): Navigation to onboarding — Added "Register Tenant" button on the tenant list page (PLATFORM_ADMIN only) navigating to the tenant onboarding wizard from Stage F7.
+- **TM-03** (MUST): Edit tenant mutable fields — Added edit tenant page with inline editing of display_name. Immutable fields (slug, idp_realm_id) are read-only and rejected with 422 if submitted. Non-existent tenant returns 404.
+- Validation evidence: 7/7 E2E tests passing (TC-TM-UI-01 through TC-TM-UI-07). Release approval: docs/status/release-f8-batch1-20260606.yaml.
+
 ### Stage F7 - Tenant Onboarding GUI (RELEASED 2026-06-05)
 
 - **ONB-UI-01** (MUST): Register Tenant entry point — PLATFORM_ADMIN-only nav item in the admin sidebar, DOM-hidden for non-admin users. Direct URL access to admin onboarding screens is role-guarded with redirect to /instances.

@@ -4,9 +4,8 @@
  *  Idempotency-Key is injected per-call by submitOnboarding (not by client.ts globally).
  */
 
-import { getToken } from './client'
-
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ''
+import { client } from './client'
+import type { ApiError } from '@/types/api'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -82,26 +81,6 @@ export type OnboardingSagaResult =
 
 // ── API helpers ────────────────────────────────────────────────────────────────
 
-function buildHeaders(extra?: Record<string, string>): Record<string, string> {
-  const token = getToken()
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...extra,
-  }
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  return headers
-}
-
-async function parseErrorBody(response: Response): Promise<Record<string, unknown>> {
-  try {
-    return (await response.json()) as Record<string, unknown>
-  } catch {
-    return {}
-  }
-}
-
 // ── Public API ─────────────────────────────────────────────────────────────────
 
 /**
@@ -132,20 +111,22 @@ export async function submitOnboarding(
       : {}),
   }
 
-  const response = await window.fetch(`${BASE_URL}/api/v1/onboarding`, {
-    method: 'POST',
-    headers: buildHeaders({ 'Idempotency-Key': idempotencyKey }),
-    body: JSON.stringify(body),
+  const response = await client.postWithHeaders<OnboardingCreateResponse>(
+    '/api/v1/onboarding',
+    body,
+    { 'Idempotency-Key': idempotencyKey },
+  ).catch((err: unknown) => {
+    // Convert ApiError → OnboardingApiError for caller taxonomy handling
+    const apiErr = err as ApiError
+    const details = (apiErr.details ?? {}) as Record<string, unknown>
+    throw new OnboardingApiError(apiErr.status ?? 500, {
+      ...details,
+      ...(!details['error'] && apiErr.code ? { error: apiErr.code } : {}),
+      ...(!details['title'] && apiErr.message ? { title: apiErr.message } : {}),
+    })
   })
 
-  if (response.status === 201) {
-    return response.json() as Promise<OnboardingCreateResponse>
-  }
-
-  // Surface the parsed body and status for error taxonomy handling in the page
-  const errorBody = await parseErrorBody(response)
-  const err = new OnboardingApiError(response.status, errorBody)
-  throw err
+  return response
 }
 
 /**
@@ -154,16 +135,7 @@ export async function submitOnboarding(
  * Throws on non-2xx responses.
  */
 export async function getOnboardingStatus(onboardingId: string): Promise<OnboardingSagaResult> {
-  const response = await window.fetch(`${BASE_URL}/api/v1/onboarding/${onboardingId}`, {
-    headers: buildHeaders(),
-  })
-
-  if (response.ok) {
-    return response.json() as Promise<OnboardingSagaResult>
-  }
-
-  const errorBody = await parseErrorBody(response)
-  throw new OnboardingApiError(response.status, errorBody)
+  return client.get<OnboardingSagaResult>(`/api/v1/onboarding/${onboardingId}`)
 }
 
 /**
@@ -173,17 +145,7 @@ export async function getOnboardingStatus(onboardingId: string): Promise<Onboard
  * Throws on non-2xx responses (404 means saga not found/failed).
  */
 export async function getOnboardingByHostname(hostname: string): Promise<OnboardingStatusCompleted> {
-  const params = new URLSearchParams({ hostname })
-  const response = await window.fetch(`${BASE_URL}/api/v1/onboarding?${params.toString()}`, {
-    headers: buildHeaders(),
-  })
-
-  if (response.ok) {
-    return response.json() as Promise<OnboardingStatusCompleted>
-  }
-
-  const errorBody = await parseErrorBody(response)
-  throw new OnboardingApiError(response.status, errorBody)
+  return client.get<OnboardingStatusCompleted>('/api/v1/onboarding', { hostname })
 }
 
 // ── Error class ────────────────────────────────────────────────────────────────

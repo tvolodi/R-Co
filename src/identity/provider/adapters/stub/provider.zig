@@ -28,6 +28,8 @@ pub fn asIdentityProvider(ctx: *StubContext) provider_interface.IdentityProvider
         .createProtocolMapperFn = createProtocolMapper,
         .toggleRealmFn = toggleRealm,
         .deleteRealmFn = deleteRealmStub,
+        .updateClientFn = updateClientStub,
+        .updateRealmFrontendUrlFn = updateRealmFrontendUrlStub,
     };
 }
 
@@ -122,5 +124,13 @@ fn toggleRealm(_: *anyopaque, _: std.mem.Allocator, _: provider_types.ToggleReal
 }
 
 fn deleteRealmStub(_: *anyopaque, _: std.mem.Allocator, _: provider_types.DeleteRealmInput) provider_errors.ProviderError!void {
+    return error.NotImplemented;
+}
+
+fn updateClientStub(_: *anyopaque, _: std.mem.Allocator, _: provider_types.UpdateClientInput) provider_errors.ProviderError!provider_types.UpdateClientResult {
+    return error.NotImplemented;
+}
+
+fn updateRealmFrontendUrlStub(_: *anyopaque, _: std.mem.Allocator, _: provider_types.UpdateRealmFrontendUrlInput) provider_errors.ProviderError!void {
     return error.NotImplemented;
 }

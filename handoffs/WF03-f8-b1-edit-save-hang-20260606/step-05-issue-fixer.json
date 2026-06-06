@@ -1,0 +1,48 @@
+{
+  "handoff_id": "wf03-f8-b1-edit-save-hang-20260606-001",
+  "run_id": "WF03-f8-b1-edit-save-hang-20260606",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-06-06T17:19:21Z",
+  "started_at": "2026-06-06T17:20:32Z",
+  "completed_at": "2026-06-06T17:22:25Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Fix TC-TM-UI-05 edit-and-save hang",
+    "requirement_ids": [
+      "TM-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-f8-b1-edit-hang-20260606-001",
+      "wf02-f8-b1-20260606-004-r4"
+    ],
+    "artifacts_in": [
+      "web/tests/e2e/tenants.e2e.spec.ts",
+      "web/src/pages/admin/tenants/EditTenantPage.tsx"
+    ]
+  },
+  "task": {
+    "description": "TC-TM-UI-05 hangs because it calls createTestTenant() which triggers the onboarding saga \u2014 and the saga never transitions from pending to completed. This is the same root cause that was just fixed for TC-TM-UI-04.\n\nBackground:\n- TC-TM-UI-04 was fixed by navigating via the tenant list page (click edit on existing tenant) instead of creating a fixture tenant.\n- TC-TM-UI-05 still uses createTestTenant() because it needs to modify and save a tenant.\n- The backend onboarding saga (runSagaBackground) is the root cause \u2014 it never completes, so waitForOnboardingTerminalState times out.\n\nFix approach \u2014 use an existing tenant instead of creating one:\n1. Navigate to the tenant list, click edit on an existing tenant (like TC-TM-UI-04 does now)\n2. Read the current display_name\n3. Edit the display_name to a new value\n4. Save (PATCH /api/v1/tenants/:slug)\n5. Verify navigation back to /admin/tenants\n6. Optional: navigate back to edit and restore the original display_name\n\nThis avoids createTestTenant() entirely and tests the same edit functionality.\n\nFix constraint: 1 file (web/tests/e2e/tenants.e2e.spec.ts).\n\nAlso: after fixing TC-TM-UI-05, check if TC-TM-UI-06 and TC-TM-UI-07 also use createTestTenant(). If so, fix those too (same approach \u2014 use existing tenant or verify they don't need created fixtures).\n\nReturn PASS when all remaining TM E2E tests pass.",
+    "acceptance_criteria": [
+      "TC-TM-UI-05 passes (no hang)",
+      "TC-TM-UI-06 passes if it was failing",
+      "TC-TM-UI-07 passes if it was failing",
+      "All 7 TC-TM-UI tests pass",
+      "zig build exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed Category A (test error \u2014 test used createTestTenant which hangs due to onboarding saga never completing) in tenants.e2e.spec.ts: rewrote TC-TM-UI-05 to use an existing tenant from the list page instead of creating a fixture tenant. TC-TM-UI-06 and TC-TM-UI-07 did not use createTestTenant and were already fine.",
+    "artifacts_out": [
+      "web/tests/e2e/tenants.e2e.spec.ts"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

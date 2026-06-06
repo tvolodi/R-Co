@@ -193,6 +193,29 @@ pub const ProvisionClientResult = struct {
     }
 };
 
+// --- F8: Tenant management ---
+
+pub const UpdateClientInput = struct {
+    realm_id: []const u8,
+    /// The clientId value (equals the tenant slug in this platform).
+    client_name: []const u8,
+    redirect_uris: []const []const u8,
+};
+
+pub const UpdateClientResult = struct {
+    client_id: []const u8,
+
+    pub fn deinit(self: UpdateClientResult, allocator: std.mem.Allocator) void {
+        allocator.free(self.client_id);
+    }
+};
+
+pub const UpdateRealmFrontendUrlInput = struct {
+    realm_id: []const u8,
+    /// The new frontend URL, e.g. "https://tenant.bpm.example.com".
+    frontend_url: []const u8,
+};
+
 pub const UpsertFederationInput = struct {
     realm_id: []const u8,
     provider_alias: []const u8,

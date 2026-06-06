@@ -198,6 +198,13 @@ export const client = {
       body: body instanceof FormData ? body : JSON.stringify(body),
     })
   },
+  postWithHeaders<T>(path: string, body: unknown, extraHeaders: Record<string, string>): Promise<T> {
+    return request<T>(path, {
+      method: 'POST',
+      headers: extraHeaders,
+      body: JSON.stringify(body),
+    })
+  },
   put<T>(path: string, body?: unknown): Promise<T> {
     return request<T>(path, {
       method: 'PUT',

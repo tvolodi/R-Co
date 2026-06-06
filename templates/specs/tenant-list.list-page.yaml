@@ -1,0 +1,43 @@
+schema_version: 1
+page_name: TenantsPage
+page_slug: admin/tenants
+resource_name: tenant
+requirement_ids: [TM-01, TM-02]
+purpose: |
+  PLATFORM_ADMIN-only paginated list of all registered tenants. Displays slug,
+  display name, IDP realm, status, and creation date. Provides per-row Edit
+  navigation (TM-03) and a navigation button to the existing onboarding route
+  (TM-02). Non-PLATFORM_ADMIN users must be redirected to /instances on page
+  load — enforce in the {/* CUSTOM: role-gate */} block.
+
+# Must reference the queryKeys factory; never an inline array. Lint F030 enforces.
+# FRONTEND-DEV: add to web/src/api/queryKeys.ts under the `admin` key:
+#   tenants: () => [...queryKeys.admin.all, 'tenants'] as const
+list_query_key: queryKeys.admin.tenants
+
+api:
+  list_endpoint: /api/v1/tenants
+  create_endpoint: null
+  delete_endpoint: null
+
+filters:
+  - { name: search, type: text, label: Search, placeholder: "slug or display name" }
+
+columns:
+  - { header: "Slug",         accessor: slug }
+  - { header: "Display name", accessor: display_name }
+  - { header: "IDP realm",    accessor: idp_realm_id }
+  - { header: "Status",       accessor: status }
+  - { header: "Created",      accessor: created_at, format: date }
+
+row_actions:
+  # navigate_edit: in {/* CUSTOM: row-action-navigate_edit */} navigate to
+  # `/admin/tenants/${row.slug}/edit` using useNavigate().
+  - { label: "Edit", action: navigate_edit, requires_role: PLATFORM_ADMIN }
+
+# TM-02: "Add Tenant" is NOT an inline create form — it is a navigation link
+# to the existing ONB-UI-02 route /admin/onboarding/new.
+# FRONTEND-DEV: render a {/* CUSTOM: add-tenant-link */} block above the
+# filter form containing <Link to="/admin/onboarding/new"> styled as a primary
+# button with label "+ Add Tenant". No useMutation or create_endpoint needed.
+create_form: null
