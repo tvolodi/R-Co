@@ -436,6 +436,24 @@ pub const Service = struct {
         };
     }
 
+    pub fn getTenantAdmin(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
+        slug: []const u8,
+    ) IdentityError!registry_mod.Tenant {
+        if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+
+        const maybe_tenant = self.registry.selectTenantBySlug(allocator, slug) catch |err| return switch (err) {
+            registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+            else => error.PersistenceFailed,
+        };
+
+        return maybe_tenant orelse error.TenantNotFound;
+    }
+
     pub fn patchTenant(
         self: *Service,
         allocator: std.mem.Allocator,

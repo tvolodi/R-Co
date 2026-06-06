@@ -61,10 +61,9 @@ async function assertServiceReadiness(request: APIRequestContext): Promise<void>
 }
 
 async function navigateSpa(page: Page, targetPath: string): Promise<void> {
-  await page.evaluate((nextPath) => {
-    window.history.pushState({}, '', nextPath)
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  }, targetPath)
+  // Use page.goto for reliable SPA navigation — addInitScript from loginWithToken
+  // restores the session before every page load, so the user stays authenticated.
+  await page.goto(targetPath, { waitUntil: 'domcontentloaded' })
   await page.waitForURL((url) => `${url.pathname}${url.search}` === targetPath, {
     timeout: 10_000,
   })
@@ -395,80 +394,93 @@ test.describe('TM tenants UI (TM-01, TM-02, TM-03)', () => {
   // ── TC-TM-UI-04 ─────────────────────────────────────────────────────────────
 
   test('TC-TM-UI-04: EditTenantPage shows slug and idp_realm_id as read-only display elements', async ({ page }) => {
-    test.setTimeout(120_000)
+    await loginWithToken(page, adminToken)
+    await navigateSpa(page, '/admin/tenants')
 
-    const fixtureSlug = `tc-tm-ui-04-${randomUUID().slice(0, 8)}`
-    const originalName = 'TM UI-04 Original'
+    await expect(page.locator('[data-testid="tenants-table"]')).toBeVisible({ timeout: 10_000 })
 
-    try {
-      await createTestTenant(page.request, adminToken, fixtureSlug, originalName)
+    // Click the first edit button in the table
+    const firstEditBtn = page.locator('[data-testid^="tenant-edit-"]').first()
+    await expect(firstEditBtn).toBeVisible({ timeout: 10_000 })
+    await firstEditBtn.click()
 
-      await loginWithToken(page, adminToken)
-      await navigateSpa(page, `/admin/tenants/${fixtureSlug}/edit`)
+    // Wait for navigation to the edit page
+    await page.waitForURL((url) => url.pathname.endsWith('/edit'), { timeout: 10_000 })
 
-      await expect(page.locator('[data-testid="edit-tenant-page"]')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('[data-testid="edit-tenant-page"]')).toBeVisible({ timeout: 15_000 })
 
-      // slug element exists and is not an input
-      const slugEl = page.locator('[data-testid="edit-tenant-slug"]')
-      await expect(slugEl).toBeVisible()
-      const slugTagName = await slugEl.evaluate((el) => el.tagName.toLowerCase())
-      expect(slugTagName, 'Slug is displayed in a non-input element (read-only)').not.toBe('input')
+    // slug element exists and is not an input
+    const slugEl = page.locator('[data-testid="edit-tenant-slug"]')
+    await expect(slugEl).toBeVisible()
+    const slugTagName = await slugEl.evaluate((el) => el.tagName.toLowerCase())
+    expect(slugTagName, 'Slug is displayed in a non-input element (read-only)').not.toBe('input')
 
-      // idp_realm_id element exists and is not an input
-      const realmEl = page.locator('[data-testid="edit-tenant-realm"]')
-      await expect(realmEl).toBeVisible()
-      const realmTagName = await realmEl.evaluate((el) => el.tagName.toLowerCase())
-      expect(realmTagName, 'IDP realm ID is displayed in a non-input element (read-only)').not.toBe('input')
+    // idp_realm_id element exists and is not an input
+    const realmEl = page.locator('[data-testid="edit-tenant-realm"]')
+    await expect(realmEl).toBeVisible()
+    const realmTagName = await realmEl.evaluate((el) => el.tagName.toLowerCase())
+    expect(realmTagName, 'IDP realm ID is displayed in a non-input element (read-only)').not.toBe('input')
 
-      await shot(page, 'UI-04-readonly-fields')
+    await shot(page, 'UI-04-readonly-fields')
 
-      // Visual assertion: edit-tenant-page container is visible with read-only fields
-      const pageVisible = await page.locator('[data-testid="edit-tenant-page"]').isVisible()
-      expect(pageVisible, 'Screen shows EditTenantPage container').toBe(true)
-    } finally {
-      await deleteTestTenant(page.request, adminToken, fixtureSlug)
-    }
+    // Visual assertion: edit-tenant-page container is visible with read-only fields
+    const pageVisible = await page.locator('[data-testid="edit-tenant-page"]').isVisible()
+    expect(pageVisible, 'Screen shows EditTenantPage container').toBe(true)
   })
 
   // ── TC-TM-UI-05 ─────────────────────────────────────────────────────────────
 
-  test('TC-TM-UI-05: EditTenantPage allows editing display_name and saving', async ({ page, request }) => {
-    test.setTimeout(120_000)
+  test('TC-TM-UI-05: EditTenantPage allows editing display_name and saving', async ({ page }) => {
+    test.setTimeout(60_000)
 
-    // Create a dedicated fixture tenant for this test so we can safely modify it.
-    const fixtureSlug = `tc-tm-ui-05-${randomUUID().slice(0, 8)}`
-    const originalName = 'TM UI-05 Original'
+    await loginWithToken(page, adminToken)
+    await navigateSpa(page, '/admin/tenants')
 
-    try {
-      await createTestTenant(request, adminToken, fixtureSlug, originalName)
+    await expect(page.locator('[data-testid="tenants-table"]')).toBeVisible({ timeout: 10_000 })
 
-      await loginWithToken(page, adminToken)
-      await navigateSpa(page, `/admin/tenants/${fixtureSlug}/edit`)
+    // Click the first edit button (same pattern as TC-TM-UI-04 — uses existing tenant)
+    const firstEditBtn = page.locator('[data-testid^="tenant-edit-"]').first()
+    await expect(firstEditBtn).toBeVisible({ timeout: 10_000 })
 
-      await expect(page.locator('[data-testid="edit-tenant-page"]')).toBeVisible({ timeout: 15_000 })
+    // Extract the slug from the data-testid
+    const testId = await firstEditBtn.getAttribute('data-testid') ?? ''
+    const slug = testId.replace('tenant-edit-', '')
+    expect(slug.length, 'Edit button has a slug in its testid').toBeGreaterThan(0)
 
-      // Edit the display_name field
-      const displayNameInput = page.locator('[data-testid="edit-tenant-display-name"]')
-      await expect(displayNameInput).toBeVisible()
-      const newName = `TM UI-05 Updated ${randomUUID().slice(0, 6)}`
-      await displayNameInput.fill(newName)
+    await firstEditBtn.click()
+    await page.waitForURL((url) => url.pathname.endsWith('/edit'), { timeout: 10_000 })
+    await expect(page.locator('[data-testid="edit-tenant-page"]')).toBeVisible({ timeout: 15_000 })
 
-      await shot(page, 'UI-05-before-save')
+    // Read the current display_name so we can restore it after the test
+    const displayNameInput = page.locator('[data-testid="edit-tenant-display-name"]')
+    await expect(displayNameInput).toBeVisible()
+    const originalName = await displayNameInput.inputValue()
 
-      // Submit the form
-      await page.getByRole('button', { name: /save/i }).click()
+    // Edit the display_name field
+    const newName = `TM UI-05 Updated ${randomUUID().slice(0, 6)}`
+    await displayNameInput.fill(newName)
 
-      // Should navigate back to /admin/tenants on success
-      await page.waitForURL((url) => url.pathname === '/admin/tenants', { timeout: 15_000 })
+    await shot(page, 'UI-05-before-save')
 
-      await shot(page, 'UI-05-after-save')
+    // Submit the form
+    await page.getByRole('button', { name: /save/i }).click()
 
-      // Visual assertion: URL is back at /admin/tenants after save
-      const finalPath = new URL(page.url()).pathname
-      expect(finalPath, 'Screen shows /admin/tenants after successful save').toBe('/admin/tenants')
-    } finally {
-      await deleteTestTenant(request, adminToken, fixtureSlug)
-    }
+    // Should navigate back to /admin/tenants on success
+    await page.waitForURL((url) => url.pathname === '/admin/tenants', { timeout: 15_000 })
+
+    await shot(page, 'UI-05-after-save')
+
+    // Visual assertion: URL is back at /admin/tenants after save
+    const finalPath = new URL(page.url()).pathname
+    expect(finalPath, 'Screen shows /admin/tenants after successful save').toBe('/admin/tenants')
+
+    // Restore the original display_name to leave the tenant as we found it
+    await navigateSpa(page, `/admin/tenants/${slug}/edit`)
+    await expect(page.locator('[data-testid="edit-tenant-page"]')).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('[data-testid="edit-tenant-display-name"]')).toBeVisible()
+    await page.locator('[data-testid="edit-tenant-display-name"]').fill(originalName)
+    await page.getByRole('button', { name: /save/i }).click()
+    await page.waitForURL((url) => url.pathname === '/admin/tenants', { timeout: 15_000 })
   })
 
   // ── TC-TM-UI-06 ─────────────────────────────────────────────────────────────

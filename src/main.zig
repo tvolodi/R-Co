@@ -1056,6 +1056,7 @@ fn serveRequest(
             }
         } else if (std.mem.eql(u8, resource, "tenants")) {
             // GET /api/v1/tenants       — PLATFORM_ADMIN list
+            // GET /api/v1/tenants/:slug — PLATFORM_ADMIN read
             // PATCH /api/v1/tenants/:slug — PLATFORM_ADMIN update
             const actor = api_auth.AuthContext{
                 .user_id = user_id,
@@ -1080,10 +1081,19 @@ fn serveRequest(
                     resp_status = 405;
                     resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
                 }
-            } else if (seg5.len == 0 and method == .PATCH) {
-                const r = identity_routes.handlePatchTenant(id_svc, req_alloc, actor, seg4, body);
-                resp_status = r.status_code;
-                resp_body = r.body;
+            } else if (seg5.len == 0) {
+                if (method == .GET) {
+                    const r = identity_routes.handleGetTenant(id_svc, req_alloc, actor, seg4);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (method == .PATCH) {
+                    const r = identity_routes.handlePatchTenant(id_svc, req_alloc, actor, seg4, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
             } else {
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";

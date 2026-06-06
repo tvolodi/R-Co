@@ -690,6 +690,24 @@ pub fn handleListTenants(
         return errorResult(allocator, 500, "serialization_failed") };
 }
 
+pub fn handleGetTenant(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    slug: []const u8,
+) HandlerResult {
+    const tenant = service.getTenantAdmin(allocator, actor, slug) catch |err| switch (err) {
+        identity_service.IdentityError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.IdentityError.TenantNotFound => return errorResult(allocator, 404, "tenant_not_found"),
+        identity_service.IdentityError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer tenant.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeTenant(allocator, tenant) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
 pub fn handlePatchTenant(
     service: *identity_service.Service,
     allocator: std.mem.Allocator,

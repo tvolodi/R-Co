@@ -76,9 +76,9 @@ export default function EditTenantPage() {
   useEffect(() => {
     if (tenantQuery.data && !initialized) {
       setDisplayName(tenantQuery.data.display_name)
-      setHostname(tenantQuery.data.hostname)
+      setHostname(tenantQuery.data.hostname ?? '')
       setRedirectUris(
-        tenantQuery.data.redirect_uris.length > 0
+        (tenantQuery.data.redirect_uris && tenantQuery.data.redirect_uris.length > 0)
           ? tenantQuery.data.redirect_uris
           : [''],
       )
@@ -152,11 +152,11 @@ export default function EditTenantPage() {
     if (displayName.trim() !== original.display_name) {
       body.display_name = displayName.trim()
     }
-    if (hostname.trim() !== original.hostname) {
+    if (hostname.trim() !== (original.hostname ?? '')) {
       body.hostname = hostname.trim()
     }
     const cleanedUris = redirectUris.map((u) => u.trim()).filter((u) => u.length > 0)
-    const originalUris = original.redirect_uris.slice().sort().join('\n')
+    const originalUris = (original.redirect_uris ?? []).slice().sort().join('\n')
     if (cleanedUris.slice().sort().join('\n') !== originalUris) {
       body.redirect_uris = cleanedUris
     }

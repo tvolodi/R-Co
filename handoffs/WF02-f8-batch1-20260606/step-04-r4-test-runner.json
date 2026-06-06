@@ -1,0 +1,63 @@
+{
+  "handoff_id": "wf02-f8-b1-20260606-004-r4",
+  "run_id": "WF02-f8-batch1-20260606",
+  "step": "04-r4",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-06T15:23:55Z",
+  "started_at": "2026-06-06T15:26:31Z",
+  "completed_at": "2026-06-06T16:46:52Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch1 test rerun 4 \u2014 backend restarted with latest code",
+    "requirement_ids": [
+      "TM-01",
+      "TM-02",
+      "TM-03"
+    ],
+    "related_handoff_ids": [
+      "wf02-f8-b1-20260606-004-r3",
+      "adhoc-f8-b1-restart-20260606-001"
+    ],
+    "artifacts_in": [
+      "tests/integration/tm01_tenant_list_test.zig",
+      "web/tests/e2e/tenants.e2e.spec.ts",
+      "tests/reports/report-20260606-WF02-f8-batch1-20260606-rerun3.yaml"
+    ]
+  },
+  "task": {
+    "description": "TEST-RUNNER rerun 4 (user-authorized beyond max_rework).\n\nThe backend was just restarted with latest code (ADHOC ADHOC-f8-b1-restart-20260606 confirmed PASS). The GET /api/v1/tenants/:slug route now exists.\n\nPrevious failure causes and mitigations:\n- Rerun 1: DB auth failure \u2192 FIXED (DB services confirmed healthy)\n- Rerun 2: Integration leak traces \u2192 environmental, not code bug\n- Rerun 3: Token issuer mismatch + execution context destroyed \u2192 backend was stale (now restarted)\n\nMandatory sequence:\n1. Pre-checks: docker-compose ps, Keycloak health, test DB SELECT 1\n2. Run TM-focused integration tests:\n   $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test-integration -- --test-filter 'TC-TM'\n   If TM integration tests pass, also run the full suite to check for regressions.\n3. Run E2E tenant tests:\n   cd web; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://localhost:8081'; npx playwright test tests/e2e/tenants.e2e.spec.ts --reporter=list\n4. Write report: tests/reports/report-20260606-WF02-f8-batch1-20260606-rerun4.yaml\n\nIMPORTANT: Use BPM_IDP_BASE_URL='http://localhost:8081' (NOT 127.0.0.1) for E2E tests. The backend's BPM_IDP_BASE_URL is set to http://localhost:8081 and tokens must match that issuer.\n\nIf all tests pass: result PASS, next_action Route to RELEASE-VALIDATOR (Step 5).\nIf failures remain: result FAIL with exact diagnostics.",
+    "acceptance_criteria": [
+      "Integration tests for TM requirements pass",
+      "E2E tenant tests pass (all 7 TC-TM-UI tests)",
+      "Report file written to tests/reports/",
+      "Exact diagnostics captured if anything fails"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Pre-checks PASS. Integration: 141/390 passed, 242 failed (systemic DebugAllocator leak in helpers.zig:105). E2E: 3/7 passed (UI-01/02/03), TC-TM-UI-04 hung during edit page navigation, UI-05/06/07 not reached. BPM_IDP_BASE_URL fix from rerun3 resolved 3 tests.",
+    "artifacts_out": [
+      "tests/reports/report-20260606-WF02-f8-batch1-20260606-rerun4.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "242/390 integration tests failed: DebugAllocator memory leak in tests/integration/helpers.zig:105 runMigrations (allocator.dupe without free). TM integration tests cannot be verified."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "TC-TM-UI-04 hung during edit page navigation. Likely GET /api/v1/tenants/:slug endpoint issue or missing data-testid attributes on EditTenantPage."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "TC-TM-UI-05, UI-06, UI-07 not reached due to TC-TM-UI-04 hang."
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03) for TC-TM-UI-04 edit page hang + BACKEND-DEV for helpers.zig:105 memory leak fix"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

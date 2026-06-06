@@ -1,0 +1,67 @@
+{
+  "handoff_id": "wf02-f8-b1-20260606-004-r3",
+  "run_id": "WF02-f8-batch1-20260606",
+  "step": "04-r3",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-06T13:47:12Z",
+  "started_at": "2026-06-06T13:47:29Z",
+  "completed_at": "2026-06-06T14:09:40Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch1 test rerun after ISSUE-FIXER backend route fix",
+    "requirement_ids": [
+      "TM-01",
+      "TM-02",
+      "TM-03"
+    ],
+    "related_handoff_ids": [
+      "wf03-f8-b1-tenants-e2e-timeout-20260606-005",
+      "wf02-f8-b1-20260606-004-r2"
+    ],
+    "artifacts_in": [
+      "tests/integration/tm01_tenant_list_test.zig",
+      "web/tests/e2e/tenants.e2e.spec.ts",
+      "docs/issues/ISS-0064.json"
+    ]
+  },
+  "task": {
+    "description": "Re-run Step 4 after ISSUE-FIXER resolved missing GET /api/v1/tenants/:slug route.\n\nMandatory sequence:\n1. Pre-checks: docker-compose ps, Keycloak health, test DB SELECT 1\n2. Run integration command:\n   cmd /c 'set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://127.0.0.1:8081&& zig build test-integration'\n3. Run targeted E2E command:\n   cd web && npx playwright test tests/e2e/tenants.e2e.spec.ts --reporter=list\n4. Write report: tests/reports/report-20260606-WF02-f8-batch1-20260606-rerun3.yaml\n\nExpected focus:\n- Verify TM-UI-04 and TM-UI-05 no longer fail with 'Failed to load tenant'\n- If new failure appears, capture exact diagnostics and classify separately\n\nIf all tests pass: result PASS, next_action Route to RELEASE-VALIDATOR (Step 5).\nIf failures remain: result FAIL with exact diagnostics and next_action Route to ISSUE-FIXER (WF-03).",
+    "acceptance_criteria": [
+      "Integration tests run without AuthenticationFailed",
+      "TM-UI-04 and TM-UI-05 do not fail on tenant-load route missing",
+      "Report file written",
+      "Exact diagnostics captured if anything still fails"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Prechecks passed, but integration rerun failed on DebugAllocator leak diagnostics and tenants Playwright spec failed 7/7 with token-issuer and navigation/session errors.",
+    "artifacts_out": [
+      "tests/reports/report-20260606-WF02-f8-batch1-20260606-rerun3.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Integration command failed: DebugAllocator leak traces surfaced from tests/integration/helpers.zig:105 (runMigrations) during test.TC-API-02-28 at tests/integration/api02_crud_test.zig:1088."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "Playwright tenants rerun failed 7/7. TM-UI-04 and TM-UI-05 no longer fail with 'Failed to load tenant', but now fail on tenant cleanup API 401 invalid token issuer (extensions.code=token_invalid_issuer, reason=issuer_mismatch)."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "Navigation/session instability remains: UI-01 execution context destroyed, UI-02 redirect timeout to /instances, UI-03/UI-06 tenants page not visible, UI-07 sidebar link not visible."
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "Rework budget exhausted: rework_count is 3 and max_rework is 3 for this handoff."
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03); max rework is exhausted and ORCH escalation decision is required."
+  },
+  "rework_count": 3,
+  "max_rework": 3
+}

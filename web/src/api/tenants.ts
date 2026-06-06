@@ -4,8 +4,8 @@ export interface Tenant {
   slug: string
   display_name: string
   idp_realm_id: string
-  hostname: string
-  redirect_uris: string[]
+  hostname?: string
+  redirect_uris?: string[]
   status: 'ACTIVE' | 'INACTIVE'
   created_at: string
 }
