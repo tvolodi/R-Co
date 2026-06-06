@@ -802,6 +802,64 @@ pub fn handlePatchTenant(
         return errorResult(allocator, 500, "serialization_failed") };
 }
 
+pub fn handleDeactivateTenant(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    slug: []const u8,
+    body: []const u8,
+) HandlerResult {
+    if (!isCanonicalTenantSlug(slug)) return errorResult(allocator, 400, "invalid_tenant_slug");
+    if (!isValidLifecyclePayload(allocator, body)) return errorResult(allocator, 422, "invalid_lifecycle_payload");
+
+    const tenant = identity_service.applyTenantLifecycleAction(
+        allocator,
+        actor,
+        service.registry,
+        slug,
+        .deactivate,
+    ) catch |err| switch (err) {
+        identity_service.UpdateTenantStatusError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.UpdateTenantStatusError.TenantNotFound => return errorResult(allocator, 404, "tenant_not_found"),
+        identity_service.UpdateTenantStatusError.InvalidTransition => return errorResult(allocator, 422, "invalid_transition"),
+        identity_service.UpdateTenantStatusError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer tenant.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeTenant(allocator, tenant) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
+pub fn handleReactivateTenant(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    slug: []const u8,
+    body: []const u8,
+) HandlerResult {
+    if (!isCanonicalTenantSlug(slug)) return errorResult(allocator, 400, "invalid_tenant_slug");
+    if (!isValidLifecyclePayload(allocator, body)) return errorResult(allocator, 422, "invalid_lifecycle_payload");
+
+    const tenant = identity_service.applyTenantLifecycleAction(
+        allocator,
+        actor,
+        service.registry,
+        slug,
+        .reactivate,
+    ) catch |err| switch (err) {
+        identity_service.UpdateTenantStatusError.Forbidden => return errorResult(allocator, 403, "forbidden"),
+        identity_service.UpdateTenantStatusError.TenantNotFound => return errorResult(allocator, 404, "tenant_not_found"),
+        identity_service.UpdateTenantStatusError.InvalidTransition => return errorResult(allocator, 422, "invalid_transition"),
+        identity_service.UpdateTenantStatusError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+    defer tenant.deinit(allocator);
+
+    return .{ .status_code = 200, .body = serializeTenant(allocator, tenant) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
 fn serializeUser(allocator: std.mem.Allocator, user: identity_registry.User) ![]u8 {
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(allocator);
@@ -1048,6 +1106,38 @@ fn appendNullableJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), 
     } else {
         try buf.appendSlice(allocator, "null");
     }
+}
+
+fn isCanonicalTenantSlug(slug: []const u8) bool {
+    if (slug.len < 3 or slug.len > 63) return false;
+
+    const first = slug[0];
+    const last = slug[slug.len - 1];
+    if (!(std.ascii.isLower(first) or std.ascii.isDigit(first))) return false;
+    if (!(std.ascii.isLower(last) or std.ascii.isDigit(last))) return false;
+
+    for (slug) |c| {
+        const valid = std.ascii.isLower(c) or std.ascii.isDigit(c) or c == '-';
+        if (!valid) return false;
+    }
+
+    return true;
+}
+
+fn isValidLifecyclePayload(allocator: std.mem.Allocator, body: []const u8) bool {
+    const trimmed = std.mem.trim(u8, body, " \t\r\n");
+    if (trimmed.len == 0) return true;
+
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        trimmed,
+        .{ .allocate = .alloc_always },
+    ) catch return false;
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return false;
+    return parsed.value.object.count() == 0;
 }
 
 fn errorResult(allocator: std.mem.Allocator, status_code: u16, code: []const u8) HandlerResult {

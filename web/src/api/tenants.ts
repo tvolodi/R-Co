@@ -3,7 +3,7 @@ import { client } from './client'
 export interface Tenant {
   slug: string
   display_name: string
-  idp_realm_id: string
+  idp_realm_id: string | null
   hostname?: string
   redirect_uris?: string[]
   status: 'ACTIVE' | 'INACTIVE'
@@ -26,4 +26,10 @@ export const tenantsApi = {
 
   patch: (slug: string, body: Partial<{ display_name: string; hostname: string; redirect_uris: string[] }>) =>
     client.patch<Tenant>(`/api/v1/tenants/${slug}`, body),
+
+  deactivate: (slug: string) =>
+    client.post<Tenant>(`/api/v1/tenants/${slug}/deactivate`, {}),
+
+  reactivate: (slug: string) =>
+    client.post<Tenant>(`/api/v1/tenants/${slug}/reactivate`, {}),
 }

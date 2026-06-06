@@ -1,0 +1,56 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-002a",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-06T21:09:56Z",
+  "started_at": "2026-06-06T21:10:13Z",
+  "completed_at": "2026-06-06T21:19:11Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 backend implementation",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": [
+      "wf02-f8-b2-20260607-001b-r1"
+    ],
+    "artifacts_in": [
+      "src/design/tenant-lifecycle-controls.md"
+    ]
+  },
+  "task": {
+    "description": "Implement backend for TM-04/TM-05 per src/design/tenant-lifecycle-controls.md:\n\n1. Add lifecycle endpoints:\n   - POST /api/v1/tenants/:slug/deactivate\n   - POST /api/v1/tenants/:slug/reactivate\n\n2. Add service/registry support for tenant status transitions ACTIVE<->INACTIVE with idempotent behavior.\n\n3. Enforce PLATFORM_ADMIN authorization for lifecycle endpoints.\n\n4. Add input validation rules at route boundary for slug/action/body as designed.\n\n5. Integrate tenant activity policy enforcement for normal operations where design mandates tenant-inactive blocking.\n\n6. Add/adjust backend integration tests for TM-04/TM-05.\n\nValidation required before completion:\n- zig build\n- zig build test\n- zig build migrate\n\nCommit implementation to feature/WF02-f8-batch2-20260607 and push.",
+    "acceptance_criteria": [
+      "Both lifecycle endpoints implemented and wired in src/main.zig",
+      "Status transitions are idempotent and persisted",
+      "Validation and authorization behavior matches design",
+      "Required build/test/migrate commands pass"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Implemented TM-04/TM-05 tenant lifecycle controls (deactivate/reactivate endpoints, idempotent status transitions, lifecycle validation, auth policy integration, and integration tests), committed and pushed to feature/WF02-f8-batch2-20260607; mandatory zig build test remains blocked by pre-existing failing definition retrieval tests.",
+    "artifacts_out": [
+      "src/api/routes/identity.zig",
+      "src/identity/service.zig",
+      "src/identity/registry.zig",
+      "src/main.zig",
+      "src/api/middleware/auth.zig",
+      "tests/integration/tm01_tenant_list_test.zig",
+      "src/tools/migrate.zig"
+    ],
+    "issues": [
+      {
+        "id": "WF02-f8-b2-20260607-002a-VAL-01",
+        "severity": "BLOCKER",
+        "description": "Mandatory validation command zig build test fails in existing suite outside TM-04/TM-05 scope (definition_retrieval_test failures: TC-PD-07-17..20 with expected 404/200 mismatches and PgError.ServerError in definition store create path).",
+        "affected_requirement": null
+      }
+    ],
+    "next_action": "Route to ORCH for blocker handling (WF-03 on definition retrieval test failures) before redispatching BACKEND-DEV validation gate"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

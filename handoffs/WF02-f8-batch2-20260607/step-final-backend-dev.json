@@ -1,0 +1,30 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-final",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-06T23:16:26Z",
+  "started_at": "2026-06-06T23:16:45Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 git-merge",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": ["wf02-f8-b2-20260607-006"],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Step Final for WF02-f8-batch2-20260607:\n\n1. Ensure feature branch feature/WF02-f8-batch2-20260607 contains all finalized changes.\n2. Create PR to main with summary of TM-04/TM-05 lifecycle controls.\n3. Merge via gh pr merge --squash --delete-branch.\n4. Verify branch deleted on remote.\n5. Return local repo to main and clean working tree.\n\nRecord PR number and merge commit SHA in handoff result.",
+    "acceptance_criteria": [
+      "PR merged via squash",
+      "Remote feature branch deleted",
+      "Repo on main with clean working tree"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2
+}

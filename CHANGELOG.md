@@ -15,6 +15,12 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage F8 Batch 2 - Tenant Lifecycle Controls (RELEASED 2026-06-06)
+
+- **TM-04** (MUST): Deactivate tenant - Added tenant deactivation lifecycle action in tenant management with state-aware visibility, confirmation UX, backend lifecycle API integration, and deterministic error handling for forbidden/not-found/invalid-state paths.
+- **TM-05** (MUST): Reactivate tenant - Added tenant reactivation lifecycle action with complementary state-aware controls, confirmation UX, lifecycle API integration, and post-action query refresh behavior.
+- Validation evidence: TM-scoped integration and lifecycle E2E checks passing in tests/reports/report-20260607-WF02-f8-batch2-20260607-rerun3.yaml. Release approval: docs/status/release-f8-batch2-20260607.yaml.
+
 ### Stage F8 Batch 1 - Tenant Management GUI (RELEASED 2026-06-06)
 
 - **TM-01** (MUST): Platform-admin tenant list — Added paginated, sortable tenant list page with columns for slug, display name, hostname, realm, status, and timestamps. PLATFORM_ADMIN-only access with role-based DOM hiding and redirect for unauthorized users.

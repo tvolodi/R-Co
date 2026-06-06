@@ -794,6 +794,18 @@ pub fn build(b: *std.Build) void {
     run_adp12_regression_tests.setCwd(b.path("."));
     run_adp12_regression_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    const tm_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/tm01_tenant_list_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_tm_integration_tests = b.addRunArtifact(tm_integration_tests);
+    run_tm_integration_tests.setCwd(b.path("."));
+    run_tm_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
     clean_test_db.setCwd(b.path("."));
@@ -828,6 +840,10 @@ pub fn build(b: *std.Build) void {
     const test_adp12_regression_step = b.step("test-adp12-regression", "Run ADP-12 default-tenant pre/post regression suite");
     test_adp12_regression_step.dependOn(&clean_test_db.step);
     test_adp12_regression_step.dependOn(&run_adp12_regression_tests.step);
+
+    const test_integration_tm_step = b.step("test-integration-tm", "Run TM integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_tm_step.dependOn(&clean_test_db.step);
+    test_integration_tm_step.dependOn(&run_tm_integration_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

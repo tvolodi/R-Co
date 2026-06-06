@@ -1,0 +1,33 @@
+run_id: WF03-f8-b2-step4-integration-blockers-20260607
+workflow_id: WF-03
+step: "0.5"
+agent: ISSUE-FIXER
+handoff_id: wf03-f8-b2-step4-20260607-005
+timestamp_utc: 2026-06-06T22:43:21Z
+status: PASS
+summary: Fixed the integration blocker leak path in TestHarness migration bootstrap by preventing duplicate allocation of already-seen migration version keys.
+diagnosis:
+  category: A
+  findings:
+    - Failure report and stack trace pointed to tests/integration/helpers.zig runMigrations at allocator.dupe while preparing applied migration cache.
+    - schema_migrations now includes duplicate version values across schemas after schema-per-tenant expansion.
+    - The helper allocated every version string before map insertion; duplicate-key insertions dropped ownership and leaked the new buffer.
+  prior_issue_lookup:
+    matched:
+      - ISS-0062
+    note: Reused the allocator-cleanup diagnosis pattern, but root cause here is duplicate-key allocation in the migration helper, not pg result-row cleanup.
+validation:
+  - command: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://127.0.0.1:8081'; $env:BPM_DB_URL='postgres://bpm:bpm@localhost:5432/bpm_dev'; zig build
+    result: PASS
+    evidence: BUILD_EXIT:0
+  - command: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; $env:BPM_TEST_URL='http://127.0.0.1:8080'; $env:BPM_IDP_BASE_URL='http://127.0.0.1:8081'; $env:BPM_DB_URL='postgres://bpm:bpm@localhost:5432/bpm_dev'; zig build test
+    result: PASS
+    evidence: TEST_EXIT:0
+  - command: $env:BPM_DB_URL='postgres://bpm:bpm@localhost:5432/bpm_dev'; zig build migrate
+    result: PASS
+    evidence: MIGRATE_EXIT:0
+artifacts:
+  - tests/integration/helpers.zig
+  - docs/issues/ISS-0066.json
+  - docs/issues/issue_index.json
+next_action: Route to TEST-RUNNER (WF-03 Step 3)

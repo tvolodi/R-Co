@@ -1,0 +1,45 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-001b",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-06T21:05:16Z",
+  "started_at": "2026-06-06T21:05:30Z",
+  "completed_at": "2026-06-06T21:06:11Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 design validation",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": ["wf02-f8-b2-20260607-001"],
+    "artifacts_in": [
+      "src/design/tenant-lifecycle-controls.md",
+      "docs/BPM_Platform_Functional_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER output for TM-04/TM-05 in src/design/tenant-lifecycle-controls.md. Hard gate before implementation. Confirm complete acceptance-criteria coverage, no implementation code leakage, explicit API/contracts/error taxonomy, and consistent dependencies for backend/frontend execution.",
+    "acceptance_criteria": [
+      "PASS if design is complete and implementation-ready",
+      "FAIL with concrete issues if gaps exist"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Design validation failed for TM-04/TM-05: Type E artefact is mostly complete and lint-clean, but security input-validation rules are not explicitly specified for lifecycle endpoint user input.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "CDV-TM-04-05-SEC-001",
+        "severity": "MAJOR",
+        "description": "Security checklist failure: the design handles user input (tenant slug path parameter and lifecycle action endpoints) but does not define explicit validation rules (allowed character set/length/canonicalization and invalid-input rejection behavior).",
+        "affected_requirement": "TM-04"
+      }
+    ],
+    "next_action": "Route back to CODE-DESIGNER for rework of src/design/tenant-lifecycle-controls.md, then rerun CODE-DESIGN-VALIDATOR (Step 01b)."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

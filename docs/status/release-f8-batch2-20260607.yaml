@@ -1,0 +1,60 @@
+stage: Stage F8 Batch 2
+date: 2026-06-06T23:12:29Z
+decision: APPROVED
+release_type: BATCH
+requirement_ids:
+  - TM-04
+  - TM-05
+
+nfr_results:
+  NFR-01-p99_read_ms:
+    target: "<=200"
+    actual: 1.014
+    unit: ms
+    passed: true
+  NFR-01-p99_write_ms:
+    target: "<=500"
+    actual: 3.786
+    unit: ms
+    passed: true
+  NFR-02-append_throughput_eps:
+    target: ">=1000"
+    actual: 68116.565
+    unit: events_per_second
+    passed: true
+  NFR-04-replay_10000_ms:
+    target: "<=5000"
+    actual: 34.077
+    unit: ms
+    passed: true
+
+test_summary:
+  source_report: tests/reports/report-20260607-WF02-f8-batch2-20260607-rerun3.yaml
+  prechecks:
+    services: PASS
+    benchmark_env: PASS
+  layers:
+    tm_integration: PASS
+    tm_e2e: PASS
+  total: 5
+  passed: 5
+  failed: 0
+  skipped: 0
+  evidence:
+    - TM-scoped integration target passed (test-integration-tm, exit 0)
+    - TM E2E grep scope passed (TC-TM-UI-04|TC-TM-UI-05|TC-TM-UI-08|TC-TM-UI-09)
+
+blocking_issues: []
+
+rationale: >
+  TM-04 and TM-05 release evidence is complete in Step 4 rerun3: prechecks PASS,
+  integration PASS, and E2E PASS with zero failures/skips. NFR benchmarks also pass
+  with substantial margin: p99 read 1.014ms (<=200ms), p99 write 3.786ms (<=500ms),
+  append throughput 68,116.565 eps (>=1,000 eps), and 10K-event replay 34.077ms
+  (<=5,000ms). No blockers remain for Stage F8 Batch 2.
+
+approved_requirements:
+  - TM-04
+  - TM-05
+
+next_action: Route to DOC-UPDATER to set TM-04/TM-05 to RELEASED status

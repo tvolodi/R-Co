@@ -1,7 +1,7 @@
 //! Integration tests for TM-01 (list tenants API) and TM-03 (patch tenant API).
 //!
 //! All tests connect to a real PostgreSQL database via BPM_TEST_DB_URL.
-//! Tests skip cleanly with error.SkipZigTest when BPM_TEST_DB_URL is absent.
+//! Tests fail clearly when BPM_TEST_DB_URL is absent.
 //! Each test creates and cleans up its own fixtures using unique slugs.
 
 const std = @import("std");
@@ -20,8 +20,8 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
-            std.debug.print("BPM_TEST_DB_URL is not set — skipping TM-01/TM-03 integration tests\n", .{});
-            return error.SkipZigTest;
+            std.debug.print("BPM_TEST_DB_URL is required for TM integration tests and is not set\n", .{});
+            return err;
         },
         else => return err,
     };
@@ -90,6 +90,34 @@ fn createTestTenant(
         .idp_realm_id = null,
         .oidc_mode = .disabled,
     });
+}
+
+fn runtimeFixtureSlug(alloc: std.mem.Allocator, prefix: []const u8, test_case_id: []const u8) ![]u8 {
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(test_case_id, &digest, .{});
+    return std.fmt.allocPrint(
+        alloc,
+        "{s}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
+        .{
+            prefix,
+            digest[0],
+            digest[1],
+            digest[2],
+            digest[3],
+            digest[4],
+            digest[5],
+            digest[6],
+            digest[7],
+            digest[8],
+            digest[9],
+            digest[10],
+            digest[11],
+            digest[12],
+            digest[13],
+            digest[14],
+            digest[15],
+        },
+    );
 }
 
 // ── TC-TM-01-01 ───────────────────────────────────────────────────────────────
@@ -370,4 +398,217 @@ test "TC-TM-03-04: PATCH on non-existent slug returns HTTP 404 tenant_not_found"
 
     try testing.expectEqual(@as(u16, 404), result.status_code);
     try testing.expect(std.mem.indexOf(u8, result.body, "tenant_not_found") != null);
+}
+
+// ── TM-04 / TM-05 lifecycle controls ─────────────────────────────────────────
+
+fn assertTenantStatusBySlug(
+    alloc: std.mem.Allocator,
+    registry: *identity_registry.Registry,
+    slug: []const u8,
+    expected_status: identity_registry.TenantStatus,
+) !void {
+    const maybe_tenant = try registry.selectTenantBySlug(alloc, slug);
+    const tenant = maybe_tenant orelse return error.TestUnexpectedResult;
+    defer tenant.deinit(alloc);
+    try testing.expectEqual(expected_status, tenant.status);
+}
+
+test "TC-TM-04-01: deactivate endpoint sets tenant status INACTIVE and returns 200" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-04-01", "TC-TM-04-01");
+    defer alloc.free(slug);
+    cleanupTenantBySlug(&pool, slug);
+    defer cleanupTenantBySlug(&pool, slug);
+
+    var registry = identity_registry.Registry.init(&pool);
+    var service = identity_service.Service.init(&registry);
+
+    const created = try createTestTenant(alloc, &service, slug, "TM-04 Deactivate");
+    defer created.deinit(alloc);
+
+    const result = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    defer freeRouteBody(alloc, result.body);
+
+    try testing.expectEqual(@as(u16, 200), result.status_code);
+    try testing.expect(std.mem.indexOf(u8, result.body, "\"status\":\"INACTIVE\"") != null);
+    try assertTenantStatusBySlug(alloc, &registry, slug, .INACTIVE);
+}
+
+test "TC-TM-04-02: deactivate endpoint is idempotent when already INACTIVE" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-04-02", "TC-TM-04-02");
+    defer alloc.free(slug);
+    cleanupTenantBySlug(&pool, slug);
+    defer cleanupTenantBySlug(&pool, slug);
+
+    var registry = identity_registry.Registry.init(&pool);
+    var service = identity_service.Service.init(&registry);
+
+    const created = try createTestTenant(alloc, &service, slug, "TM-04 Idempotent");
+    defer created.deinit(alloc);
+
+    const first = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    defer freeRouteBody(alloc, first.body);
+    try testing.expectEqual(@as(u16, 200), first.status_code);
+
+    const second = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    defer freeRouteBody(alloc, second.body);
+    try testing.expectEqual(@as(u16, 200), second.status_code);
+    try testing.expect(std.mem.indexOf(u8, second.body, "\"status\":\"INACTIVE\"") != null);
+
+    try assertTenantStatusBySlug(alloc, &registry, slug, .INACTIVE);
+}
+
+test "TC-TM-04-03: deactivate endpoint rejects invalid slug and invalid payload" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    var registry = identity_registry.Registry.init(&pool);
+    var service = identity_service.Service.init(&registry);
+
+    const invalid_slug = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), "Bad_Slug", "{}");
+    defer freeRouteBody(alloc, invalid_slug.body);
+    try testing.expectEqual(@as(u16, 400), invalid_slug.status_code);
+    try testing.expect(std.mem.indexOf(u8, invalid_slug.body, "invalid_tenant_slug") != null);
+
+    const invalid_payload = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), "valid-slug", "{\"x\":1}");
+    defer freeRouteBody(alloc, invalid_payload.body);
+    try testing.expectEqual(@as(u16, 422), invalid_payload.status_code);
+    try testing.expect(std.mem.indexOf(u8, invalid_payload.body, "invalid_lifecycle_payload") != null);
+}
+
+test "TC-TM-04-04: non-PLATFORM_ADMIN cannot deactivate tenant" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-04-04", "TC-TM-04-04");
+    defer alloc.free(slug);
+    cleanupTenantBySlug(&pool, slug);
+    defer cleanupTenantBySlug(&pool, slug);
+
+    var registry = identity_registry.Registry.init(&pool);
+    var service = identity_service.Service.init(&registry);
+
+    const created = try createTestTenant(alloc, &service, slug, "TM-04 Forbidden");
+    defer created.deinit(alloc);
+
+    const result = identity_routes.handleDeactivateTenant(&service, alloc, viewerActor(), slug, "{}");
+    defer freeRouteBody(alloc, result.body);
+
+    try testing.expectEqual(@as(u16, 403), result.status_code);
+    try testing.expect(std.mem.indexOf(u8, result.body, "forbidden") != null);
+}
+
+test "TC-TM-05-01: reactivate endpoint sets tenant status ACTIVE and returns 200" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-05-01", "TC-TM-05-01");
+    defer alloc.free(slug);
+    cleanupTenantBySlug(&pool, slug);
+    defer cleanupTenantBySlug(&pool, slug);
+
+    var registry = identity_registry.Registry.init(&pool);
+    var service = identity_service.Service.init(&registry);
+
+    const created = try createTestTenant(alloc, &service, slug, "TM-05 Reactivate");
+    defer created.deinit(alloc);
+
+    const deactivated = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    defer freeRouteBody(alloc, deactivated.body);
+    try testing.expectEqual(@as(u16, 200), deactivated.status_code);
+
+    const reactivated = identity_routes.handleReactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    defer freeRouteBody(alloc, reactivated.body);
+    try testing.expectEqual(@as(u16, 200), reactivated.status_code);
+    try testing.expect(std.mem.indexOf(u8, reactivated.body, "\"status\":\"ACTIVE\"") != null);
+
+    try assertTenantStatusBySlug(alloc, &registry, slug, .ACTIVE);
+}
+
+test "TC-TM-05-02: reactivate endpoint is idempotent when already ACTIVE" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-05-02", "TC-TM-05-02");
+    defer alloc.free(slug);
+    cleanupTenantBySlug(&pool, slug);
+    defer cleanupTenantBySlug(&pool, slug);
+
+    var registry = identity_registry.Registry.init(&pool);
+    var service = identity_service.Service.init(&registry);
+
+    const created = try createTestTenant(alloc, &service, slug, "TM-05 Idempotent");
+    defer created.deinit(alloc);
+
+    const first = identity_routes.handleReactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    defer freeRouteBody(alloc, first.body);
+    try testing.expectEqual(@as(u16, 200), first.status_code);
+
+    const second = identity_routes.handleReactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    defer freeRouteBody(alloc, second.body);
+    try testing.expectEqual(@as(u16, 200), second.status_code);
+    try testing.expect(std.mem.indexOf(u8, second.body, "\"status\":\"ACTIVE\"") != null);
+
+    try assertTenantStatusBySlug(alloc, &registry, slug, .ACTIVE);
+}
+
+test "TC-TM-05-03: non-PLATFORM_ADMIN cannot reactivate tenant" {
+    const alloc = testing.allocator;
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-05-03", "TC-TM-05-03");
+    defer alloc.free(slug);
+    cleanupTenantBySlug(&pool, slug);
+    defer cleanupTenantBySlug(&pool, slug);
+
+    var registry = identity_registry.Registry.init(&pool);
+    var service = identity_service.Service.init(&registry);
+
+    const created = try createTestTenant(alloc, &service, slug, "TM-05 Forbidden");
+    defer created.deinit(alloc);
+
+    const deactivate = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    defer freeRouteBody(alloc, deactivate.body);
+    try testing.expectEqual(@as(u16, 200), deactivate.status_code);
+
+    const reactivate = identity_routes.handleReactivateTenant(&service, alloc, viewerActor(), slug, "{}");
+    defer freeRouteBody(alloc, reactivate.body);
+    try testing.expectEqual(@as(u16, 403), reactivate.status_code);
+    try testing.expect(std.mem.indexOf(u8, reactivate.body, "forbidden") != null);
+
+    try assertTenantStatusBySlug(alloc, &registry, slug, .INACTIVE);
 }

@@ -487,6 +487,39 @@ pub const Registry = struct {
         return materializeTenant(allocator, row.?);
     }
 
+    pub fn updateTenantStatusBySlug(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        slug: []const u8,
+        status: TenantStatus,
+    ) RegistryError!Tenant {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const row = conn.queryRow(
+            allocator,
+            \\UPDATE tenant
+            \\SET status = $2, updated_at = NOW()
+            \\WHERE slug = $1
+            \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+        ,
+            &[_][]const u8{ slug, status.asString() },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (row == null) return error.TenantNotFound;
+        return materializeTenant(allocator, row.?);
+    }
+
     pub fn listTenants(
         self: *Registry,
         allocator: std.mem.Allocator,

@@ -47,6 +47,7 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
 }
 

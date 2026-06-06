@@ -1,8 +1,40 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-06-06T17:22:25Z",
-  "next_issue_id": 66,
+  "last_updated": "2026-06-06T23:04:48Z",
+  "next_issue_id": 68,
   "issues": [
+    {
+      "id": "ISS-0067",
+      "title": "WF03 f8 batch2 rerun1: TM auth redirect caused by localhost/127 identity drift and full-suite integration rerun blocked TM scope",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f8-b2-step4-rerun1-failures-20260607",
+      "handoff_id": "wf03-f8-b2-r1-20260607-005",
+      "affected_areas": [
+        "web/tests/e2e/helpers.ts",
+        "web/tests/e2e/tenants.e2e.spec.ts",
+        ".vscode/run-zig-test-integration.ps1",
+        ".vscode/tasks.json",
+        "build.zig",
+        "docs/issues/ISS-0067.json"
+      ],
+      "created_at": "2026-06-06T23:04:48Z",
+      "resolved_at": "2026-06-06T23:04:48Z"
+    },
+    {
+      "id": "ISS-0066",
+      "title": "WF03 f8 batch2 step4: runMigrations leaked duplicated migration-version keys when schema_migrations contained multi-schema duplicates",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-f8-b2-step4-integration-blockers-20260607",
+      "handoff_id": "wf03-f8-b2-step4-20260607-005",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "docs/issues/ISS-0066.json"
+      ],
+      "created_at": "2026-06-06T22:43:21Z",
+      "resolved_at": "2026-06-06T22:43:21Z"
+    },
     {
       "id": "ISS-0064",
       "title": "WF03 F8 batch1 tenants edit page: missing GET /api/v1/tenants/:slug route caused Failed to load tenant; supervised integration symptom was not an actual post-cleanup stall",

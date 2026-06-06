@@ -1,0 +1,48 @@
+report_id: WF01-f8-batch2-20260607-step-02-req-validator-INNER-REPORT
+run_id: WF01-f8-batch2-20260607
+workflow_id: WF-01
+step: '02'
+agent: REQ-VALIDATOR
+created_at: '2026-06-06T20:57:22Z'
+scope:
+  requirement_ids:
+    - TM-04
+    - TM-05
+  artifacts_in:
+    - docs/BPM_Platform_Functional_Requirements.md
+    - docs/status/requirement_status.yaml
+validation:
+  tm_04:
+    id_format: PASS
+    priority_present: PASS
+    stage_assigned: PASS
+    acceptance_criteria_testable: PASS
+    wording_unambiguous: PASS
+    access_control_specified: PASS
+    external_input_validation_specified: PASS
+    consistency_with_tm_01_to_tm_03: PASS
+    notes:
+      - Role-gating and idempotency are explicit.
+      - Blocking behavior for inactive tenants is explicitly enumerated for normal operations.
+  tm_05:
+    id_format: PASS
+    priority_present: PASS
+    stage_assigned: PASS
+    acceptance_criteria_testable: PASS
+    wording_unambiguous: PASS
+    access_control_specified: PASS
+    external_input_validation_specified: PASS
+    consistency_with_tm_01_to_tm_03: PASS
+    notes:
+      - Reactivation lifecycle, idempotency, and authorization denial criteria are explicit.
+cross_checks:
+  statuses_validated_in_requirement_status_yaml: PASS
+  stage_alignment_f8_batch2: PASS
+  contradictions_found: false
+issues:
+  - severity: MINOR
+    requirement_id: GLOBAL
+    description: TM-01..TM-03 are tracked in requirement_status.yaml and test specs, but canonical entries are not present in docs/BPM_Platform_Functional_Requirements.md, reducing direct cross-ID traceability in the requirements source.
+verdict: PASS
+summary: TM-04 and TM-05 are complete, testable, stage-aligned, and non-contradictory for F8 Batch2 lifecycle controls.
+next_action: Route to DOC-UPDATER (WF-01 Step 3) to set status VALIDATED.

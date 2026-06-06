@@ -11,7 +11,7 @@ if (-not $env:BPM_TEST_URL -or [string]::IsNullOrWhiteSpace($env:BPM_TEST_URL)) 
 }
 
 if (-not $env:BPM_IDP_BASE_URL -or [string]::IsNullOrWhiteSpace($env:BPM_IDP_BASE_URL)) {
-    $env:BPM_IDP_BASE_URL = 'http://127.0.0.1:8081'
+    $env:BPM_IDP_BASE_URL = 'http://localhost:8081'
 }
 
 & zig build test-integration --summary all *> $logPath

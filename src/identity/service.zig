@@ -84,6 +84,72 @@ pub const OidcMode = enum {
     enabled,
 };
 
+pub const TenantLifecycleAction = enum {
+    deactivate,
+    reactivate,
+};
+
+pub const UpdateTenantStatusInput = struct {
+    slug: []const u8,
+    target_status: registry_mod.TenantStatus,
+};
+
+pub const UpdateTenantStatusError = error{
+    InvalidTenantSlug,
+    InvalidLifecycleAction,
+    InvalidLifecyclePayload,
+    TenantNotFound,
+    Forbidden,
+    InvalidTransition,
+    PersistenceFailed,
+    PoolExhausted,
+    OutOfMemory,
+    TenantInactive,
+};
+
+pub fn applyTenantLifecycleAction(
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+    registry: *registry_mod.Registry,
+    slug: []const u8,
+    action: TenantLifecycleAction,
+) UpdateTenantStatusError!registry_mod.Tenant {
+    if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+
+    const target_status: registry_mod.TenantStatus = switch (action) {
+        .deactivate => .INACTIVE,
+        .reactivate => .ACTIVE,
+    };
+
+    return registry.updateTenantStatusBySlug(allocator, slug, target_status) catch |err| switch (err) {
+        registry_mod.RegistryError.TenantNotFound => error.TenantNotFound,
+        registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+        registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+        registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+        else => error.PersistenceFailed,
+    };
+}
+
+pub fn enforceTenantActiveForOperation(
+    allocator: std.mem.Allocator,
+    registry: *registry_mod.Registry,
+    principal: auth.AuthContext,
+) UpdateTenantStatusError!void {
+    if (principal.role == .PLATFORM_ADMIN) return;
+
+    const maybe_tenant = registry.selectTenantById(allocator, principal.tenant_id[0..]) catch |err| switch (err) {
+        registry_mod.RegistryError.PoolExhausted => return error.PoolExhausted,
+        registry_mod.RegistryError.PersistenceFailed => return error.PersistenceFailed,
+        registry_mod.RegistryError.OutOfMemory => return error.OutOfMemory,
+        else => return error.PersistenceFailed,
+    };
+
+    const tenant = maybe_tenant orelse return error.TenantNotFound;
+    defer tenant.deinit(allocator);
+
+    if (tenant.status == .INACTIVE) return error.TenantInactive;
+}
+
 pub const CreateTenantInput = struct {
     tenant_id: ?[]const u8,
     slug: []const u8,

@@ -8,6 +8,8 @@
  * TC-TM-UI-05: EditTenantPage allows editing display_name and saving
  * TC-TM-UI-06: 'Register New Tenant' button navigates to /admin/onboarding/new
  * TC-TM-UI-07: 'Tenants' nav link is hidden from non-PLATFORM_ADMIN
+ * TC-TM-UI-08: PLATFORM_ADMIN can deactivate and reactivate a tenant via lifecycle controls
+ * TC-TM-UI-09: Lifecycle controls are state-driven (ACTIVE shows Deactivate, INACTIVE shows Reactivate)
  *
  * All tests run against the real backend (no mocks, no MSW).
  * Every verdict is visual: screenshots are taken and asserted on visible content.
@@ -23,7 +25,9 @@ import { getKeycloakToken, loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
 const API_BASE_URL = process.env.BPM_TEST_URL ?? 'http://127.0.0.1:8080'
-const KEYCLOAK_BASE_URL = (process.env.BPM_IDP_BASE_URL ?? 'http://127.0.0.1:8081').replace(/\/$/, '')
+const KEYCLOAK_BASE_URL = (process.env.BPM_IDP_BASE_URL ?? 'http://localhost:8081')
+  .replace('://127.0.0.1', '://localhost')
+  .replace(/\/$/, '')
 const KEYCLOAK_DISCOVERY_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default/.well-known/openid-configuration`
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -39,9 +43,16 @@ async function shot(page: Page, name: string): Promise<void> {
 }
 
 function getAdminCredentials(): { username: string; password: string } {
+  const username = process.env.BPM_E2E_ADMIN_USERNAME?.trim()
+  const password = process.env.BPM_E2E_ADMIN_PASSWORD?.trim()
+  if (!username || !password) {
+    throw new Error(
+      'Missing required env vars for tenants E2E: BPM_E2E_ADMIN_USERNAME and BPM_E2E_ADMIN_PASSWORD',
+    )
+  }
   return {
-    username: process.env.BPM_E2E_ADMIN_USERNAME?.trim() || 'admin-user',
-    password: process.env.BPM_E2E_ADMIN_PASSWORD?.trim() || 'admin-pass',
+    username,
+    password,
   }
 }
 
@@ -69,220 +80,6 @@ async function navigateSpa(page: Page, targetPath: string): Promise<void> {
   })
 }
 
-async function tenantExistsBySlug(
-  request: APIRequestContext,
-  token: string,
-  slug: string,
-): Promise<boolean> {
-  const response = await request.get(`${API_BASE_URL}/api/v1/tenants/${slug}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    timeout: 5_000,
-  })
-  if (response.ok()) {
-    return true
-  }
-  if (response.status() === 404) {
-    return false
-  }
-
-  const body = await response.text()
-  throw new Error(`Tenant existence check failed for ${slug} (${response.status()}): ${body}`)
-}
-
-async function waitForTenantExistence(
-  request: APIRequestContext,
-  token: string,
-  slug: string,
-  timeoutMs = 60_000,
-): Promise<void> {
-  const startedAt = Date.now()
-  let attempts = 0
-  let delayMs = 300
-
-  while (Date.now() - startedAt < timeoutMs) {
-    attempts += 1
-    const exists = await tenantExistsBySlug(request, token, slug)
-    if (exists) {
-      return
-    }
-    await new Promise((resolve) => setTimeout(resolve, delayMs))
-    delayMs = Math.min(delayMs + 200, 2_000)
-  }
-
-  throw new Error(
-    `Timed out waiting for tenant ${slug} to exist after ${timeoutMs}ms (${attempts} checks)`,
-  )
-}
-
-async function waitForOnboardingTerminalState(
-  request: APIRequestContext,
-  token: string,
-  slug: string,
-  onboardingId: string,
-  timeoutMs = 120_000,
-): Promise<'completed'> {
-  const startedAt = Date.now()
-  let attempts = 0
-  let delayMs = 400
-  let lastState = 'unknown'
-  let lastError = ''
-
-  while (Date.now() - startedAt < timeoutMs) {
-    attempts += 1
-    let statusRes
-    try {
-      statusRes = await request.get(`${API_BASE_URL}/api/v1/onboarding/${onboardingId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5_000,
-      })
-    } catch (error) {
-      lastState = 'request_timeout'
-      lastError = error instanceof Error ? error.message : String(error)
-      await new Promise((resolve) => setTimeout(resolve, delayMs))
-      delayMs = Math.min(delayMs + 250, 3_000)
-      continue
-    }
-
-    if (!statusRes.ok()) {
-      const statusBody = await statusRes.text()
-      lastState = `http_${statusRes.status()}`
-      lastError = statusBody
-      await new Promise((resolve) => setTimeout(resolve, delayMs))
-      delayMs = Math.min(delayMs + 250, 3_000)
-      continue
-    }
-
-    const statusBody = await statusRes.json() as { state?: string; error?: string }
-    const state = statusBody.state?.toLowerCase() ?? 'unknown'
-    lastState = state
-    lastError = statusBody.error ?? ''
-
-    if (state === 'completed') {
-      return 'completed'
-    }
-    if (state === 'failed') {
-      throw new Error(
-        `Onboarding failed for tenant ${slug} (onboarding_id=${onboardingId}, attempts=${attempts}): ` +
-        `${statusBody.error ?? 'unknown error'}`,
-      )
-    }
-    if (state !== 'pending') {
-      throw new Error(
-        `Unexpected onboarding state for tenant ${slug} (onboarding_id=${onboardingId}): ${state}`,
-      )
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, delayMs))
-    delayMs = Math.min(delayMs + 250, 3_000)
-  }
-
-  throw new Error(
-    `Timed out waiting for onboarding completion for tenant ${slug} ` +
-    `(onboarding_id=${onboardingId}, last_state=${lastState}, last_error=${lastError || 'none'}, ` +
-    `timeout_ms=${timeoutMs}, attempts=${attempts})`,
-  )
-}
-
-async function ensureTenantProvisioned(
-  request: APIRequestContext,
-  token: string,
-  slug: string,
-  displayName: string,
-): Promise<void> {
-  const alreadyExists = await tenantExistsBySlug(request, token, slug)
-  if (alreadyExists) {
-    return
-  }
-
-  const createPayload = {
-    slug,
-    display_name: displayName,
-    admin_email: `${slug}@example.test`,
-    admin_username: `${slug}-admin`,
-    admin_display_name: `${displayName} Admin`,
-    hostname: `${slug}.example.test`,
-    client_config: {
-      redirect_uris: ['https://example.test/callback'],
-    },
-  }
-
-  let response
-  try {
-    response = await request.post(`${API_BASE_URL}/api/v1/onboarding`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': `tm-e2e-${slug}`,
-      },
-      data: createPayload,
-      timeout: 15_000,
-    })
-  } catch (error) {
-    // The request may have been accepted server-side despite a client timeout.
-    // Fall back to existence polling before failing hard.
-    await waitForTenantExistence(request, token, slug, 120_000).catch(() => {
-      throw new Error(
-        `Onboarding create request failed for tenant ${slug} and tenant did not appear: ` +
-        `${error instanceof Error ? error.message : String(error)}`,
-      )
-    })
-    return
-  }
-
-  if (!response.ok() && response.status() !== 409) {
-    const body = await response.text()
-    throw new Error(`Failed to create test tenant ${slug} (${response.status()}): ${body}`)
-  }
-
-  if (response.status() === 409) {
-    await waitForTenantExistence(request, token, slug)
-    return
-  }
-
-  const payload = await response.json() as { onboarding_id?: string }
-  if (!payload.onboarding_id) {
-    throw new Error(`Onboarding create response missing onboarding_id for tenant ${slug}`)
-  }
-
-  await waitForOnboardingTerminalState(request, token, slug, payload.onboarding_id)
-  await waitForTenantExistence(request, token, slug)
-}
-
-/**
- * Create a test tenant via the backend API.
- * Returns the created tenant's slug.
- */
-async function createTestTenant(
-  request: APIRequestContext,
-  token: string,
-  slug: string,
-  displayName: string,
-): Promise<void> {
-  await ensureTenantProvisioned(request, token, slug, displayName)
-}
-
-/**
- * Delete a test tenant via the backend API (best-effort cleanup).
- */
-async function deleteTestTenant(
-  request: APIRequestContext,
-  token: string,
-  slug: string,
-): Promise<void> {
-  const response = await request.delete(`${API_BASE_URL}/api/v1/admin/tenants/${slug}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  }).catch(() => null)
-
-  if (!response) {
-    return
-  }
-
-  if (response.status() !== 404 && !response.ok()) {
-    const body = await response.text()
-    throw new Error(`Failed to delete tenant ${slug} (${response.status()}): ${body}`)
-  }
-}
-
 /**
  * Inject a non-PLATFORM_ADMIN session (PROCESS_OPERATOR) for frontend role-gating tests.
  * Uses the admin token so API calls succeed if made, but the roles array in sessionStorage
@@ -305,7 +102,7 @@ async function loginAsNonAdmin(page: Page, adminToken: string): Promise<void> {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-test.describe('TM tenants UI (TM-01, TM-02, TM-03)', () => {
+test.describe('TM tenants UI (TM-01, TM-02, TM-03, TM-04, TM-05)', () => {
   let adminToken = ''
 
   test.beforeEach(async ({ request }) => {
@@ -508,6 +305,105 @@ test.describe('TM tenants UI (TM-01, TM-02, TM-03)', () => {
     expect(currentPath, "Screen shows /admin/onboarding/new after clicking 'Register New Tenant'").toBe(
       '/admin/onboarding/new',
     )
+  })
+
+  // ── TC-TM-UI-08 ─────────────────────────────────────────────────────────────
+
+  test('TC-TM-UI-08: PLATFORM_ADMIN can deactivate and reactivate a tenant via lifecycle controls', async ({ page }) => {
+    test.setTimeout(120_000)
+
+    await loginWithToken(page, adminToken)
+    await navigateSpa(page, '/admin/tenants')
+
+    const statusBadge = page.locator('[data-testid^="tenant-status-"]').first()
+    await expect(statusBadge).toBeVisible({ timeout: 30_000 })
+    const statusId = await statusBadge.getAttribute('data-testid') ?? ''
+    const slug = statusId.replace('tenant-status-', '')
+    expect(slug.length, 'Expected slug from first tenant status badge').toBeGreaterThan(0)
+
+    const originalStatusText = (await statusBadge.innerText()).toLowerCase()
+    const startsActive = originalStatusText.includes('active')
+
+    // Ensure we are in ACTIVE state before validating full deactivate/reactivate roundtrip.
+    if (!startsActive) {
+      await page.locator(`[data-testid="tenant-reactivate-${slug}"]`).click()
+      await expect(page.locator('[data-testid="tenant-lifecycle-confirm-dialog"]')).toBeVisible()
+      await page.locator('[data-testid="tenant-lifecycle-confirm"]').click()
+      await expect(page.locator(`[data-testid="tenant-status-${slug}"]`)).toContainText('Active', { timeout: 30_000 })
+    }
+
+    await expect(page.locator(`[data-testid="tenant-deactivate-${slug}"]`)).toBeVisible()
+    await expect(page.locator(`[data-testid="tenant-reactivate-${slug}"]`)).toHaveCount(0)
+    await shot(page, 'UI-08-before-deactivate')
+
+    await page.locator(`[data-testid="tenant-deactivate-${slug}"]`).click()
+    await expect(page.locator('[data-testid="tenant-lifecycle-confirm-dialog"]')).toBeVisible()
+    await shot(page, 'UI-08-confirm-deactivate')
+    await page.locator('[data-testid="tenant-lifecycle-confirm"]').click()
+
+    await expect(page.locator('[data-testid="tenant-lifecycle-confirm-dialog"]')).toHaveCount(0)
+    await expect(page.locator(`[data-testid="tenant-status-${slug}"]`)).toContainText('Inactive', { timeout: 30_000 })
+    await expect(page.locator(`[data-testid="tenant-reactivate-${slug}"]`)).toBeVisible()
+    await expect(page.locator(`[data-testid="tenant-deactivate-${slug}"]`)).toHaveCount(0)
+    await shot(page, 'UI-08-after-deactivate')
+
+    await page.locator(`[data-testid="tenant-reactivate-${slug}"]`).click()
+    await expect(page.locator('[data-testid="tenant-lifecycle-confirm-dialog"]')).toBeVisible()
+    await shot(page, 'UI-08-confirm-reactivate')
+    await page.locator('[data-testid="tenant-lifecycle-confirm"]').click()
+
+    await expect(page.locator('[data-testid="tenant-lifecycle-confirm-dialog"]')).toHaveCount(0)
+    await expect(page.locator(`[data-testid="tenant-status-${slug}"]`)).toContainText('Active', { timeout: 30_000 })
+    await expect(page.locator(`[data-testid="tenant-deactivate-${slug}"]`)).toBeVisible()
+    await expect(page.locator(`[data-testid="tenant-reactivate-${slug}"]`)).toHaveCount(0)
+    await shot(page, 'UI-08-after-reactivate')
+
+    expect(await page.locator(`[data-testid="tenant-status-${slug}"]`).innerText()).toContain('Active')
+  })
+
+  // ── TC-TM-UI-09 ─────────────────────────────────────────────────────────────
+
+  test('TC-TM-UI-09: Lifecycle controls are state-driven by tenant status', async ({ page }) => {
+    test.setTimeout(120_000)
+
+    await loginWithToken(page, adminToken)
+    await navigateSpa(page, '/admin/tenants')
+
+    const statusBadge = page.locator('[data-testid^="tenant-status-"]').first()
+    await expect(statusBadge).toBeVisible({ timeout: 30_000 })
+    const statusId = await statusBadge.getAttribute('data-testid') ?? ''
+    const slug = statusId.replace('tenant-status-', '')
+    expect(slug.length, 'Expected slug from first tenant status badge').toBeGreaterThan(0)
+
+    // ACTIVE row must show only Deactivate
+    const statusText = (await statusBadge.innerText()).toLowerCase()
+    if (!statusText.includes('active')) {
+      await page.locator(`[data-testid="tenant-reactivate-${slug}"]`).click()
+      await expect(page.locator('[data-testid="tenant-lifecycle-confirm-dialog"]')).toBeVisible()
+      await page.locator('[data-testid="tenant-lifecycle-confirm"]').click()
+      await expect(page.locator(`[data-testid="tenant-status-${slug}"]`)).toContainText('Active', { timeout: 30_000 })
+    }
+
+    await expect(page.locator(`[data-testid="tenant-deactivate-${slug}"]`)).toBeVisible()
+    await expect(page.locator(`[data-testid="tenant-reactivate-${slug}"]`)).toHaveCount(0)
+    await shot(page, 'UI-09-active-controls')
+
+    await page.locator(`[data-testid="tenant-deactivate-${slug}"]`).click()
+    await expect(page.locator('[data-testid="tenant-lifecycle-confirm-dialog"]')).toBeVisible()
+    await page.locator('[data-testid="tenant-lifecycle-confirm"]').click()
+
+    await expect(page.locator(`[data-testid="tenant-status-${slug}"]`)).toContainText('Inactive', { timeout: 30_000 })
+    await expect(page.locator(`[data-testid="tenant-reactivate-${slug}"]`)).toBeVisible()
+    await expect(page.locator(`[data-testid="tenant-deactivate-${slug}"]`)).toHaveCount(0)
+    await shot(page, 'UI-09-inactive-controls')
+
+    // Restore active state to avoid leaving changed tenant status after test.
+    await page.locator(`[data-testid="tenant-reactivate-${slug}"]`).click()
+    await expect(page.locator('[data-testid="tenant-lifecycle-confirm-dialog"]')).toBeVisible()
+    await page.locator('[data-testid="tenant-lifecycle-confirm"]').click()
+    await expect(page.locator(`[data-testid="tenant-status-${slug}"]`)).toContainText('Active', { timeout: 30_000 })
+
+    expect(await page.locator(`[data-testid="tenant-reactivate-${slug}"]`).count()).toBe(0)
   })
 
   // ── TC-TM-UI-07 ─────────────────────────────────────────────────────────────

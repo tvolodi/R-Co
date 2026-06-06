@@ -1,0 +1,30 @@
+run_id: WF02-f8-batch2-20260607
+handoff_id: wf02-f8-b2-20260607-000
+agent: BACKEND-DEV
+step: "00"
+status: FAIL
+timestamp_utc: "2026-06-06T20:59:33Z"
+summary: >-
+  Executed fn:git-setup: synced main, created and pushed
+  feature/WF02-f8-batch2-20260607, but acceptance failed because the working tree
+  is not clean.
+artifacts_out:
+  - feature/WF02-f8-batch2-20260607
+  - docs/issue-reports/WF02-f8-batch2-20260607-step-00-backend-dev-INNER-REPORT.yaml
+validation:
+  - command: git checkout main
+    result: pass
+  - command: git pull --ff-only origin main
+    result: pass
+  - command: git checkout -b feature/WF02-f8-batch2-20260607
+    result: pass
+  - command: git branch --show-current
+    result: pass
+  - command: git push -u origin feature/WF02-f8-batch2-20260607
+    result: pass
+  - command: git status --porcelain
+    result: fail
+issues:
+  - severity: BLOCKER
+    description: Working tree is not clean after git setup; implementation step cannot start under step-00 acceptance criteria.
+next_action: Route to ORCH for rework decision (clean working tree or adjust gate)
