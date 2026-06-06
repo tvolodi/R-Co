@@ -70,6 +70,185 @@ async function navigateSpa(page: Page, targetPath: string): Promise<void> {
   })
 }
 
+async function tenantExistsBySlug(
+  request: APIRequestContext,
+  token: string,
+  slug: string,
+): Promise<boolean> {
+  const response = await request.get(`${API_BASE_URL}/api/v1/tenants/${slug}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    timeout: 5_000,
+  })
+  if (response.ok()) {
+    return true
+  }
+  if (response.status() === 404) {
+    return false
+  }
+
+  const body = await response.text()
+  throw new Error(`Tenant existence check failed for ${slug} (${response.status()}): ${body}`)
+}
+
+async function waitForTenantExistence(
+  request: APIRequestContext,
+  token: string,
+  slug: string,
+  timeoutMs = 60_000,
+): Promise<void> {
+  const startedAt = Date.now()
+  let attempts = 0
+  let delayMs = 300
+
+  while (Date.now() - startedAt < timeoutMs) {
+    attempts += 1
+    const exists = await tenantExistsBySlug(request, token, slug)
+    if (exists) {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+    delayMs = Math.min(delayMs + 200, 2_000)
+  }
+
+  throw new Error(
+    `Timed out waiting for tenant ${slug} to exist after ${timeoutMs}ms (${attempts} checks)`,
+  )
+}
+
+async function waitForOnboardingTerminalState(
+  request: APIRequestContext,
+  token: string,
+  slug: string,
+  onboardingId: string,
+  timeoutMs = 120_000,
+): Promise<'completed'> {
+  const startedAt = Date.now()
+  let attempts = 0
+  let delayMs = 400
+  let lastState = 'unknown'
+  let lastError = ''
+
+  while (Date.now() - startedAt < timeoutMs) {
+    attempts += 1
+    let statusRes
+    try {
+      statusRes = await request.get(`${API_BASE_URL}/api/v1/onboarding/${onboardingId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5_000,
+      })
+    } catch (error) {
+      lastState = 'request_timeout'
+      lastError = error instanceof Error ? error.message : String(error)
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+      delayMs = Math.min(delayMs + 250, 3_000)
+      continue
+    }
+
+    if (!statusRes.ok()) {
+      const statusBody = await statusRes.text()
+      lastState = `http_${statusRes.status()}`
+      lastError = statusBody
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+      delayMs = Math.min(delayMs + 250, 3_000)
+      continue
+    }
+
+    const statusBody = await statusRes.json() as { state?: string; error?: string }
+    const state = statusBody.state?.toLowerCase() ?? 'unknown'
+    lastState = state
+    lastError = statusBody.error ?? ''
+
+    if (state === 'completed') {
+      return 'completed'
+    }
+    if (state === 'failed') {
+      throw new Error(
+        `Onboarding failed for tenant ${slug} (onboarding_id=${onboardingId}, attempts=${attempts}): ` +
+        `${statusBody.error ?? 'unknown error'}`,
+      )
+    }
+    if (state !== 'pending') {
+      throw new Error(
+        `Unexpected onboarding state for tenant ${slug} (onboarding_id=${onboardingId}): ${state}`,
+      )
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+    delayMs = Math.min(delayMs + 250, 3_000)
+  }
+
+  throw new Error(
+    `Timed out waiting for onboarding completion for tenant ${slug} ` +
+    `(onboarding_id=${onboardingId}, last_state=${lastState}, last_error=${lastError || 'none'}, ` +
+    `timeout_ms=${timeoutMs}, attempts=${attempts})`,
+  )
+}
+
+async function ensureTenantProvisioned(
+  request: APIRequestContext,
+  token: string,
+  slug: string,
+  displayName: string,
+): Promise<void> {
+  const alreadyExists = await tenantExistsBySlug(request, token, slug)
+  if (alreadyExists) {
+    return
+  }
+
+  const createPayload = {
+    slug,
+    display_name: displayName,
+    admin_email: `${slug}@example.test`,
+    admin_username: `${slug}-admin`,
+    admin_display_name: `${displayName} Admin`,
+    hostname: `${slug}.example.test`,
+    client_config: {
+      redirect_uris: ['https://example.test/callback'],
+    },
+  }
+
+  let response
+  try {
+    response = await request.post(`${API_BASE_URL}/api/v1/onboarding`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `tm-e2e-${slug}`,
+      },
+      data: createPayload,
+      timeout: 15_000,
+    })
+  } catch (error) {
+    // The request may have been accepted server-side despite a client timeout.
+    // Fall back to existence polling before failing hard.
+    await waitForTenantExistence(request, token, slug, 120_000).catch(() => {
+      throw new Error(
+        `Onboarding create request failed for tenant ${slug} and tenant did not appear: ` +
+        `${error instanceof Error ? error.message : String(error)}`,
+      )
+    })
+    return
+  }
+
+  if (!response.ok() && response.status() !== 409) {
+    const body = await response.text()
+    throw new Error(`Failed to create test tenant ${slug} (${response.status()}): ${body}`)
+  }
+
+  if (response.status() === 409) {
+    await waitForTenantExistence(request, token, slug)
+    return
+  }
+
+  const payload = await response.json() as { onboarding_id?: string }
+  if (!payload.onboarding_id) {
+    throw new Error(`Onboarding create response missing onboarding_id for tenant ${slug}`)
+  }
+
+  await waitForOnboardingTerminalState(request, token, slug, payload.onboarding_id)
+  await waitForTenantExistence(request, token, slug)
+}
+
 /**
  * Create a test tenant via the backend API.
  * Returns the created tenant's slug.
@@ -80,18 +259,7 @@ async function createTestTenant(
   slug: string,
   displayName: string,
 ): Promise<void> {
-  const response = await request.post(`${API_BASE_URL}/api/v1/admin/tenants`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    data: { slug, display_name: displayName },
-  })
-  // 201 = created; 409 = already exists (fine for idempotency in tests)
-  if (!response.ok() && response.status() !== 409) {
-    const body = await response.text()
-    throw new Error(`Failed to create test tenant ${slug} (${response.status()}): ${body}`)
-  }
+  await ensureTenantProvisioned(request, token, slug, displayName)
 }
 
 /**
@@ -102,9 +270,18 @@ async function deleteTestTenant(
   token: string,
   slug: string,
 ): Promise<void> {
-  await request.delete(`${API_BASE_URL}/api/v1/admin/tenants/${slug}`, {
+  const response = await request.delete(`${API_BASE_URL}/api/v1/admin/tenants/${slug}`, {
     headers: { Authorization: `Bearer ${token}` },
-  }).catch(() => {/* best-effort */})
+  }).catch(() => null)
+
+  if (!response) {
+    return
+  }
+
+  if (response.status() !== 404 && !response.ok()) {
+    const body = await response.text()
+    throw new Error(`Failed to delete tenant ${slug} (${response.status()}): ${body}`)
+  }
 }
 
 /**
@@ -218,40 +395,46 @@ test.describe('TM tenants UI (TM-01, TM-02, TM-03)', () => {
   // ── TC-TM-UI-04 ─────────────────────────────────────────────────────────────
 
   test('TC-TM-UI-04: EditTenantPage shows slug and idp_realm_id as read-only display elements', async ({ page }) => {
-    await loginWithToken(page, adminToken)
-    await navigateSpa(page, '/admin/tenants')
+    test.setTimeout(120_000)
 
-    await expect(page.locator('[data-testid="tenants-table"]')).toBeVisible({ timeout: 10_000 })
+    const fixtureSlug = `tc-tm-ui-04-${randomUUID().slice(0, 8)}`
+    const originalName = 'TM UI-04 Original'
 
-    const firstEditBtn = page.locator('[data-testid^="tenant-edit-"]').first()
-    await expect(firstEditBtn).toBeVisible({ timeout: 10_000 })
-    await firstEditBtn.click()
-    await page.waitForURL((url) => url.pathname.endsWith('/edit'), { timeout: 10_000 })
+    try {
+      await createTestTenant(page.request, adminToken, fixtureSlug, originalName)
 
-    await expect(page.locator('[data-testid="edit-tenant-page"]')).toBeVisible({ timeout: 10_000 })
+      await loginWithToken(page, adminToken)
+      await navigateSpa(page, `/admin/tenants/${fixtureSlug}/edit`)
 
-    // slug element exists and is not an input
-    const slugEl = page.locator('[data-testid="edit-tenant-slug"]')
-    await expect(slugEl).toBeVisible()
-    const slugTagName = await slugEl.evaluate((el) => el.tagName.toLowerCase())
-    expect(slugTagName, 'Slug is displayed in a non-input element (read-only)').not.toBe('input')
+      await expect(page.locator('[data-testid="edit-tenant-page"]')).toBeVisible({ timeout: 15_000 })
 
-    // idp_realm_id element exists and is not an input
-    const realmEl = page.locator('[data-testid="edit-tenant-realm"]')
-    await expect(realmEl).toBeVisible()
-    const realmTagName = await realmEl.evaluate((el) => el.tagName.toLowerCase())
-    expect(realmTagName, 'IDP realm ID is displayed in a non-input element (read-only)').not.toBe('input')
+      // slug element exists and is not an input
+      const slugEl = page.locator('[data-testid="edit-tenant-slug"]')
+      await expect(slugEl).toBeVisible()
+      const slugTagName = await slugEl.evaluate((el) => el.tagName.toLowerCase())
+      expect(slugTagName, 'Slug is displayed in a non-input element (read-only)').not.toBe('input')
 
-    await shot(page, 'UI-04-readonly-fields')
+      // idp_realm_id element exists and is not an input
+      const realmEl = page.locator('[data-testid="edit-tenant-realm"]')
+      await expect(realmEl).toBeVisible()
+      const realmTagName = await realmEl.evaluate((el) => el.tagName.toLowerCase())
+      expect(realmTagName, 'IDP realm ID is displayed in a non-input element (read-only)').not.toBe('input')
 
-    // Visual assertion: edit-tenant-page container is visible with read-only fields
-    const pageVisible = await page.locator('[data-testid="edit-tenant-page"]').isVisible()
-    expect(pageVisible, 'Screen shows EditTenantPage container').toBe(true)
+      await shot(page, 'UI-04-readonly-fields')
+
+      // Visual assertion: edit-tenant-page container is visible with read-only fields
+      const pageVisible = await page.locator('[data-testid="edit-tenant-page"]').isVisible()
+      expect(pageVisible, 'Screen shows EditTenantPage container').toBe(true)
+    } finally {
+      await deleteTestTenant(page.request, adminToken, fixtureSlug)
+    }
   })
 
   // ── TC-TM-UI-05 ─────────────────────────────────────────────────────────────
 
   test('TC-TM-UI-05: EditTenantPage allows editing display_name and saving', async ({ page, request }) => {
+    test.setTimeout(120_000)
+
     // Create a dedicated fixture tenant for this test so we can safely modify it.
     const fixtureSlug = `tc-tm-ui-05-${randomUUID().slice(0, 8)}`
     const originalName = 'TM UI-05 Original'
