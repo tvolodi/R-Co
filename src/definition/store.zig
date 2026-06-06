@@ -239,20 +239,19 @@ pub const Store = struct {
             return DefinitionError.TransactionFailed;
         // graph_json is freed when param_arena is deinitialized at function exit.
 
-        // [D] INSERT … ON CONFLICT ON CONSTRAINT uq_definition_tenant_version DO NOTHING RETURNING *
+        // [D] INSERT … ON CONFLICT DO NOTHING RETURNING *
         //     Parameterised — $1=name, $2=version, $3=description, $4=graph, $5=created_by.
         //     Security: no user data appears in the SQL string literal.
         //
-        //     Note on ON CONFLICT: the unique constraint uq_definition_tenant_version on
-        //     (tenant_id, name, version) enforces the constraint. When an INSERT conflicts
-        //     with an existing row, DO NOTHING causes the INSERT to be skipped and RETURNING
-        //     to emit 0 rows. (This is expected and correct for concurrent requests — PD-01.)
+        //     Note on ON CONFLICT: schema variants may define uniqueness as either
+        //     (name, version) or (tenant_id, name, version). Using DO NOTHING without a
+        //     conflict target keeps behaviour idempotent across both variants.
         const insert_rows = conn.query(
             allocator,
             \\INSERT INTO process_definitions
-            \\  (tenant_id, name, version, description, status, graph, created_by, stage)
-            \\VALUES (bpm_effective_tenant_id(), $1, $2, $3, 'DRAFT', $4::jsonb, $5::uuid, $6)
-            \\ON CONFLICT ON CONSTRAINT uq_definition_tenant_version DO NOTHING
+            \\  (name, version, description, status, graph, created_by, stage)
+            \\VALUES ($1, $2, NULLIF($3, ''), 'DRAFT', $4::jsonb, $5::uuid, NULLIF($6, ''))
+            \\ON CONFLICT DO NOTHING
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -312,7 +311,6 @@ pub const Store = struct {
             \\       stage
             \\FROM process_definitions
             \\WHERE id = $1::uuid
-            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{uuidToHex(a, id) catch return DefinitionError.TransactionFailed},
         ) catch return DefinitionError.TransactionFailed;
@@ -367,7 +365,7 @@ pub const Store = struct {
         var sql: std.ArrayList(u8) = .empty;
         var bound: std.ArrayList([]const u8) = .empty;
         var pidx: usize = 1;
-        var first_clause = false;
+        var first_clause = true;
 
         sql.appendSlice(a,
             \\SELECT id, name, version, description, status, graph, created_by,
@@ -376,7 +374,6 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint,
             \\       stage
             \\FROM process_definitions
-            \\WHERE tenant_id = bpm_effective_tenant_id()
         ) catch return DefinitionError.TransactionFailed;
 
         if (opts.name) |name| {
@@ -507,7 +504,6 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint
             \\FROM process_definitions
             \\WHERE id = $1::uuid
-            \\  AND tenant_id = bpm_effective_tenant_id()
             \\FOR UPDATE
         ,
             &.{id_hex},
@@ -599,7 +595,6 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'DEPRECATED', updated_at = NOW()
             \\WHERE name = $1 AND status = 'ACTIVE'
-            \\  AND tenant_id = bpm_effective_tenant_id()
         ,
             &.{def_name},
         ) catch return DefinitionError.TransactionFailed;
@@ -612,7 +607,6 @@ pub const Store = struct {
             \\UPDATE process_definitions
             \\SET status = 'ACTIVE', updated_at = NOW()
             \\WHERE id = $1::uuid AND status = 'DRAFT'
-            \\  AND tenant_id = bpm_effective_tenant_id()
             \\RETURNING id, name, version, description, status, graph, created_by,
             \\          (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\          (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
@@ -1136,8 +1130,7 @@ pub const Store = struct {
             \\       (EXTRACT(EPOCH FROM archived_at) * 1000000)::bigint,
             \\       stage
             \\FROM process_definitions
-            \\WHERE tenant_id = bpm_effective_tenant_id()
-            \\  AND name = $1 AND status = 'ACTIVE'
+            \\WHERE name = $1 AND status = 'ACTIVE'
         ,
             &.{name},
         ) catch return DefinitionError.TransactionFailed;
