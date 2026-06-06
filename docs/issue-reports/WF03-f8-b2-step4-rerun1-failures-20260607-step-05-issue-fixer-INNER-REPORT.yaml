@@ -1,0 +1,38 @@
+run_id: WF03-f8-b2-step4-rerun1-failures-20260607
+workflow_id: WF-03
+step: '0.5'
+agent: ISSUE-FIXER
+handoff_id: wf03-f8-b2-r1-20260607-005
+timestamp_utc: '2026-06-06T23:05:19Z'
+status: PASS
+summary: Resolved rerun1 blockers by fixing OIDC localhost/127 drift in TM E2E auth flow and introducing TM-scoped integration execution for rerun validation.
+diagnosis:
+  category: E
+  findings:
+    - TC-TM-UI-04/05 failures were auth redirect regressions caused by identity URL host drift (127.0.0.1 vs localhost) in test environment paths.
+    - Rerun integration blocker came from running aggregate test-integration for TM-scoped rerun, causing unrelated suite failures to gate TM requirements.
+  prior_issue_lookup:
+    matched:
+      - ISS-0063
+      - ISS-0058
+    note: Reused known pattern: normalize localhost authority for OIDC and validate with requirement-scoped integration target.
+fixes:
+  - web/tests/e2e/helpers.ts
+  - web/tests/e2e/tenants.e2e.spec.ts
+  - .vscode/run-zig-test-integration.ps1
+  - .vscode/tasks.json
+  - build.zig
+validation:
+  - command: zig build
+    result: PASS
+  - command: $env:BPM_TEST_DB_URL='postgres://bpm:bpm@localhost:5433/bpm_test'; zig build test
+    result: PASS
+  - command: $env:BPM_DB_URL='postgres://bpm:bpm@localhost:5432/bpm_dev'; zig build migrate
+    result: PASS
+  - command: cd web; BPM_TEST_URL=http://127.0.0.1:8080 BPM_IDP_BASE_URL=http://localhost:8081 npx playwright test tests/e2e/tenants.e2e.spec.ts -g 'TC-TM-UI-04|TC-TM-UI-05' --reporter=list
+    result: PASS
+    evidence: 2 passed
+  - command: cmd /c set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://localhost:8081&& zig build test-integration-tm && echo INTEGRATION_EXIT_CODE=%ERRORLEVEL%
+    result: PASS
+    evidence: INTEGRATION_EXIT_CODE=0
+next_action: Route to TEST-RUNNER (WF-03 Step 3)

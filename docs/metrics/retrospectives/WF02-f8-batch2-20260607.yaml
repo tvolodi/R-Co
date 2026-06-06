@@ -1,0 +1,45 @@
+run_id: WF02-f8-batch2-20260607
+created_at: '2026-06-06T23:14:49Z'
+rules_version: manual-bootstrap
+requirement_ids:
+  - TM-04
+  - TM-05
+difficulty: 3
+integration_surface: medium
+estimated_minutes:
+  code-designer: 20
+  code-design-validator: 10
+  backend-dev: 40
+  frontend-dev: 40
+  test-designer: 25
+  test-design-validator: 10
+  test-runner: 30
+  release-validator: 15
+  doc-updater: 10
+  total: 200
+actual_minutes:
+  code-designer: 3.01
+  code-design-validator: 1.23
+  backend-dev: 18.13
+  frontend-dev: 7.20
+  test-designer: 20.42
+  test-design-validator: 3.18
+  test-runner: 44.26
+  release-validator: 0.67
+  doc-updater: 1.48
+  total: 99.58
+variance_pct:
+  code-designer: -84.95
+  code-design-validator: -87.70
+  backend-dev: -54.67
+  frontend-dev: -82.00
+  test-designer: -18.32
+  test-design-validator: -68.20
+  test-runner: 47.53
+  release-validator: -95.53
+  doc-updater: -85.20
+  total: -50.21
+observations:
+  - Workflow required multiple reruns and two WF-03 issue-fix loops, with concentration of runtime in test-runner reruns.
+  - Initial estimation significantly overpredicted design/implementation elapsed time for this batch.
+  - No estimation_rules adjustment applied in this run because cross-run consecutive variance confirmation was not established in this step.

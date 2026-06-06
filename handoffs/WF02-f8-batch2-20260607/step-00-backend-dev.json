@@ -1,0 +1,53 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-000",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-06T20:58:09Z",
+  "started_at": "2026-06-06T20:58:27Z",
+  "completed_at": "2026-06-06T20:59:33Z",
+  "status": "FAILED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 git setup",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": [
+      "wf01-f8-b2-20260607-001",
+      "wf01-f8-b2-20260607-002"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "docs/status/requirement_status.yaml"
+    ]
+  },
+  "task": {
+    "description": "Run fn:git-setup for WF02-f8-batch2-20260607.\n\nCreate/switch to feature branch feature/WF02-f8-batch2-20260607 from latest main, push it to origin, and ensure working tree is clean before implementation steps begin.",
+    "acceptance_criteria": [
+      "Current branch is feature/WF02-f8-batch2-20260607",
+      "Branch exists on origin",
+      "Working tree is clean"
+    ],
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Executed fn:git-setup and pushed feature/WF02-f8-batch2-20260607, but acceptance failed because working tree is not clean.",
+    "branch_name": "feature/WF02-f8-batch2-20260607",
+    "base_commit_sha": "10b86c82f051b9ee30ee01e7c3b29b78d1efb0b8",
+    "push_status": "ok",
+    "artifacts_out": [
+      "branch: feature/WF02-f8-batch2-20260607",
+      "docs/issue-reports/WF02-f8-batch2-20260607-step-00-backend-dev-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Working tree is not clean (git status --porcelain returned tracked and untracked changes), so step-00 acceptance criteria are not fully met."
+      }
+    ],
+    "next_action": "Route to ORCH for rework decision"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

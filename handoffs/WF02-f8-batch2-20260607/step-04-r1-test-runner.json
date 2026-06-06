@@ -1,0 +1,62 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-004-r1",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "04-r1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-06T22:44:35Z",
+  "started_at": "2026-06-06T22:44:48Z",
+  "completed_at": "2026-06-06T22:57:17Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 test execution rerun after WF-03 fix",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": [
+      "wf03-f8-b2-step4-20260607-005",
+      "wf02-f8-b2-20260607-004"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260607-WF02-f8-batch2-20260607.yaml",
+      "tests/integration/helpers.zig",
+      "tests/integration/tm01_tenant_list_test.zig",
+      "web/tests/e2e/tenants.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "Re-run Step 4 after ISSUE-FIXER resolved migration-cache allocator leak (ISS-0066).\n\nRun full mandatory prechecks and execute TM-04/TM-05 integration + e2e tests.\nWrite report: tests/reports/report-20260607-WF02-f8-batch2-20260607-rerun1.yaml\n\nIf PASS: next_action Route to RELEASE-VALIDATOR (Step 5).\nIf FAIL: include exact diagnostics and route for rework.",
+    "acceptance_criteria": [
+      "Prechecks pass",
+      "TM-04/TM-05 test runs pass",
+      "Report generated"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Rerun executed: prechecks passed, integration layer failed, and TM-04/TM-05 E2E cases failed with auth redirect behavior.",
+    "artifacts_out": [
+      "tests/reports/report-20260607-WF02-f8-batch2-20260607-rerun1.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Integration suite failed (175/397 passed, 7 skipped, 215 failed), so TM-04/TM-05 rerun cannot be accepted.",
+        "evidence": "call_7OkAOe4Wj7Ge9uPojP8eWUTM__vscode-1780682851460/content.txt"
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "TC-TM-UI-04 failed twice: tenants table not visible because browser navigated to Keycloak auth URL.",
+        "evidence": "call_k8Tb2SdflQBkpX6ow6Oz3CB9__vscode-1780682851430/content.txt"
+      },
+      {
+        "severity": "BLOCKER",
+        "description": "TC-TM-UI-05 failed twice: tenants table not visible because browser navigated to Keycloak auth URL.",
+        "evidence": "call_k8Tb2SdflQBkpX6ow6Oz3CB9__vscode-1780682851430/content.txt"
+      }
+    ],
+    "next_action": "Route to WF-03 issue resolving for auth/session redirect regression and remaining integration blockers"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

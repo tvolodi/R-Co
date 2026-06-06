@@ -1,7 +1,7 @@
 //! Integration tests for TM-01 (list tenants API) and TM-03 (patch tenant API).
 //!
 //! All tests connect to a real PostgreSQL database via BPM_TEST_DB_URL.
-//! Tests skip cleanly with error.SkipZigTest when BPM_TEST_DB_URL is absent.
+//! Tests fail clearly when BPM_TEST_DB_URL is absent.
 //! Each test creates and cleans up its own fixtures using unique slugs.
 
 const std = @import("std");
@@ -20,8 +20,8 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => {
-            std.debug.print("BPM_TEST_DB_URL is not set — skipping TM-01/TM-03 integration tests\n", .{});
-            return error.SkipZigTest;
+            std.debug.print("BPM_TEST_DB_URL is required for TM integration tests and is not set\n", .{});
+            return err;
         },
         else => return err,
     };
@@ -90,6 +90,34 @@ fn createTestTenant(
         .idp_realm_id = null,
         .oidc_mode = .disabled,
     });
+}
+
+fn runtimeFixtureSlug(alloc: std.mem.Allocator, prefix: []const u8, test_case_id: []const u8) ![]u8 {
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(test_case_id, &digest, .{});
+    return std.fmt.allocPrint(
+        alloc,
+        "{s}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
+        .{
+            prefix,
+            digest[0],
+            digest[1],
+            digest[2],
+            digest[3],
+            digest[4],
+            digest[5],
+            digest[6],
+            digest[7],
+            digest[8],
+            digest[9],
+            digest[10],
+            digest[11],
+            digest[12],
+            digest[13],
+            digest[14],
+            digest[15],
+        },
+    );
 }
 
 // ── TC-TM-01-01 ───────────────────────────────────────────────────────────────
@@ -394,7 +422,8 @@ test "TC-TM-04-01: deactivate endpoint sets tenant status INACTIVE and returns 2
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const slug = "tc-tm-04-01";
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-04-01", "TC-TM-04-01");
+    defer alloc.free(slug);
     cleanupTenantBySlug(&pool, slug);
     defer cleanupTenantBySlug(&pool, slug);
 
@@ -420,7 +449,8 @@ test "TC-TM-04-02: deactivate endpoint is idempotent when already INACTIVE" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const slug = "tc-tm-04-02";
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-04-02", "TC-TM-04-02");
+    defer alloc.free(slug);
     cleanupTenantBySlug(&pool, slug);
     defer cleanupTenantBySlug(&pool, slug);
 
@@ -472,7 +502,8 @@ test "TC-TM-04-04: non-PLATFORM_ADMIN cannot deactivate tenant" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const slug = "tc-tm-04-04";
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-04-04", "TC-TM-04-04");
+    defer alloc.free(slug);
     cleanupTenantBySlug(&pool, slug);
     defer cleanupTenantBySlug(&pool, slug);
 
@@ -497,7 +528,8 @@ test "TC-TM-05-01: reactivate endpoint sets tenant status ACTIVE and returns 200
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const slug = "tc-tm-05-01";
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-05-01", "TC-TM-05-01");
+    defer alloc.free(slug);
     cleanupTenantBySlug(&pool, slug);
     defer cleanupTenantBySlug(&pool, slug);
 
@@ -527,7 +559,8 @@ test "TC-TM-05-02: reactivate endpoint is idempotent when already ACTIVE" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const slug = "tc-tm-05-02";
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-05-02", "TC-TM-05-02");
+    defer alloc.free(slug);
     cleanupTenantBySlug(&pool, slug);
     defer cleanupTenantBySlug(&pool, slug);
 
@@ -557,7 +590,8 @@ test "TC-TM-05-03: non-PLATFORM_ADMIN cannot reactivate tenant" {
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const slug = "tc-tm-05-03";
+    const slug = try runtimeFixtureSlug(alloc, "tc-tm-05-03", "TC-TM-05-03");
+    defer alloc.free(slug);
     cleanupTenantBySlug(&pool, slug);
     defer cleanupTenantBySlug(&pool, slug);
 

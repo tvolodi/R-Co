@@ -25,7 +25,9 @@ import { getKeycloakToken, loginWithToken } from './helpers'
 
 const SCREENSHOTS_DIR = 'tests/screenshots'
 const API_BASE_URL = process.env.BPM_TEST_URL ?? 'http://127.0.0.1:8080'
-const KEYCLOAK_BASE_URL = (process.env.BPM_IDP_BASE_URL ?? 'http://127.0.0.1:8081').replace(/\/$/, '')
+const KEYCLOAK_BASE_URL = (process.env.BPM_IDP_BASE_URL ?? 'http://localhost:8081')
+  .replace('://127.0.0.1', '://localhost')
+  .replace(/\/$/, '')
 const KEYCLOAK_DISCOVERY_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default/.well-known/openid-configuration`
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -41,9 +43,16 @@ async function shot(page: Page, name: string): Promise<void> {
 }
 
 function getAdminCredentials(): { username: string; password: string } {
+  const username = process.env.BPM_E2E_ADMIN_USERNAME?.trim()
+  const password = process.env.BPM_E2E_ADMIN_PASSWORD?.trim()
+  if (!username || !password) {
+    throw new Error(
+      'Missing required env vars for tenants E2E: BPM_E2E_ADMIN_USERNAME and BPM_E2E_ADMIN_PASSWORD',
+    )
+  }
   return {
-    username: process.env.BPM_E2E_ADMIN_USERNAME?.trim() || 'admin-user',
-    password: process.env.BPM_E2E_ADMIN_PASSWORD?.trim() || 'admin-pass',
+    username,
+    password,
   }
 }
 

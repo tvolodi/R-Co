@@ -1,0 +1,44 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-001",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-06T21:01:36Z",
+  "started_at": "2026-06-06T21:01:52Z",
+  "completed_at": "2026-06-06T21:03:33Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 design",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": [
+      "wf02-f8-b2-20260607-000-r1",
+      "wf01-f8-b2-20260607-002"
+    ],
+    "artifacts_in": [
+      "docs/BPM_Platform_Functional_Requirements.md",
+      "src/design/tenant-management.md"
+    ]
+  },
+  "task": {
+    "description": "Produce code design artifacts for F8 Batch2 requirements TM-04 and TM-05 (tenant deactivate/reactivate lifecycle controls).\n\nClassify according to lego catalog and generate required design outputs:\n- If CRUD-style endpoint changes fit Type A/C parameterization, emit templates/specs/*.yaml accordingly\n- If cross-cutting logic spans backend + UI state + identity/provider side effects, update/create Type E prose design in src/design/\n\nDesign must include:\n1. API contracts for deactivate/reactivate actions\n2. Data/state transitions for tenant status ACTIVE <-> INACTIVE\n3. Authorization rules (PLATFORM_ADMIN only)\n4. Effect on login/usage behavior for inactive tenants\n5. Frontend interaction model for deactivate/reactivate controls\n\nDo not implement code. Return artifacts_out only.",
+    "acceptance_criteria": [
+      "Design artifacts cover TM-04 and TM-05 fully",
+      "Artifact type classification is explicit and correct",
+      "No implementation code included"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for tenant lifecycle controls completed for TM-04 and TM-05 as Type E (cross-cutting).",
+    "artifacts_out": [
+      "src/design/tenant-lifecycle-controls.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

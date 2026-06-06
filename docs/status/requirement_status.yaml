@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-06-06T17:57:35Z'
+last_updated: '2026-06-06T23:14:19Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -3790,4 +3790,38 @@ requirements:
     release_run: WF02-f8-batch1-20260606
     release_decision: docs/status/release-f8-batch1-20260606.yaml
     last_updated: '2026-06-06T17:57:35Z'
-total_requirements: 266
+  TM-04:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Deactivate tenant
+    implemented_in:
+    - src/api/routes/identity.zig
+    - src/identity/service.zig
+    - web/src/api/tenants.ts
+    - web/src/pages/admin/tenants/TenantsPage.tsx
+    test_spec: tests/specs/TM-02.md
+    test_run: WF02-f8-batch2-20260607
+    tested_at: '2026-06-06'
+    released_at: '2026-06-06T23:12:29Z'
+    release_run: WF02-f8-batch2-20260607
+    release_decision: docs/status/release-f8-batch2-20260607.yaml
+    last_updated: '2026-06-06T23:14:19Z'
+  TM-05:
+    status: RELEASED
+    stage: 8
+    priority: MUST
+    title: Reactivate tenant
+    implemented_in:
+    - src/api/routes/identity.zig
+    - src/identity/service.zig
+    - web/src/api/tenants.ts
+    - web/src/pages/admin/tenants/TenantsPage.tsx
+    test_spec: tests/specs/TM-02.md
+    test_run: WF02-f8-batch2-20260607
+    tested_at: '2026-06-06'
+    released_at: '2026-06-06T23:12:29Z'
+    release_run: WF02-f8-batch2-20260607
+    release_decision: docs/status/release-f8-batch2-20260607.yaml
+    last_updated: '2026-06-06T23:14:19Z'
+total_requirements: 268

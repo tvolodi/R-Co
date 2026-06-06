@@ -3249,6 +3249,40 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 
 ---
 
+## Stage F8 — Tenant Management Lifecycle (Batch 2)
+
+**Goal:** Enable a `PLATFORM_ADMIN` to deactivate and reactivate tenant access from the tenant-management UI while enforcing platform tenant-activity policy across normal operations.
+
+---
+
+### TM-04 — Deactivate tenant `[MUST]`
+
+> A `PLATFORM_ADMIN` SHALL be able to deactivate an active tenant from the tenant management UI. After deactivation, the tenant's status is set to `INACTIVE` and normal tenant operations are blocked according to platform policy until reactivated.
+
+**Acceptance Criteria:**
+- GIVEN an authenticated `PLATFORM_ADMIN` opens tenant management for an `ACTIVE` tenant, WHEN they confirm the deactivate action, THEN the platform persists tenant status `INACTIVE` and returns the updated tenant record.
+- GIVEN a tenant is `INACTIVE`, WHEN a request resolves to that tenant context for normal operations (authentication, API access, process execution, or task work), THEN the request is rejected according to platform tenant-activity policy and no new normal-operation state transition is committed.
+- GIVEN a tenant is already `INACTIVE`, WHEN deactivate is requested again, THEN the operation is idempotent and returns the same `INACTIVE` tenant state without side effects.
+- GIVEN a caller without `PLATFORM_ADMIN` role attempts to deactivate a tenant, WHEN the request is evaluated, THEN the platform denies the action with authorization failure.
+
+**See:** API-08, ADP-03, OIDC-17, OIDC-18
+
+---
+
+### TM-05 — Reactivate tenant `[MUST]`
+
+> A `PLATFORM_ADMIN` SHALL be able to reactivate a previously deactivated tenant from the tenant management UI. Reactivation restores normal tenant operations under existing authorization and policy rules.
+
+**Acceptance Criteria:**
+- GIVEN an authenticated `PLATFORM_ADMIN` opens tenant management for an `INACTIVE` tenant, WHEN they confirm the reactivate action, THEN the platform persists tenant status `ACTIVE` and returns the updated tenant record.
+- GIVEN a tenant has been reactivated to `ACTIVE`, WHEN authenticated tenant users perform normal operations, THEN those operations are processed again under the standard authorization and execution flow.
+- GIVEN a tenant is already `ACTIVE`, WHEN reactivate is requested again, THEN the operation is idempotent and returns the same `ACTIVE` tenant state without side effects.
+- GIVEN a caller without `PLATFORM_ADMIN` role attempts to reactivate a tenant, WHEN the request is evaluated, THEN the platform denies the action with authorization failure.
+
+**See:** API-08, ADP-03, OIDC-17, OIDC-18
+
+---
+
 ## Stage SPT — Schema-Per-Tenant Migration
 
 **Goal:** Replace the row-based `tenant_id` + RLS tenancy model (introduced in earlier stages) with a PostgreSQL schema-per-tenant architecture, where every tenant's data lives in an isolated schema named `tenant_<uuid_no_hyphens>` (or `tenant_default` for the all-zeros UUID). The migration proceeds in four phases across four WF-02 runs: SPT-01 (bootstrap, done), SPT-02 (data migration), SPT-03 (code cleanup), SPT-04 (test suite update).
@@ -3340,8 +3374,9 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 | Cross-Cutting (XC-01..XC-06) | **5** | 1 | 0 | **6** |
 | Adaptation Requirements (ADP-01..ADP-12 incl. ADP-04a, ADP-04b = 14 entries) | **13** | 1 | 0 | **14** |
 | Stage F7 — Tenant Onboarding GUI (ONB-UI-01..04) | **4** | 0 | 0 | **4** |
+| Stage F8 — Tenant Management Lifecycle Batch 2 (TM-04..05) | **2** | 0 | 0 | **2** |
 | Stage SPT — Schema-Per-Tenant Migration (SPT-01..SPT-04) | **4** | 0 | 0 | **4** |
-| **Grand Total** | **177** | **21** | **1** | **199** |
+| **Grand Total** | **179** | **21** | **1** | **201** |
 
 NFRs and constraints are not counted in the table above as they are cross-cutting.
 
