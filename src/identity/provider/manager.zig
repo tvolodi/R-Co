@@ -87,6 +87,17 @@ pub const Manager = struct {
         const provider = self.provider orelse return error.NotImplemented;
         return provider.deleteRealm(allocator, input);
     }
+
+    // --- F8: Tenant management ---
+    pub fn updateClient(self: Manager, allocator: std.mem.Allocator, input: types.UpdateClientInput) errors.ProviderError!types.UpdateClientResult {
+        const provider = self.provider orelse return error.NotImplemented;
+        return provider.updateClient(allocator, input);
+    }
+
+    pub fn updateRealmFrontendUrl(self: Manager, allocator: std.mem.Allocator, input: types.UpdateRealmFrontendUrlInput) errors.ProviderError!void {
+        const provider = self.provider orelse return error.NotImplemented;
+        return provider.updateRealmFrontendUrl(allocator, input);
+    }
 };
 
 fn looksLikeJwt(token: []const u8) bool {

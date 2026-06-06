@@ -150,6 +150,8 @@ pub const Adapter = struct {
             .createProtocolMapperFn = createProtocolMapper,
             .toggleRealmFn = toggleRealmKeycloak,
             .deleteRealmFn = deleteRealmKeycloak,
+            .updateClientFn = updateClientKeycloak,
+            .updateRealmFrontendUrlFn = updateRealmFrontendUrlKeycloak,
         };
     }
 };
@@ -459,6 +461,281 @@ fn deleteRealmKeycloak(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input:
     if (response.status == 204 or response.status == 200) return;
     if (response.status == 404) return error.RealmNotFound;
     return mapStatus(response.status, .provision_realm);
+}
+
+// --- F8: Tenant management ---
+
+fn updateClientKeycloak(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.UpdateClientInput) provider_errors.ProviderError!provider_types.UpdateClientResult {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+
+    // Step 1: Resolve the internal Keycloak client UUID by clientId.
+    const lookup_url = keycloak_urls.clientsByName(allocator, self.config, input.realm_id, input.client_name) catch return error.OutOfMemory;
+    defer allocator.free(lookup_url);
+
+    const lookup_resp = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = lookup_url,
+        .bearer_token = bearer,
+    });
+    if (lookup_resp.status != 200) return mapStatus(lookup_resp.status, .provision_client);
+
+    const client_uuid = (try firstClientUuidFromSearch(allocator, lookup_resp.body)) orelse return error.ClientNotFound;
+    defer allocator.free(client_uuid);
+
+    // Step 2: Fetch the full client representation.
+    const client_url = keycloak_urls.clientById(allocator, self.config, input.realm_id, client_uuid) catch return error.OutOfMemory;
+    defer allocator.free(client_url);
+
+    const get_resp = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = client_url,
+        .bearer_token = bearer,
+    });
+    if (get_resp.status != 200) return mapStatus(get_resp.status, .provision_client);
+
+    // Step 3: Merge redirect_uris into the representation.
+    const merged_body = try mergeClientRedirectUris(allocator, get_resp.body, input.redirect_uris);
+    defer allocator.free(merged_body);
+
+    // Step 4: PUT the updated representation.
+    const put_resp = try sendRequest(self, allocator, .{
+        .method = .PUT,
+        .url = client_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = merged_body,
+    });
+    if (put_resp.status != 204 and put_resp.status != 200) return mapStatus(put_resp.status, .provision_client);
+
+    return .{
+        .client_id = allocator.dupe(u8, input.client_name) catch return error.OutOfMemory,
+    };
+}
+
+fn updateRealmFrontendUrlKeycloak(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.UpdateRealmFrontendUrlInput) provider_errors.ProviderError!void {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+
+    // Step 1: Fetch current realm representation.
+    const realm_url = keycloak_urls.realm(allocator, self.config, input.realm_id) catch return error.OutOfMemory;
+    defer allocator.free(realm_url);
+
+    const get_resp = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = realm_url,
+        .bearer_token = bearer,
+    });
+    if (get_resp.status == 404) return error.RealmNotFound;
+    if (get_resp.status != 200) return mapStatus(get_resp.status, .provision_realm);
+
+    // Step 2: Merge frontendUrl into the realm representation.
+    const merged_body = try mergeRealmFrontendUrl(allocator, get_resp.body, input.frontend_url);
+    defer allocator.free(merged_body);
+
+    // Step 3: PUT the updated representation.
+    const put_resp = try sendRequest(self, allocator, .{
+        .method = .PUT,
+        .url = realm_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = merged_body,
+    });
+    if (put_resp.status != 204 and put_resp.status != 200) return mapStatus(put_resp.status, .provision_realm);
+}
+
+fn firstClientUuidFromSearch(allocator: std.mem.Allocator, body: []const u8) provider_errors.ProviderError!?[]u8 {
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    if (parsed.value != .array) return error.UpstreamProtocolError;
+    if (parsed.value.array.items.len == 0) return null;
+    const first = parsed.value.array.items[0];
+    if (first != .object) return error.UpstreamProtocolError;
+    const id = valueString(first.object, "id") orelse return error.UpstreamProtocolError;
+    return allocator.dupe(u8, id) catch return error.OutOfMemory;
+}
+
+fn mergeClientRedirectUris(allocator: std.mem.Allocator, body: []const u8, redirect_uris: []const []const u8) provider_errors.ProviderError![]u8 {
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    if (parsed.value != .object) return error.UpstreamProtocolError;
+
+    // Build the merged object: copy all fields, override redirectUris.
+    var buf = std.ArrayList(u8).empty;
+    errdefer buf.deinit(allocator);
+
+    try buf.append(allocator, '{');
+    var first_field = true;
+    var it = parsed.value.object.iterator();
+    while (it.next()) |entry| {
+        if (!first_field) try buf.append(allocator, ',');
+        first_field = false;
+
+        const key_json = std.fmt.allocPrint(allocator, "\"{s}\":", .{entry.key_ptr.*}) catch return error.OutOfMemory;
+        defer allocator.free(key_json);
+        try buf.appendSlice(allocator, key_json);
+
+        if (std.mem.eql(u8, entry.key_ptr.*, "redirectUris")) {
+            // Replaced by input redirect_uris.
+            try buf.append(allocator, '[');
+            for (redirect_uris, 0..) |uri, idx| {
+                if (idx > 0) try buf.append(allocator, ',');
+                try buf.append(allocator, '"');
+                for (uri) |c| {
+                    if (c == '"') try buf.appendSlice(allocator, "\\\"") else try buf.append(allocator, c);
+                }
+                try buf.append(allocator, '"');
+            }
+            try buf.append(allocator, ']');
+        } else {
+            // Copy the existing value as raw JSON.
+            const val_json = try valueToJson(allocator, entry.value_ptr.*);
+            defer allocator.free(val_json);
+            try buf.appendSlice(allocator, val_json);
+        }
+    }
+    // If redirectUris was not present in the original, append it.
+    if (!parsed.value.object.contains("redirectUris")) {
+        if (!first_field) try buf.append(allocator, ',');
+        try buf.appendSlice(allocator, "\"redirectUris\":[");
+        for (redirect_uris, 0..) |uri, idx| {
+            if (idx > 0) try buf.append(allocator, ',');
+            try buf.append(allocator, '"');
+            for (uri) |c| {
+                if (c == '"') try buf.appendSlice(allocator, "\\\"") else try buf.append(allocator, c);
+            }
+            try buf.append(allocator, '"');
+        }
+        try buf.append(allocator, ']');
+    }
+    try buf.append(allocator, '}');
+    return buf.toOwnedSlice(allocator);
+}
+
+fn mergeRealmFrontendUrl(allocator: std.mem.Allocator, body: []const u8, frontend_url: []const u8) provider_errors.ProviderError![]u8 {
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{ .allocate = .alloc_always }) catch return error.UpstreamProtocolError;
+    defer parsed.deinit();
+    if (parsed.value != .object) return error.UpstreamProtocolError;
+
+    // Build merged object: copy all fields, upsert attributes.frontendUrl.
+    var buf = std.ArrayList(u8).empty;
+    errdefer buf.deinit(allocator);
+
+    // Escape the frontend_url for JSON.
+    var escaped_url = std.ArrayList(u8).empty;
+    defer escaped_url.deinit(allocator);
+    for (frontend_url) |c| {
+        if (c == '"') try escaped_url.appendSlice(allocator, "\\\"") else try escaped_url.append(allocator, c);
+    }
+
+    try buf.append(allocator, '{');
+    var first_field = true;
+    var it = parsed.value.object.iterator();
+    while (it.next()) |entry| {
+        if (!first_field) try buf.append(allocator, ',');
+        first_field = false;
+
+        const key_json = std.fmt.allocPrint(allocator, "\"{s}\":", .{entry.key_ptr.*}) catch return error.OutOfMemory;
+        defer allocator.free(key_json);
+        try buf.appendSlice(allocator, key_json);
+
+        if (std.mem.eql(u8, entry.key_ptr.*, "attributes") and entry.value_ptr.* == .object) {
+            // Merge frontendUrl into attributes.
+            try buf.append(allocator, '{');
+            var attr_first = true;
+            var attr_it = entry.value_ptr.object.iterator();
+            while (attr_it.next()) |attr_entry| {
+                if (std.mem.eql(u8, attr_entry.key_ptr.*, "frontendUrl")) continue; // will be appended at end
+                if (!attr_first) try buf.append(allocator, ',');
+                attr_first = false;
+                const attr_key = std.fmt.allocPrint(allocator, "\"{s}\":", .{attr_entry.key_ptr.*}) catch return error.OutOfMemory;
+                defer allocator.free(attr_key);
+                try buf.appendSlice(allocator, attr_key);
+                const attr_val = try valueToJson(allocator, attr_entry.value_ptr.*);
+                defer allocator.free(attr_val);
+                try buf.appendSlice(allocator, attr_val);
+            }
+            if (!attr_first) try buf.append(allocator, ',');
+            const frontend_entry = std.fmt.allocPrint(allocator, "\"frontendUrl\":\"{s}\"", .{escaped_url.items}) catch return error.OutOfMemory;
+            defer allocator.free(frontend_entry);
+            try buf.appendSlice(allocator, frontend_entry);
+            try buf.append(allocator, '}');
+        } else {
+            const val_json = try valueToJson(allocator, entry.value_ptr.*);
+            defer allocator.free(val_json);
+            try buf.appendSlice(allocator, val_json);
+        }
+    }
+    // If "attributes" was absent, add it.
+    if (!parsed.value.object.contains("attributes")) {
+        if (!first_field) try buf.append(allocator, ',');
+        const attr_block = std.fmt.allocPrint(allocator, "\"attributes\":{{\"frontendUrl\":\"{s}\"}}", .{escaped_url.items}) catch return error.OutOfMemory;
+        defer allocator.free(attr_block);
+        try buf.appendSlice(allocator, attr_block);
+    }
+    try buf.append(allocator, '}');
+    return buf.toOwnedSlice(allocator);
+}
+
+fn valueToJson(allocator: std.mem.Allocator, value: std.json.Value) provider_errors.ProviderError![]u8 {
+    var buf = std.ArrayList(u8).empty;
+    errdefer buf.deinit(allocator);
+    appendJsonValue(allocator, &buf, value) catch return error.OutOfMemory;
+    return buf.toOwnedSlice(allocator) catch return error.OutOfMemory;
+}
+
+fn appendJsonValue(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), value: std.json.Value) !void {
+    switch (value) {
+        .null => try buf.appendSlice(allocator, "null"),
+        .bool => |b| try buf.appendSlice(allocator, if (b) "true" else "false"),
+        .integer => |i| {
+            const s = try std.fmt.allocPrint(allocator, "{d}", .{i});
+            defer allocator.free(s);
+            try buf.appendSlice(allocator, s);
+        },
+        .float => |f| {
+            const s = try std.fmt.allocPrint(allocator, "{d}", .{f});
+            defer allocator.free(s);
+            try buf.appendSlice(allocator, s);
+        },
+        .number_string => |s| try buf.appendSlice(allocator, s),
+        .string => |s| {
+            try buf.append(allocator, '"');
+            for (s) |c| {
+                switch (c) {
+                    '"' => try buf.appendSlice(allocator, "\\\""),
+                    '\\' => try buf.appendSlice(allocator, "\\\\"),
+                    '\n' => try buf.appendSlice(allocator, "\\n"),
+                    '\r' => try buf.appendSlice(allocator, "\\r"),
+                    '\t' => try buf.appendSlice(allocator, "\\t"),
+                    else => try buf.append(allocator, c),
+                }
+            }
+            try buf.append(allocator, '"');
+        },
+        .array => |arr| {
+            try buf.append(allocator, '[');
+            for (arr.items, 0..) |item, idx| {
+                if (idx > 0) try buf.append(allocator, ',');
+                try appendJsonValue(allocator, buf, item);
+            }
+            try buf.append(allocator, ']');
+        },
+        .object => |obj| {
+            try buf.append(allocator, '{');
+            var it = obj.iterator();
+            var first = true;
+            while (it.next()) |entry| {
+                if (!first) try buf.append(allocator, ',');
+                first = false;
+                try buf.append(allocator, '"');
+                try buf.appendSlice(allocator, entry.key_ptr.*);
+                try buf.appendSlice(allocator, "\":");
+                try appendJsonValue(allocator, buf, entry.value_ptr.*);
+            }
+            try buf.append(allocator, '}');
+        },
+    }
 }
 
 fn provisionUser(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.ProvisionUserInput) provider_errors.ProviderError!provider_types.ProvisionUserResult {

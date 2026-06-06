@@ -403,6 +403,100 @@ pub const Service = struct {
         };
     }
 
+    pub const PatchTenantError = error{
+        TenantNotFound,
+        ImmutableFieldUpdate,
+        NoRealmBound,
+        KeycloakSyncFailed,
+        PoolExhausted,
+        PersistenceFailed,
+        OutOfMemory,
+        Forbidden,
+    };
+
+    pub const PatchTenantInput = struct {
+        slug: []const u8,
+        display_name: ?[]const u8,
+        hostname: ?[]const u8,
+        redirect_uris: ?[]const []const u8,
+    };
+
+    pub fn listTenantsAdmin(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
+        params: registry_mod.ListTenantsParams,
+    ) IdentityError!registry_mod.TenantListPage {
+        if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+        return self.registry.listTenants(allocator, params) catch |err| switch (err) {
+            registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+            else => error.PersistenceFailed,
+        };
+    }
+
+    pub fn patchTenant(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        actor: auth.AuthContext,
+        manager: provider_manager_mod.Manager,
+        input: PatchTenantInput,
+    ) PatchTenantError!registry_mod.Tenant {
+        if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
+
+        // Fetch to verify existence and get idp_realm_id for Keycloak calls.
+        const maybe_tenant = self.registry.selectTenantBySlug(allocator, input.slug) catch |err| return switch (err) {
+            registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+            else => error.PersistenceFailed,
+        };
+        const tenant = maybe_tenant orelse return error.TenantNotFound;
+        defer tenant.deinit(allocator);
+
+        if (input.display_name) |dn| {
+            const updated = self.registry.updateTenantDisplayName(allocator, input.slug, dn) catch |err| return switch (err) {
+                registry_mod.RegistryError.TenantNotFound => error.TenantNotFound,
+                registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+                registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+                registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+                else => error.PersistenceFailed,
+            };
+            updated.deinit(allocator);
+        }
+
+        if (input.hostname != null or input.redirect_uris != null) {
+            const realm_id = tenant.idp_realm_id orelse return error.NoRealmBound;
+
+            if (input.hostname) |hostname| {
+                manager.updateRealmFrontendUrl(allocator, .{
+                    .realm_id = realm_id,
+                    .frontend_url = hostname,
+                }) catch return error.KeycloakSyncFailed;
+            }
+
+            if (input.redirect_uris) |uris| {
+                const result = manager.updateClient(allocator, .{
+                    .realm_id = realm_id,
+                    .client_name = input.slug,
+                    .redirect_uris = uris,
+                }) catch return error.KeycloakSyncFailed;
+                result.deinit(allocator);
+            }
+        }
+
+        // Re-fetch the updated tenant from DB.
+        const maybe_refreshed = self.registry.selectTenantBySlug(allocator, input.slug) catch |err| return switch (err) {
+            registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+            registry_mod.RegistryError.PersistenceFailed => error.PersistenceFailed,
+            registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+            else => error.PersistenceFailed,
+        };
+        const refreshed = maybe_refreshed orelse return error.TenantNotFound;
+        return refreshed;
+    }
+
     pub fn createUser(
         self: *Service,
         allocator: std.mem.Allocator,

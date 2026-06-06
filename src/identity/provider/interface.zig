@@ -25,6 +25,10 @@ pub const IdentityProvider = struct {
     toggleRealmFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.ToggleRealmInput) errors.ProviderError!types.RealmLifecycleResult,
     deleteRealmFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.DeleteRealmInput) errors.ProviderError!void,
 
+    // --- F8: Tenant management ---
+    updateClientFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.UpdateClientInput) errors.ProviderError!types.UpdateClientResult,
+    updateRealmFrontendUrlFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.UpdateRealmFrontendUrlInput) errors.ProviderError!void,
+
     pub fn verifyToken(self: IdentityProvider, allocator: std.mem.Allocator, input: types.VerifyTokenInput) errors.ProviderError!types.VerifiedPrincipal {
         return self.verifyTokenFn(self.ctx, allocator, input);
     }
@@ -73,5 +77,14 @@ pub const IdentityProvider = struct {
 
     pub fn deleteRealm(self: IdentityProvider, allocator: std.mem.Allocator, input: types.DeleteRealmInput) errors.ProviderError!void {
         return self.deleteRealmFn(self.ctx, allocator, input);
+    }
+
+    // --- F8: Tenant management ---
+    pub fn updateClient(self: IdentityProvider, allocator: std.mem.Allocator, input: types.UpdateClientInput) errors.ProviderError!types.UpdateClientResult {
+        return self.updateClientFn(self.ctx, allocator, input);
+    }
+
+    pub fn updateRealmFrontendUrl(self: IdentityProvider, allocator: std.mem.Allocator, input: types.UpdateRealmFrontendUrlInput) errors.ProviderError!void {
+        return self.updateRealmFrontendUrlFn(self.ctx, allocator, input);
     }
 };

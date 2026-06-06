@@ -49,6 +49,10 @@ pub fn clientsByName(allocator: std.mem.Allocator, config: keycloak_config.Confi
     return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/clients?clientId={s}", .{ config.adminBase(), realm_id, client_name });
 }
 
+pub fn clientById(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8, client_uuid: []const u8) ![]u8 {
+    return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/clients/{s}", .{ config.adminBase(), realm_id, client_uuid });
+}
+
 pub fn clientsCollection(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8) ![]u8 {
     return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/clients", .{ config.adminBase(), realm_id });
 }

@@ -1054,6 +1054,40 @@ fn serveRequest(
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";
             }
+        } else if (std.mem.eql(u8, resource, "tenants")) {
+            // GET /api/v1/tenants       — PLATFORM_ADMIN list
+            // PATCH /api/v1/tenants/:slug — PLATFORM_ADMIN update
+            const actor = api_auth.AuthContext{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+            };
+
+            if (seg4.len == 0) {
+                if (method == .GET) {
+                    const limit_raw = std.fmt.parseInt(u16, QS.get(query_str, "limit") orelse "20", 10) catch 20;
+                    const offset_raw = std.fmt.parseInt(u32, QS.get(query_str, "offset") orelse "0", 10) catch 0;
+                    const params = identity_routes.ListTenantsQueryParams{
+                        .search = QS.getDecoded(query_str, "search", req_alloc),
+                        .limit = if (limit_raw > 100) 100 else limit_raw,
+                        .offset = offset_raw,
+                    };
+                    const r = identity_routes.handleListTenants(id_svc, req_alloc, actor, params);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
+            } else if (seg5.len == 0 and method == .PATCH) {
+                const r = identity_routes.handlePatchTenant(id_svc, req_alloc, actor, seg4, body);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
         } else if (std.mem.eql(u8, resource, "onboarding")) {
             // ── /api/v1/onboarding — OIDC-35 ─────────────────────────────────
             const actor = api_auth.AuthContext{

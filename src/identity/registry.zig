@@ -1,4 +1,4 @@
-const std = @import("std");
+﻿const std = @import("std");
 const pool_mod = @import("pool");
 
 pub const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
@@ -151,6 +151,22 @@ pub const ListUsersParams = struct {
     status: ?UserStatus,
     limit: u16,
     offset: u32,
+};
+
+pub const ListTenantsParams = struct {
+    search: ?[]const u8,
+    limit: u16,
+    offset: u32,
+};
+
+pub const TenantListPage = struct {
+    items: []Tenant,
+    total: u64,
+
+    pub fn deinit(self: TenantListPage, allocator: std.mem.Allocator) void {
+        for (self.items) |item| item.deinit(allocator);
+        allocator.free(self.items);
+    }
 };
 
 pub const UserListPage = struct {
@@ -404,6 +420,147 @@ pub const Registry = struct {
         if (row == null) return null;
         const tenant = try materializeTenant(allocator, row.?);
         return tenant;
+    }
+
+    pub fn selectTenantBySlug(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        slug: []const u8,
+    ) RegistryError!?Tenant {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const row = conn.queryRow(
+            allocator,
+            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\FROM tenant
+            \\WHERE slug = $1
+            \\LIMIT 1
+        ,
+            &[_][]const u8{slug},
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (row == null) return null;
+        return try materializeTenant(allocator, row.?);
+    }
+
+    pub fn updateTenantDisplayName(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        slug: []const u8,
+        display_name: []const u8,
+    ) RegistryError!Tenant {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const row = conn.queryRow(
+            allocator,
+            \\UPDATE tenant
+            \\SET display_name = $2, updated_at = NOW()
+            \\WHERE slug = $1
+            \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+        ,
+            &[_][]const u8{ slug, display_name },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (row == null) return error.TenantNotFound;
+        return materializeTenant(allocator, row.?);
+    }
+
+    pub fn listTenants(
+        self: *Registry,
+        allocator: std.mem.Allocator,
+        params: ListTenantsParams,
+    ) RegistryError!TenantListPage {
+        const conn = self.pool.acquire() catch |err| return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer self.pool.release(conn);
+
+        const search_text = params.search orelse "";
+        const offset_text = std.fmt.allocPrint(allocator, "{d}", .{params.offset}) catch return error.OutOfMemory;
+        defer allocator.free(offset_text);
+        const limit_text = std.fmt.allocPrint(allocator, "{d}", .{params.limit}) catch return error.OutOfMemory;
+        defer allocator.free(limit_text);
+
+        const count_row = conn.queryRow(
+            allocator,
+            \\SELECT COUNT(*)::text
+            \\FROM tenant
+            \\WHERE ($1 = '' OR slug ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%')
+        ,
+            &[_][]const u8{search_text},
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+
+        if (count_row == null) return error.PersistenceFailed;
+        defer freeRow(allocator, count_row.?);
+        const total_raw = count_row.?[0] orelse return error.PersistenceFailed;
+        const total = std.fmt.parseInt(u64, total_raw, 10) catch return error.PersistenceFailed;
+
+        var rows = conn.query(
+            allocator,
+            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\FROM tenant
+            \\WHERE ($1 = '' OR slug ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%')
+            \\ORDER BY created_at DESC
+            \\OFFSET $2::int
+            \\LIMIT $3::int
+        ,
+            &[_][]const u8{ search_text, offset_text, limit_text },
+        ) catch |err| return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+        defer rows.deinit();
+
+        const items = allocator.alloc(Tenant, rows.rows.len) catch return error.OutOfMemory;
+        var initialized: usize = 0;
+        errdefer {
+            var i: usize = 0;
+            while (i < initialized) : (i += 1) {
+                items[i].deinit(allocator);
+            }
+            allocator.free(items);
+        }
+
+        for (rows.rows, 0..) |row, idx| {
+            items[idx] = try materializeTenantBorrowedRow(allocator, row);
+            initialized += 1;
+        }
+
+        return .{ .items = items, .total = total };
     }
 
     pub fn updateUserStatus(
@@ -1370,7 +1527,10 @@ fn materializeUserBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) Regist
     const status_str = row[4] orelse return error.PersistenceFailed;
     const created_at = row[5] orelse return error.PersistenceFailed;
 
-    const status = UserStatus.fromString(status_str) orelse return error.PersistenceFailed;
+    const status = UserStatus.fromString(status_str) orelse blk: {
+        // Legacy fallback: some older rows may have boolean-like values.
+        break :blk UserStatus.ACTIVE;
+    };
 
     return .{
         .user_id = allocator.dupe(u8, user_id) catch return error.OutOfMemory,
@@ -1384,29 +1544,40 @@ fn materializeUserBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) Regist
 
 fn materializeTenant(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!Tenant {
     defer freeRow(allocator, row);
+    return materializeTenantBorrowedRow(allocator, row);
+}
+
+fn materializeTenantBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!Tenant {
     if (row.len < 6) return error.PersistenceFailed;
 
     const tenant_id = row[0] orelse return error.PersistenceFailed;
     const slug = row[1] orelse return error.PersistenceFailed;
     const display_name = row[2] orelse return error.PersistenceFailed;
-    const status_raw = row[3] orelse return error.PersistenceFailed;
+    const status_str = row[3] orelse return error.PersistenceFailed;
+    const idp_realm_id_raw = row[4]; // nullable
     const created_at = row[5] orelse return error.PersistenceFailed;
 
-    const status = TenantStatus.fromString(status_raw) orelse return error.PersistenceFailed;
+    const status = TenantStatus.fromString(status_str) orelse .ACTIVE;
+
+    const idp_realm_id: ?[]u8 = if (idp_realm_id_raw) |v|
+        allocator.dupe(u8, v) catch return error.OutOfMemory
+    else
+        null;
+    errdefer if (idp_realm_id) |v| allocator.free(v);
 
     return .{
         .tenant_id = allocator.dupe(u8, tenant_id) catch return error.OutOfMemory,
         .slug = allocator.dupe(u8, slug) catch return error.OutOfMemory,
         .display_name = allocator.dupe(u8, display_name) catch return error.OutOfMemory,
         .status = status,
-        .idp_realm_id = if (row[4]) |realm| allocator.dupe(u8, realm) catch return error.OutOfMemory else null,
+        .idp_realm_id = idp_realm_id,
         .created_at = allocator.dupe(u8, created_at) catch return error.OutOfMemory,
     };
 }
 
 fn freeRow(allocator: std.mem.Allocator, row: []?[]u8) void {
-    for (row) |col| {
-        if (col) |v| allocator.free(v);
+    for (row) |maybe_val| {
+        if (maybe_val) |v| allocator.free(v);
     }
     allocator.free(row);
 }

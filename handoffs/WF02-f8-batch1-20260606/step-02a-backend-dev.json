@@ -1,0 +1,48 @@
+{
+  "handoff_id": "wf02-f8-b1-20260606-002a",
+  "run_id": "WF02-f8-batch1-20260606",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-06T05:48:03Z",
+  "started_at": "2026-06-06T05:48:43Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "F8 \u2014 Tenant Management GUI (Batch 1: TM-01, TM-02, TM-03)",
+    "requirement_ids": [
+      "TM-01",
+      "TM-03"
+    ],
+    "related_handoff_ids": [
+      "wf02-f8-b1-20260606-001b"
+    ],
+    "artifacts_in": [
+      "templates/specs/tenant-list.list-page.yaml",
+      "src/design/tenant-management.md"
+    ]
+  },
+  "task": {
+    "description": "Implement the backend for TM-01 and TM-03 per the design in src/design/tenant-management.md. You are on branch feature/WF02-f8-batch1-20260606.\n\n## What to implement\n\n### 1. Run codegen for the Type B list page spec (backend route only)\n```\npython tools/codegen_list_page.py templates/specs/tenant-list.list-page.yaml\n```\nReview generated output. Edit only the // CUSTOM: blocks.\n\n### 2. Implement GET /api/v1/tenants\n- Handler: `handleListTenants` in `src/api/routes/tenants.zig` (or appropriate location per backend conventions)\n- Requires PLATFORM_ADMIN role \u2014 return 403 if not present\n- Supports optional query params: `limit` (default 20, max 100), `offset` (default 0)\n- Queries `public.tenant` table: SELECT id, slug, display_name, idp_realm_id, status, created_at ORDER BY created_at DESC\n- NOTE: The `status` column may not yet exist on `public.tenant`. If it does not exist, create a migration: `migrations/NNN_f8_add_tenant_status.sql` that adds `status VARCHAR(16) NOT NULL DEFAULT 'active'` to the tenant table. Check the current schema first.\n- Returns JSON: `{ items: TenantListItem[], total: number }`\n- TenantListItem: `{ slug, display_name, idp_realm_id, status, created_at }`\n\n### 3. Implement PATCH /api/v1/tenants/:slug\n- Handler: `handlePatchTenant` per src/design/tenant-management.md\n- Requires PLATFORM_ADMIN role\n- Accept body: `{ display_name?, hostname?, redirect_uris? }`\n- Reject with 422 if body contains `slug` or `idp_realm_id` (ImmutableFieldUpdate)\n- Update `display_name` in `public.tenant` if provided\n- If `redirect_uris` provided: call identity provider `updateClient()` to update the Keycloak realm client\n- If `hostname` provided: call identity provider `updateRealmFrontendUrl()` to update the realm\n- On Keycloak failure after DB success: return 502 (KeycloakSyncFailed) \u2014 do NOT roll back the DB update (eventual consistency acceptable for now)\n- Return updated tenant object\n\n### 4. Register routes\nAdd both endpoints to the router in `src/main.zig` or wherever routes are registered.\n\n### 5. No new migration needed for hostname/redirect_uris (they live in Keycloak, not the DB)\n\n## Validation\n```\nzig build\nzig build test\nzig build migrate\n```\nAll must exit 0.\n\n## Security checklist\n- No SQL string interpolation \u2014 use $1, $2 placeholders\n- PLATFORM_ADMIN check before any DB query\n- No secrets in source\n\n## After validation\nCommit to the feature branch:\n```\ngit add -A\ngit commit -m \"feat(WF02-f8-batch1): implement GET /api/v1/tenants and PATCH /api/v1/tenants/:slug (TM-01, TM-03)\"\ngit push origin feature/WF02-f8-batch1-20260606\n```",
+    "acceptance_criteria": [
+      "GET /api/v1/tenants returns 200 with paginated tenant list for PLATFORM_ADMIN",
+      "GET /api/v1/tenants returns 403 for non-PLATFORM_ADMIN",
+      "PATCH /api/v1/tenants/:slug updates display_name in DB",
+      "PATCH /api/v1/tenants/:slug calls Keycloak updateClient when redirect_uris provided",
+      "PATCH /api/v1/tenants/:slug returns 422 if slug or idp_realm_id in body",
+      "Migration adds status column to public.tenant if not present",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build migrate exits 0",
+      "Implementation committed and pushed to feature/WF02-f8-batch1-20260606"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

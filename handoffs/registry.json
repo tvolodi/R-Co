@@ -3,6 +3,48 @@
   "note": "Active registry \u2014 entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
   "entries": [
     {
+      "handoff_id": "wf02-f8-b1-20260606-002a",
+      "file": "handoffs/WF02-f8-batch1-20260606/step-02a-backend-dev.json",
+      "run_id": "WF02-f8-batch1-20260606",
+      "workflow_id": "WF-02",
+      "step": "02a",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-06T05:48:03Z",
+      "started_at": "2026-06-06T05:48:43Z",
+      "completed_at": null,
+      "status": "IN_PROGRESS",
+      "stage": "F8 Batch1 TM-01..03 backend"
+    },
+    {
+      "handoff_id": "wf02-f8-b1-20260606-001b",
+      "file": "handoffs/WF02-f8-batch1-20260606/step-01b-code-design-validator.json",
+      "run_id": "WF02-f8-batch1-20260606",
+      "workflow_id": "WF-02",
+      "step": "01b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-06-06T05:43:47Z",
+      "started_at": "2026-06-06T05:44:17Z",
+      "completed_at": "2026-06-06T05:46:52Z",
+      "status": "COMPLETED",
+      "stage": "F8 Batch1 TM-01..03 design validation"
+    },
+    {
+      "handoff_id": "wf02-f8-b1-20260606-001",
+      "file": "handoffs/WF02-f8-batch1-20260606/step-01-code-designer.json",
+      "run_id": "WF02-f8-batch1-20260606",
+      "workflow_id": "WF-02",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-06-06T05:36:03Z",
+      "started_at": "2026-06-06T05:36:46Z",
+      "completed_at": "2026-06-06T05:43:13Z",
+      "status": "COMPLETED",
+      "stage": "F8 Batch1 TM-01..03 design"
+    },
+    {
       "handoff_id": "adhoc-f7-trace-backend-20260601-001",
       "file": "handoffs/ADHOC-f7-trace-backend-20260601/step-01-backend-dev.json",
       "run_id": "ADHOC-f7-trace-backend-20260601",
