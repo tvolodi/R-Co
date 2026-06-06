@@ -430,11 +430,11 @@ test "TC-TM-04-02: deactivate endpoint is idempotent when already INACTIVE" {
     const created = try createTestTenant(alloc, &service, slug, "TM-04 Idempotent");
     defer created.deinit(alloc);
 
-    var first = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    const first = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
     defer freeRouteBody(alloc, first.body);
     try testing.expectEqual(@as(u16, 200), first.status_code);
 
-    var second = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    const second = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
     defer freeRouteBody(alloc, second.body);
     try testing.expectEqual(@as(u16, 200), second.status_code);
     try testing.expect(std.mem.indexOf(u8, second.body, "\"status\":\"INACTIVE\"") != null);
@@ -453,12 +453,12 @@ test "TC-TM-04-03: deactivate endpoint rejects invalid slug and invalid payload"
     var registry = identity_registry.Registry.init(&pool);
     var service = identity_service.Service.init(&registry);
 
-    var invalid_slug = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), "Bad_Slug", "{}");
+    const invalid_slug = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), "Bad_Slug", "{}");
     defer freeRouteBody(alloc, invalid_slug.body);
     try testing.expectEqual(@as(u16, 400), invalid_slug.status_code);
     try testing.expect(std.mem.indexOf(u8, invalid_slug.body, "invalid_tenant_slug") != null);
 
-    var invalid_payload = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), "valid-slug", "{\"x\":1}");
+    const invalid_payload = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), "valid-slug", "{\"x\":1}");
     defer freeRouteBody(alloc, invalid_payload.body);
     try testing.expectEqual(@as(u16, 422), invalid_payload.status_code);
     try testing.expect(std.mem.indexOf(u8, invalid_payload.body, "invalid_lifecycle_payload") != null);
@@ -507,11 +507,11 @@ test "TC-TM-05-01: reactivate endpoint sets tenant status ACTIVE and returns 200
     const created = try createTestTenant(alloc, &service, slug, "TM-05 Reactivate");
     defer created.deinit(alloc);
 
-    var deactivated = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    const deactivated = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
     defer freeRouteBody(alloc, deactivated.body);
     try testing.expectEqual(@as(u16, 200), deactivated.status_code);
 
-    var reactivated = identity_routes.handleReactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    const reactivated = identity_routes.handleReactivateTenant(&service, alloc, adminActor(), slug, "{}");
     defer freeRouteBody(alloc, reactivated.body);
     try testing.expectEqual(@as(u16, 200), reactivated.status_code);
     try testing.expect(std.mem.indexOf(u8, reactivated.body, "\"status\":\"ACTIVE\"") != null);
@@ -537,11 +537,11 @@ test "TC-TM-05-02: reactivate endpoint is idempotent when already ACTIVE" {
     const created = try createTestTenant(alloc, &service, slug, "TM-05 Idempotent");
     defer created.deinit(alloc);
 
-    var first = identity_routes.handleReactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    const first = identity_routes.handleReactivateTenant(&service, alloc, adminActor(), slug, "{}");
     defer freeRouteBody(alloc, first.body);
     try testing.expectEqual(@as(u16, 200), first.status_code);
 
-    var second = identity_routes.handleReactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    const second = identity_routes.handleReactivateTenant(&service, alloc, adminActor(), slug, "{}");
     defer freeRouteBody(alloc, second.body);
     try testing.expectEqual(@as(u16, 200), second.status_code);
     try testing.expect(std.mem.indexOf(u8, second.body, "\"status\":\"ACTIVE\"") != null);
@@ -567,11 +567,11 @@ test "TC-TM-05-03: non-PLATFORM_ADMIN cannot reactivate tenant" {
     const created = try createTestTenant(alloc, &service, slug, "TM-05 Forbidden");
     defer created.deinit(alloc);
 
-    var deactivate = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
+    const deactivate = identity_routes.handleDeactivateTenant(&service, alloc, adminActor(), slug, "{}");
     defer freeRouteBody(alloc, deactivate.body);
     try testing.expectEqual(@as(u16, 200), deactivate.status_code);
 
-    var reactivate = identity_routes.handleReactivateTenant(&service, alloc, viewerActor(), slug, "{}");
+    const reactivate = identity_routes.handleReactivateTenant(&service, alloc, viewerActor(), slug, "{}");
     defer freeRouteBody(alloc, reactivate.body);
     try testing.expectEqual(@as(u16, 403), reactivate.status_code);
     try testing.expect(std.mem.indexOf(u8, reactivate.body, "forbidden") != null);
