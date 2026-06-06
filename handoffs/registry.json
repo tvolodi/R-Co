@@ -3,6 +3,20 @@
   "note": "Active registry \u2014 entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
   "entries": [
     {
+      "handoff_id": "wf02-f8-b1-20260606-002b",
+      "file": "handoffs/WF02-f8-batch1-20260606/step-02b-frontend-dev.json",
+      "run_id": "WF02-f8-batch1-20260606",
+      "workflow_id": "WF-02",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-06-06T06:09:10Z",
+      "started_at": "2026-06-06T06:09:56Z",
+      "completed_at": null,
+      "status": "IN_PROGRESS",
+      "stage": "F8 Batch1 TM-01..03 frontend"
+    },
+    {
       "handoff_id": "wf02-f8-b1-20260606-002a",
       "file": "handoffs/WF02-f8-batch1-20260606/step-02a-backend-dev.json",
       "run_id": "WF02-f8-batch1-20260606",
@@ -12,8 +26,8 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-06-06T05:48:03Z",
       "started_at": "2026-06-06T05:48:43Z",
-      "completed_at": null,
-      "status": "IN_PROGRESS",
+      "completed_at": "2026-06-06T06:08:30Z",
+      "status": "COMPLETED",
       "stage": "F8 Batch1 TM-01..03 backend"
     },
     {
