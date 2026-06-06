@@ -1,0 +1,52 @@
+{
+  "handoff_id": "wf02-f8-b2-20260607-002b",
+  "run_id": "WF02-f8-batch2-20260607",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "created_at": "2026-06-06T21:28:41Z",
+  "started_at": "2026-06-06T21:28:54Z",
+  "completed_at": "2026-06-06T21:36:06Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "F8 Batch2 frontend implementation",
+    "requirement_ids": ["TM-04", "TM-05"],
+    "related_handoff_ids": [
+      "wf02-f8-b2-20260607-002a-r1"
+    ],
+    "artifacts_in": [
+      "src/design/tenant-lifecycle-controls.md",
+      "web/src/pages/admin/tenants/TenantsPage.tsx",
+      "web/src/api/tenants.ts"
+    ]
+  },
+  "task": {
+    "description": "Implement frontend for TM-04/TM-05 tenant lifecycle controls per design:\n\n1. Add deactivate/reactivate actions to tenant management UI (TenantsPage) with confirmation UX.\n2. Show state-driven controls (Deactivate only for ACTIVE; Reactivate only for INACTIVE).\n3. Integrate lifecycle API calls in web/src/api/tenants.ts and query invalidation updates.\n4. Surface deterministic error messages for invalid input/forbidden/not-found/inactive-policy codes per design mapping.\n5. Ensure PLATFORM_ADMIN-only visibility and behavior remain intact.\n\nValidation required:\n- cd web && npm run type-check\n- cd web && npm run lint\n- cd web && npm run build\n- Relevant Playwright E2E updates for TM-04/TM-05 flows\n\nCommit and push to feature/WF02-f8-batch2-20260607.",
+    "acceptance_criteria": [
+      "UI supports deactivate/reactivate controls with confirmation",
+      "API integration and cache refresh behavior works",
+      "Frontend validation/build checks pass"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented TM-04/TM-05 tenant lifecycle controls with state-driven deactivate/reactivate actions, confirmation dialog UX, lifecycle API integration, deterministic error mapping, and focused Playwright E2E coverage.",
+    "artifacts_out": [
+      "web/src/api/tenants.ts",
+      "web/src/pages/admin/tenants/TenantsPage.tsx",
+      "web/tests/e2e/tenants.e2e.spec.ts",
+      "docs/issue-reports/WF02-f8-batch2-20260607-step-02b-frontend-dev-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "python tools/lint_test_isolation.py tests/integration reports pre-existing MAJOR findings in unrelated backend integration tests."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (WF-02 Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
