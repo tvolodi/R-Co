@@ -119,6 +119,8 @@ const sim01_04_simulation_mode_integration = @import("sim01_04_simulation_mode_t
 const sim05_08_scenario_runner_integration = @import("sim05_08_scenario_runner_test.zig");
 // SPT-01 — Schema-per-tenant provisioning infrastructure
 const spt01_provisioning_integration = @import("spt01_provisioning_test.zig");
+// Stage F8 — Tenant Management API (TM-01, TM-03)
+const tm01_tenant_list_integration = @import("tm01_tenant_list_test.zig");
 
 comptime {
     _ = std;
@@ -174,6 +176,7 @@ comptime {
     _ = sim01_04_simulation_mode_integration;
     _ = sim05_08_scenario_runner_integration;
     _ = spt01_provisioning_integration;
+    _ = tm01_tenant_list_integration;
 }
 
 test "integration placeholder" {

@@ -188,6 +188,9 @@ pub fn build(b: *std.Build) void {
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
             .{ .name = "obs_metrics", .module = obs_metrics_mod },
+            // identity_provider added so integration tests can call route handlers
+            // that reference auth.getIdentityProviderManager() (e.g. handlePatchTenant).
+            .{ .name = "identity_provider", .module = identity_provider_mod },
         },
     });
 
