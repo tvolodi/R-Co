@@ -30,7 +30,11 @@ id: <kebab-case unique string>
   #   web/tests/e2e/pipelines/<id>.pipeline.e2e.spec.ts
 
 company_id: <swiftroute | vortex | meridian>
-  # Which simulated company this scenario belongs to
+  # Which simulated company this scenario belongs to.
+  # This is the SOLE tenant identifier — UAT-RUNNER resolves it automatically
+  # via GET /api/v1/tenants/{company_id} to obtain the tenant UUID,
+  # Keycloak realm name, and token URL. Scenario authors do NOT need to
+  # specify realm, tenant UUID, or token endpoint — those are derived.
 
 process_id: <process id from company's process_*.yaml>
   # e.g. "proc-swiftroute-shipment-approval"

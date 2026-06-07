@@ -28,8 +28,28 @@ const STATE_DIR = path.resolve('tests/e2e/.pipeline-state')
 // which matches the backend's configured BPM_IDP_BASE_URL. Tokens issued via 127.0.0.1
 // would have a mismatched issuer and be rejected by the backend with 401.
 const KEYCLOAK_BASE_URL = (process.env.BPM_IDP_BASE_URL ?? 'http://localhost:8081').replace(/\/$/, '')
-const KEYCLOAK_TOKEN_URL = `${KEYCLOAK_BASE_URL}/realms/bpm-default/protocol/openid-connect/token`
 const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
+
+/** Build a Keycloak token endpoint URL for the given realm. */
+function keycloakTokenUrl(realm = 'bpm-default'): string {
+  return `${KEYCLOAK_BASE_URL}/realms/${realm}/protocol/openid-connect/token`
+}
+
+// ─── Tenant context resolution ─────────────────────────────────────────────────
+
+export interface TenantContext {
+  /** UUID of the tenant — for API calls that require tenant_id */
+  tenantId: string
+  /** Keycloak realm name (e.g. 'swiftroute'). Same as slug for non-default tenants. */
+  realm: string
+  /** Tenant slug (e.g. 'swiftroute') */
+  slug: string
+  /** Fully-qualified Keycloak token endpoint URL for this realm */
+  tokenUrl: string
+}
+
+/** Module-level cache for resolved tenant contexts (keyed by slug). */
+const tenantContextCache = new Map<string, TenantContext>()
 
 // ─── Token helpers ────────────────────────────────────────────────────────────
 
@@ -37,8 +57,10 @@ export async function getKeycloakToken(
   request: APIRequestContext,
   username = 'admin-user',
   password = 'admin-pass',
+  realm?: string,
 ): Promise<string> {
-  const response = await request.post(KEYCLOAK_TOKEN_URL, {
+  const tokenUrl = keycloakTokenUrl(realm)
+  const response = await request.post(tokenUrl, {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     form: { client_id: KEYCLOAK_CLIENT_ID, username, password, grant_type: 'password' },
   })
@@ -68,12 +90,66 @@ export async function refreshTokenIfNeeded(
   token: string,
   username = 'admin-user',
   password = 'admin-pass',
+  realm?: string,
 ): Promise<string> {
   const { exp } = decodeJwtPayload(token)
   if (exp - Math.floor(Date.now() / 1000) < 60) {
-    return getKeycloakToken(request, username, password)
+    return getKeycloakToken(request, username, password, realm)
   }
   return token
+}
+
+/**
+ * Resolve a tenant slug into a TenantContext by calling
+ * GET /api/v1/tenants/:slug.
+ *
+ * Results are cached in-memory per slug for the lifetime of the
+ * test process to avoid repeated API calls.
+ *
+ * @param request  - Playwright APIRequestContext
+ * @param companySlug - tenant slug from scenario YAML (e.g. 'swiftroute')
+ * @param adminToken - a valid admin token (bpm-default realm) to authorise the API call
+ * @returns TenantContext
+ * @throws Error if tenant not found (404) or API unreachable
+ */
+export async function resolveTenantContext(
+  request: APIRequestContext,
+  companySlug: string,
+  adminToken: string,
+): Promise<TenantContext> {
+  const cached = tenantContextCache.get(companySlug)
+  if (cached) return cached
+
+  const apiUrl = (process.env.BPM_TEST_URL ?? 'http://127.0.0.1:8080').replace(/\/$/, '')
+  const response = await request.get(`${apiUrl}/api/v1/tenants/${companySlug}`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  })
+
+  if (response.status() === 404) {
+    throw new Error(`Tenant not found: ${companySlug}`)
+  }
+  if (!response.ok()) {
+    const body = await response.text()
+    throw new Error(`Tenant lookup failed (${response.status()}): ${body}`)
+  }
+
+  const data = await response.json() as {
+    tenant_id: string
+    slug: string
+    idp_realm_id: string | null
+    [key: string]: unknown
+  }
+
+  const realm = data.idp_realm_id ?? data.slug
+  const ctx: TenantContext = {
+    tenantId: data.tenant_id,
+    realm,
+    slug: data.slug,
+    tokenUrl: keycloakTokenUrl(realm),
+  }
+
+  tenantContextCache.set(companySlug, ctx)
+  return ctx
 }
 
 // ─── Session injection ────────────────────────────────────────────────────────
