@@ -1,0 +1,60 @@
+{
+  "handoff_id": "wf02-tenant-onboarding-boaccept-r2-20260607-002a",
+  "run_id": "WF02-tenant-onboarding-boaccept-r2-20260607",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-tenant-onboarding-boaccept-r2-20260607/step-02a-backend-dev.json",
+  "created_at": "2026-06-07T15:28:00Z",
+  "started_at": "2026-06-07T15:28:10Z",
+  "completed_at": "2026-06-07T15:39:49Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-02 Step 2a backend implementation",
+    "requirement_ids": ["ONB-UI-03","ONB-UI-04","OIDC-12","OIDC-13","OIDC-14"],
+    "related_handoff_ids": ["wf02-tenant-onboarding-boaccept-r2-20260607-001b"],
+    "artifacts_in": [
+      "src/design/onboarding-completion-gate-boaccept-r2.md",
+      "handoffs/WF02-tenant-onboarding-boaccept-r2-20260607/step-01b-code-design-validator.json"
+    ]
+  },
+  "task": {
+    "description": "Implement backend changes for onboarding completion gate per approved design, ensuring completion semantics align with tenant visibility, OIDC readiness, and schema materialization guarantees.",
+    "acceptance_criteria": [
+      "zig build passes",
+      "zig build test passes",
+      "Relevant integration tests updated/added and passing",
+      "Handoff returns PASS with artifacts_out"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented onboarding completion-gate normalization for GET onboarding endpoints with readiness checks (tenant visibility, OIDC authority readiness, schema materialization), and aligned hostname restore lookup for completed/failed terminal records.",
+    "artifacts_out": [
+      "src/api/routes/onboarding.zig",
+      "src/identity/onboarding.zig",
+      "tests/integration/oidc35_onboarding_test.zig"
+    ],
+    "issues": [],
+    "validation_evidence": [
+      "zig build -> BUILD_EXIT:0",
+      "zig build test (BPM_TEST_DB_URL set) -> BUILD_TEST_EXIT:0",
+      "zig build migrate (BPM_DB_URL set) -> MIGRATE_EXIT:0",
+      "zig build 2>&1 | Select-String 'error set' -> ERROR_SET_SCAN_EXIT:0"
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF02-tenant-onboarding-boaccept-r2-20260607",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF02-tenant-onboarding-boaccept-r2-20260607",
+      "push_status": "pending",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

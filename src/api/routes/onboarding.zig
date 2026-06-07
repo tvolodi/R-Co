@@ -32,6 +32,298 @@ pub const HandlerResult = struct {
     body: []const u8,
 };
 
+const CompletionChecks = struct {
+    tenant_visible: bool,
+    oidc_authority_ready: bool,
+    schema_materialized: bool,
+};
+
+const ParsedOnboardingBody = struct {
+    tenant_id: ?[]u8 = null,
+    slug: ?[]u8 = null,
+    hostname: ?[]u8 = null,
+    oidc_authority: ?[]u8 = null,
+    failure_reason: ?[]u8 = null,
+
+    fn deinit(self: *ParsedOnboardingBody, allocator: std.mem.Allocator) void {
+        if (self.tenant_id) |v| allocator.free(v);
+        if (self.slug) |v| allocator.free(v);
+        if (self.hostname) |v| allocator.free(v);
+        if (self.oidc_authority) |v| allocator.free(v);
+        if (self.failure_reason) |v| allocator.free(v);
+    }
+};
+
+fn evaluateCompletionGate(checks: CompletionChecks) bool {
+    return checks.tenant_visible and checks.oidc_authority_ready and checks.schema_materialized;
+}
+
+fn parseOnboardingBody(allocator: std.mem.Allocator, body: []const u8) !ParsedOnboardingBody {
+    var out = ParsedOnboardingBody{};
+
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, body, .{ .allocate = .alloc_always }) catch {
+        return out;
+    };
+    defer parsed.deinit();
+
+    if (parsed.value != .object) return out;
+    const obj = parsed.value.object;
+
+    if (obj.get("tenant_id")) |value| {
+        if (value == .string and value.string.len > 0) {
+            out.tenant_id = try allocator.dupe(u8, value.string);
+        }
+    }
+    if (obj.get("slug")) |value| {
+        if (value == .string and value.string.len > 0) {
+            out.slug = try allocator.dupe(u8, value.string);
+        }
+    }
+    if (obj.get("hostname")) |value| {
+        if (value == .string and value.string.len > 0) {
+            out.hostname = try allocator.dupe(u8, value.string);
+        }
+    }
+    if (obj.get("oidc_authority")) |value| {
+        if (value == .string and value.string.len > 0) {
+            out.oidc_authority = try allocator.dupe(u8, value.string);
+        }
+    }
+    if (obj.get("error")) |value| {
+        if (value == .string and value.string.len > 0) {
+            out.failure_reason = try allocator.dupe(u8, value.string);
+        }
+    }
+
+    return out;
+}
+
+fn verifyTenantVisibility(
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    tenant_slug: []const u8,
+    expected_hostname: []const u8,
+    expected_realm_id: []const u8,
+) !bool {
+    const conn = pool.acquire() catch return false;
+    defer pool.release(conn);
+
+    const row = conn.queryRow(
+        allocator,
+        \\SELECT t.id::text
+        \\FROM tenant t
+        \\JOIN tenant_hostnames th ON th.tenant_id = t.id
+        \\WHERE t.slug = $1 AND t.idp_realm_id = $2 AND th.hostname = $3
+        \\LIMIT 1
+    ,
+        &[_][]const u8{ tenant_slug, expected_realm_id, expected_hostname },
+    ) catch return false;
+
+    if (row) |v| {
+        defer freeRow(allocator, v);
+        return true;
+    }
+    return false;
+}
+
+fn verifyOidcAuthorityReadiness(
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    tenant_slug: []const u8,
+    tenant_id: []const u8,
+    authority: []const u8,
+) !bool {
+    const uri = std.Uri.parse(authority) catch return false;
+    if (!std.mem.endsWith(u8, uri.path.percent_encoded, tenant_slug)) return false;
+
+    const conn = pool.acquire() catch return false;
+    defer pool.release(conn);
+
+    const row = conn.queryRow(
+        allocator,
+        \\SELECT id::text
+        \\FROM tenant
+        \\WHERE slug = $1 AND id::text = $2 AND idp_realm_id = $1
+        \\LIMIT 1
+    ,
+        &[_][]const u8{ tenant_slug, tenant_id },
+    ) catch return false;
+
+    if (row) |v| {
+        defer freeRow(allocator, v);
+        return true;
+    }
+    return false;
+}
+
+fn verifySchemaMaterialization(
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    tenant_id: []const u8,
+) !bool {
+    const conn = pool.acquire() catch return false;
+    defer pool.release(conn);
+
+    const registry_row = conn.queryRow(
+        allocator,
+        \\SELECT COALESCE((migrations_applied_at IS NOT NULL)::int, 0)::text
+        \\FROM public.tenant_schemas
+        \\WHERE tenant_id = $1::uuid
+        \\LIMIT 1
+    ,
+        &[_][]const u8{tenant_id},
+    ) catch return false;
+
+    if (registry_row == null) return false;
+    defer freeRow(allocator, registry_row.?);
+    if (!std.mem.eql(u8, registry_row.?[0] orelse "0", "1")) return false;
+
+    const expected_row = conn.queryRow(
+        allocator,
+        "SELECT COUNT(*)::text FROM public.schema_migrations WHERE schema_name = 'public'",
+        &[_][]const u8{},
+    ) catch return false;
+    if (expected_row == null) return false;
+    defer freeRow(allocator, expected_row.?);
+
+    const expected_count = std.fmt.parseInt(u32, expected_row.?[0] orelse "0", 10) catch return false;
+    if (expected_count == 0) return false;
+
+    var schema_buf: [80]u8 = undefined;
+    const schema_name = pool_mod.schemaNameForTenant(tenant_id, &schema_buf);
+    const sql = try std.fmt.allocPrint(allocator, "SELECT COUNT(*)::text FROM {s}.schema_migrations", .{schema_name});
+    defer allocator.free(sql);
+
+    const actual_row = conn.queryRow(
+        allocator,
+        sql,
+        &[_][]const u8{},
+    ) catch return false;
+    if (actual_row == null) return false;
+    defer freeRow(allocator, actual_row.?);
+
+    const actual_count = std.fmt.parseInt(u32, actual_row.?[0] orelse "0", 10) catch return false;
+    return actual_count >= expected_count;
+}
+
+fn deriveCompletionChecks(
+    allocator: std.mem.Allocator,
+    service: *identity_service.Service,
+    record: *const onboarding_mod.OnboardingRecord,
+    parsed: *const ParsedOnboardingBody,
+) CompletionChecks {
+    if (record.state != .completed) {
+        return .{ .tenant_visible = false, .oidc_authority_ready = false, .schema_materialized = false };
+    }
+
+    const tenant_slug = parsed.slug orelse return .{ .tenant_visible = false, .oidc_authority_ready = false, .schema_materialized = false };
+    const tenant_id = parsed.tenant_id orelse return .{ .tenant_visible = false, .oidc_authority_ready = false, .schema_materialized = false };
+    const hostname = parsed.hostname orelse return .{ .tenant_visible = false, .oidc_authority_ready = false, .schema_materialized = false };
+    const oidc_authority = parsed.oidc_authority orelse return .{ .tenant_visible = false, .oidc_authority_ready = false, .schema_materialized = false };
+
+    const tenant_visible = verifyTenantVisibility(
+        allocator,
+        service.registry.pool,
+        tenant_slug,
+        hostname,
+        tenant_slug,
+    ) catch false;
+
+    const oidc_authority_ready = verifyOidcAuthorityReadiness(
+        allocator,
+        service.registry.pool,
+        tenant_slug,
+        tenant_id,
+        oidc_authority,
+    ) catch false;
+
+    const schema_materialized = verifySchemaMaterialization(
+        allocator,
+        service.registry.pool,
+        tenant_id,
+    ) catch false;
+
+    return .{
+        .tenant_visible = tenant_visible,
+        .oidc_authority_ready = oidc_authority_ready,
+        .schema_materialized = schema_materialized,
+    };
+}
+
+fn appendNullableJsonStr(allocator: std.mem.Allocator, buf: *std.ArrayList(u8), v: ?[]const u8) !void {
+    if (v) |value| {
+        try appendJsonStr(allocator, buf, value);
+        return;
+    }
+    try buf.appendSlice(allocator, "null");
+}
+
+fn buildOnboardingStatusResponse(
+    allocator: std.mem.Allocator,
+    service: *identity_service.Service,
+    record: *const onboarding_mod.OnboardingRecord,
+) ![]u8 {
+    var parsed = try parseOnboardingBody(allocator, record.response_body_json);
+    defer parsed.deinit(allocator);
+
+    const checks = deriveCompletionChecks(allocator, service, record, &parsed);
+    const gate_satisfied = evaluateCompletionGate(checks);
+
+    const status: []const u8 = switch (record.state) {
+        .pending => "in_progress",
+        .failed => "failed",
+        .completed => if (gate_satisfied) "completed" else "failed",
+    };
+
+    const state: []const u8 = if (std.mem.eql(u8, status, "completed"))
+        "completed"
+    else if (std.mem.eql(u8, status, "failed"))
+        "failed"
+    else
+        "pending";
+
+    const failure_reason: ?[]const u8 = if (std.mem.eql(u8, status, "failed"))
+        (parsed.failure_reason orelse if (!gate_satisfied) "onboarding_completion_checks_incomplete" else "onboarding_failed")
+    else
+        null;
+
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    try buf.appendSlice(allocator, "{\"onboarding_id\":");
+    try appendJsonStr(allocator, &buf, record.onboarding_id);
+
+    try buf.appendSlice(allocator, ",\"status\":");
+    try appendJsonStr(allocator, &buf, status);
+
+    try buf.appendSlice(allocator, ",\"state\":");
+    try appendJsonStr(allocator, &buf, state);
+
+    try buf.appendSlice(allocator, ",\"slug\":");
+    try appendNullableJsonStr(allocator, &buf, parsed.slug);
+
+    try buf.appendSlice(allocator, ",\"hostname\":");
+    try appendNullableJsonStr(allocator, &buf, parsed.hostname);
+
+    try buf.appendSlice(allocator, ",\"oidc_authority\":");
+    try appendNullableJsonStr(allocator, &buf, parsed.oidc_authority);
+
+    try buf.appendSlice(allocator, ",\"tenant_visible\":");
+    try buf.appendSlice(allocator, if (checks.tenant_visible) "true" else "false");
+
+    try buf.appendSlice(allocator, ",\"oidc_authority_ready\":");
+    try buf.appendSlice(allocator, if (checks.oidc_authority_ready) "true" else "false");
+
+    try buf.appendSlice(allocator, ",\"schema_materialized\":");
+    try buf.appendSlice(allocator, if (checks.schema_materialized) "true" else "false");
+
+    try buf.appendSlice(allocator, ",\"failure_reason\":");
+    try appendNullableJsonStr(allocator, &buf, failure_reason);
+
+    try buf.append(allocator, '}');
+    return buf.toOwnedSlice(allocator);
+}
+
 // ── POST /api/v1/onboarding ───────────────────────────────────────────────────
 
 pub fn handleOnboarding(
@@ -290,7 +582,7 @@ pub fn handleGetOnboarding(
     };
     defer record_val.deinit(allocator);
 
-    const body = allocator.dupe(u8, record_val.response_body_json) catch
+    const body = buildOnboardingStatusResponse(allocator, service, &record_val) catch
         return errorResult(allocator, 500, "internal_error");
     return .{ .status_code = 200, .body = body };
 }
@@ -326,7 +618,7 @@ pub fn handleGetOnboardingByHostname(
     };
     defer record_val.deinit(allocator);
 
-    const body = allocator.dupe(u8, record_val.response_body_json) catch
+    const body = buildOnboardingStatusResponse(allocator, service, &record_val) catch
         return errorResult(allocator, 500, "internal_error");
     return .{ .status_code = 200, .body = body };
 }
@@ -526,7 +818,8 @@ fn selectOnboardingByHostname(
         allocator,
         \\SELECT onboarding_id::text, idempotency_key, ''::text, encode(request_hash, 'hex'), response_status, COALESCE(response_body::text, '{}'), state, created_at::text, completed_at::text
         \\FROM onboarding_registry
-        \\WHERE hostname = $1 AND state = 'completed'
+        \\WHERE hostname = $1 AND state IN ('completed', 'failed')
+        \\ORDER BY completed_at DESC NULLS LAST, created_at DESC
         \\LIMIT 1
     ,
         &[_][]const u8{hostname},

@@ -634,7 +634,7 @@ pub fn selectOnboardingById(
     return materializeOnboardingRecord(allocator, row.?);
 }
 
-/// Look up an onboarding record by hostname (only completed records).
+/// Look up an onboarding record by hostname (terminal completed/failed records).
 pub fn selectOnboardingByHostname(
     allocator: std.mem.Allocator,
     pool: *pool_mod.Pool,
@@ -650,7 +650,8 @@ pub fn selectOnboardingByHostname(
         allocator,
         \\SELECT onboarding_id::text, idempotency_key, COALESCE(tenant_id::text, ''), encode(request_hash, 'hex'), response_status, COALESCE(response_body::text, '{}'), state, created_at::text, completed_at::text
         \\FROM onboarding_registry
-        \\WHERE hostname = $1 AND state = 'completed'
+        \\WHERE hostname = $1 AND state IN ('completed', 'failed')
+        \\ORDER BY completed_at DESC NULLS LAST, created_at DESC
         \\LIMIT 1
     ,
         &[_][]const u8{hostname},

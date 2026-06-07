@@ -859,3 +859,171 @@ test "TC-OIDC-35-13: non-existent hostname returns null" {
     defer q.deinit();
     try testing.expectEqual(@as(usize, 0), q.rows.len);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-OIDC-35-14: GET onboarding surfaces completed only when gate checks pass
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-OIDC-35-14: completion gate true returns completed status" {
+    const alloc = testing.allocator;
+
+    const db_url = try testDbUrl(alloc);
+    defer alloc.free(db_url);
+
+    var pool = try makePool(alloc, db_url);
+    defer pool.deinit();
+
+    var registry = identity_registry.Registry.init(&pool);
+    var service = identity_service.Service.init(&registry);
+
+    const auth_ctx = makeAuthContext(alloc);
+    const onboarding_id = try generateUuidHex(alloc);
+    defer alloc.free(onboarding_id);
+    const tenant_id = try generateUuidHex(alloc);
+    defer alloc.free(tenant_id);
+    const idempotency_key = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(idempotency_key);
+
+    const slug = "oidc35-gate-14";
+    const hostname = "oidc35-gate-14.example.com";
+    const oidc_authority = "http://localhost:8081/realms/oidc35-gate-14";
+
+    const response_json = try std.fmt.allocPrint(
+        alloc,
+        "{{\"state\":\"completed\",\"onboarding_id\":\"{s}\",\"tenant_id\":\"{s}\",\"idp_realm_id\":\"{s}\",\"slug\":\"{s}\",\"hostname\":\"{s}\",\"oidc_authority\":\"{s}\"}}",
+        .{ onboarding_id, tenant_id, slug, slug, hostname, oidc_authority },
+    );
+    defer alloc.free(response_json);
+
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(response_json, &digest, .{});
+    const digest_hex = try byteaHexLiteral(alloc, &digest);
+    defer alloc.free(digest_hex);
+
+    var conn = try pool.acquire();
+    defer pool.release(conn);
+
+    try conn.exec(
+        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+        \\VALUES ($1::uuid, $2, 'TC-OIDC-35-14 Tenant', 'ACTIVE', $2)
+        \\ON CONFLICT (slug) DO NOTHING
+    ,
+        &[_][]const u8{ tenant_id, slug },
+    );
+
+    try conn.exec(
+        \\INSERT INTO tenant_hostnames (tenant_id, hostname)
+        \\VALUES ($1::uuid, $2)
+        \\ON CONFLICT (hostname) DO NOTHING
+    ,
+        &[_][]const u8{ tenant_id, hostname },
+    );
+
+    var schema_buf: [80]u8 = undefined;
+    const tenant_schema = pool_mod.schemaNameForTenant(tenant_id, &schema_buf);
+
+    const create_schema_sql = try std.fmt.allocPrint(alloc, "CREATE SCHEMA IF NOT EXISTS {s}", .{tenant_schema});
+    defer alloc.free(create_schema_sql);
+    try conn.exec(create_schema_sql, &[_][]const u8{});
+
+    const create_migrations_sql = try std.fmt.allocPrint(
+        alloc,
+        "CREATE TABLE IF NOT EXISTS {s}.schema_migrations (version TEXT PRIMARY KEY, schema_name TEXT)",
+        .{tenant_schema},
+    );
+    defer alloc.free(create_migrations_sql);
+    try conn.exec(create_migrations_sql, &[_][]const u8{});
+
+    const clear_migrations_sql = try std.fmt.allocPrint(alloc, "DELETE FROM {s}.schema_migrations", .{tenant_schema});
+    defer alloc.free(clear_migrations_sql);
+    try conn.exec(clear_migrations_sql, &[_][]const u8{});
+
+    const copy_migrations_sql = try std.fmt.allocPrint(
+        alloc,
+        "INSERT INTO {s}.schema_migrations (version, schema_name) SELECT version, schema_name FROM public.schema_migrations WHERE schema_name = 'public'",
+        .{tenant_schema},
+    );
+    defer alloc.free(copy_migrations_sql);
+    try conn.exec(copy_migrations_sql, &[_][]const u8{});
+
+    try conn.exec(
+        \\INSERT INTO public.tenant_schemas (tenant_id, schema_name, migrations_applied_at)
+        \\VALUES ($1::uuid, $2, NOW())
+        \\ON CONFLICT (tenant_id) DO UPDATE
+        \\SET schema_name = EXCLUDED.schema_name,
+        \\    migrations_applied_at = NOW()
+    ,
+        &[_][]const u8{ tenant_id, tenant_schema },
+    );
+
+    try conn.exec(
+        \\INSERT INTO onboarding_registry (onboarding_id, idempotency_key, request_hash, tenant_id, hostname, response_status, response_body, state, completed_at)
+        \\VALUES ($1::uuid, $2, $3::bytea, $4::uuid, $5, 201, $6::jsonb, 'completed', NOW())
+    ,
+        &[_][]const u8{ onboarding_id, idempotency_key, digest_hex, tenant_id, hostname, response_json },
+    );
+
+    const result = onboarding_routes.handleGetOnboarding(&service, alloc, auth_ctx, onboarding_id);
+    defer alloc.free(result.body);
+
+    try testing.expectEqual(@as(u16, 200), result.status_code);
+    try testing.expect(std.mem.indexOf(u8, result.body, "\"status\":\"completed\"") != null);
+    try testing.expect(std.mem.indexOf(u8, result.body, "\"tenant_visible\":true") != null);
+    try testing.expect(std.mem.indexOf(u8, result.body, "\"oidc_authority_ready\":true") != null);
+    try testing.expect(std.mem.indexOf(u8, result.body, "\"schema_materialized\":true") != null);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TC-OIDC-35-15: GET onboarding downgrades completed when gate checks fail
+// ─────────────────────────────────────────────────────────────────────────────
+
+test "TC-OIDC-35-15: completion gate false returns failed status" {
+    const alloc = testing.allocator;
+
+    const db_url = try testDbUrl(alloc);
+    defer alloc.free(db_url);
+
+    var pool = try makePool(alloc, db_url);
+    defer pool.deinit();
+
+    var registry = identity_registry.Registry.init(&pool);
+    var service = identity_service.Service.init(&registry);
+
+    const auth_ctx = makeAuthContext(alloc);
+    const onboarding_id = try generateUuidHex(alloc);
+    defer alloc.free(onboarding_id);
+    const tenant_id = try generateUuidHex(alloc);
+    defer alloc.free(tenant_id);
+    const idempotency_key = try uuid_mod.newUuidV4(alloc);
+    defer alloc.free(idempotency_key);
+
+    const response_json = try std.fmt.allocPrint(
+        alloc,
+        "{{\"state\":\"completed\",\"onboarding_id\":\"{s}\",\"tenant_id\":\"{s}\",\"idp_realm_id\":\"{s}\",\"slug\":\"{s}\",\"hostname\":\"{s}\",\"oidc_authority\":\"http://localhost:8081/realms/{s}\"}}",
+        .{ onboarding_id, tenant_id, "oidc35-gate-15", "oidc35-gate-15", "oidc35-gate-15.example.com", "oidc35-gate-15" },
+    );
+    defer alloc.free(response_json);
+
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(response_json, &digest, .{});
+    const digest_hex = try byteaHexLiteral(alloc, &digest);
+    defer alloc.free(digest_hex);
+
+    var conn = try pool.acquire();
+    defer pool.release(conn);
+
+    try conn.exec(
+        \\INSERT INTO onboarding_registry (onboarding_id, idempotency_key, request_hash, tenant_id, hostname, response_status, response_body, state, completed_at)
+        \\VALUES ($1::uuid, $2, $3::bytea, $4::uuid, $5, 201, $6::jsonb, 'completed', NOW())
+    ,
+        &[_][]const u8{ onboarding_id, idempotency_key, digest_hex, tenant_id, "oidc35-gate-15.example.com", response_json },
+    );
+
+    const result = onboarding_routes.handleGetOnboarding(&service, alloc, auth_ctx, onboarding_id);
+    defer alloc.free(result.body);
+
+    try testing.expectEqual(@as(u16, 200), result.status_code);
+    try testing.expect(std.mem.indexOf(u8, result.body, "\"status\":\"failed\"") != null);
+    try testing.expect(std.mem.indexOf(u8, result.body, "\"schema_materialized\":false") != null);
+    try testing.expect(std.mem.indexOf(u8, result.body, "\"failure_reason\":\"onboarding_completion_checks_incomplete\"") != null);
+}
