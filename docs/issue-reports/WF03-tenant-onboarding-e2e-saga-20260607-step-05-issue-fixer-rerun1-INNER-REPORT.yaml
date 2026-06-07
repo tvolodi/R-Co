@@ -1,0 +1,24 @@
+run_id: WF03-tenant-onboarding-e2e-saga-20260607
+handoff_id: wf03-tenant-onboarding-e2e-saga-20260607-005-r1
+agent: ISSUE-FIXER
+status: COMPLETED
+result_status: FAIL
+category: A
+summary: Increased onboarding stale-pending timeout threshold to reduce false timeout terminalization of valid long-running onboarding success flows.
+changes:
+  - file: src/api/routes/onboarding.zig
+    description: Changed onboarding_pending_timeout_seconds_param from "90" to "240".
+validation:
+  zig_build: PASS
+  integration_tests: PASS
+  focused_onb_ui_04_e2e: BLOCKED
+  notes:
+    - Focused Playwright command remained in active execution state without stable terminal completion output in this session.
+    - Interrupted/rerun attempts after process cleanup produced exit -1 when terminated.
+issues:
+  - severity: BLOCKER
+    description: Focused ONB-UI-04 E2E completion signal unavailable from terminal session.
+artifacts_out:
+  - src/api/routes/onboarding.zig
+  - docs/issues/ISS-0069.json
+  - docs/issue-reports/WF03-tenant-onboarding-e2e-saga-20260607-step-05-issue-fixer-rerun1-INNER-REPORT.yaml

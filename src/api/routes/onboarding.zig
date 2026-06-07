@@ -54,7 +54,9 @@ const ParsedOnboardingBody = struct {
     }
 };
 
-const onboarding_pending_timeout_seconds_param = "90";
+// Allow enough time for real Keycloak + schema provisioning while still
+// terminalizing genuinely stale pending rows.
+const onboarding_pending_timeout_seconds_param = "240";
 
 fn evaluateCompletionGate(checks: CompletionChecks) bool {
     return checks.tenant_visible and checks.oidc_authority_ready and checks.schema_materialized;

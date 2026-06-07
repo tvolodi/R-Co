@@ -1,8 +1,21 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-06-07T01:47:30Z",
-  "next_issue_id": 69,
+  "last_updated": "2026-06-07T18:14:38Z",
+  "next_issue_id": 70,
   "issues": [
+    {
+      "id": "ISS-0069",
+      "title": "ONB-UI-04 success-path rendered onboarding_timeout failed state due premature stale-pending timeout window",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-tenant-onboarding-e2e-saga-20260607",
+      "handoff_id": "wf03-tenant-onboarding-e2e-saga-20260607-005-r1",
+      "affected_areas": [
+        "src/api/routes/onboarding.zig",
+        "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts"
+      ],
+      "created_at": "2026-06-07T18:14:38Z"
+    },
     {
       "id": "ISS-0068",
       "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",

@@ -1,0 +1,28 @@
+{
+  "id": "ISS-0069",
+  "title": "ONB-UI-04 success-path rendered onboarding_timeout failed state due premature stale-pending timeout window",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "A",
+  "run_id": "WF03-tenant-onboarding-e2e-saga-20260607",
+  "handoff_id": "wf03-tenant-onboarding-e2e-saga-20260607-005-r1",
+  "requirement_ids": ["ONB-UI-04"],
+  "affected_areas": [
+    "src/api/routes/onboarding.zig",
+    "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts"
+  ],
+  "created_at": "2026-06-07T18:14:38Z",
+  "resolution": "Partial mitigation applied: onboarding stale-pending timeout window increased from 90s to 240s to avoid premature timeout classification for valid long-running success flows while retaining stale-pending timeout fallback semantics.",
+  "root_cause": {
+    "summary": "Timeout fallback logic in onboarding selectors classified pending records older than 90 seconds as failed with onboarding_timeout. Real onboarding success flows can exceed 90 seconds under live Keycloak + schema provisioning latency, causing the success-path UI assertion to see failed timeout state.",
+    "evidence": {
+      "test_report": "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun1.yaml",
+      "failing_assertion": "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts:89",
+      "backend_logic": "src/api/routes/onboarding.zig stale pending CASE expressions"
+    }
+  },
+  "follow_up": [
+    "Re-run focused ONB-UI-04 E2E in stable terminal session and capture terminal pass/fail output",
+    "If still failing, inspect onboarding progression record by onboarding_id and correlate state transition latency with completion-gate checks"
+  ]
+}
