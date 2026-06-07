@@ -54,6 +54,8 @@ const ParsedOnboardingBody = struct {
     }
 };
 
+const onboarding_pending_timeout_seconds_param = "90";
+
 fn evaluateCompletionGate(checks: CompletionChecks) bool {
     return checks.tenant_visible and checks.oidc_authority_ready and checks.schema_materialized;
 }
@@ -688,12 +690,27 @@ fn tryClaimIdempotencyKey(
     // Key already exists — fetch the record.
     const existing_row = conn.queryRow(
         allocator,
-        \\SELECT onboarding_id::text, idempotency_key, encode(request_hash, 'hex'), response_status, COALESCE(response_body::text, '{}'), state, created_at::text, completed_at::text
+        \\SELECT onboarding_id::text,
+        \\       idempotency_key,
+        \\       encode(request_hash, 'hex'),
+        \\       response_status,
+        \\       CASE
+        \\           WHEN state = 'pending' AND created_at < (NOW() - make_interval(secs => $2::int))
+        \\               THEN '{"state":"failed","error":"onboarding_timeout"}'::jsonb
+        \\           ELSE COALESCE(response_body, '{}'::jsonb)
+        \\       END::text,
+        \\       CASE
+        \\           WHEN state = 'pending' AND created_at < (NOW() - make_interval(secs => $2::int))
+        \\               THEN 'failed'
+        \\           ELSE state
+        \\       END,
+        \\       created_at::text,
+        \\       completed_at::text
         \\FROM onboarding_registry
         \\WHERE idempotency_key = $1
         \\LIMIT 1
     ,
-        &[_][]const u8{key},
+        &[_][]const u8{ key, onboarding_pending_timeout_seconds_param },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,
@@ -777,12 +794,28 @@ fn selectOnboardingById(
 
     const row = conn.queryRow(
         allocator,
-        \\SELECT onboarding_id::text, idempotency_key, ''::text, encode(request_hash, 'hex'), response_status, COALESCE(response_body::text, '{}'), state, created_at::text, completed_at::text
+        \\SELECT onboarding_id::text,
+        \\       idempotency_key,
+        \\       ''::text,
+        \\       encode(request_hash, 'hex'),
+        \\       response_status,
+        \\       CASE
+        \\           WHEN state = 'pending' AND created_at < (NOW() - make_interval(secs => $2::int))
+        \\               THEN '{"state":"failed","error":"onboarding_timeout"}'::jsonb
+        \\           ELSE COALESCE(response_body, '{}'::jsonb)
+        \\       END::text,
+        \\       CASE
+        \\           WHEN state = 'pending' AND created_at < (NOW() - make_interval(secs => $2::int))
+        \\               THEN 'failed'
+        \\           ELSE state
+        \\       END,
+        \\       created_at::text,
+        \\       completed_at::text
         \\FROM onboarding_registry
         \\WHERE onboarding_id = $1::uuid
         \\LIMIT 1
     ,
-        &[_][]const u8{onboarding_id},
+        &[_][]const u8{ onboarding_id, onboarding_pending_timeout_seconds_param },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,
@@ -816,13 +849,33 @@ fn selectOnboardingByHostname(
 
     const row = conn.queryRow(
         allocator,
-        \\SELECT onboarding_id::text, idempotency_key, ''::text, encode(request_hash, 'hex'), response_status, COALESCE(response_body::text, '{}'), state, created_at::text, completed_at::text
+        \\SELECT onboarding_id::text,
+        \\       idempotency_key,
+        \\       ''::text,
+        \\       encode(request_hash, 'hex'),
+        \\       response_status,
+        \\       CASE
+        \\           WHEN state = 'pending' AND created_at < (NOW() - make_interval(secs => $2::int))
+        \\               THEN '{"state":"failed","error":"onboarding_timeout"}'::jsonb
+        \\           ELSE COALESCE(response_body, '{}'::jsonb)
+        \\       END::text,
+        \\       CASE
+        \\           WHEN state = 'pending' AND created_at < (NOW() - make_interval(secs => $2::int))
+        \\               THEN 'failed'
+        \\           ELSE state
+        \\       END,
+        \\       created_at::text,
+        \\       completed_at::text
         \\FROM onboarding_registry
-        \\WHERE hostname = $1 AND state IN ('completed', 'failed')
+        \\WHERE hostname = $1
+        \\  AND (
+        \\      state IN ('completed', 'failed')
+        \\      OR (state = 'pending' AND created_at < (NOW() - make_interval(secs => $2::int)))
+        \\  )
         \\ORDER BY completed_at DESC NULLS LAST, created_at DESC
         \\LIMIT 1
     ,
-        &[_][]const u8{hostname},
+        &[_][]const u8{ hostname, onboarding_pending_timeout_seconds_param },
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,
