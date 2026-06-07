@@ -47,9 +47,11 @@
     ],
     "git_evidence": {
       "branch_name": "feature/WF02-tenant-onboarding-boaccept-r2-20260607",
-      "commit_sha_list": [],
+      "commit_sha_list": [
+        "9c184309154c4ebd15904cbb6385d3ba222d1b62"
+      ],
       "remote_branch": "origin/feature/WF02-tenant-onboarding-boaccept-r2-20260607",
-      "push_status": "pending",
+      "push_status": "ok",
       "pr_url": null,
       "pr_create_error": null
     },
