@@ -1525,6 +1525,11 @@ fn mapStatus(status: u16, context: StatusContext) provider_errors.ProviderError 
 fn mapExternalError(err: anyerror) provider_errors.ProviderError {
     return switch (err) {
         error.OutOfMemory => error.OutOfMemory,
+        error.OperationTimedOut,
+        error.ConnectionTimedOut,
+        error.ConnectTimeout,
+        error.Timeout,
+        => error.UpstreamTimeout,
         else => error.UpstreamUnavailable,
     };
 }

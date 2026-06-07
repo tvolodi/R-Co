@@ -269,18 +269,38 @@ const EnvSecretResolver = struct {
 /// is made from the server's main thread (which has accumulated unrelated APC
 /// callbacks from client-connection I/O).
 const KcHttpCallState = struct {
-    allocator: std.mem.Allocator,
     request: keycloak.HttpRequest,
     result: keycloak.HttpResponse = undefined,
     result_err: anyerror = undefined,
     success: bool = false,
+    done: std.atomic.Value(u8) = std.atomic.Value(u8).init(0),
+    abandoned: std.atomic.Value(u8) = std.atomic.Value(u8).init(0),
 
     fn threadFn(self: *KcHttpCallState) void {
-        self.result = doFetch(self.allocator, self.request) catch |e| {
+        const thread_allocator = std.heap.smp_allocator;
+        defer {
+            freeOwnedHttpRequest(thread_allocator, &self.request);
+            if (self.abandoned.load(.acquire) == 1) {
+                thread_allocator.destroy(self);
+            }
+        }
+
+        self.result = doFetch(thread_allocator, self.request) catch |e| {
             self.result_err = e;
+            self.done.store(1, .release);
             return;
         };
+
+        if (self.abandoned.load(.acquire) == 1) {
+            freeHttpResponse(thread_allocator, &self.result);
+            self.success = false;
+            self.result_err = error.OperationTimedOut;
+            self.done.store(1, .release);
+            return;
+        }
+
         self.success = true;
+        self.done.store(1, .release);
     }
 
     fn doFetch(allocator: std.mem.Allocator, request: keycloak.HttpRequest) anyerror!keycloak.HttpResponse {
@@ -402,12 +422,100 @@ const KcHttpCallState = struct {
     }
 };
 
+fn effectiveIdpRequestTimeoutMs() u32 {
+    const environ: std.process.Environ = .{ .block = .global };
+    const raw = environ.getAlloc(std.heap.smp_allocator, "BPM_IDP_REQUEST_TIMEOUT_MS") catch return 5_000;
+    defer std.heap.smp_allocator.free(raw);
+    const parsed = std.fmt.parseInt(u32, raw, 10) catch return 5_000;
+    if (parsed < 500) return 500;
+    if (parsed > 60_000) return 60_000;
+    return parsed;
+}
+
+fn nowMillis() i64 {
+    if (builtin.os.tag == .windows) {
+        const ft: i64 = std.os.windows.ntdll.RtlGetSystemTimePrecise();
+        const unix_100ns: i64 = ft - 116_444_736_000_000_000;
+        return @divTrunc(unix_100ns, 10_000);
+    }
+
+    var ts: std.posix.timespec = undefined;
+    _ = std.posix.system.clock_gettime(.REALTIME, &ts);
+    return ts.sec * 1000 + @divTrunc(ts.nsec, 1_000_000);
+}
+
 fn realHttpSend(_: *anyopaque, allocator: std.mem.Allocator, request: keycloak.HttpRequest) anyerror!keycloak.HttpResponse {
-    var state = KcHttpCallState{ .allocator = allocator, .request = request };
-    const thread = try std.Thread.spawn(.{}, KcHttpCallState.threadFn, .{&state});
+    const owned_request = try cloneHttpRequestForThread(std.heap.smp_allocator, request);
+    const state = try std.heap.smp_allocator.create(KcHttpCallState);
+    state.* = .{ .request = owned_request };
+    const timeout_ms = effectiveIdpRequestTimeoutMs();
+    var thread = try std.Thread.spawn(.{}, KcHttpCallState.threadFn, .{state});
+
+    const start_ms = nowMillis();
+    while (state.done.load(.acquire) == 0) {
+        const elapsed_ms: i64 = nowMillis() - start_ms;
+        if (elapsed_ms >= @as(i64, @intCast(timeout_ms))) {
+            // Do not block request handling forever on stuck upstream I/O.
+            // The worker thread owns request/response buffers and will clean up
+            // and destroy the state object after seeing the abandoned flag.
+            state.abandoned.store(1, .release);
+            thread.detach();
+            return error.OperationTimedOut;
+        }
+        std.Io.sleep(std.Options.debug_io, .fromMilliseconds(10), .awake) catch {};
+    }
+
     thread.join();
+    defer std.heap.smp_allocator.destroy(state);
     if (!state.success) return state.result_err;
-    return state.result;
+
+    const copied = try cloneHttpResponseToAllocator(allocator, state.result);
+    freeHttpResponse(std.heap.smp_allocator, &state.result);
+    return copied;
+}
+
+fn cloneHttpRequestForThread(allocator: std.mem.Allocator, request: keycloak.HttpRequest) !keycloak.HttpRequest {
+    return .{
+        .method = request.method,
+        .url = try allocator.dupe(u8, request.url),
+        .bearer_token = if (request.bearer_token) |v| try allocator.dupe(u8, v) else null,
+        .content_type = if (request.content_type) |v| try allocator.dupe(u8, v) else null,
+        .body = if (request.body) |v| try allocator.dupe(u8, v) else null,
+    };
+}
+
+fn freeOwnedHttpRequest(allocator: std.mem.Allocator, request: *keycloak.HttpRequest) void {
+    allocator.free(request.url);
+    if (request.bearer_token) |v| allocator.free(v);
+    if (request.content_type) |v| allocator.free(v);
+    if (request.body) |v| allocator.free(v);
+}
+
+fn cloneHttpResponseToAllocator(allocator: std.mem.Allocator, response: keycloak.HttpResponse) !keycloak.HttpResponse {
+    var headers = std.ArrayList(keycloak.Header).empty;
+    defer headers.deinit(allocator);
+
+    for (response.headers) |hdr| {
+        try headers.append(allocator, .{
+            .name = try allocator.dupe(u8, hdr.name),
+            .value = try allocator.dupe(u8, hdr.value),
+        });
+    }
+
+    return .{
+        .status = response.status,
+        .body = try allocator.dupe(u8, response.body),
+        .headers = try headers.toOwnedSlice(allocator),
+    };
+}
+
+fn freeHttpResponse(allocator: std.mem.Allocator, response: *keycloak.HttpResponse) void {
+    allocator.free(response.body);
+    for (response.headers) |hdr| {
+        allocator.free(hdr.name);
+        allocator.free(hdr.value);
+    }
+    allocator.free(response.headers);
 }
 
 fn noOpTransportSend(_: *anyopaque, _: std.mem.Allocator, _: keycloak.HttpRequest) anyerror!keycloak.HttpResponse {
