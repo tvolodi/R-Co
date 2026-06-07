@@ -15,6 +15,10 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### 2026-06-07
+#### Fixes
+- [ISS-0068] Fixed missing tenant schema provisioning in onboarding saga - after tenant registration, PostgreSQL schemas (tenant_default, tenant_<uuid>) are now created correctly. Retroactive migration (069/070) provisions schemas for pre-existing tenants.
+
 ### Stage F8 Batch 2 - Tenant Lifecycle Controls (RELEASED 2026-06-06)
 
 - **TM-04** (MUST): Deactivate tenant - Added tenant deactivation lifecycle action in tenant management with state-aware visibility, confirmation UX, backend lifecycle API integration, and deterministic error handling for forbidden/not-found/invalid-state paths.

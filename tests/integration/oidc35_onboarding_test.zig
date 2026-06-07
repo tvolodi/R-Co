@@ -14,6 +14,7 @@
 //! a separately passing integration test for that requirement.
 
 const std = @import("std");
+const build_options = @import("build_options");
 const testing = std.testing;
 const bpm = @import("bpm");
 const helpers = @import("helpers.zig");
@@ -467,7 +468,7 @@ test "TC-OIDC-35-06: onboarding saga creates tenant and binds hostname" {
         .client_config = null,
     };
 
-    const result = onboarding_mod.executeSaga(alloc, boot_result.active.manager, &pool, input) catch |err| {
+    const result = onboarding_mod.executeSaga(alloc, boot_result.active.manager, &pool, input, null, build_options.migrations_dir) catch |err| {
         std.debug.print("executeSaga failed: {}\n", .{err});
         return err;
     };
@@ -552,7 +553,7 @@ test "TC-OIDC-35-07: saga compensation cleans up tenant on failure" {
 
     // The saga should fail at realm provisioning (Manager has no provider),
     // and compensation should clean up the tenant.
-    const saga_result = onboarding_mod.executeSaga(alloc, manager, &pool, input);
+    const saga_result = onboarding_mod.executeSaga(alloc, manager, &pool, input, null, build_options.migrations_dir);
     try testing.expectError(error.RealmProvisioningFailed, saga_result);
 
     // Verify the tenant was cleaned up by compensation.

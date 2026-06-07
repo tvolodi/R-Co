@@ -1,4 +1,5 @@
 const std = @import("std");
+const build_options = @import("build_options");
 
 // Module references — imported here so that `zig build` and `zig build test`
 // compile and validate all Stage 1 modules.
@@ -122,6 +123,15 @@ fn runApiServer(io: std.Io, allocator: std.mem.Allocator, config: config_mod.Con
     // Initialise pool and all stores once, before accepting any connections.
     var pool = try db_pool.Pool.init(io, allocator, .{ .url = config.db_url, .pool_size = 10 });
     defer pool.deinit();
+
+    const default_tenant_id = "00000000-0000-0000-0000-000000000000";
+    db_provisioning.provisionTenantSchema(allocator, &pool, default_tenant_id, build_options.migrations_dir) catch |err| {
+        const provision_fields = [_]obs_logger.LogField{
+            .{ .key = "error", .value = .{ .string = @errorName(err) } },
+            .{ .key = "tenant_id", .value = .{ .string = default_tenant_id } },
+        };
+        obs_logger.log(allocator, .WARN, "main", "default tenant schema provisioning failed", &provision_fields) catch {};
+    };
 
     var def_store = definition_store.Store.init(allocator, &pool);
     defer def_store.deinit();

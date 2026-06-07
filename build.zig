@@ -806,6 +806,18 @@ pub fn build(b: *std.Build) void {
     run_tm_integration_tests.setCwd(b.path("."));
     run_tm_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    const spt01_iss0068_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/spt01_iss0068_onboarding_schema_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_spt01_iss0068_integration_tests = b.addRunArtifact(spt01_iss0068_integration_tests);
+    run_spt01_iss0068_integration_tests.setCwd(b.path("."));
+    run_spt01_iss0068_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
     clean_test_db.setCwd(b.path("."));
@@ -816,6 +828,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&clean_test_db.step);
     test_integration_step.dependOn(&run_integration_tests.step);
     test_integration_step.dependOn(&run_adm_ui_09_integration_tests.step);
+    test_integration_step.dependOn(&run_spt01_iss0068_integration_tests.step);
 
     const test_integration_xc04_step = b.step("test-integration-xc04", "Run XC-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_xc04_step.dependOn(&clean_test_db.step);
@@ -844,6 +857,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_tm_step = b.step("test-integration-tm", "Run TM integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_tm_step.dependOn(&clean_test_db.step);
     test_integration_tm_step.dependOn(&run_tm_integration_tests.step);
+
+    const test_integration_spt01_iss68_step = b.step("test-integration-spt01-iss68", "Run SPT-01 ISS-0068 integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_spt01_iss68_step.dependOn(&clean_test_db.step);
+    test_integration_spt01_iss68_step.dependOn(&run_spt01_iss0068_integration_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

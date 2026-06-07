@@ -1,0 +1,46 @@
+{
+  "handoff_id": "wf03-spt01-schema-20260607-002-r1",
+  "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-07T01:15:46Z",
+  "started_at": "2026-06-07T01:15:46Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 SPT-01 onboarding schema provisioning gap (design rework 1)",
+    "requirement_ids": [
+      "SPT-01"
+    ],
+    "related_handoff_ids": [
+      "wf03-spt01-schema-20260607-002b"
+    ],
+    "artifacts_in": [
+      "src/design/iss-0068-onboarding-schema-provisioning.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK 1 of src/design/iss-0068-onboarding-schema-provisioning.md.\n\nFix the following MAJOR issues from CODE-DESIGN-VALIDATOR:\n\n1. Line ~182: A fenced code block exceeds 40 lines (startup/data-flow code). Replace with prose description plus a brief signature-only sketch (\u226415 lines). No implementation code in design artefacts.\n\n2. Line ~302: The full migration SQL DDL exceeds 40 lines. Split into two separate fenced ```sql blocks each under 40 lines, OR extract the SQL into a separate Type C migration parameter file and reference it by filename. Either approach is acceptable.\n\n3. MINOR (E030): Remove 'public.' schema qualification prefix from all table and function references throughout the document (e.g. use 'tenant_schemas', 'bpm_provision_tenant_schema()' \u2014 not 'public.tenant_schemas', 'public.bpm_provision_tenant_schema()').\n\nAll other sections (\u00a74 error taxonomy, \u00a77 invariants, function signatures) already PASS \u2014 do not change them.",
+    "acceptance_criteria": [
+      "No fenced code block in the design file exceeds 40 lines",
+      "No implementation code bodies present",
+      "No public. schema-qualified names",
+      "All existing passing sections preserved unchanged"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1 of iss-0068-onboarding-schema-provisioning.md: (1) replaced 24-line \u00a72.3 code block with prose + 9-line sketch; (2) split single 61-line SQL block into two separate fenced blocks (31 lines + 27 lines); (3) removed all public. schema-qualification prefixes throughout (26 occurrences removed).",
+    "artifacts_out": [
+      "src/design/iss-0068-onboarding-schema-provisioning.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b rework verification)"
+  },
+  "rework_count": 1,
+  "max_rework": 2,
+  "completed_at": "2026-06-07T01:21:58Z"
+}

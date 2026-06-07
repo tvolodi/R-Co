@@ -1,5 +1,6 @@
 const std = @import("std");
 const pool_mod = @import("pool");
+const db_provisioning = @import("../db/provisioning.zig");
 const registry_mod = @import("registry.zig");
 const identity_provider = @import("identity_provider");
 const provider_manager_mod = identity_provider.manager;
@@ -123,6 +124,7 @@ pub const OnboardingRecord = struct {
 /// Tracks which saga steps completed, so compensating actions know what to undo.
 const SagaState = struct {
     tenant_created: bool = false,
+    schema_provisioned: bool = false,
     realm_provisioned: bool = false,
     user_provisioned: bool = false,
     roles_granted: bool = false,
@@ -144,6 +146,7 @@ pub fn executeSaga(
     input: OnboardingInput,
     /// Registry onboarding_id to use in the result (hex UUID without dashes, or null to generate one).
     registry_onboarding_id: ?[]const u8,
+    migrations_dir: []const u8,
 ) (OnboardingError || provider_errors.ProviderError)!OnboardingResult {
     var saga = SagaState{};
     errdefer compensate(allocator, manager, pool, &saga) catch {};
@@ -160,6 +163,15 @@ pub fn executeSaga(
     saga.tenant_created = true;
     saga.tenant_id = try allocator.dupe(u8, tenant.tenant_id);
     saga.tenant_slug = try allocator.dupe(u8, tenant.slug);
+
+    // ── 1b. Provision tenant schema ──────────────────────────────────────────
+    db_provisioning.provisionTenantSchema(allocator, pool, tenant.tenant_id, migrations_dir) catch |err| {
+        return switch (err) {
+            db_provisioning.ProvisionError.PoolExhausted => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
+    };
+    saga.schema_provisioned = true;
 
     // ── 2. Provision Keycloak realm ──────────────────────────────────────────
     const realm_result = manager.provisionRealm(allocator, .{
@@ -350,6 +362,10 @@ fn compensate(
         allocator.free(rid);
         saga.realm_id = null;
     }
+    if (saga.schema_provisioned and saga.tenant_id != null) {
+        dropTenantSchemaInDb(pool, saga.tenant_id.?);
+        saga.schema_provisioned = false;
+    }
     if (saga.tenant_created and saga.tenant_id != null) {
         deleteTenantInDb(pool, saga.tenant_id.?, saga.tenant_slug) catch {};
     }
@@ -429,6 +445,13 @@ fn deleteTenantInDb(pool: *pool_mod.Pool, tenant_id: []const u8, tenant_slug: ?[
         conn.exec("DELETE FROM tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
     }
     conn.exec("DELETE FROM tenant WHERE id::text = $1", &[_][]const u8{tenant_id}) catch {};
+}
+
+fn dropTenantSchemaInDb(pool: *pool_mod.Pool, tenant_id: []const u8) void {
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+
+    conn.exec("SELECT bpm_drop_tenant_schema($1::uuid)", &[_][]const u8{tenant_id}) catch {};
 }
 
 fn bindHostname(
