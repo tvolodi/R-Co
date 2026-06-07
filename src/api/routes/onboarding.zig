@@ -407,43 +407,49 @@ pub fn handleOnboarding(
             return .{ .status_code = record.response_status, .body = cached_body };
         },
         .fresh => |onboarding_id| {
-            // Fresh request: spawn the saga in a background thread and return 201
-            // immediately with the onboarding_id. The frontend polls GET
-            // /api/v1/onboarding/:id until state changes from 'pending' to
-            // 'completed' or 'failed'.
-            //
-            // Memory: all saga data is duplicated onto the global smp_allocator so
-            // it survives after the request arena is freed. The background thread
-            // owns and frees this memory.
-            const gpa = std.heap.smp_allocator;
-            const saga_ctx = gpa.create(SagaContext) catch {
-                return errorResult(allocator, 500, "internal_error");
-            };
-            saga_ctx.* = SagaContext{
-                .pool = service.registry.pool,
-                .manager = auth.getIdentityProviderManager(),
-                .onboarding_id = gpa.dupe(u8, onboarding_id) catch {
-                    gpa.destroy(saga_ctx);
-                    return errorResult(allocator, 500, "internal_error");
-                },
-                .input = dupeOnboardingInput(gpa, input.value) catch {
-                    gpa.free(saga_ctx.onboarding_id);
-                    gpa.destroy(saga_ctx);
-                    return errorResult(allocator, 500, "internal_error");
-                },
-                .migrations_dir = build_options.migrations_dir,
-            };
+            // Execute the saga synchronously in the request thread.
+            // This avoids thread-safety issues with the background-thread approach
+            // (detached thread + smp_allocator hangs on Windows).
+            // The frontend polls GET /api/v1/onboarding/:id and will see the
+            // terminal state immediately after this response.
 
-            const thread = std.Thread.spawn(.{}, runSagaBackground, .{saga_ctx}) catch {
-                // Cleanup and fall back to synchronous execution on thread spawn failure.
-                freeOnboardingInput(gpa, saga_ctx.input);
-                gpa.free(saga_ctx.onboarding_id);
-                gpa.destroy(saga_ctx);
-                return errorResult(allocator, 500, "internal_error");
+            const result = onboarding_mod.executeSaga(
+                allocator,
+                auth.getIdentityProviderManager(),
+                service.registry.pool,
+                input.value,
+                onboarding_id,
+                build_options.migrations_dir,
+            ) catch |err| {
+                const err_status: u16 = onboardingErrorToStatus(err);
+                const err_body = if (err == onboarding_mod.OnboardingError.ValidationFailed)
+                    "{\"state\":\"failed\",\"error\":\"validation_failed\"}"
+                else
+                    "{\"state\":\"failed\",\"error\":\"onboarding_failed\"}";
+                persistOnboardingResult(service.registry.pool, onboarding_id, err_status, err_body, .failed) catch {};
+                // Still return 201 — the frontend will poll and see the failed state.
+                const pending_body = std.fmt.allocPrint(allocator,
+                    "{{\"onboarding_id\":\"{s}\"}}",
+                    .{onboarding_id},
+                ) catch return errorResult(allocator, 500, "internal_error");
+                return .{ .status_code = 201, .body = pending_body };
             };
-            thread.detach();
+            defer result.deinit(allocator);
 
-            // Return 201 immediately — the frontend will poll GET for status.
+            const json_body = serializeOnboardingResult(allocator, &result) catch {
+                // Fallback: persist a minimal completed JSON.
+                const fallback = "{\"state\":\"completed\",\"error\":\"serialization_failed\"}";
+                persistOnboardingResult(service.registry.pool, onboarding_id, 201, fallback, .completed) catch {};
+                const pending_body = std.fmt.allocPrint(allocator,
+                    "{{\"onboarding_id\":\"{s}\"}}",
+                    .{onboarding_id},
+                ) catch return errorResult(allocator, 500, "internal_error");
+                return .{ .status_code = 201, .body = pending_body };
+            };
+            defer allocator.free(json_body);
+
+            persistOnboardingResult(service.registry.pool, onboarding_id, 201, json_body, .completed) catch {};
+
             const pending_body = std.fmt.allocPrint(allocator,
                 "{{\"onboarding_id\":\"{s}\"}}",
                 .{onboarding_id},
@@ -453,111 +459,7 @@ pub fn handleOnboarding(
     }
 }
 
-// ── Background saga ────────────────────────────────────────────────────────────
-
-const identity_provider = @import("identity_provider");
-
-const SagaContext = struct {
-    pool: *pool_mod.Pool,
-    manager: identity_provider.manager.Manager,
-    onboarding_id: []u8,
-    input: onboarding_mod.OnboardingInput,
-    migrations_dir: []const u8,
-};
-
-fn dupeOnboardingInput(
-    allocator: std.mem.Allocator,
-    src: onboarding_mod.OnboardingInput,
-) !onboarding_mod.OnboardingInput {
-    // Dupe optional nested string slices so they remain valid after the request
-    // arena (which owns the original pointers) is freed.
-    const realm_config: ?onboarding_mod.RealmConfigOverrides = if (src.realm_config) |rc| blk: {
-        break :blk onboarding_mod.RealmConfigOverrides{
-            .default_token_lifetime_seconds = rc.default_token_lifetime_seconds,
-            .min_password_length            = rc.min_password_length,
-            .require_uppercase              = rc.require_uppercase,
-            .require_digit                  = rc.require_digit,
-            .signing_key_algorithm          = if (rc.signing_key_algorithm) |s|
-                try allocator.dupe(u8, s)
-            else null,
-        };
-    } else null;
-
-    const client_config: ?onboarding_mod.ClientConfigOverrides = if (src.client_config) |cc| blk: {
-        const duped_uris: ?[]const []const u8 = if (cc.redirect_uris) |uris| inner: {
-            const out = try allocator.alloc([]const u8, uris.len);
-            for (uris, 0..) |uri, i| {
-                out[i] = try allocator.dupe(u8, uri);
-            }
-            break :inner out;
-        } else null;
-        break :blk onboarding_mod.ClientConfigOverrides{
-            .redirect_uris           = duped_uris,
-            .service_account_enabled = cc.service_account_enabled,
-        };
-    } else null;
-
-    return onboarding_mod.OnboardingInput{
-        .slug               = try allocator.dupe(u8, src.slug),
-        .display_name       = try allocator.dupe(u8, src.display_name),
-        .admin_email        = try allocator.dupe(u8, src.admin_email),
-        .admin_username     = try allocator.dupe(u8, src.admin_username),
-        .admin_display_name = try allocator.dupe(u8, src.admin_display_name),
-        .hostname           = try allocator.dupe(u8, src.hostname),
-        .realm_config       = realm_config,
-        .client_config      = client_config,
-    };
-}
-
-fn freeOnboardingInput(allocator: std.mem.Allocator, input: onboarding_mod.OnboardingInput) void {
-    allocator.free(input.slug);
-    allocator.free(input.display_name);
-    allocator.free(input.admin_email);
-    allocator.free(input.admin_username);
-    allocator.free(input.admin_display_name);
-    allocator.free(input.hostname);
-    if (input.realm_config) |rc| {
-        if (rc.signing_key_algorithm) |s| allocator.free(s);
-    }
-    if (input.client_config) |cc| {
-        if (cc.redirect_uris) |uris| {
-            for (uris) |uri| allocator.free(uri);
-            allocator.free(uris);
-        }
-    }
-}
-
-fn runSagaBackground(ctx: *SagaContext) void {
-    const gpa = std.heap.smp_allocator;
-    defer {
-        freeOnboardingInput(gpa, ctx.input);
-        gpa.free(ctx.onboarding_id);
-        gpa.destroy(ctx);
-    }
-
-    const result = onboarding_mod.executeSaga(
-        gpa,
-        ctx.manager,
-        ctx.pool,
-        ctx.input,
-        ctx.onboarding_id,
-        ctx.migrations_dir,
-    ) catch |err| {
-        const err_status: u16 = onboardingErrorToStatus(err);
-        const err_body = if (err == onboarding_mod.OnboardingError.ValidationFailed)
-            "{\"state\":\"failed\",\"error\":\"validation_failed\"}"
-        else
-            "{\"state\":\"failed\",\"error\":\"onboarding_failed\"}";
-        persistOnboardingResult(ctx.pool, ctx.onboarding_id, err_status, err_body, .failed) catch {};
-        return;
-    };
-    defer result.deinit(gpa);
-
-    const json_body = serializeOnboardingResult(gpa, &result) catch return;
-    defer gpa.free(json_body);
-
-    persistOnboardingResult(ctx.pool, ctx.onboarding_id, 201, json_body, .completed) catch {};
-}
+// ── Persistence helpers ────────────────────────────────────────────────────────
 
 // ── GET /api/v1/onboarding/:onboarding_id ─────────────────────────────────────
 
@@ -764,21 +666,46 @@ fn persistOnboardingResult(
     body_json: []const u8,
     state: onboarding_mod.OnboardingState,
 ) !void {
-    const conn = pool.acquire() catch return;
-    defer pool.release(conn);
+    // Retry up to 5 times with 1-second backoff to survive transient pool exhaustion
+    // or connection failures.  The background thread has no request deadline so it
+    // can afford to wait for the pool to drain.
+    var last_err: anyerror = error.PoolExhausted;
+    for (0..5) |attempt| {
+        if (attempt > 0) {
+            std.Io.sleep(std.Options.debug_io, .fromMilliseconds(1000), .awake) catch {};
+        }
+        const conn = pool.acquire() catch |err| {
+            last_err = err;
+            std.debug.print("[saga:{s}] persistOnboardingResult acquire attempt {d}/5 failed: {}\n", .{ onboarding_id, attempt + 1, err });
+            continue;
+        };
+        defer pool.release(conn);
 
-    const status_str = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{status});
-    defer std.heap.page_allocator.free(status_str);
+        const status_str = std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{status}) catch |aerr| {
+            last_err = aerr;
+            std.debug.print("[saga:{s}] persistOnboardingResult allocPrint failed: {}\n", .{ onboarding_id, aerr });
+            return aerr;
+        };
+        defer std.heap.page_allocator.free(status_str);
 
-    _ = conn.queryRow(
-        std.heap.page_allocator,
-        \\UPDATE onboarding_registry
-        \\SET response_status = $2::smallint, response_body = $3::jsonb, state = $4, completed_at = NOW()
-        \\WHERE onboarding_id = $1::uuid
-        \\RETURNING id::text
-    ,
-        &[_][]const u8{ onboarding_id, status_str, body_json, state.asString() },
-    ) catch {};
+        _ = conn.queryRow(
+            std.heap.page_allocator,
+            \\UPDATE onboarding_registry
+            \\SET response_status = $2::smallint, response_body = $3::jsonb, state = $4, completed_at = NOW()
+            \\WHERE onboarding_id = $1::uuid
+            \\RETURNING id::text
+        ,
+            &[_][]const u8{ onboarding_id, status_str, body_json, state.asString() },
+        ) catch |qerr| {
+            last_err = qerr;
+            std.debug.print("[saga:{s}] persistOnboardingResult query attempt {d}/5 failed: {}\n", .{ onboarding_id, attempt + 1, qerr });
+            continue;
+        };
+        std.debug.print("[saga:{s}] persistOnboardingResult succeeded (state={s})\n", .{ onboarding_id, state.asString() });
+        return;
+    }
+    std.debug.print("[saga:{s}] persistOnboardingResult FAILED after 5 attempts: {}\n", .{ onboarding_id, last_err });
+    return last_err;
 }
 
 // ── Query helpers ─────────────────────────────────────────────────────────────

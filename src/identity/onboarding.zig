@@ -148,10 +148,12 @@ pub fn executeSaga(
     registry_onboarding_id: ?[]const u8,
     migrations_dir: []const u8,
 ) (OnboardingError || provider_errors.ProviderError)!OnboardingResult {
+    std.debug.print("[saga] executeSaga ENTER (id={s})\n", .{if (registry_onboarding_id) |rid| rid else "(generated)"});
     var saga = SagaState{};
     errdefer compensate(allocator, manager, pool, &saga) catch {};
 
     // ── 1. Create tenant ─────────────────────────────────────────────────────
+    std.debug.print("[saga] step 1: createTenantInDb (slug={s})\n", .{input.slug});
     const tenant = createTenantInDb(allocator, pool, input) catch |err| switch (err) {
         error.DuplicateTenantSlug => return error.DuplicateTenantSlug,
         error.PoolExhausted => return error.PoolExhausted,
@@ -174,6 +176,7 @@ pub fn executeSaga(
     saga.schema_provisioned = true;
 
     // ── 2. Provision Keycloak realm ──────────────────────────────────────────
+    std.debug.print("[saga] step 2: provisionRealm (realm={s})\n", .{input.slug});
     const realm_result = manager.provisionRealm(allocator, .{
         .tenant_id = tenant.tenant_id,
         .tenant_slug = input.slug,
