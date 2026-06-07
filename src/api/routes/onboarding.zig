@@ -1,5 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const build_options = @import("build_options");
 const auth = @import("../middleware/auth.zig");
 const identity_service = @import("../../identity/service.zig");
 const onboarding_mod = @import("../../identity/onboarding.zig");
@@ -134,6 +135,7 @@ pub fn handleOnboarding(
                     gpa.destroy(saga_ctx);
                     return errorResult(allocator, 500, "internal_error");
                 },
+                .migrations_dir = build_options.migrations_dir,
             };
 
             const thread = std.Thread.spawn(.{}, runSagaBackground, .{saga_ctx}) catch {
@@ -164,6 +166,7 @@ const SagaContext = struct {
     manager: identity_provider.manager.Manager,
     onboarding_id: []u8,
     input: onboarding_mod.OnboardingInput,
+    migrations_dir: []const u8,
 };
 
 fn dupeOnboardingInput(
@@ -242,6 +245,7 @@ fn runSagaBackground(ctx: *SagaContext) void {
         ctx.pool,
         ctx.input,
         ctx.onboarding_id,
+        ctx.migrations_dir,
     ) catch |err| {
         const err_status: u16 = onboardingErrorToStatus(err);
         const err_body = if (err == onboarding_mod.OnboardingError.ValidationFailed)
