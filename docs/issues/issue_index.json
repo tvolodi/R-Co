@@ -1,8 +1,23 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-06-06T23:04:48Z",
-  "next_issue_id": 68,
+  "last_updated": "2026-06-07T01:47:30Z",
+  "next_issue_id": 69,
   "issues": [
+    {
+      "id": "ISS-0068",
+      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
+      "handoff_id": "wf03-spt01-schema-20260607-005",
+      "affected_areas": [
+        "src/identity/onboarding.zig",
+        "src/db/provisioning.zig",
+        "src/main.zig"
+      ],
+      "created_at": "2026-06-07T01:04:48Z",
+      "resolved_at": "2026-06-07T01:47:30Z"
+    },
     {
       "id": "ISS-0067",
       "title": "WF03 f8 batch2 rerun1: TM auth redirect caused by localhost/127 identity drift and full-suite integration rerun blocked TM scope",

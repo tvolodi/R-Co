@@ -1,0 +1,25 @@
+run_id: WF03-spt01-onboarding-schema-missing-20260607
+workflow_id: WF-03
+step: 02b
+agent: CODE-DESIGN-VALIDATOR
+handoff_id: wf03-spt01-schema-20260607-002b-r2
+artefact: src/design/iss-0068-onboarding-schema-provisioning.md
+result: FAIL
+summary: Design rework 2 still fails lint gate due to an oversized fenced block.
+checks:
+  lint_design_artefact:
+    command: python tools/lint_design_artefact.py src/design/iss-0068-onboarding-schema-provisioning.md
+    exit_code: 1
+    blocker: 0
+    major: 1
+    minor: 0
+issues:
+  - severity: MAJOR
+    code: E050
+    file: src/design/iss-0068-onboarding-schema-provisioning.md
+    line: 167
+    description: fenced code block exceeds 40 lines; design must remain sketch-level and avoid long executable-style flow blocks.
+required_rework:
+  - Split the data flow diagram block into smaller sections (< 40 lines each) or convert part of it to prose bullets.
+  - Keep signatures and high-level flow only; avoid implementation-style, long monolithic code fences.
+next_action: Route back to CODE-DESIGNER for rework.
