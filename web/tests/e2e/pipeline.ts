@@ -31,7 +31,7 @@ const KEYCLOAK_BASE_URL = (process.env.BPM_IDP_BASE_URL ?? 'http://localhost:808
 const KEYCLOAK_CLIENT_ID = 'bpm-platform-api'
 
 /** Build a Keycloak token endpoint URL for the given realm. */
-function keycloakTokenUrl(realm = 'bpm-default'): string {
+export function keycloakTokenUrl(realm = 'bpm-default'): string {
   return `${KEYCLOAK_BASE_URL}/realms/${realm}/protocol/openid-connect/token`
 }
 

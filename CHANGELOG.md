@@ -18,6 +18,10 @@ All notable changes to the BPM Platform are documented here.
 ### 2026-06-07
 #### Fixes
 - [ISS-0068] Fixed missing tenant schema provisioning in onboarding saga - after tenant registration, PostgreSQL schemas (tenant_default, tenant_<uuid>) are now created correctly. Retroactive migration (069/070) provisions schemas for pre-existing tenants.
+- [WF02-uat-tenant-url-20260607] Released UAT tenant-realm URL resolution flow for UAT-TM-01..04: Playwright helper token acquisition now supports tenant realm parameterisation and tenant context resolution by company slug, and UAT runner docs/schema guidance now define company_id as the only required tenant selector.
+
+#### Released
+- UAT-TM-01, UAT-TM-02, UAT-TM-03, UAT-TM-04 marked RELEASED via WF02-uat-tenant-url-20260607 (release decision: docs/status/release-uat-tenant-url-2026-06-07.json; test evidence: tests/reports/report-2026-06-07-WF02-uat-tenant-url-20260607.yaml).
 
 ### Stage F8 Batch 2 - Tenant Lifecycle Controls (RELEASED 2026-06-06)
 
