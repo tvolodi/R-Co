@@ -1,0 +1,38 @@
+{
+  "stage": "UAT Tenant URL",
+  "date": "2026-06-07T06:13:45Z",
+  "decision": "APPROVED",
+  "nfr_results": {
+    "NFR-01.p99_read_ms": {
+      "target": "<=200",
+      "actual": 1.648,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-01.p99_write_ms": {
+      "target": "<=500",
+      "actual": 3.115,
+      "unit": "ms",
+      "passed": true
+    },
+    "NFR-02.append_throughput_eps": {
+      "target": ">=1000",
+      "actual": 36669.225,
+      "unit": "events_per_second",
+      "passed": true
+    },
+    "NFR-04.replay_10000_ms": {
+      "target": "<=5000",
+      "actual": 61.844,
+      "unit": "ms",
+      "passed": true
+    }
+  },
+  "blocking_issues": [],
+  "approved_requirements": [
+    "UAT-TM-01",
+    "UAT-TM-02",
+    "UAT-TM-03",
+    "UAT-TM-04"
+  ]
+}

@@ -1,0 +1,59 @@
+run_id: WF02-uat-tenant-url-20260607
+handoff_id: b2d4997f-ddb8-43d4-a690-00ce571ffae2
+agent: TEST-DESIGN-VALIDATOR
+step: 03b
+timestamp_utc: 2026-06-07T06:00:32Z
+result: FAIL
+scope:
+  requirement_ids:
+    - UAT-TM-01
+    - UAT-TM-02
+    - UAT-TM-03
+    - UAT-TM-04
+  artifacts_in:
+    - tests/specs/UAT-TM-01.md
+    - tests/specs/UAT-TM-02.md
+    - tests/specs/UAT-TM-03.md
+    - tests/specs/UAT-TM-04.md
+    - web/tests/e2e/uat-tenant-url.e2e.spec.ts
+    - web/tests/e2e/pipeline.ts
+checks:
+  hard_gate_must_runnable_coverage: fail
+  hard_gate_no_skipped_must_tests: pass
+  hard_gate_fixture_isolation_and_cleanup_self_sufficient: pass
+  hard_gate_clear_failure_when_env_services_missing: fail
+  additional_pipeline_checks:
+    sequential_ui_pipeline_step_presence: not_applicable
+    pipeline_spec_exists: not_applicable
+    pipeline_imports_shared_helpers: pass
+    pipeline_on_cleanup_registered: not_applicable
+    pipeline_no_before_each_after_each: not_applicable
+issues:
+  - id: TDV-UAT-TM-RUNNABLE-001
+    severity: BLOCKER
+    affected_requirements:
+      - UAT-TM-03
+      - UAT-TM-04
+    description: MUST requirements UAT-TM-03 and UAT-TM-04 do not have runnable integration/E2E tests. Their specs are documentation-traceability-only and point to prose coverage statements instead of executable test blocks.
+    evidence:
+      - tests/specs/UAT-TM-03.md:23
+      - tests/specs/UAT-TM-03.md:27
+      - tests/specs/UAT-TM-04.md:23
+      - tests/specs/UAT-TM-04.md:27
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:21
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:22
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:54
+  - id: TDV-UAT-TM-ENV-002
+    severity: MAJOR
+    affected_requirements:
+      - UAT-TM-02
+    description: The helper test suite has an explicit backend readiness pre-check, but no explicit Keycloak readiness pre-check. When IdP is unavailable, failure depends on lower-level request errors instead of a deterministic prerequisite error message.
+    evidence:
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:12
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:55
+      - web/tests/e2e/pipeline.ts:63
+summary: |
+  Validation failed at hard gate. UAT-TM-01 and UAT-TM-02 have runnable Playwright coverage with no skipped tests.
+  UAT-TM-03 and UAT-TM-04 are covered only by documentation traceability statements, which does not satisfy
+  the mandatory runnable coverage requirement for MUST requirements in this step.
+next_action: Route to TEST-DESIGNER for rework (replace documentation-only MUST coverage with runnable test implementation and add explicit IdP prerequisite failure behavior).

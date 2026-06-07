@@ -1,0 +1,52 @@
+run_id: WF02-uat-tenant-url-20260607
+handoff_id: 59c985a2-085a-4e59-bf61-20534c70703a
+agent: TEST-DESIGN-VALIDATOR
+step: 03b-r1
+timestamp_utc: 2026-06-07T06:08:26Z
+result: PASS
+scope:
+  requirement_ids:
+    - UAT-TM-01
+    - UAT-TM-02
+    - UAT-TM-03
+    - UAT-TM-04
+  artifacts_in:
+    - handoffs/WF02-uat-tenant-url-20260607/step-03r1-test-designer.json
+    - tests/specs/UAT-TM-01.md
+    - tests/specs/UAT-TM-02.md
+    - tests/specs/UAT-TM-03.md
+    - tests/specs/UAT-TM-04.md
+    - web/tests/e2e/uat-tenant-url.e2e.spec.ts
+    - web/tests/e2e/pipeline.ts
+checks:
+  hard_gate_must_runnable_coverage: pass
+  hard_gate_no_skipped_must_tests: pass
+  hard_gate_idp_readiness_precheck: pass
+  hard_gate_self_sufficient_failure_behavior: pass
+  fixture_isolation_and_cleanup: pass
+  clear_failure_when_prerequisites_missing: pass
+rework_findings_resolution:
+  - finding_id: TDV-UAT-TM-RUNNABLE-001
+    status: resolved
+    evidence:
+      - tests/specs/UAT-TM-03.md:9
+      - tests/specs/UAT-TM-04.md:9
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:82
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:102
+  - finding_id: TDV-UAT-TM-ENV-002
+    status: resolved
+    evidence:
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:21
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:32
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:49
+      - web/tests/e2e/uat-tenant-url.e2e.spec.ts:66
+tests_run:
+  - name: npx playwright test tests/e2e/uat-tenant-url.e2e.spec.ts --reporter=list
+    status: pass
+    detail: 6 passed (8.4s)
+issues: []
+summary: |
+  Re-validation after rework passed all hard gates.
+  UAT-TM-01..04 now have runnable coverage with no skipped MUST tests.
+  Keycloak-dependent tests perform explicit IdP readiness pre-check and fail with clear prerequisite messages when unavailable.
+next_action: Route to TEST-RUNNER (Step 4)

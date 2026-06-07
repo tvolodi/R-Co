@@ -78,6 +78,19 @@ Message: `"System not ready for UAT: <which service>. ORCH must resolve infrastr
 If `DEFS_EMPTY`: STOP. Return FAIL with severity BLOCKER.
 Message: `"No process definitions found. Run seed.py before UAT."`
 
+Additionally, verify the tenant lookup endpoint:
+
+```bash
+# Tenant API (must return 200 for each seed company)
+for slug in swiftroute vortex meridian; do
+  curl -sf -H "Authorization: Bearer $BPM_UAT_TOKEN" \
+    http://localhost:3000/api/v1/tenants/$slug > /dev/null || echo "TENANT_${slug}_MISSING"
+done
+```
+
+If any `TENANT_*_MISSING`: STOP. Return FAIL with severity BLOCKER.
+Message: `"Tenant API returned 404 for <slug>. Ensure seed data includes all companies."`
+
 ### Step 2 — Load and validate scenarios
 
 Read all scenario files listed in `context.artifacts_in` (or all `*.yaml`
@@ -99,6 +112,39 @@ for path in sorted(Path("tests/simulation/scenarios").glob("*.yaml")):
 
 If any scenario fails schema validation: add a MAJOR issue per failing file
 and skip that scenario. Do not abort the run.
+
+### Step 2.5 — Resolve tenant context
+
+Before executing any scenario, resolve each unique `company_id` into a
+`TenantContext` via `resolveTenantContext()` from `pipeline.ts`:
+
+```typescript
+import { resolveTenantContext, getKeycloakToken } from '../tests/e2e/pipeline'
+
+// 1. Get an admin token from the default realm
+const adminToken = await getKeycloakToken(request)
+
+// 2. Resolve each unique company_id in the scenario set
+const uniqueSlugs = [...new Set(scenarios.map(s => s.company_id))]
+const tenantContexts = new Map<string, TenantContext>()
+
+for (const slug of uniqueSlugs) {
+  const ctx = await resolveTenantContext(request, slug, adminToken)
+  tenantContexts.set(slug, ctx)
+}
+```
+
+This produces:
+- `tenantId` — UUID for API calls
+- `realm` — Keycloak realm name (may differ from slug for legacy tenants)
+- `tokenUrl` — realm-specific token endpoint
+
+When authenticating actors for a scenario, pass `ctx.realm` to
+`getKeycloakToken(request, username, password, ctx.realm)` so the token
+is issued from the correct tenant realm.
+
+If `resolveTenantContext()` throws (404 or network error): add a BLOCKER
+issue for that scenario and skip it. Do not abort the entire run.
 
 ### Step 3 — Execute each scenario
 

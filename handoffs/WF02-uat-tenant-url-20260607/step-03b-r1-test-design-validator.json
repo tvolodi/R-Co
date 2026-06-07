@@ -1,0 +1,56 @@
+{
+  "handoff_id": "59c985a2-085a-4e59-bf61-20534c70703a",
+  "run_id": "WF02-uat-tenant-url-20260607",
+  "workflow_id": "WF-02",
+  "step": "03b-r1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-uat-tenant-url-20260607/step-03b-r1-test-design-validator.json",
+  "created_at": "2026-06-07T06:06:20Z",
+  "started_at": "2026-06-07T06:07:14Z",
+  "completed_at": "2026-06-07T06:08:26Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "UAT Tenant URL",
+    "requirement_ids": [
+      "UAT-TM-01",
+      "UAT-TM-02",
+      "UAT-TM-03",
+      "UAT-TM-04"
+    ],
+    "related_handoff_ids": [
+      "f2faca64-e4d4-4be0-a84a-d38a2f121f56"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-uat-tenant-url-20260607/step-03r1-test-designer.json",
+      "tests/specs/UAT-TM-01.md",
+      "tests/specs/UAT-TM-02.md",
+      "tests/specs/UAT-TM-03.md",
+      "tests/specs/UAT-TM-04.md",
+      "web/tests/e2e/uat-tenant-url.e2e.spec.ts",
+      "web/tests/e2e/pipeline.ts"
+    ]
+  },
+  "task": {
+    "description": "Re-validate TEST-DESIGNER output after rework. Confirm previous BLOCKER and MAJOR are resolved and all hard-gate checks pass.",
+    "acceptance_criteria": [
+      "All MUST requirements UAT-TM-01..04 have runnable coverage",
+      "No skipped MUST tests",
+      "Explicit IdP readiness pre-check present for Keycloak-dependent tests",
+      "Result PASS with no BLOCKER/MAJOR open"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Re-validation PASS for UAT-TM-01..04: runnable MUST coverage confirmed, no skipped MUST tests, explicit IdP readiness pre-check present, and self-sufficient failure behavior is clear.",
+    "artifacts_out": [
+      "docs/issue-reports/WF02-uat-tenant-url-20260607-step-03b-r1-test-design-validator-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

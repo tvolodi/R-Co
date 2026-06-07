@@ -542,3 +542,5 @@
 2026-06-07T00:40:10Z | ADHOC_PASS | ADHOC-tenant-onboarding-state-20260607 | adhoc-tenant-onboarding-state-20260607-001 | TEST-RUNNER | Tenant onboarding state verified
 2026-06-07T01:02:03Z | ROUTE | WF03-spt01-onboarding-schema-missing-20260607 | wf03-spt01-schema-20260607-000 | ORCH → BACKEND-DEV | PENDING
 2026-06-07T01:02:03Z | ROUTE | WF03-spt01-onboarding-schema-missing-20260607 | wf03-spt01-schema-20260607-005 | ORCH → ISSUE-FIXER | PENDING
+2026-06-07T05:12:03Z | ESTIMATE | WF02-uat-tenant-url-20260607 | D3/medium | ~85min | UAT-TM-01, UAT-TM-02, UAT-TM-03, UAT-TM-04
+2026-06-07T05:12:03Z | ROUTE | WF-02 | 6e6a7289 | ORCH -> BACKEND-DEV | PENDING

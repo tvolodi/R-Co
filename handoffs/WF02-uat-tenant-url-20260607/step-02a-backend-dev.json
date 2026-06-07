@@ -1,0 +1,62 @@
+{
+  "handoff_id": "1524bad3-427b-45eb-b415-0521adfe485d",
+  "run_id": "WF02-uat-tenant-url-20260607",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-uat-tenant-url-20260607/step-02a-backend-dev.json",
+  "created_at": "2026-06-07T05:28:00Z",
+  "started_at": "2026-06-07T05:29:16Z",
+  "completed_at": "2026-06-07T05:32:42Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "UAT Tenant URL",
+    "requirement_ids": [
+      "UAT-TM-01",
+      "UAT-TM-02",
+      "UAT-TM-03",
+      "UAT-TM-04"
+    ],
+    "related_handoff_ids": [
+      "f21720c1-c9a8-4603-bbd0-483f9f82daa8",
+      "867f50e9-8ca1-45e3-bc2f-d2970081053a"
+    ],
+    "artifacts_in": [
+      "src/design/uat-tenant-url.md",
+      "web/tests/e2e/pipeline.ts",
+      "docs/agents/UAT_RUNNER.md",
+      "docs/agents/uat-scenario-schema.md"
+    ]
+  },
+  "task": {
+    "description": "Implement the UAT Tenant URL feature per the design at src/design/uat-tenant-url.md. NOTE: This is primarily a FRONTEND-DEV task but is assigned to BACKEND-DEV because the changes are in web/tests/e2e/pipeline.ts (TypeScript test helpers) and docs/ (documentation). No Zig code or SQL migrations are needed.\n\nChanges to make:\n\n1. web/tests/e2e/pipeline.ts:\n   a. UAT-TM-01: Add optional realm parameter (default bpm-default) to getKeycloakToken() and refreshTokenIfNeeded(). Remove hardcoded KEYCLOAK_TOKEN_URL, build dynamically.\n   b. UAT-TM-02: Add new resolveTenantContext(request, companySlug, adminToken) function that calls GET /api/v1/tenants/{slug} and returns { tenantId, realm, slug, tokenUrl }. Add caching per slug.\n\n2. docs/agents/UAT_RUNNER.md:\n   c. UAT-TM-03: Add Step 2.5 (Resolve tenant context) between Step 2 and Step 3. Update pre-flight check to verify /api/v1/tenants/{slug} endpoint.\n\n3. docs/agents/uat-scenario-schema.md:\n   d. UAT-TM-04: Add a note that company_id is the sole tenant identifier and UAT Runner resolves it automatically.\n\n4. Commit implementation to feature branch feature/WF02-uat-tenant-url-20260607.\n\nIMPORTANT: This task involves TypeScript and documentation, NOT Zig. You can read and edit these files but you do NOT need to run zig build or zig build test. After implementation, verify with:\n  - cd web && npm run type-check (must exit 0)\n  - cd web && npm run lint (must exit 0)",
+    "acceptance_criteria": [
+      "getKeycloakToken() accepts optional realm parameter with default bpm-default",
+      "refreshTokenIfNeeded() passes realm through to getKeycloakToken()",
+      "resolveTenantContext(request, companySlug, adminToken) function exists and returns TenantContext",
+      "KEYCLOAK_TOKEN_URL constant removed from pipeline.ts",
+      "UAT_RUNNER.md has Step 2.5 for tenant context resolution",
+      "uat-scenario-schema.md has note about company_id automatic resolution",
+      "All existing pipeline tests still work (backward compatible)",
+      "npm run type-check exits 0",
+      "npm run lint exits 0",
+      "Implementation committed to feature branch"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented UAT Tenant URL feature (UAT-TM-01 through UAT-TM-04): Added optional realm parameter to getKeycloakToken/refreshTokenIfNeeded, removed hardcoded KEYCLOAK_TOKEN_URL in favor of dynamic URL builder, added resolveTenantContext function with per-slug caching, updated UAT_RUNNER.md with Step 2.5 and pre-flight tenant API check, updated uat-scenario-schema.md with company_id auto-resolution note.",
+    "artifacts_out": [
+      "web/tests/e2e/pipeline.ts",
+      "docs/agents/UAT_RUNNER.md",
+      "docs/agents/uat-scenario-schema.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

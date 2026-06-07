@@ -1,0 +1,56 @@
+{
+  "handoff_id": "f21720c1-c9a8-4603-bbd0-483f9f82daa8",
+  "run_id": "WF02-uat-tenant-url-20260607",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-uat-tenant-url-20260607/step-01-code-designer.json",
+  "created_at": "2026-06-07T05:14:46Z",
+  "started_at": "2026-06-07T05:18:55Z",
+  "completed_at": "2026-06-07T05:22:41Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "UAT Tenant URL",
+    "requirement_ids": [
+      "UAT-TM-01",
+      "UAT-TM-02",
+      "UAT-TM-03",
+      "UAT-TM-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "web/tests/e2e/pipeline.ts",
+      "docs/agents/UAT_RUNNER.md",
+      "docs/agents/uat-scenario-schema.md",
+      "templates/lego-catalog.md"
+    ]
+  },
+  "task": {
+    "description": "Design the UAT Tenant URL feature. This feature makes UAT Runner work with per-tenant Keycloak realms so that multi-tenant UAT scenarios can authenticate and execute correctly.\n\nBACKGROUND:\nCurrently web/tests/e2e/pipeline.ts hardcodes the Keycloak realm to bpm-default in getKeycloakToken(). The UAT Runner needs to authenticate as different tenants (swiftroute, vortex, meridian) against their own Keycloak realms.\n\nKEY INSIGHT from user:\n  The only thing which UAT Runner / a user has to know is a tenant slug, e.g. swiftroute. All other machinery with keycloak has to be executed by the system, invisible for UAT tester. The only reason to get into keycloak is to validate that all objects for tenant are OK.\n\nEXISTING INFRASTRUCTURE (already built):\n1. GET /api/v1/tenants/{slug} returns { tenant_id, slug, idp_realm_id, ... }    the realm is the same as slug for non-default tenants\n2. public.tenant table has: id (UUID), slug, idp_realm_id - slug maps to realm\n3. Onboarding API returns oidc_authority, discovery_url, client_id\n4. Scenario YAMLs already have company_id field (e.g. swiftroute)\n5. Company YAMLs have bpm_config.tenant_id (logical string, not UUID)\n\nREQUIREMENTS TO DESIGN:\n\nUAT-TM-01: Parameterise getKeycloakToken() in pipeline.ts\n  - Add optional realm parameter (default: bpm-default) to getKeycloakToken()\n  - Add optional realm parameter to refreshTokenIfNeeded() (pass through)\n  - Remove hardcoded KEYCLOAK_TOKEN_URL constant - build URL dynamically from KEYCLOAK_BASE_URL + realm\n  - Backward-compatible: existing callers with no realm param use bpm-default\n  - File: web/tests/e2e/pipeline.ts\n\nUAT-TM-02: Add resolveTenantContext() helper to pipeline.ts\n  - New exported function: resolveTenantContext(request, companySlug) that:\n    a. Calls GET /api/v1/tenants/{companySlug}\n    b. Returns { tenantId, realm, slug, tokenUrl }\n  - Used by UAT Runner (and eventually pipeline tests) to get realm from company_id\n  - Caches results per slug to avoid repeated API calls\n  - File: web/tests/e2e/pipeline.ts\n\nUAT-TM-03: Update UAT_RUNNER.md with tenant resolution step\n  - Add a new step between Step 2 (load scenarios) and Step 3 (execute):\n    Step 2.5 - Resolve tenant context\n    For each scenario, read company_id, call resolveTenantContext() to get realm,\n    then use getKeycloakToken(request, username, password, realm) for all auth.\n  - Update pre-flight check to verify /api/v1/tenants/{slug} endpoint works\n  - For via: gui steps - loginWithToken uses the tenant-scoped token\n  - For via: api steps - authHeaders uses the tenant-scoped token\n  - File: docs/agents/UAT_RUNNER.md\n\nUAT-TM-04: Update uat-scenario-schema.md with tenant resolution note\n  - Add a note that company_id is the sole tenant identifier\n  - Document that UAT Runner resolves company_id to Keycloak realm automatically via GET /api/v1/tenants/{company_id}\n  - No new fields needed in scenario YAML\n  - File: docs/agents/uat-scenario-schema.md\n\nCLASSIFICATION:\nAll 4 requirements are Type E (prose design) - they involve modifying existing TypeScript helpers and documentation files, not CRUD endpoints or React Flow nodes.\n\nWrite the design artefact to src/design/uat-tenant-url.md per the backend_developer_guide.md section 6 format.",
+    "acceptance_criteria": [
+      "Design artefact exists at src/design/uat-tenant-url.md",
+      "Every requirement acceptance criterion has a corresponding design element",
+      "No implementation code in the design (interfaces/signatures only)",
+      "Function signatures for getKeycloakToken(), refreshTokenIfNeeded(), resolveTenantContext() are specified",
+      "Resolution chain documented: company_id -> GET /api/v1/tenants/{slug} -> realm -> token",
+      "Error handling documented (tenant not found, realm unreachable)",
+      "All changes are backward-compatible with existing pipeline tests"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design for UAT Tenant URL - all 4 requirements are Type E (prose design). Covers parameterised getKeycloakToken/refreshTokenIfNeeded, new resolveTenantContext helper, UAT_RUNNER.md Step 2.5, and uat-scenario-schema.md company_id resolution note.",
+    "artifacts_out": [
+      "src/design/uat-tenant-url.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

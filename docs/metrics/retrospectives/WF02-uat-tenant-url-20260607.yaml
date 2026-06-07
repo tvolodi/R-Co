@@ -1,0 +1,61 @@
+run_id: WF02-uat-tenant-url-20260607
+requirement_ids:
+  - UAT-TM-01
+  - UAT-TM-02
+  - UAT-TM-03
+  - UAT-TM-04
+difficulty: 3
+integration_surface: medium
+rules_version_used: '1.1'
+estimated_minutes_total: 83
+actual_minutes_total: 41.8
+variance_pct: -49.6
+by_step:
+  code-designer:
+    estimated: 32
+    actual: 3.8
+    variance_pct: -88.1
+  code-design-validator:
+    estimated: 15
+    actual: 2.5
+    variance_pct: -83.3
+  backend-dev:
+    estimated: 12
+    actual: 5.3
+    variance_pct: -55.8
+  test-designer:
+    estimated: 8
+    actual: 23.7
+    variance_pct: 196.2
+  test-design-validator:
+    estimated: 10
+    actual: 4.1
+    variance_pct: -59.0
+  test-runner:
+    estimated: 4
+    actual: 2.2
+    variance_pct: -45.0
+  release-validator:
+    estimated: 2
+    actual: 0.2
+    variance_pct: -90.0
+rework_steps:
+  - test-design-validator
+  - test-designer
+rule_adjustments:
+  - step: backend-dev
+    difficulty: 3
+    old_estimate: 10
+    new_estimate: 7
+    reason: Observed 2 consecutive D3 runs with variance below -25%
+  - step: test-design-validator
+    difficulty: 3
+    old_estimate: 8
+    new_estimate: 6
+    reason: Observed 2 consecutive D3 runs with variance below -25%
+  - step: release-validator
+    difficulty: 3
+    old_estimate: 2
+    new_estimate: 1
+    reason: Observed 2 consecutive D3 runs with variance below -25%
+completed_at: '2026-06-07T06:15:52Z'
