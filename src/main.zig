@@ -216,34 +216,41 @@ fn serveRequest(
     const req_alloc = arena.allocator();
 
     // Extract caller metadata from request headers.
+    // NOTE: all header `.value` slices borrow from the receive buffer. The receive buffer
+    // is overwritten when the body is read (writeExpectContinue + allocRemaining), so every
+    // header value must be duped into req_alloc-owned memory here, before body reading.
     const user_id = blk: {
         var hdr_it = request.iterateHeaders();
         while (hdr_it.next()) |h| {
-            if (std.ascii.eqlIgnoreCase(h.name, "x-bpm-user-id")) break :blk h.value;
+            if (std.ascii.eqlIgnoreCase(h.name, "x-bpm-user-id"))
+                break :blk req_alloc.dupe(u8, h.value) catch h.value;
         }
         break :blk "00000000-0000-0000-0000-000000000000";
     };
 
-    const authorization_header = blk: {
+    const authorization_header: ?[]const u8 = blk: {
         var hdr_it = request.iterateHeaders();
         while (hdr_it.next()) |h| {
-            if (std.ascii.eqlIgnoreCase(h.name, "authorization")) break :blk h.value;
+            if (std.ascii.eqlIgnoreCase(h.name, "authorization"))
+                break :blk req_alloc.dupe(u8, h.value) catch h.value;
         }
         break :blk null;
     };
 
-    const tenant_header = blk: {
+    const tenant_header: ?[]const u8 = blk: {
         var hdr_it = request.iterateHeaders();
         while (hdr_it.next()) |h| {
-            if (std.ascii.eqlIgnoreCase(h.name, "x-bpm-tenant-id")) break :blk h.value;
+            if (std.ascii.eqlIgnoreCase(h.name, "x-bpm-tenant-id"))
+                break :blk req_alloc.dupe(u8, h.value) catch h.value;
         }
         break :blk null;
     };
 
-    const permissions_header = blk: {
+    const permissions_header: ?[]const u8 = blk: {
         var hdr_it = request.iterateHeaders();
         while (hdr_it.next()) |h| {
-            if (std.ascii.eqlIgnoreCase(h.name, "x-bpm-permissions")) break :blk h.value;
+            if (std.ascii.eqlIgnoreCase(h.name, "x-bpm-permissions"))
+                break :blk req_alloc.dupe(u8, h.value) catch h.value;
         }
         break :blk null;
     };
@@ -253,7 +260,8 @@ fn serveRequest(
     const x_trace_id_req_header: ?[]const u8 = blk: {
         var hdr_it = request.iterateHeaders();
         while (hdr_it.next()) |h| {
-            if (std.ascii.eqlIgnoreCase(h.name, "x-trace-id")) break :blk h.value;
+            if (std.ascii.eqlIgnoreCase(h.name, "x-trace-id"))
+                break :blk req_alloc.dupe(u8, h.value) catch h.value;
         }
         break :blk null;
     };
@@ -265,7 +273,8 @@ fn serveRequest(
     const idempotency_key_hdr: []const u8 = blk: {
         var hdr_it = request.iterateHeaders();
         while (hdr_it.next()) |h| {
-            if (std.ascii.eqlIgnoreCase(h.name, "idempotency-key")) break :blk h.value;
+            if (std.ascii.eqlIgnoreCase(h.name, "idempotency-key"))
+                break :blk req_alloc.dupe(u8, h.value) catch h.value;
         }
         break :blk "";
     };
@@ -273,8 +282,13 @@ fn serveRequest(
     // Split path from query string.
     const target = request.head.target;
     const q_start = std.mem.indexOf(u8, target, "?");
-    const path = if (q_start) |qi| target[0..qi] else target;
-    const query_str = if (q_start) |qi| target[qi + 1 ..] else "";
+    // IMPORTANT: copy path and query_str to allocator-owned memory before reading the body.
+    // Reading the body via writeExpectContinue + allocRemaining reuses the receive buffer,
+    // which invalidates request.head.target and any slices borrowing from it.
+    const path = req_alloc.dupe(u8, if (q_start) |qi| target[0..qi] else target) catch
+        (if (q_start) |qi| target[0..qi] else target);
+    const query_str = req_alloc.dupe(u8, if (q_start) |qi| target[qi + 1 ..] else "") catch
+        (if (q_start) |qi| target[qi + 1 ..] else "");
 
     // Read request body only after copying request metadata that borrows from
     // the receive buffer. Consuming the body can invalidate request.head.target.
@@ -340,16 +354,6 @@ fn serveRequest(
     };
 
     const method = request.head.method;
-
-    // DEBUG: log path and method to diagnose routing failures
-    {
-        const dbg_fields = [_]obs_logger.LogField{
-            .{ .key = "debug_path", .value = .{ .string = path } },
-            .{ .key = "debug_method", .value = .{ .string = @tagName(method) } },
-            .{ .key = "debug_path_len", .value = .{ .integer = @as(i64, @intCast(path.len)) } },
-        };
-        obs_logger.log(allocator, .INFO, "debug.routing", "routing check", &dbg_fields) catch {};
-    }
 
     var resp_status: u16 = 200;
     var resp_body: []const u8 = "{}";

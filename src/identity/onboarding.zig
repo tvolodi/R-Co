@@ -190,6 +190,7 @@ pub fn executeSaga(
     }) catch |err| {
         // Explicitly run compensation for realm provisioning failures so
         // tenant cleanup does not depend on errdefer behavior.
+        std.debug.print("[saga] step 2 FAILED: err={s}\n", .{@errorName(err)});
         compensate(allocator, manager, pool, &saga) catch {};
         return switch (err) {
             error.NotImplemented => error.RealmProvisioningFailed,
@@ -212,6 +213,7 @@ pub fn executeSaga(
     saga.realm_id = try allocator.dupe(u8, realm_result.realm_id);
 
     // ── 3. Create admin user in realm ────────────────────────────────────────
+    std.debug.print("[saga] step 3: provisionUser (realm={s})\n", .{input.slug});
     const user_result = manager.provisionUser(allocator, .{
         .tenant_id = tenant.tenant_id,
         .external_realm = input.slug,
@@ -221,45 +223,47 @@ pub fn executeSaga(
         .email = input.admin_email,
         .initial_roles = &.{.PLATFORM_ADMIN},
     }) catch |err| switch (err) {
-        error.NotImplemented => return error.UserProvisioningFailed,
+        error.NotImplemented => { std.debug.print("[saga] step 3 FAILED: {s}\n", .{@errorName(err)}); return error.UserProvisioningFailed; },
         error.UpstreamUnavailable,
         error.UpstreamTimeout,
         error.UpstreamProtocolError,
-        => return error.UserProvisioningFailed,
+        => { std.debug.print("[saga] step 3 FAILED: {s}\n", .{@errorName(err)}); return error.UserProvisioningFailed; },
         error.DuplicateResource,
         error.Conflict,
-        => return error.UserProvisioningFailed,
+        => { std.debug.print("[saga] step 3 FAILED: {s}\n", .{@errorName(err)}); return error.UserProvisioningFailed; },
         error.UnauthorizedAdminCall,
         error.ForbiddenAdminCall,
-        => return error.UserProvisioningFailed,
-        error.Internal => return error.UserProvisioningFailed,
+        => { std.debug.print("[saga] step 3 FAILED: {s}\n", .{@errorName(err)}); return error.UserProvisioningFailed; },
+        error.Internal => { std.debug.print("[saga] step 3 FAILED: {s}\n", .{@errorName(err)}); return error.UserProvisioningFailed; },
         error.OutOfMemory => return error.OutOfMemory,
-        else => return error.UserProvisioningFailed,
+        else => { std.debug.print("[saga] step 3 FAILED: {s}\n", .{@errorName(err)}); return error.UserProvisioningFailed; },
     };
     saga.user_provisioned = true;
     saga.admin_user_id = try allocator.dupe(u8, user_result.external_user_id);
 
     // ── 4. Grant PLATFORM_ADMIN role ─────────────────────────────────────────
+    std.debug.print("[saga] step 4: grantRoles (realm={s})\n", .{input.slug});
     _ = manager.grantRoles(allocator, .{
         .realm_id = input.slug,
         .external_user_id = user_result.external_user_id,
         .roles = &.{.PLATFORM_ADMIN},
     }) catch |err| switch (err) {
-        error.NotImplemented => return error.RoleAssignmentFailed,
+        error.NotImplemented => { std.debug.print("[saga] step 4 FAILED: {s}\n", .{@errorName(err)}); return error.RoleAssignmentFailed; },
         error.UpstreamUnavailable,
         error.UpstreamTimeout,
         error.UpstreamProtocolError,
-        => return error.RoleAssignmentFailed,
+        => { std.debug.print("[saga] step 4 FAILED: {s}\n", .{@errorName(err)}); return error.RoleAssignmentFailed; },
         error.UnauthorizedAdminCall,
         error.ForbiddenAdminCall,
-        => return error.RoleAssignmentFailed,
-        error.Internal => return error.RoleAssignmentFailed,
+        => { std.debug.print("[saga] step 4 FAILED: {s}\n", .{@errorName(err)}); return error.RoleAssignmentFailed; },
+        error.Internal => { std.debug.print("[saga] step 4 FAILED: {s}\n", .{@errorName(err)}); return error.RoleAssignmentFailed; },
         error.OutOfMemory => return error.OutOfMemory,
-        else => return error.RoleAssignmentFailed,
+        else => { std.debug.print("[saga] step 4 FAILED: {s}\n", .{@errorName(err)}); return error.RoleAssignmentFailed; },
     };
     saga.roles_granted = true;
 
-    // ── 5. Create OIDC client ────────────────────────────────────────────────
+    // ── 5. Create OIDC client ──────────────────────────────────────────────
+    std.debug.print("[saga] step 5: provisionClient (realm={s})\n", .{input.slug});
     const client_redirect_uris = if (input.client_config) |cc|
         if (cc.redirect_uris) |uris| uris else &[_][]const u8{try std.fmt.allocPrint(allocator, "https://{s}/*", .{input.hostname})}
     else
@@ -271,36 +275,38 @@ pub fn executeSaga(
         .redirect_uris = client_redirect_uris,
         .service_account_enabled = if (input.client_config) |cc| cc.service_account_enabled orelse true else true,
     }) catch |err| switch (err) {
-        error.NotImplemented => return error.ClientProvisioningFailed,
+        error.NotImplemented => { std.debug.print("[saga] step 5 FAILED: {s}\n", .{@errorName(err)}); return error.ClientProvisioningFailed; },
         error.UpstreamUnavailable,
         error.UpstreamTimeout,
         error.UpstreamProtocolError,
-        => return error.ClientProvisioningFailed,
+        => { std.debug.print("[saga] step 5 FAILED: {s}\n", .{@errorName(err)}); return error.ClientProvisioningFailed; },
         error.DuplicateResource,
         error.Conflict,
-        => return error.ClientProvisioningFailed,
+        => { std.debug.print("[saga] step 5 FAILED: {s}\n", .{@errorName(err)}); return error.ClientProvisioningFailed; },
         error.UnauthorizedAdminCall,
         error.ForbiddenAdminCall,
-        => return error.ClientProvisioningFailed,
-        error.Internal => return error.ClientProvisioningFailed,
+        => { std.debug.print("[saga] step 5 FAILED: {s}\n", .{@errorName(err)}); return error.ClientProvisioningFailed; },
+        error.Internal => { std.debug.print("[saga] step 5 FAILED: {s}\n", .{@errorName(err)}); return error.ClientProvisioningFailed; },
         error.OutOfMemory => return error.OutOfMemory,
-        else => return error.ClientProvisioningFailed,
+        else => { std.debug.print("[saga] step 5 FAILED: {s}\n", .{@errorName(err)}); return error.ClientProvisioningFailed; },
     };
     saga.client_provisioned = true;
     saga.client_id = try allocator.dupe(u8, client_result.client_id);
 
     // ── 6. Bind hostname ─────────────────────────────────────────────────────
+    std.debug.print("[saga] step 6: bindHostname ({s})\n", .{input.hostname});
     bindHostname(allocator, pool, tenant.tenant_id, input.hostname) catch |err| switch (err) {
-        error.DuplicateHostname => return error.DuplicateHostname,
-        error.PoolExhausted => return error.PoolExhausted,
-        error.PersistenceFailed => return error.PersistenceFailed,
+        error.DuplicateHostname => { std.debug.print("[saga] step 6 FAILED: DuplicateHostname\n", .{}); return error.DuplicateHostname; },
+        error.PoolExhausted => { std.debug.print("[saga] step 6 FAILED: PoolExhausted\n", .{}); return error.PoolExhausted; },
+        error.PersistenceFailed => { std.debug.print("[saga] step 6 FAILED: PersistenceFailed\n", .{}); return error.PersistenceFailed; },
         error.OutOfMemory => return error.OutOfMemory,
-        else => return error.HostnameBindingFailed,
+        else => { std.debug.print("[saga] step 6 FAILED: {s}\n", .{@errorName(err)}); return error.HostnameBindingFailed; },
     };
     saga.hostname_bound = true;
 
     // ── 7. Verify realm discovery ────────────────────────────────────────────
-    verifyDiscovery(allocator, input.slug) catch return error.VerificationFailed;
+    std.debug.print("[saga] step 7: verifyDiscovery ({s})\n", .{input.slug});
+    verifyDiscovery(allocator, input.slug) catch { std.debug.print("[saga] step 7 FAILED: VerificationFailed\n", .{}); return error.VerificationFailed; };
 
     // ── 8. Build result ──────────────────────────────────────────────────────
     // Use the registry onboarding_id if provided (async mode), otherwise generate one.
@@ -310,7 +316,7 @@ pub fn executeSaga(
         try generateUuid(allocator);
     errdefer allocator.free(onboarding_id);
 
-    const oidc_authority = try std.fmt.allocPrint(allocator, "http://keycloak:8081/realms/{s}", .{input.slug});
+    const oidc_authority = try std.fmt.allocPrint(allocator, "http://localhost:8081/realms/{s}", .{input.slug});
     errdefer allocator.free(oidc_authority);
 
     const discovery_url = try std.fmt.allocPrint(allocator, "{s}/.well-known/openid-configuration", .{oidc_authority});
@@ -463,9 +469,12 @@ fn bindHostname(
     tenant_id: []const u8,
     hostname: []const u8,
 ) (OnboardingError)!void {
-    const conn = pool.acquire() catch |err| return switch (err) {
-        pool_mod.PoolError.ExhaustedPool => return error.PoolExhausted,
-        else => return error.PersistenceFailed,
+    const conn = pool.acquire() catch |err| {
+        std.debug.print("[saga] step 6 pool.acquire FAILED: {s}\n", .{@errorName(err)});
+        return switch (err) {
+            pool_mod.PoolError.ExhaustedPool => return error.PoolExhausted,
+            else => return error.PersistenceFailed,
+        };
     };
     defer pool.release(conn);
 
@@ -474,13 +483,16 @@ fn bindHostname(
         allocator,
         "SELECT id::text FROM tenant_hostnames WHERE hostname = $1 LIMIT 1",
         &[_][]const u8{hostname},
-    ) catch |err| return switch (err) {
-        pool_mod.PoolError.StaleConnection,
-        pool_mod.PoolError.ConnectionFailed,
-        pool_mod.PoolError.QueryFailed,
-        => error.PersistenceFailed,
-        pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
-        else => error.PersistenceFailed,
+    ) catch |err| {
+        std.debug.print("[saga] step 6 SELECT query FAILED: {s}\n", .{@errorName(err)});
+        return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
     };
     if (existing != null) {
         defer freeRow(allocator, existing.?);
@@ -495,13 +507,16 @@ fn bindHostname(
         \\RETURNING id::text
     ,
         &[_][]const u8{ tenant_id, hostname },
-    ) catch |err| return switch (err) {
-        pool_mod.PoolError.StaleConnection,
-        pool_mod.PoolError.ConnectionFailed,
-        pool_mod.PoolError.QueryFailed,
-        => error.PersistenceFailed,
-        pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
-        else => error.PersistenceFailed,
+    ) catch |err| {
+        std.debug.print("[saga] step 6 INSERT query FAILED: {s} (tid={s} host={s})\n", .{@errorName(err), tenant_id, hostname});
+        return switch (err) {
+            pool_mod.PoolError.StaleConnection,
+            pool_mod.PoolError.ConnectionFailed,
+            pool_mod.PoolError.QueryFailed,
+            => error.PersistenceFailed,
+            pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+            else => error.PersistenceFailed,
+        };
     };
 
     if (row == null) return error.DuplicateHostname;
@@ -516,7 +531,7 @@ fn unbindHostname(pool: *pool_mod.Pool, tenant_id: []const u8) !void {
 
 // ── Discovery verification ────────────────────────────────────────────────────
 // Verifies that the realm's OIDC discovery endpoint exists. The URL derivation
-// follows a deterministic pattern: http://keycloak:8081/realms/{slug}/.well-known/openid-configuration
+// follows a deterministic pattern: http://localhost:8081/realms/{slug}/.well-known/openid-configuration
 //
 // NOTE: In the current implementation, verification is a URL-format check.
 // Full HTTP-level verification requires a running Keycloak instance and is
@@ -525,7 +540,7 @@ fn unbindHostname(pool: *pool_mod.Pool, tenant_id: []const u8) !void {
 fn verifyDiscovery(allocator: std.mem.Allocator, realm_slug: []const u8) OnboardingError!void {
     const discovery_url = try std.fmt.allocPrint(
         allocator,
-        "http://keycloak:8081/realms/{s}/.well-known/openid-configuration",
+        "http://localhost:8081/realms/{s}/.well-known/openid-configuration",
         .{realm_slug},
     );
     defer allocator.free(discovery_url);

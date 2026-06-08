@@ -304,17 +304,14 @@ const KcHttpCallState = struct {
     }
 
     fn doFetch(allocator: std.mem.Allocator, request: keycloak.HttpRequest) anyerror!keycloak.HttpResponse {
-        // Create a fresh Io.Threaded for this isolated thread. The fresh instance
-        // has no accumulated APC state from server connection I/O, so the
-        // AFD/APC alertable-wait mechanism fires correctly.
-        // Use smp_allocator so the Threaded internals do not depend on the
-        // request-scoped arena (which is released after thread.join() returns).
-        var io_t = std.Io.Threaded.init(std.heap.smp_allocator, .{});
-        defer io_t.deinit();
-
+        // Use std.Options.debug_io for the HTTP client. This thread was spawned
+        // specifically to avoid Windows AFD/APC alertable-wait interference from the
+        // server's main request-handler thread. Within this fresh thread, debug_io
+        // works correctly for outgoing HTTP without requiring std.Io.Threaded setup
+        // overhead (which can take 15-25 s on Windows due to IOCP initialisation).
         var client: std.http.Client = .{
             .allocator = allocator,
-            .io = io_t.io(),
+            .io = std.Options.debug_io,
         };
         defer client.deinit();
 
@@ -384,23 +381,32 @@ const KcHttpCallState = struct {
         var response_writer = std.Io.Writer.Allocating.fromArrayList(allocator, &response_body);
         defer response_writer.deinit();
 
-        const decompress_buffer: []u8 = switch (response.head.content_encoding) {
-            .identity => &.{},
-            .zstd => try allocator.alloc(u8, std.compress.zstd.default_window_len),
-            .deflate, .gzip => try allocator.alloc(u8, std.compress.flate.max_window_len),
-            .compress => return error.UnsupportedCompressionMethod,
-        };
-        defer if (decompress_buffer.len > 0) allocator.free(decompress_buffer);
-
-        var transfer_buf: [64]u8 = undefined;
-        var decompress: std.http.Decompress = undefined;
-        const reader = response.readerDecompressing(&transfer_buf, &decompress, decompress_buffer);
-        _ = reader.streamRemaining(&response_writer.writer) catch |err| switch (err) {
-            error.ReadFailed => return response.bodyErr() orelse error.UnexpectedBodyReadError,
-            else => |e| return e,
-        };
-
         const status: u16 = @intCast(@intFromEnum(response.head.status));
+
+        // 204 No Content and 304 Not Modified have no response body.
+        // Calling readerDecompressing + streamRemaining on a no-body response
+        // will block indefinitely waiting for data that will never arrive.
+        // Skip body reading for these status codes.
+        const has_body = status != 204 and status != 304;
+
+        if (has_body) {
+            const decompress_buffer: []u8 = switch (response.head.content_encoding) {
+                .identity => &.{},
+                .zstd => try allocator.alloc(u8, std.compress.zstd.default_window_len),
+                .deflate, .gzip => try allocator.alloc(u8, std.compress.flate.max_window_len),
+                .compress => return error.UnsupportedCompressionMethod,
+            };
+            defer if (decompress_buffer.len > 0) allocator.free(decompress_buffer);
+
+            var transfer_buf: [64]u8 = undefined;
+            var decompress: std.http.Decompress = undefined;
+            const reader = response.readerDecompressing(&transfer_buf, &decompress, decompress_buffer);
+            _ = reader.streamRemaining(&response_writer.writer) catch |err| switch (err) {
+                error.ReadFailed => return response.bodyErr() orelse error.UnexpectedBodyReadError,
+                else => |e| return e,
+            };
+        }
+
         var body_list = response_writer.toArrayList();
         const body_owned = try body_list.toOwnedSlice(allocator);
         return keycloak.HttpResponse{ .status = status, .body = body_owned, .headers = headers_owned };
@@ -445,6 +451,10 @@ fn nowMillis() i64 {
 }
 
 fn realHttpSend(_: *anyopaque, allocator: std.mem.Allocator, request: keycloak.HttpRequest) anyerror!keycloak.HttpResponse {
+    // Spawn a fresh OS thread for each Keycloak admin HTTP call.
+    // The fresh thread uses debug_io (not std.Io.Threaded) for fast HTTP while
+    // keeping the call isolated from the server's main IO context, avoiding
+    // Windows AFD/APC alertable-wait interference from the request handler thread.
     const owned_request = try cloneHttpRequestForThread(std.heap.smp_allocator, request);
     const state = try std.heap.smp_allocator.create(KcHttpCallState);
     state.* = .{ .request = owned_request };
@@ -455,9 +465,6 @@ fn realHttpSend(_: *anyopaque, allocator: std.mem.Allocator, request: keycloak.H
     while (state.done.load(.acquire) == 0) {
         const elapsed_ms: i64 = nowMillis() - start_ms;
         if (elapsed_ms >= @as(i64, @intCast(timeout_ms))) {
-            // Do not block request handling forever on stuck upstream I/O.
-            // The worker thread owns request/response buffers and will clean up
-            // and destroy the state object after seeing the abandoned flag.
             state.abandoned.store(1, .release);
             thread.detach();
             return error.OperationTimedOut;
