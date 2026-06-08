@@ -104,7 +104,7 @@ test "TC-DB-01-02: re-running migrations is idempotent" {
     // Snapshot count of applied migrations.
     var before_result = try h1.conn.query(
         alloc,
-        "SELECT COUNT(*) FROM schema_migrations",
+        "SELECT COUNT(*) FROM schema_migrations WHERE schema_name = 'public'",
         &.{},
     );
     defer before_result.deinit();
@@ -124,7 +124,7 @@ test "TC-DB-01-02: re-running migrations is idempotent" {
 
     var after_result = try h2.conn.query(
         alloc,
-        "SELECT COUNT(*) FROM schema_migrations",
+        "SELECT COUNT(*) FROM schema_migrations WHERE schema_name = 'public'",
         &.{},
     );
     defer after_result.deinit();
