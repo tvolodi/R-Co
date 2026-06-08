@@ -44,7 +44,6 @@ async function assertServicesReady(request: Parameters<typeof getKeycloakToken>[
 
 /**
  * Run the full form → progress → result flow and return the final URL parts.
- * Returns null if the saga failed (caller must handle).
  */
 async function runFullWizard(
   page: Parameters<typeof loginWithToken>[0],
@@ -94,19 +93,9 @@ test.describe('ONB-UI-04 — Onboarding result screen', () => {
 
     await page.screenshot({ path: 'scratch/onb-ui-04-result-screen.png', fullPage: true })
 
-    // Only proceed with success assertions if the saga completed successfully
+    // MUST path: success assertions are required for this test and must not be skipped.
     const successBanner = page.getByText(/tenant onboarding completed successfully/i)
-    const isCompleted   = await successBanner.isVisible().catch(() => false)
-
-    if (!isCompleted) {
-      // Saga failed — verify the failure screen is shown (saga infra issue, not UI bug)
-      await expect(page.getByText(/onboarding failed/i)).toBeVisible()
-      console.warn(
-        `[onb-ui-04] Saga failed for slug "${slug}" — success-path assertions skipped. ` +
-        'Check Keycloak connectivity if this is unexpected.'
-      )
-      return
-    }
+    await expect(successBanner).toBeVisible({ timeout: 30_000 })
 
     // Screen shows the tenant slug (exact:true to avoid matching the same text inside the oidc_authority URL)
     await expect(page.getByText(slug, { exact: true })).toBeVisible()
@@ -115,59 +104,58 @@ test.describe('ONB-UI-04 — Onboarding result screen', () => {
     const oidcLink = page.getByRole('link', { name: /http.*realms/i })
     await expect(oidcLink).toBeVisible()
 
+    // Completed result exposes readiness confirmations for completion gate checks
+    await expect(page.getByText('Tenant Visible')).toBeVisible()
+    await expect(page.getByText('OIDC Authority Ready')).toBeVisible()
+    await expect(page.getByText('Schema Materialized')).toBeVisible()
+    await expect(page.getByText('Ready', { exact: true })).toHaveCount(3)
+
     // Back to Admin button is present
     await expect(page.getByRole('button', { name: /back to admin/i })).toBeVisible()
   })
 
   test('"Try Again" navigates back to form with prefilled slug', async ({ page, request }) => {
-    await assertServicesReady(request)
+      await assertServicesReady(request)
 
-    const uid  = randomUUID().slice(0, 8)
-    const slug = `test-${uid}`
-    const hostname = `tenant-${uid}.example.com`
+      const uid = randomUUID().slice(0, 8)
+      const slug = `test-${uid}`
+      const hostname = `tenant-${uid}.example.com`
 
-    const token = await getKeycloakToken(request)
-    await loginWithToken(page, token)
+      const token = await getKeycloakToken(request)
+      await loginWithToken(page, token)
 
-    // Use Playwright route interception to fake a failed saga.
-    // Intercept all /api/v1/onboarding requests and route by method + URL.
-    await page.route('**/api/v1/onboarding**', async (route) => {
-      const req = route.request()
-      const url = req.url()
-      if (req.method() === 'POST' && !url.includes('onboarding/')) {
-        // Intercept POST /api/v1/onboarding → return fake onboarding_id
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify({ onboarding_id: randomUUID() }),
-        })
-      } else if (req.method() === 'GET' && url.includes('/onboarding/') && !url.includes('?')) {
-        // Intercept GET /api/v1/onboarding/:id → return failed state
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ state: 'failed', error: 'Simulated failure for Try Again test' }),
-        })
-      } else {
-        await route.continue()
-      }
-    })
+      // Navigate once so the SPA runtime is initialized.
+      await navigateSpa(page, '/admin/onboarding/new')
+      await page.waitForSelector('form', { timeout: 15_000 })
 
-    await navigateSpa(page, '/admin/onboarding/new')
-    await page.waitForSelector('form', { timeout: 15_000 })
+      // Inject router location.state with a failed saga result.
+      // This validates the failed-result UI without HTTP mocking.
+      await page.evaluate(({ testSlug, testHostname }) => {
+        const state = {
+          usr: {
+            sagaResult: {
+              state: 'failed',
+              error: 'Simulated failure for Try Again test',
+            },
+            formValues: {
+              slug: testSlug,
+              display_name: `Test Tenant ${testSlug}`,
+              admin_email: `admin@${testSlug}.example.com`,
+              admin_username: `admin-${testSlug}`,
+              admin_display_name: `Admin ${testSlug}`,
+              hostname: testHostname,
+              redirect_uris: ['https://app.example.com/cb'],
+            },
+          },
+          key: 'onb-ui-04-failed-state',
+          idx: 1,
+        }
 
-    await page.locator('#slug').fill(slug)
-    await page.locator('#display_name').fill(`Test Tenant ${uid}`)
-    await page.locator('#admin_email').fill(`admin@test-${uid}.example.com`)
-    await page.locator('#admin_username').fill(`admin-${uid}`)
-    await page.locator('#admin_display_name').fill(`Admin ${uid}`)
-    await page.locator('#hostname').fill(hostname)
-    await page.locator('input[placeholder*="callback"]').first().fill('https://app.example.com/cb')
+        window.history.pushState(state, '', '/admin/onboarding/00000000-0000-0000-0000-000000000000/result')
+        window.dispatchEvent(new PopStateEvent('popstate', { state }))
+      }, { testSlug: slug, testHostname: hostname })
 
-    await page.getByRole('button', { name: /register tenant/i }).click()
-
-    // The page navigates to progress, then to result when the fake poll returns "failed"
-    await page.waitForURL(/\/admin\/onboarding\/.+\/result/, { timeout: 60_000 })
+      await page.waitForURL(/\/admin\/onboarding\/.+\/result/, { timeout: 15_000 })
 
     await page.screenshot({ path: 'scratch/onb-ui-04-failed-result.png', fullPage: true })
 
@@ -193,17 +181,10 @@ test.describe('ONB-UI-04 — Onboarding result screen', () => {
 
     const { slug, hostname, onboardingId, resultUrl } = await runFullWizard(page, request)
 
-    // Check if saga completed (only the completed-path test makes sense here)
-    const isCompleted = await page.getByText(/tenant onboarding completed successfully/i)
-      .isVisible().catch(() => false)
-
-    if (!isCompleted) {
-      console.warn(
-        `[onb-ui-04] Saga failed for slug "${slug}" — page-reload restore test skipped. ` +
-        'Check Keycloak connectivity if this is unexpected.'
-      )
-      return
-    }
+    // MUST path: this test requires completed state before reload restore assertions.
+    await expect(page.getByText(/tenant onboarding completed successfully/i)).toBeVisible({
+      timeout: 30_000,
+    })
 
     // Reload the page — this clears React Router state
     const urlWithHostname = resultUrl.includes('?hostname=')
@@ -230,6 +211,12 @@ test.describe('ONB-UI-04 — Onboarding result screen', () => {
     // Screen shows oidc_authority link
     const oidcLink = page.getByRole('link', { name: /http.*realms/i })
     await expect(oidcLink).toBeVisible()
+
+    // Reloaded completed screen still shows readiness confirmations
+    await expect(page.getByText('Tenant Visible')).toBeVisible()
+    await expect(page.getByText('OIDC Authority Ready')).toBeVisible()
+    await expect(page.getByText('Schema Materialized')).toBeVisible()
+    await expect(page.getByText('Ready', { exact: true })).toHaveCount(3)
 
     void loadingText // referenced for documentation; state may resolve before assertion
   })
