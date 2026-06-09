@@ -60,12 +60,21 @@ pub const Migrations = struct {
 
     /// Apply pending migrations inside a specific PostgreSQL schema.
     ///
-    /// Sets search_path to <schema_name>,public before running, so unqualified
-    /// table references resolve to the tenant schema first.  The
-    /// schema_migrations tracking table always lives in public (fully qualified).
+    /// TNT-02 PROTOCOL (must be preserved):
+    ///   1. Acquire a single connection from the pool.
+    ///   2. Issue: SET search_path TO <schema_name>,public
+    ///      as the FIRST statement on that connection, before any migration SQL.
+    ///   3. Execute each pending migration file via conn.simpleQuery().
+    ///      Because search_path is set, unqualified table names resolve to
+    ///      <schema_name>; the migration files need no public. qualifiers.
+    ///   4. Track completion in public.schema_migrations using the composite
+    ///      key (schema_name, version) — always fully qualified to public.
+    ///   5. Release the connection.
     ///
-    /// schema_name must be a UUID-derived identifier (safe to interpolate into
-    /// SET search_path — see design doc §5 Safety Note).
+    /// schema_name is UUID-derived (via schemaNameForTenant), never user-supplied.
+    /// It contains only [a-z0-9_] characters and is safe to interpolate into
+    /// SET search_path TO ... — see §5 Safety Note in
+    /// src/design/spt-01-schema-per-tenant-provisioning.md.
     pub fn runForSchema(
         allocator: std.mem.Allocator,
         pool: *Pool,
