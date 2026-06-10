@@ -705,6 +705,14 @@ All notable changes to the BPM Platform are documented here.
 - `importDefinition()` validates schema version, checks name+version uniqueness (HTTP 409 on conflict), re-validates CEL conditions via `validateEdgeConditions()` (HTTP 422 on invalid CEL), then creates the definition with `status = DRAFT`.
 - New HTTP handlers `handleExport` and `handleImport` added to `src/api/routes/definitions.zig`.
 - `src/bpm.zig` now exports `pub const export_import`.
+### Stage 12 — Schema-Per-Tenant Isolation (Batch 2)
+
+**TNT-05 — Backfill migration** — Idempotent GBL-075 backfill copies all tenant rows from public business tables into per-tenant schemas in dependency order, batched at 10,000 rows per transaction. After each table is copied and recorded as COMPLETED in tnt05_progress, source rows are deleted from public (Step 5b). Orphan rows (unknown tenant_id) are logged to tnt05_orphans. Migration-window flag in onboarding_registry downgrades TNT-04 audit from ERROR to WARN during the window.
+
+**TNT-06 — db_host routing and export/import** — tenant_schemas.db_host column enables per-tenant PostgreSQL server routing. Connection pool checkout resolves db_host and routes to the tenant-specific server when set, falling back to BPM_DB_URL when NULL. tenant.status='MIGRATING' pauses write requests (HTTP 503) via middleware. Admin endpoints (POST /api/v1/admin/tenants/{id}/export, POST .../import) support the operator workflow.
+
+**TNT-07 — RLS and tenant_id cleanup** — GBL-077 migration with pre-flight gate: aborts if any tenant lacks tnt05_progress COMPLETED rows. On pass: DISABLE ROW LEVEL SECURITY, DROP POLICY, DROP COLUMN tenant_id on all 19 business tables in public, DROP FUNCTION bpm_effective_tenant_id(). All DDL uses IF EXISTS for idempotency. Stage 12 complete — all 7 TNT requirements RELEASED.
+
 
 ## [Stage 1] — 2026-05-20
 

@@ -19,6 +19,104 @@ fn currentRequestPipelineRunId() []const u8 {
     return pipeline_context_mod.get();
 }
 
+// ---------------------------------------------------------------------------
+// TNT-06: db_host routing helpers
+// ---------------------------------------------------------------------------
+
+/// TNT-06: Build a new DSN by replacing the host component of base_url with
+/// new_host.  Port, user, password, and database name are preserved unchanged.
+///
+/// Accepts DSNs of the form postgres://user:pass@host:port/dbname or
+/// postgresql://user:pass@host:port/dbname.  Returns PoolError.ConnectionFailed
+/// if the DSN cannot be parsed or new_host contains characters outside
+/// [a-zA-Z0-9._-].
+///
+/// allocator — caller must free the returned string.
+pub fn buildTenantDsn(
+    allocator: std.mem.Allocator,
+    base_url: []const u8,
+    new_host: []const u8,
+) PoolError![]const u8 {
+    // Validate new_host: only alphanumeric, dot, hyphen allowed.
+    for (new_host) |c| {
+        const ok = (c >= 'a' and c <= 'z') or
+            (c >= 'A' and c <= 'Z') or
+            (c >= '0' and c <= '9') or
+            c == '.' or c == '-' or c == '_';
+        if (!ok) return PoolError.ConnectionFailed;
+    }
+    if (new_host.len == 0) return PoolError.ConnectionFailed;
+
+    // Find the scheme prefix (postgres:// or postgresql://)
+    const at_pos = std.mem.indexOf(u8, base_url, "@") orelse
+        return PoolError.ConnectionFailed;
+
+    // The host (and optional port) starts just after '@'.
+    // Find the end of host: either '/' (path), ':' (port), or end of string.
+    const after_at = base_url[at_pos + 1 ..];
+    const slash_pos_rel = std.mem.indexOf(u8, after_at, "/");
+    const colon_pos_rel = std.mem.indexOf(u8, after_at, ":");
+
+    // Determine where the host ends in after_at.
+    const host_end_rel: usize = blk: {
+        if (slash_pos_rel != null and colon_pos_rel != null) {
+            break :blk @min(slash_pos_rel.?, colon_pos_rel.?);
+        } else if (slash_pos_rel != null) {
+            break :blk slash_pos_rel.?;
+        } else if (colon_pos_rel != null) {
+            break :blk colon_pos_rel.?;
+        } else {
+            break :blk after_at.len;
+        }
+    };
+
+    // Build: prefix_up_to_@  + new_host + suffix_from_host_end
+    const prefix = base_url[0 .. at_pos + 1]; // includes '@'
+    const suffix = after_at[host_end_rel..]; // ":port/dbname" or "/dbname" or ""
+
+    return std.fmt.allocPrint(allocator, "{s}{s}{s}", .{ prefix, new_host, suffix }) catch
+        return PoolError.ConnectionFailed;
+}
+
+/// TNT-06: Look up db_host for the given tenant from public.tenant_schemas.
+/// Returns null when db_host IS NULL or no tenant_schemas row exists for
+/// this tenant (falls back to single-server behaviour).
+///
+/// conn   — a connection already checked out from the pool (caller owns it).
+/// allocator — for the returned host string (caller must free).
+/// tenant_id — the resolved tenant UUID string.
+///
+/// Returns PoolError.QueryFailed on DB error.
+pub fn resolveDbHostForTenant(
+    conn: *Conn,
+    allocator: std.mem.Allocator,
+    tenant_id: []const u8,
+) PoolError!?[]const u8 {
+    // Use parameterised query — no string interpolation of tenant_id.
+    const row = conn.queryRow(
+        allocator,
+        "SELECT db_host FROM public.tenant_schemas WHERE tenant_id = $1 LIMIT 1",
+        &.{tenant_id},
+    ) catch return PoolError.QueryFailed;
+
+    if (row) |r| {
+        defer {
+            // Free the column slices other than [0] which we may return.
+            for (r[1..]) |col| {
+                if (col) |c| allocator.free(c);
+            }
+            allocator.free(r);
+        }
+        if (r.len > 0) {
+            if (r[0]) |host_val| {
+                // Caller takes ownership of this slice.
+                return host_val;
+            }
+        }
+    }
+    return null;
+}
+
 /// Derive the PostgreSQL schema name for a given tenant ID string.
 ///
 /// - Empty string  → "tenant_default"
@@ -89,10 +187,84 @@ fn applyRequestTenantContext(conn: *Conn) PoolError!void {
     try conn.exec(search_path, &.{});
 
     // 2. SPT-01 backward compat: keep set_config calls so RLS policies continue
-    //    working during the Stage 12 transition until TNT-05 removes them.
+    //    working during the Stage 12 transition until TNT-07 removes them.
     const pipeline_run_id = currentRequestPipelineRunId();
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_id});
     try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{pipeline_run_id});
+}
+
+/// TNT-06: Redirect a connection to a tenant-specific remote host if
+/// tenant_schemas.db_host IS NOT NULL and differs from the current connection's
+/// host.  Called by Pool.acquire() after the stale-connection check.
+///
+/// pool_allocator is used to allocate the db_host string stored on the conn.
+/// On failure: returns PoolError.ConnectionFailed (callers discard the connection).
+fn maybeRedirectToTenantHost(
+    conn: *Conn,
+    pool_allocator: std.mem.Allocator,
+    io: std.Io,
+) PoolError!void {
+    const tenant_id = currentRequestTenantId();
+    if (tenant_id.len == 0) {
+        // No tenant context — single-server path; nothing to redirect.
+        return;
+    }
+
+    // We need a temporary allocator for the queryRow result.
+    // Use the pool allocator (short-lived; freed within this function).
+    const db_host_opt = resolveDbHostForTenant(conn, pool_allocator, tenant_id) catch {
+        // Query failure: fall back to default host (non-fatal for routing).
+        return;
+    };
+
+    if (db_host_opt) |new_host| {
+        // Check if we are already on this host.
+        const already_on_host = blk: {
+            if (conn._remote_host) |current| {
+                break :blk std.mem.eql(u8, current, new_host);
+            }
+            break :blk false;
+        };
+
+        if (!already_on_host) {
+            // Build a new DSN with the remote host substituted.
+            const new_dsn = buildTenantDsn(pool_allocator, conn._url, new_host) catch {
+                pool_allocator.free(new_host);
+                return PoolError.ConnectionFailed;
+            };
+            defer pool_allocator.free(new_dsn);
+
+            // Close current connection and open a new one to the remote host.
+            conn._pg.close();
+            const remote_pg = pg.Conn.connectUrl(io, pool_allocator, new_dsn) catch {
+                conn._is_valid = false;
+                pool_allocator.free(new_host);
+                return PoolError.ConnectionFailed;
+            };
+            conn._pg = remote_pg;
+
+            // Free previous remote_host if any, then store new one.
+            if (conn._remote_host) |old| pool_allocator.free(old);
+            conn._remote_host = new_host;
+        } else {
+            // Already on the correct host; free the duplicate.
+            pool_allocator.free(new_host);
+        }
+    } else {
+        // db_host IS NULL → single-server path.
+        // If we were previously redirected to a remote host, close that
+        // connection and reconnect to the default URL.
+        if (conn._remote_host != null) {
+            conn._pg.close();
+            const default_pg = pg.Conn.connectUrl(io, pool_allocator, conn._url) catch {
+                conn._is_valid = false;
+                return PoolError.ConnectionFailed;
+            };
+            conn._pg = default_pg;
+            if (conn._remote_host) |old| pool_allocator.free(old);
+            conn._remote_host = null;
+        }
+    }
 }
 
 /// TNT-03: Reset search_path to public on a connection being returned to the idle pool.
@@ -166,6 +338,9 @@ pub const Conn = struct {
     _pool_idx: usize, // index into Pool.conns; used by release()
     _is_valid: bool,
     _url: []const u8,
+    /// TNT-06: non-null when this connection is routed to a remote host instead
+    /// of the default BPM_DB_URL host.  Slice is allocator-owned (pool allocator).
+    _remote_host: ?[]const u8,
     _io: std.Io,
     /// Real PostgreSQL connection.  Always valid when _is_valid is true.
     _pg: pg.Conn,
@@ -448,6 +623,7 @@ pub const Pool = struct {
                 ._pool_idx = i,
                 ._is_valid = true,
                 ._url = config.url,
+                ._remote_host = null, // TNT-06: no remote host override initially
                 ._io = io,
                 ._pg = pg_conn,
             };
@@ -513,7 +689,20 @@ pub const Pool = struct {
             };
             conn._is_valid = true;
             conn._io = self.io;
+            // TNT-06: reset remote_host tracking on reconnect (new connection is
+            // to the default URL; db_host routing will be re-evaluated below).
+            if (conn._remote_host) |old| {
+                self.allocator.free(old);
+                conn._remote_host = null;
+            }
         }
+
+        // TNT-06: Redirect to tenant-specific host if db_host IS NOT NULL.
+        maybeRedirectToTenantHost(conn, self.allocator, self.io) catch |err| {
+            self.idle_indices[self.idle_count] = idx;
+            self.idle_count += 1;
+            return err;
+        };
 
         applyRequestTenantContext(conn) catch |err| {
             self.idle_indices[self.idle_count] = idx;
@@ -530,7 +719,32 @@ pub const Pool = struct {
     /// TNT-03: Calls resetConnectionSearchPath before returning conn to idle.
     /// If the reset fails the connection is marked invalid (not returned to pool),
     /// preventing cross-tenant search_path contamination on the next acquire.
+    ///
+    /// TNT-06: If the connection was redirected to a remote host, close it and
+    /// reconnect to the default URL before returning to the idle pool.  Remote
+    /// connections are not kept open between requests — the pool reconnects on
+    /// the next acquire when db_host IS NOT NULL.
     pub fn release(self: *Pool, conn: *Conn) void {
+        // TNT-06: If this connection was redirected to a remote host, close it
+        // and reconnect to the default URL so the slot is clean for the next user.
+        if (conn._remote_host != null and conn._is_valid) {
+            conn._pg.close();
+            if (conn._remote_host) |old| {
+                self.allocator.free(old);
+                conn._remote_host = null;
+            }
+            // Reconnect to default URL; on failure mark invalid for reconnect on next acquire.
+            const default_pg = pg.Conn.connectUrl(self.io, self.allocator, conn._url) catch {
+                conn._is_valid = false;
+                self.mutex.lockUncancelable(self.io);
+                self.idle_indices[self.idle_count] = conn._pool_idx;
+                self.idle_count += 1;
+                self.mutex.unlock(self.io);
+                return;
+            };
+            conn._pg = default_pg;
+        }
+
         // TNT-03: Reset search_path to public before returning to idle pool.
         // resetConnectionSearchPath marks conn._is_valid = false on failure.
         resetConnectionSearchPath(conn);

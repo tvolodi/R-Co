@@ -44,6 +44,9 @@ pub const PERMITTED_PUBLIC_TABLES: []const []const u8 = &.{
     "repository_artifacts",
     "repository_activations",
     "alerting_state",
+    // TNT-05: backfill progress tracking tables (GBL-074)
+    "tnt05_progress",
+    "tnt05_orphans",
 };
 
 // ---------------------------------------------------------------------------

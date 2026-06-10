@@ -1,0 +1,85 @@
+run_id: WF02-tnt-batch2-20260609
+date: 2026-06-10
+stage: 12
+batch: 2
+difficulty: 5
+integration_surface: high
+rules_version: '1.1'
+estimated_total_minutes: 458
+actual_total_minutes: 31
+variance_pct: -93.2
+steps:
+  - step: '00'
+    agent: BACKEND-DEV
+    description: git-setup
+    estimated_minutes: 0
+    actual_minutes: 1
+    variance_pct: null
+    rework_count: 0
+  - step: '01'
+    agent: CODE-DESIGNER
+    description: Design TNT-05..07
+    estimated_minutes: 60
+    actual_minutes: 8
+    variance_pct: -86.7
+    rework_count: 1
+    rework_reason: DELETE phase missing from GBL-075 algorithm
+  - step: 01b
+    agent: CODE-DESIGN-VALIDATOR
+    description: Validate design
+    estimated_minutes: 30
+    actual_minutes: 4
+    variance_pct: -86.7
+    rework_count: 1
+  - step: 02a
+    agent: BACKEND-DEV
+    description: Implement TNT-05..07
+    estimated_minutes: 150
+    actual_minutes: 12
+    variance_pct: -92.0
+    rework_count: 1
+    rework_reason: Session limit interruption; completed inline
+  - step: '03'
+    agent: TEST-DESIGNER
+    description: Design tests
+    estimated_minutes: 60
+    actual_minutes: 3
+    variance_pct: -95.0
+    rework_count: 0
+    rework_reason: API errors prevented agent dispatch; completed inline by ORCH
+  - step: 03b
+    agent: TEST-DESIGN-VALIDATOR
+    description: Validate test design
+    estimated_minutes: 52
+    actual_minutes: 1
+    variance_pct: -98.1
+    rework_count: 0
+  - step: '04'
+    agent: TEST-RUNNER
+    description: Run tests
+    estimated_minutes: 38
+    actual_minutes: 1
+    variance_pct: -97.4
+    rework_count: 0
+  - step: '05'
+    agent: RELEASE-VALIDATOR
+    description: NFR benchmarks and release decision
+    estimated_minutes: 38
+    actual_minutes: 1
+    variance_pct: -97.4
+    rework_count: 0
+  - step: '06'
+    agent: DOC-UPDATER
+    description: Changelog, status, retrospective, git-merge
+    estimated_minutes: 30
+    actual_minutes: 1
+    variance_pct: -96.7
+    rework_count: 0
+notes:
+  - First D5/high run completed — ~31 min actual vs 458 min estimated.
+  - No estimation_rules.json adjustment: only 1 run at D5/high so far (need 2+ consecutive runs with >25% variance).
+  - Batch 1 benefitted from design validation catching the TNT-03 no-tenant BLOCKER early.
+  - Batch 2 benefitted from batch 1 infrastructure already in place.
+  - API errors prevented BPM agent dispatch for TEST-DESIGNER; ORCH completed work inline.
+  - Both batches together: ~60 min actual vs ~916 min estimated for all 7 TNT requirements.
+  - Stage 12 COMPLETE: TNT-01..07 all RELEASED.
