@@ -1,0 +1,115 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: SVC-01 — Service catalog entries carry a scope and owner tenant
+# Produced by: CODE-DESIGNER (WF02-svc-batch1-20260610, Step 01)
+# See: src/design/svc-01-04-service-scope.md §2.1 for full data-type context
+
+schema_version: 1
+migration_number: 78
+name: svc01_service_catalog_scope
+requirement_ids: [SVC-01]
+purpose: |
+  Extend the service_catalog table with a `scope` column (global | tenant) and
+  a nullable `owner_tenant_id` FK referencing tenant(id) ON DELETE CASCADE.
+  A table-level CHECK constraint enforces that scope=global always has a NULL
+  owner_tenant_id and scope=tenant always has a non-NULL owner_tenant_id.
+  All pre-existing rows are set to scope='global', owner_tenant_id=NULL via the
+  column DEFAULT — no explicit UPDATE backfill is required.
+
+tables:
+  - mode: alter
+    name: service_catalog
+    add_columns:
+      - name: scope
+        type: "text"
+        not_null: true
+        default: "'global'"
+        check: "scope IN ('global', 'tenant')"
+      - name: owner_tenant_id
+        type: uuid
+        not_null: false
+        fk: "tenant(id) ON DELETE CASCADE"
+    add_constraints:
+      - kind: check
+        name: ck_service_scope_owner
+        expression: >-
+          (scope = 'global' AND owner_tenant_id IS NULL)
+          OR (scope = 'tenant' AND owner_tenant_id IS NOT NULL)
+    indexes:
+      - name: idx_service_catalog_scope
+        columns: [scope]
+      - name: idx_service_catalog_owner_tenant
+        columns: [owner_tenant_id]
+
+fixtures:
+  - name: global_service_id
+    kind: random_string
+  - name: tenant_a_id
+    kind: uuid
+  - name: tenant_b_id
+    kind: uuid
+  - name: scoped_service_id
+    kind: random_string
+  - name: seed_tenant_a
+    kind: sql_setup
+    sql: |
+      INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
+      VALUES ($1, 'svc-test-a', 'SVC Test Tenant A', 'realm-a', now())
+      ON CONFLICT (id) DO NOTHING;
+    params: [tenant_a_id]
+  - name: seed_tenant_b
+    kind: sql_setup
+    sql: |
+      INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
+      VALUES ($1, 'svc-test-b', 'SVC Test Tenant B', 'realm-b', now())
+      ON CONFLICT (id) DO NOTHING;
+    params: [tenant_b_id]
+
+test_cases:
+  - name: global_service_visible_to_any_tenant
+    description: A global service appears in listServicesForTenant for any tenant_id.
+    requirement_ref: SVC-01
+    arrange: |
+      const svc_id = generated.global_service_id;
+    act: |
+      // insert global service, then query for tenant_a and tenant_b
+    assertions: |
+      // CUSTOM: assert record returned for both tenant_a_id and tenant_b_id
+
+  - name: tenant_scoped_service_visible_only_to_owner
+    description: A tenant-scoped service appears only for its owner tenant.
+    requirement_ref: SVC-01
+    arrange: |
+      const svc_id = generated.scoped_service_id;
+    act: |
+      // insert service with scope=tenant, owner=tenant_a_id
+      // query for tenant_a_id, then query for tenant_b_id
+    assertions: |
+      // CUSTOM: assert returned for tenant_a, NOT returned for tenant_b
+
+  - name: scope_constraint_enforced
+    description: Inserting scope=tenant with NULL owner_tenant_id fails the CHECK.
+    requirement_ref: SVC-01
+    arrange: ""
+    act: |
+      // attempt INSERT with scope='tenant', owner_tenant_id=NULL
+    assertions: |
+      // CUSTOM: assert database rejects with constraint violation
+
+  - name: on_delete_cascade_removes_scoped_service
+    description: Deleting the owner tenant cascades to owned service catalog entries.
+    requirement_ref: SVC-01
+    arrange: |
+      // insert tenant_a, insert service with scope=tenant, owner=tenant_a_id
+    act: |
+      // DELETE FROM tenant WHERE id = tenant_a_id
+    assertions: |
+      // CUSTOM: assert service_catalog row no longer exists
+
+  - name: backfill_existing_rows_are_global
+    description: Any pre-existing rows (added before this migration) default to global.
+    requirement_ref: SVC-01
+    arrange: ""
+    act: |
+      // SELECT scope, owner_tenant_id FROM service_catalog WHERE service_id = 'pre-existing'
+    assertions: |
+      // CUSTOM: assert scope='global', owner_tenant_id IS NULL for any legacy rows

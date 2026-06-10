@@ -1145,6 +1145,19 @@ pub fn authenticate(
         }
     }
 
+    // Step 5d: Resolve tenant context for raw opaque API tokens.
+    // api_tokens and users are in tenant schemas after Stage 12.  We must set
+    // tenant_context BEFORE acquiring the DB connection so that
+    // applyRequestTenantContext sets the correct search_path.  For tokens
+    // without an embedded tenant_id claim (legacy opaque tokens), this resolves
+    // to DEFAULT_TENANT_ID ("00000000-0000-0000-0000-000000000000") which maps
+    // to the tenant_default schema.
+    const pre_resolved_tenant = resolveTenantContext(allocator, raw_token) catch |err| switch (err) {
+        error.InvalidTenantClaimFormat => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid tenant_id claim") },
+        error.OutOfMemory => return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") },
+    };
+    tenant_context.set(pre_resolved_tenant.tenant_id[0..]);
+
     // Step 6-7: Query api_tokens table.
     const conn = db_pool.acquire() catch
         return .{ .unauthenticated = buildUnauthorized(allocator, "service unavailable") };

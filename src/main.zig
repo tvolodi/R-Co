@@ -71,6 +71,8 @@ pub const oidc_migration_helper = @import("oidc/migration_helper.zig"); // OIDC-
 pub const api_auth = @import("api/middleware/auth.zig"); // API-08 auth middleware provider-manager configuration
 pub const tenant_migration_admin = @import("admin/tenant_migration.zig"); // TNT-06 export/import admin handlers
 pub const tenant_status_middleware = @import("api/middleware/tenant_status.zig"); // TNT-06 MIGRATING status middleware
+pub const service_catalog_repo = @import("repository/service_catalog.zig"); // SVC-01/SVC-04 service catalog store
+pub const services_routes = @import("api/routes/services.zig"); // SVC-04 service catalog HTTP handlers
 
 const placeholder_health_live = "{\"status\":\"live\"}";
 const placeholder_health_ready = "{\"status\":\"ready\",\"api\":\"placeholder\"}";
@@ -467,6 +469,8 @@ fn serveRequest(
         // ── API-08/API-09 auth gate ───────────────────────────────────────────
         // Every /api/v1/... request must be authenticated.  Return 401/403
         // immediately and include X-Trace-Id so the caller can correlate.
+        // The authenticated AuthContext is stored for use by tenant-aware routes (SVC-01).
+        var authenticated_ctx: ?api_auth.AuthContext = null;
         {
             const auth_gate_result = api_auth.authenticate(req_alloc, authorization_header, pool);
             switch (auth_gate_result) {
@@ -488,7 +492,7 @@ fn serveRequest(
                     try request.respond(hr.body, .{ .status = @enumFromInt(hr.status_code), .keep_alive = false, .extra_headers = &auth_hdrs });
                     return;
                 },
-                .authenticated => {},
+                .authenticated => |ctx| { authenticated_ctx = ctx; },
             }
         }
 
@@ -837,6 +841,31 @@ fn serveRequest(
                 resp_status = 404;
                 resp_body = "{\"type\":\"not_found\",\"status\":404}";
             }
+        } else if (std.mem.eql(u8, resource, "services")) {
+            // GET /api/v1/services  (SVC-01, SVC-04) — tenant-scoped listing
+            var svc_cat = service_catalog_repo.ServiceCatalog.init(req_alloc, pool);
+            defer svc_cat.deinit();
+
+            const actor_svc: api_auth.AuthContext = authenticated_ctx orelse .{
+                .user_id = user_id,
+                .role = .PLATFORM_ADMIN,
+                .is_bootstrap = false,
+                .token_id = user_id,
+            };
+
+            if (method == .GET) {
+                const after_id = QS.get(query_str, "after_id");
+                const limit_opt: ?u32 = if (QS.get(query_str, "limit")) |ls|
+                    std.fmt.parseInt(u32, ls, 10) catch null
+                else
+                    null;
+                const r = services_routes.handleListServices(req_alloc, &svc_cat, actor_svc, after_id, limit_opt);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else {
+                resp_status = 405;
+                resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+            }
         } else if (std.mem.eql(u8, resource, "webhooks")) {
             const actor = api_auth.AuthContext{
                 .user_id = user_id,
@@ -962,7 +991,48 @@ fn serveRequest(
                 .is_bootstrap = false,
                 .token_id = user_id,
             };
-            if (std.mem.eql(u8, seg4, "tenants") and seg5.len > 0) {
+            if (std.mem.eql(u8, seg4, "services")) {
+                // GET  /api/v1/admin/services           → handleAdminListServices (SVC-04)
+                // POST /api/v1/admin/services           → handleAdminRegisterService (SVC-04)
+                // PATCH /api/v1/admin/services/:id      → handleAdminUpdateService (SVC-04)
+                // DELETE /api/v1/admin/services/:id     → handleAdminDeleteService (SVC-04)
+                var svc_cat_admin = service_catalog_repo.ServiceCatalog.init(req_alloc, pool);
+                defer svc_cat_admin.deinit();
+
+                if (seg5.len == 0) {
+                    if (method == .GET) {
+                        const after_id = QS.get(query_str, "after_id");
+                        const limit_opt: ?u32 = if (QS.get(query_str, "limit")) |ls|
+                            std.fmt.parseInt(u32, ls, 10) catch null
+                        else
+                            null;
+                        const r = services_routes.handleAdminListServices(req_alloc, &svc_cat_admin, actor, after_id, limit_opt);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .POST) {
+                        const r = services_routes.handleAdminRegisterService(req_alloc, &svc_cat_admin, actor, body);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                } else {
+                    // /api/v1/admin/services/:service_id
+                    if (method == .PATCH) {
+                        const r = services_routes.handleAdminUpdateService(req_alloc, &svc_cat_admin, actor, seg5, body);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .DELETE) {
+                        const r = services_routes.handleAdminDeleteService(req_alloc, &svc_cat_admin, actor, seg5);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                }
+            } else if (std.mem.eql(u8, seg4, "tenants") and seg5.len > 0) {
                 // POST /api/v1/admin/tenants/{tenant_id}/export  (TNT-06)
                 // POST /api/v1/admin/tenants/{tenant_id}/import  (TNT-06)
                 if (method == .POST and std.mem.eql(u8, seg6, "export")) {

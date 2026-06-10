@@ -1,0 +1,46 @@
+{
+  "handoff_id": "ce5c42c5-0616-4f11-b458-52158b1bb200",
+  "run_id": "WF02-svc-batch1-20260610",
+  "workflow_id": "WF-02",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "FRONTEND-DEV",
+  "file": "handoffs/WF02-svc-batch1-20260610/step-02b-frontend-dev.json",
+  "created_at": "2026-06-10T14:04:25Z",
+  "started_at": "2026-06-10T14:36:18Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 13",
+    "requirement_ids": [
+      "SVC-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/svc-01-04-service-scope.md",
+      "docs/requirements/SVC-04.md"
+    ]
+  },
+  "task": {
+    "description": "Implement SVC-04 admin UI per src/design/svc-01-04-service-scope.md. Create a Services admin page accessible to platform-admin users showing: service_id, scope, endpoint_url, timeout_ms, max_retries columns; platform-admins also see owner_tenant (display name) column and a Register Service button that opens a form. Tenant-admin users see the page in read-only mode (no register button). Implement under web/src/pages/admin/ServicesPage.tsx. Add route to the admin layout. Use the existing API client and query key factory. npm run type-check, npm run lint, npm run build must all exit 0. Commit to feature/WF02-svc-batch1-20260610.",
+    "acceptance_criteria": [
+      "ServicesPage.tsx renders service list via GET /api/v1/services (tenant admin) or GET /api/v1/admin/services (platform-admin)",
+      "Columns: service_id, scope, endpoint_url, timeout_ms, max_retries",
+      "Platform-admin sees owner_tenant column and Register Service button",
+      "Tenant-admin sees the page without register button (role-based, not just hidden)",
+      "npm run type-check exits 0",
+      "npm run lint exits 0",
+      "npm run build exits 0"
+    ],
+    "functions_to_call": [
+      "fn:read-frontend-conventions",
+      "fn:check-type-check",
+      "fn:check-lint",
+      "fn:check-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

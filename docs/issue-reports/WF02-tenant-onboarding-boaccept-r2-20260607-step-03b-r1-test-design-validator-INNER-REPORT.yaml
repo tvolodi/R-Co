@@ -1,0 +1,49 @@
+run_id: WF02-tenant-onboarding-boaccept-r2-20260607
+handoff_id: wf02-tenant-onboarding-boaccept-r2-20260607-003b-r1
+agent: TEST-DESIGN-VALIDATOR
+step: 03b-r1
+status: FAIL
+timestamp_utc: 2026-06-07T16:03:54Z
+summary: |
+  Validation rerun failed hard-gate checks. MUST coverage exists for all listed requirements,
+  but integration execution remains skippable in OIDC-12 and does not meet self-sufficiency/no-skip policy.
+requirements_checked:
+  - ONB-UI-03
+  - ONB-UI-04
+  - OIDC-12
+  - OIDC-13
+  - OIDC-14
+checks:
+  coverage:
+    must_requirements_have_tests: PASS
+    spec_cases_have_implemented_tests: PASS
+    deferred_or_future_labels_in_target_specs: PASS
+  fixture_isolation:
+    per_test_uuid_fixtures: FAIL
+    no_shared_fixture_state: FAIL
+    cleanup_on_failure: PASS
+  self_sufficiency:
+    db_env_missing_fails_explicitly_no_skip: FAIL
+    server_or_healthcheck_handling: PASS
+    external_service_setup_helper_or_explicit_failure: PASS
+  security:
+    no_hardcoded_credentials_or_prod_urls: FAIL
+    parameterized_sql_only: PASS
+issues:
+  - severity: BLOCKER
+    check: self_sufficiency.db_env_missing_fails_explicitly_no_skip
+    file: tests/integration/oidc12_realm_tenant_binding_test.zig
+    detail: testDbUrl returns error.SkipZigTest when BPM_TEST_DB_URL is missing; MUST integration coverage must fail explicitly, not skip.
+  - severity: MAJOR
+    check: fixture_isolation.per_test_uuid_fixtures
+    file: tests/integration/oidc12_realm_tenant_binding_test.zig
+    detail: Test fixtures use static slugs and identifiers instead of per-test UUID-derived fixture keys.
+  - severity: MAJOR
+    check: fixture_isolation.no_shared_fixture_state
+    file: tests/integration/oidc12_realm_tenant_binding_test.zig
+    detail: Shared deterministic fixture names can collide across parallel or repeated runs.
+  - severity: MAJOR
+    check: security.no_hardcoded_credentials_or_prod_urls
+    file: web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts
+    detail: Test uses literal admin credentials in getKeycloakToken call for the transient poll error case.
+next_action: Route to TEST-DESIGNER for rework
