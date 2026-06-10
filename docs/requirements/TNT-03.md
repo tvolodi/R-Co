@@ -2,6 +2,7 @@
 id: TNT-03
 title: Connection pool sets search_path per tenant on checkout
 stage: 12
+status: RELEASED
 priority: MUST
 status: DRAFT
 ---

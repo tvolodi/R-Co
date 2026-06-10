@@ -2,8 +2,9 @@
 id: TNT-01
 title: Business tables must live in per-tenant schemas, not public
 stage: 12
+status: RELEASED
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # TNT-01 — Business tables must live in per-tenant schemas, not public `[MUST]`

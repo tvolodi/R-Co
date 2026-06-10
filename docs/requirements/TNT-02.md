@@ -2,6 +2,7 @@
 id: TNT-02
 title: Migration runner enforces schema-path isolation
 stage: 12
+status: RELEASED
 priority: MUST
 status: DRAFT
 ---

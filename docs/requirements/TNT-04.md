@@ -2,6 +2,7 @@
 id: TNT-04
 title: Public schema contains only routing and registry tables
 stage: 12
+status: RELEASED
 priority: MUST
 status: DRAFT
 ---
