@@ -52,6 +52,10 @@ pub const EndpointPolicyKey = enum {
     DlqReadRetryDiscard,
     MetricsRead,
     WebhookSubscriptionsManage,
+    // SVC-04
+    ServicesRead,        // GET /api/v1/services — any authenticated role
+    AdminServicesManage, // POST/PATCH/DELETE /api/v1/admin/services — PLATFORM_ADMIN only
+    AdminServicesRead,   // GET /api/v1/admin/services — PLATFORM_ADMIN only
     Unknown,
 };
 
@@ -98,6 +102,11 @@ pub fn endpointPolicyKey(method: []const u8, path_template: []const u8) Endpoint
     if ((std.mem.eql(u8, method, "POST") or std.mem.eql(u8, method, "GET")) and std.mem.eql(u8, path_template, "/webhooks/subscriptions")) return .WebhookSubscriptionsManage;
     if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/webhooks/subscriptions/:id/deliveries")) return .WebhookSubscriptionsManage;
     if (std.mem.eql(u8, method, "DELETE") and std.mem.eql(u8, path_template, "/webhooks/subscriptions/:id")) return .WebhookSubscriptionsManage;
+
+    // SVC-04 service catalog endpoints
+    if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/services")) return .ServicesRead;
+    if (std.mem.eql(u8, method, "GET") and std.mem.eql(u8, path_template, "/admin/services")) return .AdminServicesRead;
+    if ((std.mem.eql(u8, method, "POST") or std.mem.eql(u8, method, "PATCH") or std.mem.eql(u8, method, "DELETE")) and std.mem.startsWith(u8, path_template, "/admin/services")) return .AdminServicesManage;
 
     return .Unknown;
 }
@@ -152,6 +161,9 @@ fn requiredPermission(endpoint: EndpointPolicyKey) Permission {
         .DlqReadRetryDiscard => .DlqOperate,
         .MetricsRead => .MetricsRead,
         .WebhookSubscriptionsManage => .WebhooksManage,
+        // SVC-04 service catalog endpoints
+        .ServicesRead => .DefinitionsRead, // any authenticated role
+        .AdminServicesManage, .AdminServicesRead => .UsersGroupsRolesManage, // platform-admin enforced in handler
         .Unknown => .MetricsRead,
     };
 }

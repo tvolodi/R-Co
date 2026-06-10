@@ -1,0 +1,83 @@
+# Admin list page parameter file (Lego Type B)
+# Requirement: SVC-04 — Admin UI and API for service catalog scope management
+# Produced by: CODE-DESIGNER (WF02-svc-batch1-20260610, Step 01)
+# See: src/design/svc-01-04-service-scope.md §2.6 for route handler signatures
+
+schema_version: 1
+page_name: ServicesPage
+page_slug: admin/services
+resource_name: service
+requirement_ids: [SVC-04]
+purpose: |
+  Displays the services available to the current user. Tenant admins see only
+  global services and their own tenant-scoped services. Platform admins see all
+  services with an additional "Owner tenant" column and a "Register service" button.
+  Role-based visibility is enforced by the {/* CUSTOM: role-gate */} block:
+  non-PLATFORM_ADMIN users see a read-only table with no register action.
+
+list_query_key: queryKeys.admin.services
+
+api:
+  list_endpoint: /api/v1/services
+  create_endpoint: /api/v1/admin/services
+  delete_endpoint: /api/v1/admin/services/:service_id
+
+filters:
+  - { name: search, type: text, label: Search, placeholder: "service ID or endpoint" }
+  - name: scope
+    type: select
+    label: Scope
+    options:
+      - { value: "",       label: "All" }
+      - { value: "global", label: "Global" }
+      - { value: "tenant", label: "Tenant-scoped" }
+
+columns:
+  - { header: "Service ID",   accessor: service_id }
+  - { header: "Scope",        accessor: scope }
+  - { header: "Endpoint",     accessor: endpoint_url }
+  - { header: "Auth",         accessor: required_auth }
+  - { header: "Timeout (ms)", accessor: timeout_ms }
+  - { header: "Retries",      accessor: max_retries }
+  - header: "Owner tenant"
+    accessor: owner_tenant_id
+    requires_role: PLATFORM_ADMIN   # hidden entirely for non-admin users
+
+row_actions:
+  - label: "Edit scope"
+    action: edit_scope
+    requires_role: PLATFORM_ADMIN
+  - label: "Delete"
+    action: delete
+    requires_role: PLATFORM_ADMIN
+    confirm: "Remove this service? Active definitions referencing it will be listed."
+
+create_form:
+  button_label: "+ Register service"
+  requires_role: PLATFORM_ADMIN
+  fields:
+    - { name: service_id,      type: text,   label: "Service ID",      required: true }
+    - { name: endpoint_url,    type: text,   label: "Endpoint URL",    required: true }
+    - name: scope
+      type: select
+      label: Scope
+      required: true
+      options:
+        - { value: "global", label: "Global (all tenants)" }
+        - { value: "tenant", label: "Tenant-scoped" }
+    - { name: owner_tenant_id, type: text,     label: "Owner tenant ID", required: false }
+    - name: auth_method
+      type: select
+      label: "Auth method"
+      required: true
+      options:
+        - { value: "NONE",       label: "None" }
+        - { value: "API_KEY",    label: "API Key" }
+        - { value: "OAUTH2",     label: "OAuth2" }
+        - { value: "MUTUAL_TLS", label: "Mutual TLS" }
+    - { name: timeout_ms,      type: number,   label: "Timeout (ms)",       required: true }
+    - { name: max_retries,     type: number,   label: "Max retries",        required: false }
+    - { name: request_schema,  type: textarea, label: "Request schema",     required: true }
+    - { name: response_schema, type: textarea, label: "Response schema",    required: true }
+  submit_label: "Register"
+  on_success_invalidate: queryKeys.admin.services

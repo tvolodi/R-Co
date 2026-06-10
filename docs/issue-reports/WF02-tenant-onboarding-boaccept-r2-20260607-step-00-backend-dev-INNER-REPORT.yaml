@@ -1,0 +1,34 @@
+run_id: WF02-tenant-onboarding-boaccept-r2-20260607
+handoff_id: wf02-tenant-onboarding-boaccept-r2-20260607-000
+agent: BACKEND-DEV
+step: "00"
+status: PASS
+timestamp_utc: "2026-06-07T15:22:30Z"
+summary: >-
+  Executed fn:git-setup successfully: synced local main with origin/main,
+  created feature/WF02-tenant-onboarding-boaccept-r2-20260607, pushed it to
+  origin, and verified remote visibility.
+artifacts_out:
+  - feature/WF02-tenant-onboarding-boaccept-r2-20260607
+  - docs/issue-reports/WF02-tenant-onboarding-boaccept-r2-20260607-step-00-backend-dev-INNER-REPORT.yaml
+validation:
+  - command: git checkout main
+    result: pass
+  - command: git pull --ff-only origin main
+    result: pass
+  - command: git checkout -b feature/WF02-tenant-onboarding-boaccept-r2-20260607
+    result: pass
+  - command: git branch --show-current
+    result: pass
+  - command: git push -u origin feature/WF02-tenant-onboarding-boaccept-r2-20260607
+    result: pass
+  - command: git fetch origin; git branch -r
+    result: pass
+git_evidence:
+  branch_name: feature/WF02-tenant-onboarding-boaccept-r2-20260607
+  base_commit_sha: 05c3e92084ae30bc064cb50bb6a59b2efc810082
+  remote_branch: origin/feature/WF02-tenant-onboarding-boaccept-r2-20260607
+  remote_commit_sha: 05c3e92084ae30bc064cb50bb6a59b2efc810082
+  push_status: ok
+issues: []
+next_action: ORCH routes to next workflow step

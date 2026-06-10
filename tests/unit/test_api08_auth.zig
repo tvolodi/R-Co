@@ -25,6 +25,8 @@ const testing = std.testing;
 const api = @import("api");
 const auth = api.auth;
 const pool = @import("pool");
+const provisioning_mod = @import("provisioning");
+const build_options = @import("build_options");
 const provider_types = api.identity_provider.types;
 const stub_provider = api.identity_provider.adapters.stub;
 
@@ -47,6 +49,32 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
         error.EnvironmentVariableMissing => return error.SkipZigTest,
+        else => return err,
+    };
+}
+
+/// Ensure the tenant_default schema exists and has been migrated.
+/// After Stage 12 schema isolation, users and api_tokens live in per-tenant
+/// schemas. The DB-touching tests in this file need tenant_default to be
+/// provisioned. This helper is idempotent: if the schema is already set up
+/// it returns immediately.
+fn ensureTenantDefaultSchema(allocator: std.mem.Allocator, db_pool: *pool.Pool) !void {
+    provisioning_mod.provisionTenantSchema(
+        allocator,
+        db_pool,
+        "00000000-0000-0000-0000-000000000000",
+        build_options.migrations_dir,
+    ) catch |err| switch (err) {
+        // MigrationFailed can occur when GBL migrations were already applied
+        // to the public schema and the provisioning runner encounters them —
+        // but after the migrations.zig GBL-skip fix this should not happen.
+        // Log and continue; the schema may already have been provisioned.
+        error.MigrationFailed => {
+            std.debug.print(
+                "ensureTenantDefaultSchema: provisioning returned MigrationFailed — schema may already exist\n",
+                .{},
+            );
+        },
         else => return err,
     };
 }
@@ -239,8 +267,15 @@ test "TC-IDN-01-06: token for INACTIVE user returns 401" {
     };
     defer alloc.free(url);
 
+    // TNT schema isolation: users table is in tenant_default after Stage 12.
+    api.tenant_context.set("00000000-0000-0000-0000-000000000000");
+    defer api.tenant_context.set("");
+
     var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
     defer db_pool.deinit();
+
+    // Ensure tenant_default schema exists (idempotent; no-op if already present).
+    try ensureTenantDefaultSchema(alloc, &db_pool);
 
     const username = "tc-idn-01-06-inactive";
     cleanupInactiveAuthFixtures(&db_pool, username);
@@ -309,8 +344,15 @@ test "TC-IDN-04-04a: revoked token is rejected by auth middleware with 401" {
     };
     defer alloc.free(url);
 
+    // TNT schema isolation: users table is in tenant_default after Stage 12.
+    api.tenant_context.set("00000000-0000-0000-0000-000000000000");
+    defer api.tenant_context.set("");
+
     var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
     defer db_pool.deinit();
+
+    // Ensure tenant_default schema exists (idempotent; no-op if already present).
+    try ensureTenantDefaultSchema(alloc, &db_pool);
 
     const username = "tc-idn-04-04a-revoked";
     cleanupInactiveAuthFixtures(&db_pool, username);
@@ -379,8 +421,15 @@ test "TC-IDN-04-04b: expired token is rejected by auth middleware with 401" {
     };
     defer alloc.free(url);
 
+    // TNT schema isolation: users table is in tenant_default after Stage 12.
+    api.tenant_context.set("00000000-0000-0000-0000-000000000000");
+    defer api.tenant_context.set("");
+
     var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
     defer db_pool.deinit();
+
+    // Ensure tenant_default schema exists (idempotent; no-op if already present).
+    try ensureTenantDefaultSchema(alloc, &db_pool);
 
     const username = "tc-idn-04-04b-expired";
     cleanupInactiveAuthFixtures(&db_pool, username);
@@ -449,8 +498,15 @@ test "TC-IDN-04-05a: token role claims drive resolved auth role" {
     };
     defer alloc.free(url);
 
+    // TNT schema isolation: users table is in tenant_default after Stage 12.
+    api.tenant_context.set("00000000-0000-0000-0000-000000000000");
+    defer api.tenant_context.set("");
+
     var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
     defer db_pool.deinit();
+
+    // Ensure tenant_default schema exists (idempotent; no-op if already present).
+    try ensureTenantDefaultSchema(alloc, &db_pool);
 
     const username = "tc-idn-04-05a-role-claims";
     cleanupInactiveAuthFixtures(&db_pool, username);
@@ -526,8 +582,15 @@ test "TC-IDN-04-05b: invalid token role claim is rejected with 401" {
     };
     defer alloc.free(url);
 
+    // TNT schema isolation: users table is in tenant_default after Stage 12.
+    api.tenant_context.set("00000000-0000-0000-0000-000000000000");
+    defer api.tenant_context.set("");
+
     var db_pool = try pool.Pool.init(std.testing.io, alloc, .{ .url = url, .pool_size = 3 });
     defer db_pool.deinit();
+
+    // Ensure tenant_default schema exists (idempotent; no-op if already present).
+    try ensureTenantDefaultSchema(alloc, &db_pool);
 
     const username = "tc-idn-04-05b-invalid-claim";
     cleanupInactiveAuthFixtures(&db_pool, username);

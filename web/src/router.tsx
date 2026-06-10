@@ -22,6 +22,7 @@ import OnboardingProgressPage from '@/pages/admin/onboarding/OnboardingProgressP
 import OnboardingResultPage from '@/pages/admin/onboarding/OnboardingResultPage'
 import TenantsPage from '@/pages/admin/tenants/TenantsPage'
 import EditTenantPage from '@/pages/admin/tenants/EditTenantPage'
+import ServicesPage from '@/pages/admin/services/ServicesPage'
 
 export const router = createBrowserRouter([
   {
@@ -64,6 +65,7 @@ export const router = createBrowserRouter([
       { path: 'admin/onboarding/:onboardingId/result', element: <OnboardingResultPage /> },
       { path: 'admin/tenants', element: <TenantsPage /> },
       { path: 'admin/tenants/:slug/edit', element: <EditTenantPage /> },
+      { path: 'admin/services', element: <ServicesPage /> },
       { path: 'dlq', element: <DlqPage /> },
       { path: 'webhooks', element: <WebhooksPage /> },
     ],

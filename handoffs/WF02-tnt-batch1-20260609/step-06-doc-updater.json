@@ -54,10 +54,12 @@
     ],
     "git_evidence": {
       "branch_name": "feature/WF02-tnt-batch1-20260609",
-      "commit_sha_list": [],
-      "remote_branch": "origin/feature/WF02-tnt-batch1-20260609",
+      "commit_sha_list": [
+        "8cf6ed8"
+      ],
+      "remote_branch": "deleted (squash-merged into main)",
       "push_status": "ok",
-      "pr_url": null,
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/75",
       "pr_create_error": null
     },
     "issues": [],

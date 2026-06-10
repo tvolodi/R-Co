@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/admin/metrics', label: 'Metrics',     roles: ['PLATFORM_ADMIN'] },
   { to: '/admin/onboarding/new', label: 'Register Tenant', roles: ['PLATFORM_ADMIN'] },
   { to: '/admin/tenants',       label: 'Tenants',          roles: ['PLATFORM_ADMIN'] },
+  { to: '/admin/services',       label: 'Services',         roles: ['PLATFORM_ADMIN'] },
 ]
 
 export function AppShell() {

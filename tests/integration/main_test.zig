@@ -121,6 +121,16 @@ const sim05_08_scenario_runner_integration = @import("sim05_08_scenario_runner_t
 const spt01_provisioning_integration = @import("spt01_provisioning_test.zig");
 // Stage F8 — Tenant Management API (TM-01, TM-03)
 const tm01_tenant_list_integration = @import("tm01_tenant_list_test.zig");
+// Stage 12 — Schema isolation enforcement (TNT-01, TNT-02, TNT-03, TNT-04)
+const tnt_schema_isolation_integration = @import("tnt_schema_isolation_test.zig");
+// Stage 13 — Service catalog scope (SVC-01)
+const svc01_service_catalog_scope_integration = @import("svc01_service_catalog_scope_test.zig");
+// Stage 13 — Plugin registry tenant scoping (SVC-02)
+const svc02_plugin_dispatch_scope_integration = @import("svc02_plugin_dispatch_scope_test.zig");
+// Stage 13 — Definition activation scope validator (SVC-03)
+const svc03_definition_activation_scope_integration = @import("svc03_definition_activation_scope_test.zig");
+// Stage 13 — Admin API for service catalog (SVC-04)
+const svc04_admin_api_integration = @import("svc04_admin_api_test.zig");
 
 comptime {
     _ = std;
@@ -177,6 +187,11 @@ comptime {
     _ = sim05_08_scenario_runner_integration;
     _ = spt01_provisioning_integration;
     _ = tm01_tenant_list_integration;
+    _ = tnt_schema_isolation_integration;
+    _ = svc01_service_catalog_scope_integration;
+    _ = svc02_plugin_dispatch_scope_integration;
+    _ = svc03_definition_activation_scope_integration;
+    _ = svc04_admin_api_integration;
 }
 
 test "integration placeholder" {

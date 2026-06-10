@@ -10,6 +10,7 @@ const db = @import("pool");
 const Pool = db.Pool;
 const PoolError = db.PoolError;
 const graph_mod = @import("graph.zig");
+const svc_scope_validator = @import("service_scope_validator.zig");
 
 // ---------------------------------------------------------------------------
 // Re-export shared types from graph.zig so callers can import one file
@@ -24,6 +25,7 @@ pub const DefinitionGraph = graph_mod.DefinitionGraph;
 pub const Definition = graph_mod.Definition;
 pub const Violation = graph_mod.Violation;
 pub const ValidationResult = graph_mod.ValidationResult;
+pub const ServiceScopeValidator = svc_scope_validator.ServiceScopeValidator;
 
 // ---------------------------------------------------------------------------
 // Public error set
@@ -62,6 +64,8 @@ pub const DefinitionError = error{
     QueryTooLong,
     /// Attempted to DELETE an already-ARCHIVED definition → HTTP 409.
     AlreadyArchived,
+    /// A SERVICE_TASK node references a service/plugin not available to this tenant (SVC-03) → HTTP 422.
+    ServiceScopeViolation,
 };
 
 // ---------------------------------------------------------------------------
@@ -126,6 +130,12 @@ pub const SearchResult = struct {
     rank: f32,
 };
 
+/// Parameters for Store.activate() — extended in SVC-03 to carry tenant context.
+pub const ActivateParams = struct {
+    id: Uuid,
+    tenant_id: ?[16]u8 = null, // null = platform-admin bypass
+};
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -136,6 +146,10 @@ pub const Store = struct {
     /// Violations from the most recent create() that returned GraphValidationFailed.
     /// Owned by the Store; freed on the next Store method call or deinit().
     last_violations: []Violation,
+    /// Optional SVC-03 scope validator; injected after init().
+    service_scope_validator: ?*svc_scope_validator.ServiceScopeValidator = null,
+    /// Last SVC-03 violation detail (valid after ServiceScopeViolation error).
+    last_scope_violation: ?svc_scope_validator.ScopeViolation = null,
 
     // -----------------------------------------------------------------------
     // Lifecycle
@@ -147,6 +161,8 @@ pub const Store = struct {
             .allocator = allocator,
             .pool = pool,
             .last_violations = &.{},
+            .service_scope_validator = null,
+            .last_scope_violation = null,
         };
     }
 
@@ -474,6 +490,26 @@ pub const Store = struct {
         allocator: std.mem.Allocator,
         id: Uuid,
     ) DefinitionError!Definition {
+        return self.activateImpl(allocator, id, null);
+    }
+
+    /// Activate with tenant context for SVC-03 scope validation.
+    /// Pass tenant_id from auth middleware when available.
+    pub fn activateForTenant(
+        self: *Store,
+        allocator: std.mem.Allocator,
+        id: Uuid,
+        tenant_id: ?[16]u8,
+    ) DefinitionError!Definition {
+        return self.activateImpl(allocator, id, tenant_id);
+    }
+
+    fn activateImpl(
+        self: *Store,
+        allocator: std.mem.Allocator,
+        id: Uuid,
+        tenant_id: ?[16]u8,
+    ) DefinitionError!Definition {
         var param_arena = std.heap.ArenaAllocator.init(allocator);
         defer param_arena.deinit();
         const a = param_arena.allocator();
@@ -570,6 +606,24 @@ pub const Store = struct {
                 return DefinitionError.GraphValidationFailed;
             }
             allocator.free(transform_result.violations);
+
+            // [SVC-03] Service/plugin scope validation (runs before SQL transaction).
+            // Skip when no validator injected or no tenant context (platform-admin bypass).
+            if (self.service_scope_validator) |v| {
+                if (tenant_id) |tid| {
+                    self.last_scope_violation = null;
+                    v.validateServiceTaskReferences(graph_to_validate, tid) catch |err| switch (err) {
+                        svc_scope_validator.ServiceScopeError.ServiceNotRegistered,
+                        svc_scope_validator.ServiceScopeError.ServiceNotAvailableToTenant,
+                        svc_scope_validator.ServiceScopeError.PluginNotAvailableToTenant => {
+                            self.last_scope_violation = v.lastViolation();
+                            return DefinitionError.ServiceScopeViolation;
+                        },
+                        svc_scope_validator.ServiceScopeError.PoolExhausted => return DefinitionError.PoolExhausted,
+                        else => return DefinitionError.TransactionFailed,
+                    };
+                }
+            }
         }
 
         // [B] Already ACTIVE → return AlreadyActive error (HTTP 200 via handler).

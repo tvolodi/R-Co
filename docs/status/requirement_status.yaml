@@ -3957,4 +3957,60 @@ requirements:
     implemented_in:
     - WF02-tnt-batch2-20260609
     last_updated: '2026-06-10T11:08:25Z'
-total_requirements: 276
+  SVC-01:
+    status: RELEASED
+    stage: 13
+    priority: MUST
+    title: Service catalog entries carry a scope and owner tenant
+    implemented_in:
+    - WF02-svc-batch1-20260610
+    test_spec: tests/specs/SVC-01.md
+    test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
+    tested_at: '2026-06-10'
+    released_at: '2026-06-11T00:00:00Z'
+    release_run: WF02-svc-batch1-20260610
+    release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
+    last_updated: '2026-06-11T00:00:00Z'
+  SVC-02:
+    status: RELEASED
+    stage: 13
+    priority: MUST
+    title: Plugin handlers declare scope and optional owner tenant at registration
+    implemented_in:
+    - WF02-svc-batch1-20260610
+    test_spec: tests/specs/SVC-02.md
+    test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
+    tested_at: '2026-06-10'
+    released_at: '2026-06-11T00:00:00Z'
+    release_run: WF02-svc-batch1-20260610
+    release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
+    last_updated: '2026-06-11T00:00:00Z'
+  SVC-03:
+    status: RELEASED
+    stage: 13
+    priority: MUST
+    title: Definition activation validates service and plugin availability
+    implemented_in:
+    - WF02-svc-batch1-20260610
+    test_spec: tests/specs/SVC-03.md
+    test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
+    tested_at: '2026-06-10'
+    released_at: '2026-06-11T00:00:00Z'
+    release_run: WF02-svc-batch1-20260610
+    release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
+    last_updated: '2026-06-11T00:00:00Z'
+  SVC-04:
+    status: RELEASED
+    stage: 13
+    priority: MUST
+    title: Admin UI and API for service catalog scope management
+    implemented_in:
+    - WF02-svc-batch1-20260610
+    test_spec: tests/specs/SVC-04.md
+    test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
+    tested_at: '2026-06-10'
+    released_at: '2026-06-11T00:00:00Z'
+    release_run: WF02-svc-batch1-20260610
+    release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
+    last_updated: '2026-06-11T00:00:00Z'
+total_requirements: 280

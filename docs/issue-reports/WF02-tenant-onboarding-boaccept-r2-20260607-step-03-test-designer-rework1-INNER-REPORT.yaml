@@ -1,0 +1,38 @@
+report_id: WF02-tenant-onboarding-boaccept-r2-20260607-step-03-test-designer-rework1-INNER-REPORT
+run_id: WF02-tenant-onboarding-boaccept-r2-20260607
+workflow_id: WF-02
+step: 03-r1
+agent: TEST-DESIGNER
+timestamp_utc: 2026-06-07T16:01:30Z
+status: PASS
+summary: Rework addressed validator findings by removing skip/early-return bypass paths from MUST onboarding coverage tests.
+changes:
+  - file: tests/integration/oidc35_onboarding_test.zig
+    actions:
+      - Replaced BPM_TEST_DB_URL skip behavior with explicit failure on missing env.
+      - Replaced TC-OIDC-35-06 environment/bootstrap skip returns with explicit failures.
+      - Removed TC-OIDC-35-07 Keycloak-env-based skip branch so compensation path is always runnable.
+  - file: web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts
+    actions:
+      - Removed success-path conditional early return in completed-result test.
+      - Removed conditional early return in page-reload restore test.
+      - Added required completion assertions so MUST checks execute or fail explicitly.
+validator_failures_addressed:
+  - severity: BLOCKER
+    description: OIDC-35 integration suite used error.SkipZigTest when BPM_TEST_DB_URL missing.
+    resolution: testDbUrl now returns error.EnvironmentVariableMissing with explicit diagnostic.
+  - severity: BLOCKER
+    description: TC-OIDC-35-06 had multiple skip-return paths for missing IDP env/bootstrap.
+    resolution: Missing env/bootstrap now fail the test explicitly (no silent skip).
+  - severity: MAJOR
+    description: ONB-UI-04 success/reload tests could early-return and skip required assertions.
+    resolution: Early-return branches removed; required UI assertions are unconditional.
+validation:
+  diagnostics:
+    command: get_errors on modified files
+    result: PASS
+  pattern_checks:
+    command: grep for skip/early-return markers in modified tests
+    result: PASS
+notes:
+  - Long-running integration/e2e terminal invocations in this workspace did not emit final completion lines during this rework window; deterministic pattern and diagnostics checks were used to verify removal of validator-reported bypass behavior.

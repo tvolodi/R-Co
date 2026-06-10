@@ -1,0 +1,81 @@
+﻿{
+    "handoff_id":  "wf02-tenant-onboarding-boaccept-r2-20260607-004-r2",
+    "run_id":  "WF02-tenant-onboarding-boaccept-r2-20260607",
+    "workflow_id":  "WF-02",
+    "step":  "04-r2",
+    "from_agent":  "ORCH",
+    "to_agent":  "TEST-RUNNER",
+    "file":  "handoffs/WF02-tenant-onboarding-boaccept-r2-20260607/step-04-test-runner-rerun2.json",
+    "created_at":  "2026-06-07T18:28:56Z",
+    "started_at":  "2026-06-07T18:29:06Z",
+    "completed_at":  "2026-06-07T18:44:29Z",
+    "status":  "COMPLETED",
+    "priority":  "HIGH",
+    "context":  {
+                    "stage":  "WF-02 Step 4 test execution rerun 2",
+                    "requirement_ids":  [
+                                            "ONB-UI-03",
+                                            "ONB-UI-04",
+                                            "OIDC-12",
+                                            "OIDC-13",
+                                            "OIDC-14"
+                                        ],
+                    "related_handoff_ids":  [
+                                                "wf02-tenant-onboarding-boaccept-r2-20260607-004",
+                                                "wf02-tenant-onboarding-boaccept-r2-20260607-004-r1",
+                                                "wf03-tenant-onboarding-e2e-saga-20260607-005",
+                                                "wf03-tenant-onboarding-e2e-saga-20260607-005-r1"
+                                            ],
+                    "artifacts_in":  [
+                                         "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607.yaml",
+                                         "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun1.yaml",
+                                         "handoffs/WF03-tenant-onboarding-e2e-saga-20260607/step-05-issue-fixer-rerun1.json",
+                                         "src/api/routes/onboarding.zig",
+                                         "web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts",
+                                         "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Rerun WF-02 Step 4 after ISSUE-FIXER rerun1 fix (timeout threshold 90s→240s). Execute pre-checks, backend integration tests, all onboarding E2E tests, and unit tests. Verify ONB-UI-04 completed result screen renders success banner. Confirm no remaining blockers.",
+                 "acceptance_criteria":  [
+                                             "All onboarding E2E tests pass including ONB-UI-04 completed result",
+                                             "Integration tests pass",
+                                             "Unit tests pass",
+                                             "Report written to tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun2.yaml"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:run-integration-tests",
+                                           "fn:run-e2e-tests"
+                                       ]
+             },
+    "result":  {
+                   "summary":  "E2E onboarding tests: 14 passed, 3 unique failures (ONB-UI-03 saga terminal state, ONB-UI-04 completed result, ONB-UI-04 page-reload restore). All fail with 2-min Playwright test timeout. Integration tests 14/14 passed. Web unit tests 22/22 passed.",
+                   "status":  "FAIL",
+                   "issues":  [
+                                  {
+                                      "test":  "saga terminal state navigates to result screen",
+                                      "description":  "Onboarding saga does not reach terminal state within 120s Playwright test timeout",
+                                      "requirement_id":  "ONB-UI-03",
+                                      "severity":  "MAJOR"
+                                  },
+                                  {
+                                      "test":  "completed result screen shows slug and oidc_authority",
+                                      "description":  "Same root cause - saga never completes before timeout",
+                                      "requirement_id":  "ONB-UI-04",
+                                      "severity":  "MAJOR"
+                                  },
+                                  {
+                                      "test":  "page-reload restore via ?hostname= shows completed result",
+                                      "description":  "Same root cause - depends on saga completion",
+                                      "requirement_id":  "ONB-UI-04",
+                                      "severity":  "MAJOR"
+                                  }
+                              ],
+                   "artifacts_out":  [
+                                         "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun2.yaml"
+                                     ],
+                   "next_action":  "Route to ISSUE-FIXER via WF-03 for onboarding saga completion investigation"
+               },
+    "rework_count":  2,
+    "max_rework":  3
+}

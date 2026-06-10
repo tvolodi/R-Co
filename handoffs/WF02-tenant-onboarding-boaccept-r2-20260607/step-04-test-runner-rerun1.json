@@ -1,0 +1,61 @@
+{
+  "handoff_id": "wf02-tenant-onboarding-boaccept-r2-20260607-004-r1",
+  "run_id": "WF02-tenant-onboarding-boaccept-r2-20260607",
+  "workflow_id": "WF-02",
+  "step": "04-r1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "file": "handoffs/WF02-tenant-onboarding-boaccept-r2-20260607/step-04-test-runner-rerun1.json",
+  "created_at": "2026-06-07T17:40:37Z",
+  "started_at": "2026-06-07T17:40:47Z",
+  "completed_at": "2026-06-07T17:53:13Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-02 Step 4 test execution rerun 1",
+    "requirement_ids": ["ONB-UI-03", "ONB-UI-04", "OIDC-12", "OIDC-13", "OIDC-14"],
+    "related_handoff_ids": [
+      "wf02-tenant-onboarding-boaccept-r2-20260607-004",
+      "wf03-tenant-onboarding-e2e-saga-20260607-005"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607.yaml",
+      "handoffs/WF03-tenant-onboarding-e2e-saga-20260607/step-05-issue-fixer.json",
+      "src/api/routes/onboarding.zig",
+      "web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "Rerun WF-02 Step 4 after ISSUE-FIXER backend patch for onboarding saga terminalization. Execute pre-checks, backend integration tests, onboarding E2E tests, and unit tests. Confirm previous 3 E2E blockers are resolved.",
+    "acceptance_criteria": [
+      "All onboarding E2E tests pass",
+      "Integration tests pass",
+      "Unit tests pass",
+      "Report written to tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun1.yaml"
+    ],
+    "functions_to_call": [
+      "fn:run-integration-tests",
+      "fn:run-e2e-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Backend integration passed, but the onboarding result-screen E2E rerun failed because the completed result state was never rendered. The page showed onboarding_timeout instead of the success banner.",
+    "artifacts_out": [
+      "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun1.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "requirement_id": "ONB-UI-04",
+        "description": "Completed onboarding result screen is never rendered. The visible page shows onboarding_timeout, so the success banner and result details cannot be verified.",
+        "file": "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts:89",
+        "error_snippet": "Timeout 120000ms exceeded; expect(getByText(/tenant onboarding completed successfully/i)).toBeVisible() failed because the element was not found"
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER (WF-03)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

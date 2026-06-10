@@ -1,0 +1,61 @@
+{
+  "handoff_id": "1c79fd2f-4952-4d79-9357-559f11093a45",
+  "run_id": "WF02-svc-batch1-20260610",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-svc-batch1-20260610/step-01b-code-design-validator.json",
+  "created_at": "2026-06-10T14:04:25Z",
+  "started_at": "2026-06-10T14:30:57Z",
+  "completed_at": "2026-06-10T14:35:26Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 13",
+    "requirement_ids": [
+      "SVC-01",
+      "SVC-02",
+      "SVC-03",
+      "SVC-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/svc-01-04-service-scope.md",
+      "docs/requirements/SVC-01.md",
+      "docs/requirements/SVC-02.md",
+      "docs/requirements/SVC-03.md",
+      "docs/requirements/SVC-04.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the design artefact at src/design/svc-01-04-service-scope.md against all acceptance criteria for SVC-01, SVC-02, SVC-03, and SVC-04. Hard gate \u2014 BACKEND-DEV and FRONTEND-DEV cannot start until this returns PASS.",
+    "acceptance_criteria": [
+      "Every acceptance criterion in SVC-01..04 has a corresponding design element",
+      "No implementation code present in the design artefact",
+      "SVC-01 migration scope columns and constraint are fully specified",
+      "SVC-02 PluginScope enum, nullable owner_tenant_id, dispatch filter, and duplicate check are specified",
+      "SVC-03 activation validation flow (catalog + plugin check, atomicity, timing) is fully specified",
+      "SVC-04 all 5 API endpoints and the admin UI page spec are present",
+      "python tools/lint_design_artefact.py src/design/svc-01-04-service-scope.md exits 0 (no BLOCKER/MAJOR)"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact",
+      "fn:run-lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All design artefacts for SVC-01 through SVC-04 validated \u2014 lint exits 0 on all 3 artefacts (Type E prose, Type C migration YAML, Type B list-page YAML); both codegen dry-runs exit 0; migration number 078 confirmed available; all MUST acceptance criteria are covered by design elements; request_schema and response_schema fields present in create_form; no implementation code in prose design; error taxonomy, public signatures, data-flow diagrams, and dependency order complete.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Migration dry-run (codegen_migration.py) does not emit the column-level CHECK (scope IN ('global', 'tenant')) nor the table-level ck_service_scope_owner constraint \u2014 known codegen limitation. Design document (src/design/svc-01-04-service-scope.md \u00a76) explicitly acknowledges this and instructs BACKEND-DEV to add both constraints in the -- CUSTOM: block of the generated migration file. YAML spec fully documents both constraints."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (Step 02a) and FRONTEND-DEV (Step 02b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

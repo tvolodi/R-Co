@@ -1,0 +1,60 @@
+{
+  "handoff_id": "wf03-tenant-onboarding-e2e-saga-20260607-005-r2",
+  "run_id": "WF03-tenant-onboarding-e2e-saga-20260607",
+  "workflow_id": "WF-03",
+  "step": "0.5-r2",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-tenant-onboarding-e2e-saga-20260607/step-05-issue-fixer-rerun2.json",
+  "created_at": "2026-06-07T18:46:03Z",
+  "started_at": "2026-06-07T18:46:13Z",
+  "completed_at": "2026-06-07T19:19:26Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 0.5 rerun 2 \u2014 Deep saga completion investigation",
+    "requirement_ids": [
+      "ONB-UI-03",
+      "ONB-UI-04"
+    ],
+    "related_handoff_ids": [
+      "wf02-tenant-onboarding-boaccept-r2-20260607-004-r2",
+      "wf03-tenant-onboarding-e2e-saga-20260607-005",
+      "wf03-tenant-onboarding-e2e-saga-20260607-005-r1"
+    ],
+    "artifacts_in": [
+      "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun2.yaml",
+      "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607-rerun1.yaml",
+      "tests/reports/report-20260607-WF02-tenant-onboarding-boaccept-r2-20260607.yaml",
+      "src/api/routes/onboarding.zig",
+      "src/identity/onboarding.zig",
+      "src/engine/saga.zig",
+      "web/tests/e2e/onboarding/onb-ui-03.e2e.spec.ts",
+      "web/tests/e2e/onboarding/onb-ui-04.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "DEEP INVESTIGATION: The onboarding saga NEVER completes during E2E, even after two prior ISSUE-FIXER passes. Prior fixes: (1) terminalize stale pending to timeout, (2) increased backend timeout 90s\u2192240s. Neither resolved the root cause \u2014 the saga itself does not reach a terminal state within 120s Playwright timeout.\n\nInvestigate WHY the saga doesn't complete:\n1. Read src/engine/saga.zig \u2014 how does the saga get triggered and run?\n2. Read src/api/routes/onboarding.zig \u2014 what happens after a tenant is created? Is the saga started?\n3. Check if the saga is a background process that needs to be polled vs an API-driven state machine\n4. Check if the E2E test is supposed to trigger saga advancement via API calls\n5. Look at integration tests (which PASS) to see how they trigger saga completion \u2014 is there a difference between integration test flow and E2E flow?\n6. If the saga is async/background, check if it requires a scheduler or worker to be running\n\nDO NOT just increase timeouts again. Find and fix the real reason the saga doesn't complete.\n\nValidate: zig build, integration tests, focused E2E.\nCommit/push to feature/WF02-tenant-onboarding-boaccept-r2-20260607.",
+    "acceptance_criteria": [
+      "Root cause of saga non-completion identified",
+      "Fix applied so saga reaches terminal state",
+      "ONB-UI-03 and ONB-UI-04 result screen tests pass",
+      "zig build exits 0",
+      "Integration tests pass",
+      "Fix committed and pushed"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed category A (logic error) in onboarding saga: converted from async background thread (std.Thread.spawn + thread.detach() with smp_allocator) to synchronous execution in the request thread. The saga now completes before the API response returns, so the frontend sees the terminal state immediately upon polling GET /api/v1/onboarding/:id.",
+    "artifacts_out": [
+      "src/api/routes/onboarding.zig",
+      "src/identity/onboarding.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (WF-03 Step 5)"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}
