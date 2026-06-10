@@ -1,0 +1,56 @@
+{
+  "handoff_id": "dfe874cb-c528-4fdd-8a76-2a5ec3a3a319",
+  "run_id": "WF02-tnt-batch2-20260609",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-tnt-batch2-20260609/step-01b-code-design-validator.json",
+  "created_at": "2026-06-09T18:00:19Z",
+  "started_at": "2026-06-10T03:04:31Z",
+  "completed_at": "2026-06-10T03:05:21Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 12",
+    "requirement_ids": [
+      "TNT-05",
+      "TNT-06",
+      "TNT-07"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/tnt-05-07-backfill-export-cleanup.md",
+      "docs/requirements/TNT-05.md",
+      "docs/requirements/TNT-06.md",
+      "docs/requirements/TNT-07.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER artefact at src/design/tnt-05-07-backfill-export-cleanup.md against all acceptance criteria for TNT-05, TNT-06, and TNT-07. Hard gate \u2014 BACKEND-DEV cannot start until this returns PASS.",
+    "acceptance_criteria": [
+      "Every acceptance criterion in TNT-05, TNT-06, TNT-07 has a corresponding design element",
+      "No implementation code is present in the design artefact",
+      "Backfill dependency order is specified",
+      "Idempotency mechanism is specified",
+      "TNT-07 pre-flight check logic is fully specified",
+      "db_host routing and export/import procedure are specified",
+      "python tools/lint_design_artefact.py src/design/tnt-05-07-backfill-export-cleanup.md exits 0"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact",
+      "fn:run-lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/tnt-05-07-backfill-export-cleanup.md validated against all acceptance criteria for TNT-05, TNT-06, and TNT-07. The previously-raised MAJOR issue is resolved: Step 5b in GBL-075 now specifies a separate DELETE transaction after INSERT commits and tnt05_progress records COMPLETED, scoped to WHERE tenant_id = T_uuid, and is explicitly idempotent. Lint exits 0 with BLOCKER=0, MAJOR=0, MINOR=22 (schema-qualified names in prose, not DDL). All coverage, completeness, correctness, and security checks pass.",
+    "artifacts_out": [
+      "src/design/tnt-05-07-backfill-export-cleanup.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

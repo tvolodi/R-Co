@@ -69,6 +69,8 @@ pub const oidc_test_token_helper = @import("oidc/test_token_helper.zig"); // OID
 pub const oidc_coexistence_auth = @import("oidc/coexistence_auth.zig"); // OIDC-33 coexistence context equivalence checks
 pub const oidc_migration_helper = @import("oidc/migration_helper.zig"); // OIDC-34 migration helper service
 pub const api_auth = @import("api/middleware/auth.zig"); // API-08 auth middleware provider-manager configuration
+pub const tenant_migration_admin = @import("admin/tenant_migration.zig"); // TNT-06 export/import admin handlers
+pub const tenant_status_middleware = @import("api/middleware/tenant_status.zig"); // TNT-06 MIGRATING status middleware
 
 const placeholder_health_live = "{\"status\":\"live\"}";
 const placeholder_health_ready = "{\"status\":\"ready\",\"api\":\"placeholder\"}";
@@ -960,8 +962,22 @@ fn serveRequest(
                 .is_bootstrap = false,
                 .token_id = user_id,
             };
-
-            if (std.mem.eql(u8, seg4, "groups")) {
+            if (std.mem.eql(u8, seg4, "tenants") and seg5.len > 0) {
+                // POST /api/v1/admin/tenants/{tenant_id}/export  (TNT-06)
+                // POST /api/v1/admin/tenants/{tenant_id}/import  (TNT-06)
+                if (method == .POST and std.mem.eql(u8, seg6, "export")) {
+                    const r = tenant_migration_admin.handleExportTenant(pool, req_alloc, seg5, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (method == .POST and std.mem.eql(u8, seg6, "import")) {
+                    const r = tenant_migration_admin.handleImportTenant(pool, req_alloc, seg5, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 404;
+                    resp_body = "{\"type\":\"not_found\",\"status\":404}";
+                }
+            } else if (std.mem.eql(u8, seg4, "groups")) {
                 if (seg5.len == 0) {
                     if (method == .GET) {
                         const r = identity_routes.handleListGroups(id_svc, req_alloc, actor);

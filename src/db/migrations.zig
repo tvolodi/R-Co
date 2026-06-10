@@ -188,6 +188,18 @@ pub const Migrations = struct {
 
         // Apply pending migrations in order.
         for (names.items) |filename| {
+            // GBL-prefixed migrations are global (public-schema) operations that
+            // must ONLY run against the public schema.  They must never be applied
+            // to per-tenant schemas (tenant_default, tenant_<uuid>, etc.) because
+            // they perform DDL on public.tenant_schemas, public.tnt05_progress,
+            // onboarding_registry and other global tables that do not exist in
+            // tenant schemas.  Silently skip them when schema_name != "public".
+            if (!std.mem.eql(u8, schema_name, "public") and
+                std.mem.startsWith(u8, filename, "GBL-"))
+            {
+                continue;
+            }
+
             // Skip already-applied migrations (idempotent).
             if (applied.contains(filename)) continue;
 

@@ -1,0 +1,50 @@
+{
+  "handoff_id": "f167bb75-956b-4c46-a44a-6e1d360a82d0",
+  "run_id": "WF02-tnt-batch2-20260609",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-tnt-batch2-20260609/step-03-test-designer.json",
+  "created_at": "2026-06-09T18:00:19Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 12",
+    "requirement_ids": [
+      "TNT-05",
+      "TNT-06",
+      "TNT-07"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/tnt-05-07-backfill-export-cleanup.md",
+      "docs/requirements/TNT-05.md",
+      "docs/requirements/TNT-06.md",
+      "docs/requirements/TNT-07.md",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Design integration tests for TNT-05, TNT-06, and TNT-07.\n\nTNT-05 tests:\n- Run backfill for a tenant with N rows in public business tables; verify all N rows now in tenant schema; verify 0 remain in public for that tenant\n- Interrupt backfill mid-run; re-run; verify no duplicate rows (idempotency via ON CONFLICT DO NOTHING)\n- Run backfill for a zero-row tenant; verify completes with no-ops\n- Run backfill for a row with unknown tenant_id; verify row written to public.tnt05_orphans\n- Verify migration-window flag set at start and cleared at completion\n- Verify per-tenant progress in public.tnt05_progress\n\nTNT-06 tests:\n- Verify tenant_schemas has db_host column after migration\n- With db_host = NULL, pool uses default BPM_DB_URL\n- Export produces a self-contained dump (pg_dump output contains tenant schema DDL)\n- After UPDATE tenant_schemas SET db_host = S2, pool routes subsequent requests to S2\n- Setting tenant.status = 'MIGRATING' causes write requests to return 503; read requests succeed\n\nTNT-07 tests:\n- Pre-flight check with one tenant not in tnt05_progress COMPLETED: verify migration aborts, lists unready tenant, no DDL changes\n- Pre-flight check with all tenants COMPLETED: migration proceeds\n- After migration: SHOW RLS on each business table returns OFF\n- After migration: public.bpm_effective_tenant_id() does not exist\n- After migration: SELECT count(*) FROM public.events returns 0 (no business data in public)\n- zig build test passes after migration (no test relies on RLS in public)\n- Migration is idempotent: running twice produces no error\n\nAll tests: per-test UUIDs, cleanup via defer, fail clearly if BPM_TEST_DB_URL absent.\nWrite specs to tests/specs/TNT-05.md, TNT-06.md, TNT-07.md.\nWrite test source to tests/integration/tnt_backfill_export_cleanup_test.zig.\nSet next_action: 'Route to TEST-DESIGN-VALIDATOR (Step 3b)'",
+    "acceptance_criteria": [
+      "tests/specs/TNT-05.md exists with backfill idempotency, orphan, progress tracking, and window-flag tests",
+      "tests/specs/TNT-06.md exists with db_host routing, export, import, and MIGRATING status tests",
+      "tests/specs/TNT-07.md exists with pre-flight abort and full DDL cleanup tests",
+      "Integration test source files exist in tests/integration/",
+      "All fixtures use per-test UUIDs",
+      "Tests clean up after themselves via defer",
+      "Tests fail clearly if BPM_TEST_DB_URL absent",
+      "No error.SkipZigTest on MUST requirement tests"
+    ],
+    "functions_to_call": [
+      "fn:write-test-spec",
+      "fn:write-integration-test"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
