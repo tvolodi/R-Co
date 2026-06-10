@@ -227,9 +227,16 @@ def lint_directory(migrations_dir: str) -> list[Issue]:
 
 
 def main() -> int:
-    migrations_dir = sys.argv[1] if len(sys.argv) > 1 else "migrations"
+    target = sys.argv[1] if len(sys.argv) > 1 else "migrations"
 
-    issues = lint_directory(migrations_dir)
+    # Single-file mode: when argv[1] is a .sql file path, lint that file directly.
+    # Directory mode: when argv[1] is a directory, lint all .sql files inside it.
+    if Path(target).is_file():
+        issues = lint_file(target)
+        files_scanned = 1
+    else:
+        issues = lint_directory(target)
+        files_scanned = len(list(Path(target).glob("*.sql"))) if Path(target).is_dir() else 0
 
     blockers = [i for i in issues if i.severity == "BLOCKER"]
     minors = [i for i in issues if i.severity == "MINOR"]
@@ -249,7 +256,6 @@ def main() -> int:
         )
         return 1
 
-    files_scanned = len(list(Path(migrations_dir).glob("*.sql"))) if Path(migrations_dir).is_dir() else 0
     print(f"lint_migration_schema: OK — {files_scanned} file(s) scanned, 0 violations.")
     return 0
 
