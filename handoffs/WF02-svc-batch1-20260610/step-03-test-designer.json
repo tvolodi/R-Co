@@ -7,9 +7,9 @@
   "to_agent": "TEST-DESIGNER",
   "file": "handoffs/WF02-svc-batch1-20260610/step-03-test-designer.json",
   "created_at": "2026-06-10T14:04:25Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-06-10T15:45:48Z",
+  "completed_at": "2026-06-10T15:53:58Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 13",
@@ -29,7 +29,7 @@
     ]
   },
   "task": {
-    "description": "Write test specs and integration test source for SVC-01 through SVC-04. Each MUST requirement needs a runnable integration test against real PostgreSQL (BPM_TEST_DB_URL). Tests must use per-test UUIDs as fixtures. Write specs to tests/specs/SVC-01-04.md and test source files per the test developer guide. Set next_action: Route to TEST-DESIGN-VALIDATOR (Step 3b).",
+    "description": "Write test specs and integration test source for SVC-01 through SVC-04. Each MUST requirement needs a runnable integration test against real PostgreSQL (BPM_TEST_DB_URL). Tests must use per-test UUIDs as fixtures. Write specs to tests/specs/SVC-01-04.md and test source files per the test developer guide. Set next_action: Route to TEST-DESIGN-VALIDATOR (Step 3b).\n\nREWORK 1:\n- [BLOCKER] TC-SVC-04-06 (svc04_admin_api_test.zig): fixture definition is inserted inside open harness transaction; pool connections cannot see uncommitted rows under READ COMMITTED. Fix: commit the definition insert outside the harness transaction using a separate direct connection with explicit cleanup (or use pool connection for fixture insert). Same pattern required for TC-SVC-04-08.\n- [BLOCKER] TC-SVC-04-08 (svc04_admin_api_test.zig): same isolation bug for delete-in-use test. Apply same fix.\n- [MAJOR] SVC-04 admin UI Services page has no E2E test. Add a Playwright E2E test to web/tests/e2e/ that verifies: platform-admin can access the Services page and sees the Register Service button; tenant-admin sees the page without the register button. Either create/extend the appropriate pipeline file with pl.step() entries, or write a standalone spec if no pipeline file exists for the admin UI yet.",
     "acceptance_criteria": [
       "tests/specs/SVC-01-04.md written with one test per acceptance criterion",
       "Integration test: service_catalog scope columns and constraint present after migration",
@@ -47,7 +47,17 @@
       "fn:write-integration-test"
     ]
   },
-  "result": null,
-  "rework_count": 0,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 complete: fixed TC-SVC-04-06 and TC-SVC-04-08 READ COMMITTED isolation bug (process_definitions fixture now inserted via committed pool connection); added E2E tests for SVC-04 admin Services page role-gate.",
+    "artifacts_out": [
+      "tests/integration/svc04_admin_api_test.zig",
+      "web/tests/e2e/admin/services.e2e.spec.ts",
+      "tests/specs/SVC-01-04.md"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 1,
   "max_rework": 3
 }

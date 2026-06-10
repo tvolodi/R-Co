@@ -213,6 +213,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "bpm", .module = bpm_main_mod },
+                .{ .name = "build_options", .module = build_options_mod },
             },
         }),
     });
@@ -915,6 +916,22 @@ pub fn build(b: *std.Build) void {
     test_integration_tnt_step.dependOn(&clean_test_db.step);
     test_integration_tnt_step.dependOn(&run_tnt_integration_tests.step);
     test_integration_tnt_step.dependOn(&run_tnt_backfill_integration_tests.step);
+
+    const svc_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/main_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_svc_integration_tests = b.addRunArtifact(svc_integration_tests);
+    run_svc_integration_tests.setCwd(b.path("."));
+    run_svc_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
+    const test_integration_svc_step = b.step("test-integration-svc", "Run Stage 13 SVC-01..SVC-04 integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_svc_step.dependOn(&clean_test_db.step);
+    test_integration_svc_step.dependOn(&run_svc_integration_tests.step);
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

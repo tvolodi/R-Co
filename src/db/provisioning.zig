@@ -64,7 +64,11 @@ pub fn provisionTenantSchema(
 
         const result = conn.query(
             allocator,
-            "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
+            // Only skip if migrations have been applied (migrations_applied_at IS NOT NULL).
+            // A schema registered by a SQL migration (GBL-069 etc.) but never fully
+            // provisioned by Zig will have migrations_applied_at = NULL — in that case
+            // we must still run runForSchema to populate the tenant schema tables.
+            "SELECT count(*) FROM public.tenant_schemas WHERE tenant_id = $1::uuid AND migrations_applied_at IS NOT NULL",
             &.{tenant_id_str},
         ) catch return ProvisionError.QueryFailed;
         defer {
@@ -78,7 +82,7 @@ pub fn provisionTenantSchema(
                 if (row[0]) |count_str| {
                     const count = std.fmt.parseInt(u64, count_str, 10) catch 0;
                     if (count > 0) {
-                        // Already provisioned — fast path, nothing to do.
+                        // Already provisioned with migrations applied — fast path, nothing to do.
                         return;
                     }
                 }

@@ -200,7 +200,25 @@ pub const ServiceScopeValidator = struct {
                     return ServiceScopeError.PluginNotAvailableToTenant;
                 }
             }
+        } else {
+            // No handler found for this tenant. If a tenant-scoped entry exists
+            // for any other tenant, the caller does not own it — deny.
+            for (self.plugin_reg.tenant_entries.items) |reg| {
+                if (!std.mem.eql(u8, reg.node_type, plugin_handler)) continue;
+                const reason = std.fmt.bufPrint(
+                    &self._violation_buf,
+                    "plugin {s} is not available to this tenant",
+                    .{plugin_handler},
+                ) catch "plugin is not available to this tenant";
+                self._last_violation = .{
+                    .node_id = node_id,
+                    .kind = .plugin,
+                    .ref_id = plugin_handler,
+                    .reason = reason,
+                };
+                return ServiceScopeError.PluginNotAvailableToTenant;
+            }
+            // No tenant-scoped entry at all: PD-05 already validates; skip.
         }
-        // If no plugin found: PD-05 already validates; skip.
     }
 };

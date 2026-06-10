@@ -1,0 +1,152 @@
+run_id: WF02-svc-batch1-20260610
+step: 03b
+agent: TEST-DESIGN-VALIDATOR
+validated_at: "2026-06-10T15:43:50Z"
+result: FAIL
+requirement_ids: [SVC-01, SVC-02, SVC-03, SVC-04]
+
+# ──────────────────────────────────────────────────────────────────
+# COVERAGE SUMMARY
+# ──────────────────────────────────────────────────────────────────
+
+spec_file: tests/specs/SVC-01-04.md
+test_sources:
+  - tests/integration/svc01_service_catalog_scope_test.zig   # 10 test blocks (TC-SVC-01-01..10) ✓
+  - tests/integration/svc02_plugin_dispatch_scope_test.zig   # 6 test blocks  (TC-SVC-02-01..06) ✓
+  - tests/integration/svc03_definition_activation_scope_test.zig  # 7 test blocks (TC-SVC-03-01..07) ✓
+  - tests/integration/svc04_admin_api_test.zig               # 12 test blocks (TC-SVC-04-01..12) ✓
+
+spec_case_count:  35   # 10+6+7+12
+implemented_count: 35  # all spec cases have matching test "..." blocks
+
+# ──────────────────────────────────────────────────────────────────
+# ISSUES
+# ──────────────────────────────────────────────────────────────────
+
+issues:
+
+  # ── BLOCKERS ──────────────────────────────────────────────────────
+
+  - id: ISSUE-01
+    severity: BLOCKER
+    test_case: TC-SVC-04-06
+    test_name: "svc04: scope change to tenant with conflicting active definitions returns 409"
+    file: tests/integration/svc04_admin_api_test.zig
+    description: >
+      Transaction isolation bug — the ACTIVE process_definition fixture is inserted
+      via `h.conn` (which is inside the harness's open, uncommitted transaction). The
+      `handleAdminUpdateService` call runs through `catalog` which uses a separate pool
+      connection. Under PostgreSQL READ COMMITTED, pool connections cannot see the
+      uncommitted definition. The handler finds no conflicting definition and returns
+      HTTP 200. The assertion `expectEqual(409, result.status_code)` will fail at
+      TEST-RUNNER time.
+    required_fix: >
+      Move the process_definitions INSERT outside the harness transaction so it is
+      committed before the update handler runs. Options:
+        (a) Use a separate direct connection for the definition insert and commit it
+            before calling handleAdminUpdateService; clean up (DELETE) after the test.
+        (b) Use the catalog's pool to insert the definition (e.g., via a test helper that
+            inserts and commits a minimal ACTIVE definition).
+        (c) Add a dedicated test-only helper that commits the definition and registers it
+            in an explicit defer cleanup.
+
+  - id: ISSUE-02
+    severity: BLOCKER
+    test_case: TC-SVC-04-08
+    test_name: "svc04: delete service in use by active definition returns 409"
+    file: tests/integration/svc04_admin_api_test.zig
+    description: >
+      Same transaction isolation bug as ISSUE-01. The ACTIVE definition fixture is
+      inserted via `h.conn` (uncommitted transaction). `handleAdminDeleteService` uses
+      pool connections that cannot see the uncommitted definition, so it proceeds with
+      deletion and returns HTTP 200 (or 204). The assertion `expectEqual(409, ...)` fails.
+    required_fix: >
+      Same remediation as ISSUE-01 — commit the definition insert before the delete
+      handler is called. A per-test committed insert + explicit defer DELETE cleanup
+      pattern would fix both TC-SVC-04-06 and TC-SVC-04-08.
+
+  # ── MAJOR ─────────────────────────────────────────────────────────
+
+  - id: ISSUE-03
+    severity: MAJOR
+    category: pipeline_test_missing
+    requirement: SVC-04
+    description: >
+      SVC-04 contains a MUST acceptance criterion: "The admin UI (ADM-UI section)
+      includes a Services page showing global+scoped services, with a Register service
+      button for platform-admins." This is a sequential UI action (navigate → view →
+      register → verify). The spec (tests/specs/SVC-01-04.md) does not include any
+      frontend E2E test case for this criterion, and no pipeline step exists in
+      web/tests/e2e/pipelines/ covering the Services page. Per pipeline test rules
+      §11.10, a pipeline step is required.
+    required_fix: >
+      Add a pl.step() for the Services page journey to the appropriate pipeline file
+      (or create a new services-admin.pipeline.e2e.spec.ts), and add a
+      TC-SVC-04-UI-01 test case to tests/specs/SVC-01-04.md.
+
+  # ── MINOR ─────────────────────────────────────────────────────────
+
+  - id: ISSUE-04
+    severity: MINOR
+    category: dead_code
+    files:
+      - tests/integration/svc01_service_catalog_scope_test.zig   # lines 274, 405, 479, 553, 610
+      - tests/integration/svc03_definition_activation_scope_test.zig  # line 68 (testDbUrl helper)
+      - tests/integration/svc04_admin_api_test.zig               # line 71 (testDbUrl helper)
+    description: >
+      Multiple `return error.SkipZigTest` branches exist in MUST test bodies.
+      All are dead code: TestHarness.init() is called first in every test and returns
+      error.MissingTestDatabaseUrl when BPM_TEST_DB_URL is absent, causing the test
+      to FAIL (not skip) before the SkipZigTest branch is reached. Tests correctly
+      fail with a clear message when the env var is missing.
+    required_fix: >
+      Remove the dead `return error.SkipZigTest` branches from the store-API tests
+      (TC-SVC-01-06..10) and from testDbUrl() in svc03/svc04. The harness already
+      provides the correct fail-fast behaviour.
+
+  - id: ISSUE-05
+    severity: MINOR
+    category: fixture_uuid_scope
+    files:
+      - tests/integration/svc01_service_catalog_scope_test.zig
+      - tests/integration/svc03_definition_activation_scope_test.zig
+      - tests/integration/svc04_admin_api_test.zig
+    description: >
+      Several tests use static tenant UUIDs (e.g., "c0111111-0000-0000-0000-000000000001")
+      for DB-level tenant fixtures instead of per-test randomised UUIDs. Service IDs
+      are correctly randomised. The static tenant IDs are safe in practice because:
+        (a) Harness transaction rollback isolates h.conn operations.
+        (b) ON CONFLICT DO NOTHING prevents insert failures.
+      No cross-test contamination was found, but static IDs violate the per-test UUID
+      rule strictly.
+    required_fix: >
+      Randomise tenant UUIDs using the same rng pattern already used for service IDs.
+
+  - id: ISSUE-06
+    severity: MINOR
+    category: fixture_cleanup
+    description: >
+      Tests that use pool connections (SVC-01 TC-06..10, all SVC-03, all SVC-04)
+      insert rows into service_catalog through pool connections outside the harness
+      rollback transaction. The resetTestData() helper does not truncate service_catalog.
+      Since service IDs are randomised, no cross-test interference occurs, but catalog
+      rows accumulate between tests in the same run.
+    required_fix: >
+      Add `truncateTableBestEffort(conn, "service_catalog")` to resetTestData() in
+      tests/integration/helpers.zig, or add explicit defer-cleanup in each affected test.
+
+# ──────────────────────────────────────────────────────────────────
+# CHECKLIST RESULTS
+# ──────────────────────────────────────────────────────────────────
+
+checklist:
+  every_must_has_integration_test: PASS            # 35 spec cases, 35 implemented test blocks
+  no_skip_on_must_tests: PASS                      # SkipZigTest is dead code; tests fail clearly on absent BPM_TEST_DB_URL
+  spec_case_count_matches_impl_count: PASS         # 10+6+7+12 = 35 both in spec and implementation
+  fixtures_use_per_test_uuids: PARTIAL             # service IDs random ✓; tenant IDs static ✗ (MINOR)
+  no_shared_fixture_state_across_tests: FAIL       # TC-SVC-04-06 and TC-SVC-04-08 rely on fixture committed visibility that is impossible (BLOCKER)
+  cleanup_on_failure: PARTIAL                      # harness rollback covers h.conn ops; pool catalog inserts not cleaned up (MINOR)
+  bpm_test_db_url_fail_clearly: PASS               # harness returns error.MissingTestDatabaseUrl (not SkipZigTest)
+  no_credentials_in_test_files: PASS               # no hardcoded secrets found
+  sql_uses_parameterized_queries: PASS             # all SQL uses $1, $2 placeholders
+  pipeline_test_coverage: FAIL                     # SVC-04 admin UI sequential action has no pipeline step (MAJOR)

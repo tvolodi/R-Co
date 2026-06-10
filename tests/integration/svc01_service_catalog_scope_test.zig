@@ -50,10 +50,25 @@ fn insertScopedService(conn: *pg.Conn, svc_id: []const u8, owner_hex: []const u8
     );
 }
 
+fn fillRandom(buf: []u8) void {
+    const builtin = @import("builtin");
+    switch (comptime builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
+        else => @compileError("fillRandom: unsupported OS"),
+    }
+}
+
 fn randomId(buf: *[8]u8) []const u8 {
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
-    var rng = std.Random.DefaultPrng.init(@bitCast(std.time.nanoTimestamp()));
-    for (buf) |*b| b.* = chars[rng.random().intRangeAtMost(u8, 0, 35)];
+    fillRandom(buf);
+    for (buf) |*b| b.* = chars[@as(usize, b.*) % chars.len];
     return buf;
 }
 
@@ -69,7 +84,7 @@ test "svc01: global service visible to any tenant" {
     const svc_id = try std.fmt.allocPrint(std.testing.allocator, "svc-glb-{s}", .{randomId(&id_buf)});
     defer std.testing.allocator.free(svc_id);
 
-    try insertGlobalService(h.conn, svc_id);
+    try insertGlobalService(&h.conn, svc_id);
 
     // List for a random tenant — global service must appear.
     const tenant_hex = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeee01";
@@ -113,13 +128,13 @@ test "svc01: tenant-scoped service visible only to owner tenant" {
 
     // Insert tenant A (owner).
     const tenant_a_hex = "c0111111-0000-0000-0000-000000000001";
-    try insertTenant(h.conn, tenant_a_hex, "svc01-ta");
+    try insertTenant(&h.conn, tenant_a_hex, "svc01-ta");
 
     var id_buf: [8]u8 = undefined;
     const svc_id = try std.fmt.allocPrint(std.testing.allocator, "svc-scpd-{s}", .{randomId(&id_buf)});
     defer std.testing.allocator.free(svc_id);
 
-    try insertScopedService(h.conn, svc_id, tenant_a_hex);
+    try insertScopedService(&h.conn, svc_id, tenant_a_hex);
 
     // Visible to tenant A (the owner).
     const rows_a = try h.conn.query(
@@ -170,7 +185,7 @@ test "svc01: check constraint rejects scope=tenant with NULL owner" {
     ,
         &.{svc_id},
     );
-    try std.testing.expectError(error.PgError, result);
+    try std.testing.expectError(error.ServerError, result);
 }
 
 test "svc01: on_delete_cascade removes scoped service when owner tenant deleted" {
@@ -191,7 +206,7 @@ test "svc01: on_delete_cascade removes scoped service when owner tenant deleted"
     const svc_id = try std.fmt.allocPrint(std.testing.allocator, "svc-cas-{s}", .{randomId(&id_buf)});
     defer std.testing.allocator.free(svc_id);
 
-    try insertScopedService(h.conn, svc_id, tenant_hex);
+    try insertScopedService(&h.conn, svc_id, tenant_hex);
 
     // Verify it was inserted.
     const before = try h.conn.query(
@@ -248,5 +263,426 @@ test "svc01: existing rows default to scope=global" {
         "0";
     const count = std.fmt.parseInt(i64, count_str, 10) catch 0;
     try std.testing.expect(count == 0);
+}
+
+// ---------------------------------------------------------------------------
+// TC-SVC-01-06: listServicesForTenant filters correctly via store API
+// ---------------------------------------------------------------------------
+
+test "svc01: listServicesForTenant filters correctly via store API" {
+    const alloc = std.testing.allocator;
+
+    // TestHarness ensures migrations are applied.
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
+    const bpm = @import("bpm");
+    const Pool = bpm.pool.Pool;
+    const PoolConfig = bpm.pool.PoolConfig;
+    const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
+    const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
+
+    const env: std.process.Environ = .{ .block = .global };
+    const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("BPM_TEST_DB_URL not set — skipping svc01 store API test\n", .{});
+            return error.SkipZigTest;
+        },
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
+    defer pool.deinit();
+
+    var catalog = ServiceCatalog.init(alloc, &pool);
+    defer catalog.deinit();
+
+    // Per-test UUIDs to avoid shared state.
+    var rand_bytes: [8]u8 = undefined;
+    fillRandom(&rand_bytes);
+
+    var svc_glb_id_buf: [28]u8 = undefined;
+    const svc_glb_id = try std.fmt.bufPrint(&svc_glb_id_buf, "svc-lst-g-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
+
+    fillRandom(&rand_bytes);
+    var svc_scpd_id_buf: [28]u8 = undefined;
+    const svc_scpd_id = try std.fmt.bufPrint(&svc_scpd_id_buf, "svc-lst-s-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
+
+    fillRandom(&rand_bytes);
+    var svc_other_id_buf: [28]u8 = undefined;
+    const svc_other_id = try std.fmt.bufPrint(&svc_other_id_buf, "svc-lst-o-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
+
+    // Use pre-committed fixture tenants (visible to pool connections).
+    const tenant_a_hex = "eeeeeeee-0000-0000-0000-000000000001";
+    const tenant_b_hex = "eeeeeeee-0000-0000-0000-000000000002";
+
+    // Parse tenant UUIDs into [16]u8.
+    const tid_a = try parseUuid36(tenant_a_hex);
+    const tid_b = try parseUuid36(tenant_b_hex);
+
+    // Register: global, tenant-A scoped, tenant-B scoped.
+    const rec_glb = try catalog.registerService(alloc, RegisterServiceParams{
+        .service_id = svc_glb_id,
+        .endpoint_url = "https://example.com/glb",
+        .request_schema = "{}",
+        .response_schema = "{}",
+        .required_auth = .NONE,
+        .timeout_ms = 5000,
+        .retry_policy = null,
+        .scope = .global,
+        .owner_tenant_id = null,
+    });
+    defer freeServiceRecord(alloc, rec_glb);
+
+    const rec_scpd = try catalog.registerService(alloc, RegisterServiceParams{
+        .service_id = svc_scpd_id,
+        .endpoint_url = "https://example.com/scpd",
+        .request_schema = "{}",
+        .response_schema = "{}",
+        .required_auth = .NONE,
+        .timeout_ms = 5000,
+        .retry_policy = null,
+        .scope = .tenant,
+        .owner_tenant_id = tid_a,
+    });
+    defer freeServiceRecord(alloc, rec_scpd);
+
+    const rec_other = try catalog.registerService(alloc, RegisterServiceParams{
+        .service_id = svc_other_id,
+        .endpoint_url = "https://example.com/other",
+        .request_schema = "{}",
+        .response_schema = "{}",
+        .required_auth = .NONE,
+        .timeout_ms = 5000,
+        .retry_policy = null,
+        .scope = .tenant,
+        .owner_tenant_id = tid_b,
+    });
+    defer freeServiceRecord(alloc, rec_other);
+
+    // List for tenant A: must include global + A-scoped, must NOT include B-scoped.
+    const list_a = try catalog.listServicesForTenant(alloc, tid_a, null, 200);
+    defer {
+        for (list_a) |r| freeServiceRecord(alloc, r);
+        alloc.free(list_a);
+    }
+
+    var found_glb = false;
+    var found_scpd = false;
+    var found_other = false;
+    for (list_a) |r| {
+        if (std.mem.eql(u8, r.service_id, svc_glb_id)) found_glb = true;
+        if (std.mem.eql(u8, r.service_id, svc_scpd_id)) found_scpd = true;
+        if (std.mem.eql(u8, r.service_id, svc_other_id)) found_other = true;
+    }
+    try std.testing.expect(found_glb);
+    try std.testing.expect(found_scpd);
+    try std.testing.expect(!found_other); // B's scoped service must NOT appear for A.
+}
+
+// ---------------------------------------------------------------------------
+// TC-SVC-01-07: getServiceForTenant returns ServiceNotFound for cross-tenant scoped service
+// ---------------------------------------------------------------------------
+
+test "svc01: getServiceForTenant returns ServiceNotFound for cross-tenant service" {
+    const alloc = std.testing.allocator;
+
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
+    const bpm = @import("bpm");
+    const Pool = bpm.pool.Pool;
+    const PoolConfig = bpm.pool.PoolConfig;
+    const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
+    const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
+    const CatalogError = bpm.service_catalog.CatalogError;
+
+    const env: std.process.Environ = .{ .block = .global };
+    const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("BPM_TEST_DB_URL not set — skipping\n", .{});
+            return error.SkipZigTest;
+        },
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
+    defer pool.deinit();
+
+    var catalog = ServiceCatalog.init(alloc, &pool);
+    defer catalog.deinit();
+
+    var rand_bytes: [8]u8 = undefined;
+    fillRandom(&rand_bytes);
+    var svc_id_buf: [28]u8 = undefined;
+    const svc_id = try std.fmt.bufPrint(&svc_id_buf, "svc-xscp-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
+
+    // Use pre-committed fixture tenants (visible to pool connections).
+    const owner_hex = "eeeeeeee-0000-0000-0000-000000000001";
+    const caller_hex = "eeeeeeee-0000-0000-0000-000000000002";
+
+    const tid_owner = try parseUuid36(owner_hex);
+    const tid_caller = try parseUuid36(caller_hex);
+
+    const rec = try catalog.registerService(alloc, RegisterServiceParams{
+        .service_id = svc_id,
+        .endpoint_url = "https://example.com/xscp",
+        .request_schema = "{}",
+        .response_schema = "{}",
+        .required_auth = .NONE,
+        .timeout_ms = 5000,
+        .retry_policy = null,
+        .scope = .tenant,
+        .owner_tenant_id = tid_owner,
+    });
+    defer freeServiceRecord(alloc, rec);
+
+    // Owner can fetch it.
+    const rec_owner = try catalog.getServiceForTenant(alloc, svc_id, tid_owner);
+    defer freeServiceRecord(alloc, rec_owner);
+    try std.testing.expectEqualStrings(svc_id, rec_owner.service_id);
+
+    // Caller (different tenant) must get ServiceNotFound.
+    try std.testing.expectError(CatalogError.ServiceNotFound, catalog.getServiceForTenant(alloc, svc_id, tid_caller));
+}
+
+// ---------------------------------------------------------------------------
+// TC-SVC-01-08: registerService stores scope and owner_tenant_id correctly
+// ---------------------------------------------------------------------------
+
+test "svc01: registerService stores scope and owner_tenant_id correctly" {
+    const alloc = std.testing.allocator;
+
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
+    const bpm = @import("bpm");
+    const Pool = bpm.pool.Pool;
+    const PoolConfig = bpm.pool.PoolConfig;
+    const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
+    const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
+
+    const env: std.process.Environ = .{ .block = .global };
+    const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("BPM_TEST_DB_URL not set — skipping\n", .{});
+            return error.SkipZigTest;
+        },
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
+    defer pool.deinit();
+
+    var catalog = ServiceCatalog.init(alloc, &pool);
+    defer catalog.deinit();
+
+    var rand_bytes: [8]u8 = undefined;
+    fillRandom(&rand_bytes);
+    var svc_id_buf: [28]u8 = undefined;
+    const svc_id = try std.fmt.bufPrint(&svc_id_buf, "svc-reg-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
+
+    // Use pre-committed fixture tenant (visible to pool connections).
+    const owner_hex = "eeeeeeee-0000-0000-0000-000000000001";
+
+    const tid_owner = try parseUuid36(owner_hex);
+
+    const rec = try catalog.registerService(alloc, RegisterServiceParams{
+        .service_id = svc_id,
+        .endpoint_url = "https://example.com/reg",
+        .request_schema = "{}",
+        .response_schema = "{}",
+        .required_auth = .NONE,
+        .timeout_ms = 7000,
+        .retry_policy = null,
+        .scope = .tenant,
+        .owner_tenant_id = tid_owner,
+    });
+    defer freeServiceRecord(alloc, rec);
+
+    try std.testing.expectEqual(bpm.service_catalog.ServiceScope.tenant, rec.scope);
+    try std.testing.expect(rec.owner_tenant_id != null);
+    try std.testing.expect(std.mem.eql(u8, &rec.owner_tenant_id.?, &tid_owner));
+
+    // Confirm persistence via getService (no scope filter — admin path).
+    const fetched = try catalog.getService(alloc, svc_id);
+    defer freeServiceRecord(alloc, fetched);
+    try std.testing.expectEqual(bpm.service_catalog.ServiceScope.tenant, fetched.scope);
+    try std.testing.expect(fetched.owner_tenant_id != null);
+}
+
+// ---------------------------------------------------------------------------
+// TC-SVC-01-09: registerService rejects scope=global with owner_tenant_id
+// ---------------------------------------------------------------------------
+
+test "svc01: registerService rejects scope=global with owner_tenant_id" {
+    const alloc = std.testing.allocator;
+
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
+    const bpm = @import("bpm");
+    const Pool = bpm.pool.Pool;
+    const PoolConfig = bpm.pool.PoolConfig;
+    const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
+    const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
+    const CatalogError = bpm.service_catalog.CatalogError;
+
+    const env: std.process.Environ = .{ .block = .global };
+    const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("BPM_TEST_DB_URL not set — skipping\n", .{});
+            return error.SkipZigTest;
+        },
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
+    defer pool.deinit();
+
+    var catalog = ServiceCatalog.init(alloc, &pool);
+    defer catalog.deinit();
+
+    var rand_bytes: [8]u8 = undefined;
+    fillRandom(&rand_bytes);
+    var svc_id_buf: [28]u8 = undefined;
+    const svc_id = try std.fmt.bufPrint(&svc_id_buf, "svc-bad2-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
+
+    // Parsing a fixed UUID for the spurious owner.
+    const some_tid = try parseUuid36("b3dd1111-0000-0000-0000-000000000001");
+
+    try std.testing.expectError(
+        CatalogError.InvalidScopeConstraint,
+        catalog.registerService(alloc, RegisterServiceParams{
+            .service_id = svc_id,
+            .endpoint_url = "https://bad.example.com",
+            .request_schema = "{}",
+            .response_schema = "{}",
+            .required_auth = .NONE,
+            .timeout_ms = 5000,
+            .retry_policy = null,
+            .scope = .global,
+            .owner_tenant_id = some_tid, // invalid: global + non-null owner
+        }),
+    );
+}
+
+// ---------------------------------------------------------------------------
+// TC-SVC-01-10: listServicesForTenant with nil tenant returns all entries
+// ---------------------------------------------------------------------------
+
+test "svc01: listServicesForTenant with nil tenant returns all entries" {
+    const alloc = std.testing.allocator;
+
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
+    const bpm = @import("bpm");
+    const Pool = bpm.pool.Pool;
+    const PoolConfig = bpm.pool.PoolConfig;
+    const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
+    const RegisterServiceParams = bpm.service_catalog.RegisterServiceParams;
+
+    const env: std.process.Environ = .{ .block = .global };
+    const url = env.getAlloc(alloc, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("BPM_TEST_DB_URL not set — skipping\n", .{});
+            return error.SkipZigTest;
+        },
+        else => return err,
+    };
+    defer alloc.free(url);
+
+    var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
+    defer pool.deinit();
+
+    var catalog = ServiceCatalog.init(alloc, &pool);
+    defer catalog.deinit();
+
+    var rand_bytes: [8]u8 = undefined;
+    fillRandom(&rand_bytes);
+    var svc_a_id_buf: [28]u8 = undefined;
+    const svc_a_id = try std.fmt.bufPrint(&svc_a_id_buf, "svc-all-g-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
+    fillRandom(&rand_bytes);
+    var svc_b_id_buf: [28]u8 = undefined;
+    const svc_b_id = try std.fmt.bufPrint(&svc_b_id_buf, "svc-all-s-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
+
+    // Use pre-committed fixture tenant (visible to pool connections).
+    const tenant_all_hex = "eeeeeeee-0000-0000-0000-000000000001";
+    const tid_all = try parseUuid36(tenant_all_hex);
+
+    const rec_a = try catalog.registerService(alloc, RegisterServiceParams{
+        .service_id = svc_a_id,
+        .endpoint_url = "https://example.com/a",
+        .request_schema = "{}",
+        .response_schema = "{}",
+        .required_auth = .NONE,
+        .timeout_ms = 5000,
+        .retry_policy = null,
+        .scope = .global,
+        .owner_tenant_id = null,
+    });
+    defer freeServiceRecord(alloc, rec_a);
+
+    const rec_b = try catalog.registerService(alloc, RegisterServiceParams{
+        .service_id = svc_b_id,
+        .endpoint_url = "https://example.com/b",
+        .request_schema = "{}",
+        .response_schema = "{}",
+        .required_auth = .NONE,
+        .timeout_ms = 5000,
+        .retry_policy = null,
+        .scope = .tenant,
+        .owner_tenant_id = tid_all,
+    });
+    defer freeServiceRecord(alloc, rec_b);
+
+    // nil caller_tenant_id → admin path → all entries returned.
+    const all_list = try catalog.listServicesForTenant(alloc, null, null, 200);
+    defer {
+        for (all_list) |r| freeServiceRecord(alloc, r);
+        alloc.free(all_list);
+    }
+
+    var found_a = false;
+    var found_b = false;
+    for (all_list) |r| {
+        if (std.mem.eql(u8, r.service_id, svc_a_id)) found_a = true;
+        if (std.mem.eql(u8, r.service_id, svc_b_id)) found_b = true;
+    }
+    try std.testing.expect(found_a);
+    try std.testing.expect(found_b); // Tenant-scoped service must appear in admin listing.
+}
+
+// ---------------------------------------------------------------------------
+// Helpers used by the extended tests
+// ---------------------------------------------------------------------------
+
+fn parseUuid36(s: []const u8) ![16]u8 {
+    if (s.len != 36) return error.InvalidUuid;
+    var buf: [32]u8 = undefined;
+    var j: usize = 0;
+    for (s) |c| {
+        if (c == '-') continue;
+        if (j >= 32) return error.InvalidUuid;
+        buf[j] = c;
+        j += 1;
+    }
+    if (j != 32) return error.InvalidUuid;
+    var out: [16]u8 = undefined;
+    _ = try std.fmt.hexToBytes(&out, buf[0..32]);
+    return out;
+}
+
+fn freeServiceRecord(alloc: std.mem.Allocator, rec: @import("bpm").service_catalog.ServiceCatalogRecord) void {
+    alloc.free(rec.service_id);
+    alloc.free(rec.endpoint_url);
+    alloc.free(rec.request_schema);
+    alloc.free(rec.response_schema);
+    alloc.free(rec.retry_policy);
 }
 

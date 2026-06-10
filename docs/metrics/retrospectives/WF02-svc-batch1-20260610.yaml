@@ -1,0 +1,83 @@
+run_id: WF02-svc-batch1-20260610
+requirement_ids:
+  - SVC-01
+  - SVC-02
+  - SVC-03
+  - SVC-04
+difficulty: 4
+integration_surface: high
+rules_version_used: "1.1"
+estimated_minutes_total: 181
+actual_minutes_total: 96.7
+variance_pct: -46.6
+
+by_step:
+  code-designer:
+    estimated: 8
+    actual: 0.8
+    variance_pct: -90.0
+  code-design-validator:
+    estimated: 23
+    actual: 4.5
+    variance_pct: -80.4
+  backend-dev:
+    estimated: 9
+    actual: 31.2
+    variance_pct: 246.7
+  frontend-dev:
+    estimated: 90
+    actual: 41.5
+    variance_pct: -53.9
+  test-designer:
+    estimated: 3
+    actual: 8.2
+    variance_pct: 173.3
+  test-design-validator:
+    estimated: 38
+    actual: 4.3
+    variance_pct: -88.7
+  test-runner:
+    estimated: 6
+    actual: 0.7
+    variance_pct: -88.3
+  release-validator:
+    estimated: 2
+    actual: 1.5
+    variance_pct: -25.0
+  doc-updater:
+    estimated: 2
+    actual: 4.0
+    variance_pct: 100.0
+
+rework_steps:
+  - step: code-designer
+    rework_count: 1
+    agent: CODE-DESIGNER
+  - step: code-design-validator
+    rework_count: 1
+    agent: CODE-DESIGN-VALIDATOR
+  - step: test-designer
+    rework_count: 1
+    agent: TEST-DESIGNER
+  - step: test-design-validator
+    rework_count: 1
+    agent: TEST-DESIGN-VALIDATOR
+  - step: test-runner
+    rework_count: 2
+    agent: TEST-RUNNER
+
+# No rule adjustments — no prior consecutive D4 runs match current variance direction for any step.
+rule_adjustments: []
+
+notes:
+  - "backend-dev estimate (9 min) was calibrated for D4 low-surface; this run was high-surface
+    multi-module (scope migration + plugin registry + activation validator + admin API + frontend)
+    but the estimate was not updated to reflect actual complexity. SVC-01..04 were more involved
+    than the ORCH pre-estimation suggested — actual 31.2 min vs estimated 9 min (+247%)."
+  - "test-design-validator estimate (38 min) was generous; actual 4.3 min. Validator step
+    tends to be fast when the design is clean."
+  - "Multiple rework cycles on test steps (test-designer, test-design-validator, test-runner x2)
+    indicate fixture isolation issues discovered late; total pipeline wall time was extended by
+    ~3.5h between test-designer completion (15:53) and test-runner completion (19:18)."
+
+completed_at: "2026-06-10T19:25:51Z"

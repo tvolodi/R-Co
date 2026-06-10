@@ -1,0 +1,157 @@
+stage: "Stage 13"
+run_id: "WF02-svc-batch1-20260610"
+date: "2026-06-10T19:20:49Z"
+decision: "APPROVED"
+
+# -----------------------------------------------------------------------
+# NFR Benchmark Results  (zig build bench — exit 0)
+# -----------------------------------------------------------------------
+nfr_results:
+  NFR-01:
+    p99_read_ms:
+      target: "<=200"
+      actual: 1.151
+      unit: ms
+      passed: true
+    p99_write_ms:
+      target: "<=500"
+      actual: 2.434
+      unit: ms
+      passed: true
+  NFR-02:
+    append_throughput_eps:
+      target: ">=1000"
+      actual: 63828.532
+      unit: events_per_second
+      passed: true
+  NFR-04:
+    replay_10000_ms:
+      target: "<=5000"
+      actual: 50.976
+      unit: ms
+      passed: true
+  bench_overall_passed: true
+  bench_exit_code: 0
+  bench_log: "scratch/release-bench-svc-batch1.log"
+
+# -----------------------------------------------------------------------
+# Test Coverage Verification
+# -----------------------------------------------------------------------
+test_report: "tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml"
+
+integration_tests:
+  svc_tests_total: 35
+  svc_tests_passed: 35
+  svc_tests_failed: 0
+  svc_tests_skipped: 0
+  exit_code: 0
+  details:
+    - file: svc01_service_catalog_scope_test.zig
+      tests: 10
+      result: PASS
+    - file: svc02_plugin_dispatch_scope_test.zig
+      tests: 6
+      result: PASS
+    - file: svc03_definition_activation_scope_test.zig
+      tests: 7
+      result: PASS
+    - file: svc04_admin_api_test.zig
+      tests: 12
+      result: PASS
+
+e2e_tests:
+  total: 2
+  passed: 2
+  failed: 0
+  exit_code: 0
+  details:
+    - id: TC-SVC-04-UI-01
+      name: "platform-admin sees Services page with Register Service button"
+      result: PASS
+    - id: TC-SVC-04-UI-02
+      name: "non-platform-admin (PROCESS_DESIGNER) sees Services page without Register Service button"
+      result: PASS
+
+# -----------------------------------------------------------------------
+# MUST Acceptance Criteria Verification
+# -----------------------------------------------------------------------
+must_criteria_verification:
+  SVC-01:
+    title: "Service catalog entries carry a scope and owner tenant"
+    criteria_tested:
+      - "service_catalog table has scope/owner_tenant_id columns with constraints"
+      - "global service referenceable by any tenant"
+      - "tenant-scoped service activation succeeds for owner tenant"
+      - "tenant-scoped service activation rejected (HTTP 422) for non-owner tenant"
+      - "POST /api/v1/services registers tenant-scoped service visible only to owner"
+      - "GET /api/v1/services returns global + caller's tenant-scoped entries only"
+      - "existing entries migrated to scope=global, owner_tenant_id=NULL"
+    verdict: PASS
+
+  SVC-02:
+    title: "Plugin handlers declare scope and optional owner tenant at registration"
+    criteria_tested:
+      - "PluginRegistration struct has scope/owner_tenant_id fields"
+      - "registerPlugin with scope=tenant and owner_tenant_id=null fails with error.TenantScopedPluginRequiresOwnerId"
+      - "SERVICE_TASK dispatch only considers global or matching-tenant plugins"
+      - "tenant-scoped plugin not invoked for different tenant's instance"
+      - "tenant-scoped plugin takes precedence over global plugin for owning tenant"
+      - "freezePluginRegistry rejects duplicate (node_type, owner_tenant_id) combinations"
+    verdict: PASS
+
+  SVC-03:
+    title: "Definition activation validates service and plugin availability"
+    criteria_tested:
+      - "global service reference passes activation"
+      - "tenant-scoped service ref for own tenant passes activation"
+      - "tenant-scoped service ref for other tenant rejected HTTP 422"
+      - "unregistered service reference rejected HTTP 422"
+      - "tenant-scoped plugin for other tenant rejected at activation"
+      - "activation validation is atomic — no partial activation"
+      - "re-activation (DEPRECATED→ACTIVE) also validates"
+    verdict: PASS
+
+  SVC-04:
+    title: "Admin UI and API for service catalog scope management"
+    criteria_tested:
+      - "POST /api/v1/admin/services (platform-admin only, HTTP 201)"
+      - "PATCH /api/v1/admin/services/:service_id (scope/owner_tenant_id update)"
+      - "DELETE /api/v1/admin/services/:service_id (HTTP 409 if referenced)"
+      - "GET /api/v1/services (tenant-scoped, global+own entries only)"
+      - "GET /api/v1/admin/services (platform-admin, all entries)"
+      - "Admin UI Services page — platform-admin sees Register button"
+      - "Admin UI Services page — non-platform-admin sees page without Register button"
+    verdict: PASS
+
+# -----------------------------------------------------------------------
+# Known Issues (non-blocking, pre-existing)
+# -----------------------------------------------------------------------
+known_issues:
+  - id: ISSUE-PREEXISTING-FAILURES
+    severity: MAJOR
+    description: >
+      271 integration tests fail across 46 unrelated modules (adp, db, ee,
+      ext, idn, obs, oidc, pd, sch, sim, spt). These are pre-existing failures
+      not introduced by SVC-01..04 changes and are out of scope for this
+      release decision.
+    blocking: false
+    resolution_path: "Separate WF-03 runs per failing module area"
+
+# -----------------------------------------------------------------------
+# Approved Requirements
+# -----------------------------------------------------------------------
+approved_requirements:
+  - SVC-01
+  - SVC-02
+  - SVC-03
+  - SVC-04
+
+blocking_issues: []
+
+release_summary: >
+  Stage 13 SVC-batch1 APPROVED. All 35 SVC-01..04 integration tests pass.
+  Both E2E tests (TC-SVC-04-UI-01, TC-SVC-04-UI-02) pass. All NFR benchmarks
+  pass with significant headroom: p99 read 1.2ms (target <=200ms), p99 write
+  2.4ms (target <=500ms), throughput 63,828 eps (target >=1,000 eps),
+  10k-event replay 51ms (target <=5,000ms). Pre-existing failures in 46
+  unrelated modules are not introduced by this batch and do not block release.

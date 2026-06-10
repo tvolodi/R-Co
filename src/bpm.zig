@@ -54,3 +54,6 @@ pub const migrations = @import("db/migrations.zig"); // SPT-01
 pub const bootstrap_audit = @import("bootstrap/audit.zig"); // TNT-04
 pub const tenant_migration = @import("admin/tenant_migration.zig"); // TNT-06
 pub const tenant_status = @import("api/middleware/tenant_status.zig"); // TNT-06
+pub const service_catalog = @import("repository/service_catalog.zig"); // SVC-01, SVC-04
+pub const service_scope_validator = @import("definition/service_scope_validator.zig"); // SVC-03
+pub const services_routes = @import("api/routes/services.zig"); // SVC-04

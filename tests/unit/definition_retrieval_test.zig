@@ -48,7 +48,21 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
-    return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
+    var pool = try Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
+    errdefer pool.deinit();
+    // After Stage 12 schema isolation (GBL-073 dropped public business tables),
+    // process_definitions and other tables live in tenant_default schema.
+    // Provision tenant_default if its migrations have not yet been applied.
+    const build_opts = @import("build_options");
+    bpm.db_provisioning.provisionTenantSchema(
+        allocator,
+        &pool,
+        "00000000-0000-0000-0000-000000000000",
+        build_opts.migrations_dir,
+    ) catch |err| {
+        std.debug.print("makePool: provisionTenantSchema failed: {}\n", .{err});
+    };
+    return pool;
 }
 
 fn parseUuid(s: []const u8) ![16]u8 {

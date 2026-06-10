@@ -7,9 +7,9 @@
   "to_agent": "TEST-RUNNER",
   "file": "handoffs/WF02-svc-batch1-20260610/step-04-test-runner.json",
   "created_at": "2026-06-10T14:04:25Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-06-10T19:17:40Z",
+  "completed_at": "2026-06-10T19:18:22Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 13",
@@ -41,7 +41,23 @@
       "fn:write-test-report"
     ]
   },
-  "result": null,
-  "rework_count": 0,
+  "result": {
+    "status": "PASS",
+    "summary": "All 35 SVC integration tests passed (rework 1). Both E2E tests passed (rework 2): TC-SVC-04-UI-01 and TC-SVC-04-UI-02 green with bpm-platform on port 18080.",
+    "artifacts_out": [
+      "tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml",
+      "scratch/svc04-e2e-rework2.log"
+    ],
+    "issues": [
+      {
+        "id": "ISSUE-PREEXISTING-FAILURES",
+        "severity": "MAJOR",
+        "description": "271 integration tests fail across 46 unrelated modules (adp, db, ee, ext, idn, obs, oidc, pd, sch, sim, spt). Pre-existing, out of scope for SVC-01..04.",
+        "affected_requirements": []
+      }
+    ],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 2,
   "max_rework": 3
 }

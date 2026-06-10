@@ -256,6 +256,8 @@ fn resetTestData(conn: *pg.Conn) !void {
     try truncateTableBestEffort(conn, "audit_entries");
     try truncateTableBestEffort(conn, "dlq");
     try truncateTableBestEffort(conn, "webhook_subscriptions");
+    // SVC-04 uses the service catalog; truncate so LIMIT-50 page-1 tests stay deterministic.
+    try truncateTableBestEffort(conn, "service_catalog");
 }
 
 fn truncateTableBestEffort(conn: *pg.Conn, comptime table_name: []const u8) !void {
@@ -289,6 +291,27 @@ fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
         \\INSERT INTO jit_provisioning_config (realm, enabled, default_status, default_roles)
         \\VALUES ('bpm-default', TRUE, 'ACTIVE', '[]'::jsonb)
         \\ON CONFLICT (realm) DO NOTHING
+    , &.{});
+
+    // SVC-01..04 integration test fixture tenants.
+    // These are committed before each test's transaction begins so that
+    // pool-based catalog operations (registerService, etc.) can see them.
+    // SVC-04 per-test tenant fixtures are also included here; the test code
+    // re-inserts them inside the harness transaction (ON CONFLICT DO NOTHING
+    // makes those re-inserts no-ops) to keep the test SQL self-documenting.
+    try conn.exec(
+        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+        \\VALUES
+        \\  ('eeeeeeee-0000-0000-0000-000000000001'::uuid, 'svc-t1',       'SVC Test Tenant 1',       'ACTIVE', 'svc-realm-t1'),
+        \\  ('eeeeeeee-0000-0000-0000-000000000002'::uuid, 'svc-t2',       'SVC Test Tenant 2',       'ACTIVE', 'svc-realm-t2'),
+        \\  ('b4200000-0000-0000-0000-000000000001'::uuid, 'svc04-upd-tn', 'SVC04 Update Tenant',     'ACTIVE', 'realm-svc04-upd'),
+        \\  ('c4300000-0000-0000-0000-000000000001'::uuid, 'svc04-cnf-ow', 'SVC04 Conflict Owner',    'ACTIVE', 'realm-svc04-cnf-ow'),
+        \\  ('c4300000-0000-0000-0000-000000000002'::uuid, 'svc04-cnf-ot', 'SVC04 Conflict Other',    'ACTIVE', 'realm-svc04-cnf-ot'),
+        \\  ('d4400000-0000-0000-0000-000000000001'::uuid, 'svc04-inuse-t','SVC04 InUse Tenant',      'ACTIVE', 'realm-svc04-inuse'),
+        \\  ('e4500000-0000-0000-0000-000000000001'::uuid, 'svc04-lst-ta', 'SVC04 List TA',           'ACTIVE', 'realm-svc04-ta'),
+        \\  ('e4500000-0000-0000-0000-000000000002'::uuid, 'svc04-lst-tb', 'SVC04 List TB',           'ACTIVE', 'realm-svc04-tb'),
+        \\  ('f4600000-0000-0000-0000-000000000001'::uuid, 'svc04-all-t',  'SVC04 All Tenant',        'ACTIVE', 'realm-svc04-all')
+        \\ON CONFLICT (id) DO NOTHING
     , &.{});
 }
 
