@@ -35,7 +35,7 @@ UUID_LITERAL = re.compile(
     r'"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"'
 )
 ALL_ZEROS_UUID = "00000000-0000-0000-0000-000000000000"
-MODULE_VAR = re.compile(r"^\s*var\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*", re.MULTILINE)
+MODULE_VAR = re.compile(r"^var\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*", re.MULTILINE)
 TEST_BLOCK = re.compile(r"""^test\s+"([^"]+)"\s*\{""", re.MULTILINE)
 SKIP_HINT = re.compile(r"\berror\.SkipZigTest\b")
 ALLOC_HINT = re.compile(r"\.(alloc|create|init|connect)\s*\(")
@@ -116,16 +116,14 @@ def lint_file(path: Path, report: Report) -> None:
         ))
 
     # T020: module-level `var` declarations (`const` is fine)
-    # We only count `var` at column 0 (module scope), not inside functions.
+    # The regex anchors at column 0 (^var with re.MULTILINE), so every match is
+    # a true module-level declaration — no leading-whitespace heuristic needed.
     for m in MODULE_VAR.finditer(text):
-        # Heuristic: if the match starts at col 0 (no leading whitespace) it's module-level.
-        line_start = text.rfind("\n", 0, m.start()) + 1
-        if m.start() == line_start:  # truly column 0
-            line = find_line(text, m.start())
-            report.issues.append(Issue(
-                "MAJOR", "T020", rel, line,
-                f"module-level mutable var `{m.group(1)}` shared across test blocks",
-            ))
+        line = find_line(text, m.start())
+        report.issues.append(Issue(
+            "MAJOR", "T020", rel, line,
+            f"module-level mutable var `{m.group(1)}` shared across test blocks",
+        ))
 
     # T050: integration test references BPM_TEST_DB_URL
     if "tests/integration" in rel.replace("\\", "/") or "tests\\integration" in rel:

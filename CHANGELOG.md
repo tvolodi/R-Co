@@ -15,6 +15,15 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage 12 — Schema-Per-Tenant Isolation (RELEASED 2026-06-10)
+
+- **TNT-01** (MUST): Business tables migrated to per-tenant schemas — All 21 business tables now live in `tenant_<uuid>` PostgreSQL schemas, not in `public`. Migrations 001–071 create tables inside the tenant schema when run via the updated migration runner; public business tables are removed by `GBL-073_tnt01_drop_legacy_public_business_tables.sql`. Legacy table names (`dead_letter_queue`, `form_schema_registry`) renamed to canonical names (`dead_letter_items`, `repository_form_schemas`) via migration 072.
+- **TNT-02** (MUST): Migration runner enforces search_path isolation — `src/db/migrations.zig` issues `SET search_path TO <tenant_schema>, public` as the first statement on the migration connection before executing any migration SQL. `schema_migrations` tracking uses a `(schema_name, version)` composite primary key for per-tenant migration state. CI linter `tools/lint_migration_schema.py` rejects any migration SQL file that contains `public.<business_table>` references (21 business table patterns enforced); allows `public.tenant_schemas`, `public.tenant`, and `public.schema_migrations` references.
+- **TNT-03** (MUST): Connection pool sets search_path per tenant on checkout, resets on return — Pool checkout issues `SET search_path TO <tenant_schema>, public` for tenant-scoped requests and `SET search_path TO public` for platform-admin/no-tenant requests. Connection return issues `SET search_path TO public`; if the reset fails, the connection is discarded rather than returned to the pool. Search path is re-applied after reconnect.
+- **TNT-04** (MUST): Platform startup audits public schema and logs ERROR for unexpected tables — On startup, the platform queries `information_schema.tables` for all `BASE TABLE` and `VIEW` objects in the `public` schema and compares against the permitted list of 10 tables (`tenant`, `tenant_schemas`, `tenant_hostnames`, `tenant_realm_binding`, `schema_migrations`, `onboarding_registry`, `service_catalog`, `repository_artifacts`, `repository_activations`, `alerting_state`). Unexpected tables produce an `ERROR` log entry naming the table. During active migration windows (`migration_window_active = TRUE`) the severity is downgraded to `WARN`. No hard-stop occurs.
+- Validation evidence: 19/19 integration tests passing in `tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml`. NFR benchmarks: p99_read=0.609ms, p99_write=1.277ms, throughput=114547 events/sec, replay_10k=32.735ms — all within targets. Release approval: `docs/status/release-stage12-tnt-batch1-20260610.yaml`.
+- Requirements: TNT-01, TNT-02, TNT-03, TNT-04 (Stage 12) — RELEASED
+
 ### 2026-06-07
 #### Fixes
 - [ISS-0068] Fixed missing tenant schema provisioning in onboarding saga - after tenant registration, PostgreSQL schemas (tenant_default, tenant_<uuid>) are now created correctly. Retroactive migration (069/070) provisions schemas for pre-existing tenants.

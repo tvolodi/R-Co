@@ -3880,4 +3880,60 @@ requirements:
     release_run: WF02-uat-tenant-url-20260607
     release_decision: docs/status/release-uat-tenant-url-2026-06-07.json
     last_updated: '2026-06-07T06:15:52Z'
-total_requirements: 272
+  TNT-01:
+    status: RELEASED
+    stage: 12
+    priority: MUST
+    title: Business tables migrated to per-tenant schemas
+    implemented_in:
+    - WF02-tnt-batch1-20260609
+    test_spec: tests/specs/TNT-01.md
+    test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
+    tested_at: '2026-06-10'
+    released_at: '2026-06-10T02:49:11Z'
+    release_run: WF02-tnt-batch1-20260609
+    release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
+    last_updated: '2026-06-10T02:49:11Z'
+  TNT-02:
+    status: RELEASED
+    stage: 12
+    priority: MUST
+    title: Migration runner enforces search_path isolation
+    implemented_in:
+    - WF02-tnt-batch1-20260609
+    test_spec: tests/specs/TNT-02.md
+    test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
+    tested_at: '2026-06-10'
+    released_at: '2026-06-10T02:49:11Z'
+    release_run: WF02-tnt-batch1-20260609
+    release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
+    last_updated: '2026-06-10T02:49:11Z'
+  TNT-03:
+    status: RELEASED
+    stage: 12
+    priority: MUST
+    title: Connection pool sets search_path per tenant on checkout
+    implemented_in:
+    - WF02-tnt-batch1-20260609
+    test_spec: tests/specs/TNT-03.md
+    test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
+    tested_at: '2026-06-10'
+    released_at: '2026-06-10T02:49:11Z'
+    release_run: WF02-tnt-batch1-20260609
+    release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
+    last_updated: '2026-06-10T02:49:11Z'
+  TNT-04:
+    status: RELEASED
+    stage: 12
+    priority: MUST
+    title: Platform startup audits public schema
+    implemented_in:
+    - WF02-tnt-batch1-20260609
+    test_spec: tests/specs/TNT-04.md
+    test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
+    tested_at: '2026-06-10'
+    released_at: '2026-06-10T02:49:11Z'
+    release_run: WF02-tnt-batch1-20260609
+    release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
+    last_updated: '2026-06-10T02:49:11Z'
+total_requirements: 276

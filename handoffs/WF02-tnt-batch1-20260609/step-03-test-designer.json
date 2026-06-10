@@ -1,0 +1,66 @@
+{
+  "handoff_id": "9d2699ee-f1e6-4dc8-b0da-8fdb39c1988b",
+  "run_id": "WF02-tnt-batch1-20260609",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-tnt-batch1-20260609/step-03-test-designer.json",
+  "created_at": "2026-06-09T18:00:19Z",
+  "started_at": "2026-06-09T18:44:39Z",
+  "completed_at": "2026-06-09T18:47:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 12",
+    "requirement_ids": [
+      "TNT-01",
+      "TNT-02",
+      "TNT-03",
+      "TNT-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/tnt-01-04-schema-isolation.md",
+      "docs/requirements/TNT-01.md",
+      "docs/requirements/TNT-02.md",
+      "docs/requirements/TNT-03.md",
+      "docs/requirements/TNT-04.md",
+      "docs/guides/test_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Design integration tests for TNT-01, TNT-02, TNT-03, and TNT-04.\n\nTNT-01 tests:\n- Provision a tenant; inspect tenant schema; verify all 19 business tables exist inside tenant_<uuid>; verify none exist in public with tenant data\n- Provision two tenants A and B; query tenant_<A>.events; verify no rows from tenant B are returned\n\nTNT-02 tests:\n- Call migration runner for a fresh tenant schema; verify tables land in tenant schema (not public)\n- Verify migration runner issues SET search_path = <schema>, public before SQL execution\n- Run tools/lint_migration_schema.py against a migration with 'public.events': verify exit code non-zero\n- Run tools/lint_migration_schema.py against a migration with 'public.schema_migrations': verify exit code 0\n- Verify schema_migrations tracking uses (schema_name, version) composite PK\n\nTNT-03 tests:\n- Acquire a connection for tenant swiftroute; execute SHOW search_path; verify it contains tenant schema\n- Return connection to pool; acquire again with no tenant; execute SHOW search_path; verify it shows public only\n- Two concurrent requests for different tenants: verify each connection has correct independent search_path\n\nTNT-04 tests:\n- Start platform with public schema containing only permitted tables; verify INFO 'public schema audit: CLEAN' is logged\n- Add an unexpected table to public; start platform; verify ERROR is logged naming the unexpected table\n- Verify no hard-stop occurs when unexpected table is found\n\nAll tests: use per-test UUIDs for tenant IDs, clean up after themselves, fail clearly if BPM_TEST_DB_URL is absent.\nWrite test specs to tests/specs/TNT-01.md, TNT-02.md, TNT-03.md, TNT-04.md.\nWrite test source files to tests/integration/tnt_schema_isolation_test.zig (or per-requirement files).\nSet next_action: 'Route to TEST-DESIGN-VALIDATOR (Step 3b)'\n\nREWORK 1 (from TEST-DESIGN-VALIDATOR):\n\nBLOCKER \u2014 TC-TNT-04-04 behavioral gap:\nThe implemented test only checks that migration_window_active column exists. It does NOT test the WARN-vs-ERROR behavior during a migration window. Required: write a test that (1) sets migration_window_active=TRUE in onboarding_registry, (2) creates an unexpected table in public, (3) calls auditPublicSchema, (4) verifies WARN level is emitted (not ERROR). Clean up in defer blocks.\n\nMAJOR \u2014 lint_test_isolation.py T020 false-positives on tnt_schema_isolation_test.zig:\nThe linter exits 1 with 18 MAJOR T020 findings \u2014 all false positives (indented local var declarations flagged as module-level mutable vars). Fix by either:\n  Option A: Add the 18 false-positive entries to tools/lint_test_isolation.baseline.json\n  Option B: Fix the T020 heuristic in tools/lint_test_isolation.py to only flag var at true column 0 (no leading whitespace)\nChoose the correct approach: Option B is the right fix (improves the linter); Option A is acceptable if B risks regressions.\n",
+    "acceptance_criteria": [
+      "tests/specs/TNT-01.md exists with test cases for all TNT-01 acceptance criteria",
+      "tests/specs/TNT-02.md exists with test cases for all TNT-02 acceptance criteria including linter tests",
+      "tests/specs/TNT-03.md exists with test cases for all TNT-03 acceptance criteria",
+      "tests/specs/TNT-04.md exists with test cases for all TNT-04 acceptance criteria",
+      "Integration test source file(s) exist in tests/integration/ for all requirements",
+      "All fixtures use per-test UUIDs (no hardcoded tenant IDs)",
+      "Tests clean up after themselves",
+      "Tests check for BPM_TEST_DB_URL and fail clearly if absent",
+      "No error.SkipZigTest on any MUST requirement test"
+    ],
+    "functions_to_call": [
+      "fn:write-test-spec",
+      "fn:write-integration-test"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 complete: TC-TNT-04-04 now tests WARN-vs-ERROR behavioral switch by setting migration_window_active TRUE/FALSE and calling auditPublicSchema in both phases; T020 heuristic fixed in lint_test_isolation.py by changing regex from ^\\s*var to ^var (column-0 anchor) eliminating 18 false-positive MAJOR findings.",
+    "artifacts_out": [
+      "tests/integration/tnt_schema_isolation_test.zig",
+      "tests/specs/TNT-01.md",
+      "tests/specs/TNT-02.md",
+      "tests/specs/TNT-03.md",
+      "tests/specs/TNT-04.md",
+      "tools/lint_test_isolation.py"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

@@ -1,0 +1,70 @@
+{
+  "handoff_id": "5800acfc-ef03-4d52-9dc4-42a4a1700e81",
+  "run_id": "WF02-tnt-batch1-20260609",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-tnt-batch1-20260609/step-02a-backend-dev.json",
+  "created_at": "2026-06-09T18:00:19Z",
+  "started_at": "2026-06-10T02:25:32Z",
+  "completed_at": "2026-06-10T02:39:03Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 12",
+    "requirement_ids": [
+      "TNT-01",
+      "TNT-02",
+      "TNT-03",
+      "TNT-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/tnt-01-04-schema-isolation.md",
+      "docs/requirements/TNT-01.md",
+      "docs/requirements/TNT-02.md",
+      "docs/requirements/TNT-03.md",
+      "docs/requirements/TNT-04.md"
+    ]
+  },
+  "task": {
+    "description": "Implement TNT-01 through TNT-04 per the design in src/design/tnt-01-04-schema-isolation.md.\n\nTNT-01 - Business tables in per-tenant schemas:\n- Ensure tenant schema creation (CREATE SCHEMA IF NOT EXISTS tenant_<uuid>) occurs during onboarding provisioning\n- All business tables listed in TNT-01 must be created inside the tenant schema by the migration runner, not in public\n\nTNT-02 - Migration runner search_path enforcement:\n- Modify the migration runner to issue SET search_path = <tenant_schema>, public on the connection before executing each migration SQL file\n- schema_migrations tracks (schema_name, version) as composite PK for per-tenant tracking\n- Write the CI linter: tools/lint_migration_schema.py - detects public.<business_table> references in .sql files; exits non-zero if found\n- Linter must allow public.tenant_schemas, public.tenant, public.schema_migrations references\n\nTNT-03 - Connection pool search_path per checkout:\n- Pool checkout issues SET search_path = <tenant_schema>, public for tenant requests\n- Pool checkout issues SET search_path = public for platform-admin/no-tenant requests\n- Connection return issues SET search_path = public; if reset fails, discard the connection (do not return to pool)\n- Pool validation/reconnect must re-apply search_path after reconnect\n\nTNT-04 - Startup schema audit:\n- On platform startup, query information_schema.tables WHERE table_schema = 'public' AND table_type IN ('BASE TABLE', 'VIEW')\n- Compare against permitted list: tenant, tenant_schemas, tenant_hostnames, tenant_realm_binding, schema_migrations, onboarding_registry, service_catalog, repository_artifacts, repository_activations, alerting_state\n- Log ERROR for unexpected tables; log INFO 'public schema audit: CLEAN' if clean\n- Do not hard-stop on unexpected tables\n\nValidation: zig build exits 0, zig build test exits 0, zig build migrate exits 0, no error-set output.\nCommit to feature/WF02-tnt-batch1-20260609 and push.\n\nREWORK 1 (from TEST-RUNNER \u2014 5 test failures, 3 root causes):\n\nRC-01 \u2014 Table naming mismatch (BLOCKER):\nMigrations create dead_letter_queue and form_schema_registry, but tests expect dead_letter_items and repository_form_schemas. Write migrations/072_tnt01_rename_legacy_tables.sql: ALTER TABLE dead_letter_queue RENAME TO dead_letter_items; ALTER TABLE form_schema_registry RENAME TO repository_form_schemas; This runs inside tenant schema (search_path handles it). Must be idempotent.\n\nRC-02 \u2014 Legacy public business tables not removed (BLOCKER):\n19 business tables still exist in public from migrations 001-059. Write migrations/073_tnt01_drop_legacy_public_business_tables.sql that DROPs all 19 business tables from public (DROP TABLE IF EXISTS public.events, public.events_archive, public.process_definitions, public.instance_projections, public.tasks, public.tokens, public.timers, public.audit_entries, public.audit_log, public.users, public.groups, public.group_members, public.roles, public.user_roles, public.api_tokens, public.webhook_subscriptions, public.dead_letter_items, public.event_type_registry, public.event_retention_policies, public.repository_form_schemas). Guard: skip if migration_window_active = TRUE in onboarding_registry. This is a GBL-scope migration (runs on public). For test env: no tenant data exists in public so safe to drop.\n\nRC-03 \u2014 lint_migration_schema.py single-file mode missing (BLOCKER):\ntools/lint_migration_schema.py main() always calls lint_directory() regardless of argv[1]. Fix: detect Path(argv[1]).is_file() in main() and call lint_file() directly when a file path is passed.\n\nAfter fixing:\n1. zig build exits 0\n2. zig build test-integration-tnt exits 0 (all 19 TNT tests pass)\n3. zig build 2>&1 | grep -i 'error set' -> no output\n4. Commit to feature/WF02-tnt-batch1-20260609 and push",
+    "acceptance_criteria": [
+      "Migration runner sets search_path = <tenant_schema>, public before executing each migration SQL",
+      "schema_migrations uses (schema_name, version) composite PK for per-tenant tracking",
+      "tools/lint_migration_schema.py detects public.<business_table> references and exits non-zero",
+      "tools/lint_migration_schema.py allows public.tenant_schemas, public.tenant, public.schema_migrations references",
+      "Pool checkout issues SET search_path = <tenant_schema>, public for tenant requests",
+      "Pool checkout issues SET search_path = public for platform-admin/no-tenant requests",
+      "Connection return issues SET search_path = public; failed reset discards connection",
+      "Startup audit queries information_schema.tables for public schema and logs ERROR/INFO",
+      "zig build exits 0 with no error-set output in stderr",
+      "zig build test exits 0",
+      "zig build migrate exits 0",
+      "git push origin feature/WF02-tnt-batch1-20260609 exits 0"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:check-zig-test",
+      "fn:check-zig-migrate"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 complete: renamed legacy tables (072), dropped public business tables (GBL-073), fixed linter single-file mode (RC-03). Also fixed migrationOrder() in both migrate tools to handle GBL- prefix, and fixed migration 040 DO block to use current_schema() instead of hardcoded public namespace so provisioning works in tenant schema context. All 19 TNT integration tests pass.",
+    "artifacts_out": [
+      "migrations/072_tnt01_rename_legacy_tables.sql",
+      "migrations/GBL-073_tnt01_drop_legacy_public_business_tables.sql",
+      "migrations/040_oidc10_role_source.sql",
+      "src/db/migrations.zig",
+      "src/tools/migrate.zig",
+      "tools/lint_migration_schema.py"
+    ],
+    "issues": [],
+    "next_action": "Redispatch TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}
