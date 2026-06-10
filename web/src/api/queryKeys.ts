@@ -92,6 +92,8 @@ export const queryKeys = {
     tenants: (filters?: { search?: string; limit?: number; offset?: number }) =>
       [...queryKeys.admin.all, 'tenants', filters ?? {}] as const,
     tenantDetail: (slug: string) => [...queryKeys.admin.all, 'tenant', slug] as const,
+    services: (filters?: { after_id?: string; limit?: number }) =>
+      [...queryKeys.admin.all, 'services', filters ?? {}] as const,
   },
 
   dlq: {
