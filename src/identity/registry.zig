@@ -63,6 +63,9 @@ pub const Tenant = struct {
     status: TenantStatus,
     idp_realm_id: ?[]const u8,
     created_at: []const u8,
+    // ENV-01: test tenant environment
+    tenant_type: []const u8,              // 'production' or 'test'
+    production_tenant_id: ?[]const u8,   // UUID string, non-null only for test tenants
 
     pub fn deinit(self: Tenant, allocator: std.mem.Allocator) void {
         allocator.free(self.tenant_id);
@@ -70,6 +73,8 @@ pub const Tenant = struct {
         allocator.free(self.display_name);
         if (self.idp_realm_id) |v| allocator.free(v);
         allocator.free(self.created_at);
+        allocator.free(self.tenant_type);
+        if (self.production_tenant_id) |v| allocator.free(v);
     }
 };
 
@@ -303,7 +308,8 @@ pub const Registry = struct {
                         \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
                         \\VALUES ($1::uuid, $2, $3, $4, $5)
                         \\ON CONFLICT (slug) DO NOTHING
-                        \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+                        \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
+                        \\          tenant_type, production_tenant_id::text
                     ,
                         &[_][]const u8{ tenant_id, input.slug, input.display_name, status_str, realm },
                     );
@@ -314,7 +320,8 @@ pub const Registry = struct {
                     \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
                     \\VALUES ($1::uuid, $2, $3, $4, NULL)
                     \\ON CONFLICT (slug) DO NOTHING
-                    \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+                    \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
+                    \\          tenant_type, production_tenant_id::text
                 ,
                     &[_][]const u8{ tenant_id, input.slug, input.display_name, status_str },
                 );
@@ -326,7 +333,8 @@ pub const Registry = struct {
                     \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
                     \\VALUES (gen_random_uuid(), $1, $2, $3, $4)
                     \\ON CONFLICT (slug) DO NOTHING
-                    \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+                    \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
+                    \\          tenant_type, production_tenant_id::text
                 ,
                     &[_][]const u8{ input.slug, input.display_name, status_str, realm },
                 );
@@ -337,7 +345,8 @@ pub const Registry = struct {
                 \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
                 \\VALUES (gen_random_uuid(), $1, $2, $3, NULL)
                 \\ON CONFLICT (slug) DO NOTHING
-                \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+                \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
+                \\          tenant_type, production_tenant_id::text
             ,
                 &[_][]const u8{ input.slug, input.display_name, status_str },
             );
@@ -369,7 +378,8 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text,
+            \\       tenant_type, production_tenant_id::text
             \\FROM tenant
             \\WHERE id = $1::uuid
             \\LIMIT 1
@@ -402,7 +412,8 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text,
+            \\       tenant_type, production_tenant_id::text
             \\FROM tenant
             \\WHERE idp_realm_id = $1
             \\LIMIT 1
@@ -435,7 +446,8 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text,
+            \\       tenant_type, production_tenant_id::text
             \\FROM tenant
             \\WHERE slug = $1
             \\LIMIT 1
@@ -471,7 +483,8 @@ pub const Registry = struct {
             \\UPDATE tenant
             \\SET display_name = $2, updated_at = NOW()
             \\WHERE slug = $1
-            \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
+            \\          tenant_type, production_tenant_id::text
         ,
             &[_][]const u8{ slug, display_name },
         ) catch |err| return switch (err) {
@@ -504,7 +517,8 @@ pub const Registry = struct {
             \\UPDATE tenant
             \\SET status = $2, updated_at = NOW()
             \\WHERE slug = $1
-            \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
+            \\          tenant_type, production_tenant_id::text
         ,
             &[_][]const u8{ slug, status.asString() },
         ) catch |err| return switch (err) {
@@ -560,7 +574,8 @@ pub const Registry = struct {
 
         var rows = conn.query(
             allocator,
-            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text
+            \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text,
+            \\       tenant_type, production_tenant_id::text
             \\FROM tenant
             \\WHERE ($1 = '' OR slug ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%')
             \\ORDER BY created_at DESC
@@ -1581,7 +1596,7 @@ fn materializeTenant(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!T
 }
 
 fn materializeTenantBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) RegistryError!Tenant {
-    if (row.len < 6) return error.PersistenceFailed;
+    if (row.len < 8) return error.PersistenceFailed;
 
     const tenant_id = row[0] orelse return error.PersistenceFailed;
     const slug = row[1] orelse return error.PersistenceFailed;
@@ -1589,6 +1604,9 @@ fn materializeTenantBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) Regi
     const status_str = row[3] orelse return error.PersistenceFailed;
     const idp_realm_id_raw = row[4]; // nullable
     const created_at = row[5] orelse return error.PersistenceFailed;
+    // ENV-01 columns (row[6] = tenant_type, row[7] = production_tenant_id)
+    const tenant_type_raw = row[6];
+    const production_tenant_id_raw = row[7]; // nullable
 
     const status = TenantStatus.fromString(status_str) orelse .ACTIVE;
 
@@ -1598,6 +1616,15 @@ fn materializeTenantBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) Regi
         null;
     errdefer if (idp_realm_id) |v| allocator.free(v);
 
+    const tenant_type = allocator.dupe(u8, tenant_type_raw orelse "production") catch return error.OutOfMemory;
+    errdefer allocator.free(tenant_type);
+
+    const production_tenant_id: ?[]u8 = if (production_tenant_id_raw) |v|
+        allocator.dupe(u8, v) catch return error.OutOfMemory
+    else
+        null;
+    errdefer if (production_tenant_id) |v| allocator.free(v);
+
     return .{
         .tenant_id = allocator.dupe(u8, tenant_id) catch return error.OutOfMemory,
         .slug = allocator.dupe(u8, slug) catch return error.OutOfMemory,
@@ -1605,6 +1632,8 @@ fn materializeTenantBorrowedRow(allocator: std.mem.Allocator, row: []?[]u8) Regi
         .status = status,
         .idp_realm_id = idp_realm_id,
         .created_at = allocator.dupe(u8, created_at) catch return error.OutOfMemory,
+        .tenant_type = tenant_type,
+        .production_tenant_id = production_tenant_id,
     };
 }
 

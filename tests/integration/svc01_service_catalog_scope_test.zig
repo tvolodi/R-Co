@@ -685,4 +685,3 @@ fn freeServiceRecord(alloc: std.mem.Allocator, rec: @import("bpm").service_catal
     alloc.free(rec.response_schema);
     alloc.free(rec.retry_policy);
 }
-

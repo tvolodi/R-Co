@@ -70,6 +70,8 @@ pub const oidc_coexistence_auth = @import("oidc/coexistence_auth.zig"); // OIDC-
 pub const oidc_migration_helper = @import("oidc/migration_helper.zig"); // OIDC-34 migration helper service
 pub const api_auth = @import("api/middleware/auth.zig"); // API-08 auth middleware provider-manager configuration
 pub const tenant_migration_admin = @import("admin/tenant_migration.zig"); // TNT-06 export/import admin handlers
+pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle handlers
+pub const promotion_routes = @import("api/routes/promotion.zig"); // ENV-03 definition promotion handler
 pub const tenant_status_middleware = @import("api/middleware/tenant_status.zig"); // TNT-06 MIGRATING status middleware
 pub const service_catalog_repo = @import("repository/service_catalog.zig"); // SVC-01/SVC-04 service catalog store
 pub const services_routes = @import("api/routes/services.zig"); // SVC-04 service catalog HTTP handlers
@@ -1033,14 +1035,27 @@ fn serveRequest(
                     }
                 }
             } else if (std.mem.eql(u8, seg4, "tenants") and seg5.len > 0) {
-                // POST /api/v1/admin/tenants/{tenant_id}/export  (TNT-06)
-                // POST /api/v1/admin/tenants/{tenant_id}/import  (TNT-06)
+                // POST /api/v1/admin/tenants/{tenant_id}/export    (TNT-06)
+                // POST /api/v1/admin/tenants/{tenant_id}/import    (TNT-06)
+                // POST /api/v1/admin/tenants/{tenant_id}/reset     (ENV-05)
+                // DELETE /api/v1/admin/tenants/{tenant_id}         (ENV-05)
                 if (method == .POST and std.mem.eql(u8, seg6, "export")) {
                     const r = tenant_migration_admin.handleExportTenant(pool, req_alloc, seg5, body);
                     resp_status = r.status_code;
                     resp_body = r.body;
                 } else if (method == .POST and std.mem.eql(u8, seg6, "import")) {
                     const r = tenant_migration_admin.handleImportTenant(pool, req_alloc, seg5, body);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (method == .POST and std.mem.eql(u8, seg6, "reset") and seg5.len > 0) {
+                    // ENV-05: POST /api/v1/admin/tenants/:id/reset
+                    const r = tenant_lifecycle_admin.handleReset(pool, req_alloc, seg5);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (method == .DELETE and seg6.len == 0 and seg5.len > 0) {
+                    // ENV-05: DELETE /api/v1/admin/tenants/:id
+                    const idp_mgr = api_auth.getIdentityProviderManager();
+                    const r = tenant_lifecycle_admin.handleDelete(pool, req_alloc, idp_mgr, seg5);
                     resp_status = r.status_code;
                     resp_body = r.body;
                 } else {
@@ -1207,6 +1222,11 @@ fn serveRequest(
                 resp_body = r.body;
             } else if (method == .POST and seg6.len == 0 and std.mem.eql(u8, seg5, "reactivate")) {
                 const r = identity_routes.handleReactivateTenant(id_svc, req_alloc, actor, seg4, body);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (method == .POST and std.mem.eql(u8, seg5, "promote") and seg6.len > 0) {
+                // ENV-03: POST /api/v1/tenants/:test_tenant_id/promote/:definition_name
+                const r = promotion_routes.handlePromotion(pool, req_alloc, actor, seg4, seg6);
                 resp_status = r.status_code;
                 resp_body = r.body;
             } else if (method == .POST and seg6.len == 0) {

@@ -1,0 +1,34 @@
+{
+  "handoff_id": "d59d07ee-f0e7-48ad-a4e9-472d41c15075",
+  "run_id": "WF02-env-batch1-20260610",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-10T19:37:40Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 14 - Test tenant environment (batch 1 backend)",
+    "requirement_ids": [
+      "ENV-01",
+      "ENV-02",
+      "ENV-03",
+      "ENV-05"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/design/tenant-env.md",
+      "templates/specs/env-01.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Implement ENV-01, ENV-02, ENV-03, ENV-05 per design artefacts.\n\nRead: src/design/tenant-env.md, templates/specs/env-01.migration.yaml\n\nTasks:\n1. Run codegen for the Type C migration spec\n2. Implement migration: ALTER TABLE public.tenant to add tenant_type, production_tenant_id columns + constraints\n3. Update POST /api/v1/tenants/onboard to accept tenant_type + production_tenant_id and enforce validation\n4. Implement GET /api/v1/admin/tenants to include tenant_type and production_tenant_id\n5. Implement POST /api/v1/tenants/:test_tenant_id/promote/:definition_name (ENV-03)\n6. Implement POST /api/v1/admin/tenants/:id/reset (ENV-05)\n7. Implement DELETE /api/v1/admin/tenants/:id for test tenants only (ENV-05)\n8. Implement immutability enforcement on tenant_type and production_tenant_id in PATCH\n\nValidate: zig build && zig build test && zig build migrate must all exit 0.\nCommit to feature/WF02-env-batch1-20260610 and push.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-10T20:00:59Z",
+  "completed_at": null
+}

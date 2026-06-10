@@ -52,10 +52,23 @@
       "docs/metrics/retrospectives/WF02-svc-batch1-20260610.yaml",
       "docs/status/release-stage13-svc-batch1-20260610.yaml",
       "handoffs/registry.json",
-      "handoffs/WF02-svc-batch1-20260610/registry.json"
+      "handoffs/WF02-svc-batch1-20260610/registry.json",
+      "PR #77 (https://github.com/tvolodi/My-Fab/pull/77)",
+      "merge commit: 45801f9"
     ],
     "issues": [],
-    "next_action": "Workflow complete \u2014 WF02-svc-batch1-20260610 Stage 13 SVC-01..04 released"
+    "next_action": "Workflow complete \u2014 WF02-svc-batch1-20260610 Stage 13 SVC-01..04 released",
+    "git_evidence": {
+      "branch_name": "feature/WF02-svc-batch1-20260610",
+      "commit_sha_list": [
+        "6a85e59"
+      ],
+      "squash_merge_sha": "45801f9",
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/77",
+      "push_status": "ok",
+      "branch_deleted_remote": true,
+      "repo_on_main": true
+    }
   },
   "rework_count": 0,
   "max_rework": 3

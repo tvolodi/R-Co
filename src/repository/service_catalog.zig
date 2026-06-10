@@ -726,4 +726,3 @@ test "ServiceScope enum values" {
     _ = ServiceScope.global;
     _ = ServiceScope.tenant;
 }
-

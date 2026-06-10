@@ -210,6 +210,9 @@ fn dupeOnboardingInput(
         .hostname           = try allocator.dupe(u8, src.hostname),
         .realm_config       = realm_config,
         .client_config      = client_config,
+        // ENV-01
+        .tenant_type            = src.tenant_type,
+        .production_tenant_id   = if (src.production_tenant_id) |s| try allocator.dupe(u8, s) else null,
     };
 }
 
@@ -229,6 +232,8 @@ fn freeOnboardingInput(allocator: std.mem.Allocator, input: onboarding_mod.Onboa
             allocator.free(uris);
         }
     }
+    // ENV-01
+    if (input.production_tenant_id) |s| allocator.free(s);
 }
 
 fn runSagaBackground(ctx: *SagaContext) void {
@@ -732,6 +737,19 @@ fn parseOnboardingInput(allocator: std.mem.Allocator, body: []const u8) !ParsedI
 
     // Build the full OnboardingInput value (allocating owned strings).
     // Since we need owned memory, we dupe all strings.
+    // ENV-01: parse tenant_type (default: production) and production_tenant_id
+    const tenant_type_raw = if (obj.get("tenant_type")) |v| switch (v) {
+        .string => |s| s,
+        else => "production",
+    } else "production";
+    const tenant_type = onboarding_mod.TenantType.fromString(tenant_type_raw) orelse .production;
+
+    const production_tenant_id_raw: ?[]const u8 = if (obj.get("production_tenant_id")) |v| switch (v) {
+        .string => |s| if (s.len > 0) s else null,
+        .null => null,
+        else => null,
+    } else null;
+
     const input = onboarding_mod.OnboardingInput{
         .slug = try allocator.dupe(u8, slug),
         .display_name = try allocator.dupe(u8, display_name),
@@ -741,6 +759,8 @@ fn parseOnboardingInput(allocator: std.mem.Allocator, body: []const u8) !ParsedI
         .hostname = try allocator.dupe(u8, hostname),
         .realm_config = realm_config,
         .client_config = client_config,
+        .tenant_type = tenant_type,
+        .production_tenant_id = if (production_tenant_id_raw) |s| try allocator.dupe(u8, s) else null,
     };
 
     return ParsedInput{
@@ -792,6 +812,11 @@ fn onboardingErrorToStatus(err: anyerror) u16 {
         => 500,
         onboarding_mod.OnboardingError.PoolExhausted => 503,
         onboarding_mod.OnboardingError.OutOfMemory => 500,
+        // ENV-01: test tenant validation errors
+        onboarding_mod.OnboardingError.TestTenantMissingProductionRef,
+        onboarding_mod.OnboardingError.ProductionTenantMustNotHaveRef,
+        onboarding_mod.OnboardingError.InvalidProductionTenantRef,
+        => 422,
         else => 500,
     };
 }
