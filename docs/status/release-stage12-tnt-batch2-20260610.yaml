@@ -1,0 +1,27 @@
+run_id: WF02-tnt-batch2-20260609
+date: 2026-06-10
+stage: 12
+batch: 2
+requirements:
+  - id: TNT-05
+    status: RELEASED
+    test_report: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
+  - id: TNT-06
+    status: RELEASED
+    test_report: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
+  - id: TNT-07
+    status: RELEASED
+    test_report: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
+nfr_results:
+  p99_read_ms: 0.884
+  p99_write_ms: 1.562
+  throughput_events_per_sec: 80367
+  replay_10k_ms: 32.0
+  all_targets_met: true
+verdict: APPROVED
+rationale: >
+  All 34 TNT integration tests pass (19 batch 1 + 15 batch 2), 0 leaks.
+  All NFR benchmarks met with wide margins. GBL-077 pre-flight gate correctly
+  enforces TNT-05 completion before RLS cleanup proceeds. Stage 12 is now
+  complete with all 7 TNT requirements RELEASED. Schema-per-tenant isolation
+  is the new baseline — no business data remains in public.

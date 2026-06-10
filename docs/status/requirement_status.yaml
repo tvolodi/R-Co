@@ -3708,7 +3708,7 @@ requirements:
     stage: Schema-Per-Tenant Migration
     priority: MUST
     released_in: WF02-spt-01
-    released_at: "2026-06-05"
+    released_at: '2026-06-05'
     implemented_in:
     - migrations/060_schema_per_tenant_bootstrap.sql
     - src/db/migrations.zig
@@ -3936,4 +3936,25 @@ requirements:
     release_run: WF02-tnt-batch1-20260609
     release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
     last_updated: '2026-06-10T02:49:11Z'
+  TNT-05:
+    status: RELEASED
+    stage: 12
+    priority: MUST
+    implemented_in:
+    - WF02-tnt-batch2-20260609
+    last_updated: '2026-06-10T11:08:25Z'
+  TNT-06:
+    status: RELEASED
+    stage: 12
+    priority: MUST
+    implemented_in:
+    - WF02-tnt-batch2-20260609
+    last_updated: '2026-06-10T11:08:25Z'
+  TNT-07:
+    status: RELEASED
+    stage: 12
+    priority: MUST
+    implemented_in:
+    - WF02-tnt-batch2-20260609
+    last_updated: '2026-06-10T11:08:25Z'
 total_requirements: 276
