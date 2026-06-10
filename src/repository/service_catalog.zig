@@ -174,7 +174,7 @@ pub const ServiceCatalog = struct {
                 const tid_hex = uuidToHex(a, tid) catch return CatalogError.TransactionFailed;
                 const check = conn.query(
                     allocator,
-                    \\SELECT id FROM tenant WHERE id = $1::uuid
+                    \\SELECT id FROM public.tenant WHERE id = $1::uuid
                 ,
                     &.{tid_hex},
                 ) catch return CatalogError.TransactionFailed;
@@ -193,7 +193,7 @@ pub const ServiceCatalog = struct {
 
         const rows = conn.query(
             allocator,
-            \\INSERT INTO service_catalog
+            \\INSERT INTO public.service_catalog
             \\  (service_id, endpoint_url, request_schema, response_schema,
             \\   required_auth, timeout_ms, retry_policy, scope, owner_tenant_id)
             \\VALUES ($1, $2, $3, $4, $5, $6::bigint, $7, $8, NULLIF($9, '')::uuid)
@@ -245,7 +245,7 @@ pub const ServiceCatalog = struct {
             \\       required_auth, timeout_ms, retry_policy, scope, owner_tenant_id,
             \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\       (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
-            \\FROM service_catalog
+            \\FROM public.service_catalog
             \\WHERE service_id = $1
         ,
             &.{service_id},
@@ -287,7 +287,7 @@ pub const ServiceCatalog = struct {
             \\       required_auth, timeout_ms, retry_policy, scope, owner_tenant_id,
             \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\       (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
-            \\FROM service_catalog
+            \\FROM public.service_catalog
             \\WHERE service_id = $1
             \\  AND (scope = 'global' OR owner_tenant_id = $2::uuid)
         ,
@@ -349,7 +349,7 @@ pub const ServiceCatalog = struct {
                         \\       required_auth, timeout_ms, retry_policy, scope, owner_tenant_id,
                         \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
                         \\       (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
-                        \\FROM service_catalog
+                        \\FROM public.service_catalog
                         \\WHERE (scope = 'global' OR owner_tenant_id = $1::uuid)
                         \\  AND service_id > $2
                         \\ORDER BY service_id ASC
@@ -364,7 +364,7 @@ pub const ServiceCatalog = struct {
                         \\       required_auth, timeout_ms, retry_policy, scope, owner_tenant_id,
                         \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
                         \\       (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
-                        \\FROM service_catalog
+                        \\FROM public.service_catalog
                         \\WHERE (scope = 'global' OR owner_tenant_id = $1::uuid)
                         \\ORDER BY service_id ASC
                         \\LIMIT $2
@@ -380,7 +380,7 @@ pub const ServiceCatalog = struct {
                         \\       required_auth, timeout_ms, retry_policy, scope, owner_tenant_id,
                         \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
                         \\       (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
-                        \\FROM service_catalog
+                        \\FROM public.service_catalog
                         \\WHERE service_id > $1
                         \\ORDER BY service_id ASC
                         \\LIMIT $2
@@ -394,7 +394,7 @@ pub const ServiceCatalog = struct {
                         \\       required_auth, timeout_ms, retry_policy, scope, owner_tenant_id,
                         \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
                         \\       (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
-                        \\FROM service_catalog
+                        \\FROM public.service_catalog
                         \\ORDER BY service_id ASC
                         \\LIMIT $1
                     ,
@@ -451,7 +451,7 @@ pub const ServiceCatalog = struct {
 
         const cur_rows = conn.query(
             allocator,
-            \\SELECT scope FROM service_catalog WHERE service_id = $1
+            \\SELECT scope FROM public.service_catalog WHERE service_id = $1
         ,
             &.{service_id},
         ) catch return CatalogError.TransactionFailed;
@@ -467,15 +467,16 @@ pub const ServiceCatalog = struct {
         if (currently_global and params.scope == .tenant) {
             if (params.owner_tenant_id) |new_owner| {
                 const new_owner_hex = uuidToHex(a, new_owner) catch return CatalogError.TransactionFailed;
+                // Post-Stage-12: process_definitions lives in per-tenant schemas.
+                // Use the cross-schema helper function (GBL-079) to find
+                // ACTIVE definitions referencing this service across all tenants.
                 const conflict_rows = conn.query(
                     allocator,
                     \\SELECT DISTINCT tenant_id::text
-                    \\FROM process_definitions
-                    \\WHERE status = 'ACTIVE'
-                    \\  AND tenant_id != $1::uuid
-                    \\  AND graph::text LIKE '%' || $2 || '%'
+                    \\FROM public.bpm_active_defs_for_service($1)
+                    \\WHERE tenant_id != $2::uuid
                 ,
-                    &.{ new_owner_hex, service_id },
+                    &.{ service_id, new_owner_hex },
                 ) catch return CatalogError.TransactionFailed;
                 defer {
                     var r = conflict_rows;
@@ -502,7 +503,7 @@ pub const ServiceCatalog = struct {
 
         const upd_rows = conn.query(
             allocator,
-            \\UPDATE service_catalog
+            \\UPDATE public.service_catalog
             \\SET scope = $1, owner_tenant_id = NULLIF($2, '')::uuid, updated_at = NOW()
             \\WHERE service_id = $3
             \\RETURNING service_id, endpoint_url, request_schema, response_schema,
@@ -538,12 +539,13 @@ pub const ServiceCatalog = struct {
         };
         defer self.pool.release(conn);
 
+        // Post-Stage-12: process_definitions lives in per-tenant schemas.
+        // Use the cross-schema helper function (GBL-079) introduced by migration
+        // GBL-079_svc04_cross_schema_proc_def_refs.sql.
         const ref_rows = conn.query(
             allocator,
-            \\SELECT id::text
-            \\FROM process_definitions
-            \\WHERE status = 'ACTIVE'
-            \\  AND graph::text LIKE '%' || $1 || '%'
+            \\SELECT definition_id::text
+            \\FROM public.bpm_active_defs_for_service($1)
         ,
             &.{service_id},
         ) catch return CatalogError.TransactionFailed;
@@ -564,7 +566,7 @@ pub const ServiceCatalog = struct {
         }
 
         conn.exec(
-            \\DELETE FROM service_catalog WHERE service_id = $1
+            \\DELETE FROM public.service_catalog WHERE service_id = $1
         ,
             &.{service_id},
         ) catch return CatalogError.TransactionFailed;
