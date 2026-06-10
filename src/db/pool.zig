@@ -48,18 +48,38 @@ pub fn schemaNameForTenant(tenant_id: []const u8, buf: *[80]u8) []const u8 {
     return buf[0..out];
 }
 
+/// TNT-03: Set search_path and bpm.* session variables on a checked-out connection.
+/// Called unconditionally by Pool.acquire() after selecting the connection.
+///
+/// Branches on whether a tenant is present:
+///
+///   tenant_id non-empty (resolved tenant request):
+///     SET search_path TO <schema_name>,public        ← FIRST
+///     SELECT set_config('bpm.tenant_id', $1, false)
+///     SELECT set_config('bpm.pipeline_run_id', $1, false)
+///
+///   tenant_id empty/absent (bootstrap token, platform-admin system call,
+///   or no resolved tenant):
+///     SET search_path TO public                      ← only public; no tenant schema
+///     (no set_config calls — no tenant context to propagate)
+///
+/// The search_path SET is issued FIRST (before set_config) so any subsequent
+/// unqualified query immediately resolves to the correct schema.
+/// Returns PoolError.QueryFailed if any SET fails.
 fn applyRequestTenantContext(conn: *Conn) PoolError!void {
     const tenant_id = currentRequestTenantId();
-    const effective_tenant = if (tenant_id.len == 0) "" else tenant_id;
-    const pipeline_run_id = currentRequestPipelineRunId();
-    const effective_pipeline_run = if (pipeline_run_id.len == 0) "" else pipeline_run_id;
-    // SPT-01 backward compat: keep set_config calls so RLS policies continue working.
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{effective_tenant});
-    try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{effective_pipeline_run});
-    // SPT-01: set search_path to the tenant's schema so unqualified table
-    // references resolve to the right schema on every connection checkout.
+
+    if (tenant_id.len == 0) {
+        // TNT-03: No-tenant branch (bootstrap token / platform-admin / no resolved tenant).
+        // Set search_path to public only; do NOT call schemaNameForTenant or set_config.
+        try conn.exec("SET search_path TO public", &.{});
+        return;
+    }
+
+    // TNT-03: Resolved-tenant branch.
+    // 1. SET search_path FIRST — all subsequent queries resolve to tenant schema.
     var schema_buf: [80]u8 = undefined;
-    const schema_name = schemaNameForTenant(effective_tenant, &schema_buf);
+    const schema_name = schemaNameForTenant(tenant_id, &schema_buf);
     var path_buf: [128]u8 = undefined;
     const search_path = std.fmt.bufPrint(
         &path_buf,
@@ -67,6 +87,24 @@ fn applyRequestTenantContext(conn: *Conn) PoolError!void {
         .{schema_name},
     ) catch return PoolError.QueryFailed;
     try conn.exec(search_path, &.{});
+
+    // 2. SPT-01 backward compat: keep set_config calls so RLS policies continue
+    //    working during the Stage 12 transition until TNT-05 removes them.
+    const pipeline_run_id = currentRequestPipelineRunId();
+    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_id});
+    try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{pipeline_run_id});
+}
+
+/// TNT-03: Reset search_path to public on a connection being returned to the idle pool.
+/// Called by Pool.release() before marking the connection idle.
+/// On failure: marks connection invalid so it will be reconnected on next acquire.
+/// Cross-tenant contamination guard — a connection that cannot be reset is discarded.
+fn resetConnectionSearchPath(conn: *Conn) void {
+    if (!conn._is_valid) return; // already invalid; will be replaced on next acquire
+    conn.exec("SET search_path TO public", &.{}) catch {
+        // Reset failed — mark connection invalid so Pool.release discards it.
+        conn._is_valid = false;
+    };
 }
 
 const obs_metrics_mod = @import("obs_metrics");
@@ -488,9 +526,27 @@ pub const Pool = struct {
 
     /// Return a connection to the idle pool.
     /// conn must have been obtained from this Pool.
+    ///
+    /// TNT-03: Calls resetConnectionSearchPath before returning conn to idle.
+    /// If the reset fails the connection is marked invalid (not returned to pool),
+    /// preventing cross-tenant search_path contamination on the next acquire.
     pub fn release(self: *Pool, conn: *Conn) void {
+        // TNT-03: Reset search_path to public before returning to idle pool.
+        // resetConnectionSearchPath marks conn._is_valid = false on failure.
+        resetConnectionSearchPath(conn);
+
         self.mutex.lockUncancelable(self.io);
         defer self.mutex.unlock(self.io);
+
+        if (!conn._is_valid) {
+            // Reset failed — discard this connection slot. On next acquire it will
+            // be reconnected via the stale-connection path in Pool.acquire().
+            // Push the index back so the slot can be reused after reconnect.
+            self.idle_indices[self.idle_count] = conn._pool_idx;
+            self.idle_count += 1;
+            return;
+        }
+
         self.idle_indices[self.idle_count] = conn._pool_idx;
         self.idle_count += 1;
     }

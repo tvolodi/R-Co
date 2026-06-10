@@ -1,0 +1,93 @@
+run_id: WF02-tnt-batch1-20260609
+requirement_ids:
+  - TNT-01
+  - TNT-02
+  - TNT-03
+  - TNT-04
+difficulty: 5
+difficulty_rationale: >
+  Cross-cutting schema-per-tenant isolation: modifies connection pool, migration
+  runner, startup audit, and all business table DDL across every module.
+integration_surface: high
+integration_surface_rationale: >
+  Touches pool checkout (DB-02), migration runner (all existing migrations),
+  onboarding saga (TNT-03), and startup bootstrap.
+rules_version_used: '1.1'
+estimated_minutes_total: 458
+actual_minutes_total: 29.7
+variance_pct: -93.5
+by_step:
+  code-designer:
+    estimated: 60
+    actual: 1.5
+    variance_pct: -97.5
+  code-design-validator:
+    estimated: 30
+    actual: 2.0
+    variance_pct: -93.3
+  backend-dev:
+    estimated: 150
+    actual: 13.5
+    variance_pct: -91.0
+  test-designer:
+    estimated: 60
+    actual: 3.1
+    variance_pct: -94.8
+  test-design-validator:
+    estimated: 52
+    actual: 2.0
+    variance_pct: -96.2
+  test-runner:
+    estimated: 38
+    actual: 4.5
+    variance_pct: -88.2
+  release-validator:
+    estimated: 38
+    actual: 1.7
+    variance_pct: -95.5
+  doc-updater:
+    estimated: 30
+    actual: 1.4
+    variance_pct: -95.3
+rework_steps:
+  - step: code-designer
+    rework_count: 1
+    reason: >
+      BLOCKER from CODE-DESIGN-VALIDATOR: TNT-03 no-tenant case unspecified.
+      applyRequestTenantContext must branch on empty tenant_id and issue
+      SET search_path TO public only, not prepend a tenant schema prefix.
+  - step: backend-dev
+    rework_count: 1
+    reason: >
+      RC-01: Table naming mismatch (dead_letter_queue vs dead_letter_items,
+      form_schema_registry vs repository_form_schemas).
+      RC-02: Legacy public business tables not dropped (19 tables still in public
+      after migrations 001-059).
+      RC-03: lint_migration_schema.py single-file mode missing (argv[1] always
+      routed to lint_directory instead of lint_file).
+  - step: test-designer
+    rework_count: 1
+    reason: >
+      BLOCKER from TEST-DESIGN-VALIDATOR: TC-TNT-04-04 only checked column
+      existence, not WARN-vs-ERROR behavioral switch during migration window.
+      MAJOR: lint_test_isolation.py T020 false-positives on indented var
+      declarations; regex fixed to column-0 anchor.
+  - step: test-design-validator
+    rework_count: 1
+    reason: >
+      First pass returned FAIL due to test-designer BLOCKER; second pass
+      after rework returned PASS.
+  - step: test-runner
+    rework_count: 1
+    reason: >
+      First run failed with 5 test failures mapping to RC-01/RC-02/RC-03;
+      passed after backend-dev rework applied all three fixes.
+rule_adjustments: []
+notes: >
+  All variances are strongly negative (actual far below estimate) because
+  estimation_rules.json was calibrated for human developers. AI agents
+  complete tasks in a fraction of the estimated time. This is the first
+  D5/high run in the retrospective history; at least 2 consecutive D5/high
+  runs with the same direction of variance are required before adjusting
+  estimation_rules.json. Rule adjustment deferred until next D5/high run.
+completed_at: '2026-06-10T02:49:11Z'

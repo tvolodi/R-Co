@@ -1,0 +1,61 @@
+{
+  "handoff_id": "85e075fd-d1bb-4c83-9076-6e053ab60fee",
+  "run_id": "WF02-tnt-batch1-20260609",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-tnt-batch1-20260609/step-01-code-designer.json",
+  "created_at": "2026-06-09T18:00:19Z",
+  "started_at": "2026-06-09T18:14:20Z",
+  "completed_at": "2026-06-09T18:15:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 12",
+    "requirement_ids": [
+      "TNT-01",
+      "TNT-02",
+      "TNT-03",
+      "TNT-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements/TNT-01.md",
+      "docs/requirements/TNT-02.md",
+      "docs/requirements/TNT-03.md",
+      "docs/requirements/TNT-04.md",
+      "templates/lego-catalog.md",
+      "docs/guides/backend_developer_guide.md"
+    ]
+  },
+  "task": {
+    "description": "Design the implementation for TNT-01 through TNT-04 \u2014 the schema-per-tenant isolation foundation for Stage 12.\n\nTNT-01: All business tables must live in per-tenant PostgreSQL schemas (tenant_<uuid>), not in public.\nTNT-02: Migration runner must set search_path = <tenant_schema>, public before executing any migration SQL. A CI linter must reject migrations that reference public.<business_table>.\nTNT-03: Connection pool must set search_path = <tenant_schema>, public on checkout and reset to public on connection return. search_path must be re-applied after reconnect.\nTNT-04: Platform startup must audit public schema and log ERROR for any unexpected tables (permitted list: tenant, tenant_schemas, tenant_hostnames, tenant_realm_binding, schema_migrations, onboarding_registry, service_catalog, repository_artifacts, repository_activations, alerting_state).\n\nClassify each requirement against templates/lego-catalog.md. These are novel cross-cutting changes \u2014 likely Type E (prose design). Produce:\n- src/design/tnt-01-04-schema-isolation.md: full design artefact covering:\n  * Per-tenant schema provisioning: how/when tenant schemas are created (during onboarding)\n  * Migration runner changes: src/identity/onboarding.zig or dedicated migrations module \u2014 how search_path is set per-tenant\n  * CI linter: tools/lint_migration_schema.py \u2014 regex patterns for business table references\n  * Connection pool changes: src/db/pool.zig (or equivalent) \u2014 checkout/return search_path lifecycle\n  * Startup schema audit: src/bootstrap/audit.zig (or equivalent) \u2014 query information_schema, compare against permitted list, log ERROR/INFO\n  * Public signature list for all modified functions\n  * Error taxonomy for all new failure modes\n  * Migration file needed: creates tenant schema on provisioning, no public business tables\n  * Dependencies on existing modules (onboarding, pool, bootstrap)\n\nDo NOT write implementation code. Design only.\n\nREWORK 1 (from CODE-DESIGN-VALIDATOR):\n- [BLOCKER] TNT-03 no-tenant case: the design specifies that when tenant_context_mod.get() returns empty string, applyRequestTenantContext uses schemaNameForTenant which returns tenant_default, causing SET search_path TO tenant_default,public \u2014 this violates TNT-03 AC: no-tenant requests MUST get SET search_path TO public only (no tenant schema prefix). Fix: applyRequestTenantContext must branch on empty/no-tenant input and issue SET search_path TO public without any tenant schema prefix. The schemaNameForTenant helper may still return tenant_default for provisioning purposes, but the pool checkout path must treat empty tenant_id as public-only.",
+    "acceptance_criteria": [
+      "src/design/tnt-01-04-schema-isolation.md exists and covers all acceptance criteria for TNT-01, TNT-02, TNT-03, TNT-04",
+      "Every public function modified or added has its signature listed",
+      "Error taxonomy covers all new failure modes",
+      "Migration runner search_path protocol is specified precisely (which SQL statement, when, on which connection)",
+      "Connection pool checkout/return search_path lifecycle is fully specified",
+      "Startup audit query and permitted table list are specified",
+      "CI linter patterns for public.<business_table> are enumerated",
+      "No implementation code (function bodies, SQL bodies) in the design artefact",
+      "python tools/lint_design_artefact.py src/design/tnt-01-04-schema-isolation.md exits 0 with no BLOCKER/MAJOR"
+    ],
+    "functions_to_call": [
+      "fn:classify-lego-type",
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed TNT-03 no-tenant case in applyRequestTenantContext: empty tenant_id now issues SET search_path TO public only (no tenant schema prefix). Updated function signature spec, checkout sequence branching, no-tenant case section, key invariants, and traceability notes for consistency.",
+    "artifacts_out": [
+      "src/design/tnt-01-04-schema-isolation.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

@@ -1,0 +1,57 @@
+{
+  "handoff_id": "01d8ea38-c36c-448f-b1d6-fa94f78c3f38",
+  "run_id": "WF02-tnt-batch1-20260609",
+  "workflow_id": "WF-02",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-tnt-batch1-20260609/step-03b-test-design-validator.json",
+  "created_at": "2026-06-09T18:00:19Z",
+  "started_at": "2026-06-10T02:09:16Z",
+  "completed_at": "2026-06-10T02:11:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 12",
+    "requirement_ids": [
+      "TNT-01",
+      "TNT-02",
+      "TNT-03",
+      "TNT-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/TNT-01.md",
+      "tests/specs/TNT-02.md",
+      "tests/specs/TNT-03.md",
+      "tests/specs/TNT-04.md",
+      "docs/requirements/TNT-01.md",
+      "docs/requirements/TNT-02.md",
+      "docs/requirements/TNT-03.md",
+      "docs/requirements/TNT-04.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the TEST-DESIGNER output for TNT-01 through TNT-04. Hard gate \u2014 TEST-RUNNER cannot start until this returns PASS.",
+    "acceptance_criteria": [
+      "Every MUST acceptance criterion in TNT-01, TNT-02, TNT-03, TNT-04 has a runnable integration test",
+      "No error.SkipZigTest on any MUST requirement test without a separately passing counterpart integration test",
+      "All fixtures use per-test UUIDs",
+      "Tests clean up after themselves",
+      "Tests fail clearly if BPM_TEST_DB_URL is absent",
+      "TNT-02 linter test verifies tools/lint_migration_schema.py behaviour"
+    ],
+    "functions_to_call": [
+      "fn:validate-test-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Test design for TNT-01, TNT-02, TNT-03, TNT-04 validated \u2014 all MUST requirements have integration tests, fixtures use per-test UUIDs, tests clean up via defer, BPM_TEST_DB_URL absence causes a clear named error, no error.SkipZigTest on any MUST test, TC-TNT-04-04 exercises the WARN-vs-ERROR behavioral switch by setting migration_window_active TRUE/FALSE and calling auditPublicSchema in both phases, lint_test_isolation.py exits 0 with no BLOCKER/MAJOR findings.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

@@ -159,8 +159,11 @@ pub fn main(init: std.process.Init) !void {
 }
 
 fn migrationOrder(filename: []const u8) u32 {
-    var i: usize = 0;
+    // GBL-NNN_... files: skip "GBL-" prefix then parse the numeric part.
+    var start: usize = 0;
+    if (std.mem.startsWith(u8, filename, "GBL-")) start = 4;
+    var i: usize = start;
     while (i < filename.len and std.ascii.isDigit(filename[i])) : (i += 1) {}
-    if (i == 0) return 0;
-    return std.fmt.parseInt(u32, filename[0..i], 10) catch 0;
+    if (i == start) return 0;
+    return std.fmt.parseInt(u32, filename[start..i], 10) catch 0;
 }

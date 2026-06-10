@@ -58,6 +58,7 @@ pub const webhook_dispatcher = @import("webhook/dispatcher.zig"); // EXT-02 webh
 pub const identity_registry = @import("identity/registry.zig"); // IDN-01 user registry persistence
 pub const identity_service = @import("identity/service.zig"); // IDN-01 user registry service
 pub const identity_routes = @import("api/routes/identity.zig"); // IDN-01 user registry HTTP handlers
+pub const bootstrap_audit = @import("bootstrap/audit.zig"); // TNT-04 public schema startup audit
 pub const onboarding_mod = @import("identity/onboarding.zig"); // OIDC-35 onboarding orchestration
 pub const onboarding_routes = @import("api/routes/onboarding.zig"); // OIDC-35 onboarding HTTP handlers
 pub const identity_provider = @import("identity_provider"); // OIDC provider contract and bootstrap wiring
@@ -131,6 +132,16 @@ fn runApiServer(io: std.Io, allocator: std.mem.Allocator, config: config_mod.Con
             .{ .key = "tenant_id", .value = .{ .string = default_tenant_id } },
         };
         obs_logger.log(allocator, .WARN, "main", "default tenant schema provisioning failed", &provision_fields) catch {};
+    };
+
+    // TNT-04: Startup public schema audit.
+    // Runs after Pool.init and provisionTenantSchema (migrations applied).
+    // Non-fatal: errors are caught and logged at WARN; server continues regardless.
+    bootstrap_audit.auditPublicSchema(allocator, &pool) catch |audit_err| {
+        const audit_fields = [_]obs_logger.LogField{
+            .{ .key = "error", .value = .{ .string = @errorName(audit_err) } },
+        };
+        obs_logger.log(allocator, .WARN, "bootstrap.audit", "public schema audit could not complete", &audit_fields) catch {};
     };
 
     var def_store = definition_store.Store.init(allocator, &pool);
