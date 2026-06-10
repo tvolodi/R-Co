@@ -51,3 +51,6 @@ pub const simulation_runner = @import("simulation/scenario_runner.zig"); // SIM-
 pub const simulation_test_routes = @import("api/routes/simulation_test.zig"); // SIM-07..SIM-08
 pub const provisioning = @import("db/provisioning.zig"); // SPT-01
 pub const migrations = @import("db/migrations.zig"); // SPT-01
+pub const bootstrap_audit = @import("bootstrap/audit.zig"); // TNT-04
+pub const tenant_migration = @import("admin/tenant_migration.zig"); // TNT-06
+pub const tenant_status = @import("api/middleware/tenant_status.zig"); // TNT-06
