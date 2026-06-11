@@ -1,0 +1,70 @@
+{
+  "handoff_id": "iss104-code-designer-20260611",
+  "run_id": "WF02-iss104-artifact-hash-20260611",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-11T14:30:00Z",
+  "started_at": "2026-06-11T14:35:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-02 Step 1: Design Phase",
+    "requirement_ids": ["ISS-104"],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/BPM_Platform_Backend_Architecture.md",
+      "templates/lego-catalog.md"
+    ]
+  },
+  "task": {
+    "description": "Design phase for ISS-104: Add instances.artifact_hash and populate at start. This is a Type C migration issue (database schema change). Classify the requirement, create migration parameter file, create prose design document, and validate.",
+    "acceptance_criteria": [
+      "Requirement classified as Type C migration",
+      "Migration parameter file created at templates/specs/iss104_artifact_hash.migration.yaml",
+      "Prose design document created at src/design/iss104_artifact_hash.md",
+      "Both artefacts pass validation (lint_design_artefact, codegen --dry-run)",
+      "Code integration points documented (instance-start, artifact-store, reproducibility queries)",
+      "Open questions identified and flagged"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-104 classified as Type C migration (schema change). Two artefacts produced: (1) Migration parameter file templates/specs/iss104_artifact_hash.migration.yaml specifying the addition of instances.artifact_hash TEXT NULL column with full test fixtures; (2) Prose design document src/design/iss104_artifact_hash.md detailing code integration points in instance-start handler, artifact store, and reproducibility queries. No implementation code written; design-only phase complete. The migration adds the column with NULL default for backward compatibility; instance-start handler (BACKEND-DEV responsibility) will populate the hash when starting instances from repository-backed definitions.",
+    "artifacts_out": [
+      "templates/specs/iss104_artifact_hash.migration.yaml",
+      "src/design/iss104_artifact_hash.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "category": "open_question",
+        "description": "Repository-backed detection logic: How does instance-start determine if a definition_id is repo-backed? Current assumption is cross-ref with artifacts table (is_promoted = true). Clarification needed before BACKEND-DEV implements.",
+        "location": "src/design/iss104_artifact_hash.md :: Open Questions #1"
+      },
+      {
+        "severity": "MINOR",
+        "category": "open_question",
+        "description": "Hash computation & storage: Assumed that artifact promotion pre-computes SHA-256 and stores in artifacts table. BACKEND-DEV should confirm that src/repository/artifacts.zig :: promote() already handles this.",
+        "location": "src/design/iss104_artifact_hash.md :: Open Questions #2"
+      },
+      {
+        "severity": "MINOR",
+        "category": "open_question",
+        "description": "Audit of unavailable hashes: Design specifies silent fallback to NULL with warning in logs. Confirm whether ISS-104 requires audit log entries (INSTANCE_HASH_UNAVAILABLE event), or if that is a separate requirement.",
+        "location": "src/design/iss104_artifact_hash.md :: Open Questions #3"
+      },
+      {
+        "severity": "MINOR",
+        "category": "open_question",
+        "description": "Content hash uniqueness: Design assumes (artifacts.content_hash) is UNIQUE or treated as natural key. Confirm constraint in artifacts table schema.",
+        "location": "src/design/iss104_artifact_hash.md :: Open Questions #4"
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-06-11T14:50:00Z"
+}

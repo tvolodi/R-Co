@@ -1,0 +1,114 @@
+{
+  "handoff_id": "iss104-code-design-validator-20260611",
+  "run_id": "WF02-iss104-artifact-hash-20260611",
+  "step": "1b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-11T14:50:00Z",
+  "started_at": "2026-06-11T15:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-02 Step 1b: Design Validation Gate (Retry 1)",
+    "requirement_ids": ["ISS-104"],
+    "related_handoff_ids": ["iss104-code-designer-20260611"],
+    "artifacts_in": [
+      "templates/specs/iss104_artifact_hash.migration.yaml",
+      "src/design/iss104_artifact_hash.md"
+    ]
+  },
+  "task": {
+    "description": "Validate design artifacts for ISS-104 before routing to BACKEND-DEV. This is retry 1 — CODE-DESIGNER has fixed the E050 diagram violation. Verify all acceptance criteria are met and design is ready for implementation.",
+    "acceptance_criteria": [
+      "Migration parameter file passes lint and codegen validation",
+      "Prose design document passes lint validation with no BLOCKER/MAJOR issues (E050 resolved)",
+      "All three ISS-104 acceptance criteria have corresponding design elements",
+      "No implementation code present in design documents",
+      "BACKEND-DEV has sufficient detail to implement without ambiguity"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact (migration spec)",
+      "fn:codegen-migration (dry-run preview)",
+      "fn:lint-design-artefact (prose design)",
+      "fn:validate-completeness"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design validation PASSED. E050 violation resolved. Prose design document now passes lint with no BLOCKER/MAJOR issues. Migration parameter file is valid and codegen generates correct SQL. All three ISS-104 acceptance criteria are covered in design. No implementation code present. Design is ready for BACKEND-DEV routing.",
+    "artifacts_out": [
+      "templates/specs/iss104_artifact_hash.migration.yaml",
+      "src/design/iss104_artifact_hash.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "category": "coverage_note",
+        "description": "Acceptance criterion #1 (Migration adds instances.artifact_hash TEXT NULL): COVERED. Codegen output shows valid ALTER TABLE statement: 'ALTER TABLE instances ADD COLUMN IF NOT EXISTS artifact_hash TEXT;'",
+        "location": "templates/specs/iss104_artifact_hash.migration.yaml"
+      },
+      {
+        "severity": "MINOR",
+        "category": "coverage_note",
+        "description": "Acceptance criterion #2 (Instance-start writes artifact hash): COVERED. Design section 'Public Interface — Code Integration Points' → '1. Instance Start Handler' documents when hash is populated, error handling, and graceful fallback to NULL.",
+        "location": "src/design/iss104_artifact_hash.md"
+      },
+      {
+        "severity": "MINOR",
+        "category": "coverage_note",
+        "description": "Acceptance criterion #3 (Reproducibility query can resolve instance → artifact): COVERED. Design section 'Public Interface — Code Integration Points' → '3. Reproducibility Queries' provides exact SQL pattern and join ownership model.",
+        "location": "src/design/iss104_artifact_hash.md"
+      },
+      {
+        "severity": "MINOR",
+        "category": "open_question_from_designer",
+        "description": "Repository-backed detection logic. CODE-DESIGNER flagged this as needing clarification before implementation. Design assumes (definition_id with promoted artifact) = repo-backed.",
+        "location": "src/design/iss104_artifact_hash.md: Open Questions section"
+      },
+      {
+        "severity": "MINOR",
+        "category": "open_question_from_designer",
+        "description": "Hash computation & storage pre-requisites. Design assumes artifact promotion pre-computes and stores SHA-256 in artifacts table.",
+        "location": "src/design/iss104_artifact_hash.md: Open Questions section"
+      },
+      {
+        "severity": "MINOR",
+        "category": "open_question_from_designer",
+        "description": "Audit log requirement for unavailable hashes. Design specifies silent fallback with warning log; confirm if audit entry is a separate requirement.",
+        "location": "src/design/iss104_artifact_hash.md: Open Questions section"
+      },
+      {
+        "severity": "MINOR",
+        "category": "open_question_from_designer",
+        "description": "Content hash uniqueness constraint. Design assumes (artifacts.content_hash) is UNIQUE or treated as natural key.",
+        "location": "src/design/iss104_artifact_hash.md: Open Questions section"
+      }
+    ],
+    "validation_details": {
+      "lint_migration_spec": {
+        "command": "python tools/lint_design_artefact.py templates/specs/iss104_artifact_hash.migration.yaml",
+        "exit_code": 0,
+        "result": "PASS — no issues"
+      },
+      "codegen_migration_dryrun": {
+        "command": "python tools/codegen_migration.py templates/specs/iss104_artifact_hash.migration.yaml --dry-run",
+        "exit_code": 0,
+        "result": "PASS — generates valid ALTER TABLE and integration test boilerplate covering all acceptance criteria"
+      },
+      "lint_prose_design": {
+        "command": "python tools/lint_design_artefact.py src/design/iss104_artifact_hash.md",
+        "exit_code": 0,
+        "result": "PASS — E050 resolved, no BLOCKER/MAJOR issues"
+      },
+      "completeness_check": {
+        "criterion_1_migration_column": "PASS — ALTER TABLE instances ADD COLUMN IF NOT EXISTS artifact_hash TEXT; — nullable, additive, backward compatible",
+        "criterion_2_instance_start": "PASS — Design section 'Public Interface → Instance Start Handler' documents hash population, repository-backed detection, error handling, and graceful NULL fallback",
+        "criterion_3_reproducibility": "PASS — Design section 'Public Interface → Reproducibility Queries' provides exact JOIN pattern for instance → artifact resolution"
+      }
+    },
+    "next_action": "Route to BACKEND-DEV (Step 2a) — design is ready for implementation"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-06-11T08:48:43Z"
+}

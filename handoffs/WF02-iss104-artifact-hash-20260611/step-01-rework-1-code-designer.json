@@ -1,0 +1,55 @@
+{
+  "handoff_id": "iss104-code-designer-rework-1-20260611",
+  "run_id": "WF02-iss104-artifact-hash-20260611",
+  "step": "01-rework-1",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-11T15:30:00Z",
+  "started_at": "2026-06-11T15:35:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-02 Step 1: Design Phase — Rework 1",
+    "requirement_ids": ["ISS-104"],
+    "related_handoff_ids": ["iss104-code-design-validator-20260611"],
+    "artifacts_in": [
+      "src/design/iss104_artifact_hash.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK 1: Resolve E050 lint violation in src/design/iss104_artifact_hash.md. The Data Flow Diagram section exceeds 40 lines and violates design convention (diagrams should be sketches, not detailed ASCII renderings). Reduce diagram to ≤40 lines, remove redundant detail, and re-validate with lint_design_artefact.py.",
+    "acceptance_criteria": [
+      "Data Flow Diagram reduced to ≤40 lines",
+      "Essential flow preserved: instance → definition_snapshot → artifact_hash",
+      "No implementation code remains in design",
+      "lint_design_artefact.py exits 0 with no BLOCKER/MAJOR violations",
+      "All three original ISS-104 acceptance criteria still covered"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "E050 violation resolved. Simplified Data Flow Diagram from 41 lines to 20 lines by replacing nested ASCII boxes with arrow-based flow schematic. Removed redundant detail and over-specification while maintaining essential decision points: client → definition registry → repo-backed check → artifact store (if repo) → hash/NULL → insert instance → atomic event store → response. Diagram now meets design convention for sketches. Lint validation passes with no BLOCKER/MAJOR issues. All three acceptance criteria remain covered: (1) migration adds TEXT NULL column, (2) instance-start integration documented, (3) reproducibility queries pattern provided.",
+    "artifacts_out": [
+      "src/design/iss104_artifact_hash.md"
+    ],
+    "issues": [],
+    "validation_details": {
+      "lint_design_diagram": {
+        "command": "python tools/lint_design_artefact.py src/design/iss104_artifact_hash.md",
+        "exit_code": 0,
+        "result": "PASS — no issues"
+      },
+      "diagram_line_count": {
+        "before": 41,
+        "after": 20,
+        "limit": 40,
+        "status": "PASS"
+      }
+    },
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "completed_at": "2026-06-11T08:47:03Z"
+}

@@ -1,0 +1,151 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: ISS-104 — Add instances.artifact_hash and populate at start
+# Produced by: CODE-DESIGNER (WF02-iss104-artifact-hash-20260611, Step 01)
+#
+# Design notes:
+#
+# WHY THIS MIGRATION EXISTS
+# Section §15.1/ADP-05 of BPM_Platform_Backend_Architecture.md establishes that instances
+# should reference the artifact hash of the definition they executed against, for
+# reproducibility and provenance. The definition_snapshot column preserves the authoritative
+# graph for execution; the artifact_hash provides a content-addressed link to the definition
+# in the repository (artifacts table). This is nullable for backward compatibility — legacy
+# instances and instances started before repository integration will have NULL.
+#
+# SEMANTIC MEANING
+# - instances.artifact_hash stores the SHA-256 content hash of the promoted definition artifact
+#   that was active when the instance was started.
+# - If NULL, the instance was started before repository adoption or via a non-repository path.
+# - The hash is immutable once set: it records the exact artifact version used at instance start.
+# - Reproducibility: a query (instance_id, artifact_hash) can resolve the exact definition
+#   version that was used (JOIN to artifacts table on content hash).
+#
+# IDEMPOTENCY STRATEGY
+# ADD COLUMN IF NOT EXISTS idempotent; if the column already exists, the migration
+# re-runs safely. Existing instances are unaffected (NULL for legacy rows).
+#
+# PER-TENANT APPLICATION
+# The instances table lives in each tenant's own schema (per-tenant migration).
+# The migration runner applies this to all tenant schemas during zig build migrate.
+# No schema-qualified names; search_path resolution handles routing.
+#
+# INSTANCE-START INTEGRATION (BACKEND-DEV: src/engine/instance.zig)
+# When an instance is started from a promoted artifact:
+#   1. Instance-start handler loads the definition snapshot (as before).
+#   2. If the definition came from the repository, resolve its content hash via
+#      src/repository/artifacts.zig :: ArtifactStore.getContentHash(artifact_id).
+#   3. Persist the hash in the INSERT statement for instances (column: artifact_hash).
+#   4. If the definition did NOT come from repository, artifact_hash is NULL.
+# This is an additive change — instance-start existing code path remains unchanged
+# for non-repository definitions.
+#
+# REPRODUCIBILITY QUERY (no code needed in this migration)
+# SELECT instance_id, artifact_hash, definition_snapshot
+#   FROM instances WHERE instance_id = $1;
+# If artifact_hash IS NOT NULL, lookup in artifacts table:
+# SELECT content_hash, artifact_id, promoted_at FROM artifacts
+#   WHERE content_hash = $2 ORDER BY promoted_at DESC LIMIT 1;
+#
+# ERROR HANDLING
+# - If artifact hash cannot be computed at instance start: log a warning, set
+#   artifact_hash = NULL, and proceed. The instance is still valid (snapshot is
+#   authoritative for execution). A subsequent audit log entry can record the
+#   "hash unavailable" event for diagnostics.
+# - If artifact_hash is NULL on a legacy instance: reproducibility queries return
+#   NULL; reconstruction falls back to definition_snapshot (existing behavior).
+
+schema_version: 1
+migration_number: 84
+name: iss104_artifact_hash
+requirement_ids: [ISS-104]
+purpose: |
+  Add instances.artifact_hash TEXT NULL column to store the content hash of the
+  promoted artifact that the instance was started from. This enables reproducibility
+  queries (instance → artifact) without reading the definition registry again.
+  The change is additive: existing instances are unaffected (NULL). No index is
+  created (hash is not used as a lookup key in this migration).
+
+tables:
+  - mode: alter
+    name: instances
+    add_columns:
+      - name: artifact_hash
+        type: TEXT
+        nullable: true
+        default: null
+        comment: "Content hash (SHA-256) of the promoted artifact this instance was started from; NULL for legacy instances or non-repository starts"
+
+fixtures:
+  - name: tenant_id
+    kind: uuid
+  - name: instance_id
+    kind: uuid
+  - name: definition_id
+    kind: uuid
+  - name: artifact_hash_sample
+    kind: text
+    value: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+test_cases:
+  - name: add_artifact_hash_column_succeeds
+    description: The migration adds instances.artifact_hash as a nullable TEXT column.
+    requirement_ref: ISS-104
+    arrange: |
+      // The instances table exists (via migration 005_instances.sql).
+    act: |
+      // Apply migration GBL-084.
+    assertions: |
+      // CUSTOM: SELECT column_name, data_type, is_nullable FROM information_schema.columns
+      // WHERE table_name = 'instances' AND column_name = 'artifact_hash'
+      // Assert: data_type = 'text', is_nullable = 'YES'.
+
+  - name: legacy_instances_unaffected
+    description: Pre-existing instances retain their data; artifact_hash is NULL for backward compatibility.
+    requirement_ref: ISS-104
+    arrange: |
+      // Insert a legacy instance row (before migration) via raw SQL:
+      // INSERT INTO instances (instance_id, definition_id, definition_snapshot, ...)
+      // VALUES (fx.instance_id, fx.definition_id, '{}', ...);
+    act: |
+      // Apply migration GBL-084 (adds column with NULL default).
+    assertions: |
+      // CUSTOM: SELECT artifact_hash FROM instances WHERE instance_id = fx.instance_id
+      // Assert: result is NULL.
+      // Assert: row count unchanged (no rows deleted/added).
+
+  - name: new_instance_can_store_artifact_hash
+    description: After migration, an instance row can be inserted with a non-NULL artifact_hash.
+    requirement_ref: ISS-104
+    arrange: |
+      // Apply migration GBL-084.
+    act: |
+      // INSERT INTO instances (..., artifact_hash) VALUES (..., fx.artifact_hash_sample);
+    assertions: |
+      // CUSTOM: SELECT artifact_hash FROM instances WHERE instance_id = fx.instance_id
+      // Assert: result = fx.artifact_hash_sample.
+
+  - name: artifact_hash_nullable
+    description: The artifact_hash column allows NULL; no NOT NULL constraint exists.
+    requirement_ref: ISS-104
+    arrange: |
+      // Apply migration GBL-084.
+    act: |
+      // INSERT INTO instances (..., artifact_hash) VALUES (..., NULL);
+    assertions: |
+      // CUSTOM: assert INSERT succeeds (no NOT NULL constraint violation).
+
+  - name: no_index_on_artifact_hash
+    description: No index is created on artifact_hash in this migration (hash is not a lookup key).
+    requirement_ref: ISS-104
+    arrange: |
+      // Apply migration GBL-084.
+    act: |
+      // Query information_schema.statistics / pg_indexes for an index on artifact_hash.
+    assertions: |
+      // CUSTOM: Assert no index exists on instances(artifact_hash).
+
+rollback_strategy: |
+  Forward-only. The column is nullable and optional; dropping it would lose provenance
+  information for instances that have been populated. If artifact_hash must be removed,
+  write a subsequent migration that first audits instances with non-NULL artifact_hash,
+  then drops the column. Do NOT add a destructive rollback migration alongside this one.

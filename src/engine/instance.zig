@@ -586,10 +586,10 @@ pub const InstanceStore = struct {
             allocator,
             \\INSERT INTO instance_projections
             \\    (tenant_id, instance_id, definition_id, correlation_key,
-            \\     definition_artifact_hash, status, variables, current_nodes, started_at, updated_at)
+            \\     definition_artifact_hash, artifact_hash, status, variables, current_nodes, started_at, updated_at)
             \\VALUES
-            \\    (bpm_effective_tenant_id(), $1::uuid, $2::uuid, NULLIF($3, ''), NULLIF($4, ''),
-            \\     'ACTIVE', $5::jsonb, '[]'::jsonb, NOW(), NOW())
+            \\    (bpm_effective_tenant_id(), $1::uuid, $2::uuid, NULLIF($3, ''), NULLIF($4, ''), NULLIF($5, ''),
+            \\     'ACTIVE', $6::jsonb, '[]'::jsonb, NOW(), NOW())
             \\ON CONFLICT (tenant_id, definition_id, correlation_key)
             \\    WHERE correlation_key IS NOT NULL DO NOTHING
             \\RETURNING
@@ -601,7 +601,7 @@ pub const InstanceStore = struct {
             \\    (EXTRACT(EPOCH FROM started_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
-            &.{ inst_id_hex, def_id_hex, ck_param, definition_artifact_hash_param, initial_variables },
+            &.{ inst_id_hex, def_id_hex, ck_param, definition_artifact_hash_param, definition_artifact_hash_param, initial_variables },
         ) catch return InstanceError.TransactionFailed;
         defer {
             var r = ins_rows;
