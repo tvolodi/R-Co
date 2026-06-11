@@ -1,0 +1,97 @@
+run_id: WF02-iss101-20260611
+date: "2026-06-11"
+requirement_ids:
+  - ISS-101
+test_runner_agent: TEST-RUNNER
+handoff_id: 4afdefd2-83cc-4b9a-9aa9-f6a9a7d803e6
+
+environment:
+  branch: feature/WF02-iss101-20260611
+  zig_version: "0.16.0"
+  platform: win32
+  services:
+    - name: db_test (PostgreSQL 15)
+      status: HEALTHY
+      port: 5433
+    - name: keycloak
+      status: HEALTHY
+      port: 8081
+  bpm_test_db_url_set: true
+
+pre_checks:
+  backend_services: PASS
+  benchmark_env: CLEARED (pre-cleared by ORCH)
+
+build_checks:
+  zig_build_test: PASS
+  zig_build_test_integration_iss101: PASS
+
+test_results:
+  - test_case_id: TC-ISS-101-01
+    name: "update_timer_to_failed_succeeds"
+    description: "A timer row can be updated to status 'failed' after migration 081 extends the CHECK constraint"
+    acceptance_criteria_mapped: ["AC-1", "AC-3"]
+    result: PASS
+    notes: "Timer with initial status 'pending' successfully updated to 'failed'; SELECT confirms stored value is 'failed'"
+
+  - test_case_id: TC-ISS-101-02
+    name: "update_timer_to_failed_uppercase_succeeds"
+    description: "The CHECK uses lower() so 'FAILED' (uppercase) is also accepted"
+    acceptance_criteria_mapped: ["AC-4"]
+    result: PASS
+    notes: "Timer updated to 'FAILED' (uppercase); SELECT confirms stored value is 'FAILED' (as-is); CHECK normalises with lower()"
+
+  - test_case_id: TC-ISS-101-03
+    name: "invalid_status_still_rejected"
+    description: "An arbitrary invalid status value is rejected by the CHECK constraint even after migration"
+    acceptance_criteria_mapped: ["AC-6"]
+    result: PASS
+    notes: "UPDATE timers SET status='BOGUS' fails with error.ServerError (pg constraint violation 23514); ROLLBACK TO SAVEPOINT restores 'pending' status"
+
+  - test_case_id: TC-ISS-101-04
+    name: "existing_statuses_remain_valid"
+    description: "Pre-existing status values (pending, fired, cancelled) still pass the constraint after migration"
+    acceptance_criteria_mapped: ["AC-5"]
+    result: PASS
+    notes: "Three timers with statuses 'pending', 'fired', 'cancelled' inserted successfully; SELECT returns all three in alphabetical order"
+
+summary:
+  total: 4
+  passed: 4
+  failed: 0
+  skipped: 0
+
+overall_verdict: PASS
+
+issues: []
+
+notes_on_pre_existing_failures:
+  - description: >
+      The full 'zig build test-integration' step (main_test.zig) has 272 pre-existing
+      failures in a batch of 477 tests, starting with TC-DB-01-01 which expects 6 tables
+      in the public schema (schema_migrations, events, instance_projections,
+      instance_sequence, event_type_registry, events_archive) but finds only 1
+      (schema_migrations). These tables migrated to per-tenant schemas via GBL-073 and
+      are not present in public. These failures pre-date ISS-101 and are unrelated
+      to the timers.status constraint change.
+    severity: pre-existing
+    scope: unrelated to ISS-101
+
+remediation_performed:
+  - description: >
+      The ISS-101 test file (iss101_timers_failed_status_test.zig) was originally
+      written using 'SET search_path TO tenant_default,public' which failed because
+      the tenant_default schema has no tables (timers live in per-tenant schemas).
+      TEST-RUNNER rewrote the test to use provisionTenantSchema (via pool) to create
+      a fresh tenant schema per test, then open a direct pg.Conn with the correct
+      search_path. This follows the same pattern used by tnt_schema_isolation_test.zig.
+  - description: >
+      Added iss101_timers_failed_status_test.zig to main_test.zig imports and comptime block.
+  - description: >
+      Added test-integration-iss101 dedicated build step and run_iss101_integration_tests
+      artifact to build.zig. Also wired it into the main test-integration step.
+
+artifacts_out:
+  - tests/reports/report-20260611-WF02-iss101-20260611.yaml
+
+next_action: "Route to RELEASE-VALIDATOR (Step 05)"

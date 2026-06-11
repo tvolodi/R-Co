@@ -3,6 +3,74 @@
   "note": "Active registry \u2014 entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
   "entries": [
     {
+      "handoff_id": "799cb249-8522-4a1e-9f21-7b71efe07d69",
+      "file": "handoffs/WF02-iss101-20260611/step-03b-test-design-validator.json",
+      "run_id": "WF02-iss101-20260611",
+      "workflow_id": "WF-02",
+      "step": "03b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-06-11T05:14:57Z",
+      "started_at": "2026-06-11T05:36:03Z",
+      "completed_at": "2026-06-11T05:36:54Z",
+      "status": "COMPLETED",
+      "stage": "ISS-101 Correctness Remediation"
+    },
+    {
+      "handoff_id": "803b0eb3-2448-48a6-9738-1003fcb1d0db",
+      "file": "handoffs/WF02-iss101-20260611/step-03-test-designer.json",
+      "run_id": "WF02-iss101-20260611",
+      "workflow_id": "WF-02",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-06-11T05:14:57Z",
+      "started_at": "2026-06-11T05:33:56Z",
+      "completed_at": "2026-06-11T05:34:49Z",
+      "status": "COMPLETED",
+      "stage": "ISS-101 Correctness Remediation"
+    },
+    {
+      "handoff_id": "2b3f1d04-6424-43d5-996f-644b6b281778",
+      "file": "handoffs/WF02-iss101-20260611/step-00-backend-dev.json",
+      "run_id": "WF02-iss101-20260611",
+      "workflow_id": "WF-02",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-11T05:14:57Z",
+      "status": "COMPLETED",
+      "stage": "ISS-101 Correctness Remediation"
+    },
+    {
+      "handoff_id": "3f58fe95-d811-4937-b3c9-da83502e2ddc",
+      "file": "handoffs/WF02-iss101-20260611/step-01b-code-design-validator.json",
+      "run_id": "WF02-iss101-20260611",
+      "workflow_id": "WF-02",
+      "step": "01b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-06-11T05:14:57Z",
+      "started_at": "2026-06-11T05:22:10Z",
+      "completed_at": "2026-06-11T05:23:17Z",
+      "status": "COMPLETED",
+      "stage": "ISS-101 Correctness Remediation"
+    },
+    {
+      "handoff_id": "dc9aba9b-6eb0-483a-bf42-5f1752e15a05",
+      "file": "handoffs/WF02-iss101-20260611/step-01-code-designer.json",
+      "run_id": "WF02-iss101-20260611",
+      "workflow_id": "WF-02",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-06-11T05:14:57Z",
+      "started_at": "2026-06-11T05:19:02Z",
+      "completed_at": "2026-06-11T05:21:19Z",
+      "status": "COMPLETED",
+      "stage": "ISS-101 Correctness Remediation"
+    },
+    {
       "handoff_id": "5c4b3112-d508-4cd2-99f8-48d60c607157",
       "file": "handoffs/ADHOC-env-b1-testfix-20260611/step-01-backend-dev.json",
       "run_id": "ADHOC-env-b1-testfix-20260611",
@@ -4543,5 +4611,5 @@
       "stage": "Stage 12"
     }
   ],
-  "last_updated": "2026-06-10T02:49:11Z"
+  "last_updated": "2026-06-11T06:00:20Z"
 }
