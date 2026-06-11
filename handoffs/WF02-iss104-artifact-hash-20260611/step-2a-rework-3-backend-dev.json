@@ -1,0 +1,56 @@
+{
+  "handoff_id": "f4e5c6d7-8b9a-11ec-81d3-0242ac130004",
+  "run_id": "WF02-iss104-artifact-hash-20260611",
+  "step": "2a-rework-3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T14:30:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 Rework 3 (Final)",
+    "requirement_ids": ["ISS-104"],
+    "related_handoff_ids": ["step-2a-rework-1-backend-dev.json", "step-2a-rework-2-backend-dev.json"],
+    "artifacts_in": ["migrations/GBL-077_tnt07_rls_cleanup.sql", "migrations/GBL-085_iss104_artifact_hash.sql"]
+  },
+  "task": {
+    "description": "Final rework (3 of 3) to resolve GBL-077 migration DDL phase failure blocking ISS-104 testing.\n\nFrom Rework 2 investigation:\n- GBL-077 pre-flight check now PASSES (verified)\n- But GBL-077 DDL phase still fails with ServerError\n- DDL phase includes: DROP DEFAULT, drop RLS policies, drop columns, drop function\n\nThis is the final rework attempt. If unresolved, escalation required.",
+    "acceptance_criteria": [
+      "GBL-077 migration applies successfully (no ServerError)",
+      "zig build migrate exits 0",
+      "zig build test passes all unit tests",
+      "All 4 ISS-104 integration tests PASS",
+      "Feature branch updated and pushed"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Rework 3 (final attempt): Fixed migration ordering and refactored GBL-077 with idempotent exception handlers. Migration ordering issue resolved. However, GBL-077 still fails at DDL phase with generic ServerError. Root cause cannot be determined due to exception handler suppression of PostgreSQL error messages. All rework attempts (1-3) exhausted. Escalation required for human review.",
+    "artifacts_out": [
+      "migrations/GBL-077_tnt07_rls_cleanup.sql",
+      "commit 02c271e"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "code": "GBL-077-DDL-FAIL",
+        "description": "GBL-077 migration DDL phase returns ServerError despite pre-flight check passing. Cannot determine root cause: exception handlers in migration suppress actual PostgreSQL error. Test harness returns generic error.ServerError to caller without error message details.",
+        "affected_component": "migrations/GBL-077_tnt07_rls_cleanup.sql",
+        "investigation": "Rework 1 fixed migration ordering. Rework 2 fixed pre-flight check. Rework 3 fixed DEFAULT clause drops and exception handling. All 3 reworks aimed at resolving migration failures, but underlying DDL error remains hidden.",
+        "attempted_fixes": [
+          "Moved ALTER COLUMN DROP DEFAULT before DROP COLUMN (Rework 3)",
+          "Refactored nested DO blocks to inline exception handlers (Rework 3)",
+          "Added CASCADE to DROP FUNCTION (Rework 3)",
+          "Removed duplicate migration files 084/GBL-084 (Rework 3)"
+        ],
+        "next_steps": "Escalate to human review. Options: (1) Enhanced logging in pg/Zig or test harness to surface PostgreSQL error, (2) Manual PostgreSQL testing with schema snapshot, (3) Skip GBL-077 in test harness to unblock ISS-104."
+      }
+    ],
+    "next_action": "ESCALATE to human review for GBL-077 root cause analysis (rework attempts exhausted 3/3)"
+  },
+  "rework_count": 3,
+  "max_rework": 3,
+  "started_at": "2026-06-11T14:30:00Z",
+  "completed_at": "2026-06-11T15:00:00Z"
+}
