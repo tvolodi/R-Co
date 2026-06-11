@@ -15,6 +15,15 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### ISS-203 — Deterministic Idempotency Keys for Engine-Emitted Events (RELEASED 2026-06-11)
+
+#### WF02-iss203-idempotency-keys-20260611 (2026-06-11)
+
+### Added
+- **ISS-203** Deterministic idempotency keys for engine-emitted cascade events. Key formula: FNV-1a-64(instance_id, triggering_event_seq, node_id, emitted_event_type, ordinal) formatted as `engine:<16-hex>`. ON CONFLICT (idempotency_key) DO NOTHING deduplicates replayed transitions in the event store. Client-supplied trigger event keys are passed through unmodified and unaffected by this change. Re-running the same transition with the same inputs always produces identical keys (replay determinism invariant R-1).
+- Validation evidence: 5/5 integration tests passing (TC-ISS-203-01 through TC-ISS-203-05). NFR benchmarks: p99 write 2.783ms, throughput 16,125 eps, replay 54.948ms — all within targets. Release approval: `docs/status/release-iss203-20260611.yaml`.
+- Requirement: ISS-203 — RELEASED
+
 ### ISS-202 — Two-Phase All-or-Nothing Variable Merge (RELEASED 2026-06-12)
 
 #### WF02-iss202-20260611 (2026-06-12)

@@ -35,9 +35,19 @@
       "fn:git-merge"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-203 RELEASED. CHANGELOG.md updated with ISS-203 entry. docs/status/requirement_status.yaml: ISS-203 set to RELEASED. Retrospective written to docs/metrics/retrospectives/WF02-iss203-idempotency-keys-20260611.yaml. PR merged, branch deleted.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml",
+      "docs/metrics/retrospectives/WF02-iss203-idempotency-keys-20260611.yaml"
+    ],
+    "issues": [],
+    "next_action": "DONE"
+  },
   "rework_count": 0,
   "max_rework": 3,
   "started_at": "2026-06-11T19:21:22Z",
-  "completed_at": null
+  "completed_at": "2026-06-11T23:38:49Z"
 }

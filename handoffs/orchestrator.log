@@ -750,3 +750,4 @@
 2026-06-11T19:21:22Z | ROUTE | WF02-iss203-idempotency-keys-20260611 | bc6706e7 | ORCH -> RELEASE-VALIDATOR | PENDING | step=05
 2026-06-11T19:21:22Z | ROUTE | WF02-iss203-idempotency-keys-20260611 | e3056438 | ORCH -> DOC-UPDATER | PENDING | step=06
 2026-06-11T19:52:18Z | COMPLETE | WF02-iss203-idempotency-keys-20260611 | 12223f7e | BACKEND-DEV | PASS — ISS-203 deterministic idempotency keys implemented
+2026-06-11T23:38:49Z | COMPLETE | WF02-iss203-idempotency-keys-20260611 | e3056438 | DOC-UPDATER | COMPLETED — ISS-203 RELEASED, PR merged, branch deleted

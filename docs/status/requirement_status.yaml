@@ -4164,4 +4164,26 @@ requirements:
     implemented_in_run: WF02-iss202-20260611
     tested_at: '2026-06-12'
     last_updated: '2026-06-12T00:00:00Z'
-total_requirements: 290
+  ISS-203:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Deterministic idempotency keys for engine-emitted cascade events
+    implemented_in:
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - src/engine/reconstruction.zig
+    - src/event_store/store.zig
+    - tests/unit/service_task_test.zig
+    - tests/unit/test_engine_apply.zig
+    - tests/unit/test_engine_ee05.zig
+    - tests/unit/test_ee07_parallel_join.zig
+    - tests/integration/iss203_idempotency_keys_test.zig
+    test_spec: tests/specs/ISS-203.md
+    test_run: tests/reports/report-20260611-WF02-iss203-idempotency-keys.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11'
+    release_run: WF02-iss203-idempotency-keys-20260611
+    release_decision: docs/status/release-iss203-20260611.yaml
+    last_updated: '2026-06-11T23:35:01Z'
+total_requirements: 291
