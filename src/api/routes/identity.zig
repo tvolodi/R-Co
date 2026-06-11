@@ -708,6 +708,44 @@ pub fn handleGetTenant(
         return errorResult(allocator, 500, "serialization_failed") };
 }
 
+/// ENV-04: GET /api/v1/tenants/current
+/// Returns the tenant record for the session's authenticated tenant_id.
+/// No PLATFORM_ADMIN role required — any authenticated user may call this.
+pub fn handleGetCurrentTenant(
+    service: *identity_service.Service,
+    allocator: std.mem.Allocator,
+    actor: auth.AuthContext,
+) HandlerResult {
+    // If the token carried no tenant_id claim, tenant_source is default_fallback.
+    // In that case we cannot determine which tenant the caller belongs to.
+    if (actor.tenant_source == .default_fallback) {
+        return errorResult(allocator, 401, "no_tenant_context");
+    }
+
+    const tenant_id_str = actor.tenant_id[0..];
+
+    const maybe_tenant = service.getTenantById(allocator, tenant_id_str) catch |err| switch (err) {
+        identity_service.IdentityError.PoolExhausted => return errorResult(allocator, 503, "service_unavailable"),
+        else => return errorResult(allocator, 500, "internal_error"),
+    };
+
+    const tenant = maybe_tenant orelse return errorResult(allocator, 404, "tenant_not_found");
+    defer tenant.deinit(allocator);
+
+    // For test tenants: resolve the production tenant display name via a second lookup.
+    const prod_display_name: ?[]const u8 = blk: {
+        const prod_id = tenant.production_tenant_id orelse break :blk null;
+        const maybe_prod = service.getTenantById(allocator, prod_id) catch break :blk null;
+        const prod_tenant = maybe_prod orelse break :blk null;
+        defer prod_tenant.deinit(allocator);
+        break :blk allocator.dupe(u8, prod_tenant.display_name) catch break :blk null;
+    };
+    defer if (prod_display_name) |v| allocator.free(v);
+
+    return .{ .status_code = 200, .body = serializeCurrentTenant(allocator, tenant, prod_display_name) catch
+        return errorResult(allocator, 500, "serialization_failed") };
+}
+
 pub fn handlePatchTenant(
     service: *identity_service.Service,
     allocator: std.mem.Allocator,
@@ -919,6 +957,33 @@ fn serializeUserListPage(allocator: std.mem.Allocator, page: identity_service.Us
     const page_size_text = try std.fmt.allocPrint(allocator, "{d}", .{page.page_size});
     defer allocator.free(page_size_text);
     try buf.appendSlice(allocator, page_size_text);
+    try buf.append(allocator, '}');
+
+    return buf.toOwnedSlice(allocator);
+}
+
+fn serializeCurrentTenant(
+    allocator: std.mem.Allocator,
+    tenant: identity_registry.Tenant,
+    production_tenant_display_name: ?[]const u8,
+) ![]u8 {
+    var buf: std.ArrayList(u8) = .empty;
+    errdefer buf.deinit(allocator);
+
+    try buf.appendSlice(allocator, "{\"id\":");
+    try appendJsonStr(allocator, &buf, tenant.tenant_id);
+    try buf.appendSlice(allocator, ",\"slug\":");
+    try appendJsonStr(allocator, &buf, tenant.slug);
+    try buf.appendSlice(allocator, ",\"display_name\":");
+    try appendJsonStr(allocator, &buf, tenant.display_name);
+    try buf.appendSlice(allocator, ",\"status\":");
+    try appendJsonStr(allocator, &buf, tenant.status.asString());
+    try buf.appendSlice(allocator, ",\"tenant_type\":");
+    try appendJsonStr(allocator, &buf, tenant.tenant_type);
+    try buf.appendSlice(allocator, ",\"production_tenant_id\":");
+    try appendNullableJsonStr(allocator, &buf, tenant.production_tenant_id);
+    try buf.appendSlice(allocator, ",\"production_tenant_display_name\":");
+    try appendNullableJsonStr(allocator, &buf, production_tenant_display_name);
     try buf.append(allocator, '}');
 
     return buf.toOwnedSlice(allocator);

@@ -1205,6 +1205,12 @@ fn serveRequest(
                     resp_status = 405;
                     resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
                 }
+            } else if (method == .GET and seg5.len == 0 and std.mem.eql(u8, seg4, "current")) {
+                // ENV-04: GET /api/v1/tenants/current — session-aware, any authenticated user.
+                // Must be registered BEFORE the generic :slug handler below.
+                const r = identity_routes.handleGetCurrentTenant(id_svc, req_alloc, authenticated_ctx.?);
+                resp_status = r.status_code;
+                resp_body = r.body;
             } else if (seg5.len == 0) {
                 if (method == .GET) {
                     const r = identity_routes.handleGetTenant(id_svc, req_alloc, actor, seg4);

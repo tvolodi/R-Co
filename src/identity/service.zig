@@ -520,6 +520,20 @@ pub const Service = struct {
         return maybe_tenant orelse error.TenantNotFound;
     }
 
+    /// ENV-04: Look up a tenant by UUID, no role restriction.
+    /// Returns null if not found. Used by the GET /api/v1/tenants/current handler.
+    pub fn getTenantById(
+        self: *Service,
+        allocator: std.mem.Allocator,
+        tenant_id: []const u8,
+    ) IdentityError!?registry_mod.Tenant {
+        return self.registry.selectTenantById(allocator, tenant_id) catch |err| switch (err) {
+            registry_mod.RegistryError.PoolExhausted => error.PoolExhausted,
+            registry_mod.RegistryError.OutOfMemory => error.OutOfMemory,
+            else => error.PersistenceFailed,
+        };
+    }
+
     pub fn patchTenant(
         self: *Service,
         allocator: std.mem.Allocator,
