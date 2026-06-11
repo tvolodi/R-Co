@@ -743,6 +743,10 @@ fn serveRequest(
                 const r = task_routes.handleComplete(task_store_inst, inst_store, id_svc, req_alloc, actor, seg4, body);
                 resp_status = r.status_code;
                 resp_body = r.body;
+            } else if (method == .POST and std.mem.eql(u8, seg5, "claim")) {
+                const r = task_routes.handleClaim(task_store_inst, req_alloc, actor, seg4);
+                resp_status = r.status_code;
+                resp_body = r.body;
             } else if (method == .POST and std.mem.eql(u8, seg5, "assign")) {
                 const r = task_routes.handleAssign(task_store_inst, req_alloc, actor, seg4, body);
                 resp_status = r.status_code;

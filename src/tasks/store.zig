@@ -45,6 +45,8 @@ pub const Task = struct {
     assignee_type: ?[]const u8,
     /// Assignee reference: user_id / group_name / role_name, or null.
     assignee_ref: ?[]const u8,
+    /// The individual worker who claimed this task. NULL when unclaimed.
+    claimed_by: ?Uuid,
     /// JSON-serialized form schema from HUMAN_TASK node definition. Null if none.
     form_schema: ?[]const u8,
     /// Correlation key from the parent instance. Null if none.
@@ -67,6 +69,23 @@ pub const TaskError = error{
     /// db.Pool.acquire() failed (pool exhausted or shutdown). HTTP 503.
     PoolExhausted,
     /// Malformed parameter (e.g. invalid UUID format, invalid status). HTTP 422.
+    InvalidInput,
+};
+
+// ---------------------------------------------------------------------------
+// ClaimError  (ISS-102)
+// ---------------------------------------------------------------------------
+
+pub const ClaimError = error{
+    /// task_id not found in tasks table. HTTP 404.
+    NotFound,
+    /// Task is already claimed (claimed_by IS NOT NULL). HTTP 409.
+    AlreadyClaimed,
+    /// Task status ≠ PENDING (already COMPLETED or CANCELLED). HTTP 409.
+    NotPending,
+    /// db.Pool.acquire() failed (pool exhausted or shutdown). HTTP 503.
+    PoolExhausted,
+    /// Malformed parameter (e.g. invalid UUID format) or unexpected DB error. HTTP 422.
     InvalidInput,
 };
 
@@ -186,6 +205,7 @@ pub const TaskStore = struct {
             \\    status,
             \\    assignee_type,
             \\    assignee_ref,
+            \\    claimed_by,
             \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
@@ -241,6 +261,7 @@ pub const TaskStore = struct {
             \\    t.status,
             \\    t.assignee_type,
             \\    t.assignee_ref,
+            \\    t.claimed_by,
             \\    (EXTRACT(EPOCH FROM t.created_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM t.updated_at) * 1000000)::bigint,
             \\    t.form_schema::text,
@@ -310,6 +331,7 @@ pub const TaskStore = struct {
             \\    status,
             \\    assignee_type,
             \\    assignee_ref,
+            \\    claimed_by,
             \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
@@ -462,7 +484,7 @@ pub const TaskStore = struct {
         sql_buf.appendSlice(a,
             \\SELECT
             \\    id, instance_id, token_id, node_id, node_name, status,
-            \\    assignee_type, assignee_ref,
+            \\    assignee_type, assignee_ref, claimed_by,
             \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
             \\FROM tasks
@@ -622,7 +644,7 @@ pub const TaskStore = struct {
         sql_buf.appendSlice(a,
             \\SELECT
             \\    id, instance_id, token_id, node_id, node_name, status,
-            \\    assignee_type, assignee_ref,
+            \\    assignee_type, assignee_ref, claimed_by,
             \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
             \\FROM tasks
@@ -672,6 +694,96 @@ pub const TaskStore = struct {
     }
 
     // -----------------------------------------------------------------------
+    // claimTask  (ISS-102)
+    // -----------------------------------------------------------------------
+
+    /// Atomically claim a PENDING, unclaimed task for a worker.
+    ///
+    /// Executes a single-statement conditional UPDATE. On success (1 row)
+    /// returns the updated Task. On 0 rows, issues a diagnostic SELECT and
+    /// maps the result to the appropriate ClaimError variant.
+    ///
+    /// Acquires its own connection from self.pool.
+    ///
+    /// Security: task_id and worker_id are bound as $1::uuid and $2::uuid —
+    /// no SQL string interpolation of caller-supplied values.
+    pub fn claimTask(
+        self: *TaskStore,
+        allocator: std.mem.Allocator,
+        task_id: Uuid,
+        worker_id: []const u8,
+    ) ClaimError!Task {
+        const conn = self.pool.acquire() catch |err| switch (err) {
+            PoolError.ExhaustedPool => return ClaimError.PoolExhausted,
+            else => return ClaimError.InvalidInput,
+        };
+        defer self.pool.release(conn);
+
+        var arena = std.heap.ArenaAllocator.init(allocator);
+        defer arena.deinit();
+        const a = arena.allocator();
+
+        const task_id_hex = uuidToHex(a, task_id) catch return ClaimError.InvalidInput;
+
+        // Security: $1=task_id, $2=worker_id — both bound as $N positional parameters.
+        const rows = conn.query(
+            allocator,
+            \\UPDATE tasks
+            \\SET
+            \\    claimed_by = $2::uuid,
+            \\    updated_at = NOW()
+            \\WHERE id          = $1::uuid
+            \\  AND claimed_by IS NULL
+            \\  AND status      = 'PENDING'
+            \\RETURNING
+            \\    id, instance_id, token_id, node_id, node_name, status,
+            \\    assignee_type, assignee_ref, claimed_by,
+            \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
+            \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint,
+            \\    form_schema::text
+        ,
+            &.{ task_id_hex, worker_id },
+        ) catch return ClaimError.InvalidInput;
+        defer {
+            var r = rows;
+            r.deinit();
+        }
+
+        // Happy path: claim succeeded.
+        if (rows.rows.len > 0) {
+            return rowToTask(allocator, rows.rows[0]) catch ClaimError.InvalidInput;
+        }
+
+        // 0 rows: the WHERE clause matched nothing. Issue a diagnostic SELECT
+        // to distinguish NotFound / AlreadyClaimed / NotPending.
+        // Security: $1=task_id — bound as $N positional parameter.
+        const diag_rows = conn.query(
+            allocator,
+            \\SELECT status, claimed_by IS NOT NULL AS is_claimed
+            \\FROM tasks
+            \\WHERE id = $1::uuid
+        ,
+            &.{task_id_hex},
+        ) catch return ClaimError.InvalidInput;
+        defer {
+            var r = diag_rows;
+            r.deinit();
+        }
+
+        if (diag_rows.rows.len == 0) return ClaimError.NotFound;
+
+        const diag_row = diag_rows.rows[0];
+        // Column 1: is_claimed boolean (PostgreSQL returns "t"/"f" or "true"/"false").
+        const is_claimed_str = if (diag_row.len > 1) diag_row[1] orelse "" else "";
+        const is_claimed = std.mem.eql(u8, is_claimed_str, "t") or
+            std.mem.eql(u8, is_claimed_str, "true");
+        if (is_claimed) return ClaimError.AlreadyClaimed;
+
+        // Task exists and claimed_by IS NULL — so status must not be PENDING.
+        return ClaimError.NotPending;
+    }
+
+    // -----------------------------------------------------------------------
     // assign  (API-04)
     // -----------------------------------------------------------------------
 
@@ -716,7 +828,7 @@ pub const TaskStore = struct {
             \\  AND assignee_ref IS NULL
             \\RETURNING
             \\    id, instance_id, token_id, node_id, node_name, status,
-            \\    assignee_type, assignee_ref,
+            \\    assignee_type, assignee_ref, claimed_by,
             \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
@@ -775,7 +887,7 @@ pub const TaskStore = struct {
             \\  AND assignee_ref IS NOT NULL
             \\RETURNING
             \\    id, instance_id, token_id, node_id, node_name, status,
-            \\    assignee_type, assignee_ref,
+            \\    assignee_type, assignee_ref, claimed_by,
             \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
@@ -817,7 +929,7 @@ pub const TaskStore = struct {
             \\  AND status = 'PENDING'
             \\RETURNING
             \\    id, instance_id, token_id, node_id, node_name, status,
-            \\    assignee_type, assignee_ref,
+            \\    assignee_type, assignee_ref, claimed_by,
             \\    (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint,
             \\    (EXTRACT(EPOCH FROM updated_at) * 1000000)::bigint
         ,
@@ -858,10 +970,11 @@ pub fn freeTask(allocator: std.mem.Allocator, task: Task) void {
 ///   5  status           TEXT
 ///   6  assignee_type    TEXT or NULL
 ///   7  assignee_ref     TEXT or NULL
-///   8  created_at       bigint (UTC µs)
-///   9  updated_at       bigint (UTC µs)
-///   10 form_schema      TEXT (JSON) or NULL  — present only in getById detail query
-///   11 correlation_key  TEXT or NULL         — present only in getById detail query
+///   8  claimed_by       UUID text or NULL
+///   9  created_at       bigint (UTC µs)
+///   10 updated_at       bigint (UTC µs)
+///   11 form_schema      TEXT (JSON) or NULL  — present only in getById/claimTask detail query
+///   12 correlation_key  TEXT or NULL         — present only in getById detail query
 fn rowToTask(
     allocator: std.mem.Allocator,
     row: []?[]u8,
@@ -888,17 +1001,24 @@ fn rowToTask(
     else
         null;
 
-    const created_at = std.fmt.parseInt(i64, colGet(row, 8), 10) catch 0;
-    const updated_at = std.fmt.parseInt(i64, colGet(row, 9), 10) catch 0;
+    // Column 8: claimed_by UUID or NULL (ISS-102 new field).
+    const cb_col: ?[]u8 = if (row.len > 8) row[8] else null;
+    const claimed_by: ?Uuid = if (cb_col) |cb|
+        parseUuid(cb) catch null
+    else
+        null;
 
-    // Optional extended columns — only present when getById does the enriched JOIN.
-    const fs_col: ?[]u8 = if (row.len > 10) row[10] else null;
+    const created_at = std.fmt.parseInt(i64, colGet(row, 9), 10) catch 0;
+    const updated_at = std.fmt.parseInt(i64, colGet(row, 10), 10) catch 0;
+
+    // Optional extended columns — only present when getById/claimTask does the enriched query.
+    const fs_col: ?[]u8 = if (row.len > 11) row[11] else null;
     const form_schema: ?[]const u8 = if (fs_col) |fs|
         try allocator.dupe(u8, fs)
     else
         null;
 
-    const ck_col: ?[]u8 = if (row.len > 11) row[11] else null;
+    const ck_col: ?[]u8 = if (row.len > 12) row[12] else null;
     const correlation_key: ?[]const u8 = if (ck_col) |ck|
         try allocator.dupe(u8, ck)
     else
@@ -913,6 +1033,7 @@ fn rowToTask(
         .status = status,
         .assignee_type = assignee_type,
         .assignee_ref = assignee_ref,
+        .claimed_by = claimed_by,
         .form_schema = form_schema,
         .correlation_key = correlation_key,
         .created_at = created_at,
