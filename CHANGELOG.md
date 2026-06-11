@@ -15,6 +15,16 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### ISS-107 — Tenant Storage Mode Flag (RELEASED 2026-06-11)
+
+#### WF02-iss107-storage-mode-20260611 (2026-06-11)
+
+- **Migration 086** (`migrations/086_iss107_tenant_storage_mode.sql`): Adds `storage_mode TEXT NOT NULL DEFAULT 'LEGACY_RLS' CHECK (storage_mode IN ('LEGACY_RLS','SCHEMA'))` to the `tenant` table. Additive and idempotent — uses `ADD COLUMN IF NOT EXISTS`. Creates `idx_tenant_storage_mode` index.
+- **Provisioning change** (`src/db/provisioning.zig`): Newly provisioned tenants have `storage_mode` set to `'SCHEMA'` via an UPDATE step in `provisionTenantSchema()`, matching the SPT coexistence architecture (§11.3).
+- **P0 schema formalization** (ISS-107 from architecture backlog EPIC-1): Prior to this fix, there was no `storage_mode` column on the `tenant` table, so a tenant had no authoritative storage path during the schema-per-tenant cutover (SPT). Existing tenants (including the default `0000...0000` tenant in the `bpm-default` Keycloak realm) keep `LEGACY_RLS` via the column DEFAULT. New tenants default to `SCHEMA`, aligning with the SPT provisioning pipeline.
+- Validation evidence: 5/5 integration tests passing (TC-ISS-107-01 through TC-ISS-107-05). NFR benchmarks green. Release approval: `docs/status/release-iss107-20260611.yaml`.
+- Requirement: ISS-107 — RELEASED
+
 ### ISS-106 — Webhook Delivery Outbox Table Formalization (RELEASED 2026-06-11)
 
 #### WF02-iss106-webhook-outbox-20260611 (2026-06-11)

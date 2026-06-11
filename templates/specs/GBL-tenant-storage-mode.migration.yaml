@@ -1,0 +1,108 @@
+# Migration + integration-test parameter file (Lego Type C)
+#
+# ISS-107: Add storage_mode column to public.tenant table.
+# Classification: Type C (migration) with a Type E supplement for provisioning.zig.
+#
+# GBL- prefix: operates on the public schema (global table).
+# Table is `tenant` (not `tenants`) — created in migration 031_adp04b_tenant_realm_binding.sql.
+#
+# Migration is additive: ADD COLUMN IF NOT EXISTS.
+# Existing rows (including id='0000...0000' default tenant) retain LEGACY_RLS via DEFAULT.
+# New tenants created via provisionTenantSchema() get SCHEMA (see provisioning.zig note below).
+
+schema_version: 1
+migration_number: 86
+name: iss107_tenant_storage_mode
+requirement_ids: [ISS-107]
+purpose: |
+  Add a storage_mode flag to the public.tenant table so each tenant has exactly
+  one authoritative storage path during SPT (schema-per-tenant) coexistence.
+  Valid values: LEGACY_RLS (existing RLS-based path) and SCHEMA (new schema-per-tenant path).
+  Existing tenants default to LEGACY_RLS; newly provisioned tenants default to SCHEMA
+  (set by the Zig-side provisionTenantSchema() function in src/db/provisioning.zig).
+
+# ------------------------------------------------------------
+# Tables
+# ------------------------------------------------------------
+tables:
+  - mode: alter
+    name: tenant
+    add_columns:
+      - { name: storage_mode, type: text, not_null: true, default: "'LEGACY_RLS'", check: "storage_mode IN ('LEGACY_RLS','SCHEMA')" }
+    indexes:
+      - { name: idx_tenant_storage_mode, columns: [storage_mode] }
+
+# ------------------------------------------------------------
+# Integration test scaffold
+# ------------------------------------------------------------
+fixtures:
+  - name: tenant_id
+    kind: uuid
+  - name: provision_tenant_sql
+    kind: sql_setup
+    sql: |
+      INSERT INTO tenant (id, slug, display_name, status)
+      VALUES ($1, 'test-iss107', 'Test ISS-107', 'ACTIVE')
+      ON CONFLICT (id) DO NOTHING
+    params: [tenant_id]
+
+test_cases:
+  - name: existing_tenant_defaults_to_legacy_rls
+    description: The default tenant (id='0000...0000') has storage_mode = 'LEGACY_RLS'.
+    requirement_ref: ISS-107
+    arrange: ""
+    act: |
+      const row = try h.conn.queryRow(
+        "SELECT storage_mode FROM tenant WHERE id = '00000000-0000-0000-0000-000000000000'",
+        .{},
+      );
+    assertions: |
+      // CUSTOM: assert row[0] equals "LEGACY_RLS"
+
+  - name: check_constraint_rejects_invalid_mode
+    description: UPDATE with storage_mode = 'INVALID' is rejected by the CHECK constraint.
+    requirement_ref: ISS-107
+    arrange: ""
+    act: |
+      try h.conn.exec(
+        "UPDATE tenant SET storage_mode = 'INVALID' WHERE id = $1::uuid",
+        .{fx.tenant_id},
+      );
+    assertions: |
+      // CUSTOM: assert error.CheckConstraintViolation; SELECT shows the original value.
+
+  - name: set_storage_mode_to_schema
+    description: A tenant can have storage_mode updated to 'SCHEMA'.
+    requirement_ref: ISS-107
+    arrange: ""
+    act: |
+      try h.conn.exec(
+        "UPDATE tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid",
+        .{fx.tenant_id},
+      );
+    assertions: |
+      // CUSTOM: assert SELECT returns "SCHEMA"
+
+# ------------------------------------------------------------
+# Provisioning.zig design note (Type E supplement)
+# ------------------------------------------------------------
+# In src/db/provisioning.zig, function provisionTenantSchema():
+# After the schema is successfully created and migrations applied,
+# add: UPDATE tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid
+# This ensures newly provisioned tenants use the SCHEMA path.
+# Implementer: add a step 6a after the existing step 6 that sets
+# storage_mode = 'SCHEMA' for the provisioned tenant.
+#
+# Pseudocode (to be placed after Step 6 in provisionTenantSchema):
+#   conn.exec(
+#     "UPDATE tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid",
+#     &.{tenant_id_str},
+#   ) catch return ProvisionError.RegistryUpdateFailed;
+
+# ------------------------------------------------------------
+# Rollback notes
+# ------------------------------------------------------------
+rollback_strategy: |
+  Forward-only (append-only policy). If storage_mode must be retired,
+  write a subsequent migration to archive/supersede it. Do NOT drop
+  the column in a migration.

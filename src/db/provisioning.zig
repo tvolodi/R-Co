@@ -125,4 +125,19 @@ pub fn provisionTenantSchema(
             &.{tenant_id_str},
         ) catch return ProvisionError.RegistryUpdateFailed;
     }
+
+    // Step 6a: Set the tenant's storage_mode to SCHEMA so newly provisioned
+    // tenants use the schema-per-tenant path during SPT coexistence.
+    {
+        const conn = pool.acquire() catch |err| switch (err) {
+            PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
+            else => return ProvisionError.RegistryUpdateFailed,
+        };
+        defer pool.release(conn);
+
+        conn.exec(
+            "UPDATE tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid",
+            &.{tenant_id_str},
+        ) catch return ProvisionError.RegistryUpdateFailed;
+    }
 }
