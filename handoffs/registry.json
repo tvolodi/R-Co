@@ -3,6 +3,48 @@
   "note": "Active registry \u2014 entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
   "entries": [
     {
+      "handoff_id": "30f615f5-b01e-4a83-857e-1b8c2dd03138",
+      "file": "handoffs/WF02-iss101-20260611/step-06-doc-updater.json",
+      "run_id": "WF02-iss101-20260611",
+      "workflow_id": "WF-02",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-06-11T05:14:57Z",
+      "started_at": "2026-06-11T06:04:42Z",
+      "completed_at": "2026-06-11T06:06:54Z",
+      "status": "COMPLETED",
+      "stage": "ISS-101 Correctness Remediation"
+    },
+    {
+      "handoff_id": "5ffdfe20-1f52-4b30-b00c-a37bb5f2f14c",
+      "file": "handoffs/WF02-iss101-20260611/step-05-release-validator.json",
+      "run_id": "WF02-iss101-20260611",
+      "workflow_id": "WF-02",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-06-11T05:14:57Z",
+      "started_at": "2026-06-11T06:01:25Z",
+      "completed_at": "2026-06-11T06:03:17Z",
+      "status": "COMPLETED",
+      "stage": "ISS-101 Correctness Remediation"
+    },
+    {
+      "handoff_id": "4afdefd2-83cc-4b9a-9aa9-f6a9a7d803e6",
+      "file": "handoffs/WF02-iss101-20260611/step-04-test-runner.json",
+      "run_id": "WF02-iss101-20260611",
+      "workflow_id": "WF-02",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-06-11T05:14:57Z",
+      "started_at": "2026-06-11T05:40:00Z",
+      "completed_at": "2026-06-11T05:55:00Z",
+      "status": "COMPLETED",
+      "stage": "ISS-101 Correctness Remediation"
+    },
+    {
       "handoff_id": "799cb249-8522-4a1e-9f21-7b71efe07d69",
       "file": "handoffs/WF02-iss101-20260611/step-03b-test-design-validator.json",
       "run_id": "WF02-iss101-20260611",
