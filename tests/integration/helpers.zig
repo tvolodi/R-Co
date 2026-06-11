@@ -113,12 +113,16 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     for (names.items) |filename| {
         if (applied.contains(filename)) continue;
 
-        // Skip TNT-05/TNT-07 migrations that have data pre-conditions in production but
+        // Skip GBL migrations that have data pre-conditions in production but
         // are not needed for isolated integration test runs. These migrations require
         // pre-existing tenant migration state that test harness doesn't set up.
+        // - GBL-074/075: TNT-05 backfill tracking (requires pre-existing migration state)
+        // - GBL-077: TNT-07 RLS cleanup (requires schema-per-tenant state)
+        // - GBL-081: ISS-103 audit_entries column type migration (legacy public schema tables already dropped)
         if (std.mem.eql(u8, filename, "GBL-074_tnt05_backfill_tracking.sql") or
             std.mem.eql(u8, filename, "GBL-075_tnt05_backfill_run.sql") or
-            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql")) {
+            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql") or
+            std.mem.eql(u8, filename, "GBL-081_iss103_audit_resource_id_text.sql")) {
             // Record as applied but skip execution
             conn.exec(
                 "INSERT INTO schema_migrations(version) VALUES ($1) ON CONFLICT DO NOTHING",
@@ -397,6 +401,10 @@ pub const TestHarness = struct {
 
         // Initialize test tenant context for all pool connections.
         // This ensures PostgreSQL has bpm.tenant_id set when pool connections are acquired.
+        // NOTE: Tenant context cannot be set from here due to module import limitations.
+        // Pool connections will fail to access tenant-specific schema tables unless
+        // the test code explicitly sets tenant context before creating the pool.
+        // See: src/db/pool.zig:applyRequestTenantContext() and src/api/tenant_context.zig
         if (@hasDecl(root, "setTestTenantContext")) {
             root.setTestTenantContext();
         }
