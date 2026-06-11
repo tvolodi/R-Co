@@ -391,9 +391,9 @@ pub const MergeVariablesResult = struct {
 
 fn freeOwnedTransitionState(
     allocator: std.mem.Allocator,
-    state: transition_mod.InstanceState,
+    result: transition_mod.TransitionResult,
 ) void {
-    for (state.tokens) |tok| {
+    for (result.state.tokens) |tok| {
         if (tok.token_id) |tid| allocator.free(tid);
         allocator.free(tok.node_id);
         allocator.free(tok.branch_id);
@@ -401,25 +401,25 @@ fn freeOwnedTransitionState(
             allocator.free(child_id);
         }
     }
-    allocator.free(state.tokens);
+    allocator.free(result.state.tokens);
 
-    var vars = state.variables;
+    var vars = result.state.variables;
     vars.deinit(allocator);
 
-    var jc = state.join_counters;
+    var jc = result.state.join_counters;
     jc.deinit(allocator);
 
-    for (state.pending_task_nodes) |node_id| {
+    for (result.state.pending_task_nodes) |node_id| {
         allocator.free(node_id);
     }
-    allocator.free(state.pending_task_nodes);
+    allocator.free(result.state.pending_task_nodes);
 
-    if (state.error_detail) |detail| {
+    if (result.state.error_detail) |detail| {
         allocator.free(detail);
     }
 
-    allocator.free(state.pending_events);
-    allocator.free(state.cancelled_branch_ids);
+    allocator.free(result.state.cancelled_branch_ids);
+    allocator.free(result.emitted_events);
 }
 
 // ---------------------------------------------------------------------------
@@ -674,7 +674,6 @@ pub const InstanceStore = struct {
             .join_counters = empty_join_counters,
             .pending_task_nodes = &.{},
             .error_detail = null,
-            .pending_events = &.{},
             .cancelled_branch_ids = &.{},
         };
 
@@ -686,13 +685,15 @@ pub const InstanceStore = struct {
             },
         };
 
-        const new_state = transition_mod.transition(
+        const result = transition_mod.transition(
             allocator,
             snapshot.graph,
             initial_state,
             start_event,
         ) catch return InstanceError.TransactionFailed;
-        defer freeOwnedTransitionState(allocator, new_state);
+        defer freeOwnedTransitionState(allocator, result);
+        const new_state = result.state;
+        const emitted_events = result.emitted_events;
 
         // ── Persist the transition result ──────────────────────────────────
         // Serialize tokens to JSON array: [{"token_id":"...","node_id":"...","branch_id":"..."}]
@@ -778,7 +779,7 @@ pub const InstanceStore = struct {
             allocator,
             conn2,
             uuid_bytes,
-            new_state.pending_events,
+            emitted_events,
         ) catch return InstanceError.TransactionFailed;
 
         // INSERT tasks for newly activated HUMAN_TASK nodes.
@@ -885,8 +886,10 @@ pub const InstanceStore = struct {
         snapshot: snapshot_mod.DefinitionGraph,
     ) ApplyError!transition_mod.InstanceState {
         // ── Step a: Pure transition call (NO I/O, outside DB transaction) ──
-        const new_state = transition_mod.transition(allocator, snapshot, old_state, event) catch
+        const result = transition_mod.transition(allocator, snapshot, old_state, event) catch
             return ApplyError.TransitionFailed;
+        const new_state = result.state;
+        const emitted_events = result.emitted_events;
 
         // ── Step b: Compute newly activated HUMAN_TASK node IDs ─────────────
         // Set difference: nodes in new_state.pending_task_nodes not in
@@ -1024,7 +1027,7 @@ pub const InstanceStore = struct {
             allocator,
             conn,
             instance_id,
-            new_state.pending_events,
+            emitted_events,
         ) catch |err| switch (err) {
             error.InstanceCancelled => return ApplyError.PersistenceFailed,
             error.InvalidTimerNodeConfig => return ApplyError.TransitionFailed,
@@ -1368,7 +1371,6 @@ pub const InstanceStore = struct {
             .join_counters = jc_parsed.value.object,
             .pending_task_nodes = pending_task_nodes.items,
             .error_detail = null,
-            .pending_events = &[_]transition_mod.PendingEvent{},
         };
 
         // ── Step e: Validate and parse output_variables_json ─────────────────
@@ -1509,7 +1511,6 @@ pub const InstanceStore = struct {
             .join_counters = current_state.join_counters,
             .pending_task_nodes = current_state.pending_task_nodes,
             .error_detail = current_state.error_detail,
-            .pending_events = current_state.pending_events,
             .cancelled_branch_ids = current_state.cancelled_branch_ids,
         };
 
@@ -1522,7 +1523,7 @@ pub const InstanceStore = struct {
             },
         };
 
-        const new_state = transition_mod.transition(a, snapshot, merged_state, event) catch |tr_err| switch (tr_err) {
+        const result = transition_mod.transition(a, snapshot, merged_state, event) catch |tr_err| switch (tr_err) {
             transition_mod.TransitionError.NoMatchingEdge => {
                 // EE-10 / EE-05 no-match path: rollback the completeTask tx first,
                 // then call setInstanceError which opens its own transaction.
@@ -1618,6 +1619,8 @@ pub const InstanceStore = struct {
             },
             else => return CompleteTaskError.TransitionFailed,
         };
+        const new_state = result.state;
+        const emitted_events = result.emitted_events;
 
         const service_outcome = try processServiceTaskRuntimeInTx(
             self,
@@ -1638,6 +1641,7 @@ pub const InstanceStore = struct {
             task.instance_id,
             inst_id_hex,
             effective_state,
+            emitted_events,
         );
 
         // Serialize new_state for SQL parameters (all in arena, freed at function exit).
@@ -1748,7 +1752,7 @@ pub const InstanceStore = struct {
             allocator,
             conn,
             task.instance_id,
-            new_state.pending_events,
+            emitted_events,
         ) catch |err| switch (err) {
             error.InstanceCancelled => return CompleteTaskError.TaskAlreadyTerminated,
             error.InvalidTimerNodeConfig => return CompleteTaskError.TransitionFailed,
@@ -2981,8 +2985,8 @@ fn processServiceTaskRuntimeInTx(
                             .output_variables = parsed_output.value.object,
                         },
                     };
-                    current_state = transition_mod.transition(allocator, snapshot, current_state, event2) catch
-                        return CompleteTaskError.TransitionFailed;
+                    current_state = (transition_mod.transition(allocator, snapshot, current_state, event2) catch
+                        return CompleteTaskError.TransitionFailed).state;
                     continue;
                 },
             }
@@ -3088,8 +3092,8 @@ fn processServiceTaskRuntimeInTx(
                                     .output_variables = output_vars,
                                 },
                             };
-                            current_state = transition_mod.transition(allocator, snapshot, current_state, event2) catch
-                                return CompleteTaskError.TransitionFailed;
+                            current_state = (transition_mod.transition(allocator, snapshot, current_state, event2) catch
+                                return CompleteTaskError.TransitionFailed).state;
                             break;
                         }
                     }
@@ -3665,10 +3669,11 @@ fn startSubProcessesForPendingEventsInTx(
     parent_instance_id: Uuid,
     parent_instance_id_hex: []const u8,
     state: transition_mod.InstanceState,
+    emitted_events: []const transition_mod.PendingEvent,
 ) CompleteTaskError!transition_mod.InstanceState {
     const next_state = state;
 
-    for (state.pending_events) |ev| {
+    for (emitted_events) |ev| {
         switch (ev) {
             .sub_process_start => |sp| {
                 const child_definition_id = parseUuid(sp.child_definition_id) catch return CompleteTaskError.TransitionFailed;

@@ -4132,4 +4132,20 @@ requirements:
     release_run: WF02-iss107-storage-mode-20260611
     release_decision: docs/status/release-iss107-20260611.yaml
     last_updated: '2026-06-11T14:50:00Z'
-total_requirements: 288
+  ISS-201:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Make transition() return TransitionResult{state, emitted_events}
+    implemented_in:
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - src/engine/reconstruction.zig
+    test_spec: tests/specs/ISS-201.md
+    test_run: tests/reports/report-20260611-WF02-iss201-event-return.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11'
+    release_run: WF02-iss201-event-return-20260611
+    release_decision: docs/status/release-iss201-20260611.yaml
+    last_updated: '2026-06-11T16:55:01Z'
+total_requirements: 289

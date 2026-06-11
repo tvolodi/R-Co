@@ -35,6 +35,18 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence: 5/5 integration tests passing (TC-ISS-106-01 through TC-ISS-106-05). NFR benchmarks: p99_read=0.497ms, p99_write=1.499ms, throughput=63,663.7 eps, replay_10k=34.583ms — all within targets. Release approval: `docs/status/release-iss106-20260611.yaml`.
 - Requirement: ISS-106 — RELEASED
 
+### ISS-201 — transition() returns TransitionResult{state, emitted_events} (RELEASED 2026-06-11)
+
+#### WF02-iss201-event-return-20260611 (2026-06-11)
+
+- **Engine API change:** `transition()` now returns `TransitionResult { state: InstanceState, emitted_events: []PendingEvent }` instead of just `InstanceState`. The `pending_events` field is removed from `InstanceState` and returned as a first-class `emitted_events` slice alongside the state.
+- **Orchestrator contract:** The orchestrator (instance.zig) atomically persists the trigger event + `emitted_events` in the same PostgreSQL transaction — satisfying the architecture's at-least-once event delivery guarantee.
+- **Pure function preserved:** transition() remains zero I/O, deterministic, and does NOT re-append the trigger event to emitted_events.
+- **Call sites updated:** 5 callers in instance.zig, 2 replay loops in reconstruction.zig, and 18+ test callers destructure TransitionResult. 7 files modified.
+- **P0 foundation for EPIC-2:** This is the cornerstone refactoring that ISS-202 (two-phase merge), ISS-203 (deterministic idempotency), ISS-206 (token multiset), and ISS-207 (convergent retry) build on.
+- Validation evidence: 548 passed, 0 failed, 84 pre-existing skips. 8 ISS-201-specific tests (6 unit + 1 compile-time + 1 integration). NFR benchmarks green. Release approval: docs/status/release-iss201-20260611.yaml.
+- Requirement: ISS-201 — RELEASED
+
 ### ISS-103 — Audit Log Resource ID TEXT Support (RELEASED 2026-06-11)
 
 #### ADHOC-iss103-audit-resource-id-20260611 (2026-06-11)
