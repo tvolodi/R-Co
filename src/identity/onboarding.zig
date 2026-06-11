@@ -25,9 +25,32 @@ pub const OnboardingError = error{
     PoolExhausted,
     PersistenceFailed,
     OutOfMemory,
+    // ENV-01: test tenant environment
+    TestTenantMissingProductionRef, // → HTTP 422
+    ProductionTenantMustNotHaveRef, // → HTTP 422
+    InvalidProductionTenantRef, // production_tenant_id does not exist or is not production → HTTP 422
 };
 
 // ── Data types ────────────────────────────────────────────────────────────────
+
+/// ENV-01: Distinguishes production tenants from test tenants.
+pub const TenantType = enum {
+    production,
+    testing, // DB value: 'test'
+
+    pub fn fromString(s: []const u8) ?TenantType {
+        if (std.mem.eql(u8, s, "production")) return .production;
+        if (std.mem.eql(u8, s, "test")) return .testing;
+        return null;
+    }
+
+    pub fn asString(self: TenantType) []const u8 {
+        return switch (self) {
+            .production => "production",
+            .testing => "test",
+        };
+    }
+};
 
 pub const OnboardingState = enum {
     pending,
@@ -72,6 +95,9 @@ pub const OnboardingInput = struct {
     hostname: []const u8,
     realm_config: ?RealmConfigOverrides,
     client_config: ?ClientConfigOverrides,
+    // ENV-01: test tenant environment
+    tenant_type: TenantType, // defaults to .production
+    production_tenant_id: ?[]const u8, // UUID string; required when tenant_type = .test
 };
 
 pub const OnboardingResult = struct {
@@ -150,7 +176,21 @@ pub fn executeSaga(
 ) (OnboardingError || provider_errors.ProviderError)!OnboardingResult {
     var saga = SagaState{};
     errdefer compensate(allocator, manager, pool, &saga) catch {};
-
+    // ── ENV-01: Validate tenant_type / production_tenant_id ──────────────────
+    switch (input.tenant_type) {
+        .production => {
+            if (input.production_tenant_id != null) return error.ProductionTenantMustNotHaveRef;
+        },
+        .testing => {
+            const ref = input.production_tenant_id orelse return error.TestTenantMissingProductionRef;
+            // Verify the referenced tenant exists and is itself a production tenant.
+            const ref_ok = validateProductionTenantRef(allocator, pool, ref) catch |err| switch (err) {
+                error.PoolExhausted => return error.PoolExhausted,
+                else => return error.PersistenceFailed,
+            };
+            if (!ref_ok) return error.InvalidProductionTenantRef;
+        },
+    }
     // ── 1. Create tenant ─────────────────────────────────────────────────────
     const tenant = createTenantInDb(allocator, pool, input) catch |err| switch (err) {
         error.DuplicateTenantSlug => return error.DuplicateTenantSlug,
@@ -410,15 +450,34 @@ fn createTenantInDb(
         return error.DuplicateTenantSlug;
     }
 
-    const row = conn.queryRow(
-        allocator,
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
-        \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3)
-        \\ON CONFLICT (slug) DO NOTHING
-        \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text
-    ,
-        &[_][]const u8{ input.slug, input.display_name, input.slug },
-    ) catch |err| return switch (err) {
+    const tenant_type_str = input.tenant_type.asString();
+    const has_prod_ref = input.production_tenant_id != null;
+
+    const row = if (has_prod_ref) blk: {
+        break :blk conn.queryRow(
+            allocator,
+            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+            \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3, $4, $5::uuid)
+            \\ON CONFLICT (slug) DO NOTHING
+            \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
+            \\          tenant_type, production_tenant_id::text
+        ,
+            &[_][]const u8{ input.slug, input.display_name, input.slug, tenant_type_str, input.production_tenant_id.? },
+        );
+    } else blk: {
+        break :blk conn.queryRow(
+            allocator,
+            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type)
+            \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3, $4)
+            \\ON CONFLICT (slug) DO NOTHING
+            \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
+            \\          tenant_type, production_tenant_id::text
+        ,
+            &[_][]const u8{ input.slug, input.display_name, input.slug, tenant_type_str },
+        );
+    };
+
+    const resolved = row catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
         pool_mod.PoolError.ConnectionFailed,
         pool_mod.PoolError.QueryFailed,
@@ -427,10 +486,10 @@ fn createTenantInDb(
         else => error.PersistenceFailed,
     };
 
-    if (row == null) return error.DuplicateTenantSlug;
-    defer freeRow(allocator, row.?);
+    if (resolved == null) return error.DuplicateTenantSlug;
+    defer freeRow(allocator, resolved.?);
 
-    const tenant = materializeTenant(allocator, row.?) catch |err| switch (err) {
+    const tenant = materializeTenant(allocator, resolved.?) catch |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
         else => return error.PersistenceFailed,
     };
@@ -543,7 +602,7 @@ pub fn computeRequestHash(allocator: std.mem.Allocator, body: []const u8) ![]u8 
 }
 
 fn materializeTenant(allocator: std.mem.Allocator, row: []?[]u8) !registry_mod.Tenant {
-    if (row.len < 6) return error.PersistenceFailed;
+    if (row.len < 8) return error.PersistenceFailed;
     return registry_mod.Tenant{
         .tenant_id = try allocator.dupe(u8, row[0] orelse return error.PersistenceFailed),
         .slug = try allocator.dupe(u8, row[1] orelse return error.PersistenceFailed),
@@ -551,7 +610,41 @@ fn materializeTenant(allocator: std.mem.Allocator, row: []?[]u8) !registry_mod.T
         .status = registry_mod.TenantStatus.fromString(row[3] orelse "ACTIVE") orelse .ACTIVE,
         .idp_realm_id = if (row[4]) |v| try allocator.dupe(u8, v) else null,
         .created_at = try allocator.dupe(u8, row[5] orelse return error.PersistenceFailed),
+        .tenant_type = try allocator.dupe(u8, row[6] orelse "production"),
+        .production_tenant_id = if (row[7]) |v| try allocator.dupe(u8, v) else null,
     };
+}
+
+/// ENV-01: Verify that the given UUID refers to an existing tenant with
+/// tenant_type = 'production'. Returns false if no such tenant exists.
+/// Security: production_tenant_id bound as $1::uuid — no string interpolation.
+fn validateProductionTenantRef(
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    production_tenant_id: []const u8,
+) !bool {
+    const conn = pool.acquire() catch |err| return switch (err) {
+        pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+        else => error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    const row = conn.queryRow(
+        allocator,
+        "SELECT tenant_type FROM tenant WHERE id = $1::uuid LIMIT 1",
+        &[_][]const u8{production_tenant_id},
+    ) catch |err| return switch (err) {
+        pool_mod.PoolError.StaleConnection,
+        pool_mod.PoolError.ConnectionFailed,
+        pool_mod.PoolError.QueryFailed,
+        => error.PersistenceFailed,
+        pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
+        else => error.PersistenceFailed,
+    };
+    if (row == null) return false;
+    defer freeRow(allocator, row.?);
+    const t = row.?[0] orelse return false;
+    return std.mem.eql(u8, t, "production");
 }
 
 fn generateUuid(allocator: std.mem.Allocator) ![]u8 {

@@ -3,7 +3,7 @@ id: ENV-03
 title: Process definition promotion from test tenant to production tenant
 stage: 14
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # ENV-03 — Process definition promotion from test tenant to production tenant `[MUST]`

@@ -3,7 +3,7 @@ id: ENV-05
 title: Test tenant lifecycle management
 stage: 14
 priority: SHOULD
-status: DRAFT
+status: RELEASED
 ---
 
 # ENV-05 — Test tenant lifecycle management `[SHOULD]`

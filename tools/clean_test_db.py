@@ -74,6 +74,13 @@ def main() -> None:
         print("ERROR: Test database cleanup failed; aborting integration run.", file=sys.stderr)
         sys.exit(1)
 
+    # Clean tenant rows created by integration tests.
+    # ENV-01 added ON DELETE RESTRICT: test tenants must be deleted BEFORE production tenants.
+    # Use two-step DELETE to avoid FK violation (test tenant references production tenant).
+    # The default system tenant (slug = 'default') is preserved.
+    run_psql("DELETE FROM public.tenant WHERE tenant_type = 'test' AND slug != 'default'")
+    run_psql("DELETE FROM public.tenant WHERE tenant_type = 'production' AND slug != 'default'")
+
     for role_name, role_description in SYSTEM_ROLES:
         sql = (
             "INSERT INTO roles (name, description, is_system) "

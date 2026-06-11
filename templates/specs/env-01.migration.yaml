@@ -1,0 +1,158 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: ENV-01 — Tenant carries a type field distinguishing production from test
+# Produced by: CODE-DESIGNER (WF02-env-batch1-20260610, Step 01)
+# See: src/design/tenant-env.md §ENV-01 for full context
+
+schema_version: 1
+migration_number: 80
+name: env01_tenant_type_field
+requirement_ids: [ENV-01]
+purpose: |
+  Extend public.tenant with two new columns:
+    - tenant_type TEXT NOT NULL DEFAULT 'production' CHECK IN ('production','test')
+    - production_tenant_id UUID NULL REFERENCES public.tenant(id) ON DELETE RESTRICT
+  A table-level CHECK constraint enforces the type/FK coherence invariant:
+  production tenants must have production_tenant_id IS NULL;
+  test tenants must have production_tenant_id IS NOT NULL.
+  All pre-existing rows are backfilled to tenant_type='production',
+  production_tenant_id=NULL via the column DEFAULT — no explicit UPDATE
+  is required for tenant_type. production_tenant_id defaults to NULL.
+  The existing POST /api/v1/tenants/onboard route (src/identity/onboarding.zig)
+  must accept the new fields and validate the constraint at the API level.
+  The existing GET /api/v1/admin/tenants route must expose both new columns.
+  PATCH /api/v1/tenants/:id must reject attempts to change tenant_type or
+  production_tenant_id with HTTP 422.
+
+tables:
+  - mode: alter
+    name: tenant
+    add_columns:
+      - name: tenant_type
+        type: "text"
+        not_null: true
+        default: "'production'"
+        check: "tenant_type IN ('production', 'test')"
+      - name: production_tenant_id
+        type: uuid
+        not_null: false
+        fk: "tenant(id) ON DELETE RESTRICT"
+    add_constraints:
+      - kind: check
+        name: ck_tenant_type_fk_coherence
+        expression: >-
+          (tenant_type = 'production' AND production_tenant_id IS NULL)
+          OR (tenant_type = 'test' AND production_tenant_id IS NOT NULL)
+    indexes:
+      - name: idx_tenant_production_tenant_id
+        columns: [production_tenant_id]
+
+fixtures:
+  - name: prod_tenant_id
+    kind: uuid
+  - name: test_tenant_id
+    kind: uuid
+  - name: seed_prod_tenant
+    kind: sql_setup
+    sql: |
+      INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, created_at)
+      VALUES ($1, 'env01-prod', 'ENV01 Production Tenant', 'ACTIVE', 'realm-env01-prod', now())
+      ON CONFLICT (id) DO NOTHING;
+    params: [prod_tenant_id]
+
+test_cases:
+  - name: backfill_existing_rows_are_production
+    description: Any tenant row present before migration has tenant_type='production' and production_tenant_id IS NULL.
+    requirement_ref: ENV-01
+    arrange: ""
+    act: |
+      // SELECT tenant_type, production_tenant_id FROM tenant WHERE id = fx.prod_tenant_id
+    assertions: |
+      // CUSTOM: assert tenant_type = 'production', production_tenant_id IS NULL for pre-existing row.
+
+  - name: production_tenant_insert_no_parent
+    description: A new production tenant can be inserted with no production_tenant_id.
+    requirement_ref: ENV-01
+    arrange: |
+      const new_id = generated.uuid();
+    act: |
+      // INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+      // VALUES (new_id, 'prod-new', 'Prod New', 'ACTIVE', 'realm-x', 'production', NULL)
+    assertions: |
+      // CUSTOM: assert row inserted, tenant_type='production', production_tenant_id IS NULL.
+
+  - name: test_tenant_insert_with_valid_parent
+    description: A new test tenant can be inserted with a valid production_tenant_id.
+    requirement_ref: ENV-01
+    arrange: |
+      // seed_prod_tenant already inserted
+    act: |
+      // INSERT INTO tenant (..., tenant_type, production_tenant_id)
+      // VALUES (fx.test_tenant_id, 'test-linked', ..., 'test', fx.prod_tenant_id)
+    assertions: |
+      // CUSTOM: assert row inserted, tenant_type='test', production_tenant_id = fx.prod_tenant_id.
+
+  - name: check_constraint_rejects_test_tenant_without_parent
+    description: A test tenant with production_tenant_id IS NULL violates ck_tenant_type_fk_coherence.
+    requirement_ref: ENV-01
+    arrange: ""
+    act: |
+      // INSERT INTO tenant (..., tenant_type, production_tenant_id)
+      // VALUES (generated.uuid(), 'no-parent', ..., 'test', NULL)
+    assertions: |
+      // CUSTOM: assert database rejects with check constraint violation.
+
+  - name: check_constraint_rejects_production_tenant_with_parent
+    description: A production tenant with a non-null production_tenant_id violates ck_tenant_type_fk_coherence.
+    requirement_ref: ENV-01
+    arrange: |
+      // seed_prod_tenant already inserted
+    act: |
+      // INSERT INTO tenant (..., tenant_type, production_tenant_id)
+      // VALUES (generated.uuid(), 'bad-prod', ..., 'production', fx.prod_tenant_id)
+    assertions: |
+      // CUSTOM: assert database rejects with check constraint violation.
+
+  - name: on_delete_restrict_blocks_deleting_parent_with_children
+    description: Deleting a production tenant that has test children is rejected (ON DELETE RESTRICT).
+    requirement_ref: ENV-01
+    arrange: |
+      // insert prod_tenant, insert test_tenant linked to prod_tenant
+    act: |
+      // DELETE FROM tenant WHERE id = fx.prod_tenant_id
+    assertions: |
+      // CUSTOM: assert FK constraint violation; prod_tenant row still exists.
+
+  - name: admin_list_includes_new_fields
+    description: GET /api/v1/admin/tenants response includes tenant_type and production_tenant_id.
+    requirement_ref: ENV-01
+    arrange: |
+      // seed both prod and test tenant rows
+    act: |
+      // GET /api/v1/admin/tenants (platform-admin token)
+    assertions: |
+      // CUSTOM: assert each tenant entry has tenant_type field; test tenant has non-null production_tenant_id.
+
+  - name: patch_immutability_tenant_type
+    description: PATCH /api/v1/tenants/:id attempting to change tenant_type returns HTTP 422.
+    requirement_ref: ENV-01
+    arrange: |
+      // seed prod_tenant row
+    act: |
+      // PATCH /api/v1/tenants/fx.prod_tenant_id with body { "tenant_type": "test" }
+    assertions: |
+      // CUSTOM: assert HTTP 422 with message containing "tenant_type".
+
+  - name: patch_immutability_production_tenant_id
+    description: PATCH /api/v1/tenants/:id attempting to change production_tenant_id returns HTTP 422.
+    requirement_ref: ENV-01
+    arrange: |
+      // seed test_tenant row
+    act: |
+      // PATCH /api/v1/tenants/fx.test_tenant_id with body { "production_tenant_id": "some-uuid" }
+    assertions: |
+      // CUSTOM: assert HTTP 422 with message containing "production_tenant_id".
+
+rollback_strategy: |
+  Forward-only. If these columns must be removed, write a subsequent migration
+  that archives affected rows and removes the constraint first, then drops the
+  columns. Do NOT add a DROP COLUMN migration without a preceding data-preservation step.

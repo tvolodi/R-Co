@@ -1,0 +1,28 @@
+{
+  "handoff_id": "65439b00-89d1-4385-a8dc-bfd6e8f0876c",
+  "run_id": "WF02-env-batch2-20260610",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-10T19:37:40Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 14 - Test tenant environment (batch 2 frontend)",
+    "requirement_ids": [
+      "ENV-04"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Execute fn:git-merge: create PR for feature/WF02-env-batch2-20260610, ensure checks pass, squash-merge, delete branch, return to main.",
+    "acceptance_criteria": [],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}

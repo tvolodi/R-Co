@@ -148,7 +148,8 @@ pub fn handleOnboarding(
             thread.detach();
 
             // Return 201 immediately — the frontend will poll GET for status.
-            const pending_body = std.fmt.allocPrint(allocator,
+            const pending_body = std.fmt.allocPrint(
+                allocator,
                 "{{\"onboarding_id\":\"{s}\"}}",
                 .{onboarding_id},
             ) catch return errorResult(allocator, 500, "internal_error");
@@ -178,12 +179,13 @@ fn dupeOnboardingInput(
     const realm_config: ?onboarding_mod.RealmConfigOverrides = if (src.realm_config) |rc| blk: {
         break :blk onboarding_mod.RealmConfigOverrides{
             .default_token_lifetime_seconds = rc.default_token_lifetime_seconds,
-            .min_password_length            = rc.min_password_length,
-            .require_uppercase              = rc.require_uppercase,
-            .require_digit                  = rc.require_digit,
-            .signing_key_algorithm          = if (rc.signing_key_algorithm) |s|
+            .min_password_length = rc.min_password_length,
+            .require_uppercase = rc.require_uppercase,
+            .require_digit = rc.require_digit,
+            .signing_key_algorithm = if (rc.signing_key_algorithm) |s|
                 try allocator.dupe(u8, s)
-            else null,
+            else
+                null,
         };
     } else null;
 
@@ -196,20 +198,23 @@ fn dupeOnboardingInput(
             break :inner out;
         } else null;
         break :blk onboarding_mod.ClientConfigOverrides{
-            .redirect_uris           = duped_uris,
+            .redirect_uris = duped_uris,
             .service_account_enabled = cc.service_account_enabled,
         };
     } else null;
 
     return onboarding_mod.OnboardingInput{
-        .slug               = try allocator.dupe(u8, src.slug),
-        .display_name       = try allocator.dupe(u8, src.display_name),
-        .admin_email        = try allocator.dupe(u8, src.admin_email),
-        .admin_username     = try allocator.dupe(u8, src.admin_username),
+        .slug = try allocator.dupe(u8, src.slug),
+        .display_name = try allocator.dupe(u8, src.display_name),
+        .admin_email = try allocator.dupe(u8, src.admin_email),
+        .admin_username = try allocator.dupe(u8, src.admin_username),
         .admin_display_name = try allocator.dupe(u8, src.admin_display_name),
-        .hostname           = try allocator.dupe(u8, src.hostname),
-        .realm_config       = realm_config,
-        .client_config      = client_config,
+        .hostname = try allocator.dupe(u8, src.hostname),
+        .realm_config = realm_config,
+        .client_config = client_config,
+        // ENV-01
+        .tenant_type = src.tenant_type,
+        .production_tenant_id = if (src.production_tenant_id) |s| try allocator.dupe(u8, s) else null,
     };
 }
 
@@ -229,6 +234,8 @@ fn freeOnboardingInput(allocator: std.mem.Allocator, input: onboarding_mod.Onboa
             allocator.free(uris);
         }
     }
+    // ENV-01
+    if (input.production_tenant_id) |s| allocator.free(s);
 }
 
 fn runSagaBackground(ctx: *SagaContext) void {
@@ -732,6 +739,19 @@ fn parseOnboardingInput(allocator: std.mem.Allocator, body: []const u8) !ParsedI
 
     // Build the full OnboardingInput value (allocating owned strings).
     // Since we need owned memory, we dupe all strings.
+    // ENV-01: parse tenant_type (default: production) and production_tenant_id
+    const tenant_type_raw = if (obj.get("tenant_type")) |v| switch (v) {
+        .string => |s| s,
+        else => "production",
+    } else "production";
+    const tenant_type = onboarding_mod.TenantType.fromString(tenant_type_raw) orelse .production;
+
+    const production_tenant_id_raw: ?[]const u8 = if (obj.get("production_tenant_id")) |v| switch (v) {
+        .string => |s| if (s.len > 0) s else null,
+        .null => null,
+        else => null,
+    } else null;
+
     const input = onboarding_mod.OnboardingInput{
         .slug = try allocator.dupe(u8, slug),
         .display_name = try allocator.dupe(u8, display_name),
@@ -741,6 +761,8 @@ fn parseOnboardingInput(allocator: std.mem.Allocator, body: []const u8) !ParsedI
         .hostname = try allocator.dupe(u8, hostname),
         .realm_config = realm_config,
         .client_config = client_config,
+        .tenant_type = tenant_type,
+        .production_tenant_id = if (production_tenant_id_raw) |s| try allocator.dupe(u8, s) else null,
     };
 
     return ParsedInput{
@@ -792,6 +814,11 @@ fn onboardingErrorToStatus(err: anyerror) u16 {
         => 500,
         onboarding_mod.OnboardingError.PoolExhausted => 503,
         onboarding_mod.OnboardingError.OutOfMemory => 500,
+        // ENV-01: test tenant validation errors
+        onboarding_mod.OnboardingError.TestTenantMissingProductionRef,
+        onboarding_mod.OnboardingError.ProductionTenantMustNotHaveRef,
+        onboarding_mod.OnboardingError.InvalidProductionTenantRef,
+        => 422,
         else => 500,
     };
 }

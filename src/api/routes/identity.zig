@@ -741,6 +741,21 @@ pub fn handlePatchTenant(
                 "{\"error\":\"immutable_field_update\"}",
         };
     }
+    // ENV-01: tenant_type and production_tenant_id are immutable after creation.
+    if (obj.contains("tenant_type")) {
+        return .{
+            .status_code = 422,
+            .body = std.fmt.allocPrint(allocator, "{{\"error\":\"immutable_field\",\"detail\":\"tenant_type and production_tenant_id cannot be changed after creation\"}}", .{}) catch
+                "{\"error\":\"immutable_field\"}",
+        };
+    }
+    if (obj.contains("production_tenant_id")) {
+        return .{
+            .status_code = 422,
+            .body = std.fmt.allocPrint(allocator, "{{\"error\":\"immutable_field\",\"detail\":\"tenant_type and production_tenant_id cannot be changed after creation\"}}", .{}) catch
+                "{\"error\":\"immutable_field\"}",
+        };
+    }
 
     const display_name: ?[]const u8 = blk: {
         const raw = obj.get("display_name") orelse break :blk null;
@@ -925,6 +940,11 @@ fn serializeTenant(allocator: std.mem.Allocator, tenant: identity_registry.Tenan
     try appendNullableJsonStr(allocator, &buf, tenant.idp_realm_id);
     try buf.appendSlice(allocator, ",\"created_at\":");
     try appendJsonStr(allocator, &buf, tenant.created_at);
+    // ENV-01
+    try buf.appendSlice(allocator, ",\"tenant_type\":");
+    try appendJsonStr(allocator, &buf, tenant.tenant_type);
+    try buf.appendSlice(allocator, ",\"production_tenant_id\":");
+    try appendNullableJsonStr(allocator, &buf, tenant.production_tenant_id);
     try buf.append(allocator, '}');
 
     return buf.toOwnedSlice(allocator);

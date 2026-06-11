@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-06-07T06:15:52Z'
+last_updated: '2026-06-11T00:00:00Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -4013,4 +4013,60 @@ requirements:
     release_run: WF02-svc-batch1-20260610
     release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
     last_updated: '2026-06-11T00:00:00Z'
-total_requirements: 280
+  ENV-01:
+    status: RELEASED
+    stage: 14
+    priority: MUST
+    title: Tenant carries a type field distinguishing production from test
+    implemented_in:
+    - WF02-env-batch1-20260610
+    test_spec: tests/specs/ENV-01.md
+    test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11T00:00:00Z'
+    release_run: WF02-env-batch1-20260610
+    release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
+    last_updated: '2026-06-11T00:00:00Z'
+  ENV-02:
+    status: RELEASED
+    stage: 14
+    priority: MUST
+    title: Test tenant is fully isolated from its paired production tenant
+    implemented_in:
+    - WF02-env-batch1-20260610
+    test_spec: tests/specs/ENV-02.md
+    test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11T00:00:00Z'
+    release_run: WF02-env-batch1-20260610
+    release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
+    last_updated: '2026-06-11T00:00:00Z'
+  ENV-03:
+    status: RELEASED
+    stage: 14
+    priority: MUST
+    title: Process definition promotion from test tenant to production tenant
+    implemented_in:
+    - WF02-env-batch1-20260610
+    test_spec: tests/specs/ENV-03.md
+    test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11T00:00:00Z'
+    release_run: WF02-env-batch1-20260610
+    release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
+    last_updated: '2026-06-11T00:00:00Z'
+  ENV-05:
+    status: RELEASED
+    stage: 14
+    priority: SHOULD
+    title: Test tenant lifecycle management
+    implemented_in:
+    - WF02-env-batch1-20260610
+    test_spec: tests/specs/ENV-05.md
+    test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11T00:00:00Z'
+    release_run: WF02-env-batch1-20260610
+    release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
+    last_updated: '2026-06-11T00:00:00Z'
+total_requirements: 284

@@ -87,6 +87,10 @@ def _emit_alter_table(table: dict) -> str:
     parts = []
     for c in table.get("add_columns") or []:
         parts.append(f"    ADD COLUMN IF NOT EXISTS {_emit_column(c, in_create=False)}")
+    for cn in table.get("add_constraints") or []:
+        constraint_body = _emit_constraint(cn)
+        if constraint_body:
+            parts.append(f"    ADD {constraint_body}")
     if not parts:
         return ""
     return lines[0] + "\n" + ",\n".join(parts) + ";"
@@ -100,6 +104,8 @@ def _emit_column(c: dict, in_create: bool = True) -> str:
         parts.append("NOT NULL")
     if c.get("default") is not None:
         parts.append(f"DEFAULT {c['default']}")
+    if c.get("check"):
+        parts.append(f"CHECK ({c['check']})")
     if c.get("fk"):
         parts.append(f"REFERENCES {c['fk']}")
     return " ".join(parts)

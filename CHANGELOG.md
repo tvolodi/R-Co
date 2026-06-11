@@ -15,6 +15,17 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### Stage 14 — Test Tenant Environment (RELEASED 2026-06-11)
+
+#### WF02-env-batch1-20260610 (2026-06-11)
+
+- **ENV-01** [MUST] Tenant `tenant_type` and `production_tenant_id` columns; onboarding API enforces type/link rules; PATCH immutability
+- **ENV-02** [MUST] Test tenant fully isolated from production (search_path, Keycloak realm separation)
+- **ENV-03** [MUST] `POST /api/v1/tenants/:test_tenant_id/promote/:definition_name` — definition promotion from test to production as DRAFT
+- **ENV-05** [SHOULD] Test tenant lifecycle: reset (`POST /reset`) and delete (`DELETE`) endpoints; production tenants protected
+- Validation evidence: 27/27 integration tests passing (ENV-01: 12, ENV-02: 3, ENV-03: 6, ENV-05: 6). NFR benchmarks: p99_read=0.973ms, p99_write=2.734ms, throughput=77,739 eps, replay_10k=30.886ms — all within targets. Release approval: `docs/status/release-stage14-env-batch1-20260611.yaml`. Test evidence: `tests/reports/report-20260611-WF02-env-batch1-20260610.yaml`.
+- Requirements: ENV-01, ENV-02, ENV-03, ENV-05 (Stage 14) — RELEASED
+
 ### Stage 13 — Service Catalog Scoping (RELEASED 2026-06-11)
 
 - **SVC-01** (MUST): Service catalog entries carry a scope and owner tenant — `service_catalog` table extended with `scope TEXT NOT NULL DEFAULT 'global'` and `owner_tenant_id UUID NULL REFERENCES public.tenant(id) ON DELETE CASCADE`. Migration `GBL-078_svc01_service_catalog_scope.sql` adds columns, compound CHECK constraint, and backfills existing rows to `scope=global`. `GET /api/v1/services` now filters by caller tenant context: returns global entries plus tenant-scoped entries owned by the calling tenant. `POST /api/v1/services` registers tenant-scoped entries visible only to the owner tenant.

@@ -1,0 +1,51 @@
+{
+  "handoff_id": "5c4b3112-d508-4cd2-99f8-48d60c607157",
+  "run_id": "ADHOC-env-b1-testfix-20260611",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T01:39:05Z",
+  "started_at": "2026-06-11T02:20:20Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Stage 14 - ENV batch 1 test fix",
+    "requirement_ids": [
+      "ENV-02",
+      "ENV-03"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/reports/report-20260611-WF02-env-batch1-20260610.yaml",
+      "tests/integration/env02_test.zig",
+      "tests/integration/env03_test.zig",
+      "src/definition/promotion.zig"
+    ]
+  },
+  "task": {
+    "description": "Fix failing integration tests on feature/WF02-env-batch1-20260610.\n\nFAILING TESTS:\n1. TC-ENV-02-03 (env02_test.zig:380) \u2014 Cross-schema isolation check: verify that a connection in test tenant T-test cannot read data from production tenant T schema. The test may be wrong (checking for an error when 0 rows is acceptable), or the isolation logic may need adjustment. Fix whichever is incorrect.\n\n2. TC-ENV-03-01 (env03_test.zig) \u2014 POST /promote happy path: returns HTTP 201 with DRAFT definition. Likely a route registration or handler bug in src/definition/promotion.zig or src/main.zig.\n\n3. TC-ENV-03-02 (env03_test.zig) \u2014 Audit entries created on both tenants with action=DEFINITION_PROMOTED.\n\n4. TC-ENV-03-05 (env03_test.zig) \u2014 Version increment: if name already exists on production, version=max+1.\n\nSteps:\n1. Read the test report and the failing test files to understand the exact failures.\n2. Check src/definition/promotion.zig and src/main.zig for the promotion route.\n3. Fix the root causes in the source code.\n4. Run: zig build && zig build test && set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test && zig build test-integration-env (or test-integration)\n5. All 4 previously-failing tests must now PASS.\n6. Commit the fix to feature/WF02-env-batch1-20260610 and push.",
+    "acceptance_criteria": [
+      "TC-ENV-02-03 passes",
+      "TC-ENV-03-01 passes",
+      "TC-ENV-03-02 passes",
+      "TC-ENV-03-05 passes",
+      "zig build exits 0",
+      "zig build test exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed 4 root causes: (1) wrong defer order in env02/env03 tests (LIFO + ON DELETE RESTRICT), (2) writePromotionAudit jsonb_build_object parameter type bug -> build JSON in Zig, (3) TC-ENV-03-02 queried audit_log instead of audit_entries, (4) incomplete defer for export_doc graph allocation. Updated clean_test_db.py to clear test tenant rows in FK-safe order. All 4 ENV tests now pass. Committed to feature/WF02-env-batch1-20260610.",
+    "artifacts_out": [
+      "src/definition/promotion.zig",
+      "tests/integration/env02_test.zig",
+      "tests/integration/env03_test.zig",
+      "tools/clean_test_db.py"
+    ],
+    "issues": []
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-06-11T02:33:03Z"
+}

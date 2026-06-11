@@ -131,6 +131,14 @@ const svc02_plugin_dispatch_scope_integration = @import("svc02_plugin_dispatch_s
 const svc03_definition_activation_scope_integration = @import("svc03_definition_activation_scope_test.zig");
 // Stage 13 — Admin API for service catalog (SVC-04)
 const svc04_admin_api_integration = @import("svc04_admin_api_test.zig");
+// Stage 14 — Tenant type field (ENV-01)
+const env01_tenant_type_field_integration = @import("env01_test.zig");
+// Stage 14 — Test tenant isolation (ENV-02)
+const env02_tenant_isolation_integration = @import("env02_test.zig");
+// Stage 14 — Definition promotion (ENV-03)
+const env03_definition_promotion_integration = @import("env03_test.zig");
+// Stage 14 — Test tenant lifecycle (ENV-05)
+const env05_tenant_lifecycle_integration = @import("env05_test.zig");
 
 comptime {
     _ = std;
@@ -192,6 +200,10 @@ comptime {
     _ = svc02_plugin_dispatch_scope_integration;
     _ = svc03_definition_activation_scope_integration;
     _ = svc04_admin_api_integration;
+    _ = env01_tenant_type_field_integration;
+    _ = env02_tenant_isolation_integration;
+    _ = env03_definition_promotion_integration;
+    _ = env05_tenant_lifecycle_integration;
 }
 
 test "integration placeholder" {
