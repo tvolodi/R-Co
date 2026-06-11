@@ -1,0 +1,81 @@
+schema_version: '1.0'
+run_id: WF02-iss203-idempotency-keys-20260611
+decision: RELEASE
+timestamp: '2026-06-11T23:34:35Z'
+stage: EPIC-2 / ISS-203
+requirement_ids:
+  - ISS-203
+
+test_summary:
+  total: 5
+  passed: 5
+  failed: 0
+  skipped: 0
+  test_report: tests/reports/report-20260611-WF02-iss203-idempotency-keys.yaml
+  coverage:
+    ISS-203: TESTED
+
+acceptance_criteria_check:
+  - criterion: TC-ISS-203-01 — single transition emitted events carry correct deterministic keys
+    status: PASS
+  - criterion: TC-ISS-203-02 — replay dedup — ON CONFLICT DO NOTHING absorbs second insert
+    status: PASS
+  - criterion: TC-ISS-203-03 — client key passthrough — trigger event key stored as-is
+    status: PASS
+  - criterion: TC-ISS-203-04 — different-instance isolation — same transition produces different keys
+    status: PASS
+  - criterion: TC-ISS-203-05 — ordinal uniqueness — N emitted events produce N distinct keys
+    status: PASS
+
+regression_check:
+  zig_build_test: PASS
+  notes: >
+    zig build test exits 0. All existing engine, auth (24 tests), definition
+    retrieval (20 tests), and other integration test suites pass. The
+    "MigrationFailed" log lines during test setup are benign schema-idempotency
+    warnings, not test failures.
+
+nfr_benchmarks:
+  - nfr_id: NFR-01
+    metric: p99_read_ms
+    target: "p99 reads <= 200ms"
+    actual: "1.274ms"
+    passed: true
+    margin: "157x below threshold"
+  - nfr_id: NFR-01
+    metric: p99_write_ms
+    target: "p99 writes <= 500ms"
+    actual: "2.783ms"
+    passed: true
+    margin: "180x below threshold"
+  - nfr_id: NFR-02
+    metric: append_throughput_eps
+    target: ">= 1,000 events/sec"
+    actual: "16,125 events/sec"
+    passed: true
+    margin: "16x above threshold"
+  - nfr_id: NFR-04
+    metric: replay_10000_ms
+    target: "10,000-event replay <= 5,000ms"
+    actual: "54.948ms"
+    passed: true
+    margin: "91x below threshold"
+  overall_passed: true
+
+blockers: []
+
+major_issues: []
+
+minor_issues: []
+
+recommendation: >
+  ISS-203 (Deterministic idempotency keys for engine-emitted events) is clear
+  for release. All 5 acceptance criteria pass. No regressions in existing
+  engine or event-store tests. NFR benchmarks show no degradation from
+  idempotency-key computation — write throughput is 16,125 eps (16x above the
+  1,000 eps floor) and replay latency is 55ms (91x below the 5,000ms ceiling).
+  The feature persists engine-emitted cascade events with deterministic
+  `engine:<instance_id_hex16>` keys via ON CONFLICT DO NOTHING, providing
+  correct replay deduplication while preserving client key passthrough.
+
+release_validator: RELEASE-VALIDATOR

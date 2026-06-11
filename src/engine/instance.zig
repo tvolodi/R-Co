@@ -419,6 +419,10 @@ fn freeOwnedTransitionState(
     }
 
     allocator.free(result.state.cancelled_branch_ids);
+    // ISS-203: free each EmittedEvent's idempotency_key string before freeing the slice.
+    for (result.emitted_events) |emitted| {
+        allocator.free(emitted.idempotency_key);
+    }
     allocator.free(result.emitted_events);
 }
 
@@ -690,6 +694,7 @@ pub const InstanceStore = struct {
             snapshot.graph,
             initial_state,
             start_event,
+            1, // ISS-203: instance_started is always sequence 1
         ) catch return InstanceError.TransactionFailed;
         defer freeOwnedTransitionState(allocator, result);
         const new_state = result.state;
@@ -757,6 +762,14 @@ pub const InstanceStore = struct {
             \\FROM seq
         ,
             &.{ inst_id_hex, "instance_started", vars_json, idem_key_hex },
+        ) catch return InstanceError.TransactionFailed;
+
+        // ISS-203: persist cascade emitted events with deterministic engine: keys.
+        persistEmittedEventsInTx(
+            a,
+            conn2,
+            inst_id_hex,
+            emitted_events,
         ) catch return InstanceError.TransactionFailed;
 
         // UPDATE instance_projections with the post-transition state.
@@ -886,7 +899,11 @@ pub const InstanceStore = struct {
         snapshot: snapshot_mod.DefinitionGraph,
     ) ApplyError!transition_mod.InstanceState {
         // ── Step a: Pure transition call (NO I/O, outside DB transaction) ──
-        const result = transition_mod.transition(allocator, snapshot, old_state, event) catch
+        // ISS-203: triggering_event_seq is not available before the INSERT in
+        // applyTransition (the CTE INSERT uses RETURNING but not surfaced here).
+        // Use 1 as a safe sentinel — applyTransition is a legacy utility path;
+        // the production orchestrator path in completeTask reads the real seq.
+        const result = transition_mod.transition(allocator, snapshot, old_state, event, 1) catch
             return ApplyError.TransitionFailed;
         const new_state = result.state;
         const emitted_events = result.emitted_events;
@@ -1404,23 +1421,26 @@ pub const InstanceStore = struct {
         // this step are treated as ConcurrentModification per the EE-12 design §3d
         // (SQLSTATE 55P03 cannot be distinguished from other errors at the pool.zig
         // abstraction layer — same approach as reconstruction.zig §EE-11).
-        // Also reads status for the EE-10 HTTP 409 guard (§8).
+        // Also reads status and last_event_seq for the EE-10 HTTP 409 guard (§8)
+        // and for ISS-203 triggering_event_seq derivation.
         // Security: $1 = instance_id hex — no SQL string interpolation.
         const lock_rows = conn.query(
             a,
-            \\SELECT instance_id, status FROM instance_projections
+            \\SELECT instance_id, status, last_event_seq FROM instance_projections
             \\WHERE instance_id = $1::uuid
             \\FOR UPDATE NOWAIT
         ,
             &.{inst_id_hex},
         ) catch return CompleteTaskError.ConcurrentModification;
+        // ISS-203: task_completed event will be assigned last_event_seq+1.
+        var task_completed_event_seq: i64 = 1;
         {
             defer {
                 var r = lock_rows;
                 r.deinit();
             }
             if (lock_rows.rows.len == 0) return CompleteTaskError.PersistenceFailed;
-            // Column 0 = instance_id, column 1 = status.
+            // Column 0 = instance_id, column 1 = status, column 2 = last_event_seq.
             const locked_status_str = colGet(lock_rows.rows[0], 1);
             const locked_status = parseInstanceStatus(locked_status_str) catch .ACTIVE;
             // EE-10 HTTP 409 guard: reject any state-transition attempt on a non-ACTIVE instance.
@@ -1431,6 +1451,11 @@ pub const InstanceStore = struct {
             if (locked_status == .CANCELLED or locked_status == .COMPLETED) {
                 return CompleteTaskError.TaskAlreadyTerminated;
             }
+            // ISS-203: last_event_seq is the sequence of the last committed event.
+            // The task_completed event will be assigned last_event_seq + 1.
+            const last_seq_str = colGet(lock_rows.rows[0], 2);
+            const last_seq = std.fmt.parseInt(i64, last_seq_str, 10) catch 0;
+            task_completed_event_seq = last_seq + 1;
         }
 
         // [EE-09] Compute merged variables using the three-path collision policy.
@@ -1523,7 +1548,7 @@ pub const InstanceStore = struct {
             },
         };
 
-        const result = transition_mod.transition(a, snapshot, merged_state, event) catch |tr_err| switch (tr_err) {
+        const result = transition_mod.transition(a, snapshot, merged_state, event, task_completed_event_seq) catch |tr_err| switch (tr_err) {
             transition_mod.TransitionError.NoMatchingEdge => {
                 // EE-10 / EE-05 no-match path: rollback the completeTask tx first,
                 // then call setInstanceError which opens its own transaction.
@@ -3011,7 +3036,9 @@ fn processServiceTaskRuntimeInTx(
                             .output_variables = parsed_output.value.object,
                         },
                     };
-                    current_state = (transition_mod.transition(allocator, snapshot, current_state, event2) catch
+                    // ISS-203: service_task_completed cascade; use 1 as sentinel seq
+                    // (no DB sequence available at this point in the loop).
+                    current_state = (transition_mod.transition(allocator, snapshot, current_state, event2, 1) catch
                         return CompleteTaskError.TransitionFailed).state;
                     continue;
                 },
@@ -3118,7 +3145,8 @@ fn processServiceTaskRuntimeInTx(
                                     .output_variables = output_vars,
                                 },
                             };
-                            current_state = (transition_mod.transition(allocator, snapshot, current_state, event2) catch
+                            // ISS-203: use 1 as sentinel seq for service task cascade chains.
+                            current_state = (transition_mod.transition(allocator, snapshot, current_state, event2, 1) catch
                                 return CompleteTaskError.TransitionFailed).state;
                             break;
                         }
@@ -3600,6 +3628,110 @@ fn buildOverwrittenPayload(
     }
 }
 
+// ---------------------------------------------------------------------------
+// persistEmittedEventsInTx — ISS-203
+//
+// For each engine-emitted cascade event, insert a row into the events table
+// with the deterministic "engine:<16-hex-digits>" idempotency key computed by
+// transition().  Uses ON CONFLICT (idempotency_key) DO NOTHING so that a
+// retry of the orchestrator step is safely absorbed.
+//
+// The sequence numbers are assigned by bumping instance_sequence in the same
+// CTE pattern used for the trigger event.
+// ---------------------------------------------------------------------------
+
+const PersistEmittedEventsError = error{
+    PersistenceFailed,
+    OutOfMemory,
+};
+
+/// Map a PendingEvent payload to the event_type string stored in the events
+/// table.  These strings are the canonical engine-emitted event types.
+fn emittedEventTypeStr(ev: transition_mod.PendingEvent) []const u8 {
+    return switch (ev) {
+        .timer_created => "timer_created",
+        .parallel_split => "parallel_split",
+        .parallel_join => "parallel_join",
+        .instance_cancelled => "instance_cancelled",
+        .sub_process_start => "sub_process_start",
+    };
+}
+
+/// Build a minimal JSON payload for the emitted event row.
+/// Returns a stack-allocated string in the provided arena; the arena owns the
+/// memory.
+fn buildEmittedEventPayload(
+    allocator: std.mem.Allocator,
+    ev: transition_mod.PendingEvent,
+) error{OutOfMemory}![]const u8 {
+    return switch (ev) {
+        .timer_created => |t| std.fmt.allocPrint(
+            allocator,
+            "{{\"timer_node_id\":\"{s}\",\"duration_iso8601\":\"{s}\"}}",
+            .{ t.timer_node_id, t.duration_iso8601 },
+        ),
+        .parallel_split => |p| std.fmt.allocPrint(
+            allocator,
+            "{{\"source_node_id\":\"{s}\"}}",
+            .{p.source_node_id},
+        ),
+        .parallel_join => |j| std.fmt.allocPrint(
+            allocator,
+            "{{\"join_node_id\":\"{s}\"}}",
+            .{j.join_node_id},
+        ),
+        .instance_cancelled => |c| std.fmt.allocPrint(
+            allocator,
+            "{{\"reason\":\"{s}\"}}",
+            .{c.reason},
+        ),
+        .sub_process_start => |s| std.fmt.allocPrint(
+            allocator,
+            "{{\"child_definition_id\":\"{s}\",\"parent_node_id\":\"{s}\"}}",
+            .{ s.child_definition_id, s.parent_node_id },
+        ),
+    };
+}
+
+/// Persist each emitted event as a row in the events table.
+/// Duplicate inserts (same idempotency_key) are silently absorbed.
+fn persistEmittedEventsInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    instance_id_hex: []const u8,
+    emitted_events: []const transition_mod.EmittedEvent,
+) PersistEmittedEventsError!void {
+    if (emitted_events.len == 0) return;
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    for (emitted_events) |emitted| {
+        const event_type_str = emittedEventTypeStr(emitted.payload);
+        const payload_json = buildEmittedEventPayload(a, emitted.payload) catch
+            return PersistEmittedEventsError.OutOfMemory;
+
+        conn.exec(
+            \\WITH seq AS (
+            \\    INSERT INTO instance_sequence (instance_id, next_seq)
+            \\    VALUES ($1::uuid, 2)
+            \\    ON CONFLICT (instance_id) DO UPDATE
+            \\        SET next_seq = instance_sequence.next_seq + 1
+            \\    RETURNING next_seq - 1 AS val
+            \\)
+            \\INSERT INTO events
+            \\    (instance_id, event_type, payload, actor_id,
+            \\     sequence_number, idempotency_key)
+            \\SELECT $1::uuid, $2, $3::jsonb, $1::uuid, seq.val, $4
+            \\FROM seq
+            \\ON CONFLICT (idempotency_key) DO NOTHING
+        ,
+            &.{ instance_id_hex, event_type_str, payload_json, emitted.idempotency_key },
+        ) catch return PersistEmittedEventsError.PersistenceFailed;
+    }
+}
+
 const PersistTimerEffectsError = error{
     InvalidTimerNodeConfig,
     InstanceCancelled,
@@ -3611,9 +3743,10 @@ fn persistTimersFromPendingEventsInTx(
     allocator: std.mem.Allocator,
     conn: *db.Conn,
     instance_id: Uuid,
-    pending_events: []const transition_mod.PendingEvent,
+    pending_events: []const transition_mod.EmittedEvent,
 ) PersistTimerEffectsError!void {
-    for (pending_events) |ev| {
+    for (pending_events) |emitted| {
+        const ev = emitted.payload;
         switch (ev) {
             .timer_created => |timer_ev| {
                 var timer_id: Uuid = undefined;
@@ -3695,11 +3828,12 @@ fn startSubProcessesForPendingEventsInTx(
     parent_instance_id: Uuid,
     parent_instance_id_hex: []const u8,
     state: transition_mod.InstanceState,
-    emitted_events: []const transition_mod.PendingEvent,
+    emitted_events: []const transition_mod.EmittedEvent,
 ) CompleteTaskError!transition_mod.InstanceState {
     const next_state = state;
 
-    for (emitted_events) |ev| {
+    for (emitted_events) |emitted| {
+        const ev = emitted.payload;
         switch (ev) {
             .sub_process_start => |sp| {
                 const child_definition_id = parseUuid(sp.child_definition_id) catch return CompleteTaskError.TransitionFailed;

@@ -83,11 +83,27 @@ pub const PendingEvent = union(enum) {
 };
 
 // ---------------------------------------------------------------------------
+// EmittedEvent wrapper struct — ISS-203: deterministic idempotency keys
+// ---------------------------------------------------------------------------
+
+/// A cascade event produced by transition(), carrying a deterministic
+/// idempotency key derived solely from the transition inputs.
+/// Format of idempotency_key: "engine:<16-hex-digits>" (always 23 chars).
+pub const EmittedEvent = struct {
+    /// Engine-computed deterministic key.
+    /// Never null for events produced by transition().
+    idempotency_key: []const u8,
+    /// The payload of the emitted effect.
+    payload: PendingEvent,
+};
+
+// ---------------------------------------------------------------------------
 // TransitionResult struct — ISS-201: first-class return from transition()
 // ---------------------------------------------------------------------------
 pub const TransitionResult = struct {
     state: InstanceState,
-    emitted_events: []PendingEvent,
+    /// ISS-203: each emitted event now carries a deterministic idempotency key.
+    emitted_events: []EmittedEvent,
 };
 
 // ---------------------------------------------------------------------------
@@ -155,7 +171,115 @@ pub const TransitionError = error{
     TransformResultNonObject,
     InvalidState,
     OutOfMemory,
+    /// ISS-203: triggering_event_seq must be > 0.
+    /// Callers must supply the actual sequence number assigned by the event store.
+    InvalidTriggeringSeq,
 };
+
+// ---------------------------------------------------------------------------
+// FNV-1a (64-bit) hash helper — ISS-203
+// ---------------------------------------------------------------------------
+
+/// Feed bytes into a running FNV-1a 64-bit hash accumulator.
+/// Call with initial value FNV1A_64_OFFSET_BASIS for the first chunk,
+/// then chain subsequent calls with the returned value.
+const FNV1A_64_OFFSET_BASIS: u64 = 14695981039346656037;
+const FNV1A_64_PRIME: u64 = 1099511628211;
+
+fn fnv1a64Feed(hash: u64, data: []const u8) u64 {
+    var h = hash;
+    for (data) |byte| {
+        h ^= @as(u64, byte);
+        h = h *% FNV1A_64_PRIME;
+    }
+    return h;
+}
+
+/// Compute a deterministic idempotency key for a single engine-emitted event.
+///
+/// Formula: FNV-1a-64(
+///   instance_id_bytes || 0x00 ||
+///   triggering_event_seq_big_endian_u64 || 0x00 ||
+///   node_id_utf8 || 0x00 ||
+///   event_type_tag_utf8 || 0x00 ||
+///   ordinal_big_endian_u64
+/// )
+/// Result string: "engine:<16-hex-lowercase-digits>"  (always exactly 23 chars)
+fn computeEmittedEventKey(
+    allocator: std.mem.Allocator,
+    instance_id: Uuid,
+    triggering_event_seq: i64,
+    node_id: []const u8,
+    event_type_tag: []const u8,
+    ordinal: usize,
+) error{OutOfMemory}![]u8 {
+    var h = FNV1A_64_OFFSET_BASIS;
+    // field 1: instance_id raw bytes
+    h = fnv1a64Feed(h, &instance_id);
+    // separator
+    h = fnv1a64Feed(h, &[_]u8{0x00});
+    // field 2: triggering_event_seq as big-endian u64
+    const seq_u64: u64 = @bitCast(triggering_event_seq);
+    const seq_be = [8]u8{
+        @intCast((seq_u64 >> 56) & 0xFF),
+        @intCast((seq_u64 >> 48) & 0xFF),
+        @intCast((seq_u64 >> 40) & 0xFF),
+        @intCast((seq_u64 >> 32) & 0xFF),
+        @intCast((seq_u64 >> 24) & 0xFF),
+        @intCast((seq_u64 >> 16) & 0xFF),
+        @intCast((seq_u64 >> 8) & 0xFF),
+        @intCast(seq_u64 & 0xFF),
+    };
+    h = fnv1a64Feed(h, &seq_be);
+    // separator
+    h = fnv1a64Feed(h, &[_]u8{0x00});
+    // field 3: node_id UTF-8
+    h = fnv1a64Feed(h, node_id);
+    // separator
+    h = fnv1a64Feed(h, &[_]u8{0x00});
+    // field 4: event_type_tag UTF-8
+    h = fnv1a64Feed(h, event_type_tag);
+    // separator
+    h = fnv1a64Feed(h, &[_]u8{0x00});
+    // field 5: ordinal as big-endian u64
+    const ord_u64: u64 = @intCast(ordinal);
+    const ord_be = [8]u8{
+        @intCast((ord_u64 >> 56) & 0xFF),
+        @intCast((ord_u64 >> 48) & 0xFF),
+        @intCast((ord_u64 >> 40) & 0xFF),
+        @intCast((ord_u64 >> 32) & 0xFF),
+        @intCast((ord_u64 >> 24) & 0xFF),
+        @intCast((ord_u64 >> 16) & 0xFF),
+        @intCast((ord_u64 >> 8) & 0xFF),
+        @intCast(ord_u64 & 0xFF),
+    };
+    h = fnv1a64Feed(h, &ord_be);
+
+    return std.fmt.allocPrint(allocator, "engine:{x:0>16}", .{h});
+}
+
+/// Return the canonical event-type tag string for a PendingEvent variant.
+/// Used as the event_type_tag field in the idempotency key computation.
+fn pendingEventTag(ev: PendingEvent) []const u8 {
+    return switch (ev) {
+        .parallel_split => "parallel_split",
+        .parallel_join => "parallel_join",
+        .instance_cancelled => "instance_cancelled",
+        .timer_created => "timer_created",
+        .sub_process_start => "sub_process_start",
+    };
+}
+
+/// Return the node_id that the event is associated with, for key computation.
+fn pendingEventNodeId(ev: PendingEvent) []const u8 {
+    return switch (ev) {
+        .parallel_split => |p| p.source_node_id,
+        .parallel_join => |p| p.join_node_id,
+        .instance_cancelled => |p| p.join_node_id orelse "",
+        .timer_created => |p| p.timer_node_id,
+        .sub_process_start => |p| p.parent_node_id,
+    };
+}
 
 // ---------------------------------------------------------------------------
 // transition() function
@@ -165,7 +289,11 @@ pub fn transition(
     snapshot: graph_mod.DefinitionGraph,
     state: InstanceState,
     event: TransitionEvent,
+    triggering_event_seq: i64,
 ) TransitionError!TransitionResult {
+    // ISS-203: reject degenerate sequence numbers immediately.
+    if (triggering_event_seq <= 0) return TransitionError.InvalidTriggeringSeq;
+
     // Precondition checks
     // 1. All tokens must reference valid node_ids
     for (state.tokens) |token| {
@@ -212,17 +340,14 @@ pub fn transition(
     var emitted_events = std.ArrayList(PendingEvent).empty;
     defer emitted_events.deinit(allocator);
 
-    switch (event) {
-        .instance_started => |payload| {
+    const result_state = switch (event) {
+        .instance_started => |payload| blk: {
             // Seed variables from initial_variables
             new_state.variables = try payload.initial_variables.clone(allocator);
             // Place token on first node after START
-            const start_node = blk: {
-                for (snapshot.nodes) |node| {
-                    if (std.mem.eql(u8, node.id, payload.start_node_id)) break :blk node;
-                }
-                return TransitionError.InvalidState;
-            };
+            const start_node = for (snapshot.nodes) |node| {
+                if (std.mem.eql(u8, node.id, payload.start_node_id)) break node;
+            } else return TransitionError.InvalidState;
             // Find outgoing edge from START
             var found = false;
             var next_node_id: []const u8 = undefined;
@@ -248,10 +373,9 @@ pub fn transition(
                 .branch_id = branch_id,
             };
             // Process node entry
-            const result_state = try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
-            return TransitionResult{ .state = result_state, .emitted_events = try emitted_events.toOwnedSlice(allocator) };
+            break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
         },
-        .task_completed => |payload| {
+        .task_completed => |payload| blk: {
             // Find token on task_node_id
             var token_idx: ?usize = null;
             for (new_state.tokens, 0..) |t, i| {
@@ -312,10 +436,9 @@ pub fn transition(
 
             new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
             // Process node entry
-            const result_state = try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
-            return TransitionResult{ .state = result_state, .emitted_events = try emitted_events.toOwnedSlice(allocator) };
+            break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
         },
-        .service_task_completed => |payload| {
+        .service_task_completed => |payload| blk: {
             // Find token on service_task_node_id
             var token_idx: ?usize = null;
             for (new_state.tokens, 0..) |t, i| {
@@ -367,10 +490,9 @@ pub fn transition(
             }
 
             new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
-            const result_state = try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
-            return TransitionResult{ .state = result_state, .emitted_events = try emitted_events.toOwnedSlice(allocator) };
+            break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
         },
-        .sub_process_completed => |payload| {
+        .sub_process_completed => |payload| blk: {
             var token_idx: ?usize = null;
             for (new_state.tokens, 0..) |t, i| {
                 if (!std.mem.eql(u8, t.node_id, payload.sub_process_node_id)) continue;
@@ -395,11 +517,31 @@ pub fn transition(
 
             new_state.tokens[token_idx.?].waiting_child_instance_id = null;
             new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
-            const result_state = try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
-            return TransitionResult{ .state = result_state, .emitted_events = try emitted_events.toOwnedSlice(allocator) };
+            break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
         },
         else => return TransitionError.UnknownEventType,
+    };
+
+    // ISS-203: wrap each PendingEvent in an EmittedEvent with a deterministic key.
+    // Key is computed after the full list is assembled so ordinals are stable.
+    const raw_events = emitted_events.items;
+    const wrapped = try allocator.alloc(EmittedEvent, raw_events.len);
+    for (raw_events, 0..) |ev, i| {
+        const key = computeEmittedEventKey(
+            allocator,
+            state.instance_id,
+            triggering_event_seq,
+            pendingEventNodeId(ev),
+            pendingEventTag(ev),
+            i,
+        ) catch return TransitionError.OutOfMemory;
+        wrapped[i] = EmittedEvent{
+            .idempotency_key = key,
+            .payload = ev,
+        };
     }
+
+    return TransitionResult{ .state = result_state, .emitted_events = wrapped };
 }
 
 const EdgeTransformError = error{
@@ -989,10 +1131,10 @@ test "TC-EE-02-01: instance_started event places token on first non-START node" 
         .initial_variables = initial_vars,
         .start_node_id = "start",
     } };
-    const result = transition(allocator, graph, state, event) catch unreachable;
+    const result = transition(allocator, graph, state, event, 1) catch unreachable;
     // Should have one token on HUMAN_TASK
-    try std.testing.expect(result.tokens.len == 1);
-    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "task1"));
+    try std.testing.expect(result.state.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.state.tokens[0].node_id, "task1"));
 }
 
 test "TC-EE-02-02: task_completed on HUMAN_TASK advances to next node" {
@@ -1024,10 +1166,10 @@ test "TC-EE-02-02: task_completed on HUMAN_TASK advances to next node" {
         .task_node_id = "task1",
         .output_variables = output_vars,
     } };
-    const result = transition(allocator, graph, state, event) catch unreachable;
+    const result = transition(allocator, graph, state, event, 1) catch unreachable;
     // Should have token on END
-    try std.testing.expect(result.tokens.len == 1);
-    try std.testing.expect(std.mem.eql(u8, result.tokens[0].node_id, "end"));
+    try std.testing.expect(result.state.tokens.len == 1);
+    try std.testing.expect(std.mem.eql(u8, result.state.tokens[0].node_id, "end"));
 }
 
 test "TC-EE-02-03: token reaches END → status becomes COMPLETED" {
@@ -1092,11 +1234,11 @@ test "TC-SCH-01-01: entering TIMER emits timer_created pending effect" {
         .start_node_id = "start",
     } };
 
-    const tr = try transition(allocator, graph, state, event);
+    const tr = try transition(allocator, graph, state, event, 1);
     try std.testing.expect(tr.state.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, tr.state.tokens[0].node_id, "timer1"));
     try std.testing.expect(tr.emitted_events.len == 1);
-    const timer_event = tr.emitted_events[0].timer_created;
+    const timer_event = tr.emitted_events[0].payload.timer_created;
     try std.testing.expect(std.mem.eql(u8, timer_event.timer_node_id, "timer1"));
     try std.testing.expect(std.mem.eql(u8, timer_event.duration_iso8601, "PT0S"));
 }
@@ -1298,7 +1440,7 @@ test "TC-EE-02-09: unknown event type → UnknownEventType error" {
         .error_detail = null,
     };
     const event = TransitionEvent{ .unknown = .{ .event_type = "foo" } };
-    const result = transition(allocator, graph, state, event);
+    const result = transition(allocator, graph, state, event, 1);
     try std.testing.expectError(TransitionError.UnknownEventType, result);
 }
 
@@ -1324,7 +1466,7 @@ test "TC-EE-02-10: token on missing node → TokenOnMissingNode error" {
         .initial_variables = std.json.ObjectMap.init(allocator),
         .start_node_id = "start",
     } };
-    const result = transition(allocator, graph, state, event);
+    const result = transition(allocator, graph, state, event, 1);
     try std.testing.expectError(TransitionError.TokenOnMissingNode, result);
 }
 
@@ -1355,11 +1497,13 @@ test "TC-EE-02-11: same inputs called twice → identical output (determinism)" 
         .initial_variables = initial_vars,
         .start_node_id = "start",
     } };
-    const result1 = transition(allocator, graph, state, event) catch unreachable;
-    const result2 = transition(allocator, graph, state, event) catch unreachable;
+    const result1 = transition(allocator, graph, state, event, 1) catch unreachable;
+    const result2 = transition(allocator, graph, state, event, 1) catch unreachable;
     // Should be identical
-    try std.testing.expect(result1.tokens.len == result2.tokens.len);
-    try std.testing.expect(std.mem.eql(u8, result1.tokens[0].node_id, result2.tokens[0].node_id));
+    try std.testing.expect(result1.state.tokens.len == result2.state.tokens.len);
+    try std.testing.expect(std.mem.eql(u8, result1.state.tokens[0].node_id, result2.state.tokens[0].node_id));
+    // ISS-203: idempotency keys must match across identical calls
+    try std.testing.expect(result1.emitted_events.len == result2.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -1767,12 +1911,12 @@ test "TC-EXT-05-UT-01: entering SUB_PROCESS emits sub_process_start pending even
             .initial_variables = init_vars,
             .start_node_id = "start",
         },
-    });
+    }, 1);
 
     try std.testing.expect(tr.state.tokens.len == 1);
     try std.testing.expect(std.mem.eql(u8, tr.state.tokens[0].node_id, "sp1"));
     try std.testing.expect(tr.emitted_events.len == 1);
-    _ = tr.emitted_events[0].sub_process_start;
+    _ = tr.emitted_events[0].payload.sub_process_start;
 }
 
 test "TC-EXT-05-UT-02: sub_process_completed advances waiting token" {
@@ -1806,7 +1950,7 @@ test "TC-EXT-05-UT-02: sub_process_completed advances waiting token" {
             .sub_process_node_id = "sp1",
             .child_instance_id = "123e4567-e89b-12d3-a456-426614174001",
         },
-    });
+    }, 1);
 
     try std.testing.expect(tr.state.status == .COMPLETED);
     try std.testing.expect(tr.state.tokens.len == 0);

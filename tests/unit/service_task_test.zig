@@ -379,7 +379,7 @@ test "TC-EXT-01-U09: service_task_completed merges response object into instance
         .output_variables = output.value.object,
     } };
 
-    const tr = try transition_mod.transition(a, snap, state, event);
+    const tr = try transition_mod.transition(a, snap, state, event, 1);
     const new_state = tr.state;
     const serialized = try std.json.Stringify.valueAlloc(a, std.json.Value{ .object = tr.state.variables }, .{});
     defer a.free(serialized);

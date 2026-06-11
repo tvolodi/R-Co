@@ -72,7 +72,7 @@ test "TC-EE-03-01: HUMAN_TASK node entry populates pending_task_nodes" {
         .start_node_id = "start",
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
     const new_state = tr.state;
 
     // Token parked on HUMAN_TASK node
@@ -114,7 +114,7 @@ test "TC-EE-03-02: START node activation does NOT add to pending_task_nodes" {
         .start_node_id = "start",
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
     const new_state = tr.state;
 
     // START traversal must not produce pending_task_nodes entries
@@ -173,7 +173,7 @@ test "TC-EE-03-03: END node activation does NOT add to pending_task_nodes" {
         .output_variables = std.json.ObjectMap.empty,
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, parked_state, event);
+    const tr = try transition_mod.transition(alloc, snap, parked_state, event, 1);
     const new_state = tr.state;
 
     // END node must NOT produce a pending_task_nodes entry
@@ -214,7 +214,7 @@ test "TC-EE-03-04: EXCLUSIVE_GATEWAY activation does NOT add to pending_task_nod
         .start_node_id = "start",
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
     const new_state = tr.state;
 
     // EXCLUSIVE_GATEWAY traversal must not produce pending_task_nodes entries
@@ -256,7 +256,7 @@ test "TC-EE-03-05: PARALLEL_GATEWAY activation does NOT add to pending_task_node
         .start_node_id = "start",
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
     const new_state = tr.state;
 
     // PARALLEL_GATEWAY split must not produce pending_task_nodes entries
@@ -266,7 +266,7 @@ test "TC-EE-03-05: PARALLEL_GATEWAY activation does NOT add to pending_task_node
 
     // ISS-201: PARALLEL_GATEWAY split emits exactly 1 parallel_split event
     try testing.expectEqual(@as(usize, 1), tr.emitted_events.len);
-    const split_payload = tr.emitted_events[0].parallel_split;
+    const split_payload = tr.emitted_events[0].payload.parallel_split;
     try testing.expectEqualStrings("par", split_payload.source_node_id);
     try testing.expectEqual(@as(usize, 2), split_payload.edge_count);
 }
