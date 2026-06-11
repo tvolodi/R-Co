@@ -51,14 +51,14 @@ steps:
     variance_pct: +26.7
   doc-updater:
     started_at: "2026-06-11T07:34:30Z"
-    completed_at: null
+    completed_at: "2026-06-11T07:37:54Z"
     estimated_minutes: 2
-    actual_minutes: null
-    variance_pct: null
+    actual_minutes: 3.4
+    variance_pct: +70.0
 
 totals:
   estimated_minutes: 79
-  actual_minutes_excluding_doc_updater: 64.3
+  actual_minutes: 67.7
   notes: >
     test-runner actual (31.2 min) far exceeded estimate (4 min, +680%) due to
     concurrent-claim test setup requiring tenant-schema context wiring fixes in
