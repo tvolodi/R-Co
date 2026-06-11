@@ -179,7 +179,6 @@ pub fn reconstructInstance(
         .join_counters = std.json.ObjectMap{},
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
-        .pending_events = &[_]PendingEvent{},
         .cancelled_branch_ids = &[_][]const u8{},
     };
 
@@ -207,14 +206,10 @@ pub fn reconstructInstance(
         };
 
         // Apply the pure transition function (zero I/O — anti-pattern check).
-        state = transition_mod.transition(allocator, snapshot, state, te) catch
-            return ReconstructionError.ReplayFailed;
+        // Discard emitted_events during replay — they were already persisted as event rows.
+        state = (transition_mod.transition(allocator, snapshot, state, te) catch
+            return ReconstructionError.ReplayFailed).state;
     }
-
-    // Reset pending_events: any side-effects from the last transition are
-    // already persisted as subsequent event records in the log and must not
-    // be re-processed by the caller (design §6b).
-    state.pending_events = &[_]PendingEvent{};
 
     // ── Step 5: Optional write-back ──────────────────────────────────────────
     if (write_back) {
@@ -298,7 +293,6 @@ pub fn reconstructInstancePointInTime(
         .variables = std.json.ObjectMap{},
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
-        .pending_events = &[_]PendingEvent{},
         .cancelled_branch_ids = &[_][]const u8{},
     };
 
@@ -319,11 +313,10 @@ pub fn reconstructInstancePointInTime(
             error.ParseFailed => return ReconstructionError.ReplayFailed,
         };
 
-        state = transition_mod.transition(allocator, snapshot, state, te) catch
-            return ReconstructionError.ReplayFailed;
+        state = (transition_mod.transition(allocator, snapshot, state, te) catch
+            return ReconstructionError.ReplayFailed).state;
     }
 
-    state.pending_events = &[_]PendingEvent{};
     return state;
 }
 

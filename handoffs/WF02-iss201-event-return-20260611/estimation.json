@@ -1,0 +1,33 @@
+{
+  "run_id": "WF02-iss201-event-return-20260611",
+  "created_at": "2026-06-11T15:38:28Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "ISS-201"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "Engine API signature change: transition() return type restructured; every caller in instance.zig, reconstruction.zig, and all test files must update. The PendingEvent taxonomy must be extracted from InstanceState into TransitionResult while preserving pure-function contract.",
+  "integration_surface": "high",
+  "integration_surface_rationale": "Touches src/engine/transition.zig, src/engine/instance.zig, src/engine/reconstruction.zig, and all unit/integration test files that call transition(). This is the foundation for EPIC-2 integrity fixes.",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "backend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 8,
+    "code-design-validator": 22,
+    "backend-dev": 9,
+    "test-designer": 3,
+    "test-design-validator": 38,
+    "test-runner": 6,
+    "release-validator": 2,
+    "doc-updater": 2,
+    "total": 90
+  }
+}

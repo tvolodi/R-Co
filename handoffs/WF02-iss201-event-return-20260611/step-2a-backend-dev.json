@@ -1,0 +1,60 @@
+{
+  "handoff_id": "iss201-backend-impl-2a",
+  "run_id": "WF02-iss201-event-return-20260611",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-iss201-event-return-20260611/step-2a-backend-dev.json",
+  "created_at": "2026-06-11T15:50:06Z",
+  "started_at": "2026-06-11T15:50:06Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "issue_id": "ISS-201",
+    "stage": "Step 2a \u2014 Implementation",
+    "requirement_ids": [
+      "ISS-201"
+    ],
+    "owned_modules": [
+      "src/engine/transition.zig",
+      "src/engine/instance.zig",
+      "src/engine/reconstruction.zig"
+    ],
+    "artifacts_in": [
+      "src/design/iss-201-transition-result.md",
+      "src/engine/transition.zig",
+      "src/engine/instance.zig",
+      "src/engine/reconstruction.zig",
+      "tests/unit/test_engine_apply.zig",
+      "tests/unit/test_engine_ee05.zig",
+      "tests/unit/test_ee07_parallel_join.zig",
+      "tests/unit/service_task_test.zig",
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md"
+    ]
+  },
+  "task": {
+    "description": "IMPLEMENT ISS-201: Change transition() to return TransitionResult{state, emitted_events} per src/design/iss-201-transition-result.md.\n\nCHECKLIST (follow in order):\n\nA. transition.zig changes:\n   1. Add TransitionResult struct: pub const TransitionResult = struct { state: InstanceState, emitted_events: []PendingEvent };\n   2. Remove pending_events field from InstanceState (line 96). Do NOT touch other fields.\n   3. Change signature L156: pub fn transition(...) TransitionError!TransitionResult\n   4. All internal pending_events accumulators now collect into emitted_events. At the end return TransitionResult{ .state = new_state, .emitted_events = ... }.\n   5. Every return site in transition.zig that currently returns new_state must now wrap it: return TransitionResult{ .state = new_state, .emitted_events = &[0_]PendingEvent{} } (for returns with no events) or with the accumulated events.\n   6. Internal transition() calls (processNodeEntry recursion) pass through TransitionResult \u2014 decide whether to collect emitted_events from recursive calls.\n\nB. instance.zig changes:\n   7. All 5 callers at L689, L888, L1525, L2984, L3091: destructure const result = transition_mod.transition(...) catch ...; const new_state = result.state; const emitted_events = result.emitted_events;\n   8. freeOwnedTransitionState() L392-423: change signature to accept TransitionResult. Free result.emitted_events in addition to result.state.* fields.\n   9. persistTimersFromPendingEventsInTx() L3580: change first param to accept []PendingEvent (or TransitionResult). You're now passing result.emitted_events instead of state.pending_events.\n   10. startSubProcessesForPendingEventsInTx() L3661: update to receive emitted_events from result instead of state.pending_events.\n   11. All state literals that set .pending_events = &.{} \u2014 remove that field (it's no longer in InstanceState).\n\nC. reconstruction.zig changes:\n   12. Replay callers at L210, L322: destructure result.state for the next iteration; optionally collect result.emitted_events for logging/assertion.\n   13. Initial state literals: remove .pending_events field.\n\nD. Test file changes (destructuring pattern everywhere):\n   14. tests/unit/test_engine_apply.zig \u2014 5 call sites (L76,114,170,207,245)\n   15. tests/unit/test_engine_ee05.zig \u2014 9 call sites (L74,115,154,192,229,278,320,362,402)\n   16. tests/unit/test_ee07_parallel_join.zig \u2014 3 call sites (L106,125,139)\n   17. tests/unit/service_task_test.zig \u2014 1 call site (L384)\n   18. Any state literals in tests that reference .pending_events \u2014 remove the field.\n   19. Any tests within transition.zig itself (test blocks at bottom of file) \u2014 update destructuring.\n\nHARD RULES:\n- Engine MUST stay pure: zero I/O in transition.zig\n- transition() MUST NOT re-append the trigger event \u2014 the input event is NOT in emitted_events\n- Every existing test must pass with the new signature (same behavior, just destructured)\n- zig build && zig build test must exit 0 with NO 'error set' output\n- zig build 2>&1 | grep -i 'error set' \u2192 empty\n\nCommit and push: git commit -m 'feat(ISS-201): make transition() return TransitionResult{state,emitted_events}' ",
+    "acceptance_criteria": [
+      "TransitionResult struct added to transition.zig",
+      "pending_events REMOVED from InstanceState",
+      "transition() returns TransitionResult not InstanceState",
+      "ALL callers in instance.zig (5), reconstruction.zig (2), unit tests (18+) updated",
+      "freeOwnedTransitionState() accepts TransitionResult",
+      "persistTimersFromPendingEventsInTx() consumes emitted_events from TransitionResult",
+      "startSubProcessesForPendingEventsInTx() consumes emitted_events from TransitionResult",
+      "Engine remains pure (no I/O, no trigger re-append)",
+      "zig build exits 0 with NO error-set output",
+      "zig build test exits 0 (all existing tests pass with new signature)",
+      "Committed and pushed"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

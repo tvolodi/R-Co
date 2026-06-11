@@ -42,7 +42,6 @@ fn emptyState() InstanceState {
         .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
-        .pending_events = &[_]transition_mod.PendingEvent{},
         .cancelled_branch_ids = &[_][]const u8{},
     };
 }
@@ -73,7 +72,8 @@ test "TC-EE-03-01: HUMAN_TASK node entry populates pending_task_nodes" {
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const new_state = tr.state;
 
     // Token parked on HUMAN_TASK node
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
@@ -111,7 +111,8 @@ test "TC-EE-03-02: START node activation does NOT add to pending_task_nodes" {
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const new_state = tr.state;
 
     // START traversal must not produce pending_task_nodes entries
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
@@ -158,7 +159,6 @@ test "TC-EE-03-03: END node activation does NOT add to pending_task_nodes" {
         .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending_nodes,
         .error_detail = null,
-        .pending_events = &[_]transition_mod.PendingEvent{},
         .cancelled_branch_ids = &[_][]const u8{},
     };
 
@@ -167,7 +167,8 @@ test "TC-EE-03-03: END node activation does NOT add to pending_task_nodes" {
         .output_variables = std.json.ObjectMap.empty,
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, parked_state, event);
+    const tr = try transition_mod.transition(alloc, snap, parked_state, event);
+    const new_state = tr.state;
 
     // END node must NOT produce a pending_task_nodes entry
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
@@ -204,7 +205,8 @@ test "TC-EE-03-04: EXCLUSIVE_GATEWAY activation does NOT add to pending_task_nod
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const new_state = tr.state;
 
     // EXCLUSIVE_GATEWAY traversal must not produce pending_task_nodes entries
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
@@ -242,7 +244,8 @@ test "TC-EE-03-05: PARALLEL_GATEWAY activation does NOT add to pending_task_node
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const new_state = tr.state;
 
     // PARALLEL_GATEWAY split must not produce pending_task_nodes entries
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);

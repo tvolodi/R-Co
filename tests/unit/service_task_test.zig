@@ -361,7 +361,6 @@ test "TC-EXT-01-U09: service_task_completed merges response object into instance
 
     var tokens = [_]transition_mod.Token{.{ .node_id = "svc", .branch_id = "branch-1" }};
     var pending_task_nodes = [_][]const u8{};
-    var pending_events = [_]transition_mod.PendingEvent{};
     var cancelled_branch_ids = [_][]const u8{};
 
     const state = transition_mod.InstanceState{
@@ -372,7 +371,6 @@ test "TC-EXT-01-U09: service_task_completed merges response object into instance
         .join_counters = std.json.ObjectMap{},
         .pending_task_nodes = pending_task_nodes[0..],
         .error_detail = null,
-        .pending_events = pending_events[0..],
         .cancelled_branch_ids = cancelled_branch_ids[0..],
     };
 
@@ -381,8 +379,9 @@ test "TC-EXT-01-U09: service_task_completed merges response object into instance
         .output_variables = output.value.object,
     } };
 
-    const new_state = try transition_mod.transition(a, snap, state, event);
-    const serialized = try std.json.Stringify.valueAlloc(a, std.json.Value{ .object = new_state.variables }, .{});
+    const tr = try transition_mod.transition(a, snap, state, event);
+    const new_state = tr.state;
+    const serialized = try std.json.Stringify.valueAlloc(a, std.json.Value{ .object = tr.state.variables }, .{});
     defer a.free(serialized);
 
     try std.testing.expect(std.mem.indexOf(u8, serialized, "\"existing\":\"new\"") != null);
