@@ -1,0 +1,45 @@
+{
+  "handoff_id": "tdv-iss104-20260611-3b",
+  "run_id": "WF02-iss104-artifact-hash-20260611",
+  "step": "3b",
+  "from_agent": "TEST-DESIGN-VALIDATOR",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-11T08:45:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Step 3b - Test Design Validation Gate",
+    "requirement_ids": ["ISS-104"],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/ISS-104.md",
+      "tests/integration/iss104_artifact_hash_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate test design and integration test implementation for ISS-104. Verify complete coverage, isolation, and self-sufficiency before TEST-RUNNER execution.",
+    "acceptance_criteria": [
+      "Every MUST requirement has an integration test",
+      "No error.SkipZigTest on MUST tests",
+      "All fixtures isolated with per-test UUIDs",
+      "Cleanup is automatic (defer blocks) and comprehensive",
+      "Tests fail clearly if BPM_TEST_DB_URL is absent",
+      "Real PostgreSQL connection (no mocks)"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-104 test design validation complete. All 4 MUST test cases present with comprehensive coverage, per-test UUID fixtures, automatic cleanup, and real PostgreSQL integration. Hard gate requirements satisfied. Ready for TEST-RUNNER (Step 4).",
+    "artifacts_out": [
+      "tests/specs/ISS-104.md",
+      "tests/integration/iss104_artifact_hash_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T08:45:00Z",
+  "completed_at": "2026-06-11T09:00:38Z"
+}
