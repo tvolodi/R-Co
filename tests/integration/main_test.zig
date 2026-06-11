@@ -150,6 +150,8 @@ const iss106_webhook_outbox_integration = @import("iss106_webhook_outbox_test.zi
 const iss107_tenant_storage_mode_integration = @import("iss107_tenant_storage_mode_test.zig");
 // ISS-201 — TransitionResult atomic persistence (trigger + emitted_events)
 const iss201_transition_result_integration = @import("iss201_transition_result_test.zig");
+// ISS-202 — Two-phase (all-or-nothing) variable merge
+const iss202_merge_atomicity_integration = @import("iss202_merge_atomicity_test.zig");
 
 comptime {
     _ = std;
@@ -220,6 +222,7 @@ comptime {
     _ = iss106_webhook_outbox_integration;
     _ = iss107_tenant_storage_mode_integration;
     _ = iss201_transition_result_integration;
+    _ = iss202_merge_atomicity_integration;
 }
 
 test "integration placeholder" {

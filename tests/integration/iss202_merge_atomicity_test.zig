@@ -151,18 +151,18 @@ fn cleanupByName(pool: *Pool, name: []const u8) void {
 }
 
 // ---------------------------------------------------------------------------
-// Minimal valid graph for merge testing: START → SERVICE_TASK → END
-// (SERVICE_TASK for variable output testing)
+// Minimal valid graph for merge testing: START → HUMAN_TASK → END
+// (HUMAN_TASK for variable output testing; SERVICE_TASK requires plugin scope)
 // ---------------------------------------------------------------------------
 
 const merge_test_nodes = [_]GraphNode{
     .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
-    .{ .id = "ST", .node_type = .SERVICE_TASK, .label = null, .attributes = "{\"plugin\":\"test_plugin\"}" },
+    .{ .id = "HT", .node_type = .HUMAN_TASK, .label = "Task", .attributes = "{\"role\":\"tester\",\"assignee_type\":\"USER\",\"assignee_ref\":\"u1\"}" },
     .{ .id = "E", .node_type = .END, .label = null, .attributes = null },
 };
 const merge_test_edges = [_]GraphEdge{
-    .{ .id = "e1", .source = "S", .target = "ST", .condition = null, .is_default = false },
-    .{ .id = "e2", .source = "ST", .target = "E", .condition = null, .is_default = false },
+    .{ .id = "e1", .source = "S", .target = "HT", .condition = null, .is_default = false },
+    .{ .id = "e2", .source = "HT", .target = "E", .condition = null, .is_default = false },
 };
 const merge_test_graph = DefinitionGraph{ .nodes = &merge_test_nodes, .edges = &merge_test_edges };
 
