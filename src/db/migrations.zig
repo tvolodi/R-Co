@@ -149,7 +149,13 @@ pub const Migrations = struct {
         // Fetch already-applied versions for this specific schema.
         // Filters by schema_name so per-tenant migration state is independent.
         var applied = std.StringHashMap(void).init(allocator);
-        defer applied.deinit();
+        defer {
+            // Free the duplicated version-string keys (see ver_copy below) before
+            // tearing down the map; deinit() only releases the map's own storage.
+            var applied_key_it = applied.keyIterator();
+            while (applied_key_it.next()) |k| allocator.free(k.*);
+            applied.deinit();
+        }
 
         const existing = conn.query(
             allocator,

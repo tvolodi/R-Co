@@ -28,7 +28,7 @@ pub const JoinCounter = struct {
 pub const Token = struct {
     node_id: []const u8,
     branch_id: []const u8,
-    token_id: ?[]const u8 = null,      // UUID string — stable identity (optional for compatibility)
+    token_id: ?[]const u8 = null, // UUID string — stable identity (optional for compatibility)
     waiting_child_instance_id: ?[]const u8 = null,
 };
 
@@ -90,7 +90,7 @@ pub const InstanceState = struct {
     status: InstanceStatus,
     tokens: []Token,
     variables: std.json.ObjectMap,
-    join_counters: std.json.ObjectMap,  // ISS-105: {NodeId: {received_count, expected_from_branches}}
+    join_counters: std.json.ObjectMap, // ISS-105: {NodeId: {received_count, expected_from_branches}}
     pending_task_nodes: [][]const u8,
     error_detail: ?[]const u8,
     pending_events: []PendingEvent,
@@ -985,7 +985,7 @@ test "TC-EE-02-01: instance_started event places token on first non-START node" 
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1021,7 +1021,7 @@ test "TC-EE-02-02: task_completed on HUMAN_TASK advances to next node" {
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "task1", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1057,7 +1057,7 @@ test "TC-EE-02-03: token reaches END → status becomes COMPLETED" {
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "end", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1090,7 +1090,7 @@ test "TC-SCH-01-01: entering TIMER emits timer_created pending effect" {
     defer initial_vars.deinit();
 
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1130,7 +1130,7 @@ test "TC-EE-02-04: EXCLUSIVE_GATEWAY follows first true CEL condition" {
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1160,7 +1160,7 @@ test "TC-EE-02-05: EXCLUSIVE_GATEWAY with no true condition and no default → N
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1190,7 +1190,7 @@ test "TC-EE-02-06: EXCLUSIVE_GATEWAY default edge fallback" {
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1219,7 +1219,7 @@ test "TC-EE-02-07: PARALLEL_GATEWAY split creates N tokens" {
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1258,7 +1258,7 @@ test "TC-EE-02-08: PARALLEL_GATEWAY join waits until all tokens arrive, then mer
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     // Only one token has arrived
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b1" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1271,7 +1271,7 @@ test "TC-EE-02-08: PARALLEL_GATEWAY join waits until all tokens arrive, then mer
     try std.testing.expect(result1.tokens.len == 1);
     // Now both tokens arrive
     const state2 = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{ .{ .node_id = "gw", .branch_id = "b1" }, .{ .node_id = "gw", .branch_id = "b2" } },
         .variables = std.json.ObjectMap.init(allocator),
@@ -1295,7 +1295,7 @@ test "TC-EE-02-09: unknown event type → UnknownEventType error" {
     const edges = [_]graph_mod.GraphEdge{};
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1319,7 +1319,7 @@ test "TC-EE-02-10: token on missing node → TokenOnMissingNode error" {
     const edges = [_]graph_mod.GraphEdge{};
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "missing", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1349,7 +1349,7 @@ test "TC-EE-02-11: same inputs called twice → identical output (determinism)" 
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1387,7 +1387,7 @@ test "TC-EE-06-01: PARALLEL_GATEWAY split with 2 edges creates 2 tokens and 1 PA
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1416,7 +1416,7 @@ test "TC-EE-06-02: PARALLEL_GATEWAY split with 3 edges creates 3 tokens with uni
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1444,7 +1444,7 @@ test "TC-EE-06-03: original arriving token removed after parallel split" {
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "arriving" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1474,7 +1474,7 @@ test "TC-EE-06-04: each new token targets correct next node per definition edges
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1506,7 +1506,7 @@ test "TC-EE-06-05: PARALLEL_SPLIT event records correct source_node_id and edge_
     };
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
     const state = InstanceState{
-        .instance_id = [_]u8{0}**16,
+        .instance_id = [_]u8{0} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "gw2", .branch_id = "b" }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1543,7 +1543,7 @@ test "TC-EE-07-01: join waits when one branch cancelled, fires when remaining ac
     // Branch 0 (to t1) has been cancelled. Only branch 1 (to t2) is active.
     // When branch 1 arrives at join_gw, join fires immediately (expected=1, arrived=1).
     const allocator = std.testing.allocator;
-    const instance_id = [_]u8{0xAB}**16;
+    const instance_id = [_]u8{0xAB} ** 16;
     const instance_hex = "abababababababababababababababababab";
     _ = instance_hex;
 
@@ -1616,7 +1616,7 @@ test "TC-EE-07-02: join still waits when only 1 of 2 active branches has arrived
 
     const branch_0 = "abababababababababababababababababab/split_gw/0";
     const state = InstanceState{
-        .instance_id = [_]u8{0xAB}**16,
+        .instance_id = [_]u8{0xAB} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1657,7 +1657,7 @@ test "TC-EE-07-03: all-branches-cancelled path → INSTANCE_CANCELLED event, sta
     // Both branches cancelled, EE-08 places a stray token on join_gw to trigger
     // re-evaluation. Step f detects expected_count == 0 and cascades to CANCELLED.
     const state_with_stray = InstanceState{
-        .instance_id = [_]u8{0xAB}**16,
+        .instance_id = [_]u8{0xAB} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{ .node_id = "join_gw", .branch_id = branch_0 }},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1706,7 +1706,7 @@ test "TC-EE-07-04: PARALLEL_JOIN event records branch_id with edge_index 0 as ou
     const branch_1 = "abababababababababababababababababab/split_gw/1";
 
     const state = InstanceState{
-        .instance_id = [_]u8{0xAB}**16,
+        .instance_id = [_]u8{0xAB} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{
             .{ .node_id = "join_gw", .branch_id = branch_1 }, // arrived first (stored first)
@@ -1749,7 +1749,7 @@ test "TC-EXT-05-UT-01: entering SUB_PROCESS emits sub_process_start pending even
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
     const state = InstanceState{
-        .instance_id = [_]u8{0x11}**16,
+        .instance_id = [_]u8{0x11} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.init(allocator),
@@ -1788,7 +1788,7 @@ test "TC-EXT-05-UT-02: sub_process_completed advances waiting token" {
     const graph = graph_mod.DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
     const state = InstanceState{
-        .instance_id = [_]u8{0x22}**16,
+        .instance_id = [_]u8{0x22} ** 16,
         .status = .ACTIVE,
         .tokens = &[_]Token{.{
             .node_id = "sp1",

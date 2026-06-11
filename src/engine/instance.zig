@@ -700,10 +700,10 @@ pub const InstanceStore = struct {
         tokens_buf.append(a, '[') catch return InstanceError.TransactionFailed;
         for (new_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return InstanceError.TransactionFailed;
-            
+
             // Generate token_id if not present (ISS-105)
             const token_id = tok.token_id orelse (generateTokenId(a) catch return InstanceError.TransactionFailed);
-            
+
             const entry = if (tok.waiting_child_instance_id) |child_id|
                 std.fmt.allocPrint(
                     a,
@@ -921,10 +921,10 @@ pub const InstanceStore = struct {
         tokens_buf.append(a, '[') catch return ApplyError.OutOfMemory;
         for (new_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return ApplyError.OutOfMemory;
-            
+
             // Generate token_id if not present (ISS-105)
             const token_id = tok.token_id orelse (generateTokenId(a) catch return ApplyError.OutOfMemory);
-            
+
             const entry = if (tok.waiting_child_instance_id) |child_id|
                 std.fmt.allocPrint(
                     a,
@@ -1238,7 +1238,7 @@ pub const InstanceStore = struct {
             for (tok_parsed.value.array.items) |item| {
                 if (item != .object) continue;
                 const obj = item.object;
-                
+
                 // token_id is optional (ISS-105)
                 var tid_opt: ?[]const u8 = null;
                 if (obj.get("token_id")) |tid_val| {
@@ -1247,14 +1247,14 @@ pub const InstanceStore = struct {
                             return CompleteTaskError.OutOfMemory;
                     }
                 }
-                
+
                 const nid_val = obj.get("node_id") orelse continue;
                 const bid_val = obj.get("branch_id") orelse continue;
                 if (nid_val != .string or bid_val != .string) {
                     if (tid_opt) |t| allocator.free(t);
                     continue;
                 }
-                
+
                 const nid = allocator.dupe(u8, nid_val.string) catch {
                     if (tid_opt) |t| allocator.free(t);
                     return CompleteTaskError.OutOfMemory;
@@ -1264,7 +1264,7 @@ pub const InstanceStore = struct {
                     allocator.free(nid);
                     return CompleteTaskError.OutOfMemory;
                 };
-                
+
                 var waiting_child: ?[]const u8 = null;
                 if (obj.get("waiting_child_instance_id")) |waiting_val| {
                     if (waiting_val == .string and waiting_val.string.len > 0) {
@@ -1276,7 +1276,7 @@ pub const InstanceStore = struct {
                         };
                     }
                 }
-                
+
                 tokens.append(allocator, .{
                     .node_id = nid,
                     .branch_id = bid,
