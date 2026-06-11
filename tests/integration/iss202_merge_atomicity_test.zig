@@ -34,6 +34,7 @@ const Instance = bpm.engine.Instance;
 const InstanceStatus = bpm.engine.InstanceStatus;
 const MergeVariablesError = bpm.engine.MergeVariablesError;
 const MergeVariablesResult = bpm.engine.MergeVariablesResult;
+const SchemaViolationDetail = bpm.engine.SchemaViolationDetail;
 
 // ---------------------------------------------------------------------------
 // Test setup helpers
@@ -99,8 +100,8 @@ fn generateTestUuid(seed: u64) [16]u8 {
     // Write 8 bytes of hash twice to fill 16 bytes
     var i: usize = 0;
     while (i < 8) : (i += 1) {
-        uuid[i] = @as(u8, @truncate((hash >> @as(u6, @intCast(i * 8)))) & 0xFF);
-        uuid[i + 8] = @as(u8, @truncate((hash >> @as(u6, @intCast(i * 8)))) & 0xFF);
+        uuid[i] = @as(u8, @truncate(@as(u64, hash >> @as(u6, @intCast(i * 8))))) & 0xFF;
+        uuid[i + 8] = @as(u8, @truncate(@as(u64, hash >> @as(u6, @intCast(i * 8))))) & 0xFF;
     }
 
     // Set version 4 (random) and variant
@@ -212,15 +213,15 @@ test "TC-ISS-202-01: Phase 1 validation succeeds for all valid keys" {
     defer freeInstance(alloc, inst);
 
     // Test mergeVariables with all valid keys
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
     try current_vars.put(alloc, "amount", std.json.Value{ .integer = 100 });
 
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     try output_vars.put(alloc, "status", std.json.Value{ .string = "pending" });
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     // Acquire a connection and open a transaction for the merge call
     const conn = try pool.acquire();
@@ -241,7 +242,7 @@ test "TC-ISS-202-01: Phase 1 validation succeeds for all valid keys" {
     );
 
     // Clean up result
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -321,16 +322,16 @@ test "TC-ISS-202-02: Phase 1 fails on invalid key; no state change, no events" {
         &.{ def_id_hex, "count", schema_json },
     );
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
     try current_vars.put(alloc, "amount", std.json.Value{ .integer = 100 });
 
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     // Invalid value: count should be >= 0 but we provide -5
     try output_vars.put(alloc, "count", std.json.Value{ .integer = -5 });
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result = inst_store.mergeVariables(
         alloc,
@@ -356,7 +357,7 @@ test "TC-ISS-202-02: Phase 1 fails on invalid key; no state change, no events" {
     };
 
     // If we reach here, the test should have caught SchemaViolation above
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -433,17 +434,17 @@ test "TC-ISS-202-03: Phase 1 validates all keys exhaustively" {
         &.{ def_id_hex, "field2", "{\"type\": \"number\"}" },
     );
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
 
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     // field1: valid string
     try output_vars.put(alloc, "field1", std.json.Value{ .string = "hello" });
     // field2: invalid number (we provide a string instead)
     try output_vars.put(alloc, "field2", std.json.Value{ .string = "not_a_number" });
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result = inst_store.mergeVariables(
         alloc,
@@ -468,7 +469,7 @@ test "TC-ISS-202-03: Phase 1 validates all keys exhaustively" {
         return;
     };
 
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -532,18 +533,18 @@ test "TC-ISS-202-04: Phase 2 applies all keys atomically" {
 
     try conn.exec("BEGIN", &.{});
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
     try current_vars.put(alloc, "amount", std.json.Value{ .integer = 100 });
     try current_vars.put(alloc, "status", std.json.Value{ .string = "initial" });
 
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     // Overwrite status, add new key
     try output_vars.put(alloc, "status", std.json.Value{ .string = "approved" });
     try output_vars.put(alloc, "approved_by", std.json.Value{ .string = "admin" });
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result = try inst_store.mergeVariables(
         alloc,
@@ -556,7 +557,7 @@ test "TC-ISS-202-04: Phase 2 applies all keys atomically" {
         &violation,
     );
 
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -639,16 +640,16 @@ test "TC-ISS-202-05: Retry after failure preserves pre-merge state" {
         &.{ def_id_hex, "value", "{\"type\": \"integer\", \"minimum\": 1}" },
     );
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
     try current_vars.put(alloc, "value", std.json.Value{ .integer = 42 });
 
     // First attempt: invalid value
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     try output_vars.put(alloc, "value", std.json.Value{ .integer = 0 }); // Invalid: minimum is 1
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const first_result = inst_store.mergeVariables(
         alloc,
@@ -674,7 +675,7 @@ test "TC-ISS-202-05: Retry after failure preserves pre-merge state" {
         return;
     };
 
-    defer first_result.merged.deinit(alloc);
+    defer @constCast(&first_result.merged).deinit(alloc);
     defer {
         for (first_result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -738,15 +739,15 @@ test "TC-ISS-202-06: Empty merge is a no-op" {
 
     try conn.exec("BEGIN", &.{});
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
     try current_vars.put(alloc, "amount", std.json.Value{ .integer = 100 });
 
     // Empty output variables
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result = try inst_store.mergeVariables(
         alloc,
@@ -759,7 +760,7 @@ test "TC-ISS-202-06: Empty merge is a no-op" {
         &violation,
     );
 
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -829,18 +830,18 @@ test "TC-ISS-202-07: All keys existing — collisions detected and applied atomi
 
     try conn.exec("BEGIN", &.{});
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
     try current_vars.put(alloc, "x", std.json.Value{ .integer = 1 });
     try current_vars.put(alloc, "y", std.json.Value{ .integer = 2 });
 
     // Overwrite both keys
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     try output_vars.put(alloc, "x", std.json.Value{ .integer = 10 });
     try output_vars.put(alloc, "y", std.json.Value{ .integer = 20 });
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result = try inst_store.mergeVariables(
         alloc,
@@ -853,7 +854,7 @@ test "TC-ISS-202-07: All keys existing — collisions detected and applied atomi
         &violation,
     );
 
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -938,15 +939,15 @@ test "TC-ISS-202-08: Schema mismatch on key triggers Phase 1 failure" {
         &.{ def_id_hex, "email", "{\"type\": \"string\", \"format\": \"email\"}" },
     );
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
 
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     // Provide integer instead of string (type mismatch)
     try output_vars.put(alloc, "email", std.json.Value{ .integer = 123 });
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result = inst_store.mergeVariables(
         alloc,
@@ -964,7 +965,7 @@ test "TC-ISS-202-08: Schema mismatch on key triggers Phase 1 failure" {
         return;
     };
 
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -1036,15 +1037,15 @@ test "TC-ISS-202-09: Null value where schema requires non-null" {
         &.{ def_id_hex, "name", "{\"type\": \"string\", \"minLength\": 1}" },
     );
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
 
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     // Provide null value (violates minLength: 1)
     try output_vars.put(alloc, "name", std.json.Value.null);
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result = inst_store.mergeVariables(
         alloc,
@@ -1062,7 +1063,7 @@ test "TC-ISS-202-09: Null value where schema requires non-null" {
         return;
     };
 
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -1135,15 +1136,15 @@ test "TC-ISS-202-10: Memory allocation failure leaves no partial state" {
 
     try conn.exec("BEGIN", &.{});
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
     try current_vars.put(alloc, "x", std.json.Value{ .integer = 1 });
 
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     try output_vars.put(alloc, "y", std.json.Value{ .integer = 2 });
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result = try inst_store.mergeVariables(
         alloc,
@@ -1156,7 +1157,7 @@ test "TC-ISS-202-10: Memory allocation failure leaves no partial state" {
         &violation,
     );
 
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -1231,15 +1232,15 @@ test "TC-ISS-202-INT-01: Transactional all-or-nothing merge with crash recovery"
 
     try conn.exec("BEGIN", &.{});
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
     try current_vars.put(alloc, "amount", std.json.Value{ .integer = 100 });
 
-    var output_vars = std.json.ObjectMap.init(alloc);
+    var output_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars.deinit(alloc);
     try output_vars.put(alloc, "status", std.json.Value{ .string = "processed" });
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result = try inst_store.mergeVariables(
         alloc,
@@ -1252,7 +1253,7 @@ test "TC-ISS-202-INT-01: Transactional all-or-nothing merge with crash recovery"
         &violation,
     );
 
-    defer result.merged.deinit(alloc);
+    defer @constCast(&result.merged).deinit(alloc);
     defer {
         for (result.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -1332,14 +1333,14 @@ test "TC-ISS-202-INT-02: Concurrent merge requests on same instance" {
 
     try conn1.exec("BEGIN", &.{});
 
-    var current1 = std.json.ObjectMap.init(alloc);
+    var current1 = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current1.deinit(alloc);
 
-    var output1 = std.json.ObjectMap.init(alloc);
+    var output1 = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output1.deinit(alloc);
     try output1.put(alloc, "a", std.json.Value{ .integer = 1 });
 
-    var violation1: ?InstanceStore.SchemaViolationDetail = null;
+    var violation1: ?SchemaViolationDetail = null;
 
     const result1 = try inst_store.mergeVariables(
         alloc,
@@ -1352,7 +1353,7 @@ test "TC-ISS-202-INT-02: Concurrent merge requests on same instance" {
         &violation1,
     );
 
-    defer result1.merged.deinit(alloc);
+    defer @constCast(&result1.merged).deinit(alloc);
     defer {
         for (result1.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -1371,14 +1372,14 @@ test "TC-ISS-202-INT-02: Concurrent merge requests on same instance" {
 
     try conn2.exec("BEGIN", &.{});
 
-    var current2 = std.json.ObjectMap.init(alloc);
+    var current2 = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current2.deinit(alloc);
 
-    var output2 = std.json.ObjectMap.init(alloc);
+    var output2 = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output2.deinit(alloc);
     try output2.put(alloc, "b", std.json.Value{ .integer = 2 });
 
-    var violation2: ?InstanceStore.SchemaViolationDetail = null;
+    var violation2: ?SchemaViolationDetail = null;
 
     const result2 = try inst_store.mergeVariables(
         alloc,
@@ -1391,7 +1392,7 @@ test "TC-ISS-202-INT-02: Concurrent merge requests on same instance" {
         &violation2,
     );
 
-    defer result2.merged.deinit(alloc);
+    defer @constCast(&result2.merged).deinit(alloc);
     defer {
         for (result2.overwritten_events) |ev| {
             alloc.free(ev.key);
@@ -1468,16 +1469,16 @@ test "TC-ISS-202-INT-03: Merge recovery after timeout" {
         &.{ def_id_hex, "value", "{\"type\": \"integer\"}" },
     );
 
-    var current_vars = std.json.ObjectMap.init(alloc);
+    var current_vars = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer current_vars.deinit(alloc);
     try current_vars.put(alloc, "value", std.json.Value{ .integer = 42 });
 
     // First attempt: invalid value (string instead of integer)
-    var output_vars_bad = std.json.ObjectMap.init(alloc);
+    var output_vars_bad = try std.json.ObjectMap.init(alloc, &.{}, &.{});
     defer output_vars_bad.deinit(alloc);
     try output_vars_bad.put(alloc, "value", std.json.Value{ .string = "timeout" });
 
-    var violation: ?InstanceStore.SchemaViolationDetail = null;
+    var violation: ?SchemaViolationDetail = null;
 
     const result_bad = inst_store.mergeVariables(
         alloc,
@@ -1501,7 +1502,7 @@ test "TC-ISS-202-INT-03: Merge recovery after timeout" {
         return;
     };
 
-    defer result_bad.merged.deinit(alloc);
+    defer @constCast(&result_bad.merged).deinit(alloc);
     defer {
         for (result_bad.overwritten_events) |ev| {
             alloc.free(ev.key);

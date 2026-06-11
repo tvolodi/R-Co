@@ -698,7 +698,7 @@ test "TC-ISS-202-01: mixed valid/invalid keys — all-or-nothing merge failure, 
     }
 
     // Create instance with initial variables: {"status": "pending"}
-    const instance_id = def.definition_id; // Reuse definition_id as instance_id for simplicity
+    const instance_id = def.id; // Reuse definition id as instance_id for simplicity
     const inst_id_hex = try uuidToHexStr(allocator, instance_id);
     defer allocator.free(inst_id_hex);
 
@@ -732,11 +732,13 @@ test "TC-ISS-202-01: mixed valid/invalid keys — all-or-nothing merge failure, 
         const conn = try pool.acquire();
         defer pool.release(conn);
 
-        // Use a dummy UUID for the task
-        var rng = std.Random.DefaultPrng.init(0x0102030405060708);
+        // Use a deterministic UUID for the task (based on line number as seed)
         task_id = std.mem.zeroes([16]u8);
-        @memcpy(task_id[0..8], &rng.random().bytes(8));
-        @memcpy(task_id[8..16], &rng.random().bytes(8));
+        var hasher = std.hash.Fnv1a_64.init();
+        const line_u64: u64 = @src().line;
+        hasher.update(std.mem.asBytes(&line_u64));
+        const hash = hasher.final();
+        @memcpy(task_id[0..8], std.mem.asBytes(&hash)[0..8]);
 
         const task_id_hex = try uuidToHexStr(allocator, task_id);
         defer allocator.free(task_id_hex);
