@@ -3,7 +3,7 @@ id: ENV-02
 title: Test tenant is fully isolated from its paired production tenant
 stage: 14
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # ENV-02 — Test tenant is fully isolated from its paired production tenant `[MUST]`

@@ -3,7 +3,7 @@ id: ENV-01
 title: Tenant carries a type field distinguishing production from test
 stage: 14
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # ENV-01 — Tenant carries a type field distinguishing production from test `[MUST]`
