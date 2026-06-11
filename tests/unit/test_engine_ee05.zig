@@ -27,9 +27,11 @@ fn emptyState() InstanceState {
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
         .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 }
 
@@ -261,9 +263,11 @@ test "EXT-04-UT-03: edge transform merges object result into instance variables"
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending[0..],
         .error_detail = null,
         .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{
@@ -299,9 +303,11 @@ test "EXT-04-UT-04: missing transform variable returns CelEvaluationError" {
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending[0..],
         .error_detail = null,
         .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{
@@ -339,9 +345,11 @@ test "EXT-04-UT-05: non-object transform result returns TransformResultNonObject
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending[0..],
         .error_detail = null,
         .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{
@@ -379,9 +387,11 @@ test "EXT-04-UT-06: whitespace-only transform is treated as no-op" {
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending[0..],
         .error_detail = null,
         .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{

@@ -369,6 +369,7 @@ test "TC-EXT-01-U09: service_task_completed merges response object into instance
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = initial.value.object,
+        .join_counters = std.json.ObjectMap{},
         .pending_task_nodes = pending_task_nodes[0..],
         .error_detail = null,
         .pending_events = pending_events[0..],

@@ -176,6 +176,7 @@ pub fn reconstructInstance(
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap{},
+        .join_counters = std.json.ObjectMap{},
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
         .pending_events = &[_]PendingEvent{},
