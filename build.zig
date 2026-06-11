@@ -938,6 +938,18 @@ pub fn build(b: *std.Build) void {
     run_iss202_integration_tests.setCwd(b.path("."));
     run_iss202_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    const iss203_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss203_idempotency_keys_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss203_integration_tests = b.addRunArtifact(iss203_integration_tests);
+    run_iss203_integration_tests.setCwd(b.path("."));
+    run_iss203_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
     clean_test_db.setCwd(b.path("."));
@@ -957,6 +969,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_iss106_integration_tests.step);
     test_integration_step.dependOn(&run_iss107_integration_tests.step);
     test_integration_step.dependOn(&run_iss202_integration_tests.step);
+    test_integration_step.dependOn(&run_iss203_integration_tests.step);
 
     const test_integration_xc04_step = b.step("test-integration-xc04", "Run XC-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_xc04_step.dependOn(&clean_test_db.step);
@@ -1018,6 +1031,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss202_step = b.step("test-integration-iss202", "Run ISS-202 two-phase merge atomicity integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss202_step.dependOn(&clean_test_db.step);
     test_integration_iss202_step.dependOn(&run_iss202_integration_tests.step);
+
+    const test_integration_iss203_step = b.step("test-integration-iss203", "Run ISS-203 deterministic idempotency keys integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss203_step.dependOn(&clean_test_db.step);
+    test_integration_iss203_step.dependOn(&run_iss203_integration_tests.step);
 
     const svc_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{

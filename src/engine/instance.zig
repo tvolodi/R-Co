@@ -764,6 +764,14 @@ pub const InstanceStore = struct {
             &.{ inst_id_hex, "instance_started", vars_json, idem_key_hex },
         ) catch return InstanceError.TransactionFailed;
 
+        // ISS-203: persist cascade emitted events with deterministic engine: keys.
+        persistEmittedEventsInTx(
+            a,
+            conn2,
+            inst_id_hex,
+            emitted_events,
+        ) catch return InstanceError.TransactionFailed;
+
         // UPDATE instance_projections with the post-transition state.
         conn2.exec(
             \\UPDATE instance_projections
@@ -3617,6 +3625,110 @@ fn buildOverwrittenPayload(
             "{{\"event_type\":\"VARIABLE_OVERWRITTEN\",\"instance_id\":\"{s}\",\"task_id\":null,\"key\":{s},\"old_value\":{s},\"new_value\":{s}}}",
             .{ instance_id_hex, key_json, ev.old_value, ev.new_value },
         );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// persistEmittedEventsInTx — ISS-203
+//
+// For each engine-emitted cascade event, insert a row into the events table
+// with the deterministic "engine:<16-hex-digits>" idempotency key computed by
+// transition().  Uses ON CONFLICT (idempotency_key) DO NOTHING so that a
+// retry of the orchestrator step is safely absorbed.
+//
+// The sequence numbers are assigned by bumping instance_sequence in the same
+// CTE pattern used for the trigger event.
+// ---------------------------------------------------------------------------
+
+const PersistEmittedEventsError = error{
+    PersistenceFailed,
+    OutOfMemory,
+};
+
+/// Map a PendingEvent payload to the event_type string stored in the events
+/// table.  These strings are the canonical engine-emitted event types.
+fn emittedEventTypeStr(ev: transition_mod.PendingEvent) []const u8 {
+    return switch (ev) {
+        .timer_created => "timer_created",
+        .parallel_split => "parallel_split",
+        .parallel_join => "parallel_join",
+        .instance_cancelled => "instance_cancelled",
+        .sub_process_start => "sub_process_start",
+    };
+}
+
+/// Build a minimal JSON payload for the emitted event row.
+/// Returns a stack-allocated string in the provided arena; the arena owns the
+/// memory.
+fn buildEmittedEventPayload(
+    allocator: std.mem.Allocator,
+    ev: transition_mod.PendingEvent,
+) error{OutOfMemory}![]const u8 {
+    return switch (ev) {
+        .timer_created => |t| std.fmt.allocPrint(
+            allocator,
+            "{{\"timer_node_id\":\"{s}\",\"duration_iso8601\":\"{s}\"}}",
+            .{ t.timer_node_id, t.duration_iso8601 },
+        ),
+        .parallel_split => |p| std.fmt.allocPrint(
+            allocator,
+            "{{\"source_node_id\":\"{s}\"}}",
+            .{p.source_node_id},
+        ),
+        .parallel_join => |j| std.fmt.allocPrint(
+            allocator,
+            "{{\"join_node_id\":\"{s}\"}}",
+            .{j.join_node_id},
+        ),
+        .instance_cancelled => |c| std.fmt.allocPrint(
+            allocator,
+            "{{\"reason\":\"{s}\"}}",
+            .{c.reason},
+        ),
+        .sub_process_start => |s| std.fmt.allocPrint(
+            allocator,
+            "{{\"child_definition_id\":\"{s}\",\"parent_node_id\":\"{s}\"}}",
+            .{ s.child_definition_id, s.parent_node_id },
+        ),
+    };
+}
+
+/// Persist each emitted event as a row in the events table.
+/// Duplicate inserts (same idempotency_key) are silently absorbed.
+fn persistEmittedEventsInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    instance_id_hex: []const u8,
+    emitted_events: []const transition_mod.EmittedEvent,
+) PersistEmittedEventsError!void {
+    if (emitted_events.len == 0) return;
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    for (emitted_events) |emitted| {
+        const event_type_str = emittedEventTypeStr(emitted.payload);
+        const payload_json = buildEmittedEventPayload(a, emitted.payload) catch
+            return PersistEmittedEventsError.OutOfMemory;
+
+        conn.exec(
+            \\WITH seq AS (
+            \\    INSERT INTO instance_sequence (instance_id, next_seq)
+            \\    VALUES ($1::uuid, 2)
+            \\    ON CONFLICT (instance_id) DO UPDATE
+            \\        SET next_seq = instance_sequence.next_seq + 1
+            \\    RETURNING next_seq - 1 AS val
+            \\)
+            \\INSERT INTO events
+            \\    (instance_id, event_type, payload, actor_id,
+            \\     sequence_number, idempotency_key)
+            \\SELECT $1::uuid, $2, $3::jsonb, $1::uuid, seq.val, $4
+            \\FROM seq
+            \\ON CONFLICT (idempotency_key) DO NOTHING
+        ,
+            &.{ instance_id_hex, event_type_str, payload_json, emitted.idempotency_key },
+        ) catch return PersistEmittedEventsError.PersistenceFailed;
     }
 }
 
