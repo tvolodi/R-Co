@@ -1,0 +1,34 @@
+{
+  "handoff_id": "0b1c2d3e-4f5a-6b7c-8d9e-0f1a2b3c4d5e",
+  "run_id": "WF02-iss202-20260611",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-11T17:13:56Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 Event-sourcing integrity",
+    "requirement_ids": ["ISS-202"],
+    "related_handoff_ids": ["handoffs/WF02-iss201-20260611"],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Create test spec and implementation for ISS-202. Write tests/specs/ISS-202.md (requirement spec). Implement tests in tests/ and integration tests against real PostgreSQL. Acceptance criteria: (1) Unit test: mixed valid/invalid output → no overwrite events, instance ERROR, variables unchanged; (2) Integration test: failure → pre-merge state on retry; (3) Success path: all keys applied atomically. No deferred work — all MUST tests fully implemented and passing.",
+    "acceptance_criteria": [
+      "tests/specs/ISS-202.md created with spec",
+      "Unit tests for two-phase validation logic",
+      "Integration test for all-or-nothing merge",
+      "Integration test for retry after failure",
+      "All tests pass against real PostgreSQL (BPM_TEST_DB_URL)",
+      "No test.skip on MUST tests",
+      "Test fixtures use per-test UUIDs"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}

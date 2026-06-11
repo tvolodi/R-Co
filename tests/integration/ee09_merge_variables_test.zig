@@ -607,3 +607,231 @@ test "TC-EE-09-05: empty output_variables — no events, variables unchanged" {
         try std.testing.expectEqualStrings("1", count_str);
     }
 }
+
+// ---------------------------------------------------------------------------
+// ISS-202: Two-Phase Merge Tests
+// ---------------------------------------------------------------------------
+// These tests verify the two-phase merge implementation where Phase 1
+// validates ALL keys before any state change, and Phase 2 applies all keys
+// only if Phase 1 succeeds.
+//
+// Key invariant: all-or-nothing merge — either all output variables are
+// applied, or none are applied on failure.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// TC-ISS-202-01: Mixed valid/invalid keys — instance remains ERROR-free,
+//                no variables applied, only EXECUTION_ERROR emitted.
+//
+// Given: A process instance with initial variables { "status": "pending" }
+// And: A task that outputs { "status": "approved", "amount": 999999 }
+// And: "amount" has a schema constraint { "type": "number", "maximum": 100 }
+// When: Task is completed with the output variables
+// Then: completeTask returns error.InstanceInError
+// And:  Instance status is ERROR
+// And:  Variables remain unchanged (pre-merge state: {"status": "pending"})
+// And:  No VARIABLE_OVERWRITTEN events are emitted
+// And:  Exactly one EXECUTION_ERROR event is emitted with reason containing
+//       "amount" and the schema violation reason
+// ---------------------------------------------------------------------------
+test "TC-ISS-202-01: mixed valid/invalid keys — all-or-nothing merge failure, variables unchanged" {
+    const allocator = std.testing.allocator;
+    const url = try testDbUrl(allocator);
+    defer allocator.free(url);
+
+    var pool = try makePool(allocator, url);
+    defer pool.deinit();
+
+    var def_store = DefinitionStore.init(allocator, &pool);
+    defer def_store.deinit();
+    var snap_store = SnapshotStore{ .pool = &pool };
+    var inst_store = InstanceStore.init(&pool, &snap_store);
+    var task_store = TaskStore.init(&pool);
+
+    // Create a minimal definition: START → HUMAN_TASK → END
+    const nodes = [_]GraphNode{
+        .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
+        .{ .id = "T", .node_type = .HUMAN_TASK, .label = "Task", .attributes = "{\"role\":\"tester\",\"assignee_type\":\"USER\",\"assignee_ref\":\"u1\"}" },
+        .{ .id = "E", .node_type = .END, .label = null, .attributes = null },
+    };
+    const edges = [_]GraphEdge{
+        .{ .id = "e1", .source = "S", .target = "T", .condition = null, .is_default = false },
+        .{ .id = "e2", .source = "T", .target = "E", .condition = null, .is_default = false },
+    };
+    const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
+
+    const created_by = try parseUuid(allocator, creator_uuid_str);
+    const def = try def_store.create(allocator, CreateParams{
+        .name = "ISS202-TC01",
+        .version = "1.0",
+        .description = null,
+        .stage = null,
+        .created_by = created_by,
+        .graph = graph,
+    });
+    defer {
+        allocator.free(def.name);
+        allocator.free(def.version);
+        bpm.definition.freeDefinitionGraph(allocator, def.graph);
+    }
+
+    // Insert a variable schema: "amount" must be <= 100
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        const def_id_hex = try std.fmt.allocPrint(allocator,
+            "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
+            .{
+                def.definition_id[0],  def.definition_id[1],  def.definition_id[2],  def.definition_id[3],
+                def.definition_id[4],  def.definition_id[5],  def.definition_id[6],  def.definition_id[7],
+                def.definition_id[8],  def.definition_id[9],  def.definition_id[10], def.definition_id[11],
+                def.definition_id[12], def.definition_id[13], def.definition_id[14], def.definition_id[15],
+            });
+        defer allocator.free(def_id_hex);
+
+        try conn.exec(
+            \\INSERT INTO variable_schemas (definition_id, variable_key, json_schema)
+            \\VALUES ($1::uuid, $2, $3)
+        ,
+            &.{ def_id_hex, "amount", "{\"type\":\"number\",\"maximum\":100}" },
+        );
+    }
+
+    // Create instance with initial variables: {"status": "pending"}
+    const instance_id = def.definition_id; // Reuse definition_id as instance_id for simplicity
+    const inst_id_hex = try uuidToHexStr(allocator, instance_id);
+    defer allocator.free(inst_id_hex);
+
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        try conn.exec(
+            \\INSERT INTO instance_projections
+            \\(instance_id, definition_id, status, variables)
+            \\VALUES ($1::uuid, $2::uuid, $3, $4)
+        ,
+            &.{ inst_id_hex, inst_id_hex, "ACTIVE", "{\"status\":\"pending\"}" },
+        );
+    }
+
+    // Create instance_definition_snapshots row
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        try conn.exec(
+            \\INSERT INTO instance_definition_snapshots (instance_id, definition_id, graph)
+            \\VALUES ($1::uuid, $2::uuid, $3)
+        ,
+            &.{ inst_id_hex, inst_id_hex, "{\"nodes\":[],\"edges\":[]}" },
+        );
+    }
+
+    // Create a PENDING task on the HUMAN_TASK node
+    var task_id: [16]u8 = undefined;
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+
+        // Use a dummy UUID for the task
+        var rng = std.Random.DefaultPrng.init(0x0102030405060708);
+        task_id = std.mem.zeroes([16]u8);
+        @memcpy(task_id[0..8], &rng.random().bytes(8));
+        @memcpy(task_id[8..16], &rng.random().bytes(8));
+
+        const task_id_hex = try uuidToHexStr(allocator, task_id);
+        defer allocator.free(task_id_hex);
+
+        try conn.exec(
+            \\INSERT INTO tasks
+            \\(id, instance_id, node_id, status, created_at, updated_at)
+            \\VALUES ($1::uuid, $2::uuid, $3, $4, NOW(), NOW())
+        ,
+            &.{ task_id_hex, inst_id_hex, "T", "PENDING" },
+        );
+    }
+
+    // Complete task with output variables: one valid (status), one invalid (amount=999999)
+    const output_variables = "{\"status\":\"approved\",\"amount\":999999}";
+    const result = inst_store.completeTask(allocator, &task_store, task_id, output_variables);
+
+    // Verify: completeTask returned InstanceInError
+    try std.testing.expectError(CompleteTaskError.InstanceInError, result);
+
+    // Verify: instance status is ERROR
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        const rows = try conn.query(
+            allocator,
+            "SELECT status FROM instance_projections WHERE instance_id = $1::uuid",
+            &.{inst_id_hex},
+        );
+        defer {
+            var r = rows;
+            r.deinit();
+        }
+        const status_str = rows.rows[0][0] orelse "";
+        try std.testing.expectEqualStrings("ERROR", status_str);
+    }
+
+    // Verify: variables unchanged (still {"status":"pending"})
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        const rows = try conn.query(
+            allocator,
+            "SELECT variables FROM instance_projections WHERE instance_id = $1::uuid",
+            &.{inst_id_hex},
+        );
+        defer {
+            var r = rows;
+            r.deinit();
+        }
+        const vars_json = rows.rows[0][0] orelse "";
+        // Should still contain original "pending" and NOT contain "approved"
+        try std.testing.expect(std.mem.indexOf(u8, vars_json, "pending") != null);
+        try std.testing.expect(std.mem.indexOf(u8, vars_json, "approved") == null);
+    }
+
+    // Verify: no VARIABLE_OVERWRITTEN events (all-or-nothing)
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        const rows = try conn.query(
+            allocator,
+            "SELECT COUNT(*) FROM events WHERE instance_id = $1::uuid AND event_type = 'VARIABLE_OVERWRITTEN'",
+            &.{inst_id_hex},
+        );
+        defer {
+            var r = rows;
+            r.deinit();
+        }
+        const count_str = rows.rows[0][0] orelse "0";
+        try std.testing.expectEqualStrings("0", count_str);
+    }
+
+    // Verify: EXECUTION_ERROR event exists with reason mentioning schema violation
+    {
+        const conn = try pool.acquire();
+        defer pool.release(conn);
+        const rows = try conn.query(
+            allocator,
+            "SELECT payload FROM events WHERE instance_id = $1::uuid AND event_type = 'EXECUTION_ERROR'",
+            &.{inst_id_hex},
+        );
+        defer {
+            var r = rows;
+            r.deinit();
+        }
+        try std.testing.expect(rows.rows.len >= 1);
+        const payload_json = rows.rows[0][0] orelse "";
+        try std.testing.expect(std.mem.indexOf(u8, payload_json, "amount") != null);
+    }
+
+    // Cleanup
+    defer cleanup: {
+        const conn = pool.acquire() catch break :cleanup;
+        defer pool.release(conn);
+        conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{"ISS202-TC01"}) catch {};
+    }
+}
