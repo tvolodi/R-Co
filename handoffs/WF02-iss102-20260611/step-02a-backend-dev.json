@@ -1,0 +1,57 @@
+{
+  "handoff_id": "a1b2c3d4-e5f6-4789-abcd-ef0123456703",
+  "run_id": "WF02-iss102-20260611",
+  "workflow_id": "WF-02",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T06:15:46Z",
+  "started_at": "2026-06-11T06:28:56Z",
+  "completed_at": "2026-06-11T06:41:02Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "ISS-102 Correctness Remediation",
+    "requirement_ids": ["ISS-102"],
+    "related_handoff_ids": ["a1b2c3d4-e5f6-4789-abcd-ef0123456702"],
+    "artifacts_in": [
+      "src/design/iss102-tasks-claimed-by.md"
+    ]
+  },
+  "task": {
+    "description": "Implement ISS-102 per design artefact src/design/iss102-tasks-claimed-by.md.\n\nRequirement summary (from docs/requirements/BPM_Architecture_Backlog.20260611.md §ISS-102):\n\nAcceptance criteria:\n1. Migration adds tasks.claimed_by UUID NULL (migration 082_iss102_tasks_claimed_by.sql)\n2. POST /tasks/:id/claim performs:\n   UPDATE … SET claimed_by=$worker WHERE task_id=$id AND claimed_by IS NULL AND status='PENDING'\n   0 rows → 409 Conflict\n3. Only claimed_by (or a USER-assigned assignee_ref) may complete the task\n4. Partial indexes added: unclaimed-pool index and claimed_by (my tasks) index\n\nSteps:\n1. Read design artefact fully\n2. Write migrations/082_iss102_tasks_claimed_by.sql - idempotent, additive migration\n3. Update src/tasks/store.zig - claim function using new UPDATE pattern, completion guard\n4. Update src/api/routes/tasks.zig - claim route returning 409 on double-claim\n5. Run: zig build (must exit 0)\n6. Run: zig build test (must exit 0)\n7. Run: zig build migrate (must exit 0)\n8. Check error sets: zig build 2>&1 | grep -i 'error set' (must be empty)\n9. Commit to feature/WF02-iss102-20260611 and push",
+    "acceptance_criteria": [
+      "migrations/082_iss102_tasks_claimed_by.sql created and idempotent",
+      "tasks.claimed_by UUID NULL column in migration",
+      "Both partial indexes present in migration",
+      "Claim endpoint uses claimed_by IS NULL AND status=PENDING guard",
+      "0-row claim returns 409",
+      "Completion checks claimed_by or USER-assigned assignee_ref",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build migrate exits 0",
+      "No error-set output from zig build stderr"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-102 implemented: migration 082_iss102_tasks_claimed_by.sql adds claimed_by UUID NULL column and two partial indexes; store.zig adds ClaimError error set and claimTask function with conditional UPDATE + diagnostic SELECT; handleClaim route added to tasks.zig (POST /tasks/:id/claim → 200/404/409/503); handleComplete Step 3 updated to claimed_by-based guard (removes broken group-membership path); serializeTaskDetail updated with claimed_by field; claim route wired in main.zig. zig build, zig build test, zig build migrate all exit 0; no error-set output.",
+    "artifacts_out": [
+      "migrations/082_iss102_tasks_claimed_by.sql",
+      "src/tasks/store.zig",
+      "src/api/routes/tasks.zig",
+      "src/main.zig",
+      "src/engine/instance.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Migration uses CREATE INDEX (without CONCURRENTLY) instead of CREATE INDEX CONCURRENTLY as specified in the design. CONCURRENTLY cannot run inside a BEGIN/COMMIT transaction block, which is how the migration runner executes each migration. Regular CREATE INDEX is functionally equivalent; the difference is only that CONCURRENTLY avoids a table-level lock during index creation on a live database. On a dev/test database this is acceptable."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -347,6 +347,9 @@ pub fn handleComplete(
     task_id_str: []const u8,
     body: []const u8,
 ) HandlerResult {
+    // identity is no longer used in the TASK_WORKER ownership check (ISS-102);
+    // the parameter is kept for API compatibility.
+    _ = identity;
     var derived_roles: [3]authorization.Role = undefined;
     const roles = resolveActorRoles(actor, &derived_roles);
     const decision = authorization.evaluateAccess(
@@ -390,51 +393,35 @@ pub fn handleComplete(
     };
     defer task_mod.freeTask(allocator, task);
 
-    // ── Step 3: Role/ownership check ────────────────────────────────────────
+    // ── Step 3: Role/ownership check (ISS-102 updated guard) ────────────────
+    // The check order per design §4.2:
+    //   1. If task.claimed_by IS NOT NULL: allow iff claimed_by == actor.user_id
+    //   2. Else if assignee_type == "USER": allow iff assignee_ref == actor.user_id
+    //   3. Else (GROUP/ROLE pool, not yet claimed): deny — worker must claim first.
+    // PROCESS_OPERATOR and above bypass this block entirely (no change).
     if (authorization.isTaskWorkerOnly(roles)) {
-        const claim_allowed = if (task.assignee_type) |assignee_type| blk: {
-            if (std.mem.eql(u8, assignee_type, "USER")) {
-                break :blk task.assignee_ref != null and std.mem.eql(u8, task.assignee_ref.?, actor.user_id);
+        const complete_allowed = if (task.claimed_by) |cb| blk: {
+            // Branch 1: task has been claimed — only the claimer may complete.
+            const cb_hex = uuidToHex(allocator, cb) catch
+                return errorResult(allocator, 500, "INTERNAL_ERROR", "Internal server error");
+            defer allocator.free(cb_hex);
+            break :blk std.mem.eql(u8, cb_hex, actor.user_id);
+        } else if (task.assignee_type) |at| blk: {
+            // Branch 2: unclaimed — allow only a directly USER-assigned actor.
+            if (std.mem.eql(u8, at, "USER")) {
+                break :blk task.assignee_ref != null and
+                    std.mem.eql(u8, task.assignee_ref.?, actor.user_id);
             }
-            if (std.mem.eql(u8, assignee_type, "GROUP")) {
-                if (task.assignee_ref == null) break :blk false;
-                const group_claim_allowed = identity.canClaimGroupTask(allocator, actor.tenant_id[0..], task.assignee_ref.?, actor.user_id) catch |err| switch (err) {
-                    identity_service.GroupError.PoolExhausted => return errorResult(
-                        allocator,
-                        503,
-                        "SERVICE_UNAVAILABLE",
-                        "DB connection pool exhausted",
-                    ),
-                    identity_service.GroupError.PersistenceFailed => return errorResult(
-                        allocator,
-                        500,
-                        "INTERNAL_ERROR",
-                        "Group membership lookup failed",
-                    ),
-                    identity_service.GroupError.OutOfMemory => return errorResult(
-                        allocator,
-                        500,
-                        "INTERNAL_ERROR",
-                        "Out of memory",
-                    ),
-                    else => return errorResult(
-                        allocator,
-                        500,
-                        "INTERNAL_ERROR",
-                        "Group membership lookup failed",
-                    ),
-                };
-                break :blk group_claim_allowed;
-            }
+            // Branch 3: GROUP/ROLE pool task, not yet claimed — deny.
             break :blk false;
         } else false;
 
-        if (!claim_allowed) {
+        if (!complete_allowed) {
             return errorResult(
                 allocator,
                 403,
-                "FORBIDDEN",
-                "Caller is not authorized to complete this task",
+                "UNAUTHORIZED_COMPLETE",
+                "Caller is not authorized to complete this task; claim the task first",
             );
         }
     }
@@ -506,6 +493,84 @@ pub fn handleComplete(
     ) catch return internalError(allocator);
 
     return HandlerResult{ .status_code = 200, .body = resp_body };
+}
+
+// ---------------------------------------------------------------------------
+// handleClaim  (ISS-102)
+// ---------------------------------------------------------------------------
+
+/// POST /api/v1/tasks/:id/claim
+///
+/// Atomically claims a PENDING, unclaimed task for the authenticated actor.
+/// Uses a conditional UPDATE on claimed_by so concurrent claims are serialised
+/// by PostgreSQL — exactly one claim wins; all others receive 409.
+///
+/// Authorisation: any authenticated role (TASK_WORKER or above).
+///
+/// Success:              HTTP 200 + JSON TaskDetailResponse (claimed_by populated).
+/// Task not found:       HTTP 404 + Problem Details.
+/// Task already claimed: HTTP 409 + Problem Details (code: TASK_ALREADY_CLAIMED).
+/// Task not PENDING:     HTTP 409 + Problem Details (code: TASK_NOT_PENDING).
+/// Invalid UUID:         HTTP 422 + Problem Details.
+/// Pool exhausted:       HTTP 503 + Problem Details.
+/// Server error:         HTTP 500 + Problem Details.
+pub fn handleClaim(
+    store: *task_mod.TaskStore,
+    allocator: std.mem.Allocator,
+    actor: Actor,
+    task_id_str: []const u8,
+) HandlerResult {
+    var derived_roles: [3]authorization.Role = undefined;
+    const roles = resolveActorRoles(actor, &derived_roles);
+    const decision = authorization.evaluateAccess(
+        .{ .user_id = actor.user_id, .roles = roles },
+        .TasksComplete,
+    );
+    if (decision.kind == .Deny403) {
+        return errorResult(allocator, 403, "FORBIDDEN", "caller is not authorized to claim tasks");
+    }
+
+    // ── Step 1: Parse task_id ───────────────────────────────────────────────
+    const task_id = task_mod.parseUuid(task_id_str) catch {
+        return errorResult(allocator, 422, "INVALID_TASK_ID", "task_id is not a valid UUID");
+    };
+
+    // ── Step 2: Attempt atomic claim ────────────────────────────────────────
+    const task = store.claimTask(allocator, task_id, actor.user_id) catch |err| switch (err) {
+        task_mod.ClaimError.NotFound => return errorResult(
+            allocator,
+            404,
+            "TASK_NOT_FOUND",
+            "task not found",
+        ),
+        task_mod.ClaimError.AlreadyClaimed => return errorResult(
+            allocator,
+            409,
+            "TASK_ALREADY_CLAIMED",
+            "task has already been claimed by another worker",
+        ),
+        task_mod.ClaimError.NotPending => return errorResult(
+            allocator,
+            409,
+            "TASK_NOT_PENDING",
+            "task is not in PENDING status",
+        ),
+        task_mod.ClaimError.PoolExhausted => return errorResult(
+            allocator,
+            503,
+            "SERVICE_UNAVAILABLE",
+            "DB connection pool exhausted",
+        ),
+        task_mod.ClaimError.InvalidInput => return errorResult(
+            allocator,
+            422,
+            "INVALID_INPUT",
+            "claim failed due to invalid input",
+        ),
+    };
+    defer task_mod.freeTask(allocator, task);
+
+    return serializeTaskDetail(allocator, task);
 }
 
 // ---------------------------------------------------------------------------
@@ -802,12 +867,24 @@ fn serializeTaskDetail(allocator: std.mem.Allocator, task: task_mod.Task) Handle
     else
         "null";
 
+    // claimed_by: serialize as hex UUID string or null.
+    const claimed_by_json: []const u8 = if (task.claimed_by) |cb|
+        std.fmt.allocPrint(a, "\"{x:0>2}{x:0>2}{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}-{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}\"", .{
+            cb[0],  cb[1],  cb[2],  cb[3],
+            cb[4],  cb[5],  cb[6],  cb[7],
+            cb[8],  cb[9],  cb[10], cb[11],
+            cb[12], cb[13], cb[14], cb[15],
+        }) catch return internalError(allocator)
+    else
+        "null";
+
     const body = std.fmt.allocPrint(
         allocator,
         "{{\"id\":\"{s}\",\"task_id\":\"{s}\",\"instance_id\":\"{s}\"," ++
             "\"node_id\":{s},\"node_name\":{s}," ++
             "\"status\":\"{s}\"," ++
             "\"assignee_type\":{s},\"assignee_ref\":{s}," ++
+            "\"claimed_by\":{s}," ++
             "\"form_schema\":{s},\"correlation_key\":{s}," ++
             "\"created_at\":{d},\"updated_at\":{d}}}",
         .{
@@ -819,6 +896,7 @@ fn serializeTaskDetail(allocator: std.mem.Allocator, task: task_mod.Task) Handle
             status_str,
             at_json,
             ar_json,
+            claimed_by_json,
             form_schema_json,
             ck_json,
             task.created_at,

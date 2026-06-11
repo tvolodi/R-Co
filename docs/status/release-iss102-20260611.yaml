@@ -1,0 +1,91 @@
+stage: ISS-102 Correctness Remediation
+run_id: WF02-iss102-20260611
+date: "2026-06-11"
+timestamp: "2026-06-11T07:33:54Z"
+decision: RELEASED
+requirement_ids:
+  - ISS-102
+
+test_results_summary:
+  overall_status: PASS
+  unit_tests:
+    status: PASS
+    exit_code: 0
+  integration_iss102:
+    status: PASS
+    exit_code: 0
+    test_cases:
+      - id: TC-ISS-102-01
+        name: "happy path — claimTask sets claimed_by"
+        status: PASS
+        coverage: "ISS-102 AC-1"
+      - id: TC-ISS-102-02
+        name: "concurrent double-claim — exactly one wins"
+        status: PASS
+        coverage: "ISS-102 AC-2"
+      - id: TC-ISS-102-03
+        name: "claim on already-claimed task returns AlreadyClaimed"
+        status: PASS
+        coverage: "ISS-102 AC-3"
+      - id: TC-ISS-102-04
+        name: "claim on non-PENDING task returns NotPending"
+        status: PASS
+        coverage: "ISS-102 AC-4"
+      - id: TC-ISS-102-05
+        name: "complete by claimed_by worker succeeds"
+        status: PASS
+        coverage: "ISS-102 AC-5"
+      - id: TC-ISS-102-06
+        name: "complete by different worker returns 403"
+        status: PASS
+        coverage: "ISS-102 AC-6"
+      - id: TC-ISS-102-07
+        name: "complete USER-assigned unclaimed task by that user succeeds"
+        status: PASS
+        coverage: "ISS-102 AC-7"
+      - id: TC-ISS-102-08
+        name: "complete USER-assigned unclaimed task by different user returns 403"
+        status: PASS
+        coverage: "ISS-102 AC-8"
+
+nfr_results:
+  NFR-01:
+    p99_read_ms:
+      target: "<=200"
+      actual: 0.890
+      unit: ms
+      passed: true
+    p99_write_ms:
+      target: "<=500"
+      actual: 1.775
+      unit: ms
+      passed: true
+  NFR-02:
+    append_throughput_eps:
+      target: ">=1000"
+      actual: 57273.606
+      unit: events_per_second
+      passed: true
+  NFR-04:
+    replay_10000_ms:
+      target: "<=5000"
+      actual: 43.204
+      unit: ms
+      passed: true
+  overall_passed: true
+
+build_check:
+  command: "zig build"
+  exit_code: 0
+  status: PASS
+
+migration_check:
+  file: "migrations/082_iss102_tasks_claimed_by.sql"
+  present: true
+  idempotent: true
+  guards: "to_regclass() + IF NOT EXISTS on column and both partial indexes"
+
+issues: []
+
+approved_requirements:
+  - ISS-102

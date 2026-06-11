@@ -1,0 +1,42 @@
+{
+  "handoff_id": "a1b2c3d4-e5f6-4789-abcd-ef0123456700",
+  "run_id": "WF02-iss102-20260611",
+  "workflow_id": "WF-02",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T06:15:46Z",
+  "started_at": "2026-06-11T06:19:29Z",
+  "completed_at": "2026-06-11T06:20:30Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "ISS-102 Correctness Remediation",
+    "requirement_ids": ["ISS-102"],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md"
+    ]
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md.\n\nBranch name: feature/WF02-iss102-20260611\nBase: main\n\nSteps:\n1. git checkout main\n2. git pull --ff-only origin main\n3. git checkout -b feature/WF02-iss102-20260611\n4. git push origin feature/WF02-iss102-20260611\n\nRecord branch_name, base_commit_sha, and push_status in result.",
+    "acceptance_criteria": [
+      "feature/WF02-iss102-20260611 branch exists on remote",
+      "push_status: ok in result",
+      "base_commit_sha recorded"
+    ],
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Feature branch feature/WF02-iss102-20260611 created from main and pushed to origin.",
+    "branch_name": "feature/WF02-iss102-20260611",
+    "base_commit_sha": "3808fa41f54aaae43aebe362a3fd65c60f6ceae1",
+    "push_status": "ok",
+    "artifacts_out": ["branch: feature/WF02-iss102-20260611"],
+    "issues": [],
+    "next_action": "ORCH routes to CODE-DESIGNER (Step 1)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
