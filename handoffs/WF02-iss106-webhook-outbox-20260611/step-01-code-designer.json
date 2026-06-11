@@ -1,0 +1,60 @@
+{
+  "handoff_id": "iss106-code-designer-01",
+  "run_id": "WF02-iss106-webhook-outbox-20260611",
+  "workflow_id": "WF-02",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF02-iss106-webhook-outbox-20260611/step-01-code-designer.json",
+  "created_at": "2026-06-11T13:27:05Z",
+  "started_at": "2026-06-11T13:27:05Z",
+  "completed_at": "2026-06-11T13:30:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "ISS-106",
+    "stage": "Step 01 \u2014 Code design",
+    "requirement_ids": [
+      "ISS-106"
+    ],
+    "owned_modules": [
+      "migrations/"
+    ],
+    "artifacts_in": [
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md"
+    ],
+    "important_existing_state": [
+      "A webhook_deliveries table ALREADY EXISTS in the per-tenant schema. See migrations/023_ext02_webhook_event_dispatch.sql and migrations/025_webhook_delivery_event_id_nullable.sql.",
+      "Existing columns include: subscription_id, event_id (now NULLABLE), status, next_attempt_at (DEFAULT NOW()), event_type, instance_id, payload_json, trace_id, delivered_at, last_http_status, last_error, plus index idx_wd_status_next_attempt(status, next_attempt_at).",
+      "The ORIGINAL CREATE TABLE for webhook_deliveries is in an earlier migration (find it via: grep -rl 'CREATE TABLE.*webhook_deliveries' migrations/). Read it to learn the current exact schema (delivery_id PK, attempt column, created_at, status CHECK, etc).",
+      "Engine/dispatcher logic (transactional outbox insert, FOR UPDATE SKIP LOCKED worker claim, back-off ladder) is ISS-205 and is OUT OF SCOPE for ISS-106. ISS-106 is ONLY the table formalization/migration + index."
+    ]
+  },
+  "task": {
+    "description": "Design the formalization of the webhook_deliveries transactional outbox table for ISS-106. First inspect the CURRENT schema of webhook_deliveries across all migrations to determine which of the ISS-106 contract columns/constraints already exist and which are missing. Then produce a design for an ADDITIVE, IDEMPOTENT migration that reconciles the existing table to the ISS-106 contract. Classify per templates/lego-catalog.md: this is most likely Type C (Migration + test) \u2014 produce templates/specs/<name>.migration.yaml; if the reconciliation needs prose beyond the Type C template, produce a Type E src/design/iss-106-webhook-outbox.md instead. The migration MUST be additive-first (ADD COLUMN IF NOT EXISTS / DROP CONSTRAINT IF EXISTS + re-ADD CHECK) \u2014 no destructive changes. The migration must apply cleanly to every existing tenant schema (idempotent).",
+    "acceptance_criteria": [
+      "Design specifies the webhook_deliveries contract: columns delivery_id, subscription_id, event_id, status in (PENDING,DELIVERED,FAILED,RETRYING), attempt, next_attempt_at, last_error, created_at",
+      "Design specifies index (status, next_attempt_at) for worker claim (note existing idx_wd_status_next_attempt already covers this \u2014 reconcile, do not duplicate)",
+      "Design explicitly lists which columns/constraints already exist vs which the new migration must add",
+      "Migration is additive and idempotent; applies to every tenant schema; no DROP TABLE/DROP COLUMN",
+      "Status CHECK reconciled to exactly (PENDING,DELIVERED,FAILED,RETRYING) \u2014 note existing status values and how to migrate them safely",
+      "For every Type A\u2013D artefact produced, the matching codegen --dry-run exits 0",
+      "Engine/dispatcher logic (ISS-205) is explicitly excluded from scope"
+    ],
+    "functions_to_call": [
+      "fn:classify-requirement",
+      "fn:write-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Classified ISS-106 as Type E (prose). Type C codegen cannot emit DROP CONSTRAINT + ordered status remap UPDATE; reconciliation requires hand-written SQL. Produced src/design/iss-106-webhook-outbox.md specifying an additive, idempotent migration (084) that adds attempt column (backfilled from attempt_count), remaps legacy lowercase status values to (PENDING,DELIVERED,FAILED,RETRYING) before applying the new CHECK, and re-asserts idx_wd_status_next_attempt with IF NOT EXISTS. ISS-205 dispatcher/worker logic explicitly out of scope. No Type A-D file produced, so codegen --dry-run N/A; lint_design_artefact passed clean (BLOCKER=0 MAJOR=0 MINOR=0).",
+    "artifacts_out": [
+      "src/design/iss-106-webhook-outbox.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

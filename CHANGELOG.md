@@ -15,6 +15,16 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### ISS-106 — Webhook Delivery Outbox Table Formalization (RELEASED 2026-06-11)
+
+#### WF02-iss106-webhook-outbox-20260611 (2026-06-11)
+
+- **Migration 085** (`migrations/085_iss106_webhook_deliveries_outbox.sql`): Formalizes the `webhook_deliveries` transactional outbox table per the ISS-106 schema contract. Adds `attempt INTEGER NOT NULL DEFAULT 0` column (backfilled from existing `attempt_count`). Reconciles legacy lowercase status values (`pending`→`PENDING`, `success`→`DELIVERED`, `failed`→`FAILED`, `exhausted`→`FAILED`) via idempotent pre-CHECK remap. Adds `webhook_deliveries_status_check CHECK (status IN ('PENDING','DELIVERED','FAILED','RETRYING'))`. Reasserts worker-claim index `idx_wd_status_next_attempt (status, next_attempt_at)`. Fully additive and idempotent — no columns or tables dropped; `attempt_count` retained for backward compatibility with ISS-205 dispatcher convergence.
+- **P0 schema formalization** (ISS-106 from architecture backlog EPIC-1): the `webhook_deliveries` table existed in migrations 010/023/025 with informal status values, no CHECK constraint, and no guarantee the column set matched the architecture contract. This migration reconciles the table to the contract documented in §6.9 of the architecture spec — columns: `id` (delivery_id), `subscription_id`, `event_id`, `status∈(PENDING,DELIVERED,FAILED,RETRYING)`, `attempt`, `next_attempt_at`, `last_error`, `created_at`.
+- **Scope note**: The transactional-outbox INSERT path and `FOR UPDATE SKIP LOCKED` worker-claim logic are delivered under ISS-205 (EPIC-2, Event-sourcing integrity). This requirement covers the storage layer only.
+- Validation evidence: 5/5 integration tests passing (TC-ISS-106-01 through TC-ISS-106-05). NFR benchmarks: p99_read=0.497ms, p99_write=1.499ms, throughput=63,663.7 eps, replay_10k=34.583ms — all within targets. Release approval: `docs/status/release-iss106-20260611.yaml`.
+- Requirement: ISS-106 — RELEASED
+
 ### ISS-103 — Audit Log Resource ID TEXT Support (RELEASED 2026-06-11)
 
 #### ADHOC-iss103-audit-resource-id-20260611 (2026-06-11)

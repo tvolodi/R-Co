@@ -4101,4 +4101,19 @@ requirements:
     release_run: WF02-iss102-20260611
     release_decision: docs/status/release-iss102-20260611.yaml
     last_updated: '2026-06-11T00:00:00Z'
-total_requirements: 286
+  ISS-106:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Formalize webhook_deliveries outbox table
+    implemented_in:
+    - migrations/085_iss106_webhook_deliveries_outbox.sql
+    - tests/integration/iss106_webhook_outbox_test.zig
+    test_spec: tests/specs/ISS-106.md
+    test_run: tests/reports/report-20260611-WF02-iss106-webhook-outbox.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11'
+    release_run: WF02-iss106-webhook-outbox-20260611
+    release_decision: docs/status/release-iss106-20260611.yaml
+    last_updated: '2026-06-11T14:00:00Z'
+total_requirements: 287

@@ -143,6 +143,9 @@ const env05_tenant_lifecycle_integration = @import("env05_test.zig");
 const iss101_timers_failed_status_integration = @import("iss101_timers_failed_status_test.zig");
 // ISS-102 — tasks.claimed_by and real claim path
 const iss102_claim_integration = @import("iss102_claim_test.zig");
+// ISS-106 — webhook_deliveries transactional-outbox table formalization (attempt column,
+// status CHECK domain, worker-claim index)
+const iss106_webhook_outbox_integration = @import("iss106_webhook_outbox_test.zig");
 
 comptime {
     _ = std;
@@ -210,6 +213,7 @@ comptime {
     _ = env05_tenant_lifecycle_integration;
     _ = iss101_timers_failed_status_integration;
     _ = iss102_claim_integration;
+    _ = iss106_webhook_outbox_integration;
 }
 
 test "integration placeholder" {

@@ -1,0 +1,55 @@
+{
+  "handoff_id": "iss106-doc-updater-06",
+  "run_id": "WF02-iss106-webhook-outbox-20260611",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF02-iss106-webhook-outbox-20260611/step-06-doc-updater.json",
+  "created_at": "2026-06-11T13:57:01Z",
+  "started_at": "2026-06-11T13:57:01Z",
+  "completed_at": "2026-06-11T14:05:44Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "ISS-106",
+    "stage": "Step 06 \u2014 Documentation",
+    "requirement_ids": [
+      "ISS-106"
+    ],
+    "artifacts_in": [
+      "docs/status/release-iss106-20260611.yaml",
+      "migrations/085_iss106_webhook_deliveries_outbox.sql",
+      "tests/reports/report-20260611-WF02-iss106-webhook-outbox.yaml",
+      "handoffs/WF02-iss106-webhook-outbox-20260611/estimation.json"
+    ]
+  },
+  "task": {
+    "description": "Update documentation for the completed ISS-106 release. (1) Add a CHANGELOG.md entry for ISS-106 (formalize webhook_deliveries outbox table: attempt column, status CHECK domain PENDING/DELIVERED/FAILED/RETRYING, worker-claim index). (2) Update docs/status/requirement_status.yaml: set ISS-106 to RELEASED with implemented_in (migration 085 + the integration test), test_ids, released_in, last_updated (use a real timestamp). (3) Run the retrospective procedure per docs/agents/metrics.md \u00a76: read handoffs/WF02-iss106-webhook-outbox-20260611/estimation.json, compute actual work time per step from started_at/completed_at in each step handoff, compute variance, and write docs/metrics/retrospectives/WF02-iss106-webhook-outbox-20260611.yaml. Add it to artifacts_out. NOTE: this run also completed the ISS-105 git-merge (PR #82) at the start \u2014 that was a separate run's Step Final, do not re-document it here; focus on ISS-106. Do NOT do the git merge here \u2014 Step Final (BACKEND-DEV git-merge) follows this step.",
+    "acceptance_criteria": [
+      "CHANGELOG.md has an ISS-106 entry",
+      "ISS-106 = RELEASED in docs/status/requirement_status.yaml with implemented_in/test_ids/released_in",
+      "Retrospective YAML written for the run",
+      "All timestamps from real shell time, not invented"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-requirement-status",
+      "fn:write-retrospective"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Completed ISS-106 documentation: CHANGELOG entry, requirement status update, and retrospective. Added ISS-106 entry under [Unreleased] before ISS-103 in CHANGELOG.md. Set ISS-106 to RELEASED in requirement_status.yaml. Wrote retrospective to docs/metrics/retrospectives/WF02-iss106-webhook-outbox-20260611.yaml. Updated estimation_rules.json with D=2 adjustments for code-design-validator (8→5), backend-dev (4→6), test-design-validator (12→7), and test-runner (1→2).",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml",
+      "docs/metrics/retrospectives/WF02-iss106-webhook-outbox-20260611.yaml",
+      "docs/metrics/estimation_rules.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step Final — git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
