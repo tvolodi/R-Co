@@ -1,0 +1,113 @@
+# Migration + integration-test parameter file (Lego Type C)
+# Requirement: ISS-101 — Allow FAILED in timers.status CHECK constraint
+# Produced by: CODE-DESIGNER (WF02-iss101-20260611, Step 01)
+#
+# Design notes:
+#
+# WHY THIS MIGRATION EXISTS
+# Migration 015_timers_status_constraint.sql added a CHECK constraint that
+# restricts timers.status to ('pending', 'fired', 'cancelled'). Section §6.6
+# of the architecture spec moves a timer to status FAILED after exhausted
+# retries (implemented in ISS-303), but the UPDATE is rejected at runtime by
+# this constraint. This migration extends the allowed domain to include 'failed'.
+#
+# IDEMPOTENCY STRATEGY
+# The codegen ALTER TABLE boilerplate would re-add the constraint unconditionally,
+# which fails if the constraint already exists. BACKEND-DEV MUST wrap the
+# generated ALTER TABLE in a DO $$ block that:
+#   1. Drops 'chk_timers_status_domain' if it exists:
+#      ALTER TABLE timers DROP CONSTRAINT IF EXISTS chk_timers_status_domain;
+#   2. Then adds the new constraint:
+#      ALTER TABLE timers ADD CONSTRAINT chk_timers_status_domain
+#        CHECK (lower(status) IN ('pending', 'fired', 'cancelled', 'failed'));
+# The DO $$ block is the // CUSTOM: section in the generated SQL.
+#
+# PER-TENANT APPLICATION
+# The timers table lives in each tenant's own schema (per-tenant migration).
+# The migration runner applies this to all tenant schemas during zig build migrate.
+# No schema-qualified names; search_path resolution handles routing.
+#
+# SCHEDULER CALL SITE (ISS-303 context)
+# src/scheduler/scheduler.zig currently does NOT write FAILED status — that is
+# deferred to ISS-303 which depends on this migration. When ISS-303 is implemented,
+# BACKEND-DEV will add a new function markTimerFailedInTx() alongside the existing
+# markTimerFiredInTx() and markTimerCancelledInTx() functions.
+# No error set changes are needed in scheduler.zig for ISS-101 itself; the
+# SchedulerError set in scheduler.zig already covers all paths for this migration.
+# ISS-303 may need to add a SchedulerError.DlqInsertFailed variant if DLQ writes
+# are added to the retry-exhaustion path.
+
+schema_version: 1
+migration_number: 81
+name: iss101_timers_failed_status
+requirement_ids: [ISS-101]
+purpose: |
+  Extend the timers.status CHECK constraint to include 'failed', enabling the
+  scheduler (ISS-303) to move exhausted-retry timers to a terminal FAILED state.
+  Migration 015 constrained status to (pending, fired, cancelled); this migration
+  replaces that constraint with one that includes 'failed'.
+  The change is additive: existing rows are unaffected (their values remain valid).
+  The migration is idempotent: BACKEND-DEV wraps the constraint replacement in a
+  DO $$ block that drops the old constraint before adding the new one.
+
+tables:
+  - mode: alter
+    name: timers
+    add_constraints:
+      - kind: check
+        name: chk_timers_status_domain
+        expression: "lower(status) IN ('pending', 'fired', 'cancelled', 'failed')"
+
+fixtures:
+  - name: tenant_id
+    kind: uuid
+  - name: timer_id
+    kind: uuid
+  - name: instance_id
+    kind: uuid
+
+test_cases:
+  - name: update_timer_to_failed_succeeds
+    description: A timer row can be updated to status 'failed' after the migration extends the CHECK constraint.
+    requirement_ref: ISS-101
+    arrange: |
+      // Insert a pending timer row with fx.timer_id, fx.instance_id, fx.tenant_id
+    act: |
+      // UPDATE timers SET status = 'failed' WHERE id = fx.timer_id
+    assertions: |
+      // CUSTOM: assert UPDATE affected 1 row; SELECT returns status = 'failed'.
+
+  - name: update_timer_to_failed_uppercase_succeeds
+    description: The CHECK uses lower() so 'FAILED' (uppercase) is also accepted.
+    requirement_ref: ISS-101
+    arrange: |
+      // Insert a pending timer row with a distinct timer_id
+    act: |
+      // UPDATE timers SET status = 'FAILED' WHERE id = fx.timer_id
+    assertions: |
+      // CUSTOM: assert UPDATE affected 1 row; SELECT returns status = 'FAILED'.
+
+  - name: invalid_status_still_rejected
+    description: An arbitrary invalid status value is rejected by the CHECK constraint even after migration.
+    requirement_ref: ISS-101
+    arrange: ""
+    act: |
+      // UPDATE timers SET status = 'BOGUS' WHERE id = fx.timer_id
+    assertions: |
+      // CUSTOM: assert database rejects with check constraint violation (PG error code 23514).
+
+  - name: existing_statuses_remain_valid
+    description: Pre-existing status values (pending, fired, cancelled) still pass the constraint after migration.
+    requirement_ref: ISS-101
+    arrange: |
+      // Insert timer rows with status 'pending', 'fired', 'cancelled' respectively
+    act: |
+      // SELECT status FROM timers WHERE id IN (fx.timer_id, ...) — rows already in valid states
+    assertions: |
+      // CUSTOM: assert all three rows exist with their original status values, no constraint error.
+
+rollback_strategy: |
+  Forward-only. If 'failed' must be removed from the domain, write a subsequent
+  migration that first updates any rows with status = 'failed' to a valid terminal
+  state (e.g. 'cancelled'), then drops and recreates the constraint without 'failed'.
+  Do NOT add a destructive rollback migration alongside this one.

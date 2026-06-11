@@ -1,0 +1,39 @@
+{
+  "handoff_id": "799cb249-8522-4a1e-9f21-7b71efe07d69",
+  "run_id": "WF02-iss101-20260611",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-11T05:14:57Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "ISS-101 Correctness Remediation",
+    "requirement_ids": [
+      "ISS-101"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/ISS-101.md",
+      "handoffs/WF02-iss101-20260611/step-03-test-designer.json"
+    ]
+  },
+  "task": {
+    "description": "Validate the ISS-101 test design from TEST-DESIGNER (Step 03). Hard gate before TEST-RUNNER.",
+    "acceptance_criteria": [
+      "Every ISS-101 MUST acceptance criterion has a runnable integration test",
+      "No SkipZigTest on FAILED/DLQ/constraint tests",
+      "All fixtures use per-test UUIDs",
+      "Tests clean up after themselves",
+      "Tests fail clearly if BPM_TEST_DB_URL absent"
+    ],
+    "functions_to_call": [
+      "fn:lint-test-design"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}

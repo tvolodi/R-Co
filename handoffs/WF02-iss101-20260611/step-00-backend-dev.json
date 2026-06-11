@@ -1,0 +1,43 @@
+{
+  "handoff_id": "2b3f1d04-6424-43d5-996f-644b6b281778",
+  "run_id": "WF02-iss101-20260611",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T05:14:57Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "ISS-101 Correctness Remediation",
+    "requirement_ids": [
+      "ISS-101"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md. Create and push feature branch feature/WF02-iss101-20260611 from main.",
+    "acceptance_criteria": [
+      "feature/WF02-iss101-20260611 branch created from latest main",
+      "Branch pushed to origin",
+      "result records branch_name, base_commit_sha, push_status"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fn:git-setup complete: created branch feature/WF02-iss101-20260611 from main (106bb440c31c71717d04f09f93efb5cffae7a123) and pushed to origin.",
+    "branch_name": "feature/WF02-iss101-20260611",
+    "base_commit_sha": "106bb440c31c71717d04f09f93efb5cffae7a123",
+    "push_status": "pushed to origin/feature/WF02-iss101-20260611",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 01)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T05:17:27Z",
+  "completed_at": "2026-06-11T05:18:09Z"
+}

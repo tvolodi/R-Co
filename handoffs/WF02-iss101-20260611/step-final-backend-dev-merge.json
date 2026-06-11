@@ -1,0 +1,39 @@
+{
+  "handoff_id": "1a8906a1-cc93-44ca-96c7-279fa94e1947",
+  "run_id": "WF02-iss101-20260611",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T05:14:57Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "ISS-101 Correctness Remediation",
+    "requirement_ids": [
+      "ISS-101"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "handoffs/WF02-iss101-20260611/step-06-doc-updater.json"
+    ]
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md.\nRebase feature/WF02-iss101-20260611 on main, create PR, squash-merge, delete branch, return to main.",
+    "acceptance_criteria": [
+      "PR created on GitHub for feature/WF02-iss101-20260611",
+      "All CI checks pass",
+      "PR squash-merged to main via gh pr merge --squash --delete-branch",
+      "Branch feature/WF02-iss101-20260611 deleted from GitHub",
+      "Local repo on main with clean working tree",
+      "result records branch_name, pr_url, push_status: ok"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": null
+}
