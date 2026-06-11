@@ -1,0 +1,45 @@
+{
+  "handoff_id": "550e8400-e29b-41d4-a716-446655440103",
+  "run_id": "ADHOC-iss103-audit-resource-id-20260611",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T07:46:41Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "epic": "EPIC-1",
+    "issue_id": "ISS-103",
+    "issue_title": "Change audit_log.resource_id to TEXT",
+    "issue_priority": "P1",
+    "stage": "Correctness Remediation",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md"
+    ],
+    "background": "Some resources are text-keyed (role_name, event_type, definition name) and cannot be stored in a UUID NOT NULL column. Currently audit_log.resource_id is UUID which prevents auditing text-keyed resources like roles and event types."
+  },
+  "task": {
+    "description": "Implement ISS-103: Change audit_log.resource_id from UUID to TEXT\n\nAcceptance criteria:\n1. Create a migration that alters audit_log.resource_id to TEXT NOT NULL, casting existing UUID rows to text\n2. Update src/obs/audit.zig to write audit entries for text-keyed resources (role_name, event_type, definition names)\n3. Ensure idx_audit_resource index still works after the migration\n4. Write integration tests that verify both UUID and text resource IDs can be audited and queried\n5. All builds (zig build) and tests (zig build test) must pass",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build migrate exits 0",
+      "Migration is idempotent",
+      "idx_audit_resource index exists and is valid",
+      "Integration test covers auditing UUID resources",
+      "Integration test covers auditing text-keyed resources (role names, event types)",
+      "Both queryable via idx_audit_resource"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-06-11T07:47:03Z",
+  "completed_at": null
+}
