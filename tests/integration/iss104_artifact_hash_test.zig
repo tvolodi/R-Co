@@ -213,7 +213,7 @@ fn getInstanceArtifactHash(
     }
 
     if (result.rows[0][0]) |hash_value| {
-        return allocator.dupe(u8, hash_value);
+        return try allocator.dupe(u8, hash_value);
     }
 
     return null;
@@ -245,7 +245,8 @@ test "TC-ISS-104-INT-01: migration adds nullable artifact_hash column" {
         \\  FROM information_schema.columns
         \\  WHERE table_name = 'instance_projections'
         \\    AND column_name = 'artifact_hash'
-        \\    AND table_schema = 'tenant_default',
+        \\    AND table_schema = 'tenant_default'
+    ,
         &.{},
     );
     defer result.deinit();

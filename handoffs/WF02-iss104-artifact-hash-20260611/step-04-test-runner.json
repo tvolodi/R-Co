@@ -9,7 +9,9 @@
   "priority": "NORMAL",
   "context": {
     "stage": "Step 4 - Test Execution",
-    "requirement_ids": ["ISS-104"],
+    "requirement_ids": [
+      "ISS-104"
+    ],
     "related_handoff_ids": [
       "WF02-iss104-artifact-hash-20260611/step-3b-test-design-validator.json"
     ],
@@ -38,26 +40,20 @@
   },
   "result": {
     "status": "FAIL",
-    "summary": "TEST-RUNNER execution BLOCKED: Migration 084_iss104_artifact_hash.sql fails with error.ServerError during test database initialization. All integration tests fail to initialize due to migration failure.",
+    "summary": "ISS-104 integration tests blocked: all 4 tests fail with runMigrations ServerError",
     "artifacts_out": [],
     "issues": [
       {
-        "id": "migration-084-blocker",
         "severity": "BLOCKER",
-        "description": "Migration 084_iss104_artifact_hash.sql fails with PgError.ServerError during database initialization. The migration attempts to ALTER TABLE instances ADD COLUMN artifact_hash TEXT, but actual error details are not available (error handler in pg.zig skips error payload). Pre-checks passed (backend services running, test database available). Database was cleaned with zig build clean-test-db. Issue affects all integration tests which require migrations to be applied.",
-        "affected_components": [
-          "migrations/084_iss104_artifact_hash.sql",
-          "tests/integration/helpers.zig (runMigrations function)",
-          "vendor/pg/pg.zig (ServerError returned without details)"
-        ],
-        "root_cause": "Unknown — error details not available from PostgreSQL error response. Possible causes: (1) Table `instances` does not exist in database schema, (2) Column already exists in unexpected location, (3) Schema-scoped vs public schema mismatch, (4) Permission issue on table alter.",
-        "recommended_action": "Route to BACKEND-DEV for migration debugging. Need to verify: (1) What tables actually exist in bpm_test schema, (2) Whether instances is a view or table, (3) Actual PostgreSQL error message by checking server logs, (4) Whether migration 084 was tested during BACKEND-DEV step."
+        "id": "ISS-104-TEST-BLOCKER",
+        "title": "Migration execution fails",
+        "description": "All 4 tests fail at TestHarness.init() with error.ServerError when applying GBL-084_iss104_artifact_hash.sql"
       }
     ],
-    "next_action": "Route to BACKEND-DEV (Step 2a rework) to debug and fix migration 084"
+    "next_action": "Route to BACKEND-DEV for debugging"
   },
   "rework_count": 0,
   "max_rework": 3,
   "started_at": "2026-06-11T09:00:38Z",
-  "completed_at": "2026-06-11T10:15:22Z"
+  "completed_at": "2026-06-11T09:33:10Z"
 }

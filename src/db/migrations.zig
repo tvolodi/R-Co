@@ -193,9 +193,12 @@ pub const Migrations = struct {
             // to per-tenant schemas (tenant_default, tenant_<uuid>, etc.) because
             // they perform DDL on public.tenant_schemas, public.tnt05_progress,
             // onboarding_registry and other global tables that do not exist in
-            // tenant schemas.  Silently skip them when schema_name != "public".
+            // tenant schemas.  Exception: GBL-084_iss104_artifact_hash is safe to run
+            // in per-tenant schemas (uses ALTER TABLE IF EXISTS and ADD COLUMN IF NOT EXISTS).
+            // Silently skip them when schema_name != "public".
             if (!std.mem.eql(u8, schema_name, "public") and
-                std.mem.startsWith(u8, filename, "GBL-"))
+                std.mem.startsWith(u8, filename, "GBL-") and
+                !std.mem.eql(u8, filename, "GBL-084_iss104_artifact_hash.sql"))
             {
                 continue;
             }

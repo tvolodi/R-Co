@@ -1,0 +1,44 @@
+{
+  "handoff_id": "c3f7d8e9-4b2a-11ec-81d3-0242ac130003",
+  "run_id": "WF02-iss104-artifact-hash-20260611",
+  "step": "2a-rework-1",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T08:45:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Stage 2 Rework",
+    "requirement_ids": ["ISS-104"],
+    "related_handoff_ids": [],
+    "artifacts_in": ["migrations/GBL-084_iss104_artifact_hash.sql"]
+  },
+  "task": {
+    "description": "Debug and fix migration 084 (ISS-104) ServerError failure\n\nTEST-RUNNER encountered PgError.ServerError when executing zig build migrate, preventing all integration tests from running.\n\nDebugging task:\n1. Inspect migration SQL for syntax errors\n2. Verify schema preconditions (table existence)\n3. Test migration manually via psql\n4. Identify root cause\n5. Fix migration SQL\n6. Validate with zig build migrate and zig build test",
+    "acceptance_criteria": [
+      "Root cause identified and documented",
+      "Migration SQL fixed",
+      "zig build migrate exits 0",
+      "zig build test exits 0",
+      "Feature branch updated with fix"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Migration 084 debugged and fixed. Root cause: migration targeted non-existent 'instances' table instead of correct 'instance_projections' table (used throughout codebase). Fixed by: (1) changing ALTER TABLE target from instances to instance_projections, (2) renaming migration from 084_iss104... to GBL-084_iss104... to follow naming convention and fix ordering after GBL-083, (3) removing duplicate migrations 081 and 082 which were already applied as GBL-082 and GBL-083.",
+    "artifacts_out": [
+      "migrations/GBL-084_iss104_artifact_hash.sql",
+      "tests/specs/ISS-104.md",
+      "handoffs/WF02-iss104-artifact-hash-20260611/step-03-test-designer.json",
+      "handoffs/WF02-iss104-artifact-hash-20260611/step-04-test-runner.json",
+      "handoffs/WF02-iss104-artifact-hash-20260611/step-3b-test-design-validator.json"
+    ],
+    "issues": [],
+    "next_action": "Redispatch TEST-RUNNER (Step 4 retry 1) — migration now applies cleanly"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-06-11T08:45:00Z",
+  "completed_at": "2026-06-11T09:15:46Z"
+}

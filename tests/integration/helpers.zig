@@ -116,19 +116,35 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         const sql_bytes = try dir.readFileAlloc(io, filename, allocator, std.Io.Limit.limited(16 * 1024 * 1024));
         defer allocator.free(sql_bytes);
 
+        // Log migration execution for debugging
+        std.debug.print("\n[MIGRATION] Executing: {s}\n", .{filename});
+        if (sql_bytes.len > 200) {
+            std.debug.print("[MIGRATION] SQL (first 200 chars):\n{s}\n", .{sql_bytes[0..200]});
+        } else {
+            std.debug.print("[MIGRATION] SQL:\n{s}\n", .{sql_bytes});
+        }
+
         try conn.begin();
         conn.simpleQuery(sql_bytes) catch |err| {
-            conn.rollback() catch {};
+            std.debug.print("[MIGRATION ERROR] Failed to execute {s}: {}\n", .{filename, err});
+            std.debug.print("[MIGRATION ERROR] Full SQL:\n{s}\n", .{sql_bytes});
+            conn.rollback() catch |rb_err| {
+                std.debug.print("[ROLLBACK ERROR] {}\n", .{rb_err});
+            };
             return err;
         };
         conn.exec(
             "INSERT INTO schema_migrations(version) VALUES ($1)",
             &.{filename},
         ) catch |err| {
-            conn.rollback() catch {};
+            std.debug.print("[SCHEMA_MIGRATIONS ERROR] Failed to record {s}: {}\n", .{filename, err});
+            conn.rollback() catch |rb_err| {
+                std.debug.print("[ROLLBACK ERROR] {}\n", .{rb_err});
+            };
             return err;
         };
         try conn.commit();
+        std.debug.print("[MIGRATION] Successfully applied: {s}\n", .{filename});
     }
 
     return;
@@ -258,6 +274,15 @@ fn resetTestData(conn: *pg.Conn) !void {
     try truncateTableBestEffort(conn, "webhook_subscriptions");
     // SVC-04 uses the service catalog; truncate so LIMIT-50 page-1 tests stay deterministic.
     try truncateTableBestEffort(conn, "service_catalog");
+    // TNT-05/TNT-07: GBL-077 requires tnt05_progress records for all tenants.
+    // Truncate so the next test starts with clean TNT migration state.
+    try truncateTableBestEffort(conn, "tnt05_progress");
+    // TNT-02: tenant_schemas tracks migration state per schema; reset for clean slate.
+    try truncateTableBestEffort(conn, "tenant_schemas");
+    // IDN-01: truncate tenant table so next test starts with empty tenant list.
+    // When migrations run on clean tenant table, GBL-077 pre-flight check passes.
+    // ensureDefaultOidcSeeds will re-create the default tenant for each test.
+    try truncateTableBestEffort(conn, "tenant");
 }
 
 fn truncateTableBestEffort(conn: *pg.Conn, comptime table_name: []const u8) !void {
@@ -292,6 +317,25 @@ fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
         \\VALUES ('bpm-default', TRUE, 'ACTIVE', '[]'::jsonb)
         \\ON CONFLICT (realm) DO NOTHING
     , &.{});
+
+    // TNT-05/TNT-07: GBL-077 pre-flight check requires tnt05_progress records
+    // for all tenants. Populate the default tenant as COMPLETED so that
+    // GBL-077 migration can pass (no un-ready tenants).
+    // This matches the state that GBL-075 would create for a tenant that
+    // was already in the database when migrations run.
+    try conn.exec(
+        \\INSERT INTO tnt05_progress (tenant_id, table_name, rows_copied, status, started_at, completed_at)
+        \\VALUES (
+        \\  '00000000-0000-0000-0000-000000000000'::uuid,
+        \\  'sentinel',
+        \\  0,
+        \\  'COMPLETED',
+        \\  NOW(),
+        \\  NOW()
+        \\)
+        \\ON CONFLICT (tenant_id, table_name) DO NOTHING
+    , &.{});
+
 
     // SVC-01..04 integration test fixture tenants.
     // These are committed before each test's transaction begins so that

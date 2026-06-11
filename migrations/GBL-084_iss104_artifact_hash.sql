@@ -7,6 +7,24 @@
 -- queries (instance → artifact) without reading the definition registry again.
 -- The change is additive: existing instances are unaffected (NULL). No index is
 -- created (hash is not used as a lookup key in this migration).
+--
+-- Per-tenant migration: runs in each tenant schema and public schema.
+-- Uses DO block with to_regclass() guard for idempotency, matching ISS-102 pattern.
 
-ALTER TABLE instance_projections
-    ADD COLUMN IF NOT EXISTS artifact_hash TEXT;
+DO $$
+DECLARE
+    v_table_oid OID;
+BEGIN
+    -- to_regclass() returns NULL if the table does not exist in the current
+    -- search_path, making this migration a no-op when instance_projections
+    -- does not exist (e.g., in public schema before any tenant creation).
+    v_table_oid := to_regclass('instance_projections');
+    IF v_table_oid IS NULL THEN
+        -- instance_projections table does not exist in this schema; nothing to do.
+        RETURN;
+    END IF;
+
+    -- Add artifact_hash column (idempotent).
+    ALTER TABLE instance_projections
+        ADD COLUMN IF NOT EXISTS artifact_hash TEXT;
+END $$;
