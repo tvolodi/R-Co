@@ -15,11 +15,20 @@ const cel = @import("cel");
 const Uuid = graph_mod.Uuid;
 
 // ---------------------------------------------------------------------------
-// Token struct
+// JoinCounter struct — ISS-105
+// ---------------------------------------------------------------------------
+pub const JoinCounter = struct {
+    received_count: u32,
+    expected_from_branches: u32,
+};
+
+// ---------------------------------------------------------------------------
+// Token struct — ISS-105: Added token_id for stable identity
 // ---------------------------------------------------------------------------
 pub const Token = struct {
     node_id: []const u8,
     branch_id: []const u8,
+    token_id: ?[]const u8 = null,      // UUID string — stable identity (optional for compatibility)
     waiting_child_instance_id: ?[]const u8 = null,
 };
 
@@ -74,13 +83,14 @@ pub const PendingEvent = union(enum) {
 };
 
 // ---------------------------------------------------------------------------
-// InstanceState struct
+// InstanceState struct — ISS-105: Added join_counters for parallel gateway state
 // ---------------------------------------------------------------------------
 pub const InstanceState = struct {
     instance_id: Uuid,
     status: InstanceStatus,
     tokens: []Token,
     variables: std.json.ObjectMap,
+    join_counters: std.json.ObjectMap,  // ISS-105: {NodeId: {received_count, expected_from_branches}}
     pending_task_nodes: [][]const u8,
     error_detail: ?[]const u8,
     pending_events: []PendingEvent,
@@ -172,15 +182,21 @@ pub fn transition(
         .status = state.status,
         .tokens = try allocator.alloc(Token, state.tokens.len),
         .variables = try state.variables.clone(allocator),
+        .join_counters = try state.join_counters.clone(allocator),
         .pending_task_nodes = try allocator.alloc([]const u8, state.pending_task_nodes.len),
         .error_detail = null,
         .pending_events = try allocator.dupe(PendingEvent, state.pending_events),
         .cancelled_branch_ids = try allocator.dupe([]const u8, state.cancelled_branch_ids),
     };
     for (state.tokens, 0..) |t, i| {
+        var token_id_copy: ?[]const u8 = null;
+        if (t.token_id) |tid| {
+            token_id_copy = try allocator.dupe(u8, tid);
+        }
         new_state.tokens[i] = Token{
             .node_id = try allocator.dupe(u8, t.node_id),
             .branch_id = try allocator.dupe(u8, t.branch_id),
+            .token_id = token_id_copy,
         };
     }
     for (state.pending_task_nodes, 0..) |n, i| {

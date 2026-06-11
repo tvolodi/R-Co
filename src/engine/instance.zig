@@ -39,6 +39,29 @@ fn fillRandom(buf: []u8) void {
     }
 }
 
+// ---------------------------------------------------------------------------
+// ISS-105: Generate token_id as a random UUID v4 hex string
+// TODO: Later, use deterministic UUID v3 (MD5-based) for replay stability
+// ---------------------------------------------------------------------------
+fn generateTokenId(allocator: std.mem.Allocator) ![]const u8 {
+    var token_bytes: Uuid = undefined;
+    fillRandom(&token_bytes);
+    token_bytes[6] = (token_bytes[6] & 0x0f) | 0x40;
+    token_bytes[8] = (token_bytes[8] & 0x3f) | 0x80;
+    return uuidToHex(allocator, token_bytes);
+}
+
+// ---------------------------------------------------------------------------
+// Populate token_ids for all tokens in InstanceState
+// ---------------------------------------------------------------------------
+fn populateTokenIds(allocator: std.mem.Allocator, state: *transition_mod.InstanceState) !void {
+    for (state.tokens) |*tok| {
+        if (tok.token_id.len == 0) {
+            tok.token_id = try generateTokenId(allocator);
+        }
+    }
+}
+
 fn refreshActiveInstancesMetric(pool: *Pool, allocator: std.mem.Allocator) void {
     const conn = pool.acquire() catch {
         metrics.markActiveInstancesStale();
@@ -371,6 +394,7 @@ fn freeOwnedTransitionState(
     state: transition_mod.InstanceState,
 ) void {
     for (state.tokens) |tok| {
+        if (tok.token_id) |tid| allocator.free(tid);
         allocator.free(tok.node_id);
         allocator.free(tok.branch_id);
         if (tok.waiting_child_instance_id) |child_id| {
@@ -381,6 +405,9 @@ fn freeOwnedTransitionState(
 
     var vars = state.variables;
     vars.deinit(allocator);
+
+    var jc = state.join_counters;
+    jc.deinit(allocator);
 
     for (state.pending_task_nodes) |node_id| {
         allocator.free(node_id);
@@ -634,11 +661,17 @@ pub const InstanceStore = struct {
         var empty_vars = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
             return InstanceError.TransactionFailed;
         defer empty_vars.deinit(allocator);
+
+        var empty_join_counters = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+            return InstanceError.TransactionFailed;
+        defer empty_join_counters.deinit(allocator);
+
         const initial_state = transition_mod.InstanceState{
             .instance_id = uuid_bytes,
             .status = .ACTIVE,
             .tokens = &.{},
             .variables = empty_vars,
+            .join_counters = empty_join_counters,
             .pending_task_nodes = &.{},
             .error_detail = null,
             .pending_events = &.{},
@@ -662,27 +695,36 @@ pub const InstanceStore = struct {
         defer freeOwnedTransitionState(allocator, new_state);
 
         // ── Persist the transition result ──────────────────────────────────
-        // Serialize tokens to JSON array: [{"node_id":"...","branch_id":"..."}]
+        // Serialize tokens to JSON array: [{"token_id":"...","node_id":"...","branch_id":"..."}]
         var tokens_buf = std.ArrayList(u8).empty;
         tokens_buf.append(a, '[') catch return InstanceError.TransactionFailed;
         for (new_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return InstanceError.TransactionFailed;
+            
+            // Generate token_id if not present (ISS-105)
+            const token_id = tok.token_id orelse (generateTokenId(a) catch return InstanceError.TransactionFailed);
+            
             const entry = if (tok.waiting_child_instance_id) |child_id|
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id, child_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id, child_id },
                 ) catch return InstanceError.TransactionFailed
             else
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id },
                 ) catch return InstanceError.TransactionFailed;
             tokens_buf.appendSlice(a, entry) catch return InstanceError.TransactionFailed;
         }
         tokens_buf.append(a, ']') catch return InstanceError.TransactionFailed;
         const tokens_json = tokens_buf.items;
+
+        // Serialize join_counters ObjectMap to JSON object string.
+        const jc_value = std.json.Value{ .object = new_state.join_counters };
+        const jc_json = std.json.Stringify.valueAlloc(a, jc_value, .{}) catch
+            return InstanceError.TransactionFailed;
 
         // Serialize variables ObjectMap to JSON object string.
         const vars_value = std.json.Value{ .object = new_state.variables };
@@ -722,12 +764,14 @@ pub const InstanceStore = struct {
             \\SET
             \\    status         = $2,
             \\    current_nodes  = $3::jsonb,
+            \\    active_tokens  = $3::jsonb,
             \\    variables      = $4::jsonb,
+            \\    join_counters  = $5::jsonb,
             \\    last_event_seq = last_event_seq + 1,
             \\    updated_at     = NOW()
             \\WHERE instance_id  = $1::uuid
         ,
-            &.{ inst_id_hex, status_str, tokens_json, vars_json },
+            &.{ inst_id_hex, status_str, tokens_json, vars_json, jc_json },
         ) catch return InstanceError.TransactionFailed;
 
         persistTimersFromPendingEventsInTx(
@@ -872,22 +916,26 @@ pub const InstanceStore = struct {
         // Serialize new_state.status to uppercase TEXT.
         const status_str = instanceStatusToString(new_state.status);
 
-        // Serialize tokens to JSON array: [{"node_id":"...","branch_id":"..."}]
+        // Serialize tokens to JSON array: [{"token_id":"...","node_id":"...","branch_id":"..."}]
         var tokens_buf = std.ArrayList(u8).empty;
         tokens_buf.append(a, '[') catch return ApplyError.OutOfMemory;
         for (new_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return ApplyError.OutOfMemory;
+            
+            // Generate token_id if not present (ISS-105)
+            const token_id = tok.token_id orelse (generateTokenId(a) catch return ApplyError.OutOfMemory);
+            
             const entry = if (tok.waiting_child_instance_id) |child_id|
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id, child_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id, child_id },
                 ) catch return ApplyError.OutOfMemory
             else
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id },
                 ) catch return ApplyError.OutOfMemory;
             tokens_buf.appendSlice(a, entry) catch return ApplyError.OutOfMemory;
         }
@@ -897,6 +945,11 @@ pub const InstanceStore = struct {
         // Serialize variables ObjectMap to JSON object string.
         const vars_value = std.json.Value{ .object = new_state.variables };
         const vars_json = std.json.Stringify.valueAlloc(a, vars_value, .{}) catch
+            return ApplyError.OutOfMemory;
+
+        // Serialize join_counters ObjectMap to JSON object string.
+        const jc_value = std.json.Value{ .object = new_state.join_counters };
+        const jc_json = std.json.Stringify.valueAlloc(a, jc_value, .{}) catch
             return ApplyError.OutOfMemory;
 
         // Generate idempotency key (random UUID v4).
@@ -950,19 +1003,21 @@ pub const InstanceStore = struct {
         ) catch return ApplyError.PersistenceFailed;
 
         // ── Step e: UPDATE instance_projections ──────────────────────────────
-        // Security: $1=instance_id, $2=status, $3=tokens_json, $4=vars_json
+        // Security: $1=instance_id, $2=status, $3=tokens_json, $4=vars_json, $5=jc_json
         //           — all bound as $N parameters.
         conn.exec(
             \\UPDATE instance_projections
             \\SET
             \\    status        = $2,
             \\    current_nodes = $3::jsonb,
+            \\    active_tokens = $3::jsonb,
             \\    variables     = $4::jsonb,
+            \\    join_counters = $5::jsonb,
             \\    last_event_seq = last_event_seq + 1,
             \\    updated_at    = NOW()
             \\WHERE instance_id = $1::uuid
         ,
-            &.{ inst_id_hex, status_str, tokens_json, vars_json },
+            &.{ inst_id_hex, status_str, tokens_json, vars_json, jc_json },
         ) catch return ApplyError.PersistenceFailed;
 
         persistTimersFromPendingEventsInTx(
@@ -1107,6 +1162,7 @@ pub const InstanceStore = struct {
         var def_id: Uuid = std.mem.zeroes(Uuid);
         var tokens_json_str: []const u8 = "[]";
         var vars_json_str: []const u8 = "{}";
+        var join_counters_json_str: []const u8 = "{}";
         var proj_status: InstanceStatus = .ACTIVE;
         {
             const proj_conn = self.pool.acquire() catch |err| switch (err) {
@@ -1123,7 +1179,8 @@ pub const InstanceStore = struct {
                 \\    definition_id,
                 \\    status,
                 \\    current_nodes,
-                \\    variables
+                \\    variables,
+                \\    COALESCE(join_counters, '{}')
                 \\FROM instance_projections
                 \\WHERE instance_id = $1::uuid
             ,
@@ -1143,6 +1200,7 @@ pub const InstanceStore = struct {
             // Dupe raw column data into arena before proj_rows.deinit() frees the buffer.
             tokens_json_str = a.dupe(u8, colGet(row, 3)) catch return CompleteTaskError.OutOfMemory;
             vars_json_str = a.dupe(u8, colGet(row, 4)) catch return CompleteTaskError.OutOfMemory;
+            join_counters_json_str = a.dupe(u8, colGet(row, 5)) catch return CompleteTaskError.OutOfMemory;
         }
         // proj_conn and proj_rows are released here.
 
@@ -1163,6 +1221,7 @@ pub const InstanceStore = struct {
         var tokens = std.ArrayList(transition_mod.Token).empty;
         defer {
             for (tokens.items) |tok| {
+                if (tok.token_id) |tid| allocator.free(tid);
                 allocator.free(tok.node_id);
                 allocator.free(tok.branch_id);
             }
@@ -1179,32 +1238,57 @@ pub const InstanceStore = struct {
             for (tok_parsed.value.array.items) |item| {
                 if (item != .object) continue;
                 const obj = item.object;
+                
+                // token_id is optional (ISS-105)
+                var tid_opt: ?[]const u8 = null;
+                if (obj.get("token_id")) |tid_val| {
+                    if (tid_val == .string and tid_val.string.len > 0) {
+                        tid_opt = allocator.dupe(u8, tid_val.string) catch
+                            return CompleteTaskError.OutOfMemory;
+                    }
+                }
+                
                 const nid_val = obj.get("node_id") orelse continue;
                 const bid_val = obj.get("branch_id") orelse continue;
-                if (nid_val != .string or bid_val != .string) continue;
-                const nid = allocator.dupe(u8, nid_val.string) catch
+                if (nid_val != .string or bid_val != .string) {
+                    if (tid_opt) |t| allocator.free(t);
+                    continue;
+                }
+                
+                const nid = allocator.dupe(u8, nid_val.string) catch {
+                    if (tid_opt) |t| allocator.free(t);
                     return CompleteTaskError.OutOfMemory;
+                };
                 const bid = allocator.dupe(u8, bid_val.string) catch {
+                    if (tid_opt) |t| allocator.free(t);
                     allocator.free(nid);
                     return CompleteTaskError.OutOfMemory;
                 };
+                
                 var waiting_child: ?[]const u8 = null;
                 if (obj.get("waiting_child_instance_id")) |waiting_val| {
                     if (waiting_val == .string and waiting_val.string.len > 0) {
                         waiting_child = allocator.dupe(u8, waiting_val.string) catch {
+                            if (tid_opt) |t| allocator.free(t);
                             allocator.free(nid);
                             allocator.free(bid);
                             return CompleteTaskError.OutOfMemory;
                         };
                     }
                 }
-                tokens.append(allocator, .{ .node_id = nid, .branch_id = bid }) catch {
+                
+                tokens.append(allocator, .{
+                    .node_id = nid,
+                    .branch_id = bid,
+                    .token_id = tid_opt,
+                    .waiting_child_instance_id = waiting_child,
+                }) catch {
+                    if (tid_opt) |t| allocator.free(t);
                     allocator.free(nid);
                     allocator.free(bid);
                     if (waiting_child) |w| allocator.free(w);
                     return CompleteTaskError.OutOfMemory;
                 };
-                tokens.items[tokens.items.len - 1].waiting_child_instance_id = waiting_child;
             }
         }
 
@@ -1261,6 +1345,16 @@ pub const InstanceStore = struct {
             }
         }
 
+        // ── Step d2: Deserialize join_counters ───────────────────────────────
+        var jc_parsed = std.json.parseFromSlice(
+            std.json.Value,
+            a,
+            join_counters_json_str,
+            .{ .allocate = .alloc_always },
+        ) catch return CompleteTaskError.PersistenceFailed;
+        defer jc_parsed.deinit();
+        if (jc_parsed.value != .object) return CompleteTaskError.PersistenceFailed;
+
         const current_state = transition_mod.InstanceState{
             .instance_id = task.instance_id,
             .status = switch (proj_status) {
@@ -1271,6 +1365,7 @@ pub const InstanceStore = struct {
             },
             .tokens = tokens.items,
             .variables = vars_parsed.value.object,
+            .join_counters = jc_parsed.value.object,
             .pending_task_nodes = pending_task_nodes.items,
             .error_detail = null,
             .pending_events = &[_]transition_mod.PendingEvent{},
@@ -1411,6 +1506,7 @@ pub const InstanceStore = struct {
             .status = current_state.status,
             .tokens = current_state.tokens,
             .variables = merge_result.merged,
+            .join_counters = current_state.join_counters,
             .pending_task_nodes = current_state.pending_task_nodes,
             .error_detail = current_state.error_detail,
             .pending_events = current_state.pending_events,

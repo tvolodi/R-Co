@@ -39,9 +39,11 @@ fn emptyState() InstanceState {
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
         .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 }
 
@@ -153,9 +155,11 @@ test "TC-EE-03-03: END node activation does NOT add to pending_task_nodes" {
         .status = .ACTIVE,
         .tokens = try alloc.dupe(Token, &[_]Token{token}),
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending_nodes,
         .error_detail = null,
         .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{
