@@ -1,0 +1,56 @@
+{
+  "handoff_id": "iss104-backend-impl-20260611",
+  "run_id": "WF02-iss104-artifact-hash-20260611",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T08:00:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-1 Schema Corrections",
+    "requirement_ids": ["ISS-104"],
+    "related_handoff_ids": [
+      "WF02-iss104-artifact-hash-20260611/step-01-code-designer.json",
+      "WF02-iss104-artifact-hash-20260611/step-1b-code-design-validator.json"
+    ],
+    "artifacts_in": [
+      "templates/specs/iss104_artifact_hash.migration.yaml",
+      "src/design/iss104_artifact_hash.md"
+    ]
+  },
+  "task": {
+    "description": "Implement ISS-104: Add instances.artifact_hash column and populate during instance-start. Type C migration (codegen + integration tests). Modify instance.zig to write artifact hash for repo-backed definitions.",
+    "acceptance_criteria": [
+      "Migration GBL-084 generated from parameter file",
+      "Migration applies cleanly: zig build migrate exits 0",
+      "Instance-start writes artifact hash for repo-backed definitions",
+      "Non-repo-backed definitions have artifact_hash = NULL",
+      "Error handling: missing artifact hash → NULL (graceful)",
+      "zig build exits 0 with no error-set violations",
+      "zig build test passes all tests",
+      "Feature branch committed and pushed"
+    ],
+    "functions_to_call": [
+      "fn:git-setup (already done in feature branch)",
+      "fn:codegen-migration",
+      "fn:validate-zig-build",
+      "fn:git-commit-impl"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Successfully implemented ISS-104 artifact hash provenance tracking. Generated migration GBL-084 via codegen, modified instance-start handler to persist artifact_hash from definition_artifact_hash, validated compilation and tests, committed to feature branch.",
+    "artifacts_out": [
+      "migrations/084_iss104_artifact_hash.sql",
+      "src/engine/instance.zig (modified)",
+      "tests/integration/iss104_artifact_hash_test.zig (generated)"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T08:30:00Z",
+  "completed_at": "2026-06-11T08:53:42Z"
+}
