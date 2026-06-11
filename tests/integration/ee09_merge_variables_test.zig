@@ -682,10 +682,10 @@ test "TC-ISS-202-01: mixed valid/invalid keys — all-or-nothing merge failure, 
         const def_id_hex = try std.fmt.allocPrint(allocator,
             "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
             .{
-                def.definition_id[0],  def.definition_id[1],  def.definition_id[2],  def.definition_id[3],
-                def.definition_id[4],  def.definition_id[5],  def.definition_id[6],  def.definition_id[7],
-                def.definition_id[8],  def.definition_id[9],  def.definition_id[10], def.definition_id[11],
-                def.definition_id[12], def.definition_id[13], def.definition_id[14], def.definition_id[15],
+                def.id[0],  def.id[1],  def.id[2],  def.id[3],
+                def.id[4],  def.id[5],  def.id[6],  def.id[7],
+                def.id[8],  def.id[9],  def.id[10], def.id[11],
+                def.id[12], def.id[13], def.id[14], def.id[15],
             });
         defer allocator.free(def_id_hex);
 
