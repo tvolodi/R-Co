@@ -1,0 +1,39 @@
+{
+  "handoff_id": "iss106-git-merge-final",
+  "run_id": "WF02-iss106-webhook-outbox-20260611",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-iss106-webhook-outbox-20260611/step-final-backend-dev.json",
+  "created_at": "2026-06-11T14:09:22Z",
+  "started_at": "2026-06-11T14:09:22Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "ISS-106",
+    "stage": "Final \u2014 Git merge and cleanup",
+    "requirement_ids": [
+      "ISS-106"
+    ],
+    "upstream_step": "06",
+    "workflow_complete_after_this_step": true
+  },
+  "task": {
+    "description": "Step Final: Execute fn:git-merge for ISS-106. The feature branch is feature/WF02-iss106-webhook-outbox-20260611. There are uncommitted local artefacts: handoffs/WF02-iss106-webhook-outbox-20260611/ and doc updates (CHANGELOG, requirement_status, retrospective, release_decision). These must be committed to the feature branch FIRST, then push, then rebase onto origin/main, create a PR, squash-merge with --delete-branch, and return repo to clean main.",
+    "acceptance_criteria": [
+      "Feature branch merged to main via PR",
+      "Branch deleted from GitHub",
+      "Repository returned to main with clean working tree",
+      "git_evidence fully populated in result"
+    ],
+    "functions_to_call": [
+      "fn:git-merge",
+      "fn:verify-repo-clean"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 0
+}

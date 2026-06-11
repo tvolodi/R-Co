@@ -1,0 +1,129 @@
+stage: ISS-106 Correctness Remediation — webhook_deliveries outbox table
+run_id: WF02-iss106-webhook-outbox-20260611
+date: "2026-06-11"
+timestamp: "2026-06-11T13:55:43Z"
+decision: RELEASED
+recommendation: >-
+  Release ISS-106. The webhook_deliveries outbox table is formalized as a
+  first-class, additive, idempotent migration. Every ISS-106 acceptance
+  criterion has passing integration-test evidence against real PostgreSQL.
+  No MUST coverage is deferred — the outbox INSERT and FOR UPDATE SKIP LOCKED
+  worker-claim path is the separate requirement ISS-205 (Depends on ISS-106),
+  not deferred ISS-106 coverage. NFR benchmarks are green.
+requirement_ids:
+  - ISS-106
+validated_by: RELEASE-VALIDATOR
+handoff_id: iss106-release-validator-05
+
+acceptance_criteria_evidence:
+  - criterion_id: ISS-106 AC-1
+    description: >-
+      Per-tenant webhook_deliveries with delivery_id/id, subscription_id,
+      event_id, status ∈ (PENDING,DELIVERED,FAILED,RETRYING), attempt,
+      next_attempt_at, last_error, created_at.
+    evidence:
+      - test_id: TC-ISS-106-01
+        name: attempt_column_is_integer_not_null_default_zero
+        verdict: PASS
+        note: "attempt = integer, NOT NULL, default 0 (information_schema)."
+      - test_id: TC-ISS-106-02
+        name: valid_status_domain_accepted
+        verdict: PASS
+        note: "PENDING, DELIVERED, FAILED, RETRYING each insert and round-trip."
+      - test_id: TC-ISS-106-03
+        name: out_of_domain_status_rejected
+        verdict: PASS
+        note: "status='BOGUS' and legacy 'pending' rejected by CHECK; zero rows."
+      - test_id: TC-ISS-106-05
+        name: full_contract_row_round_trips
+        verdict: PASS
+        note: >-
+          Full contract row (id, subscription_id, event_id, status, attempt,
+          next_attempt_at, last_error, created_at) reads back intact.
+    status: SATISFIED
+  - criterion_id: ISS-106 AC-2
+    description: "Index for worker claim: (status, next_attempt_at)."
+    evidence:
+      - test_id: TC-ISS-106-04
+        name: worker_claim_index_present
+        verdict: PASS
+        note: >-
+          idx_wd_status_next_attempt on webhook_deliveries; indexdef covers
+          status and next_attempt_at (pg_indexes, current_schema).
+    status: SATISFIED
+
+deferred_coverage_check:
+  deferred_must_coverage: false
+  rationale: >-
+    The outbox INSERT (same-transaction delivery rows) and the worker claim
+    path with FOR UPDATE SKIP LOCKED are scoped to ISS-205 ("Webhook
+    transactional outbox — true at-least-once"), which Depends on ISS-106.
+    The backlog ISS-106 test plan states "Insert/claim path exercised by
+    ISS-205." This is a legitimately separate P0 requirement, not deferred
+    ISS-106 coverage. All ISS-106 MUST criteria (table shape + claim index)
+    have passing integration-test evidence in this run.
+
+migration_check:
+  file: migrations/085_iss106_webhook_deliveries_outbox.sql
+  present: true
+  additive: true
+  idempotent: true
+  no_drop_table: true
+  no_drop_column: true
+  guards: >-
+    ADD COLUMN IF NOT EXISTS (attempt); idempotent backfill from attempt_count;
+    legacy lowercase status remap with ELSE passthrough (re-run safe);
+    DROP CONSTRAINT IF EXISTS + re-ADD status CHECK; CREATE INDEX IF NOT EXISTS.
+    Legacy attempt_count retained (no destructive change). Unqualified table
+    names — applies under each per-tenant search_path.
+  migrate_command: "zig build migrate"
+  migrate_exit_code: 0
+
+test_results_summary:
+  overall_status: PASS
+  total: 5
+  passed: 5
+  failed: 0
+  skipped: 0
+  integration_iss106:
+    command: "zig build test-integration-iss106"
+    exit_code: 0
+    status: PASS
+  regression:
+    command: "zig build test"
+    exit_code: 0
+    status: PASS
+    new_regressions: false
+
+nfr_results:
+  NFR-01:
+    p99_read_ms:
+      target: "<=200"
+      actual: 0.497
+      unit: ms
+      passed: true
+    p99_write_ms:
+      target: "<=500"
+      actual: 1.499
+      unit: ms
+      passed: true
+  NFR-02:
+    append_throughput_eps:
+      target: ">=1000"
+      actual: 63663.7
+      unit: events_per_second
+      passed: true
+  NFR-04:
+    replay_10000_ms:
+      target: "<=5000"
+      actual: 34.583
+      unit: ms
+      passed: true
+  overall_passed: true
+
+blockers: []
+major_issues: []
+issues: []
+
+approved_requirements:
+  - ISS-106
