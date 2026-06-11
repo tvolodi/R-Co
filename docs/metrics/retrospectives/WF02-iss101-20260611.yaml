@@ -1,0 +1,123 @@
+run_id: WF02-iss101-20260611
+created_at: "2026-06-11T06:05:56Z"
+rules_version: "1.1"
+requirement_ids:
+  - ISS-101
+
+difficulty: 2
+difficulty_rationale: "Single ALTER TABLE migration to add FAILED to CHECK constraint + scheduler update"
+integration_surface: low
+integration_surface_rationale: "Touches only migrations/ and src/scheduler/scheduler.zig"
+
+steps:
+  - code-designer
+  - code-design-validator
+  - backend-dev
+  - test-designer
+  - test-design-validator
+  - test-runner
+  - release-validator
+  - doc-updater
+
+step_actuals:
+  code-designer:
+    step: "01"
+    handoff_file: handoffs/WF02-iss101-20260611/step-01-code-designer.json
+    started_at: "2026-06-11T05:19:02Z"
+    completed_at: "2026-06-11T05:21:19Z"
+    actual_minutes: 2.28
+    estimated_minutes: 2
+    variance_minutes: 0.28
+    variance_pct: 14.2
+
+  code-design-validator:
+    step: "01b"
+    handoff_file: handoffs/WF02-iss101-20260611/step-01b-code-design-validator.json
+    started_at: "2026-06-11T05:22:10Z"
+    completed_at: "2026-06-11T05:23:17Z"
+    actual_minutes: 1.12
+    estimated_minutes: 8
+    variance_minutes: -6.88
+    variance_pct: -86.0
+
+  backend-dev:
+    step: "02a"
+    handoff_file: handoffs/WF02-iss101-20260611/step-02a-backend-dev.json
+    started_at: "2026-06-11T05:24:10Z"
+    completed_at: "2026-06-11T05:33:26Z"
+    actual_minutes: 9.27
+    estimated_minutes: 4
+    variance_minutes: 5.27
+    variance_pct: 131.7
+
+  test-designer:
+    step: "03"
+    handoff_file: handoffs/WF02-iss101-20260611/step-03-test-designer.json
+    started_at: "2026-06-11T05:33:56Z"
+    completed_at: "2026-06-11T05:34:49Z"
+    actual_minutes: 0.88
+    estimated_minutes: 1
+    variance_minutes: -0.12
+    variance_pct: -11.7
+
+  test-design-validator:
+    step: "03b"
+    handoff_file: handoffs/WF02-iss101-20260611/step-03b-test-design-validator.json
+    started_at: "2026-06-11T05:36:03Z"
+    completed_at: "2026-06-11T05:36:54Z"
+    actual_minutes: 0.85
+    estimated_minutes: 12
+    variance_minutes: -11.15
+    variance_pct: -92.9
+
+  test-runner:
+    step: "04"
+    handoff_file: handoffs/WF02-iss101-20260611/step-04-test-runner.json
+    started_at: "2026-06-11T05:38:39Z"
+    completed_at: "2026-06-11T06:00:20Z"
+    actual_minutes: 21.68
+    estimated_minutes: 1
+    variance_minutes: 20.68
+    variance_pct: 2068.3
+
+  release-validator:
+    step: "05"
+    handoff_file: handoffs/WF02-iss101-20260611/step-05-release-validator.json
+    started_at: "2026-06-11T06:01:25Z"
+    completed_at: "2026-06-11T06:03:17Z"
+    actual_minutes: 1.87
+    estimated_minutes: 1
+    variance_minutes: 0.87
+    variance_pct: 86.7
+
+  doc-updater:
+    step: "06"
+    handoff_file: handoffs/WF02-iss101-20260611/step-06-doc-updater.json
+    started_at: "2026-06-11T06:04:42Z"
+    completed_at: "2026-06-11T06:05:56Z"
+    actual_minutes: 1.23
+    estimated_minutes: 2
+    variance_minutes: -0.77
+    variance_pct: -38.3
+
+totals:
+  estimated_minutes: 31
+  actual_minutes: 39.18
+  variance_minutes: 8.18
+  variance_pct: 26.4
+
+estimation_rule_update_needed: false
+estimation_rule_update_rationale: >
+  Overall variance is +26.4% (just above the 25% threshold) driven entirely by
+  the test-runner step (+2068%). The test-runner estimate of 1 minute at difficulty=2/low
+  is structurally too low: even a simple integration test run requires DB provisioning,
+  per-tenant schema setup, and zig compilation which together take 10-20 minutes.
+  The code-design-validator (-86%) and test-design-validator (-93%) are also systematically
+  fast at difficulty=2 because the artefacts are very small. However this is only one run
+  at difficulty=2/low so the threshold (>=2 consecutive runs with same difficulty) is not
+  yet met. Monitor the test-runner estimate at D2 in subsequent runs before adjusting.
+
+notes:
+  - "TEST-RUNNER actual of 21.68min is dominated by zig build test + per-tenant schema provisioning for integration tests"
+  - "CODE-DESIGN-VALIDATOR and TEST-DESIGN-VALIDATOR were very fast (<2min each) because the ISS-101 artefact is a single-table constraint change"
+  - "BACKEND-DEV was 2.3x estimate because integration test scaffolding required per-tenant schema provisioning fix"

@@ -15,6 +15,16 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### ISS-101 — Scheduler FAILED Status Constraint Fix (RELEASED 2026-06-11)
+
+#### WF02-iss101-20260611 (2026-06-11)
+
+- **Fix:** `timers.status` CHECK constraint now includes `failed` alongside `pending`, `fired`, and `cancelled`. Previously the scheduler's exhausted-retry path (ISS-303) could not transition a timer to `FAILED` without hitting a PostgreSQL constraint violation at runtime.
+- Migration: `migrations/081_iss101_timers_failed_status.sql` — idempotent `ALTER TABLE` via `DO` block; applies to all existing tenant schemas; correctly sequenced after `GBL-080_env01_tenant_type_field.sql`.
+- This fix unblocks ISS-303 (scheduler exhausted-retry DLQ routing) which depends on the `FAILED` status value being valid in the constraint.
+- Validation evidence: 4/4 integration tests passing (TC-ISS-101-01 through TC-ISS-101-04). NFR benchmarks: p99_read=0.679ms, p99_write=1.338ms, throughput=119,457 eps, replay_10k=40.338ms — all within targets. Release approval: `docs/status/release-iss101-20260611.yaml`. Test evidence: `tests/reports/report-20260611-WF02-iss101-20260611.yaml`.
+- Requirement: ISS-101 — RELEASED
+
 ### Stage 14 — Test Tenant Environment (RELEASED 2026-06-11)
 
 #### WF02-env-batch1-20260610 (2026-06-11)

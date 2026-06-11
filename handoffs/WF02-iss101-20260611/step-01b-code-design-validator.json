@@ -1,0 +1,45 @@
+{
+  "handoff_id": "3f58fe95-d811-4937-b3c9-da83502e2ddc",
+  "run_id": "WF02-iss101-20260611",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-11T05:14:57Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "ISS-101 Correctness Remediation",
+    "requirement_ids": [
+      "ISS-101"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "handoffs/WF02-iss101-20260611/step-01-code-designer.json",
+      "templates/specs/iss101-timers-failed-status.migration.yaml"
+    ]
+  },
+  "task": {
+    "description": "Validate the ISS-101 design artefacts produced by CODE-DESIGNER (Step 01).",
+    "acceptance_criteria": [
+      "Migration YAML covers all acceptance criteria from ISS-101",
+      "No implementation code in the design artefact",
+      "Migration is additive and idempotent",
+      "FAILED value inclusion is documented",
+      "python tools/lint_design_artefact.py passes on the artefact"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact for ISS-101 (iss101-timers-failed-status.migration.yaml) validated \u2014 all three ISS-101 acceptance criteria are covered by the YAML spec: (1) the tables section adds the chk_timers_status_domain CHECK constraint including \"failed\"; (2) the IDEMPOTENCY STRATEGY and PER-TENANT APPLICATION sections in the design notes document additive, idempotent per-tenant migration; (3) test cases update_timer_to_failed_succeeds and invalid_status_still_rejected directly map to the third criterion. lint_design_artefact.py exits 0 with no issues; codegen --dry-run exits 0. No implementation code present in the artefact. Classification Type C is correct for a migration-only change.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 02a)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T05:22:10Z",
+  "completed_at": "2026-06-11T05:23:17Z"
+}
