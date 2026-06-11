@@ -139,6 +139,8 @@ const env02_tenant_isolation_integration = @import("env02_test.zig");
 const env03_definition_promotion_integration = @import("env03_test.zig");
 // Stage 14 — Test tenant lifecycle (ENV-05)
 const env05_tenant_lifecycle_integration = @import("env05_test.zig");
+// ISS-101 — timers.status FAILED constraint (allow 'failed' in timers.status CHECK)
+const iss101_timers_failed_status_integration = @import("iss101_timers_failed_status_test.zig");
 
 comptime {
     _ = std;
@@ -204,6 +206,7 @@ comptime {
     _ = env02_tenant_isolation_integration;
     _ = env03_definition_promotion_integration;
     _ = env05_tenant_lifecycle_integration;
+    _ = iss101_timers_failed_status_integration;
 }
 
 test "integration placeholder" {
