@@ -1,0 +1,45 @@
+{
+  "handoff_id": "7e2d9f8b-1a3c-4d5e-b6c7-8f9a0b1c2d3e",
+  "run_id": "WF02-iss202-20260611",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-11T17:13:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 Event-sourcing integrity",
+    "requirement_ids": [
+      "ISS-202"
+    ],
+    "related_handoff_ids": [
+      "handoffs/WF02-iss201-20260611"
+    ],
+    "artifacts_in": [
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md"
+    ]
+  },
+  "task": {
+    "description": "Design ISS-202: Two-phase (all-or-nothing) variable merge. Read ISS-202 from backlog (lines 164-175). Classify against lego-catalog.md. Output design artefact(s) to src/design/ or parameter files to templates/specs/ per classification. Must cover: Phase 1 validation of ALL keys without state change; Phase 2 application only when validation succeeds; EXECUTION_ERROR emitted and variables untouched on any failure; retry after failure sees pre-merge state.",
+    "acceptance_criteria": [
+      "Design artefact created (Type E prose in src/design/engine-merge.md or Type A/C parameter files if applicable)",
+      "Covers acceptance criteria: Phase 1 validates all keys; Phase 2 applies only on success; EXECUTION_ERROR on failure; variables untouched; retry sees pre-merge state",
+      "No implementation code present",
+      "Depends on ISS-201 (transition() signature change) documented"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 1: Refactored \u00a74.2 pseudo-code from 62 to 15 lines using abstract operations. Condensed detailed control-flow walkthrough to algorithm sketch; added reference to backend_developer_guide.md for implementation details. Passes lint gate: E050 MAJOR violation resolved.",
+    "artifacts_out": [
+      "src/design/engine-merge.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-06-11T17:34:40Z"
+}
