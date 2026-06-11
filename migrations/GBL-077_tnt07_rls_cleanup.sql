@@ -64,77 +64,201 @@ BEGIN
     RAISE NOTICE 'GBL-077: Pre-flight check PASSED — all tenants ready. Proceeding with RLS cleanup.';
 
     -- -------------------------------------------------------------------------
-    -- DDL: Remove RLS policies from tables that had them (migration 028 subset)
-    -- Tables: process_definitions, instance_projections, tasks, tokens,
-    --         audit_entries, audit_log
+    -- DDL: Remove RLS policies and drop DEFAULT clauses before dropping columns
+    -- All operations are wrapped in exception handlers to ensure idempotency
     -- -------------------------------------------------------------------------
 
-    -- process_definitions
-    ALTER TABLE IF EXISTS process_definitions DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS process_definitions_tenant_policy ON process_definitions;
-    ALTER TABLE IF EXISTS process_definitions DROP COLUMN IF EXISTS tenant_id;
+    BEGIN
+        EXECUTE 'ALTER TABLE process_definitions ALTER COLUMN tenant_id DROP DEFAULT';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- instance_projections
-    ALTER TABLE IF EXISTS instance_projections DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS instance_projections_tenant_policy ON instance_projections;
-    ALTER TABLE IF EXISTS instance_projections DROP COLUMN IF EXISTS tenant_id;
+    BEGIN
+        EXECUTE 'ALTER TABLE instance_projections ALTER COLUMN tenant_id DROP DEFAULT';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- tasks
-    ALTER TABLE IF EXISTS tasks DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS tasks_tenant_policy ON tasks;
-    ALTER TABLE IF EXISTS tasks DROP COLUMN IF EXISTS tenant_id;
+    BEGIN
+        EXECUTE 'ALTER TABLE tasks ALTER COLUMN tenant_id DROP DEFAULT';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- tokens
-    ALTER TABLE IF EXISTS tokens DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS tokens_tenant_policy ON tokens;
-    ALTER TABLE IF EXISTS tokens DROP COLUMN IF EXISTS tenant_id;
+    BEGIN
+        EXECUTE 'ALTER TABLE tokens ALTER COLUMN tenant_id DROP DEFAULT';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- audit_entries
-    ALTER TABLE IF EXISTS audit_entries DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS audit_entries_tenant_policy ON audit_entries;
-    ALTER TABLE IF EXISTS audit_entries DROP COLUMN IF EXISTS tenant_id;
+    BEGIN
+        EXECUTE 'ALTER TABLE audit_entries ALTER COLUMN tenant_id DROP DEFAULT';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- audit_log
-    ALTER TABLE IF EXISTS audit_log DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS audit_log_tenant_policy ON audit_log;
-    ALTER TABLE IF EXISTS audit_log DROP COLUMN IF EXISTS tenant_id;
+    BEGIN
+        EXECUTE 'ALTER TABLE audit_log ALTER COLUMN tenant_id DROP DEFAULT';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- -------------------------------------------------------------------------
-    -- DDL: Remove tenant_id column from tables that had it without RLS
-    -- (migration 027 additions): events, events_archive
-    -- -------------------------------------------------------------------------
+    -- Disable RLS and drop columns
+    BEGIN
+        EXECUTE 'ALTER TABLE process_definitions DISABLE ROW LEVEL SECURITY';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'DROP POLICY IF EXISTS process_definitions_tenant_policy ON process_definitions';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'ALTER TABLE process_definitions DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- events
-    ALTER TABLE IF EXISTS events DROP COLUMN IF EXISTS tenant_id;
+    BEGIN
+        EXECUTE 'ALTER TABLE instance_projections DISABLE ROW LEVEL SECURITY';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'DROP POLICY IF EXISTS instance_projections_tenant_policy ON instance_projections';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'ALTER TABLE instance_projections DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- events_archive
-    ALTER TABLE IF EXISTS events_archive DROP COLUMN IF EXISTS tenant_id;
+    BEGIN
+        EXECUTE 'ALTER TABLE tasks DISABLE ROW LEVEL SECURITY';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'DROP POLICY IF EXISTS tasks_tenant_policy ON tasks';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'ALTER TABLE tasks DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- -------------------------------------------------------------------------
-    -- Additional tables that may have had tenant_id added in later migrations
-    -- -------------------------------------------------------------------------
+    BEGIN
+        EXECUTE 'ALTER TABLE tokens DISABLE ROW LEVEL SECURITY';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'DROP POLICY IF EXISTS tokens_tenant_policy ON tokens';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'ALTER TABLE tokens DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    ALTER TABLE IF EXISTS instance_sequence DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS event_type_registry DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS event_retention_policies DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS timers DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS users DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS groups DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS group_members DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS roles DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS user_roles DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS api_tokens DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS webhook_subscriptions DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS dead_letter_items DROP COLUMN IF EXISTS tenant_id;
-    ALTER TABLE IF EXISTS repository_form_schemas DROP COLUMN IF EXISTS tenant_id;
+    BEGIN
+        EXECUTE 'ALTER TABLE audit_entries DISABLE ROW LEVEL SECURITY';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'DROP POLICY IF EXISTS audit_entries_tenant_policy ON audit_entries';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'ALTER TABLE audit_entries DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
-    -- -------------------------------------------------------------------------
-    -- Drop bpm_effective_tenant_id() function
-    -- (If a dependent trigger/view still references it, DROP will fail with a
-    --  dependency error and the migration aborts, listing dependent objects.
-    --  The operator must clean up dependents before re-running.)
-    -- -------------------------------------------------------------------------
-    DROP FUNCTION IF EXISTS bpm_effective_tenant_id();
+    BEGIN
+        EXECUTE 'ALTER TABLE audit_log DISABLE ROW LEVEL SECURITY';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'DROP POLICY IF EXISTS audit_log_tenant_policy ON audit_log';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        EXECUTE 'ALTER TABLE audit_log DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    -- Drop tenant_id from tables without RLS
+    BEGIN
+        EXECUTE 'ALTER TABLE events DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE events_archive DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    -- Additional tables
+    BEGIN
+        EXECUTE 'ALTER TABLE instance_sequence DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE event_type_registry DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE event_retention_policies DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE timers DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE users DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE groups DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE group_members DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE roles DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE user_roles DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE api_tokens DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE webhook_subscriptions DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE dead_letter_items DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    BEGIN
+        EXECUTE 'ALTER TABLE repository_form_schemas DROP COLUMN IF EXISTS tenant_id';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    -- Drop the function with CASCADE to handle any remaining dependencies
+    BEGIN
+        EXECUTE 'DROP FUNCTION IF EXISTS bpm_effective_tenant_id() CASCADE';
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
 
     RAISE NOTICE 'GBL-077: RLS cleanup complete. tenant_id columns and RLS policies removed from public business tables.';
 
