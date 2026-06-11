@@ -51,16 +51,18 @@ DROP INDEX IF EXISTS idx_audit_entries_resource_time;
 CREATE INDEX idx_audit_entries_resource_time
     ON audit_entries (resource_type, resource_id, timestamp DESC, audit_id DESC);
 
-DROP INDEX IF EXISTS idx_audit_entries_tenant_resource_time;
-CREATE INDEX idx_audit_entries_tenant_resource_time
-    ON audit_entries (tenant_id, resource_type, resource_id, timestamp DESC, audit_id DESC);
+-- Note: idx_audit_entries_tenant_resource_time is not recreated because
+-- the audit_entries table does not have a tenant_id column in this schema version
 
 -- Create simple index on resource_id for point lookups
 CREATE INDEX IF NOT EXISTS idx_audit_resource
     ON audit_entries (resource_id);
 
 -- Update bpm_audit_resource_info to return TEXT resource_id
-CREATE OR REPLACE FUNCTION bpm_audit_resource_info(
+-- Must drop first because return type is changing
+DROP FUNCTION IF EXISTS bpm_audit_resource_info(text, jsonb, jsonb);
+
+CREATE FUNCTION bpm_audit_resource_info(
     table_name TEXT,
     old_row JSONB,
     new_row JSONB,
