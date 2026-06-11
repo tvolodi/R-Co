@@ -4651,6 +4651,18 @@
       "completed_at": "2026-06-10T02:49:11Z",
       "status": "COMPLETED",
       "stage": "Stage 12"
+    },
+    {
+      "handoff_id": "1a8906a1-cc93-44ca-96c7-279fa94e1947",
+      "file": "handoffs/WF02-iss101-20260611/step-final-backend-dev-merge.json",
+      "run_id": "WF02-iss101-20260611",
+      "workflow_id": "WF-02",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-11T05:14:57Z",
+      "status": "COMPLETED",
+      "stage": "ISS-101 Correctness Remediation"
     }
   ],
   "last_updated": "2026-06-11T06:00:20Z"
