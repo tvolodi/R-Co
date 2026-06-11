@@ -1,0 +1,61 @@
+run_id: WF02-iss101-20260611
+requirement_ids:
+  - ISS-101
+date: "2026-06-11"
+decision: APPROVED
+
+nfr_results:
+  - nfr_id: NFR-01
+    metric: p99_read_ms
+    target: "<=200"
+    actual: 0.679
+    unit: ms
+    passed: true
+  - nfr_id: NFR-01
+    metric: p99_write_ms
+    target: "<=500"
+    actual: 1.338
+    unit: ms
+    passed: true
+  - nfr_id: NFR-02
+    metric: append_throughput_eps
+    target: ">=1000"
+    actual: 119457.527
+    unit: events_per_second
+    passed: true
+  - nfr_id: NFR-04
+    metric: replay_10000_ms
+    target: "<=5000"
+    actual: 40.338
+    unit: ms
+    passed: true
+
+nfr_overall: passed=true
+
+migration_check: PASS
+migration_notes: >
+  Migration 081_iss101_timers_failed_status.sql has numeric order 81, correctly
+  sequenced after GBL-080_env01_tenant_type_field.sql (order 80). The migration
+  runner (migrationOrder function in src/tools/migrate.zig) extracts the numeric
+  prefix from both plain and GBL-prefixed filenames and enforces ascending order.
+  zig build migrate confirmed all migrations already applied — no errors, no
+  out-of-order violations.
+
+build_check: PASS
+
+test_results_summary:
+  total: 4
+  passed: 4
+  failed: 0
+  skipped: 0
+  verdict: PASS
+  source: tests/reports/report-20260611-WF02-iss101-20260611.yaml
+
+issues: []
+
+release_rationale: >
+  ISS-101 extends the timers.status CHECK constraint to include the 'failed' value,
+  enabling the scheduler to move exhausted-retry timers to a terminal FAILED state.
+  All 4 integration tests pass. All NFR benchmarks pass with significant margin.
+  Migration is idempotent, correctly sequenced after GBL-080, and applied cleanly
+  to the test database. Build compiles without errors. No regressions detected.
