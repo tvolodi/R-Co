@@ -15,6 +15,17 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### ISS-103 — Audit Log Resource ID TEXT Support (RELEASED 2026-06-11)
+
+#### ADHOC-iss103-audit-resource-id-20260611 (2026-06-11)
+
+- **Migration GBL-081** (`migrations/GBL-081_iss103_audit_resource_id_text.sql`): Converts `audit_log.resource_id` from UUID to TEXT to support auditing of text-keyed resources (role names, event types, definition names). Includes idempotent column type change and index restructuring with zero downtime via new supporting indexes.
+- **Feature**: `audit_log` table now captures audit events for resources identified by text keys, not just UUID-based resources. Enables comprehensive audit trails for role-based access control changes, event type definitions, and business process definition modifications.
+- **Index efficiency**: New partial indexes `idx_audit_log_resource_text` and `idx_audit_log_entity_text` added for efficient filtering on text-keyed resources by entity type and resource ID.
+- **P1 correctness fix**: Prior code could only audit UUID-keyed resources, creating blind spots in compliance and operational audit logs for role and definition changes.
+- Validation evidence: 4/4 integration tests passing (TC-ISS-103-01 through TC-ISS-103-04). All migration assertions pass: idempotent re-run, concurrent execution safety, no data loss. Test evidence: `tests/reports/report-iss103-20260611-final.yaml`.
+- Requirement: ISS-103 — RELEASED
+
 ### ISS-102 — Tasks Claimed-By Column and Real Claim Path (RELEASED 2026-06-11)
 
 #### WF02-iss102-20260611 (2026-06-11)
