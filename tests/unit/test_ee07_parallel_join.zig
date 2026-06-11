@@ -104,7 +104,7 @@ test "TC-EE-07-05: 3-branch join — all 3 active branches arrive via task_compl
     // --- Step 1: complete t1 → branch_0 token advances to join_gw (wait: 1/3) ---
     const tr1 = try transition_mod.transition(alloc, snap, state0, TransitionEvent{
         .task_completed = .{ .task_node_id = "t1", .output_variables = empty_vars },
-    });
+    }, 1);
     const state1 = tr1.state;
     // join_gw waits: arrived=1, expected=3 — no PARALLEL_JOIN event yet.
     try testing.expectEqual(@as(usize, 0), tr1.emitted_events.len);
@@ -124,7 +124,7 @@ test "TC-EE-07-05: 3-branch join — all 3 active branches arrive via task_compl
     // --- Step 2: complete t2 → branch_1 token advances to join_gw (wait: 2/3) ---
     const tr2 = try transition_mod.transition(alloc, snap, tr1.state, TransitionEvent{
         .task_completed = .{ .task_node_id = "t2", .output_variables = empty_vars },
-    });
+    }, 2);
     const state2 = tr2.state;
     // join_gw still waits: arrived=2, expected=3.
     try testing.expectEqual(@as(usize, 0), tr2.emitted_events.len);
@@ -139,7 +139,7 @@ test "TC-EE-07-05: 3-branch join — all 3 active branches arrive via task_compl
     // --- Step 3: complete t3 → branch_2 token advances to join_gw (fire: 3/3) ---
     const tr3 = try transition_mod.transition(alloc, snap, tr2.state, TransitionEvent{
         .task_completed = .{ .task_node_id = "t3", .output_variables = empty_vars },
-    });
+    }, 3);
     const state3 = tr3.state;
 
     // Join fired: exactly 1 merged token on the outgoing node t4.
@@ -151,7 +151,7 @@ test "TC-EE-07-05: 3-branch join — all 3 active branches arrive via task_compl
 
     // Exactly 1 PARALLEL_JOIN event — join fired exactly once.
     try testing.expectEqual(@as(usize, 1), tr3.emitted_events.len);
-    const join_payload = tr3.emitted_events[0].parallel_join;
+    const join_payload = tr3.emitted_events[0].payload.parallel_join;
     try testing.expectEqualStrings("join_gw", join_payload.join_node_id);
 
     // All 3 branches recorded in branch_ids_arrived.

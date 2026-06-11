@@ -70,7 +70,7 @@ test "TC-EE-05-01: numeric comparison routes to matching branch" {
         .start_node_id = "start",
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
     const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
@@ -115,7 +115,7 @@ test "TC-EE-05-02: string equality routes to matching branch" {
         .start_node_id = "start",
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
     const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
@@ -158,7 +158,7 @@ test "TC-EE-05-03: missing variable causes eval failure, default edge wins" {
         .start_node_id = "start",
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
     const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t2", new_state.tokens[0].node_id);
@@ -200,7 +200,7 @@ test "TC-EE-05-04: all conditions false with no default returns NoMatchingEdge" 
 
     try testing.expectError(
         transition_mod.TransitionError.NoMatchingEdge,
-        transition_mod.transition(alloc, snap, emptyState(), event),
+        transition_mod.transition(alloc, snap, emptyState(), event, 1),
     );
 }
 
@@ -237,7 +237,7 @@ test "TC-EE-05-05: first true condition wins among multiple true conditions" {
         .start_node_id = "start",
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
     const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
@@ -289,7 +289,7 @@ test "EXT-04-UT-03: edge transform merges object result into instance variables"
         .output_variables = out_vars,
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, state, event);
+    const tr = try transition_mod.transition(alloc, snap, state, event, 1);
     const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("next", new_state.tokens[0].node_id);
@@ -334,7 +334,7 @@ test "EXT-04-UT-04: missing transform variable returns CelEvaluationError" {
 
     try testing.expectError(
         transition_mod.TransitionError.CelEvaluationError,
-        transition_mod.transition(alloc, snap, state, event),
+        transition_mod.transition(alloc, snap, state, event, 1),
     );
 }
 
@@ -375,7 +375,7 @@ test "EXT-04-UT-05: non-object transform result returns TransformResultNonObject
 
     try testing.expectError(
         transition_mod.TransitionError.TransformResultNonObject,
-        transition_mod.transition(alloc, snap, state, event),
+        transition_mod.transition(alloc, snap, state, event, 1),
     );
 }
 
@@ -414,7 +414,7 @@ test "EXT-04-UT-06: whitespace-only transform is treated as no-op" {
         .output_variables = out_vars,
     } };
 
-    const tr = try transition_mod.transition(alloc, snap, state, event);
+    const tr = try transition_mod.transition(alloc, snap, state, event, 1);
     const new_state = tr.state;
     try testing.expectEqualStrings("next", new_state.tokens[0].node_id);
     try testing.expect(tr.state.variables.get("k") != null);

@@ -186,6 +186,9 @@ pub fn reconstructInstance(
     for (rows.rows) |row| {
         const event_type = colGet(row, 0);
         const payload_json = colGet(row, 1);
+        // ISS-203: read sequence_number (col 2) to pass as triggering_event_seq.
+        const seq_str = colGet(row, 2);
+        const triggering_seq: i64 = std.fmt.parseInt(i64, seq_str, 10) catch 1;
 
         // EXECUTION_ERROR halts replay immediately; status is set to ERROR and
         // the raw payload JSON is stored as error_detail (design §6).
@@ -207,7 +210,7 @@ pub fn reconstructInstance(
 
         // Apply the pure transition function (zero I/O — anti-pattern check).
         // Discard emitted_events during replay — they were already persisted as event rows.
-        state = (transition_mod.transition(allocator, snapshot, state, te) catch
+        state = (transition_mod.transition(allocator, snapshot, state, te, triggering_seq) catch
             return ReconstructionError.ReplayFailed).state;
     }
 
@@ -299,6 +302,9 @@ pub fn reconstructInstancePointInTime(
     for (rows.rows) |row| {
         const event_type = colGet(row, 0);
         const payload_json = colGet(row, 1);
+        // ISS-203: read sequence_number (col 2) to pass as triggering_event_seq.
+        const seq_str2 = colGet(row, 2);
+        const triggering_seq2: i64 = std.fmt.parseInt(i64, seq_str2, 10) catch 1;
 
         if (std.mem.eql(u8, event_type, "EXECUTION_ERROR")) {
             state.status = .ERROR;
@@ -313,7 +319,7 @@ pub fn reconstructInstancePointInTime(
             error.ParseFailed => return ReconstructionError.ReplayFailed,
         };
 
-        state = (transition_mod.transition(allocator, snapshot, state, te) catch
+        state = (transition_mod.transition(allocator, snapshot, state, te, triggering_seq2) catch
             return ReconstructionError.ReplayFailed).state;
     }
 

@@ -1,0 +1,41 @@
+{
+  "handoff_id": "b201a3ac-c3ce-4281-a0ef-1ad3fc85ab77",
+  "run_id": "WF02-iss203-idempotency-keys-20260611",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-11T19:21:22Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 / ISS-203",
+    "requirement_ids": [
+      "ISS-203"
+    ],
+    "related_handoff_ids": [
+      "b17c3e8c-0c94-4f92-b0ec-6e15657b0e72"
+    ],
+    "artifacts_in": [
+      "tests/specs/ISS-203.md",
+      "tests/integration/iss203_idempotency_keys_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER output for ISS-203. Hard gate - TEST-RUNNER cannot start until PASS.",
+    "acceptance_criteria": [
+      "All 5 ISS-203 test cases have runnable integration tests",
+      "No error.SkipZigTest on MUST tests",
+      "All fixtures use per-test UUIDs",
+      "Tests fail clearly if BPM_TEST_DB_URL absent",
+      "No mocks or HTTP-level fakes"
+    ],
+    "functions_to_call": [
+      "fn:validate-test-specs"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T19:21:22Z",
+  "completed_at": null
+}
