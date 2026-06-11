@@ -1,0 +1,51 @@
+{
+  "handoff_id": "iss106-backend-impl-2a",
+  "run_id": "WF02-iss106-webhook-outbox-20260611",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-iss106-webhook-outbox-20260611/step-2a-backend-dev.json",
+  "created_at": "2026-06-11T13:33:55Z",
+  "started_at": "2026-06-11T13:33:55Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "ISS-106",
+    "stage": "Step 2a \u2014 Implementation",
+    "requirement_ids": [
+      "ISS-106"
+    ],
+    "owned_modules": [
+      "migrations/"
+    ],
+    "artifacts_in": [
+      "src/design/iss-106-webhook-outbox.md",
+      "migrations/010_dlq.sql",
+      "migrations/023_ext02_webhook_event_dispatch.sql",
+      "migrations/025_webhook_delivery_event_id_nullable.sql"
+    ]
+  },
+  "task": {
+    "description": "Implement the ISS-106 webhook_deliveries outbox formalization migration exactly per src/design/iss-106-webhook-outbox.md. Create migrations/084_iss106_webhook_deliveries_outbox.sql (use the next free migration number \u2014 verify by listing migrations/; design references 084). The migration must: (1) ADD COLUMN IF NOT EXISTS attempt INTEGER NOT NULL DEFAULT 0; (2) backfill attempt from attempt_count; (3) remap legacy status values (pending->PENDING, success->DELIVERED, failed->FAILED, exhausted->FAILED) BEFORE adding the CHECK; (4) DROP CONSTRAINT IF EXISTS then ADD CONSTRAINT webhook_deliveries_status_check CHECK (status IN ('PENDING','DELIVERED','FAILED','RETRYING')); (5) CREATE INDEX IF NOT EXISTS idx_wd_status_next_attempt(status, next_attempt_at) \u2014 do not duplicate. Additive only, idempotent, unqualified table names, applies to every tenant schema. NO DROP TABLE/DROP COLUMN. Do NOT modify dispatcher/engine Zig (that is ISS-205). Then run zig build, zig build test, zig build migrate \u2014 all must exit 0. Run zig build 2>&1 | grep -i 'error set' and ensure no output. Commit and push to the feature branch.",
+    "acceptance_criteria": [
+      "migrations/084_iss106_webhook_deliveries_outbox.sql exists and matches the design",
+      "Migration is additive, idempotent, unqualified names; no DROP TABLE/DROP COLUMN",
+      "status remap runs before the CHECK; CHECK domain is exactly (PENDING,DELIVERED,FAILED,RETRYING)",
+      "attempt column added and backfilled from attempt_count",
+      "index (status,next_attempt_at) reconciled via IF NOT EXISTS, not duplicated",
+      "zig build exits 0 with no 'error set' output",
+      "zig build test exits 0",
+      "zig build migrate exits 0 and is idempotent on re-run",
+      "Implementation committed and pushed to feature/WF02-iss106-webhook-outbox-20260611"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
