@@ -348,7 +348,7 @@ test "TC-ISS-202-02: Phase 1 fails on invalid key; no state change, no events" {
         try std.testing.expect(violation != null);
         if (violation) |v| {
             defer alloc.free(v.affected_field);
-            defer alloc.free(v.reason);
+            // v.reason points to a static string literal — do NOT free it.
             defer alloc.free(v.variable_state);
             try std.testing.expectEqualStrings("count", v.affected_field);
         }
@@ -460,7 +460,7 @@ test "TC-ISS-202-03: Phase 1 validates all keys exhaustively" {
         try std.testing.expect(violation != null);
         if (violation) |v| {
             defer alloc.free(v.affected_field);
-            defer alloc.free(v.reason);
+            // v.reason points to a static string literal — do NOT free it.
             defer alloc.free(v.variable_state);
             // Should fail on field2 (second field in iteration)
             try std.testing.expectEqualStrings("field2", v.affected_field);
@@ -664,7 +664,7 @@ test "TC-ISS-202-05: Retry after failure preserves pre-merge state" {
         try std.testing.expectEqual(MergeVariablesError.SchemaViolation, err);
         if (violation) |v| {
             defer alloc.free(v.affected_field);
-            defer alloc.free(v.reason);
+            // v.reason points to a static string literal — do NOT free it.
             defer alloc.free(v.variable_state);
         }
         // Verify that current_vars is unchanged
@@ -961,6 +961,12 @@ test "TC-ISS-202-08: Schema mismatch on key triggers Phase 1 failure" {
     ) catch |err| {
         try std.testing.expectEqual(MergeVariablesError.SchemaViolation, err);
         try std.testing.expect(violation != null);
+        // Free allocator-owned fields of the violation detail.
+        // v.reason is a static string literal and must NOT be freed.
+        if (violation) |v| {
+            alloc.free(v.affected_field);
+            alloc.free(v.variable_state);
+        }
         try conn.exec("ROLLBACK", &.{});
         return;
     };
@@ -1059,6 +1065,12 @@ test "TC-ISS-202-09: Null value where schema requires non-null" {
     ) catch |err| {
         try std.testing.expectEqual(MergeVariablesError.SchemaViolation, err);
         try std.testing.expect(violation != null);
+        // Free allocator-owned fields of the violation detail.
+        // v.reason is a static string literal and must NOT be freed.
+        if (violation) |v| {
+            alloc.free(v.affected_field);
+            alloc.free(v.variable_state);
+        }
         try conn.exec("ROLLBACK", &.{});
         return;
     };
@@ -1493,7 +1505,7 @@ test "TC-ISS-202-INT-03: Merge recovery after timeout" {
         try std.testing.expectEqual(MergeVariablesError.SchemaViolation, err);
         if (violation) |v| {
             defer alloc.free(v.affected_field);
-            defer alloc.free(v.reason);
+            // v.reason points to a static string literal — do NOT free it.
             defer alloc.free(v.variable_state);
         }
         // Verify current_vars is unchanged and ready for retry
