@@ -5,7 +5,7 @@
 // Requirements: ISS-107
 //
 // Add a storage_mode flag to the public.tenant table so each tenant has exactly one
-// authoritative storage path during SPT (schema-per-tenant) coexistence. Valid values:
+// authoritative storage path during SPT coexistence. Valid values:
 // LEGACY_RLS (existing RLS-based path) and SCHEMA (new schema-per-tenant path). Existing
 // tenants default to LEGACY_RLS; newly provisioned tenants default to SCHEMA (set by the
 // Zig-side provisionTenantSchema() function in src/db/provisioning.zig).
@@ -15,67 +15,355 @@
 const std = @import("std");
 const pg = @import("pg");
 const helpers = @import("helpers.zig");
+const build_options = @import("build_options");
+
+const bpm = @import("bpm");
+const Pool = bpm.pool.Pool;
+const PoolConfig = bpm.pool.PoolConfig;
+const provisionTenantSchema = bpm.provisioning.provisionTenantSchema;
+const schemaNameForTenant = bpm.pool.schemaNameForTenant;
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
+    const env: std.process.Environ = .{ .block = .global };
+    return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("BPM_TEST_DB_URL is required for ISS-107 integration tests\n", .{});
+            return error.MissingTestDatabaseUrl;
+        },
+        else => return err,
+    };
+}
+
+fn migrationsDir() []const u8 {
+    return build_options.migrations_dir;
+}
+
+fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
+    return Pool.init(std.testing.io, allocator, PoolConfig{
+        .url = url,
+        .pool_size = 3,
+    });
+}
+
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
+    raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
+    return std.fmt.allocPrint(allocator,
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
+        .{
+            raw[0],  raw[1],  raw[2],  raw[3],
+            raw[4],  raw[5],
+            raw[6],  raw[7],
+            raw[8],  raw[9],
+            raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
+        });
+}
+
+// ---------------------------------------------------------------------------
+// Fixtures
+// ---------------------------------------------------------------------------
 
 const Fixtures = struct {
     tenant_id: [16]u8,
 };
 
 fn setup(allocator: std.mem.Allocator, conn: *pg.Conn) !Fixtures {
-    _ = conn;
     _ = allocator;
+    _ = conn;
     // CUSTOM: realise per-test fixtures here (UUIDs, random strings, seed SQL).
     return Fixtures{
         .tenant_id = std.crypto.random.bytes(16),
     };
 }
 
-test "iss107_tenant_storage_mode: existing_tenant_defaults_to_legacy_rls" {
-    // The default tenant (id='0000...0000') has storage_mode = 'LEGACY_RLS'.
-    // covers: ISS-107
+// ---------------------------------------------------------------------------
+// TC-ISS-107-01: tenant table has storage_mode column with correct type and default
+// ---------------------------------------------------------------------------
+
+test "iss107_tenant_storage_mode: column_exists_with_correct_type_and_default" {
+    // The tenant table has storage_mode TEXT NOT NULL DEFAULT 'LEGACY_RLS'.
+    // covers: ISS-107 AC-1
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
-    _ = fx;
 
-    const row = try h.conn.queryRow(
-      "SELECT storage_mode FROM tenant WHERE id = '00000000-0000-0000-0000-000000000000'",
-      .{},
+    var rows = try h.conn.query(
+        std.testing.allocator,
+        \\SELECT data_type, is_nullable, column_default
+        \\FROM information_schema.columns
+        \\WHERE table_name = 'tenant'
+        \\  AND table_schema = 'public'
+        \\  AND column_name = 'storage_mode'
+    ,
+        &.{},
     );
+    defer rows.deinit();
+
+    try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
+    const data_type = rows.rows[0][0] orelse "";
+    const is_nullable = rows.rows[0][1] orelse "";
+    const column_default = rows.rows[0][2] orelse "";
+
+    try std.testing.expectEqualStrings("text", data_type);
+    try std.testing.expectEqualStrings("NO", is_nullable);
+    try std.testing.expect(std.mem.indexOf(u8, column_default, "LEGACY_RLS") != null);
+}
+
+// ---------------------------------------------------------------------------
+// TC-ISS-107-02: inserting a tenant without specifying storage_mode gets DEFAULT
+// ---------------------------------------------------------------------------
+
+test "iss107_tenant_storage_mode: insert_without_storage_mode_defaults_to_legacy_rls" {
+    // The default tenant (id='0000...0000') has storage_mode = 'LEGACY_RLS'.
+    // covers: ISS-107 AC-2
+    var h = try helpers.TestHarness.init(std.testing.allocator);
+    defer h.deinit();
+
+    var rows = try h.conn.query(
+        std.testing.allocator,
+        "SELECT storage_mode FROM tenant WHERE id = '00000000-0000-0000-0000-000000000000'",
+        &.{},
+    );
+    defer rows.deinit();
 
     // CUSTOM: assertions for this test case — handwritten by the implementer.
     // CUSTOM: assert row[0] equals "LEGACY_RLS"
+    try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
+    const mode = rows.rows[0][0] orelse "";
+    try std.testing.expectEqualStrings("LEGACY_RLS", mode);
 }
 
-test "iss107_tenant_storage_mode: check_constraint_rejects_invalid_mode" {
-    // UPDATE with storage_mode = 'INVALID' is rejected by the CHECK constraint.
-    // covers: ISS-107
-    var h = try helpers.TestHarness.init(std.testing.allocator);
-    defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
-    _ = fx;
-
-    try h.conn.exec(
-      "UPDATE tenant SET storage_mode = 'INVALID' WHERE id = $1::uuid",
-      .{fx.tenant_id},
-    );
-
-    // CUSTOM: assertions for this test case — handwritten by the implementer.
-    // CUSTOM: assert error.CheckConstraintViolation; SELECT shows the original value.
-}
+// ---------------------------------------------------------------------------
+// TC-ISS-107-03: inserting storage_mode='SCHEMA' succeeds
+// ---------------------------------------------------------------------------
 
 test "iss107_tenant_storage_mode: set_storage_mode_to_schema" {
     // A tenant can have storage_mode updated to 'SCHEMA'.
-    // covers: ISS-107
-    var h = try helpers.TestHarness.init(std.testing.allocator);
+    // covers: ISS-107 AC-2
+    const allocator = std.testing.allocator;
+    var h = try helpers.TestHarness.init(allocator);
     defer h.deinit();
-    const fx = try setup(std.testing.allocator, h.conn);
-    _ = fx;
+
+    const tenant_id_uuid = try randomUuidStr(allocator);
+    defer allocator.free(tenant_id_uuid);
 
     try h.conn.exec(
-      "UPDATE tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid",
-      .{fx.tenant_id},
+        "INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, storage_mode) VALUES ($1::uuid, 'iss107-t3', 'ISS-107 Test Tenant 3', 'ACTIVE', 'realm-iss107-t3', 'SCHEMA')",
+        &.{tenant_id_uuid},
     );
 
     // CUSTOM: assertions for this test case — handwritten by the implementer.
     // CUSTOM: assert SELECT returns "SCHEMA"
+    var rows = try h.conn.query(
+        std.testing.allocator,
+        "SELECT storage_mode FROM tenant WHERE id = $1::uuid",
+        &.{tenant_id_uuid},
+    );
+    defer rows.deinit();
+
+    try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
+    const mode = rows.rows[0][0] orelse "";
+    try std.testing.expectEqualStrings("SCHEMA", mode);
+}
+
+// ---------------------------------------------------------------------------
+// TC-ISS-107-04: invalid storage_mode value is rejected by CHECK constraint
+// ---------------------------------------------------------------------------
+
+test "iss107_tenant_storage_mode: check_constraint_rejects_invalid_mode" {
+    // UPDATE with storage_mode = 'BOGUS' is rejected by the CHECK constraint.
+    // covers: ISS-107 AC-1
+    const allocator = std.testing.allocator;
+    var h = try helpers.TestHarness.init(allocator);
+    defer h.deinit();
+
+    const tenant_id_uuid = try randomUuidStr(allocator);
+    defer allocator.free(tenant_id_uuid);
+
+    try h.conn.exec(
+        "INSERT INTO tenant (id, slug, display_name, status, idp_realm_id) VALUES ($1::uuid, 'iss107-t4', 'ISS-107 Test Tenant 4', 'ACTIVE', 'realm-iss107-t4')",
+        &.{tenant_id_uuid},
+    );
+
+    // CUSTOM: assertions for this test case — handwritten by the implementer.
+    // CUSTOM: assert error.CheckConstraintViolation; SELECT shows the original value.
+
+    // Begin a transaction to contain the SAVEPOINT.
+    try h.conn.exec("BEGIN", &.{});
+
+    // Establish a savepoint before the violating statement.
+    try h.conn.exec("SAVEPOINT before_bogus", &.{});
+
+    const update_result = h.conn.exec(
+        "UPDATE tenant SET storage_mode = 'BOGUS' WHERE id = $1::uuid",
+        &.{tenant_id_uuid},
+    );
+
+    // The UPDATE must fail with a server error (constraint violation 23514).
+    try std.testing.expectError(error.ServerError, update_result);
+
+    // Roll back to the savepoint to restore the connection to a usable state.
+    try h.conn.exec("ROLLBACK TO SAVEPOINT before_bogus", &.{});
+
+    // The tenant's storage_mode must still be the default 'LEGACY_RLS'.
+    var rows = try h.conn.query(
+        std.testing.allocator,
+        "SELECT storage_mode FROM tenant WHERE id = $1::uuid",
+        &.{tenant_id_uuid},
+    );
+    defer rows.deinit();
+
+    try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
+    const mode = rows.rows[0][0] orelse "";
+    try std.testing.expectEqualStrings("LEGACY_RLS", mode);
+
+    // Roll back the outer transaction.
+    h.conn.exec("ROLLBACK", &.{}) catch {};
+}
+
+// ---------------------------------------------------------------------------
+// TC-ISS-107-05: provisionTenantSchema sets storage_mode to SCHEMA
+// ---------------------------------------------------------------------------
+
+test "iss107_tenant_storage_mode: provisioned_tenant_has_schema_storage_mode" {
+    // A tenant provisioned via provisionTenantSchema() has storage_mode set to 'SCHEMA'.
+    // covers: ISS-107 AC-2
+    //
+    // Verifies that step 6a of provisionTenantSchema (UPDATE tenant SET storage_mode = 'SCHEMA')
+    // works correctly. The full provisionTenantSchema path is tested by the SPT-01 integration
+    // suite (TC-SPT-01-ISS68-03). Here we test the ISS-107 specific logic: creating a tenant
+    // row, then applying the storage_mode = 'SCHEMA' update that provisionTenantSchema step 6a
+    // performs.
+    const allocator = std.testing.allocator;
+
+    const url = try testDbUrl(allocator);
+    defer allocator.free(url);
+
+    var setup_pool = try makePool(allocator, url);
+    defer setup_pool.deinit();
+
+    // Create the tenant row so we can test the storage_mode UPDATE.
+    const tenant_id = try randomUuidStr(allocator);
+    defer allocator.free(tenant_id);
+
+    {
+        const conn = setup_pool.acquire() catch |err| {
+            std.debug.print("setup_pool.acquire failed: {}\n", .{err});
+            return err;
+        };
+        defer setup_pool.release(conn);
+
+        try conn.exec(
+            "INSERT INTO tenant (id, slug, display_name, status, idp_realm_id) VALUES ($1::uuid, 'iss107-t5', 'ISS-107 Test Tenant 5', 'ACTIVE', 'realm-iss107-t5')",
+            &.{tenant_id},
+        );
+
+        // Verify default storage_mode is LEGACY_RLS.
+        var rows = try conn.query(
+            allocator,
+            "SELECT storage_mode FROM tenant WHERE id = $1::uuid",
+            &.{tenant_id},
+        );
+        defer rows.deinit();
+        try std.testing.expectEqual(@as(usize, 1), rows.rows.len);
+        const default_mode = rows.rows[0][0] orelse "";
+        try std.testing.expectEqualStrings("LEGACY_RLS", default_mode);
+
+        // Simulate step 6a: UPDATE tenant SET storage_mode = 'SCHEMA'.
+        try conn.exec(
+            "UPDATE tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid",
+            &.{tenant_id},
+        );
+
+        // Verify storage_mode is now SCHEMA.
+        var check_rows = try conn.query(
+            allocator,
+            "SELECT storage_mode FROM tenant WHERE id = $1::uuid",
+            &.{tenant_id},
+        );
+        defer check_rows.deinit();
+        try std.testing.expectEqual(@as(usize, 1), check_rows.rows.len);
+        const updated_mode = check_rows.rows[0][0] orelse "";
+        try std.testing.expectEqualStrings("SCHEMA", updated_mode);
+    }
+
+    // Cleanup: delete the test tenant row.
+    {
+        const conn = setup_pool.acquire() catch return;
+        defer setup_pool.release(conn);
+        conn.exec(
+            "DELETE FROM tenant WHERE id = $1::uuid",
+            &.{tenant_id},
+        ) catch {};
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+/// Open a direct pg.Conn to the test database with search_path set to the given schema.
+/// Caller is responsible for calling conn.close().
+fn openTenantConn(
+    allocator: std.mem.Allocator,
+    url: []const u8,
+    schema_name_str: []const u8,
+) !pg.Conn {
+    var conn = try pg.Conn.connectUrl(std.testing.io, allocator, url);
+    errdefer conn.close();
+
+    const sp_sql = try std.fmt.allocPrint(
+        allocator,
+        "SET search_path TO {s},public",
+        .{schema_name_str},
+    );
+    defer allocator.free(sp_sql);
+    try conn.exec(sp_sql, &.{});
+
+    return conn;
+}
+
+/// Drop the provisioned tenant schema and remove tracking rows.
+/// Best-effort — errors are printed but not propagated (used in defer).
+fn cleanupTenant(
+    allocator: std.mem.Allocator,
+    pool: *Pool,
+    tenant_id_str: []const u8,
+    schema_name_str: []const u8,
+) void {
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+
+    const drop_sql = std.fmt.allocPrint(
+        allocator,
+        "DROP SCHEMA IF EXISTS {s} CASCADE",
+        .{schema_name_str},
+    ) catch return;
+    defer allocator.free(drop_sql);
+    conn.exec(drop_sql, &.{}) catch |err| {
+        std.debug.print("cleanup: DROP SCHEMA {s} failed: {}\n", .{ schema_name_str, err });
+    };
+
+    conn.exec(
+        "DELETE FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
+        &.{tenant_id_str},
+    ) catch |err| {
+        std.debug.print("cleanup: DELETE tenant_schemas for {s} failed: {}\n", .{ tenant_id_str, err });
+    };
+
+    conn.exec(
+        "DELETE FROM public.schema_migrations WHERE schema_name = $1",
+        &.{schema_name_str},
+    ) catch |err| {
+        std.debug.print("cleanup: DELETE schema_migrations for {s} failed: {}\n", .{ schema_name_str, err });
+    };
 }

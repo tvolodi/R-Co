@@ -146,6 +146,8 @@ const iss102_claim_integration = @import("iss102_claim_test.zig");
 // ISS-106 — webhook_deliveries transactional-outbox table formalization (attempt column,
 // status CHECK domain, worker-claim index)
 const iss106_webhook_outbox_integration = @import("iss106_webhook_outbox_test.zig");
+// ISS-107 — tenant storage_mode column and schema-per-tenant provisioning
+const iss107_tenant_storage_mode_integration = @import("iss107_tenant_storage_mode_test.zig");
 
 comptime {
     _ = std;
@@ -214,6 +216,7 @@ comptime {
     _ = iss101_timers_failed_status_integration;
     _ = iss102_claim_integration;
     _ = iss106_webhook_outbox_integration;
+    _ = iss107_tenant_storage_mode_integration;
 }
 
 test "integration placeholder" {

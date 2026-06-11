@@ -1,0 +1,66 @@
+run_id: WF02-iss107-storage-mode-20260611
+requirement_ids:
+- ISS-107
+difficulty: 2
+integration_surface: low
+rules_version_used: "1.1"
+estimated_minutes_total: 26
+actual_minutes_total: 27.1
+variance_pct: 4.0
+by_step:
+  code-designer:
+    estimated: 2
+    actual: 2.3
+    variance_pct: 15.8
+  code-design-validator:
+    estimated: 5
+    actual: 0.5
+    variance_pct: -90.7
+  backend-dev:
+    estimated: 6
+    actual: 2.7
+    variance_pct: -55.3
+  test-designer:
+    estimated: 1
+    actual: 5.1
+    variance_pct: 411.7
+  test-design-validator:
+    estimated: 7
+    actual: 1.2
+    variance_pct: -83.6
+  test-runner:
+    estimated: 2
+    actual: 14.1
+    variance_pct: 603.3
+  release-validator:
+    estimated: 1
+    actual: 0.7
+    variance_pct: -31.7
+  doc-updater:
+    estimated: 2
+    actual: 0.6
+    variance_pct: -71.7
+rework_steps:
+- step: 03
+  agent: TEST-DESIGNER
+  rework_count: 1
+  issues:
+  - BLOCKER: Test file not wired into build system
+  - MAJOR: Hardcoded UUIDs instead of randomUuidStr()
+  - MAJOR: CleanupTenant() missing defer wrapper
+- step: 3b
+  agent: TEST-DESIGN-VALIDATOR
+  rework_count: 1
+  issues:
+  - Re-validation after TEST-DESIGNER fixes (all PASS on second attempt)
+rule_adjustments:
+- step: test-runner
+  difficulty: 2
+  old_estimate: 2
+  new_estimate: 4
+  reason: "D2 test-runner actual 14.1 min vs estimated 2 — includes compile-fix overhead from Zig 0.16 API drift. Root cause is codegen template lag, not estimation rules. Monitoring: if next D2 run also exceeds 4 min, adjust further."
+notes:
+- "Test-designer at D2: 5.1 min actual vs 1 estimated (411.7% variance). The rework cycle (build wiring + UUID fixes) drove the overrun. First-time design was under 1 min; rework accounted for ~4 min. This is a known pattern: codegen-generated test files need manual wiring steps."
+- "Test-runner at D2: 14.1 min actual vs 2 estimated (603.3% variance). Three compile errors from Zig 0.16 API drift (std.crypto.random, .{} vs &.{} syntax, removed h.conn.queryRow) were fixed inline. Without compile fixes, test execution was ~2 min."
+- "Code-design-validator, backend-dev, release-validator, doc-updater all ran well under estimate — D2/surface=low is genuinely fast for these steps."
+completed_at: "2026-06-11T14:50:59Z"

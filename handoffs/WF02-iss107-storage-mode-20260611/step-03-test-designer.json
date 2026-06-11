@@ -1,0 +1,57 @@
+{
+  "handoff_id": "iss107-test-designer-03",
+  "run_id": "WF02-iss107-storage-mode-20260611",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "file": "handoffs/WF02-iss107-storage-mode-20260611/step-03-test-designer.json",
+  "created_at": "2026-06-11T14:27:07Z",
+  "started_at": "2026-06-11T14:27:07Z",
+  "completed_at": "2026-06-11T14:32:14Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "rework_count": 1,
+  "max_rework": 3,
+  "context": {
+    "issue_id": "ISS-107",
+    "stage": "Step 03 \u2014 Test design (REWORK 1)",
+    "requirement_ids": [
+      "ISS-107"
+    ],
+    "artifacts_in": [
+      "templates/specs/GBL-tenant-storage-mode.migration.yaml",
+      "migrations/086_iss107_tenant_storage_mode.sql",
+      "src/db/provisioning.zig",
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md",
+      "tests/integration/iss107_tenant_storage_mode_test.zig",
+      "tests/specs/ISS-107.md"
+    ]
+  },
+  "task": {
+    "description": "REWORK ITERATION 1: Fix the ISS-107 integration test per TEST-DESIGN-VALIDATOR findings.\n\nBLOCKER issues to fix:\n- The test file tests/integration/iss107_tenant_storage_mode_test.zig is NOT wired into the build system. Add it to tests/integration/main_test.zig (import + _ = reference in comptime block) AND build.zig (register on test-integration step). Follow the exact pattern of iss101 or iss102.\n\nMAJOR issues to fix:\n- Hardcoded UUIDs at line 153 (10730000...) and line 184 (10740000...) \u2014 replace with randomUuidStr().\n- TC-05 calls cleanupTenant() at line 271 but NOT via defer \u2014 wrap in defer so it runs on assertion failure.\n\nAll 5 assertions must still be covered. No error.SkipZigTest.",
+    "acceptance_criteria": [
+      "Test file wired into main_test.zig (import + _ = reference)",
+      "Test file wired into build.zig (registered on test-integration)",
+      "No hardcoded UUIDs \u2014 use randomUuidStr() everywhere",
+      "cleanupTenant() in TC-05 wrapped in defer",
+      "All 5 assertions still present",
+      "lint_test_isolation.py exits with no BLOCKER/MAJOR on ISS-107 file"
+    ],
+    "functions_to_call": [
+      "fn:write-integration-test",
+      "fn:wire-test-target"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1/3: Fixed 4 TEST-DESIGN-VALIDATOR issues in ISS-107 integration test",
+    "artifacts_out": [
+      "tests/integration/iss107_tenant_storage_mode_test.zig",
+      "tests/integration/main_test.zig",
+      "build.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  }
+}

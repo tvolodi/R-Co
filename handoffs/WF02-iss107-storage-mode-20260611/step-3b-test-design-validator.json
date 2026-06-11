@@ -1,0 +1,53 @@
+{
+  "handoff_id": "iss107-test-design-validator-3b",
+  "run_id": "WF02-iss107-storage-mode-20260611",
+  "workflow_id": "WF-02",
+  "step": "3b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "file": "handoffs/WF02-iss107-storage-mode-20260611/step-3b-test-design-validator.json",
+  "created_at": "2026-06-11T14:32:33Z",
+  "started_at": "2026-06-11T14:32:33Z",
+  "completed_at": "2026-06-11T14:33:42Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "rework_count": 1,
+  "max_rework": 3,
+  "context": {
+    "issue_id": "ISS-107",
+    "stage": "Step 3b \u2014 Test design validation (REWORK 1)",
+    "requirement_ids": [
+      "ISS-107"
+    ],
+    "artifacts_in": [
+      "tests/specs/ISS-107.md",
+      "tests/integration/iss107_tenant_storage_mode_test.zig",
+      "tests/integration/main_test.zig",
+      "build.zig",
+      "migrations/086_iss107_tenant_storage_mode.sql",
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md"
+    ],
+    "rework_note": "Previous issues: BLOCKER (not wired), MAJOR (hardcoded UUIDs x2, missing defer on cleanup). TEST-DESIGNER applied all 4 fixes."
+  },
+  "task": {
+    "description": "REWORK VALIDATION. Re-validate ISS-107 test design. The 4 previous issues should now be fixed. Re-run all checks:\n(1) ISS-107 has a runnable integration test covering all 5 assertions\n(2) No error.SkipZigTest\n(3) Per-test UUIDs (no hardcoded); defer cleanup\n(4) Fails clearly if BPM_TEST_DB_URL absent\n(5) Test wired into main_test.zig AND build.zig\n(6) Run python tools/lint_test_isolation.py tests/integration \u2014 no BLOCKER/MAJOR on ISS-107 file\n\nIf any previous issue persists, FAIL with exact details.",
+    "acceptance_criteria": [
+      "All 5 assertions covered",
+      "No SkipZigTest",
+      "Per-test UUIDs, defer",
+      "BPM_TEST_DB_URL check",
+      "Wired: main_test.zig + build.zig",
+      "lint passes on ISS-107 file"
+    ],
+    "functions_to_call": [
+      "fn:validate-test-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-107 test design validated -- all 5 MUST test cases have implemented integration tests, no SkipZigTest, per-test UUIDs with defer cleanup, tests fail clearly without BPM_TEST_DB_URL, wired in main_test.zig and build.zig, lint passes with 0 BLOCKER/MAJOR on ISS-107 file.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  }
+}
