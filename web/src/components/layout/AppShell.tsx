@@ -2,6 +2,8 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/auth/AuthContext'
 import { ApiConnectivityBanner } from './ApiConnectivityBanner'
+import { TestEnvironmentBanner } from './TestEnvironmentBanner'
+import { useTestEnvironment } from '@/hooks/useTestEnvironment'
 import { dlqApi } from '@/api/dlq'
 import { queryKeys } from '@/api/queryKeys'
 
@@ -32,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppShell() {
   const { session, logout } = useAuth()
+  const { isTestTenant, productionTenantName } = useTestEnvironment()
 
   const dlqThreshold = Number(import.meta.env.VITE_DLQ_ALERT_THRESHOLD ?? '10')
   const { data: dlqSummary } = useQuery({
@@ -48,7 +51,8 @@ export function AppShell() {
   )
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui, sans-serif', paddingTop: isTestTenant ? '40px' : '0' }}>
+      <TestEnvironmentBanner isTestTenant={isTestTenant} productionTenantName={productionTenantName} />
       {/* Sidebar */}
       <aside
         style={{

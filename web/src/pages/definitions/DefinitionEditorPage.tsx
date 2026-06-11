@@ -24,6 +24,7 @@ import NodePalette from '@/components/canvas/NodePalette'
 import PropertyPanel from '@/components/canvas/PropertyPanel'
 import ValidationSummaryBar from '@/components/canvas/ValidationSummaryBar'
 import type { ValidationError } from '@/components/canvas/ValidationSummaryBar'
+import { PromoteToProductionButton } from '@/components/definitions/PromoteToProductionButton'
 
 const DESIGNER_ROLES = ['PROCESS_DESIGNER', 'PLATFORM_ADMIN']
 
@@ -448,6 +449,13 @@ export default function DefinitionEditorPage() {
             >
               Read-only — {def?.status ?? 'UNKNOWN'} status
             </span>
+          )}
+          {!isNew && def && (
+            <PromoteToProductionButton
+              definitionName={def.name}
+              definitionStatus={def.status}
+              onPromoteSuccess={() => {}}
+            />
           )}
         </div>
       </div>

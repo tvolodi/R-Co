@@ -8,6 +8,10 @@ export interface Tenant {
   redirect_uris?: string[]
   status: 'ACTIVE' | 'INACTIVE'
   created_at: string
+  // ENV-04 additions
+  tenant_type: 'production' | 'test'
+  production_tenant_id: string | null
+  production_tenant_display_name: string | null
 }
 
 export interface TenantListResponse {
@@ -32,4 +36,13 @@ export const tenantsApi = {
 
   reactivate: (slug: string) =>
     client.post<Tenant>(`/api/v1/tenants/${slug}/reactivate`, {}),
+
+  getCurrent: () =>
+    client.get<Tenant>('/api/v1/tenants/current'),
+
+  promote: (testTenantId: string, definitionName: string) =>
+    client.post<{ promoted_definition_id: string }>(
+      `/api/v1/tenants/${testTenantId}/promote/${definitionName}`,
+      {},
+    ),
 }

@@ -5,7 +5,7 @@
   "from_agent": "ORCH",
   "to_agent": "CODE-DESIGNER",
   "created_at": "2026-06-10T19:37:40Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Stage 14 - Test tenant environment (batch 2 frontend)",
@@ -18,13 +18,21 @@
     ]
   },
   "task": {
-    "description": "Produce design artefact for ENV-04 (Stage 14 frontend test-tenant UI labelling). Read: docs/requirements/ENV-04.md. Classify using templates/lego-catalog.md. Produce src/design/tenant-env-ui.md (Type E prose) covering: persistent TEST ENVIRONMENT banner (yellow, fixed top), paired production tenant name in banner, [TEST] suffix in tenant switcher, Promote to Production button on ProcessDefinition detail (test tenant + ACTIVE only), confirmation modal for promotion action. No implementation code in design.",
+    "description": "Produce design artefact for ENV-04 (Stage 14 frontend test-tenant UI labelling). Read: docs/requirements/ENV-04.md. Classify using templates/lego-catalog.md. Produce src/design/tenant-env-ui.md (Type E prose) covering: persistent TEST ENVIRONMENT banner (yellow, fixed top), paired production tenant name in banner, [TEST] suffix in tenant switcher, Promote to Production button on ProcessDefinition detail (test tenant + ACTIVE only), confirmation modal for promotion action. No implementation code in design.\n\nREWORK 1 \u2014 Fix: add coverage for ENV-04 AC5 (Instance list isolation). Add a prose statement to src/design/tenant-env-ui.md clarifying that Instance list isolation for test tenants is handled at the API/backend level (each API call is scoped to the active tenant via JWT claim + tenant context middleware), so no frontend filtering is required. This satisfies the acceptance criterion without introducing frontend code that duplicates backend enforcement.",
     "acceptance_criteria": [],
     "functions_to_call": []
   },
-  "result": null,
-  "rework_count": 0,
+  "result": {
+    "status": "PASS",
+    "summary": "Design for tenant-env-ui (ENV-04) \u2014 Type E prose. Rework 1: added \u00a79 Instance List Isolation covering ENV-04 AC5. Backend (TNT-03 search_path + JWT tenant context middleware) enforces instance isolation; no frontend filtering required. Lint passes.",
+    "artifacts_out": [
+      "src/design/tenant-env-ui.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 1,
   "max_rework": 3,
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-06-11T02:53:54Z",
+  "completed_at": "2026-06-11T02:55:07Z"
 }

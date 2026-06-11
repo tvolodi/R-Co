@@ -163,7 +163,20 @@ export default function TenantsPage() {
               {(data.items ?? []).map((row) => (
                 <tr key={row.slug} data-testid={`tenant-row-${row.slug}`}>
                   <td style={{ padding: '.5rem .75rem', borderBottom: '1px solid #f1f5f9' }}>{row.slug}</td>
-                  <td style={{ padding: '.5rem .75rem', borderBottom: '1px solid #f1f5f9' }}>{row.display_name}</td>
+                  <td
+                    style={{
+                      padding: '.5rem .75rem',
+                      borderBottom: '1px solid #f1f5f9',
+                      color: row.tenant_type === 'test' ? '#92400e' : undefined,
+                    }}
+                  >
+                    {row.display_name}
+                    {row.tenant_type === 'test' && (
+                      <span data-testid={`tenant-test-badge-${row.slug}`} style={{ marginLeft: '.35rem' }}>
+                        ⚗ [TEST]
+                      </span>
+                    )}
+                  </td>
                   <td style={{ padding: '.5rem .75rem', borderBottom: '1px solid #f1f5f9' }}>{row.idp_realm_id}</td>
                   <td style={{ padding: '.5rem .75rem', borderBottom: '1px solid #f1f5f9' }}>
                     <span
