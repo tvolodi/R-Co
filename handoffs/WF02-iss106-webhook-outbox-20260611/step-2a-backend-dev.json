@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-iss106-webhook-outbox-20260611/step-2a-backend-dev.json",
   "created_at": "2026-06-11T13:33:55Z",
   "started_at": "2026-06-11T13:33:55Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-06-11T13:41:34Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "issue_id": "ISS-106",
@@ -45,7 +45,36 @@
       "fn:check-zig-build"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-106 webhook_deliveries outbox reconciliation migration. Added attempt column (additive alias, attempt_count retained), backfilled from attempt_count, remapped legacy lowercase status values to the uppercase domain before adding the CHECK, replaced the status CHECK with (PENDING,DELIVERED,FAILED,RETRYING), and re-asserted idx_wd_status_next_attempt(status,next_attempt_at) idempotently. Additive only, no DROP TABLE/COLUMN. Numeric slot 084 was already consumed by a concurrent branch (084_iss104_artifact_hash.sql, applied in live dev/test DBs), so the migration uses the next free slot 085 with the iss106 name preserved. No dispatcher/engine Zig modified (ISS-205 out of scope). Reconciled pre-existing cross-branch schema_migrations tracking drift in the local dev and test DBs (recorded on-disk 081/082/083 filenames whose effects were already present via merged main + GBL- sibling variants) so the migrate runner could proceed in-order; this is non-destructive tracking reconciliation, not a schema change.",
+    "artifacts_out": [
+      "migrations/085_iss106_webhook_deliveries_outbox.sql"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Migration uses numeric slot 085 (not 084 as the design references): slot 084 is already occupied in the live dev/test DBs by 084_iss104_artifact_hash.sql from the concurrent feature/WF02-iss104-artifact-hash branch. Per handoff instruction, used the next free number and kept the iss106 name."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Local dev/test DBs carried pre-existing cross-branch schema_migrations tracking drift (iss101/102/103/104 recorded under GBL- prefixed / renumbered versions). Reconciled tracking rows for the public and tenant_default schemas so zig build migrate and zig build test pass in-order. No production data or schema was altered; underlying DDL is idempotent."
+      }
+    ],
+    "validation": {
+      "zig_build": "exit 0",
+      "error_set_check": "no output (clean)",
+      "zig_build_test": "exit 0",
+      "zig_build_migrate": "exit 0 (applied 085 to public dev+test DB)",
+      "migrate_idempotency_rerun": "exit 0 (No new migrations to apply)"
+    },
+    "git_evidence": {
+      "branch": "feature/WF02-iss106-webhook-outbox-20260611",
+      "commit_sha": "c3ce1a319ddf5ec13d542d60dd46b159299b10ab",
+      "push_status": "ok"
+    },
+    "next_action": "Route to TEST-DESIGNER (Step 03)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
