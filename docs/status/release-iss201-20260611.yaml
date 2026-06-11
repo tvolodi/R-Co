@@ -1,0 +1,130 @@
+stage: ISS-201 TransitionResult Return Signature
+run_id: WF02-iss201-event-return-20260611
+date: "2026-06-11"
+timestamp: "2026-06-11T16:53:04Z"
+decision: RELEASED
+requirement_ids:
+  - ISS-201
+
+test_results_summary:
+  overall_status: PASS
+  unit_tests:
+    status: PASS
+    exit_code: 0
+    test_cases:
+      - id: TC-ISS-201-01
+        name: "TIMER entry emits timer_created event in TransitionResult.emitted_events"
+        file: "src/engine/transition.zig (TC-SCH-01-01)"
+        status: PASS
+        coverage: "ISS-201 AC-1"
+      - id: TC-ISS-201-02
+        name: "Sub-process entry emits sub_process_start event in TransitionResult.emitted_events"
+        file: "src/engine/transition.zig (TC-EXT-05-UT-01)"
+        status: PASS
+        coverage: "ISS-201 AC-1"
+      - id: TC-ISS-201-03
+        name: "Parallel split emits parallel_split event with edge_count in TransitionResult.emitted_events"
+        file: "tests/unit/test_engine_apply.zig + src/engine/transition.zig"
+        status: PASS
+        coverage: "ISS-201 AC-1"
+      - id: TC-ISS-201-04
+        name: "Parallel join emits parallel_join event with arrived/cancelled branches in TransitionResult.emitted_events"
+        file: "tests/unit/test_ee07_parallel_join.zig"
+        status: PASS
+        coverage: "ISS-201 AC-1"
+      - id: TC-ISS-201-05
+        name: "Normal node entry produces empty emitted_events"
+        file: "tests/unit/test_engine_apply.zig, tests/unit/test_engine_ee05.zig, tests/unit/service_task_test.zig"
+        status: PASS
+        coverage: "ISS-201 AC-1"
+      - id: TC-ISS-201-06
+        name: "Error path returns error union, no partial TransitionResult.emitted_events"
+        file: "tests/unit/test_engine_ee05.zig"
+        status: PASS
+        coverage: "ISS-201 AC-1"
+      - id: TC-ISS-201-07
+        name: "InstanceState no longer has pending_events field (compile-time enforcement of engine purity)"
+        file: "src/engine/transition.zig"
+        status: PASS
+        coverage: "ISS-201 AC-2"
+  integration_iss201:
+    status: PASS
+    exit_code: 0
+    test_cases:
+      - id: TC-ISS-201-IT-01
+        name: "Trigger event and emitted_events committed atomically in single PostgreSQL transaction"
+        file: "tests/integration/iss201_transition_result_test.zig"
+        status: PASS
+        coverage: "ISS-201 AC-2, ISS-201 AC-3"
+        assertions:
+          - "instance_started event row exists (count=1)"
+          - "timer row created with status=pending (count=1)"
+          - "timer action_config payload contains node_id=WAIT_TIMER"
+          - "instance_projection current_nodes contains WAIT_TIMER"
+  full_suite:
+    passed: 548
+    skipped: 84
+    failed: 0
+    total: 632
+    regression_free: true
+    detail: "All 548 tests pass with zero failures. 84 skipped are pre-existing environment-specific skips (no new skips from ISS-201)."
+
+nfr_results:
+  NFR-01:
+    p99_read_ms:
+      target: "<=200"
+      actual: 1.261
+      unit: ms
+      passed: true
+    p99_write_ms:
+      target: "<=500"
+      actual: 2.397
+      unit: ms
+      passed: true
+  NFR-02:
+    append_throughput_eps:
+      target: ">=1000"
+      actual: 59603.983
+      unit: events_per_second
+      passed: true
+  NFR-04:
+    replay_10000_ms:
+      target: "<=5000"
+      actual: 47.848
+      unit: ms
+      passed: true
+  overall_passed: true
+
+build_check:
+  command: "zig build && zig build test"
+  exit_code: 0
+  status: PASS
+
+migration_check:
+  note: "N/A — no new migrations for ISS-201"
+
+issues: []
+
+ac_coverage_map:
+  - ac: "AC-1 — Signature returns TransitionResult{ state, emitted_events: []Event }"
+    evidence:
+      - TC-ISS-201-01: timer_created event (PASS)
+      - TC-ISS-201-02: sub_process_start event (PASS)
+      - TC-ISS-201-03: parallel_split event (PASS)
+      - TC-ISS-201-04: parallel_join event (PASS)
+      - TC-ISS-201-05: empty emitted_events for normal nodes (PASS)
+      - TC-ISS-201-06: error path, no partial events (PASS)
+    verdict: PASS
+  - ac: "AC-2 — Engine no I/O, no trigger re-append; orchestrator commits trigger+emitted atomically"
+    evidence:
+      - TC-ISS-201-07: InstanceState has no pending_events field (compile-time) (PASS)
+      - TC-ISS-201-IT-01: atomic trigger+emitted commit verified (PASS)
+    verdict: PASS
+  - ac: "AC-3 — All call sites updated; existing behaviour preserved for happy paths"
+    evidence:
+      - "Full suite regression: 548 passed, 0 failed, 0 regressions"
+      - "TC-ISS-201-IT-01: end-to-end pipeline correct (PASS)"
+    verdict: PASS
+
+approved_requirements:
+  - ISS-201

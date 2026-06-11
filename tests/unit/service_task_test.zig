@@ -389,6 +389,9 @@ test "TC-EXT-01-U09: service_task_completed merges response object into instance
     try std.testing.expect(std.mem.indexOf(u8, serialized, "\"untouched\":\"keep\"") != null);
     try std.testing.expectEqual(transition_mod.InstanceStatus.COMPLETED, new_state.status);
     try std.testing.expectEqual(@as(usize, 0), new_state.tokens.len);
+
+    // ISS-201: SERVICE_TASK completed -> END produces no emitted events
+    try std.testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 test "TC-EXT-01-U10: invalid 2xx body is terminal when surfaced by runtime" {

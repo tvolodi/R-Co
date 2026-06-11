@@ -1,0 +1,103 @@
+run_id: WF02-iss201-event-return-20260611
+created_at: '2026-06-11T16:55:01Z'
+rules_version: '1.1'
+requirement_ids:
+  - ISS-201
+
+difficulty: 4
+difficulty_rationale: Engine API signature change: transition() return type restructured; every caller in instance.zig, reconstruction.zig, and all test files must update. The PendingEvent taxonomy must be extracted from InstanceState into TransitionResult while preserving pure-function contract.
+integration_surface: high
+integration_surface_rationale: Touches src/engine/transition.zig, src/engine/instance.zig, src/engine/reconstruction.zig, and all unit/integration test files that call transition(). This is the foundation for EPIC-2 integrity fixes.
+
+steps:
+  - code-designer
+  - code-design-validator
+  - backend-dev
+  - test-designer
+  - test-design-validator
+  - test-runner
+  - release-validator
+  - doc-updater
+
+by_step:
+  code-designer:
+    estimated: 8
+    actual: 4.62
+    variance_pct: -42.2
+  code-design-validator:
+    estimated: 22
+    actual: 3.65
+    variance_pct: -83.4
+  backend-dev:
+    estimated: 9
+    actual: 18.15
+    variance_pct: 101.7
+  test-designer:
+    estimated: 3
+    actual: 0.67
+    variance_pct: -77.7
+  test-design-validator:
+    estimated: 38
+    actual: 0.72
+    variance_pct: -98.1
+  test-runner:
+    estimated: 6
+    actual: 2.3
+    variance_pct: -61.7
+  release-validator:
+    estimated: 2
+    actual: 0.88
+    variance_pct: -56.0
+  doc-updater:
+    estimated: 2
+    actual: 0.82
+    variance_pct: -59.0
+
+totals:
+  estimated_minutes: 90
+  actual_minutes: 31.81
+  variance_minutes: -58.19
+  variance_pct: -64.7
+
+rework_steps:
+  - step: '03'
+    agent: TEST-DESIGNER
+    rework_count: 1
+    issues:
+      - MAJOR: Hardcoded UUID 00000000-0000-0000-0000-000000000099 used as creator_uuid_str constant in integration test
+  - step: 3b
+    agent: TEST-DESIGN-VALIDATOR
+    rework_count: 1
+    issues:
+      - Re-validation after TEST-DESIGNER fix (lint_test_isolation.py confirms clean)
+
+rule_adjustments: []
+
+estimation_rule_update_needed: false
+estimation_rule_update_rationale: >
+  Despite large per-step variances (backend-dev +101.7%, test-design-validator -98.1%),
+  this is the first D4/surface=high run in the dataset. The metrics rule (§6 Step 4)
+  requires ≥2 consecutive runs at the same difficulty level before adjusting
+  estimation_rules.json. All prior ISS retrospectives are at D2 or D3 difficulty.
+  Monitor D4 runs across subsequent ISS-202 through ISS-207 to establish a pattern.
+
+  The large negative variances on code-design-validator (-83.4%), test-design-validator
+  (-98.1%), test-runner (-61.7%), release-validator (-56%), and doc-updater (-59%)
+  all stem from the same root cause: the D4 estimates (22, 38, 6, 2, 2 min) were
+  calibrated for novel design work, but ISS-201's design was already well-understood
+  from the architecture backlog. The validator steps completed in <4 min because there
+  was only a single design artefact to check.
+
+  Backend-dev overran (+101.7%, 18.15 vs 9 min) because the implementation required
+  touching 7 files with 25+ call sites across 3 engine modules and 4 test files, plus
+  running zig build test (531 tests) for verification — a significantly broader scope
+  than the 9-minute estimate assumed for D4.
+
+notes:
+  - "Total actual (31.81 min) is -64.7% below estimate (90 min). The D4 estimates appear inflated for focused architectural refactorings where scope is well-defined."
+  - "Backend-dev took 18.15 min (vs 9 estimated) due to the wide blast radius: 3 engine modules + 4 test files + full 531-test regression run. The delta is dominated by zig build compile + test execution time, not implementation effort."
+  - "Test-designer rework cycle (MAJOR hardcoded UUID) added negligible time (0.67 min actual vs 3 min estimated) because the fix was a one-line replacement."
+  - "Code-design-validator and test-design-validator are structurally fast for single-artefact validation runs; the D4 estimates reflect multi-artefact runs. Consider per-artefact estimation in future metric versions."
+  - "No rule adjustments applied — this is the first D4/surface=high run. Threshold requires ≥2 consecutive runs per docs/agents/metrics.md §6."
+
+completed_at: '2026-06-11T16:55:01Z'

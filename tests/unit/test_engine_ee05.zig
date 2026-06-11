@@ -74,6 +74,9 @@ test "TC-EE-05-01: numeric comparison routes to matching branch" {
     const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
+
+    // ISS-201: EXCLUSIVE_GATEWAY traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -116,6 +119,9 @@ test "TC-EE-05-02: string equality routes to matching branch" {
     const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
+
+    // ISS-201: EXCLUSIVE_GATEWAY traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -156,6 +162,9 @@ test "TC-EE-05-03: missing variable causes eval failure, default edge wins" {
     const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t2", new_state.tokens[0].node_id);
+
+    // ISS-201: EXCLUSIVE_GATEWAY default-edge traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -232,6 +241,9 @@ test "TC-EE-05-05: first true condition wins among multiple true conditions" {
     const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
+
+    // ISS-201: EXCLUSIVE_GATEWAY traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -283,6 +295,9 @@ test "EXT-04-UT-03: edge transform merges object result into instance variables"
     try testing.expectEqualStrings("next", new_state.tokens[0].node_id);
     try testing.expect(tr.state.variables.get("approved") != null);
     try testing.expect(tr.state.variables.get("amount") != null);
+
+    // ISS-201: HUMANTASK task_completed -> next node produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 test "EXT-04-UT-04: missing transform variable returns CelEvaluationError" {
@@ -403,4 +418,7 @@ test "EXT-04-UT-06: whitespace-only transform is treated as no-op" {
     const new_state = tr.state;
     try testing.expectEqualStrings("next", new_state.tokens[0].node_id);
     try testing.expect(tr.state.variables.get("k") != null);
+
+    // ISS-201: whitespace transform (no-op) produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }

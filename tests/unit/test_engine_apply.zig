@@ -82,6 +82,9 @@ test "TC-EE-03-01: HUMAN_TASK node entry populates pending_task_nodes" {
     // pending_task_nodes has the HUMAN_TASK node ID
     try testing.expectEqual(@as(usize, 1), new_state.pending_task_nodes.len);
     try testing.expectEqualStrings("task1", new_state.pending_task_nodes[0]);
+
+    // ISS-201: HUMAN_TASK node entry produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -118,6 +121,9 @@ test "TC-EE-03-02: START node activation does NOT add to pending_task_nodes" {
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
     // Reached END immediately — instance COMPLETED
     try testing.expectEqual(transition_mod.InstanceStatus.COMPLETED, new_state.status);
+
+    // ISS-201: START->END produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -174,6 +180,9 @@ test "TC-EE-03-03: END node activation does NOT add to pending_task_nodes" {
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
     // Instance must be COMPLETED
     try testing.expectEqual(transition_mod.InstanceStatus.COMPLETED, new_state.status);
+
+    // ISS-201: task_completed -> END produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -212,6 +221,9 @@ test "TC-EE-03-04: EXCLUSIVE_GATEWAY activation does NOT add to pending_task_nod
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
     // Reached END — instance COMPLETED
     try testing.expectEqual(transition_mod.InstanceStatus.COMPLETED, new_state.status);
+
+    // ISS-201: EXCLUSIVE_GATEWAY traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -251,6 +263,12 @@ test "TC-EE-03-05: PARALLEL_GATEWAY activation does NOT add to pending_task_node
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
     // Both branches reach END immediately — instance COMPLETED
     try testing.expectEqual(transition_mod.InstanceStatus.COMPLETED, new_state.status);
+
+    // ISS-201: PARALLEL_GATEWAY split emits exactly 1 parallel_split event
+    try testing.expectEqual(@as(usize, 1), tr.emitted_events.len);
+    const split_payload = tr.emitted_events[0].parallel_split;
+    try testing.expectEqualStrings("par", split_payload.source_node_id);
+    try testing.expectEqual(@as(usize, 2), split_payload.edge_count);
 }
 
 // ---------------------------------------------------------------------------

@@ -8,8 +8,8 @@
   "file": "handoffs/WF02-iss201-event-return-20260611/step-2a-backend-dev.json",
   "created_at": "2026-06-11T15:50:06Z",
   "started_at": "2026-06-11T15:50:06Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-06-11T16:08:15Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "issue_id": "ISS-201",
@@ -54,7 +54,32 @@
       "fn:check-zig-build"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-201: transition() now returns TransitionResult{state, emitted_events}. pending_events removed from InstanceState. All 7 source files updated: transition.zig (core), instance.zig (5 callers + freeOwnedTransitionState + persistTimers + startSubProcesses), reconstruction.zig (2 replays), and 4 test files (18 call sites). Build passes, error-set check clean, all 531 tests pass. No migrations required.",
+    "artifacts_out": [
+      "src/engine/transition.zig",
+      "src/engine/instance.zig",
+      "src/engine/reconstruction.zig",
+      "tests/unit/test_engine_apply.zig",
+      "tests/unit/test_engine_ee05.zig",
+      "tests/unit/test_ee07_parallel_join.zig",
+      "tests/unit/service_task_test.zig",
+      "src/design/iss-201-transition-result.md"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-iss201-event-return-20260611",
+      "commit_sha_list": [
+        "16a5b53"
+      ],
+      "remote_branch": "origin/feature/WF02-iss201-event-return-20260611",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-DESIGNER (Step 03)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }

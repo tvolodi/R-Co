@@ -148,6 +148,8 @@ const iss102_claim_integration = @import("iss102_claim_test.zig");
 const iss106_webhook_outbox_integration = @import("iss106_webhook_outbox_test.zig");
 // ISS-107 — tenant storage_mode column and schema-per-tenant provisioning
 const iss107_tenant_storage_mode_integration = @import("iss107_tenant_storage_mode_test.zig");
+// ISS-201 — TransitionResult atomic persistence (trigger + emitted_events)
+const iss201_transition_result_integration = @import("iss201_transition_result_test.zig");
 
 comptime {
     _ = std;
@@ -217,6 +219,7 @@ comptime {
     _ = iss102_claim_integration;
     _ = iss106_webhook_outbox_integration;
     _ = iss107_tenant_storage_mode_integration;
+    _ = iss201_transition_result_integration;
 }
 
 test "integration placeholder" {
