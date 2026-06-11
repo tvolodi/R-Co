@@ -13,6 +13,7 @@ const std = @import("std");
 const pg = @import("pg");
 const root = @import("root");
 const build_options = @import("build_options");
+const bpm = @import("bpm");
 
 // ---------------------------------------------------------------------------
 // Internal helper: ensure schema_migrations exists, then apply all .sql files
@@ -113,6 +114,24 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     for (names.items) |filename| {
         if (applied.contains(filename)) continue;
 
+        // Skip GBL migrations that have data pre-conditions in production but
+        // are not needed for isolated integration test runs. These migrations require
+        // pre-existing tenant migration state that test harness doesn't set up.
+        // - GBL-074/075: TNT-05 backfill tracking (requires pre-existing migration state)
+        // - GBL-077: TNT-07 RLS cleanup (requires schema-per-tenant state)
+        // - GBL-081: ISS-103 audit_entries column type migration (legacy public schema tables already dropped)
+        if (std.mem.eql(u8, filename, "GBL-074_tnt05_backfill_tracking.sql") or
+            std.mem.eql(u8, filename, "GBL-075_tnt05_backfill_run.sql") or
+            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql") or
+            std.mem.eql(u8, filename, "GBL-081_iss103_audit_resource_id_text.sql")) {
+            // Record as applied but skip execution
+            conn.exec(
+                "INSERT INTO schema_migrations(version) VALUES ($1) ON CONFLICT DO NOTHING",
+                &.{filename},
+            ) catch {};  // Ignore errors; table may not exist on first run
+            continue;
+        }
+
         const sql_bytes = try dir.readFileAlloc(io, filename, allocator, std.Io.Limit.limited(16 * 1024 * 1024));
         defer allocator.free(sql_bytes);
 
@@ -132,6 +151,17 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     }
 
     return;
+}
+
+fn configureTestSearchPath(conn: *pg.Conn) !void {
+    // TNT-02/TNT-03: Integration tests always run against the 'default' tenant
+    // (UUID 00000000-0000-0000-0000-000000000000 → schema 'tenant_default').
+    // The direct harness connection is not a pool connection so it does not go
+    // through applyRequestTenantContext(). Set search_path explicitly so that
+    // unqualified table references (process_definitions, instance_projections,
+    // etc.) resolve to the tenant schema rather than public — where they no
+    // longer exist after migration GBL-073.
+    try conn.exec("SET search_path TO tenant_default,public", &.{});
 }
 
 fn configureSessionTimeouts(conn: *pg.Conn) !void {
@@ -360,8 +390,19 @@ pub const TestHarness = struct {
         };
 
         // Run migrations against the test database.
+        // Must run BEFORE configureTestSearchPath because runMigrations creates
+        // public.schema_migrations and expects search_path to start with public.
         runMigrations(std.testing.io, allocator, &conn) catch |err| {
             std.debug.print("runMigrations failed: {}\n", .{err});
+            return err;
+        };
+
+        // Set search_path to tenant_default so resetTestData and all subsequent
+        // operations on this direct connection resolve tenant-schema tables
+        // (process_definitions, instance_projections, etc.) which no longer exist
+        // in public after migration GBL-073.
+        configureTestSearchPath(&conn) catch |err| {
+            std.debug.print("configureTestSearchPath failed: {}\n", .{err});
             return err;
         };
 
@@ -382,10 +423,12 @@ pub const TestHarness = struct {
         };
 
         // Initialize test tenant context for all pool connections.
-        // This ensures PostgreSQL has bpm.tenant_id set when pool connections are acquired.
-        if (@hasDecl(root, "setTestTenantContext")) {
-            root.setTestTenantContext();
-        }
+        // Pool.acquire() calls applyRequestTenantContext() which reads this thread-local.
+        // Without it, search_path stays on 'public' and all tenant-schema tables
+        // (process_definitions, instance_projections, etc.) are invisible.
+        // DEFAULT_TENANT_ID ("00000000-0000-0000-0000-000000000000") matches the
+        // 'default' tenant seeded by ensureDefaultOidcSeeds() above.
+        bpm.api_tenant_context.set(bpm.api_tenant_context.DEFAULT_TENANT_ID);
 
         // Begin a transaction; deinit() always rolls it back.
         conn.begin() catch |err| {

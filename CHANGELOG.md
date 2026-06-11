@@ -15,6 +15,13 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### ISS-202 — Two-Phase All-or-Nothing Variable Merge (RELEASED 2026-06-12)
+
+#### WF02-iss202-20260611 (2026-06-12)
+
+### Fixed
+- **ISS-202** Two-phase all-or-nothing variable merge: Phase 1 now validates all output keys before any state change; Phase 2 applies atomically only when all keys pass. Partial variable merges that left instances in a half-applied state are eliminated. Retry after a merge failure correctly sees the pre-merge state.
+
 ### ISS-107 — Tenant Storage Mode Flag (RELEASED 2026-06-11)
 
 #### WF02-iss107-storage-mode-20260611 (2026-06-11)

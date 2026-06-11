@@ -4148,4 +4148,20 @@ requirements:
     release_run: WF02-iss201-event-return-20260611
     release_decision: docs/status/release-iss201-20260611.yaml
     last_updated: '2026-06-11T16:55:01Z'
-total_requirements: 289
+  ISS-202:
+    status: TESTED
+    stage: correctness
+    priority: MUST
+    title: Two-phase all-or-nothing variable merge
+    implemented_in:
+    - src/engine/instance.zig
+    - tests/unit/test_ee09_merge_variables.zig
+    - tests/integration/ee09_merge_variables_test.zig
+    - tests/integration/iss202_merge_atomicity_test.zig
+    test_spec: tests/specs/ISS-202.md
+    test_run: tests/reports/report-20260612-WF02-iss202-20260611.yaml
+    release_decision: docs/status/release-iss202-20260612.yaml
+    implemented_in_run: WF02-iss202-20260611
+    tested_at: '2026-06-12'
+    last_updated: '2026-06-12T00:00:00Z'
+total_requirements: 290

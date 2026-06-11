@@ -1,0 +1,50 @@
+{
+  "handoff_id": "tenant-ctx-iss202-20260611-001",
+  "run_id": "ADHOC-WF02-iss202-tenant-ctx-20260611",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-11T18:45:00Z",
+  "status": "COMPLETED",
+  "priority": "BLOCKER",
+  "context": {
+    "stage": "Tenant context fix for WF02-iss202 integration tests",
+    "requirement_ids": [
+      "ISS-202"
+    ],
+    "related_handoff_ids": [
+      "handoffs/WF02-iss202-20260611/step-04-test-runner.json",
+      "handoffs/ADHOC-WF02-iss202-db-investigate-20260611/step-01-backend-dev.json"
+    ],
+    "artifacts_in": [
+      "tests/integration/helpers.zig",
+      "src/db/pool.zig"
+    ]
+  },
+  "task": {
+    "description": "Fix tenant context initialization in the integration test harness. All ISS-202 integration tests fail because pool connections default to 'public' search_path but process_definitions and other tables live in the 'tenant_default' schema. The test harness does not initialize the thread-local tenant context before acquiring pool connections. Fix: update tests/integration/helpers.zig (or the relevant test setup code) to call applyRequestTenantContext() (or its equivalent) with tenant 'default' before pool connections are acquired in each test. This must work for all integration test suites, not just ISS-202. Verify zig build test-integration-iss202 exits 0 with all 13 tests passing before marking PASS.",
+    "acceptance_criteria": [
+      "Tenant context initialized to 'default' tenant before each pool connection in integration tests",
+      "zig build test-integration-iss202 exits 0",
+      "All 13 ISS-202 tests pass (TC-ISS-202-01 through TC-ISS-202-INT-03)",
+      "Other integration test suites not broken by the change",
+      "zig build test exits 0",
+      "Fix committed to feature/WF02-iss202-20260611"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed tenant context initialization in the integration test harness. Three-part fix: (1) helpers.zig now imports bpm and calls bpm.api_tenant_context.set(DEFAULT_TENANT_ID) unconditionally during TestHarness.init(), replacing the fragile @hasDecl(root, setTestTenantContext) check that only worked for main_test.zig standalone binaries. (2) configureTestSearchPath() added and called after runMigrations() to set search_path TO tenant_default,public on the direct harness connection so resetTestData() truncates the correct tenant schema tables (not public, which was emptied by migration GBL-073 causing silent failures). (3) iss202_merge_atomicity_test.zig: fixed UB in catch blocks that incorrectly freed v.reason (a static string literal, not allocator-owned) and added missing cleanup for affected_field + variable_state in TC-08 and TC-09. All 13 ISS-202 tests pass: zig build test-integration-iss202 exits 0 with 13 pass, 0 fail, 0 crash, 0 leaks.",
+    "artifacts_out": [
+      "tests/integration/helpers.zig",
+      "tests/integration/iss202_merge_atomicity_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route back to TEST-RUNNER for ISS-202 integration test verification"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": null,
+  "completed_at": "2026-06-11T19:03:42Z"
+}

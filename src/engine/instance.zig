@@ -1853,17 +1853,19 @@ pub const InstanceStore = struct {
     // mergeVariables  (EE-09)
     // -----------------------------------------------------------------------
 
-    /// Merge `output_variables` into `current_vars` using the EE-09 three-path
-    /// collision policy:
-    ///   1. Schema validation: if a schema exists for the key and the value
-    ///      fails, set `violation_out` and return SchemaViolation.
-    ///   2. VARIABLE_OVERWRITTEN: if the key already exists in current_vars,
-    ///      record an overwrite event (key, old_value, new_value).
-    ///   3. New variable: no collision record needed.
+    /// Merge `output_variables` into `current_vars` using ISS-202 two-phase merge:
+    ///   Phase 1: Validate ALL output variables (schema checks, collision detection)
+    ///     with NO state change. On any failure, return early with violation.
+    ///   Phase 2: Apply all validated keys and emit VARIABLE_OVERWRITTEN events
+    ///     only if Phase 1 succeeds. On failure, leave variables untouched.
     ///
     /// On success, returns a `MergeVariablesResult` with:
     ///   - `merged`: shallow-cloned map with all output_variables applied
     ///   - `overwritten_events`: caller-owned slice (allocated with `allocator`)
+    ///
+    /// On failure (SchemaViolation), no state is modified:
+    ///   - violation_out.* is populated with affected_field, reason, and pre-merge variable_state
+    ///   - merged is undefined (may be partially populated); caller must not use it
     ///
     /// Must be called inside an open transaction (conn must have BEGIN'd).
     /// Issues one SELECT on `variable_schemas`; no writes.
@@ -1923,12 +1925,15 @@ pub const InstanceStore = struct {
             }
         }
 
-        // Clone current_vars so we can update entries in place.
-        var merged = current_vars.clone(allocator) catch return MergeVariablesError.OutOfMemory;
-        errdefer merged.deinit(allocator);
+        // ─────────────────────────────────────────────────────────────────────
+        // PHASE 1: VALIDATION (pure computation, no state modification)
+        // ─────────────────────────────────────────────────────────────────────
+        // Validate ALL keys before any merge. If any validation fails,
+        // return immediately with violation (no state change, no event emission).
 
         var overwritten = std.ArrayList(VariableOverwrittenPayload).empty;
-        errdefer {
+        defer {
+            // Clean up any events allocated during Phase 1 if we error.
             for (overwritten.items) |ev| {
                 allocator.free(ev.key);
                 allocator.free(ev.old_value);
@@ -1942,7 +1947,9 @@ pub const InstanceStore = struct {
             const key = entry.key_ptr.*;
             const new_value = entry.value_ptr.*;
 
-            // Path 1: schema validation.
+            // Schema validation: if a schema exists for the key and the value
+            // fails, populate violation_out and return error.SchemaViolation immediately
+            // (before any state change or event emission).
             if (schema_map.get(key)) |schema_json_str| {
                 var schema_arena = std.heap.ArenaAllocator.init(a);
                 defer schema_arena.deinit();
@@ -1955,6 +1962,8 @@ pub const InstanceStore = struct {
                     const result = json_schema.validate(new_value, schema_parsed.value);
                     if (!result.valid) {
                         // Build violation detail (allocator-owned, caller reads via violation_out).
+                        // Include a stringified snapshot of the PRE-MERGE variables so retry
+                        // will see the correct starting state.
                         const state_json = std.json.Stringify.valueAlloc(
                             allocator,
                             std.json.Value{ .object = current_vars },
@@ -1976,7 +1985,8 @@ pub const InstanceStore = struct {
                 }
             }
 
-            // Path 2: collision — variable already exists in current_vars.
+            // Collision detection: record overwrites if key already exists.
+            // This is info-level (not an error), so we record it for Phase 2.
             if (current_vars.get(key)) |old_val| {
                 const old_json = std.json.Stringify.valueAlloc(allocator, old_val, .{}) catch
                     return MergeVariablesError.OutOfMemory;
@@ -2003,8 +2013,24 @@ pub const InstanceStore = struct {
                     return MergeVariablesError.OutOfMemory;
                 };
             }
+        }
 
-            // Path 2 or 3: apply the new value (cloning the key for the merged map).
+        // Phase 1 succeeded — all validations passed and overwrites recorded.
+
+        // ─────────────────────────────────────────────────────────────────────
+        // PHASE 2: APPLICATION (commit merged state and emit events)
+        // ─────────────────────────────────────────────────────────────────────
+        // Now that Phase 1 succeeded, apply all output variables to the merged map
+        // and prepare the overwritten events for emission.
+
+        var merged = current_vars.clone(allocator) catch return MergeVariablesError.OutOfMemory;
+        errdefer merged.deinit(allocator);
+
+        var it2 = output_variables.iterator();
+        while (it2.next()) |entry| {
+            const key = entry.key_ptr.*;
+            const new_value = entry.value_ptr.*;
+            // Apply the new value (cloning the key for the merged map).
             merged.put(allocator, key, new_value) catch return MergeVariablesError.OutOfMemory;
         }
 
