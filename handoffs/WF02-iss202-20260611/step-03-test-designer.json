@@ -38,11 +38,16 @@
       "tests/integration/iss202_merge_atomicity_test.zig",
       "tests/integration/ee09_merge_variables_test.zig"
     ],
-    "issues": [],
+    "issues": [
+      {
+        "severity": "REWORK",
+        "description": "REWORK 1: Fixed 14 compilation BLOCKERs in iss202_merge_atomicity_test.zig. All errors were Zig API incompatibilities: (1) ObjectMap.deinit() mutability — used @constCast to cast away const from result.merged field (10 occurrences); (2) SchemaViolationDetail type namespace — changed InstanceStore.SchemaViolationDetail to direct import bpm.engine.SchemaViolationDetail (2 occurrences). Tests now compile successfully and are ready for TEST-DESIGN-VALIDATOR gate check."
+      }
+    ],
     "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
   },
-  "rework_count": 0,
+  "rework_count": 1,
   "max_rework": 3,
   "started_at": null,
-  "completed_at": "2026-06-11T17:43:44Z"
+  "completed_at": "2026-06-11T18:08:36Z"
 }
