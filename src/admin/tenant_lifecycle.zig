@@ -15,18 +15,18 @@ const tenant_context_mod = @import("tenant_context");
 // ── Error set ──────────────────────────────────────────────────────────────────
 
 pub const TenantLifecycleError = error{
-    TenantNotFound,             // :test_tenant_id does not exist     → 404
-    NotATestTenant,             // tenant_type != 'test'              → 422
-    TenantHasActiveInstances,   // active process instances exist     → 409
-    SchemaDropFailed,           // DROP SCHEMA CASCADE failed         → 500
-    RealmDeleteFailed,          // Keycloak realm deletion failed     → 500
-    PublicRowDeleteFailed,      // could not remove public table rows → 500
+    TenantNotFound, // :test_tenant_id does not exist     → 404
+    NotATestTenant, // tenant_type != 'test'              → 422
+    TenantHasActiveInstances, // active process instances exist     → 409
+    SchemaDropFailed, // DROP SCHEMA CASCADE failed         → 500
+    RealmDeleteFailed, // Keycloak realm deletion failed     → 500
+    PublicRowDeleteFailed, // could not remove public table rows → 500
     PoolExhausted,
     OutOfMemory,
 };
 
 pub const ResetResult = struct {
-    reset_at: []const u8,             // ISO 8601 UTC timestamp (owned)
+    reset_at: []const u8, // ISO 8601 UTC timestamp (owned)
     tables_truncated: []const []const u8, // list of table names (owned)
 
     pub fn deinit(self: ResetResult, allocator: std.mem.Allocator) void {
@@ -166,7 +166,7 @@ pub fn resetTestTenant(
     }
 
     return ResetResult{
-        .reset_at        = reset_at,
+        .reset_at = reset_at,
         .tables_truncated = tables,
     };
 }

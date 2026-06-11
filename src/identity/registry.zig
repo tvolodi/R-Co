@@ -64,8 +64,8 @@ pub const Tenant = struct {
     idp_realm_id: ?[]const u8,
     created_at: []const u8,
     // ENV-01: test tenant environment
-    tenant_type: []const u8,              // 'production' or 'test'
-    production_tenant_id: ?[]const u8,   // UUID string, non-null only for test tenants
+    tenant_type: []const u8, // 'production' or 'test'
+    production_tenant_id: ?[]const u8, // UUID string, non-null only for test tenants
 
     pub fn deinit(self: Tenant, allocator: std.mem.Allocator) void {
         allocator.free(self.tenant_id);

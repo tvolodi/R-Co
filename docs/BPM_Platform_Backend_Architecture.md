@@ -1,7 +1,19 @@
 # BPM Platform — Backend Architecture Description
 
-**Version:** 0.1-draft · 2026-05-20  
-**Based on:** BPM_Platform_Functional_Requirements.md v0.2-draft
+**Version:** 1.0 · 2026-06-11 (updated)  
+**Based on:** BPM_Platform_Functional_Requirements.md and the implemented codebase through Stage 14  
+**Supersedes:** 0.1-draft (2026-05-20), which described only Stages 1–6.
+
+> **Status of this document.** The original draft covered the single-tenant event-sourcing
+> kernel (Stages 1–6). The platform has since grown substantially: **multi-tenancy** with
+> schema-per-tenant isolation (Stages 6.5, 12, Schema-Per-Tenant Migration), a **pluggable
+> OIDC identity layer** with realm-per-tenant (Stage 6.5, 34 OIDC requirements), **tenant
+> onboarding and lifecycle** automation (Stages F7, F8, 12), an **artifact repository**
+> (Stage 10), and three **sandboxed scripting/extension runtimes** — a custom expression
+> engine, an embedded **Lua** (LuaJIT) engine, and a **WASM** (Wasmtime) engine
+> (Stages 7–9) — plus a **simulation/UAT runtime** (Stage 11) and **test-tenant
+> environments** (Stage 14). Sections 11–15 describe these additions; Sections 1–10
+> retain the original kernel description, with multi-tenancy and identity notes inlined.
 
 ---
 
@@ -27,12 +39,20 @@
 8. [Deployment Model](#8-deployment-model)
 9. [Stage-by-Stage Build Plan](#9-stage-by-stage-build-plan)
 10. [Open Questions & Risks](#10-open-questions--risks)
+11. [Multi-Tenancy & Schema-Per-Tenant Isolation](#11-multi-tenancy--schema-per-tenant-isolation)
+12. [Identity Layer: Pluggable OIDC & Realm-Per-Tenant](#12-identity-layer-pluggable-oidc--realm-per-tenant)
+13. [Tenant Onboarding & Lifecycle](#13-tenant-onboarding--lifecycle)
+14. [Extension Runtimes: Expr, Lua & WASM](#14-extension-runtimes-expr-lua--wasm)
+15. [Artifact Repository & Simulation Runtime](#15-artifact-repository--simulation-runtime)
+16. [Module Map (Current Source Tree)](#16-module-map-current-source-tree)
 
 ---
 
 ## 1. System Overview
 
 The BPM Platform is an event-sourced process execution kernel. Its single responsibility is to faithfully execute directed process graphs while maintaining a tamper-evident, replayable audit trail of every state change. All domain logic (ERP, CRM, HRM) lives above the platform API boundary.
+
+The platform is **multi-tenant**: a single deployment serves many isolated company tenants. Tenant data is isolated at the PostgreSQL schema level (schema-per-tenant), and each tenant authenticates against its own OIDC realm. See [§11](#11-multi-tenancy--schema-per-tenant-isolation) and [§12](#12-identity-layer-pluggable-oidc--realm-per-tenant).
 
 **Core architectural commitments:**
 
@@ -42,6 +62,9 @@ The BPM Platform is an event-sourced process execution kernel. Its single respon
 | Crash safety | Every write is a single atomic PostgreSQL transaction |
 | Pure execution kernel | The transition function `(Snapshot, State, Event) → State` has zero I/O |
 | Platform / application separation | No domain concepts leak below the REST API boundary |
+| Tenant isolation | Each tenant's business data lives in a dedicated PostgreSQL schema (`tenant_<slug>`); cross-tenant reads are structurally impossible, not merely filtered |
+| Pluggable identity | Authentication is delegated to an external OIDC provider (Keycloak adapter shipped) behind a provider interface; one realm per tenant |
+| Sandboxed extensibility | Customer-supplied logic (gateway expressions, service tasks, transformers) runs in resource-bounded Expr / Lua / WASM sandboxes, never in the kernel |
 
 ---
 
@@ -52,9 +75,12 @@ The BPM Platform is an event-sourced process execution kernel. Its single respon
 | Language | **Zig** (latest stable) | Deterministic memory, no GC pauses, explicit control flow |
 | HTTP layer | **http.zig** (karlseguin) | Lightweight, idiomatic Zig, non-blocking I/O |
 | Database driver | **pg.zig** (karlseguin) | Native PostgreSQL binary protocol, prepared statements |
-| Database | **PostgreSQL 15+** | ACID, advisory locks, `SKIP LOCKED` for scheduler, JSONB indexing |
-| Expression evaluator | **CEL (Common Expression Language)** — embedded interpreter | Gateway condition evaluation; no external evaluator process |
-| Configuration | Environment variables | Twelve-factor compatible; validated at startup |
+| Database | **PostgreSQL 15+** | ACID, advisory locks, `SKIP LOCKED` for scheduler, JSONB indexing, schema-per-tenant isolation |
+| Gateway expressions | **Vendored CEL interpreter** (`vendor/cel`) on the live engine path; **custom expression engine** (`src/expr/`) built in parallel | The execution engine currently evaluates gateway edge conditions via `vendor/cel` (`src/engine/transition.zig` imports `cel`). A pure-Zig lexer/parser/AST/evaluator (`src/expr/`) has been built and unit-tested as the intended replacement, but is **not yet wired into the engine path** (see [§14.1](#141-expression-engine-srcexpr-stage-7-dsl) and [§10](#10-open-questions--risks) Q1). |
+| Scripting runtime | **Lua via LuaJIT** (`src/lua/`) | Sandboxed service-task and transformer scripts; capability-gated host API, instruction + memory + wall-clock limiters |
+| WASM runtime | **Wasmtime** (`src/wasm/`) | Sandboxed WebAssembly extension modules; fuel/memory/timeout bounded, pooled instances |
+| Identity / AuthN | **OIDC** via pluggable provider interface; **Keycloak** adapter (`src/identity/provider/`, `src/oidc/`) | One realm per tenant; JIT user provisioning; agent identities |
+| Configuration | Environment variables + config loader (`src/config/`) | Twelve-factor compatible; validated at startup |
 | Serialisation | JSON (stdlib) | API bodies, event payloads, definition graphs |
 | Observability | Prometheus text exposition format | `GET /metrics` scrape target |
 
@@ -149,7 +175,7 @@ Auth/RBAC + ownership check
 Execution Engine (pure)
   │  load InstanceState (from projection cache or event replay)
   │  apply variable collision policy (EE-09)
-  │  evaluate outgoing edge conditions (CEL)
+  │  evaluate outgoing edge conditions (CEL — vendor/cel)
   │  compute NewInstanceState
   │
   ▼
@@ -528,7 +554,7 @@ pub const InstanceState = struct {
 
 **Gateway logic:**
 
-- **EXCLUSIVE_GATEWAY:** Evaluate CEL expressions in declared edge order. Take first `true`. If none match, check for `is_default=true` edge. If still no match → produce `EXECUTION_ERROR`.
+- **EXCLUSIVE_GATEWAY:** Evaluate edge condition expressions (CEL, via `vendor/cel`) in declared edge order. Take first `true`. If none match, check for `is_default=true` edge. If still no match → produce `EXECUTION_ERROR`.
 - **PARALLEL_GATEWAY (split):** Emit one token per outgoing edge simultaneously.
 - **PARALLEL_GATEWAY (join):** Increment join counter. Advance only when counter equals incoming-active-branch count (branches cancelled before reaching join do not count).
 
@@ -545,13 +571,15 @@ for each (key, new_value) in task_output:
         overwrite key → new_value
 ```
 
-**CEL evaluation context:** The variable map is bound to the `variables` identifier in the CEL environment. Expressions access fields via `variables.amount`, `variables.status`, etc. The CEL interpreter is initialised once at startup and reused.
+**CEL evaluation context:** The variable map is bound to the `variables` identifier in the CEL environment. Expressions access fields via `variables.amount`, `variables.status`, etc. Evaluation goes through `cel.evaluate` (`vendor/cel`) at `src/engine/transition.zig`.
 
 **Error recovery (EE-10):** Instances in ERROR status are frozen. The dead letter API (OBS-05) allows operators to supply a `retry` command, which re-presents the last triggering event to the engine, or a `discard` command which terminates the instance as CANCELLED.
 
 ---
 
 ### 6.5 Task Manager
+
+**Implemented in:** `src/tasks/store.zig`
 
 **Responsibility:** Lifecycle management of task records; assignment; completion routing back to the Execution Engine.
 
@@ -625,7 +653,7 @@ startup
 2. Compute SHA-256 hash; store hash in `api_tokens`.
 3. Return plaintext token **once** in the response body — never stored or retrievable again.
 
-**RBAC matrix enforcement:** The permission matrix (Stage 5) is encoded as a static table in the RBAC middleware. Each route handler declares its required `(resource, action)` pair. The middleware checks the intersection of the actor's roles against the allowed roles for that pair.
+**RBAC matrix enforcement:** The permission matrix (Stage 5) is encoded as a static table in `src/api/authorization.zig` (token extraction/validation lives in `src/api/middleware/auth.zig`). Each route handler declares its required `(resource, action)` pair. The authorization layer checks the intersection of the actor's roles against the allowed roles for that pair.
 
 ---
 
@@ -820,12 +848,23 @@ Migrations are applied by the process itself at startup using a `schema_migratio
 
 | Stage | Key deliverables | Zig modules / files |
 |---|---|---|
-| **1** | Event Store, DB schema (001–003), connection pool, health endpoints | `src/db/pool.zig`, `src/event_store/store.zig`, `src/event_store/registry.zig`, `src/api/health.zig`, `migrations/001_*.sql` … `003_*.sql` |
-| **2** | Definition Registry, graph validator, CEL syntax check | `src/definition/registry.zig`, `src/definition/validator.zig`, `src/cel/parser.zig`, `migrations/004_*.sql` |
-| **3** | Execution Engine (pure), instance projection, task manager | `src/engine/transition.zig`, `src/engine/state.zig`, `src/tasks/manager.zig`, `migrations/005_006_*.sql` |
-| **4** | HTTP pipeline, REST routes, auth middleware, pagination | `src/api/server.zig`, `src/api/middleware/auth.zig`, `src/api/middleware/rbac.zig`, `src/api/routes/*.zig`, `src/api/pagination.zig` |
-| **5** | Scheduler, identity registry, RBAC enforcement | `src/scheduler/scheduler.zig`, `src/identity/registry.zig`, `src/identity/tokens.zig`, `migrations/007_008_*.sql` |
+| **1** | Event Store, DB schema (001–003), connection pool, health endpoints | `src/db/pool.zig`, `src/event_store/store.zig`, `src/event_store/registry.zig`, `src/api/routes/health.zig`, `src/api/health/*`, `migrations/001_*.sql` … `003_*.sql` |
+| **2** | Definition Registry, graph validator, CEL syntax check | `src/definition/store.zig`, `src/definition/graph.zig`, `vendor/cel` (CEL parser), `migrations/004_*.sql` |
+| **3** | Execution Engine (pure), instance projection, task manager | `src/engine/transition.zig`, `src/engine/instance.zig`, `src/tasks/store.zig`, `migrations/005_006_*.sql` |
+| **4** | HTTP pipeline, REST routes, auth middleware, pagination | `src/api/api_mod.zig`, `src/api/middleware/auth.zig`, `src/api/authorization.zig` (RBAC), `src/api/routes/*.zig`, `src/api/pagination.zig` |
+| **5** | Scheduler, identity registry, RBAC enforcement | `src/scheduler/scheduler.zig`, `src/identity/registry.zig`, `src/identity/service.zig`, `migrations/007_008_*.sql` |
 | **6** | Observability, webhook dispatcher, DLQ, service task, sub-process | `src/obs/logger.zig`, `src/obs/metrics.zig`, `src/obs/audit.zig`, `src/webhook/dispatcher.zig`, `src/dlq/store.zig`, `src/engine/service_task.zig` |
+| **6.5** | Tenant columns / context (ADP), pluggable OIDC + Keycloak adapter (OIDC) | `src/identity/provider/*`, `src/oidc/*`, `migrations/027`–`037` |
+| **7** | Process-definition DSL (DSL) | `src/definition/*`, `src/expr/*` |
+| **8** | Embedded Lua scripting (LUA), tenant management (TM) | `src/lua/*`, `src/admin/*` |
+| **9** | WASM extension runtime (WASM) | `src/wasm/*` |
+| **10** | Artifact repository (REPO), cross-cutting concerns (XC) | `src/repository/*` |
+| **11** | Simulation / UAT runtime (SIM) | `src/simulation/*` |
+| **F1–F8** | Frontend-driven backend support: shell (SH), instances (IN), task inbox (TK), admin UI (ADM), webhook UI (WH/DLQ), tenant onboarding (ONB), tenant management | `src/api/routes/*`, `src/identity/onboarding.zig`, `src/admin/tenant_lifecycle.zig` |
+| **12** | Schema-per-tenant isolation (TNT), tenant provisioning | `src/db/provisioning.zig`, `migrations/0xx_tnt*` |
+| **13** | Service catalog scoping (SVC) | `src/repository/service_catalog.zig`, `src/definition/service_scope_validator.zig` |
+| **14** | Test-tenant environments (ENV) | `src/admin/*`, `migrations/GBL-080_env01_*` |
+| **SPT** | Schema-per-tenant migration: data copy, RLS removal, regression — **in progress** (SPT-02/03/04 PENDING) | `src/admin/tenant_migration.zig`, `migrations/GBL-077_tnt07_rls_cleanup.sql` |
 
 **Test strategy per stage:**
 
@@ -837,11 +876,246 @@ Migrations are applied by the process itself at startup using a `schema_migratio
 
 ## 10. Open Questions & Risks
 
-| # | Question / Risk | Notes |
+| # | Question / Risk | Status |
 |---|---|---|
-| 1 | **CEL interpreter availability for Zig** | No native Zig CEL library exists as of this writing. Options: (a) port a minimal CEL subset in Zig, (b) embed via C FFI (e.g. `cel-cpp` or `cel-go` via CGo bridge). Needs a spike in Stage 2. |
-| 2 | **JSON Schema validation library for Zig** | Required for event type registry (ES-05) and form schema validation. Same situation as CEL — evaluate FFI vs. pure Zig implementation. |
-| 3 | **Read replica routing** | If read replicas are added (Stage 6+), the DB pool abstraction will need read/write split. Not required for initial stages; flag as an extension point. |
-| 4 | **Sub-process cancellation vs. parent** | Requirements specify child ERROR → parent ERROR. What happens if the parent is cancelled while the child is running? The child should be cancelled too. This bidirectional coupling needs an explicit protocol (not yet specified in requirements). |
-| 5 | **Webhook HMAC secret rotation** | No requirement currently covers rotating HMAC secrets on webhook subscriptions. Should be raised before Stage 6 implementation. |
-| 6 | **OpenAPI generation (API-11)** | "Generated from code" with Zig requires either a custom code-gen step or runtime reflection. The approach (e.g. annotated route macros, separate spec-generation binary) needs design before Stage 4. |
+| 1 | **CEL interpreter availability for Zig** | **Partially resolved.** Gateway conditions currently evaluate on the vendored CEL interpreter (`vendor/cel`) — `src/engine/transition.zig` imports and calls `cel.evaluate`. A pure-Zig expression engine (`src/expr/`) has been built and unit-tested as the intended replacement, but is **not yet wired into the engine path** (no production module imports `expr`). Cutover from `vendor/cel` to `src/expr/` remains open work. |
+| 2 | **JSON Schema validation library for Zig** | **Resolved.** Implemented in-tree (`src/tools/json_schema.zig`) for event type registry (ES-05) and form/variable validation. |
+| 3 | **Read replica routing** | Still open as an extension point. The DB pool abstraction has not been split into read/write; the `db_host` column (TNT-06) lays groundwork for per-tenant DB routing. |
+| 4 | **Sub-process cancellation vs. parent** | Sub-process support landed in EXT-05: `subprocess_links` plus `SUBPROCESS_STARTED`/`SUBPROCESS_COMPLETED` events in `src/engine/instance.zig`. The explicit parent-cancel → child-cancel propagation protocol should be confirmed against the current `instance.zig` cancellation path before relying on it. |
+| 5 | **Webhook HMAC secret rotation** | Still open. Rotation of `hmac_secret` on subscriptions is not yet a requirement. |
+| 6 | **OpenAPI generation (API-11)** | **Resolved.** A runtime spec builder/registry (`src/api/openapi/*`) generates the spec; `src/tools/openapi_gen.zig` emits it at build time. |
+| 7 | **Schema-per-tenant migration completion** | **In progress.** SPT-02/03/04 (data copy into tenant schemas, legacy `tenant_id`/RLS removal, regression) are PENDING. Until done, both the legacy RLS path and the schema-per-tenant path coexist. |
+| 8 | **Per-tenant DB sharding** | Open. `db_host` routing (TNT-06) exists in schema but a single primary still serves all tenants; physically separating high-volume tenants onto distinct DB hosts is unverified at scale. |
+| 9 | **WASM/Lua sandbox escape surface** | Ongoing. The fuel/memory/timeout limiters and capability-gated host APIs are the primary controls; the host-API surface (`src/lua/host_api`, `src/wasm/host_api`) is the trust boundary to keep minimal. |
+
+---
+
+## 11. Multi-Tenancy & Schema-Per-Tenant Isolation
+
+The platform serves many company tenants from one deployment. Isolation evolved in two
+phases: an initial **tenant-column + Row-Level Security (RLS)** model (Stage 6.5, ADP-01..12)
+and the current **schema-per-tenant** model (Stage 12, TNT-01..07). The migration from the
+first to the second is the Schema-Per-Tenant Migration stage (SPT), which is **in progress**
+— both paths currently coexist (see [§10](#10-open-questions--risks), risk 7).
+
+### 11.1 Isolation model
+
+| Layer | Mechanism |
+|---|---|
+| Storage | Each tenant's business tables (definitions, instances, tasks, events, audit, etc.) live in a dedicated PostgreSQL schema `tenant_<slug>`. Global/platform tables (tenant registry, migration tracking) live in `public`. |
+| Provisioning | `src/db/provisioning.zig::provisionTenantSchema` creates the schema and runs the per-tenant migration set (`runForSchema`) for a tenant UUID. The default tenant uses the all-zeros UUID `00000000-…-000000000000`. |
+| Routing | The API resolves a tenant from the request (host/realm/claim → tenant_id, ADP-03) and sets the active schema (`search_path`) for the connection used by that request. |
+| Migrations | Two classes: **GBL-** migrations apply once to `public`; numbered per-tenant migrations apply inside every tenant schema. `runForSchema` skips GBL migrations when provisioning a tenant. |
+
+### 11.2 Tenant context resolution (ADP-03)
+
+A request's tenant is derived, in order of precedence, from: the authenticated principal's
+tenant binding (ADP-04), the OIDC realm/issuer of the token (OIDC, [§12](#12-identity-layer-pluggable-oidc--realm-per-tenant)),
+or the request hostname (custom tenant URLs, UAT Tenant URL stage). The resolved
+`tenant_id` is attached to the request context and used to select the schema and to scope
+every query. Cross-tenant access is structurally impossible because the connection's
+`search_path` only exposes one tenant schema.
+
+### 11.3 Schema-per-tenant migration (SPT — in progress)
+
+| Req | Goal | Status |
+|---|---|---|
+| SPT-01 | Provisioning infrastructure + wire into onboarding saga | RELEASED |
+| SPT-02 | Copy existing rows into tenant schemas; remove RLS | **PENDING** |
+| SPT-03 | Remove legacy `bpm.tenant_id` session variable and `tenant_id` predicates | **PENDING** |
+| SPT-04 | Update test suite; re-run ADP-12 default-tenant regression | **PENDING** |
+
+`src/admin/tenant_migration.zig` drives the data-copy/backfill; `migrations/GBL-077_tnt07_rls_cleanup.sql`
+begins RLS teardown. Until SPT-02..04 complete, the engine and stores still honour the
+legacy RLS predicates as a safety net.
+
+---
+
+## 12. Identity Layer: Pluggable OIDC & Realm-Per-Tenant
+
+The original kernel used local `api_tokens` + a static RBAC matrix ([§6.7](#67-identity--authorization)).
+That remains for service/agent tokens, but **interactive authentication is now delegated to
+an external OIDC provider** behind a provider interface, with **one realm per tenant**.
+
+### 12.1 Provider abstraction
+
+```
+src/identity/provider/
+  interface.zig   ← IdentityProvider vtable: discovery, token validation,
+                     realm/user/client provisioning
+  manager.zig     ← selects + caches the active provider per tenant
+  types.zig, errors.zig
+  adapters/
+    keycloak/     ← production adapter (realm, user, client, admin REST)
+    stub/         ← test adapter (no external dependency)
+```
+
+Route and middleware code depends only on `interface.zig`; swapping Keycloak for another
+OIDC provider is an adapter change. Token validation (`src/api/middleware/auth.zig`) accepts
+both local bearer tokens (api_tokens hot path) and OIDC access tokens (validated against the
+tenant realm's JWKS/issuer).
+
+### 12.2 Realm-per-tenant (OIDC stage, `src/oidc/`)
+
+| Concern | Module |
+|---|---|
+| Realm provisioning / seeding | `realm_provisioning.zig`, `realm_seed.zig` |
+| Realm ↔ tenant binding | `realm_tenant_binding.zig` |
+| JIT user provisioning on first login | `jit_provisioning.zig` |
+| Claim → role/tenant mapping | `claim_mapping.zig`, `tenant_claim_source.zig` |
+| Stable external-identity linkage | `identity_stability.zig` (+ ADP-04a) |
+| Agent (non-human) identities | `agent_lifecycle.zig` (+ ADP-07 reserved usernames) |
+| Realm deletion / teardown | `realm_deletion.zig` |
+| Coexistence with legacy auth during cutover | `coexistence_auth.zig`, `migration_helper.zig` |
+
+Each tenant onboarding provisions a Keycloak realm; users authenticate against their tenant
+realm and are provisioned just-in-time on first successful login. Agent identities use a
+reserved-username convention and the `AGENT` role so automated pipeline actors are
+distinguishable in the audit trail.
+
+---
+
+## 13. Tenant Onboarding & Lifecycle
+
+### 13.1 Onboarding saga (Stage F7, ONB-01..04)
+
+`POST /api/v1/onboarding` (`src/api/routes/onboarding.zig` → `src/identity/onboarding.zig`)
+provisions a tenant end-to-end as a single **idempotent saga**, keyed by an
+`Idempotency-Key` header:
+
+```
+1. Create tenant row (public.tenants)
+2. Provision tenant PostgreSQL schema + run per-tenant migrations   (§11.1)
+3. Provision Keycloak realm + admin user + OIDC client              (§12.2)
+4. Bind custom hostname → tenant
+5. Verify readiness (health probe)
+→ 201 {tenant_id, idp_realm_id, client_id, admin_user_id, oidc_authority, discovery_url, created:true}
+```
+
+Replay with the same `Idempotency-Key` returns `200 {created:false}`. Each step is
+compensatable; a failure rolls back or marks the onboarding for retry rather than leaving a
+half-provisioned tenant. See `src/design/oidc35-onboarding.md`.
+
+### 13.2 Tenant lifecycle & management (Stages F8, 12, 14)
+
+| Capability | Module / Req |
+|---|---|
+| Tenant list / create / edit (admin UI backend) | `src/admin/tenant_lifecycle.zig` (TM-01..05, ADM) |
+| Retroactive schema provisioning + backfill | `migrations/069`–`070`, `src/db/provisioning.zig` |
+| `db_host` column for future per-tenant DB routing | TNT-06, `migrations/GBL-076` |
+| RLS cleanup as schemas take over | TNT-07, `migrations/GBL-077` |
+| Service catalog scoping per tenant | SVC-01..04, `src/repository/service_catalog.zig`, `src/definition/service_scope_validator.zig` |
+| Test-tenant environments (tenant `type` field) | ENV-01/02/03/05, `migrations/GBL-080_env01_tenant_type_field` |
+
+The **tenant `type`** field (ENV-01) distinguishes production tenants from test/UAT tenants,
+which lets the platform apply environment-specific policies (e.g. seeded data, relaxed
+quotas, simulation hooks) without separate deployments.
+
+---
+
+## 14. Extension Runtimes: Expr, Lua & WASM
+
+Customer-supplied logic never runs in the kernel. Three sandboxed runtimes cover three
+levels of expressiveness, all resource-bounded.
+
+### 14.1 Expression engine (`src/expr/`, Stage 7 DSL)
+
+A pure-Zig lexer → parser → AST → evaluator pipeline **intended to replace** the vendored
+CEL interpreter for **gateway edge conditions** and other inline predicates (Open Question 1).
+It is pure, side-effect-free, and exhaustively unit-tested (`src/expr/benchmark.zig` tracks
+evaluation cost). **It is not yet on the live engine path**: as of this revision,
+`src/engine/transition.zig` still imports `cel` (`vendor/cel`) and calls `cel.evaluate` for
+gateway conditions, and no production module imports `src/expr/`. The `expr` module is wired
+into the build only for its own test steps. Cutover is pending.
+
+### 14.2 Lua runtime (`src/lua/`, Stage 8 LUA)
+
+Embedded **LuaJIT** for service-task scripts and variable transformers:
+
+| Control | Module |
+|---|---|
+| Capability gating (what the script may touch) | `capabilities.zig`, `host_api/` |
+| Instruction budget | `instruction_limiter.zig` |
+| Memory ceiling | `memory_limiter.zig` |
+| Wall-clock timeout | `timeout.zig`, `time_source.zig` |
+| Curated stdlib (dangerous functions removed) | `stdlib.zig` |
+| Service-catalog-bound calls | `service_catalog.zig` |
+| Structured logging from scripts | `structured_logger.zig` |
+
+A script that exceeds any limit is terminated and its task is routed to the DLQ.
+
+### 14.3 WASM runtime (`src/wasm/`, Stage 9 WASM)
+
+**Wasmtime**-backed execution of compiled WebAssembly extension modules for the most
+demanding or polyglot extensions:
+
+| Control | Module |
+|---|---|
+| Module registry & versioning | `module_registry.zig` |
+| Instance pooling | `pool.zig`, `instance.zig` |
+| Fuel (CPU) + memory bounds | `engine.zig`, `memory.zig` |
+| Timeout | `timeout.zig` |
+| Capability-gated host imports | `capabilities.zig`, `host_api/` |
+
+The host-API surface in both runtimes is the trust boundary (Open Question 9) and is kept
+deliberately small.
+
+---
+
+## 15. Artifact Repository & Simulation Runtime
+
+### 15.1 Artifact repository (`src/repository/`, Stage 10 REPO/XC)
+
+A content-addressed store for promotable artifacts (definition snapshots, service-catalog
+entries, schemas). Key pieces: `canonicaliser.zig` (deterministic serialisation so identical
+content hashes identically), `artifacts.zig` (hash-referenced storage), `activation.zig`
+(promote/activate a versioned artifact), `service_catalog.zig` and `schemas.zig`. Instances
+reference the artifact hash they executed against (ADP-05), making executions reproducible.
+`src/definition/promotion.zig` drives promotion between environments.
+
+### 15.2 Simulation / UAT runtime (`src/simulation/`, Stage 11 SIM)
+
+Runs business-acceptance scenarios against the real engine with controllable surroundings:
+
+| Concern | Module |
+|---|---|
+| Scenario execution | `scenario_runner.zig`, `runtime.zig`, `context.zig` |
+| Deterministic time / UUIDs | `time_source.zig`, `uuid_source.zig` |
+| Service-call interception (no real outbound calls) | `service_interceptor.zig`, `mock_catalog.zig` |
+| Isolated tenant fixtures | `tenant_store.zig` |
+
+This backs the WF-05 UAT workflow: scenarios advance instances (including timer advancement)
+and assert business outcomes against the audit log, without mocking the engine itself.
+
+---
+
+## 16. Module Map (Current Source Tree)
+
+Top-level `src/` layout as of this revision:
+
+| Path | Responsibility | Doc § |
+|---|---|---|
+| `src/api/` | HTTP server, middleware chain, routes, OpenAPI, pagination, validation | 6.1 |
+| `src/event_store/` | Append-only event log, registry, retention | 6.2 |
+| `src/definition/` | Definition graph, store, snapshot, import/export, promotion, service-scope validation | 6.3, 15 |
+| `src/engine/` | Pure transition function, instance orchestration, reconstruction, service tasks, plugins | 6.4 |
+| `src/tasks/` | Task store / lifecycle | 6.5 |
+| `src/scheduler/` | Timer polling, recurrence, store | 6.6 |
+| `src/identity/` | User/group/token registry, OIDC provider abstraction, onboarding | 6.7, 12, 13 |
+| `src/oidc/` | Realm-per-tenant provisioning, JIT, claim mapping, agent identities | 12 |
+| `src/obs/` | Logging, metrics, audit, timeline, alerts | 6.8 |
+| `src/webhook/` | Outbound webhook dispatch + signing | 6.9 |
+| `src/dlq/` | Dead letter queue store | 6.10 |
+| `src/db/` | Connection pool, migrations, per-tenant provisioning | 7.2, 11 |
+| `src/admin/` | Tenant lifecycle + migration | 13 |
+| `src/expr/` | Expression engine (gateway conditions) | 14.1 |
+| `src/lua/` | LuaJIT scripting sandbox | 14.2 |
+| `src/wasm/` | Wasmtime extension sandbox | 14.3 |
+| `src/repository/` | Content-addressed artifact repository | 15.1 |
+| `src/simulation/` | Scenario / UAT runtime | 15.2 |
+| `src/config/`, `src/config.zig` | Config loading + validation | 7.5 |
+| `src/bootstrap/` | Startup bootstrap (audit) | — |
+| `src/main.zig`, `src/bpm.zig` | Process entry point + top-level wiring | 3 |
+
+**Vendored dependencies** (`vendor/`): `pg` (PostgreSQL driver), `http` (HTTP server), `cel`
+(legacy expression interpreter, superseded by `src/expr/` for new work).

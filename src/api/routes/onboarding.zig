@@ -148,7 +148,8 @@ pub fn handleOnboarding(
             thread.detach();
 
             // Return 201 immediately — the frontend will poll GET for status.
-            const pending_body = std.fmt.allocPrint(allocator,
+            const pending_body = std.fmt.allocPrint(
+                allocator,
                 "{{\"onboarding_id\":\"{s}\"}}",
                 .{onboarding_id},
             ) catch return errorResult(allocator, 500, "internal_error");
@@ -178,12 +179,13 @@ fn dupeOnboardingInput(
     const realm_config: ?onboarding_mod.RealmConfigOverrides = if (src.realm_config) |rc| blk: {
         break :blk onboarding_mod.RealmConfigOverrides{
             .default_token_lifetime_seconds = rc.default_token_lifetime_seconds,
-            .min_password_length            = rc.min_password_length,
-            .require_uppercase              = rc.require_uppercase,
-            .require_digit                  = rc.require_digit,
-            .signing_key_algorithm          = if (rc.signing_key_algorithm) |s|
+            .min_password_length = rc.min_password_length,
+            .require_uppercase = rc.require_uppercase,
+            .require_digit = rc.require_digit,
+            .signing_key_algorithm = if (rc.signing_key_algorithm) |s|
                 try allocator.dupe(u8, s)
-            else null,
+            else
+                null,
         };
     } else null;
 
@@ -196,23 +198,23 @@ fn dupeOnboardingInput(
             break :inner out;
         } else null;
         break :blk onboarding_mod.ClientConfigOverrides{
-            .redirect_uris           = duped_uris,
+            .redirect_uris = duped_uris,
             .service_account_enabled = cc.service_account_enabled,
         };
     } else null;
 
     return onboarding_mod.OnboardingInput{
-        .slug               = try allocator.dupe(u8, src.slug),
-        .display_name       = try allocator.dupe(u8, src.display_name),
-        .admin_email        = try allocator.dupe(u8, src.admin_email),
-        .admin_username     = try allocator.dupe(u8, src.admin_username),
+        .slug = try allocator.dupe(u8, src.slug),
+        .display_name = try allocator.dupe(u8, src.display_name),
+        .admin_email = try allocator.dupe(u8, src.admin_email),
+        .admin_username = try allocator.dupe(u8, src.admin_username),
         .admin_display_name = try allocator.dupe(u8, src.admin_display_name),
-        .hostname           = try allocator.dupe(u8, src.hostname),
-        .realm_config       = realm_config,
-        .client_config      = client_config,
+        .hostname = try allocator.dupe(u8, src.hostname),
+        .realm_config = realm_config,
+        .client_config = client_config,
         // ENV-01
-        .tenant_type            = src.tenant_type,
-        .production_tenant_id   = if (src.production_tenant_id) |s| try allocator.dupe(u8, s) else null,
+        .tenant_type = src.tenant_type,
+        .production_tenant_id = if (src.production_tenant_id) |s| try allocator.dupe(u8, s) else null,
     };
 }
 

@@ -17,23 +17,23 @@ const graph_mod = @import("graph.zig");
 // ── Error set ──────────────────────────────────────────────────────────────────
 
 pub const PromotionError = error{
-    TestTenantNotFound,           // :test_tenant_id does not exist                → 404
-    NotATestTenant,               // tenant_type != 'test'                          → 422
-    ProductionTenantInactive,     // linked production tenant status != 'ACTIVE'   → 409
-    ActiveDefinitionNotFound,     // no ACTIVE definition with given name          → 404
-    MissingDesignerRoleOnTest,    // caller lacks PROCESS_DESIGNER on test tenant  → 403
-    MissingDesignerRoleOnProd,    // caller lacks PROCESS_DESIGNER on prod tenant  → 403
-    ExportFailed,                 //                                                → 500
-    ImportFailed,                 //                                                → 500
-    AuditWriteFailed,             //                                                → 500
+    TestTenantNotFound, // :test_tenant_id does not exist                → 404
+    NotATestTenant, // tenant_type != 'test'                          → 422
+    ProductionTenantInactive, // linked production tenant status != 'ACTIVE'   → 409
+    ActiveDefinitionNotFound, // no ACTIVE definition with given name          → 404
+    MissingDesignerRoleOnTest, // caller lacks PROCESS_DESIGNER on test tenant  → 403
+    MissingDesignerRoleOnProd, // caller lacks PROCESS_DESIGNER on prod tenant  → 403
+    ExportFailed, //                                                → 500
+    ImportFailed, //                                                → 500
+    AuditWriteFailed, //                                                → 500
     PoolExhausted,
     OutOfMemory,
 };
 
 pub const PromotionResult = struct {
-    definition_id: []const u8,   // new definition_id on production tenant (owned)
-    version: []const u8,         // version string (owned)
-    status: []const u8,          // always "DRAFT" (owned)
+    definition_id: []const u8, // new definition_id on production tenant (owned)
+    version: []const u8, // version string (owned)
+    status: []const u8, // always "DRAFT" (owned)
     warnings: []const []const u8, // unresolved service reference names (each owned)
 
     pub fn deinit(self: PromotionResult, allocator: std.mem.Allocator) void {
@@ -144,12 +144,14 @@ pub fn promoteDefinition(
         defer pool.release(conn);
 
         // Security: actor_id bound as $1::uuid — no SQL string interpolation.
+        // Join user_roles → roles to look up by role name (roles.name, not role_name column).
         const row = conn.queryRow(
             allocator,
             \\SELECT EXISTS (
-            \\    SELECT 1 FROM roles
-            \\    WHERE user_id = $1::uuid
-            \\      AND role_name IN ('PROCESS_DESIGNER', 'PLATFORM_ADMIN')
+            \\    SELECT 1 FROM user_roles ur
+            \\    JOIN roles r ON r.id = ur.role_id
+            \\    WHERE ur.user_id = $1::uuid
+            \\      AND r.name IN ('PROCESS_DESIGNER', 'PLATFORM_ADMIN')
             \\) AS has_role
         ,
             &[_][]const u8{actor_id},
@@ -180,12 +182,14 @@ pub fn promoteDefinition(
         };
         defer pool.release(conn);
 
+        // Security: actor_id bound as $1::uuid — no SQL string interpolation.
         const row = conn.queryRow(
             allocator,
             \\SELECT EXISTS (
-            \\    SELECT 1 FROM roles
-            \\    WHERE user_id = $1::uuid
-            \\      AND role_name IN ('PROCESS_DESIGNER', 'PLATFORM_ADMIN')
+            \\    SELECT 1 FROM user_roles ur
+            \\    JOIN roles r ON r.id = ur.role_id
+            \\    WHERE ur.user_id = $1::uuid
+            \\      AND r.name IN ('PROCESS_DESIGNER', 'PLATFORM_ADMIN')
             \\) AS has_role
         ,
             &[_][]const u8{actor_id},
@@ -261,8 +265,19 @@ pub fn promoteDefinition(
         allocator.free(export_doc.description);
         allocator.free(export_doc.exported_at);
         for (export_doc.graph.nodes) |node| {
-            if (@hasDecl(@TypeOf(node), "deinit")) node.deinit(allocator);
+            allocator.free(node.id);
+            if (node.label) |l| allocator.free(l);
+            if (node.attributes) |a| allocator.free(a);
         }
+        allocator.free(export_doc.graph.nodes);
+        for (export_doc.graph.edges) |edge| {
+            allocator.free(edge.id);
+            allocator.free(edge.source);
+            allocator.free(edge.target);
+            if (edge.condition) |c| allocator.free(c);
+            if (edge.transform) |t| allocator.free(t);
+        }
+        allocator.free(export_doc.graph.edges);
     }
 
     // ── Step 5: Import as DRAFT on production tenant ──────────────────────────
@@ -334,9 +349,9 @@ pub fn promoteDefinition(
 
     return PromotionResult{
         .definition_id = new_def_id,
-        .version       = new_def_version,
-        .status        = status_str,
-        .warnings      = warnings,
+        .version = new_def_version,
+        .status = status_str,
+        .warnings = warnings,
     };
 }
 
@@ -400,25 +415,24 @@ fn writePromotionAudit(
     };
     defer pool.release(conn);
 
-    // Build the after_state JSON without string interpolation of user values.
-    // Security: actor_id/$1, resource_id/$2, cross_ref_id/$3, cross_ref_tenant_id/$4 —
-    // all bound as parameters.
+    // Build the after_state JSON in Zig from validated UUID strings.
+    // cross_ref_id and cross_ref_tenant_id are validated UUIDs (hex digits and
+    // dashes only) — safe to interpolate directly into a JSON literal.
+    // This avoids the pg.zig parameter-type-inference failure that occurs when
+    // $N parameters appear inside jsonb_build_object() variadic arguments.
+    const after_state_json = std.fmt.allocPrint(
+        allocator,
+        "{{\"cross_reference_definition_id\":\"{s}\",\"cross_reference_tenant_id\":\"{s}\"}}",
+        .{ cross_ref_id, cross_ref_tenant_id },
+    ) catch return error.OutOfMemory;
+    defer allocator.free(after_state_json);
+
     _ = conn.exec(
         \\INSERT INTO audit_entries (actor_id, action, resource_type, resource_id, after_state)
-        \\VALUES (
-        \\    $1::uuid,
-        \\    'DEFINITION_PROMOTED',
-        \\    'process_definition',
-        \\    $2::uuid,
-        \\    jsonb_build_object(
-        \\        'cross_reference_definition_id', $3,
-        \\        'cross_reference_tenant_id', $4
-        \\    )
-        \\)
+        \\VALUES ($1::uuid, 'DEFINITION_PROMOTED', 'process_definition', $2::uuid, $3::jsonb)
     ,
-        &[_][]const u8{ actor_id, resource_id, cross_ref_id, cross_ref_tenant_id },
+        &[_][]const u8{ actor_id, resource_id, after_state_json },
     ) catch |err| {
-        _ = allocator;
         return switch (err) {
             pool_mod.PoolError.ExhaustedPool => error.PoolExhausted,
             else => error.PersistenceFailed,
@@ -468,7 +482,10 @@ fn uuidToHexStr(allocator: std.mem.Allocator, uuid: graph_mod.Uuid) ![]u8 {
     };
     var pos: usize = 0;
     for (groups, 0..) |g, gi| {
-        if (gi > 0) { out[pos] = '-'; pos += 1; }
+        if (gi > 0) {
+            out[pos] = '-';
+            pos += 1;
+        }
         for (uuid[g.start .. g.start + g.len]) |b| {
             out[pos] = hex[b >> 4];
             out[pos + 1] = hex[b & 0xf];

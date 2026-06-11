@@ -933,6 +933,22 @@ pub fn build(b: *std.Build) void {
     test_integration_svc_step.dependOn(&clean_test_db.step);
     test_integration_svc_step.dependOn(&run_svc_integration_tests.step);
 
+    const env_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/main_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_env_integration_tests = b.addRunArtifact(env_integration_tests);
+    run_env_integration_tests.setCwd(b.path("."));
+    run_env_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
+    const test_integration_env_step = b.step("test-integration-env", "Run Stage 14 ENV-01..ENV-05 integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_env_step.dependOn(&clean_test_db.step);
+    test_integration_env_step.dependOn(&run_env_integration_tests.step);
+
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner
     // ---------------------------------------------------------------------------

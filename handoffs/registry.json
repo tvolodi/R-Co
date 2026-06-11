@@ -3,6 +3,18 @@
   "note": "Active registry \u2014 entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
   "entries": [
     {
+      "handoff_id": "5c4b3112-d508-4cd2-99f8-48d60c607157",
+      "file": "handoffs/ADHOC-env-b1-testfix-20260611/step-01-backend-dev.json",
+      "run_id": "ADHOC-env-b1-testfix-20260611",
+      "workflow_id": "ADHOC",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-11T01:39:05Z",
+      "status": "PENDING",
+      "stage": "Stage 14 ENV batch 1 test fix"
+    },
+    {
       "handoff_id": "65439b00-89d1-4385-a8dc-bfd6e8f0876c",
       "file": "handoffs/WF02-env-batch2-20260610/step-final-backend-dev.json",
       "run_id": "WF02-env-batch2-20260610",
@@ -167,7 +179,7 @@
       "from_agent": "ORCH",
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-06-10T19:37:40Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage 14 - Test tenant environment (batch 1 backend)"
     },
     {
@@ -179,7 +191,7 @@
       "from_agent": "ORCH",
       "to_agent": "TEST-DESIGN-VALIDATOR",
       "created_at": "2026-06-10T19:37:40Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage 14 - Test tenant environment (batch 1 backend)"
     },
     {
@@ -191,7 +203,7 @@
       "from_agent": "ORCH",
       "to_agent": "TEST-DESIGNER",
       "created_at": "2026-06-10T19:37:40Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage 14 - Test tenant environment (batch 1 backend)"
     },
     {
@@ -203,7 +215,7 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-06-10T19:37:40Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "Stage 14 - Test tenant environment (batch 1 backend)"
     },
     {

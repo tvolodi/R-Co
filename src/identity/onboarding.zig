@@ -26,9 +26,9 @@ pub const OnboardingError = error{
     PersistenceFailed,
     OutOfMemory,
     // ENV-01: test tenant environment
-    TestTenantMissingProductionRef,   // → HTTP 422
-    ProductionTenantMustNotHaveRef,   // → HTTP 422
-    InvalidProductionTenantRef,       // production_tenant_id does not exist or is not production → HTTP 422
+    TestTenantMissingProductionRef, // → HTTP 422
+    ProductionTenantMustNotHaveRef, // → HTTP 422
+    InvalidProductionTenantRef, // production_tenant_id does not exist or is not production → HTTP 422
 };
 
 // ── Data types ────────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ pub const OnboardingError = error{
 /// ENV-01: Distinguishes production tenants from test tenants.
 pub const TenantType = enum {
     production,
-    testing,  // DB value: 'test'
+    testing, // DB value: 'test'
 
     pub fn fromString(s: []const u8) ?TenantType {
         if (std.mem.eql(u8, s, "production")) return .production;
@@ -96,8 +96,8 @@ pub const OnboardingInput = struct {
     realm_config: ?RealmConfigOverrides,
     client_config: ?ClientConfigOverrides,
     // ENV-01: test tenant environment
-    tenant_type: TenantType,            // defaults to .production
-    production_tenant_id: ?[]const u8,  // UUID string; required when tenant_type = .test
+    tenant_type: TenantType, // defaults to .production
+    production_tenant_id: ?[]const u8, // UUID string; required when tenant_type = .test
 };
 
 pub const OnboardingResult = struct {

@@ -494,7 +494,9 @@ fn serveRequest(
                     try request.respond(hr.body, .{ .status = @enumFromInt(hr.status_code), .keep_alive = false, .extra_headers = &auth_hdrs });
                     return;
                 },
-                .authenticated => |ctx| { authenticated_ctx = ctx; },
+                .authenticated => |ctx| {
+                    authenticated_ctx = ctx;
+                },
             }
         }
 

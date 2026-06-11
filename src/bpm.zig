@@ -57,3 +57,6 @@ pub const tenant_status = @import("api/middleware/tenant_status.zig"); // TNT-06
 pub const service_catalog = @import("repository/service_catalog.zig"); // SVC-01, SVC-04
 pub const service_scope_validator = @import("definition/service_scope_validator.zig"); // SVC-03
 pub const services_routes = @import("api/routes/services.zig"); // SVC-04
+pub const promotion_mod = @import("definition/promotion.zig"); // ENV-03 definition promotion domain
+pub const promotion_routes = @import("api/routes/promotion.zig"); // ENV-03 promotion HTTP handler
+pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle
