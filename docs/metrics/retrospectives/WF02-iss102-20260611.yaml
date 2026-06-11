@@ -1,0 +1,73 @@
+run_id: WF02-iss102-20260611
+created_at: "2026-06-11T00:00:00Z"
+rules_version: "1.1"
+requirement_ids:
+  - ISS-102
+difficulty: 3
+integration_surface: medium
+
+steps:
+  code-designer:
+    started_at: "2026-06-11T06:21:16Z"
+    completed_at: "2026-06-11T06:25:42Z"
+    estimated_minutes: 32
+    actual_minutes: 4.4
+    variance_pct: -86.2
+  code-design-validator:
+    started_at: "2026-06-11T06:26:09Z"
+    completed_at: "2026-06-11T06:27:25Z"
+    estimated_minutes: 15
+    actual_minutes: 1.3
+    variance_pct: -91.3
+  backend-dev:
+    started_at: "2026-06-11T06:28:56Z"
+    completed_at: "2026-06-11T06:41:02Z"
+    estimated_minutes: 9
+    actual_minutes: 12.1
+    variance_pct: +34.4
+  test-designer:
+    started_at: "2026-06-11T06:42:15Z"
+    completed_at: "2026-06-11T06:54:45Z"
+    estimated_minutes: 8
+    actual_minutes: 12.5
+    variance_pct: +56.3
+  test-design-validator:
+    started_at: "2026-06-11T06:56:09Z"
+    completed_at: "2026-06-11T06:57:40Z"
+    estimated_minutes: 8
+    actual_minutes: 1.5
+    variance_pct: -81.3
+  test-runner:
+    started_at: "2026-06-11T06:59:48Z"
+    completed_at: "2026-06-11T07:31:00Z"
+    estimated_minutes: 4
+    actual_minutes: 31.2
+    variance_pct: +680.0
+  release-validator:
+    started_at: "2026-06-11T07:32:38Z"
+    completed_at: "2026-06-11T07:33:54Z"
+    estimated_minutes: 1
+    actual_minutes: 1.3
+    variance_pct: +26.7
+  doc-updater:
+    started_at: "2026-06-11T07:34:30Z"
+    completed_at: null
+    estimated_minutes: 2
+    actual_minutes: null
+    variance_pct: null
+
+totals:
+  estimated_minutes: 79
+  actual_minutes_excluding_doc_updater: 64.3
+  notes: >
+    test-runner actual (31.2 min) far exceeded estimate (4 min, +680%) due to
+    concurrent-claim test setup requiring tenant-schema context wiring fixes in
+    makePool and concurrent thread helpers. backend-dev and test-designer were
+    slightly over (+34% and +56% respectively). code-designer, code-design-validator,
+    and test-design-validator all ran well under estimate (< 5 min actual vs 8–32 min
+    estimated) reflecting rapid convergence on a well-scoped design.
+
+adjustment_needed: false
+adjustment_reason: >
+  Single run — ≥2 consecutive runs at the same difficulty required before
+  adjusting estimation_rules.json per docs/agents/metrics.md §6.

@@ -74,6 +74,28 @@ def main() -> None:
         print("ERROR: Test database cleanup failed; aborting integration run.", file=sys.stderr)
         sys.exit(1)
 
+    # Clean tenant-schema tables (Stage 12 schema-per-tenant).
+    # Public-schema TRUNCATE does not reach tenant_default.* tables; clean them
+    # separately using a SET search_path so FK-referencing tables are also cleared.
+    TENANT_SCHEMAS = ["tenant_default"]
+    TENANT_TABLES = [
+        "instance_definition_snapshots",
+        "process_events",
+        "tasks",
+        "timers",
+        "instance_projections",
+        "variable_schemas",
+        "process_definitions",
+        "events",
+        "event_store",
+    ]
+    for schema in TENANT_SCHEMAS:
+        tenant_tables_str = ", ".join(TENANT_TABLES)
+        run_psql(
+            f"SET search_path TO {schema},public; "
+            f"TRUNCATE TABLE {tenant_tables_str} CASCADE"
+        )
+
     # Clean tenant rows created by integration tests.
     # ENV-01 added ON DELETE RESTRICT: test tenants must be deleted BEFORE production tenants.
     # Use two-step DELETE to avoid FK violation (test tenant references production tenant).

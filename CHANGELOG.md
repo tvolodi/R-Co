@@ -15,6 +15,18 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased]
 
+### ISS-102 — Tasks Claimed-By Column and Real Claim Path (RELEASED 2026-06-11)
+
+#### WF02-iss102-20260611 (2026-06-11)
+
+- **Migration 082** (`migrations/082_iss102_tasks_claimed_by.sql`): Adds `tasks.claimed_by UUID NULL` column to track the individual worker who claimed a task. Idempotent — guarded with `to_regclass()` and `IF NOT EXISTS` on both column and partial indexes.
+- **Real claim path**: `POST /tasks/:id/claim` now performs an atomic `UPDATE … SET claimed_by=$worker WHERE task_id=$id AND claimed_by IS NULL AND status='PENDING'`. Zero rows affected returns 409 Conflict — covering concurrent double-claim scenarios.
+- **Completion authorization guard**: `handleComplete` now checks `claimed_by` first: only the worker recorded in `claimed_by`, or a USER-assigned `assignee_ref`, may complete a task. All other callers receive 403. The previous broken group-membership path (`assignee_ref IS NULL`) has been removed.
+- **Partial indexes**: `idx_tasks_unclaimed_pool` (`WHERE claimed_by IS NULL AND status='PENDING'`) and `idx_tasks_my_tasks` (`WHERE claimed_by IS NOT NULL`) added per architecture backlog §5.2 for efficient pool-query and per-worker task-list queries.
+- **P0 correctness fix** (ISS-102 from architecture backlog): prior code used `assignee_ref` — the pool/role column set at activation — as the individual-claim guard, making the guard permanently unsatisfiable and leaving no audit trail of who claimed a task.
+- Validation evidence: 8/8 integration tests passing (TC-ISS-102-01 through TC-ISS-102-08). NFR benchmarks: p99_read=0.890ms, p99_write=1.775ms, throughput=57,274 eps, replay_10k=43.204ms — all within targets. Release approval: `docs/status/release-iss102-20260611.yaml`. Test evidence: `tests/reports/report-20260611-WF02-iss102-20260611.yaml`.
+- Requirement: ISS-102 — RELEASED
+
 ### ISS-101 — Scheduler FAILED Status Constraint Fix (RELEASED 2026-06-11)
 
 #### WF02-iss101-20260611 (2026-06-11)
