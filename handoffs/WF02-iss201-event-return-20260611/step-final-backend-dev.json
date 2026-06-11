@@ -7,9 +7,9 @@
   "to_agent": "BACKEND-DEV",
   "file": "handoffs/WF02-iss201-event-return-20260611/step-final-backend-dev.json",
   "created_at": "",
-  "started_at": "",
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-06-11T16:57:07Z",
+  "completed_at": "2026-06-11T16:57:51Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "issue_id": "ISS-201",
@@ -31,7 +31,24 @@
       "fn:verify-repo-clean"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Git-merge complete: ISS-201 squash-merged into main (PR #85, commit be554b5), branch deleted, repo on clean main.",
+    "artifacts_out": [
+      "branch: feature/WF02-iss201-event-return-20260611 (squash-merged into main, branch deleted)",
+      "PR: #85",
+      "merge_commit: be554b5"
+    ],
+    "issues": [],
+    "next_action": "ORCH marks run COMPLETED. ISS-201 RELEASED.",
+    "git_evidence": {
+      "current_branch": "main",
+      "merge_commit": "be554b5",
+      "pr_number": 85,
+      "branch_deleted": true,
+      "working_tree_clean": true
+    }
+  },
   "rework_count": 0,
   "max_rework": 0
 }
