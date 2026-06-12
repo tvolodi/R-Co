@@ -1,0 +1,86 @@
+retrospective:
+  run_id: WF02-iss105-token-model-schema-20260611
+  date: 2026-06-12
+  requirement_ids:
+    - ISS-105
+  epic: EPIC-1
+  difficulty: 3
+  integration_surface: medium
+
+steps:
+  - step: "00"
+    agent: BACKEND-DEV
+    description: git-setup (branch + push)
+    started_at: "2026-06-12T02:45:23Z"
+    completed_at: "2026-06-12T02:45:53Z"
+    duration_minutes: 0.5
+    status: PASS
+
+  - step: "01"
+    agent: CODE-DESIGNER
+    description: Write Type E design artefact
+    started_at: "2026-06-12T02:45:53Z"
+    completed_at: "2026-06-12T02:47:27Z"
+    duration_minutes: 1.6
+    status: PASS
+
+  - step: "01b"
+    agent: CODE-DESIGN-VALIDATOR
+    description: Validate design against ISS-105 criteria
+    started_at: "2026-06-12T02:47:27Z"
+    completed_at: "2026-06-12T02:48:09Z"
+    duration_minutes: 0.7
+    status: PASS
+
+  - step: "02a"
+    agent: BACKEND-DEV
+    description: Implement migration + serde changes
+    started_at: "2026-06-12T02:48:09Z"
+    completed_at: "2026-06-12T02:54:22Z"
+    duration_minutes: 6.2
+    status: PASS
+
+  - step: "03"
+    agent: TEST-DESIGNER
+    description: Write integration tests
+    started_at: "2026-06-12T02:54:22Z"
+    completed_at: "2026-06-12T03:05:30Z"
+    duration_minutes: 11.1
+    status: PASS
+
+  - step: "03b"
+    agent: TEST-DESIGN-VALIDATOR
+    description: Validate test design
+    started_at: "2026-06-12T03:05:30Z"
+    completed_at: "2026-06-12T03:06:28Z"
+    duration_minutes: 1.0
+    status: PASS
+
+  - step: "04"
+    agent: TEST-RUNNER
+    description: Run tests + write report
+    started_at: "2026-06-12T03:06:28Z"
+    completed_at: "2026-06-12T03:11:30Z"
+    duration_minutes: 5.0
+    status: PASS
+
+  - step: "05"
+    agent: RELEASE-VALIDATOR
+    description: Release decision
+    completed_at: "2026-06-12T03:11:30Z"
+    duration_minutes: 0.0
+    status: PASS
+
+  - step: "06"
+    agent: DOC-UPDATER
+    description: Changelog + requirement status + merge
+    completed_at: "2026-06-12T03:11:30Z"
+    duration_minutes: 0.0
+    status: PASS
+
+total_duration_minutes: 26.1
+
+notes:
+  - "Branch switching caused some churn; test file had to be recreated once"
+  - "Test DB clean step required self-healing ADD COLUMN in tests to ensure idempotency across runs"
+  - "Replay round-trip test deferred to ISS-206 (deterministic token IDs)"
