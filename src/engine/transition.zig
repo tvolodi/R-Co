@@ -258,6 +258,46 @@ fn computeEmittedEventKey(
     return std.fmt.allocPrint(allocator, "engine:{x:0>16}", .{h});
 }
 
+// ---------------------------------------------------------------------------
+// ISS-206: Deterministic token_id computation via FNV-1a
+// ---------------------------------------------------------------------------
+
+/// Compute a deterministic token_id for a branch token created at a PARALLEL split.
+///
+/// Formula: FNV-1a-64(
+///   instance_id_raw_bytes || 0x00 ||
+///   gateway_node_id_utf8 || 0x00 ||
+///   edge_index_decimal_utf8 || 0x00 ||
+///   arriving_branch_id_utf8
+/// )
+/// Result string: 16 lowercase hex digits (always exactly 16 chars).
+///
+/// Determinism guarantee: all inputs are replay-stable (instance_id, node_id from
+/// definition graph, edge_index from graph edge ordering, arriving_branch_id from
+/// the deterministic branch_id scheme). Re-running the same split produces identical
+/// token_id values, satisfying the replay invariant.
+fn computeTokenId(
+    allocator: std.mem.Allocator,
+    instance_id: Uuid,
+    gateway_node_id: []const u8,
+    edge_index: usize,
+    arriving_branch_id: []const u8,
+) error{OutOfMemory}![]const u8 {
+    var h = FNV1A_64_OFFSET_BASIS;
+    h = fnv1a64Feed(h, &instance_id);
+    h = fnv1a64Feed(h, &[_]u8{0x00});
+    h = fnv1a64Feed(h, gateway_node_id);
+    h = fnv1a64Feed(h, &[_]u8{0x00});
+    // edge_index as decimal string (variable-length; adequate for small N < 1000)
+    var edge_buf: [20]u8 = undefined;
+    const edge_str = std.fmt.bufPrint(&edge_buf, "{d}", .{edge_index}) catch unreachable;
+    h = fnv1a64Feed(h, edge_str);
+    h = fnv1a64Feed(h, &[_]u8{0x00});
+    h = fnv1a64Feed(h, arriving_branch_id);
+
+    return std.fmt.allocPrint(allocator, "{x:0>16}", .{h});
+}
+
 /// Return the canonical event-type tag string for a PendingEvent variant.
 /// Used as the event_type_tag field in the idempotency key computation.
 fn pendingEventTag(ev: PendingEvent) []const u8 {
