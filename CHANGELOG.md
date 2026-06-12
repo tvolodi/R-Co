@@ -2,6 +2,16 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EPIC-3 / ISS-301+302+303] — 2026-06-12
+
+### Changed
+- **ISS-301 (EPIC-3)**: Removed redundant `pg_try_advisory_xact_lock` from scheduler timer-claim path. `FOR UPDATE SKIP LOCKED` alone guarantees exactly-once claiming across nodes without the advisory overhead.
+- **ISS-302 (EPIC-3)**: Startup missed-timer sweep now guarded by `pg_try_advisory_lock(SCHEDULER_STARTUP_LOCK_ID)`. Only one node sweeps on concurrent restart; all others skip directly to normal polling.
+- **ISS-303 (EPIC-3)**: Timer firing exhaustion routing to DLQ. After `max_timer_fire_retries` (default 3) consecutive fire failures, a timer is moved to `status='failed'` and a `dead_letter_items` entry is created atomically.
+
+### Migrations
+- `092_iss303_timer_fire_error_count.sql` — adds `fire_error_count INTEGER NOT NULL DEFAULT 0` and `failed_at TIMESTAMPTZ NULL` to the `timers` table.
+
 ## [EPIC-2 / ISS-204+206] — 2026-06-12
 
 ### ISS-204: Write audit_log inside the state-change transaction
