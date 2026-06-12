@@ -1,0 +1,47 @@
+stage: EPIC-2 / ISS-204+206
+date: 2026-06-12
+run_id: WF02-iss204-206-20260611
+branch: feature/WF02-iss204-206-20260611
+
+requirements:
+  ISS-204:
+    status: RELEASED
+    summary: Audit log written inside state-change transaction
+    acceptance_criteria:
+      - "Audit INSERT enlisted in handler's transaction"
+      - "Post-handler middleware no longer writes audit"
+      - "before_state/after_state captured in same transaction"
+      - "Crash-safety: audit + event both present or both absent"
+
+  ISS-206:
+    status: RELEASED
+    summary: Engine token multiset + persisted parallel-join counters
+    acceptance_criteria:
+      - "PARALLEL split assigns deterministic token_id"
+      - "JOIN uses persisted join_counters"
+      - "Cancelled branches subtracted from expected count"
+      - "Loop iterations produce unique token_ids"
+      - "Replay reproduces exact token arrangement"
+
+nfr_benchmarks:
+  NFR-01-p99_read_ms: {target: "<=200", actual: 0.757, passed: true}
+  NFR-01-p99_write_ms: {target: "<=500", actual: 1.687, passed: true}
+  NFR-02-append_throughput_eps: {target: ">=1000", actual: 108636.426, passed: true}
+  NFR-04-replay_10000_ms: {target: "<=5000", actual: 32.261, passed: true}
+
+test_results:
+  total: 634
+  passed: 545
+  skipped: 84
+  failed: 5
+  pre_existing_failures: 5
+  new_failures: 0
+
+release_decision: APPROVED
+rationale: >
+  All ISS-204 and ISS-206 acceptance criteria are met. zig build exits 0.
+  zig build test passes 545/634 tests (5 pre-existing auth infra failures,
+  unrelated to these changes). All NFR benchmarks pass. No error set issues.
+  transition.zig remains I/O-free. The 5 auth test failures are pre-existing
+  ServerError issues due to DB unavailability for api_token tests and will
+  be addressed in a separate infrastructure fix.

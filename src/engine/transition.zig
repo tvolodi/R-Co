@@ -309,18 +309,18 @@ fn getJoinCounter(state: InstanceState, node_id: []const u8) JoinCounter {
         .received_count = 0,
         .expected_from_branches = 0,
     };
-    if (val.* != .object) return JoinCounter{
+    if (val != .object) return JoinCounter{
         .received_count = 0,
         .expected_from_branches = 0,
     };
-    const rc = val.*.object.get("received_count");
-    const eb = val.*.object.get("expected_from_branches");
-    const received: u32 = if (rc != null and rc.?.* == .integer)
-        @intCast(rc.?.*.integer)
+    const rc = val.object.get("received_count");
+    const eb = val.object.get("expected_from_branches");
+    const received: u32 = if (rc != null and rc.? == .integer)
+        @intCast(rc.?.integer)
     else
         0;
-    const expected: u32 = if (eb != null and eb.?.* == .integer)
-        @intCast(eb.?.*.integer)
+    const expected: u32 = if (eb != null and eb.? == .integer)
+        @intCast(eb.?.integer)
     else
         0;
     return JoinCounter{
@@ -329,25 +329,31 @@ fn getJoinCounter(state: InstanceState, node_id: []const u8) JoinCounter {
     };
 }
 
-/// Increment the received_count for a join node in state.join_counters.
+/// Update the join counter for a node in state.join_counters to reflect
+/// the cumulative number of tokens that have arrived at this join node.
+/// Uses max(arrived_count, current.received_count) to avoid double-counting
+/// tokens that are still parked from previous transitions.
 /// Creates the entry with expected_from_branches if absent.
 /// Returns the updated counter.
-fn incrementJoinCounter(
+fn updateJoinCounter(
     allocator: std.mem.Allocator,
     state: *InstanceState,
     node_id: []const u8,
-    additional_arrived: u32,
+    arrived_count: u32,
     expected_branches: u32,
 ) error{OutOfMemory}!JoinCounter {
     const current = getJoinCounter(state.*, node_id);
-    const new_received = current.received_count + additional_arrived;
+    // Use max to handle tokens parked across multiple transition() calls:
+    // tokens stay parked on the join node until it fires, so arrived_count
+    // already includes previously-arrived tokens. We track the peak, not the sum.
+    const new_received = if (arrived_count > current.received_count) arrived_count else current.received_count;
     const new_expected = if (current.expected_from_branches == 0)
         expected_branches
     else
         current.expected_from_branches;
 
     // Build JSON object: {"received_count": N, "expected_from_branches": M}
-    var obj = std.json.ObjectMap.init(allocator);
+    var obj = try std.json.ObjectMap.init(allocator, &.{}, &.{});
     errdefer obj.deinit(allocator);
     try obj.put(allocator, "received_count", std.json.Value{ .integer = @as(i64, new_received) });
     try obj.put(allocator, "expected_from_branches", std.json.Value{ .integer = @as(i64, new_expected) });
@@ -362,9 +368,18 @@ fn incrementJoinCounter(
     };
 }
 
-/// Remove a join counter entry after the join fires.
-fn clearJoinCounter(state: *InstanceState, node_id: []const u8) void {
-    _ = state.join_counters.remove(node_id);
+/// Reset a join counter entry after the join fires.
+/// Sets received_count to 0 so subsequent getJoinCounter sees a fresh counter.
+/// Cannot remove from ArrayHashMap (Zig 0.16 no remove method), so we overwrite.
+fn clearJoinCounter(allocator: std.mem.Allocator, state: *InstanceState, node_id: []const u8) !void {
+    const key_dup = try allocator.dupe(u8, node_id);
+    errdefer allocator.free(key_dup);
+    // Overwrite with sentinel zero values — getJoinCounter treats 0/0 as fresh.
+    var obj = try std.json.ObjectMap.init(allocator, &.{}, &.{});
+    errdefer obj.deinit(allocator);
+    try obj.put(allocator, "received_count", std.json.Value{ .integer = 0 });
+    try obj.put(allocator, "expected_from_branches", std.json.Value{ .integer = 0 });
+    try state.join_counters.put(allocator, key_dup, std.json.Value{ .object = obj });
 }
 
 /// Return the canonical event-type tag string for a PendingEvent variant.
@@ -480,6 +495,8 @@ pub fn transition(
             new_state.tokens[0] = Token{
                 .node_id = try allocator.dupe(u8, next_node_id),
                 .branch_id = branch_id,
+                // ISS-206: deterministic token_id for root token
+                .token_id = try computeTokenId(allocator, state.instance_id, "ROOT", 0, branch_id),
             };
             // Process node entry
             break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
@@ -938,6 +955,9 @@ fn processNodeEntry(
                 return new_state;
             } else if (incoming_count > 1) {
                 // EE-07 Join path: wait for all active (non-cancelled) branches.
+                // ISS-206: track arrivals via persisted join_counters.
+                // Create a mutable copy of state for join_counter updates.
+                var join_state = state;
 
                 // Collect all tokens parked on this join node.
                 var tokens_on_join = std.ArrayList(Token).empty;
@@ -946,7 +966,7 @@ fn processNodeEntry(
                     if (std.mem.eql(u8, t.node_id, node_id))
                         try tokens_on_join.append(allocator, t);
                 }
-                const arrived_count = tokens_on_join.items.len;
+                const arrived_now = tokens_on_join.items.len;
 
                 // Extract split_gateway_node_id from the arriving token's branch_id
                 // (second '/'-delimited segment). Falls back to "" for old-style tokens.
@@ -966,23 +986,37 @@ fn processNodeEntry(
                 const total_branches = incoming_count;
                 const expected_count = total_branches - cancelled_count;
 
-                if (expected_count > 0 and arrived_count < expected_count) {
-                    // STEP d: not all active branches have arrived — park and wait.
-                    return state;
+                // ISS-206: update join counters in mutable state copy.
+                // received_count accumulates across transitions; when threshold
+                // is reached, the join fires and the counter is cleared.
+                const counter = try updateJoinCounter(
+                    allocator,
+                    &join_state,
+                    node_id,
+                    @intCast(arrived_now),
+                    @intCast(expected_count),
+                );
+
+                if (counter.received_count < counter.expected_from_branches) {
+                    // Not all branches have arrived — park and wait.
+                    // join_counter has been updated in join_state.
+                    return join_state;
                 }
 
-                if (expected_count == 0) {
+                if (counter.expected_from_branches == 0) {
                     // STEP f: all branches cancelled — cascade INSTANCE_CANCELLED.
+                    try clearJoinCounter(allocator, &join_state, node_id);
+
                     var new_tokens_f = std.ArrayList(Token).empty;
                     defer new_tokens_f.deinit(allocator);
-                    for (state.tokens) |t| {
+                    for (join_state.tokens) |t| {
                         if (!std.mem.eql(u8, t.node_id, node_id))
                             try new_tokens_f.append(allocator, t);
                     }
 
                     var cancelled_for_split_f = std.ArrayList([]const u8).empty;
                     defer cancelled_for_split_f.deinit(allocator);
-                    for (state.cancelled_branch_ids) |bid| {
+                    for (join_state.cancelled_branch_ids) |bid| {
                         if (split_gw_id.len > 0 and
                             std.mem.eql(u8, extractBranchSegment(bid, 1), split_gw_id))
                             try cancelled_for_split_f.append(allocator, bid);
@@ -997,18 +1031,20 @@ fn processNodeEntry(
                     };
                     try events.append(allocator, cancel_event);
 
-                    var new_state_f = state;
+                    var new_state_f = join_state;
                     new_state_f.status = .CANCELLED;
                     new_state_f.tokens = &[_]Token{};
                     return new_state_f;
                 }
 
-                // STEP e: fire — arrived_count >= expected_count > 0.
+                // STEP e: fire — received_count >= expected > 0.
+                // ISS-206: clear the join counter after firing.
+                try clearJoinCounter(allocator, &join_state, node_id);
 
                 // Remove all tokens on the join node.
                 var new_tokens = std.ArrayList(Token).empty;
                 defer new_tokens.deinit(allocator);
-                for (state.tokens) |t| {
+                for (join_state.tokens) |t| {
                     if (!std.mem.eql(u8, t.node_id, node_id))
                         try new_tokens.append(allocator, t);
                 }
@@ -1055,7 +1091,7 @@ fn processNodeEntry(
                 // Collect cancelled branch_ids for this split for the event.
                 var cancelled_for_split = std.ArrayList([]const u8).empty;
                 defer cancelled_for_split.deinit(allocator);
-                for (state.cancelled_branch_ids) |bid| {
+                for (join_state.cancelled_branch_ids) |bid| {
                     if (split_gw_id.len > 0 and
                         std.mem.eql(u8, extractBranchSegment(bid, 1), split_gw_id))
                         try cancelled_for_split.append(allocator, bid);
@@ -1071,7 +1107,7 @@ fn processNodeEntry(
                 };
                 try events.append(allocator, join_event);
 
-                var new_state = state;
+                var new_state = join_state;
                 new_state.tokens = try new_tokens.toOwnedSlice(allocator);
                 return try processNodeEntry(allocator, snapshot, new_state, next_node_id, events);
             } else {
