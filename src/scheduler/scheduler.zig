@@ -622,7 +622,7 @@ fn handleTimerFireError(
 }
 
 /// ISS-303: Within the caller's open transaction, mark a timer as FAILED and insert a
-/// dead_letter_queue entry. Does NOT call moveToDlq (which acquires its own connection).
+/// dead_letter_items entry. Does NOT call moveToDlq (which acquires its own connection).
 ///
 /// Precondition: `conn` must have an active transaction (BEGIN issued by caller).
 fn markTimerFailedInTx(
@@ -651,7 +651,7 @@ fn markTimerFailedInTx(
 
     const rows = conn.query(
         allocator,
-        \\INSERT INTO dead_letter_queue (
+        \\INSERT INTO dead_letter_items (
         \\    entry_type,
         \\    instance_id,
         \\    reason,

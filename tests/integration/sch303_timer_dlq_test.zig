@@ -73,7 +73,7 @@ fn setTestTenantContext() void {
 // on `uq_event_idempotency`, causing the fire transaction to roll back.
 // The ISS-303 error path increments fire_error_count after each rollback.
 // After max_timer_fire_retries (=3) failures, markTimerFailedInTx sets
-// status='failed' and inserts a dead_letter_queue row.
+// status='failed' and inserts a dead_letter_items row.
 
 test "TC-SCH-303-03: timer fire exhaustion moves timer to FAILED and inserts DLQ entry" {
     const allocator = std.heap.page_allocator;
@@ -97,13 +97,13 @@ test "TC-SCH-303-03: timer fire exhaustion moves timer to FAILED and inserts DLQ
     defer pool.release(conn);
 
     // Unconditional pre-cleanup and post-cleanup (defer runs even on failure).
-    conn.exec("DELETE FROM dead_letter_queue WHERE source_ref = $1", &.{timer_id}) catch {};
+    conn.exec("DELETE FROM dead_letter_items WHERE source_ref = $1", &.{timer_id}) catch {};
     conn.exec("DELETE FROM timers WHERE id = $1::uuid", &.{timer_id}) catch {};
     conn.exec("DELETE FROM events WHERE idempotency_key = $1", &.{idem_key}) catch {};
     conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
 
     defer {
-        conn.exec("DELETE FROM dead_letter_queue WHERE source_ref = $1", &.{timer_id}) catch {};
+        conn.exec("DELETE FROM dead_letter_items WHERE source_ref = $1", &.{timer_id}) catch {};
         conn.exec("DELETE FROM timers WHERE id = $1::uuid", &.{timer_id}) catch {};
         conn.exec("DELETE FROM events WHERE idempotency_key = $1", &.{idem_key}) catch {};
         conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
@@ -166,7 +166,7 @@ test "TC-SCH-303-03: timer fire exhaustion moves timer to FAILED and inserts DLQ
     const dlq_rows = try conn.query(
         allocator,
         \\SELECT item_type, reason
-        \\FROM dead_letter_queue WHERE source_ref = $1
+        \\FROM dead_letter_items WHERE source_ref = $1
         \\ORDER BY created_at DESC LIMIT 1
     ,
         &.{timer_id},
@@ -204,13 +204,13 @@ test "TC-SCH-303-04: timer stays pending when fire_error_count < max_timer_fire_
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    conn.exec("DELETE FROM dead_letter_queue WHERE source_ref = $1", &.{timer_id}) catch {};
+    conn.exec("DELETE FROM dead_letter_items WHERE source_ref = $1", &.{timer_id}) catch {};
     conn.exec("DELETE FROM timers WHERE id = $1::uuid", &.{timer_id}) catch {};
     conn.exec("DELETE FROM events WHERE idempotency_key = $1", &.{idem_key}) catch {};
     conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
 
     defer {
-        conn.exec("DELETE FROM dead_letter_queue WHERE source_ref = $1", &.{timer_id}) catch {};
+        conn.exec("DELETE FROM dead_letter_items WHERE source_ref = $1", &.{timer_id}) catch {};
         conn.exec("DELETE FROM timers WHERE id = $1::uuid", &.{timer_id}) catch {};
         conn.exec("DELETE FROM events WHERE idempotency_key = $1", &.{idem_key}) catch {};
         conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
@@ -262,7 +262,7 @@ test "TC-SCH-303-04: timer stays pending when fire_error_count < max_timer_fire_
     // Assert no DLQ entry exists yet (AC-303-5).
     const dlq_rows = try conn.query(
         allocator,
-        "SELECT COUNT(*) FROM dead_letter_queue WHERE source_ref = $1",
+        "SELECT COUNT(*) FROM dead_letter_items WHERE source_ref = $1",
         &.{timer_id},
     );
     defer {
@@ -304,14 +304,14 @@ test "TC-SCH-301-03: two sequential scheduler polls on one timer fire it exactly
     defer pool.release(conn);
 
     // Cleanup (before and after).
-    conn.exec("DELETE FROM dead_letter_queue WHERE source_ref = $1", &.{timer_id}) catch {};
+    conn.exec("DELETE FROM dead_letter_items WHERE source_ref = $1", &.{timer_id}) catch {};
     conn.exec("DELETE FROM events WHERE idempotency_key = $1", &.{idem_key}) catch {};
     conn.exec("DELETE FROM timers WHERE id = $1::uuid", &.{timer_id}) catch {};
     conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
     conn.exec("DELETE FROM instance_sequence WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
 
     defer {
-        conn.exec("DELETE FROM dead_letter_queue WHERE source_ref = $1", &.{timer_id}) catch {};
+        conn.exec("DELETE FROM dead_letter_items WHERE source_ref = $1", &.{timer_id}) catch {};
         conn.exec("DELETE FROM events WHERE idempotency_key = $1", &.{idem_key}) catch {};
         conn.exec("DELETE FROM timers WHERE id = $1::uuid", &.{timer_id}) catch {};
         conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
