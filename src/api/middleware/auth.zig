@@ -169,9 +169,14 @@ pub const AuthContext = struct {
     /// Stable identifier for the token used in this request.
     /// For DB-validated tokens: the UUID primary key from `api_tokens.id`.
     /// For bootstrap tokens: the string literal "bootstrap".
-    /// Used as the key for per-token rate limiting (API-10).
     /// Caller owns this string; freed with the same allocator passed to authenticate().
     token_id: []const u8,
+    /// Principal key for shared-store rate limiting (ISS-403).
+    /// For local API tokens: same as token_id (api_tokens.id UUID).
+    /// For OIDC tokens: "{realm}:{sub}" composite string.
+    /// For bootstrap: "bootstrap".
+    /// Caller owns this string; freed with the same allocator passed to authenticate().
+    principal: []const u8,
     /// Resolved tenant context for the request lifecycle.
     tenant_id: [36]u8 = DEFAULT_TENANT_ID.*,
     tenant_source: TenantContextSource = .default_fallback,
@@ -791,11 +796,19 @@ pub fn postAuthJitProvision(
         return .{ .authenticated = auth_ctx };
     };
 
+    // ISS-403: Construct OIDC principal key for rate limiting.
+    const jit_realm = principal.external_realm orelse "bpm-default";
+    const oidc_principal = std.fmt.allocPrint(allocator, "{s}:{s}", .{ jit_realm, principal.provider_subject }) catch {
+        allocator.free(new_user_id);
+        allocator.free(new_token_id);
+        return .{ .authenticated = auth_ctx };
+    };
     return .{ .authenticated = .{
         .user_id = new_user_id,
         .role = role,
         .is_bootstrap = auth_ctx.is_bootstrap,
         .token_id = new_token_id,
+        .principal = oidc_principal,
         .tenant_id = auth_ctx.tenant_id,
         .tenant_source = auth_ctx.tenant_source,
     } };
@@ -999,6 +1012,7 @@ pub fn authenticate(
             const resolved = resolveTenantContext(allocator, raw_token) catch break :blk DEFAULT_TENANT_ID.*;
             break :blk resolved.tenant_id;
         };
+
         var principal = identity_provider_manager.verifyBearerToken(allocator, raw_token) catch |err| switch (err) {
             error.TokenIssuerMismatch => return .{ .unauthenticated = buildUnauthorizedAuth(
                 allocator,
@@ -1100,11 +1114,21 @@ pub fn authenticate(
 
         const role = primaryProviderRole(principal.roles);
 
+        // ISS-403: Construct OIDC principal key for rate limiting.
+        // Format: "{realm}:{sub}". Neither realm nor sub contains a colon.
+        const oidc_realm = principal.external_realm orelse "bpm-default";
+        const oidc_principal = std.fmt.allocPrint(allocator, "{s}:{s}", .{ oidc_realm, principal.provider_subject }) catch {
+            allocator.free(user_id);
+            allocator.free(token_id);
+            return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
+        };
+
         return .{ .authenticated = .{
             .user_id = user_id,
             .role = role,
             .is_bootstrap = false,
             .token_id = token_id,
+            .principal = oidc_principal,
             .tenant_id = resolved_tenant.tenant_id,
             .tenant_source = resolved_tenant.source,
         } };
@@ -1139,6 +1163,7 @@ pub fn authenticate(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = true,
                 .token_id = token_id_boot,
+                .principal = token_id_boot, // bootstrap: principal = "bootstrap" (ISS-403)
                 .tenant_id = resolved_tenant.tenant_id,
                 .tenant_source = resolved_tenant.source,
             } };
@@ -1261,6 +1286,10 @@ pub fn authenticate(
         }
         role = primaryRole(token_roles);
     } else {
+        // ISS-404: Legacy fallback for tokens created before roles_json was populated.
+        // Newly issued tokens always have a non-empty roles_json snapshot.
+        // When this path is exercised, log a warning via std.log.warn.
+        std.log.warn("ISS-404: using legacy user_roles fallback for token with empty roles_json", .{});
         const role_row = conn.queryRow(
             allocator,
             \\SELECT r.name FROM roles r
@@ -1344,6 +1373,7 @@ pub fn authenticate(
         .role = role,
         .is_bootstrap = false,
         .token_id = token_id,
+        .principal = token_id, // local API token: principal = token_id UUID (ISS-403)
         .tenant_id = resolved_tenant.tenant_id,
         .tenant_source = resolved_tenant.source,
     } };

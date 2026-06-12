@@ -385,6 +385,7 @@ test "EXT-02 webhooks route rejects non-admin caller" {
         .role = .PROCESS_OPERATOR,
         .is_bootstrap = false,
         .token_id = "tok",
+        .principal = "tok",
     };
 
     // Pool pointer is never used because authorization fails first.
@@ -400,6 +401,7 @@ test "TC-EXT-02-U03: route authorization enforces PLATFORM_ADMIN for POST/GET/DE
         .role = .PROCESS_OPERATOR,
         .is_bootstrap = false,
         .token_id = "tok",
+        .principal = "tok",
     };
 
     const create_result = handleCreateSubscription(allocator, undefined, actor, "{\"target_url\":\"https://example.test\",\"event_types\":[\"task.completed\"]}", false);
