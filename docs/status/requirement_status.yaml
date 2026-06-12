@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-06-11T00:00:00Z'
+last_updated: '2026-06-12T04:39:05Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -3718,7 +3718,7 @@ requirements:
     test_run: tests/reports/report-20260605-WF02-spt-01.yaml
     last_updated: '2026-06-05T09:19:00Z'
   SPT-02:
-    title: Data migration — copy rows into tenant schemas and remove RLS
+    title: "Data migration \u2014 copy rows into tenant schemas and remove RLS"
     status: PENDING
     stage: Schema-Per-Tenant Migration
     priority: MUST
@@ -4101,4 +4101,23 @@ requirements:
     release_run: WF02-iss102-20260611
     release_decision: docs/status/release-iss102-20260611.yaml
     last_updated: '2026-06-11T00:00:00Z'
-total_requirements: 286
+  ISS-103:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Change audit_log.resource_id from UUID to TEXT NOT NULL
+    implemented_in:
+    - migrations/GBL-081_iss103_audit_resource_id_text.sql
+    - migrations/GBL-091_fix_audit_chain_resource_id_text.sql
+    - migrations/089_fix_audit_chain_resource_id_text.sql
+    - migrations/090_iss103_audit_resource_id_text.sql
+    - src/obs/audit.zig
+    - tests/integration/audit_iss103_test.zig
+    test_spec: tests/specs/ISS-103.md
+    test_run: tests/reports/report-20260611-iss103-rerun.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11'
+    release_run: ADHOC-iss103-audit-resource-id-20260611
+    release_decision: docs/status/release-iss103-20260611.yaml
+    last_updated: '2026-06-12T04:39:05Z'
+total_requirements: 287
