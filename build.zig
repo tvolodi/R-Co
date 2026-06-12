@@ -735,6 +735,30 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_dsl04_eval_tests.step);
 
     // ---------------------------------------------------------------------------
+    // `zig build test-differential` — ISS-602 CEL/expr differential harness
+    // ---------------------------------------------------------------------------
+    const expr_diff_mod = b.createModule(.{
+        .root_source_file = b.path("src/expr/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const differential_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/differential/differential_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "cel", .module = cel_mod },
+                .{ .name = "expr", .module = expr_diff_mod },
+            },
+        }),
+    });
+    const run_differential_tests = b.addRunArtifact(differential_tests);
+    run_differential_tests.setCwd(b.path("."));
+    const test_differential_step = b.step("test-differential", "Run CEL/expr differential corpus tests (ISS-602)");
+    test_differential_step.dependOn(&run_differential_tests.step);
+
+    // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
     // ---------------------------------------------------------------------------
 

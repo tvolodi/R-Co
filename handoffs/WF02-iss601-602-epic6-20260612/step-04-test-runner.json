@@ -1,0 +1,44 @@
+{
+  "handoff_id": "bc80f005-3e65-4edb-86a0-65374e45129b",
+  "run_id": "WF02-iss601-602-epic6-20260612",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-12T13:13:55Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Epic 6 test execution",
+    "requirement_ids": [
+      "ISS-601",
+      "ISS-602"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/specs/ISS-601.md",
+      "tests/specs/ISS-602.md"
+    ],
+    "owned_modules": []
+  },
+  "task": {
+    "description": "Run pre-checks (backend services, benchmark environment), then execute all tests for ISS-601 and ISS-602. Run zig build test and benchmark tests. Verify NFR-04: 10k event replay < 5 seconds. Verify differential harness returns 100% parity on initial corpus. Write results to tests/reports/report-20260612-WF02-iss601-602-epic6-20260612.yaml.",
+    "acceptance_criteria": [
+      "zig build test exits 0",
+      "NFR-04 benchmark: 10k event replay < 5 seconds",
+      "Differential harness: 100% CEL/expr parity on initial corpus",
+      "Test report written to tests/reports/report-20260612-WF02-iss601-602-epic6-20260612.yaml",
+      "All ISS-601 and ISS-602 tests pass"
+    ],
+    "functions_to_call": [
+      "fn:run-tests",
+      "fn:run-benchmarks",
+      "fn:write-test-report"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

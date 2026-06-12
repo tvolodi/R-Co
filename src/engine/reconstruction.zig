@@ -327,6 +327,443 @@ pub fn reconstructInstancePointInTime(
 }
 
 // ---------------------------------------------------------------------------
+// ISS-601: Snapshot-Assisted Reconstruction
+// ---------------------------------------------------------------------------
+
+/// Reconstruct instance state using snapshot-assisted replay.
+///
+/// Algorithm:
+///   1. Query the latest snapshot for this instance (max snapshot_seq).
+///   2. If a snapshot exists:
+///      a. Deserialise state_blob → InstanceState.
+///      b. Query events WHERE instance_id = $1 AND sequence_number > snapshot_seq
+///         ORDER BY sequence_number ASC.
+///      c. Replay those events through transition().
+///   3. If no snapshot exists:
+///      a. Fall back to full replay (existing reconstructInstance path).
+///
+/// The snapshot path joins event_payloads_overflow to reconstruct full event
+/// payloads, exactly as full replay does.
+///
+/// Security: all SQL parameters bound as $N — no SQL string interpolation.
+pub fn reconstructInstanceWithSnapshot(
+    allocator: std.mem.Allocator,
+    pool: *Pool,
+    snapshot_store: *snapshot_mod.SnapshotStore,
+    instance_id: Uuid,
+    write_back: bool,
+) ReconstructionError!InstanceState {
+    // ── Step 1: Fetch the definition snapshot ────────────────────────────────
+    const snapshot_obj = snapshot_store.getByInstanceId(allocator, instance_id) catch |err| switch (err) {
+        error.DefinitionNotFound => return ReconstructionError.InstanceNotFound,
+        error.PoolExhausted => return ReconstructionError.PoolExhausted,
+        else => return ReconstructionError.QueryFailed,
+    };
+    const snapshot = snapshot_obj.graph;
+
+    var row_arena = std.heap.ArenaAllocator.init(allocator);
+    defer row_arena.deinit();
+    const ra = row_arena.allocator();
+
+    const inst_id_hex = uuidToHex(ra, instance_id) catch return ReconstructionError.OutOfMemory;
+
+    const conn = pool.acquire() catch |err| switch (err) {
+        PoolError.ExhaustedPool => return ReconstructionError.PoolExhausted,
+        else => return ReconstructionError.QueryFailed,
+    };
+    defer pool.release(conn);
+
+    // ── Step 2: Query latest snapshot ─────────────────────────────────────────
+    // Security: $1 = instance_id — bound as $N.
+    const snap_row_opt = conn.queryRow(
+        ra,
+        \\SELECT snapshot_seq, state_blob
+        \\FROM instance_state_snapshots
+        \\WHERE instance_id = $1::uuid
+        \\ORDER BY snapshot_seq DESC
+        \\LIMIT 1
+    ,
+        &.{inst_id_hex},
+    ) catch null; // Table may not exist yet — fall through to full replay.
+
+    var snapshot_seq: i64 = 0;
+    var state: InstanceState = undefined;
+    var use_snapshot: bool = false;
+
+    if (snap_row_opt) |snap_row| {
+        if (snap_row.len >= 2 and snap_row[0] != null and snap_row[1] != null) {
+            const seq_str = snap_row[0].?;
+            const blob_str = snap_row[1].?;
+            snapshot_seq = std.fmt.parseInt(i64, seq_str, 10) catch 0;
+            if (snapshot_seq > 0 and blob_str.len > 0) {
+                // Deserialise state_blob → InstanceState.
+                state = deserializeInstanceState(allocator, instance_id, blob_str) catch
+                    InstanceState{
+                        .instance_id = instance_id,
+                        .status = .ACTIVE,
+                        .tokens = &[_]Token{},
+                        .variables = std.json.ObjectMap{},
+                        .join_counters = std.json.ObjectMap{},
+                        .pending_task_nodes = &[_][]const u8{},
+                        .error_detail = null,
+                        .cancelled_branch_ids = &[_][]const u8{},
+                    };
+                use_snapshot = true;
+            }
+        }
+    }
+
+    if (!use_snapshot) {
+        // Fall back to full replay.
+        return reconstructInstance(allocator, pool, snapshot_store, instance_id, write_back);
+    }
+
+    // ── Step 3: Query delta events (seq > snapshot_seq) ──────────────────────
+    // Join event_payloads_overflow with fallback.
+    // Security: $1=instance_id, $2=snapshot_seq — bound as $N.
+    const snapshot_seq_str = std.fmt.allocPrint(ra, "{d}", .{snapshot_seq}) catch
+        return ReconstructionError.OutOfMemory;
+
+    const delta_sql_overflow =
+        \\SELECT e.event_type,
+        \\       COALESCE(epo.payload, e.payload) AS full_payload,
+        \\       e.sequence_number
+        \\FROM events e
+        \\LEFT JOIN event_payloads_overflow epo ON e.event_id = epo.event_id
+        \\WHERE e.instance_id = $1::uuid AND e.sequence_number > $2
+        \\ORDER BY e.sequence_number ASC
+    ;
+    const delta_sql_simple =
+        \\SELECT event_type, payload, sequence_number
+        \\FROM events
+        \\WHERE instance_id = $1::uuid AND sequence_number > $2
+        \\ORDER BY sequence_number ASC
+    ;
+
+    var rows = conn.query(ra, delta_sql_overflow, &.{ inst_id_hex, snapshot_seq_str }) catch
+        conn.query(ra, delta_sql_simple, &.{ inst_id_hex, snapshot_seq_str }) catch
+        return ReconstructionError.QueryFailed;
+    defer rows.deinit();
+
+    // ── Step 4: Replay events through transition() ───────────────────────────
+    for (rows.rows) |row| {
+        const event_type = colGet(row, 0);
+        const payload_json = colGet(row, 1);
+        const seq_str2 = colGet(row, 2);
+        const triggering_seq: i64 = std.fmt.parseInt(i64, seq_str2, 10) catch 1;
+
+        if (std.mem.eql(u8, event_type, "EXECUTION_ERROR")) {
+            state.status = .ERROR;
+            state.error_detail = allocator.dupe(u8, payload_json) catch
+                return ReconstructionError.OutOfMemory;
+            break;
+        }
+
+        const te = mapToTransitionEvent(allocator, event_type, payload_json) catch |err| switch (err) {
+            error.UnknownEventType => continue,
+            error.OutOfMemory => return ReconstructionError.OutOfMemory,
+            error.ParseFailed => return ReconstructionError.ReplayFailed,
+        };
+
+        state = (transition_mod.transition(allocator, snapshot, state, te, triggering_seq) catch
+            return ReconstructionError.ReplayFailed).state;
+    }
+
+    // ── Step 5: Optional write-back ──────────────────────────────────────────
+    if (write_back) {
+        try performWriteBack(allocator, pool, instance_id, state);
+    }
+
+    return state;
+}
+
+// ---------------------------------------------------------------------------
+// ISS-601: Snapshot deserialization helper
+// ---------------------------------------------------------------------------
+
+/// Deserialise a state_blob JSON string into an InstanceState.
+///
+/// Schema matches the state_blob spec from
+/// src/design/iss601_state_snapshots.md §3.2.
+///
+/// On any parse failure: returns OutOfMemory (corrupt snapshot → caller falls
+/// back to full replay).
+fn deserializeInstanceState(
+    allocator: std.mem.Allocator,
+    instance_id: Uuid,
+    state_blob: []const u8,
+) error{OutOfMemory}!InstanceState {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const parsed = std.json.parseFromSlice(
+        std.json.Value,
+        a,
+        state_blob,
+        .{ .allocate = .alloc_always },
+    ) catch return error.OutOfMemory;
+
+    if (parsed.value != .object) return error.OutOfMemory;
+    const obj = parsed.value.object;
+
+    // Parse status
+    const status_str = if (obj.get("status")) |s|
+        switch (s) {
+            .string => |str| str,
+            else => return error.OutOfMemory,
+        }
+    else
+        return error.OutOfMemory;
+
+    const status: InstanceStatus = if (std.mem.eql(u8, status_str, "ACTIVE"))
+        .ACTIVE
+    else if (std.mem.eql(u8, status_str, "COMPLETED"))
+        .COMPLETED
+    else if (std.mem.eql(u8, status_str, "CANCELLED"))
+        .CANCELLED
+    else if (std.mem.eql(u8, status_str, "ERROR"))
+        .ERROR
+    else
+        return error.OutOfMemory;
+
+    // Parse tokens array
+    var tokens = std.ArrayList(Token).empty;
+    if (obj.get("tokens")) |tokens_val| {
+        if (tokens_val == .array) {
+            for (tokens_val.array.items) |tok_val| {
+                if (tok_val != .object) continue;
+                const tok_obj = tok_val.object;
+
+                const node_id_val = tok_obj.get("node_id") orelse continue;
+                const branch_id_val = tok_obj.get("branch_id") orelse continue;
+                if (node_id_val != .string or branch_id_val != .string) continue;
+
+                const node_id = allocator.dupe(u8, node_id_val.string) catch
+                    return error.OutOfMemory;
+                const branch_id = allocator.dupe(u8, branch_id_val.string) catch {
+                    allocator.free(node_id);
+                    return error.OutOfMemory;
+                };
+
+                var token_id: ?[]const u8 = null;
+                if (tok_obj.get("token_id")) |tid_val| {
+                    if (tid_val == .string) {
+                        token_id = allocator.dupe(u8, tid_val.string) catch {
+                            allocator.free(node_id);
+                            allocator.free(branch_id);
+                            return error.OutOfMemory;
+                        };
+                    }
+                }
+
+                var waiting_child: ?[]const u8 = null;
+                if (tok_obj.get("waiting_child_instance_id")) |w_val| {
+                    if (w_val == .string and w_val.string.len > 0) {
+                        waiting_child = allocator.dupe(u8, w_val.string) catch {
+                            if (token_id) |t| allocator.free(t);
+                            allocator.free(node_id);
+                            allocator.free(branch_id);
+                            return error.OutOfMemory;
+                        };
+                    }
+                }
+
+                tokens.append(allocator, Token{
+                    .node_id = node_id,
+                    .branch_id = branch_id,
+                    .token_id = token_id,
+                    .waiting_child_instance_id = waiting_child,
+                }) catch {
+                    if (token_id) |t| allocator.free(t);
+                    if (waiting_child) |w| allocator.free(w);
+                    allocator.free(node_id);
+                    allocator.free(branch_id);
+                    return error.OutOfMemory;
+                };
+            }
+        }
+    }
+    const tokens_slice = tokens.toOwnedSlice(allocator) catch return error.OutOfMemory;
+
+    // Parse variables
+    var variables = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+        return error.OutOfMemory;
+    errdefer variables.deinit(allocator);
+    if (obj.get("variables")) |vars_val| {
+        if (vars_val == .object) {
+            variables = parseObjectMapFromJson(allocator, vars_val.object) catch
+                return error.OutOfMemory;
+        }
+    }
+
+    // Parse join_counters
+    var join_counters = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+        return error.OutOfMemory;
+    errdefer join_counters.deinit(allocator);
+    if (obj.get("join_counters")) |jc_val| {
+        if (jc_val == .object) {
+            join_counters = parseObjectMapFromJson(allocator, jc_val.object) catch
+                return error.OutOfMemory;
+        }
+    }
+
+    // Parse pending_task_nodes
+    var pending_task_nodes = std.ArrayList([]const u8).empty;
+    if (obj.get("pending_task_nodes")) |ptn_val| {
+        if (ptn_val == .array) {
+            for (ptn_val.array.items) |ptn_item| {
+                if (ptn_item == .string) {
+                    const duped = allocator.dupe(u8, ptn_item.string) catch
+                        return error.OutOfMemory;
+                    pending_task_nodes.append(allocator, duped) catch {
+                        allocator.free(duped);
+                        return error.OutOfMemory;
+                    };
+                }
+            }
+        }
+    }
+    const pending_slice = pending_task_nodes.toOwnedSlice(allocator) catch
+        return error.OutOfMemory;
+
+    // Parse error_detail
+    var error_detail: ?[]const u8 = null;
+    if (obj.get("error_detail")) |ed_val| {
+        if (ed_val == .string and ed_val.string.len > 0) {
+            error_detail = allocator.dupe(u8, ed_val.string) catch
+                return error.OutOfMemory;
+        }
+    }
+
+    // Parse cancelled_branch_ids
+    var cancelled_branch_ids = std.ArrayList([]const u8).empty;
+    if (obj.get("cancelled_branch_ids")) |cbi_val| {
+        if (cbi_val == .array) {
+            for (cbi_val.array.items) |cbi_item| {
+                if (cbi_item == .string) {
+                    const duped = allocator.dupe(u8, cbi_item.string) catch
+                        return error.OutOfMemory;
+                    cancelled_branch_ids.append(allocator, duped) catch {
+                        allocator.free(duped);
+                        return error.OutOfMemory;
+                    };
+                }
+            }
+        }
+    }
+    const cancelled_slice = cancelled_branch_ids.toOwnedSlice(allocator) catch
+        return error.OutOfMemory;
+
+    return InstanceState{
+        .instance_id = instance_id,
+        .status = status,
+        .tokens = tokens_slice,
+        .variables = variables,
+        .join_counters = join_counters,
+        .pending_task_nodes = pending_slice,
+        .error_detail = error_detail,
+        .cancelled_branch_ids = cancelled_slice,
+    };
+}
+
+/// Clone a std.json.ObjectMap using allocator for all keys and values.
+fn parseObjectMapFromJson(
+    allocator: std.mem.Allocator,
+    source: std.json.ObjectMap,
+) error{OutOfMemory}!std.json.ObjectMap {
+    var result = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+        return error.OutOfMemory;
+    errdefer result.deinit(allocator);
+
+    var it = source.iterator();
+    while (it.next()) |entry| {
+        const key = entry.key_ptr.*;
+        const value = entry.value_ptr.*;
+        // Clone the value into allocator.
+        const cloned_value = cloneJsonValue(allocator, value) catch
+            return error.OutOfMemory;
+        result.put(allocator, key, cloned_value) catch {
+            // Free the cloned value on put failure.
+            freeJsonValue(allocator, cloned_value);
+            return error.OutOfMemory;
+        };
+    }
+    return result;
+}
+
+/// Shallow-clone a std.json.Value into allocator.
+fn cloneJsonValue(allocator: std.mem.Allocator, value: std.json.Value) error{OutOfMemory}!std.json.Value {
+    return switch (value) {
+        .null => std.json.Value{ .null = {} },
+        .bool => |b| std.json.Value{ .bool = b },
+        .integer => |n| std.json.Value{ .integer = n },
+        .float => |f| std.json.Value{ .float = f },
+        .string => |s| {
+            const duped = allocator.dupe(u8, s) catch return error.OutOfMemory;
+            return std.json.Value{ .string = duped };
+        },
+        .array => |arr| {
+            var new_arr = std.ArrayList(std.json.Value).empty;
+            for (arr.items) |item| {
+                const cloned = cloneJsonValue(allocator, item) catch {
+                    for (new_arr.items) |prev| freeJsonValue(allocator, prev);
+                    new_arr.deinit(allocator);
+                    return error.OutOfMemory;
+                };
+                new_arr.append(allocator, cloned) catch {
+                    freeJsonValue(allocator, cloned);
+                    for (new_arr.items) |prev| freeJsonValue(allocator, prev);
+                    new_arr.deinit(allocator);
+                    return error.OutOfMemory;
+                };
+            }
+            return std.json.Value{ .array = new_arr };
+        },
+        .object => |obj| {
+            var new_obj = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+                return error.OutOfMemory;
+            errdefer {
+                var it2 = new_obj.iterator();
+                while (it2.next()) |e| freeJsonValue(allocator, e.value_ptr.*);
+                new_obj.deinit(allocator);
+            }
+            var it = obj.iterator();
+            while (it.next()) |entry| {
+                const cloned = cloneJsonValue(allocator, entry.value_ptr.*) catch
+                    return error.OutOfMemory;
+                new_obj.put(allocator, entry.key_ptr.*, cloned) catch {
+                    freeJsonValue(allocator, cloned);
+                    return error.OutOfMemory;
+                };
+            }
+            return std.json.Value{ .object = new_obj };
+        },
+        .number_string => |s| {
+            const duped = allocator.dupe(u8, s) catch return error.OutOfMemory;
+            return std.json.Value{ .number_string = duped };
+        },
+    };
+}
+
+fn freeJsonValue(allocator: std.mem.Allocator, value: std.json.Value) void {
+    switch (value) {
+        .string => |s| allocator.free(s),
+        .number_string => |s| allocator.free(s),
+        .array => |arr| {
+            for (arr.items) |item| freeJsonValue(allocator, item);
+            arr.deinit(allocator);
+        },
+        .object => |obj| {
+            var it = obj.iterator();
+            while (it.next()) |entry| freeJsonValue(allocator, entry.value_ptr.*);
+            obj.deinit(allocator);
+        },
+        else => {},
+    }
+}
+
+// ---------------------------------------------------------------------------
 // performWriteBack
 // ---------------------------------------------------------------------------
 

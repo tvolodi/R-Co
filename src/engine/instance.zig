@@ -13,6 +13,7 @@ const PoolError = db.PoolError;
 const snapshot_mod = @import("../definition/snapshot.zig");
 const task_mod = @import("../tasks/store.zig");
 const transition_mod = @import("transition.zig");
+const snapshot_writer_mod = @import("snapshot_writer.zig");
 const service_task_mod = @import("service_task.zig");
 const plugin_interface_mod = @import("plugin_interface.zig");
 const plugin_registry_mod = @import("plugin_registry.zig");
@@ -436,12 +437,14 @@ fn freeOwnedTransitionState(
 pub const InstanceStore = struct {
     pool: *Pool,
     snapshot_store: *snapshot_mod.SnapshotStore,
+    snapshot_writer: snapshot_writer_mod.SnapshotWriter,
 
     /// pool and snapshot_store must outlive InstanceStore.
     pub fn init(pool: *Pool, snapshot_store: *snapshot_mod.SnapshotStore) InstanceStore {
         return InstanceStore{
             .pool = pool,
             .snapshot_store = snapshot_store,
+            .snapshot_writer = snapshot_writer_mod.SnapshotWriter.init(pool),
         };
     }
 
@@ -861,6 +864,14 @@ pub const InstanceStore = struct {
         // COMMIT — all writes are now visible atomically.
         conn2.commit() catch return InstanceError.TransactionFailed;
         refreshActiveInstancesMetric(self.pool, allocator);
+
+        // ISS-601: Take initial snapshot at seq 1 (baseline).
+        self.snapshot_writer.takeSnapshot(
+            allocator,
+            uuid_bytes,
+            &new_state,
+            1,
+        ) catch {}; // Non-fatal: snapshot failure does not roll back the event.
 
         // ── Step f: Build and return Instance ──────────────────────────────
         return rowToInstance(allocator, ins_rows.rows[0], initial_variables) catch
@@ -1878,6 +1889,16 @@ pub const InstanceStore = struct {
         tx_committed = true;
         refreshActiveInstancesMetric(self.pool, allocator);
 
+        // ISS-601: Maybe take interval/completion snapshot after event append.
+        _ = self.snapshot_writer.maybeTakeSnapshot(
+            allocator,
+            task.instance_id,
+            &effective_state,
+            task_completed_event_seq,
+            effective_state.status,
+            snapshot_writer_mod.DEFAULT_SNAPSHOT_INTERVAL,
+        ) catch null; // Non-fatal: snapshot failure does not roll back the event.
+
         const definition_id_hex = uuidToHex(a, def_id) catch "_unknown";
         metrics.recordTaskCompletion(definition_id_hex);
 
@@ -2300,6 +2321,30 @@ pub const InstanceStore = struct {
         // ── Step h: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return CancelInstanceError.PersistenceFailed;
         refreshActiveInstancesMetric(self.pool, allocator);
+
+        // ISS-601: Take completion snapshot (terminal status).
+        // Build a minimal state representation for the snapshot.
+        {
+            var cancel_vars = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+                std.json.ObjectMap{};
+            defer cancel_vars.deinit(allocator);
+            const cancel_state = transition_mod.InstanceState{
+                .instance_id = instance_id,
+                .status = .CANCELLED,
+                .tokens = &.{},
+                .variables = cancel_vars,
+                .join_counters = std.json.ObjectMap{},
+                .pending_task_nodes = &.{},
+                .error_detail = null,
+                .cancelled_branch_ids = &.{},
+            };
+            self.snapshot_writer.takeSnapshot(
+                allocator,
+                instance_id,
+                &cancel_state,
+                1, // seq is approximate; snapshot is advisory
+            ) catch {}; // Non-fatal.
+        }
 
         propagateChildTerminalToParent(
             self,
@@ -2750,6 +2795,29 @@ pub const InstanceStore = struct {
         // ── Step f: COMMIT ────────────────────────────────────────────────────
         conn.commit() catch return SetInstanceErrorError.PersistenceFailed;
         refreshActiveInstancesMetric(self.pool, allocator);
+
+        // ISS-601: Take completion snapshot (terminal status — ERROR).
+        {
+            var error_vars = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+                std.json.ObjectMap{};
+            defer error_vars.deinit(allocator);
+            const error_state = transition_mod.InstanceState{
+                .instance_id = args.instance_id,
+                .status = .ERROR,
+                .tokens = &.{},
+                .variables = error_vars,
+                .join_counters = std.json.ObjectMap{},
+                .pending_task_nodes = &.{},
+                .error_detail = payload_json,
+                .cancelled_branch_ids = &.{},
+            };
+            self.snapshot_writer.takeSnapshot(
+                allocator,
+                args.instance_id,
+                &error_state,
+                1, // seq is approximate; snapshot is advisory
+            ) catch {}; // Non-fatal.
+        }
 
         propagateChildTerminalToParent(
             self,

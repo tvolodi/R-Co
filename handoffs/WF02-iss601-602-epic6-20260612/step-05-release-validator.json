@@ -1,0 +1,41 @@
+{
+  "handoff_id": "73bc65f4-588e-4ddc-a4a6-1300258eb263",
+  "run_id": "WF02-iss601-602-epic6-20260612",
+  "workflow_id": "WF-02",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "RELEASE-VALIDATOR",
+  "created_at": "2026-06-12T13:13:55Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Epic 6 release validation",
+    "requirement_ids": [
+      "ISS-601",
+      "ISS-602"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/reports/report-20260612-WF02-iss601-602-epic6-20260612.yaml"
+    ],
+    "owned_modules": []
+  },
+  "task": {
+    "description": "Validate ISS-601 and ISS-602 against NFR benchmarks and release criteria. Run NFR-04 benchmark: 10k event replay < 5s. Verify differential harness parity. Check requirement status coverage. Write release decision to docs/status/release-epic6-20260612.yaml.",
+    "acceptance_criteria": [
+      "NFR-04 verified: 10k event replay < 5 seconds",
+      "Differential harness: 100% CEL/expr parity confirmed",
+      "Release decision written to docs/status/release-epic6-20260612.yaml",
+      "All BLOCKER/MAJOR issues resolved before PASS"
+    ],
+    "functions_to_call": [
+      "fn:validate-nfr",
+      "fn:write-release-decision"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
