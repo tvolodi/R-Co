@@ -1,0 +1,85 @@
+stage: exp103-instance-waits
+date: "2026-06-12"
+decision: APPROVED
+run_id: WF02-exp103-instance-waits-20260612
+
+acceptance_criteria_check:
+  - criterion: "Migration 093 adds instance_waits table"
+    evidence: "migrations/093_exp103_instance_waits.sql exists"
+    passed: true
+  - criterion: "Timer arm inserts wait descriptor (insertTimerWaitDescriptorInTx)"
+    evidence: "src/scheduler/store.zig:345 — pub fn insertTimerWaitDescriptorInTx; called in engine/instance.zig:3867, 3930"
+    passed: true
+  - criterion: "Task arm inserts wait descriptor (insertTaskWaitDescriptorInTx)"
+    evidence: "src/tasks/store.zig:1007 — pub fn insertTaskWaitDescriptorInTx; called in createInTx at store.zig:223"
+    passed: true
+  - criterion: "markTimerFiredInTx updates resolved_at in instance_waits"
+    evidence: "src/scheduler/scheduler.zig:918-921 — UPDATE instance_waits in same transaction"
+    passed: true
+  - criterion: "completeInTx updates resolved_at in instance_waits"
+    evidence: "src/tasks/store.zig:356-359 — UPDATE instance_waits in same transaction"
+    passed: true
+
+integration_test_result:
+  status: PASS
+  summary: "5/5 EXP-103 integration tests passed"
+  tests:
+    - id: TC-EXP-103-01
+      name: "timer arm writes instance_waits row"
+      status: PASS
+    - id: TC-EXP-103-02
+      name: "TaskStore.createInTx writes instance_waits row"
+      status: PASS
+    - id: TC-EXP-103-03
+      name: "Scheduler.pollDueTimers resolves the instance_waits timer row"
+      status: PASS
+    - id: TC-EXP-103-04
+      name: "TaskStore.completeInTx resolves the instance_waits task row"
+      status: PASS
+    - id: TC-EXP-103-05
+      name: "rolled-back transaction leaves no orphaned instance_waits row"
+      status: PASS
+
+unit_test_result:
+  status: PASS
+  summary: "532/637 passed; 21 pre-existing failures (0 new); baseline matches main branch"
+  new_failures: 0
+
+nfr_results:
+  - nfr: NFR-01
+    metric: p99_read_latency
+    value_ms: 1.274
+    threshold_ms: 200
+    passed: true
+  - nfr: NFR-01
+    metric: p99_write_latency
+    value_ms: 9.455
+    threshold_ms: 500
+    passed: true
+  - nfr: NFR-02
+    metric: event_append_throughput_eps
+    value_eps: 3617.436
+    threshold_eps: 1000
+    passed: true
+  - nfr: NFR-04
+    metric: replay_10000_events_ms
+    value_ms: 36.629
+    threshold_ms: 5000
+    passed: true
+
+bench_environment:
+  status: PASS
+  db_url_source: primary_env
+  note: "zig build bench first line: BENCHMARK_SETUP_INFO|db_url_source=primary_env — no BENCHMARK_SETUP_ERROR"
+
+blocking_issues: []
+
+approved_requirements:
+  - EXP-103
+
+release_summary: >
+  EXP-103 (instance_waits persistence) is APPROVED for release.
+  All 5 integration tests pass. Migration 093 is in place. All four NFR thresholds
+  pass with substantial margin (read p99: 1.3ms vs 200ms limit; write p99: 9.5ms
+  vs 500ms limit; throughput: 3617 eps vs 1000 eps floor; replay: 37ms vs 5000ms
+  limit). No new unit test failures introduced. All acceptance criteria verified.
