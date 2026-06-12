@@ -93,7 +93,7 @@ pub fn createRecord(
     defer pool.release(conn);
 
     // 1. Load active entity definition
-    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
+    const def = definition_mod.getDefinitionByName(allocator, conn, params.tenant_id, params.entity_type) catch |err| switch (err) {
         error.DefinitionNotFound => return error.InvalidEntityType,
         else => return error.TransactionFailed,
     };
@@ -171,7 +171,7 @@ pub fn updateRecord(
     defer pool.release(conn);
 
     // Load active definition
-    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
+    const def = definition_mod.getDefinitionByName(allocator, conn, params.tenant_id, params.entity_type) catch |err| switch (err) {
         error.DefinitionNotFound => return error.InvalidEntityType,
         else => return error.TransactionFailed,
     };
@@ -237,7 +237,7 @@ pub fn deleteRecord(
     defer pool.release(conn);
 
     // Load active definition
-    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
+    const def = definition_mod.getDefinitionByName(allocator, conn, params.tenant_id, params.entity_type) catch |err| switch (err) {
         error.DefinitionNotFound => return error.InvalidEntityType,
         else => return error.TransactionFailed,
     };
@@ -370,4 +370,3 @@ fn fetchRecordResult(
         .is_duplicate = true,
     };
 }
-
