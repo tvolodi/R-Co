@@ -254,6 +254,9 @@ pub const CompleteTaskError = error{
     TaskNotFound,
     /// Task status ≠ PENDING (already COMPLETED or CANCELLED). HTTP 409.
     TaskAlreadyTerminated,
+    /// Parent instance is not ACTIVE (CANCELLED / COMPLETED / ERROR) — enforced
+    /// inside the transaction via SELECT FOR UPDATE. HTTP 409.
+    InstanceNotActive,
     /// output_variables is null or not a JSON object. HTTP 422.
     InvalidInput,
     /// Pure transition function returned a TransitionError. HTTP 500.
@@ -1233,8 +1236,10 @@ pub const InstanceStore = struct {
         if (proj_status == .ERROR) {
             return CompleteTaskError.InstanceInError;
         }
+        // ISS-208: instance CANCELLED/COMPLETED → InstanceNotActive (pre-tx fast-path;
+        // the definitive check is the FOR UPDATE NOWAIT inside the transaction below).
         if (proj_status == .CANCELLED or proj_status == .COMPLETED) {
-            return CompleteTaskError.TaskAlreadyTerminated;
+            return CompleteTaskError.InstanceNotActive;
         }
 
         // Parse current_nodes JSON array → []Token (node_id/branch_id in allocator).
@@ -1334,11 +1339,11 @@ pub const InstanceStore = struct {
             snapshot_mod.SnapshotError.PoolExhausted => CompleteTaskError.PoolExhausted,
             snapshot_mod.SnapshotError.DefinitionNotFound => blk: {
                 // If the instance status is already terminal (ERROR, CANCELLED, COMPLETED)
-                // and the snapshot was cleaned up, return InstanceInError so the caller
-                // can respond with the correct HTTP 409.
+                // and the snapshot was cleaned up, return the appropriate 409 error.
                 if (proj_status == .ERROR) break :blk CompleteTaskError.InstanceInError;
+                // ISS-208: CANCELLED/COMPLETED → InstanceNotActive.
                 if (proj_status == .CANCELLED or proj_status == .COMPLETED)
-                    break :blk CompleteTaskError.TaskAlreadyTerminated;
+                    break :blk CompleteTaskError.InstanceNotActive;
                 break :blk CompleteTaskError.PersistenceFailed;
             },
             else => CompleteTaskError.PersistenceFailed,
@@ -1448,8 +1453,10 @@ pub const InstanceStore = struct {
                 // ROLLBACK via errdefer; InstanceInError → HTTP 409.
                 return CompleteTaskError.InstanceInError;
             }
+            // ISS-208: instance CANCELLED or COMPLETED → InstanceNotActive (race-safe,
+            // checked inside the FOR UPDATE NOWAIT transaction).
             if (locked_status == .CANCELLED or locked_status == .COMPLETED) {
-                return CompleteTaskError.TaskAlreadyTerminated;
+                return CompleteTaskError.InstanceNotActive;
             }
             // ISS-203: last_event_seq is the sequence of the last committed event.
             // The task_completed event will be assigned last_event_seq + 1.
