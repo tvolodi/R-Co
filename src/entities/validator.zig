@@ -109,12 +109,12 @@ const MAX_NAME_LEN = 128;
 // ---------------------------------------------------------------------------
 
 pub const Validator = struct {
-    errors: std.ArrayListUnmanaged(ValidationError),
+    errors: std.ArrayList(ValidationError),
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) Validator {
         return Validator{
-            .errors = std.ArrayListUnmanaged(ValidationError).empty,
+            .errors = std.ArrayList(ValidationError).init(allocator),
             .allocator = allocator,
         };
     }
@@ -125,7 +125,7 @@ pub const Validator = struct {
             self.allocator.free(e.constraint);
             self.allocator.free(e.message);
         }
-        self.errors.deinit(self.allocator);
+        self.errors.deinit();
     }
 
     pub fn lastErrors(self: *const Validator) []const ValidationError {
@@ -136,7 +136,7 @@ pub const Validator = struct {
         const fp = try self.allocator.dupe(u8, field_path);
         const ct = try self.allocator.dupe(u8, constraint);
         const msg = try self.allocator.dupe(u8, message);
-        try self.errors.append(self.allocator, .{
+        try self.errors.append(.{
             .field_path = fp,
             .constraint = ct,
             .message = msg,
