@@ -594,7 +594,7 @@ pub fn retryConvergent(
     if (!cause_changed) {
         const corr_row = conn.queryRow(
             allocator,
-            \\SELECT id::text FROM events
+            \\SELECT event_id::text FROM events
             \\WHERE instance_id = $1::uuid
             \\  AND event_type = 'EXECUTION_CORRECTION'
             \\  AND sequence_number > (
