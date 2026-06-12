@@ -1,0 +1,36 @@
+{
+  "run_id": "WF02-iss401-404-epic4-20260612",
+  "created_at": "2026-06-12T12:17:42Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "ISS-401",
+    "ISS-402",
+    "ISS-403",
+    "ISS-404"
+  ],
+  "difficulty": 4,
+  "difficulty_rationale": "Four features across rate-limiting, OIDC auth, identity service - multi-module with shared middleware dependencies",
+  "integration_surface": "high",
+  "integration_surface_rationale": "Touches src/api/middleware/*, src/oidc/*, src/identity/service.zig, src/config/*, src/rate_limit/* \u2014 5+ modules",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "backend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 8,
+    "code-design-validator": 22,
+    "backend-dev": 9,
+    "test-designer": 3,
+    "test-design-validator": 38,
+    "test-runner": 6,
+    "release-validator": 2,
+    "doc-updater": 2,
+    "total": 90
+  }
+}

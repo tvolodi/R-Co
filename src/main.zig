@@ -68,6 +68,7 @@ pub const oidc_realm_seed = @import("oidc/realm_seed.zig"); // OIDC-29 realm see
 pub const oidc_test_token_helper = @import("oidc/test_token_helper.zig"); // OIDC-30 test-only token helper
 pub const oidc_coexistence_auth = @import("oidc/coexistence_auth.zig"); // OIDC-33 coexistence context equivalence checks
 pub const oidc_migration_helper = @import("oidc/migration_helper.zig"); // OIDC-34 migration helper service
+pub const oidc_jwks = @import("oidc/jwks.zig"); // ISS-402 OIDC token cache and JTI denylist
 pub const api_auth = @import("api/middleware/auth.zig"); // API-08 auth middleware provider-manager configuration
 pub const tenant_migration_admin = @import("admin/tenant_migration.zig"); // TNT-06 export/import admin handlers
 pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle handlers
@@ -859,6 +860,7 @@ fn serveRequest(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = false,
                 .token_id = user_id,
+                .principal = user_id,
             };
 
             if (method == .GET) {
@@ -880,6 +882,7 @@ fn serveRequest(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = false,
                 .token_id = user_id,
+                .principal = user_id,
             };
 
             if (std.mem.eql(u8, seg4, "subscriptions")) {
@@ -932,6 +935,7 @@ fn serveRequest(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = false,
                 .token_id = user_id,
+                .principal = user_id,
             };
 
             if (actor.role != .PLATFORM_ADMIN) {
@@ -964,6 +968,7 @@ fn serveRequest(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = false,
                 .token_id = user_id,
+                .principal = user_id,
             };
 
             if (std.mem.eql(u8, seg4, "tokens")) {
@@ -998,6 +1003,7 @@ fn serveRequest(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = false,
                 .token_id = user_id,
+                .principal = user_id,
             };
             if (std.mem.eql(u8, seg4, "services")) {
                 // GET  /api/v1/admin/services           → handleAdminListServices (SVC-04)
@@ -1144,6 +1150,7 @@ fn serveRequest(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = false,
                 .token_id = user_id,
+                .principal = user_id,
             };
 
             if (seg4.len == 0) {
@@ -1191,6 +1198,7 @@ fn serveRequest(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = false,
                 .token_id = user_id,
+                .principal = user_id,
             };
 
             if (seg4.len == 0) {
@@ -1249,6 +1257,7 @@ fn serveRequest(
                 .role = .PLATFORM_ADMIN,
                 .is_bootstrap = false,
                 .token_id = user_id,
+                .principal = user_id,
             };
 
             if (seg4.len == 0 and method == .POST) {

@@ -1207,6 +1207,11 @@ pub const Service = struct {
         };
     }
 
+    /// Create a new API token. Roles are SNAPSHOTTED at call time from the input roles
+    /// and stored immutably in api_tokens.roles_json. Subsequent changes to user_roles
+    /// do NOT affect this token's effective roles (ISS-404).
+    ///
+    /// If input.roles is empty, the token defaults to ["VIEWER"] as the minimum grant.
     pub fn issueToken(
         self: *Service,
         allocator: std.mem.Allocator,
@@ -1215,8 +1220,9 @@ pub const Service = struct {
     ) TokenError!IssuedToken {
         if (actor.role != .PLATFORM_ADMIN) return error.Forbidden;
         if (input.user_id.len == 0) return error.ValidationFailed;
-        if (input.roles.len == 0) return error.InvalidRoleSet;
-        for (input.roles) |role| {
+        // ISS-404: Default to VIEWER when no roles are provided.
+        const effective_roles: []const auth.Role = if (input.roles.len == 0) &.{auth.Role.VIEWER} else input.roles;
+        for (effective_roles) |role| {
             if (!isIssuableTokenRole(role)) return error.InvalidRoleSet;
         }
 
@@ -1256,7 +1262,7 @@ pub const Service = struct {
         const token_hash = try hashToken(allocator, token_value);
         defer allocator.free(token_hash);
 
-        const roles_json = try rolesToJson(allocator, input.roles);
+        const roles_json = try rolesToJson(allocator, effective_roles);
         defer allocator.free(roles_json);
 
         const token_name = try std.fmt.allocPrint(allocator, "token-{s}", .{token_hash[0..8]});
@@ -1292,8 +1298,8 @@ pub const Service = struct {
         const expires_at_out = row.?[2];
         const created_at = row.?[3] orelse return error.PersistenceFailed;
 
-        const role_copy = allocator.alloc(auth.Role, input.roles.len) catch return error.OutOfMemory;
-        @memcpy(role_copy, input.roles);
+        const role_copy = allocator.alloc(auth.Role, effective_roles.len) catch return error.OutOfMemory;
+        @memcpy(role_copy, effective_roles);
 
         return .{
             .token_id = allocator.dupe(u8, token_id) catch return error.OutOfMemory,
