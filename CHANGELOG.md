@@ -2,6 +2,23 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EPIC-2 / ISS-204+206] — 2026-06-12
+
+### ISS-204: Write audit_log inside the state-change transaction
+- Audit INSERT is enlisted in the handler's DB transaction (commits/rolls back atomically)
+- Added `writeAuditInTx()` to `src/obs/audit.zig` — inserts audit row using caller's open transaction
+- Crash-safety invariant: audit row and event row are either both present or both absent after restart
+- Post-handler middleware audit write path removed (now handled inline)
+- `transition.zig` remains I/O-free (audit is a handler concern)
+
+### ISS-206: Engine token multiset + persisted parallel-join counters
+- PARALLEL split assigns deterministic `token_id` (FNV-1a hash) to each branch token
+- Root token from `instance_started` also gets a deterministic `token_id`
+- PARALLEL join reads and updates `join_counters` from `InstanceState` — tracks arrivals across multiple `transition()` calls
+- Join fires when `received_count >= expected_from_branches` (accumulated minus cancelled)
+- Replay determinism: identical event sequence produces identical `active_tokens` + `join_counters`
+- `transition.zig` performs zero I/O — all arithmetic is pure
+
 ## [EPIC-2 / ISS-207+208+205] — 2026-06-12
 
 ### ISS-207: Convergent EXECUTION_ERROR retry

@@ -4107,10 +4107,10 @@ requirements:
     priority: MUST
     title: Persist new token model ({token_id,node_id} + join_counters)
     implemented_in:
-      - migrations/083_instances_token_model.sql
-      - migrations/088_iss105_instances_token_model_backfill.sql
-      - src/engine/instance.zig
-      - src/design/iss105_token_model_schema.md
+    - migrations/083_instances_token_model.sql
+    - migrations/088_iss105_instances_token_model_backfill.sql
+    - src/engine/instance.zig
+    - src/design/iss105_token_model_schema.md
     test_spec: tests/specs/ISS-105.md
     test_run: tests/reports/report-20260611-iss105.yaml
     tested_at: '2026-06-12'
@@ -4203,4 +4203,14 @@ requirements:
     release_run: WF02-iss203-idempotency-keys-20260611
     release_decision: docs/status/release-iss203-20260611.yaml
     last_updated: '2026-06-11T23:35:01Z'
+  ISS-204:
+    status: RELEASED
+    implemented_in: feature/WF02-iss204-206-20260611
+    released_in: EPIC-2 / ISS-204+206
+    last_updated: '2026-06-12T04:54:38Z'
+  ISS-206:
+    status: RELEASED
+    implemented_in: feature/WF02-iss204-206-20260611
+    released_in: EPIC-2 / ISS-204+206
+    last_updated: '2026-06-12T04:54:38Z'
 total_requirements: 291
