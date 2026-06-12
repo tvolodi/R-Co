@@ -35,7 +35,38 @@ fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
-    // Set tenant context before Pool.init so every acquire() routes to tenant_default schema.
+    // EXP-103 test setup: ensure the default tenant uses SCHEMA storage mode.
+    //
+    // The pool routing layer reads storage_mode from public.tenant on every
+    // first acquire().  The default tenant seed row has storage_mode = 'LEGACY_RLS',
+    // which routes connections to the public schema — where instance_projections,
+    // timers, tasks, and instance_waits do NOT exist (they live in tenant_default).
+    //
+    // Fix: use a temporary, no-tenant-context pool (routes to public) to UPDATE
+    // the default tenant row to SCHEMA before creating the real pool.  Once the
+    // DB row is SCHEMA, the real pool's first acquire() will re-query and route
+    // to tenant_default schema as intended.
+    {
+        tenant_context.clear(); // no tenant → pool routes to public
+        var setup_pool = try Pool.init(std.testing.io, allocator, PoolConfig{
+            .url = url,
+            .pool_size = 2,
+        });
+        defer setup_pool.deinit();
+        const setup_conn = try setup_pool.acquire();
+        defer setup_pool.release(setup_conn);
+        setup_conn.exec(
+            "UPDATE public.tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid",
+            &.{DEFAULT_TENANT_ID},
+        ) catch |err| {
+            std.debug.print("makePool: storage_mode UPDATE failed (non-fatal): {}\n", .{err});
+        };
+    }
+
+    // Reset storage_mode cache and set tenant context so the real pool's
+    // first acquire() re-queries the DB, finds SCHEMA, and sets search_path
+    // to tenant_default.
+    tenant_context.clear();
     tenant_context.set(DEFAULT_TENANT_ID);
     var pool = try Pool.init(std.testing.io, allocator, PoolConfig{
         .url = url,
