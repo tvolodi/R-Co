@@ -2,6 +2,11 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EXP-101 Scale Anchor] — 2026-06-12
+
+### Documentation
+- **EXP-101**: Added Scale Anchor section to architecture doc (500 target / 5,000 ceiling tenants; escape hatches: db_host sharding, read replicas, schema packing).
+
 ## [EPIC-5 / ISS-501+502+503+504] — 2026-06-12
 
 ### Added

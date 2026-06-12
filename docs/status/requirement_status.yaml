@@ -4289,4 +4289,11 @@ requirements:
     - src/db/migrations.zig
     test_spec: tests/specs/ISS-504.md
     last_updated: '2026-06-12T12:54:02Z'
-total_requirements: 294
+  EXP-101:
+    status: RELEASED
+    stage: Expansion
+    priority: P1
+    description: Scale anchor section added to architecture doc (500/5,000 tenant target/ceiling)
+    released_at: '2026-06-12'
+    run_id: WF02-exp101-scale-anchor-20260612
+total_requirements: 295
