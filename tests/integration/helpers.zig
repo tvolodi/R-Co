@@ -119,11 +119,9 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         // pre-existing tenant migration state that test harness doesn't set up.
         // - GBL-074/075: TNT-05 backfill tracking (requires pre-existing migration state)
         // - GBL-077: TNT-07 RLS cleanup (requires schema-per-tenant state)
-        // - GBL-081: ISS-103 audit_entries column type migration (legacy public schema tables already dropped)
         if (std.mem.eql(u8, filename, "GBL-074_tnt05_backfill_tracking.sql") or
             std.mem.eql(u8, filename, "GBL-075_tnt05_backfill_run.sql") or
-            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql") or
-            std.mem.eql(u8, filename, "GBL-081_iss103_audit_resource_id_text.sql")) {
+            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql")) {
             // Record as applied but skip execution
             conn.exec(
                 "INSERT INTO schema_migrations(version) VALUES ($1) ON CONFLICT DO NOTHING",
