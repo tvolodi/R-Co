@@ -1,0 +1,42 @@
+{
+  "handoff_id": "bee07f8e-f3d3-46cf-aa41-ec1d0e08e9fa",
+  "run_id": "WF02-iss204-206-20260611",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-11T23:48:28Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 / ISS-204+206",
+    "requirement_ids": [
+      "ISS-204",
+      "ISS-206"
+    ],
+    "related_handoff_ids": [
+      "2c3245fb-aeea-477c-a1c2-4fe7356d7001"
+    ],
+    "artifacts_in": [
+      "src/design/iss204_audit_in_transaction.md",
+      "src/design/iss206_token_multiset_join_counters.md"
+    ]
+  },
+  "task": {
+    "description": "Write integration tests for ISS-204 and ISS-206.\n\nFiles:\n- tests/specs/ISS-204.md + tests/integration/iss204_audit_transaction_test.zig\n- tests/specs/ISS-206.md + tests/integration/iss206_token_multiset_test.zig\n\nISS-204 cases: (1) commit event \u2192 audit row exists in same tx; (2) crash-injection (simulated tx rollback) \u2192 both audit and event absent; (3) before_state/after_state captured correctly.\n\nISS-206 cases: (1) parallel split creates tokens with distinct token_ids; (2) join advances only when all branch tokens arrive; (3) cancelled branch subtracts from expected count; (4) replay round-trip produces identical active_tokens + join_counters.\n\nReal PostgreSQL, per-test UUIDs, no mocks, no SkipZigTest.",
+    "acceptance_criteria": [
+      "Spec + test files for ISS-204 and ISS-206 covering listed cases",
+      "Real PostgreSQL",
+      "Per-test UUIDs",
+      "No mocks",
+      "No SkipZigTest"
+    ],
+    "functions_to_call": [
+      "fn:read-test-conventions"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T23:48:28Z",
+  "completed_at": null
+}

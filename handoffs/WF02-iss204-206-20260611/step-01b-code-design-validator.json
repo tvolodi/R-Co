@@ -1,0 +1,40 @@
+{
+  "handoff_id": "0b627409-f0de-46f8-afe3-c595d51f72eb",
+  "run_id": "WF02-iss204-206-20260611",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-11T23:48:28Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 / ISS-204+206",
+    "requirement_ids": [
+      "ISS-204",
+      "ISS-206"
+    ],
+    "related_handoff_ids": [
+      "5d665e0a-4a75-4ce9-bf45-7dcf9783488a"
+    ],
+    "artifacts_in": [
+      "src/design/iss204_audit_in_transaction.md",
+      "src/design/iss206_token_multiset_join_counters.md"
+    ]
+  },
+  "task": {
+    "description": "Validate design docs for ISS-204 and ISS-206. Hard gate.",
+    "acceptance_criteria": [
+      "ISS-204: transactional audit path, middleware removal, crash-safety all described",
+      "ISS-206: token multiset, parallel split, join counter algorithm, replay invariant all described",
+      "No implementation code in either doc"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T23:48:28Z",
+  "completed_at": null
+}
