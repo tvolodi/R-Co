@@ -1203,6 +1203,24 @@ pub fn build(b: *std.Build) void {
     test_integration_sch303_step.dependOn(&clean_test_db.step);
     test_integration_sch303_step.dependOn(&run_sch303_integration_tests.step);
 
+    // EXP-103: instance_waits persistence layer integration tests.
+    const exp103_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/exp103_instance_waits_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_exp103_integration_tests = b.addRunArtifact(exp103_integration_tests);
+    run_exp103_integration_tests.setCwd(b.path("."));
+    run_exp103_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
+    const test_integration_exp103_step = b.step("test-integration-exp103", "Run EXP-103 instance_waits persistence layer integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_exp103_step.dependOn(&clean_test_db.step);
+    test_integration_exp103_step.dependOn(&run_exp103_integration_tests.step);
+    test_integration_step.dependOn(&run_exp103_integration_tests.step);
+
     const svc_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/main_test.zig"),
