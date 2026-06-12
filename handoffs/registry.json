@@ -5802,6 +5802,119 @@
       "created_at": "2026-06-12T12:17:42Z",
       "status": "PENDING",
       "stage": "EPIC-4 / ISS-401..404"
+    },
+    {
+      "handoff_id": "c40c2ce6-ba83-4cf3-b764-2cb5a1786748",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev-gitsetup.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-12T12:43:09Z",
+      "status": "PENDING",
+      "stage": "EPIC-5 / ISS-501..504"
+    },
+    {
+      "handoff_id": "4d54003a-2d9e-40e3-a322-4a0e0a07429e",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-01-code-designer.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-06-12T12:43:09Z",
+      "status": "PENDING",
+      "stage": "EPIC-5 / ISS-501..504"
+    },
+    {
+      "handoff_id": "38ccf629-16b8-4f9d-9d71-ad5075e77c00",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-01b-code-design-validator.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "step": "01b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-06-12T12:43:09Z",
+      "status": "PENDING",
+      "stage": "EPIC-5 / ISS-501..504"
+    },
+    {
+      "handoff_id": "8f232317-8fa5-437e-a499-8578c1cb98f2",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-02a-backend-dev.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "step": "02a",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-12T12:43:09Z",
+      "status": "PENDING",
+      "stage": "EPIC-5 / ISS-501..504"
+    },
+    {
+      "handoff_id": "aa4e9818-a27f-4fe5-b4a1-485a53cdafdd",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-03-test-designer.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-06-12T12:43:09Z",
+      "status": "PENDING",
+      "stage": "EPIC-5 / ISS-501..504"
+    },
+    {
+      "handoff_id": "5326c7a8-e9d9-4b46-a0aa-3b2ac436a77c",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-03b-test-design-validator.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "step": "03b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-06-12T12:43:09Z",
+      "status": "PENDING",
+      "stage": "EPIC-5 / ISS-501..504"
+    },
+    {
+      "handoff_id": "7e336491-dd0d-4578-87b5-5476580b7159",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-04-test-runner.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-06-12T12:43:09Z",
+      "status": "PENDING",
+      "stage": "EPIC-5 / ISS-501..504"
+    },
+    {
+      "handoff_id": "3b5dc590-2315-4585-9a02-a76362e42757",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-05-release-validator.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-06-12T12:43:09Z",
+      "status": "PENDING",
+      "stage": "EPIC-5 / ISS-501..504"
+    },
+    {
+      "handoff_id": "0add9e07-02b8-466d-b391-562b4096c51c",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-06-doc-updater.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-06-12T12:43:09Z",
+      "status": "PENDING",
+      "stage": "EPIC-5 / ISS-501..504"
+    },
+    {
+      "handoff_id": "e501-00-git-setup",
+      "file": "handoffs/WF02-iss501-504-epic5-20260612/step-00-backend-dev.json",
+      "run_id": "WF02-iss501-504-epic5-20260612",
+      "workflow_id": "WF-02",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-12T12:45:26Z",
+      "started_at": "2026-06-12T12:45:26Z",
+      "completed_at": "2026-06-12T12:45:26Z",
+      "status": "COMPLETED",
+      "stage": "Epic 5 Multi-tenancy SPT Coexistence"
     }
   ],
   "last_updated": "2026-06-12T05:20:23Z"

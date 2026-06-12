@@ -1,4 +1,6 @@
 //! TNT-06: Tenant schema export and import admin endpoints.
+//! ISS-502: SPT cutover transaction — copy public rows to tenant schema
+//! and atomically flip storage_mode from LEGACY_RLS to SCHEMA.
 //!
 //! POST /api/v1/admin/tenants/{tenant_id}/export
 //!   Sets tenant.status = 'MIGRATING', triggers pg_dump of the tenant schema,
@@ -352,6 +354,277 @@ pub fn handleImportTenant(
     ) catch "{\"error\":\"internal_error\"}";
 
     return HandlerResult{ .status_code = 200, .body = resp };
+}
+
+// ---------------------------------------------------------------------------
+// ISS-502: SPT cutover — atomically flip storage_mode after verified copy
+// ---------------------------------------------------------------------------
+
+/// Business tables copied from public to tenant schema during SPT cutover.
+/// These are the tables that hold per-tenant data and were previously
+/// isolated via RLS.  schema_migrations is handled separately.
+const SPT_BUSINESS_TABLES = [_][]const u8{
+    "process_definitions",
+    "instance_projections",
+    "events",
+    "events_archive",
+    "tasks",
+    "tokens",
+    "timers",
+    "audit_entries",
+    "audit_log",
+    "users",
+    "groups",
+    "group_members",
+    "roles",
+    "user_roles",
+    "api_tokens",
+    "webhook_subscriptions",
+    "webhook_deliveries",
+    "dead_letter_items",
+    "instance_sequence",
+    "event_type_registry",
+    "event_retention_policies",
+    "repository_form_schemas",
+};
+
+pub const CutoverResult = struct {
+    rows_copied: usize,
+    tables_verified: usize,
+    already_migrated: bool,
+};
+
+pub const SptCutoverError = error{
+    TenantNotFound,
+    RowCountMismatch,
+    CopyFailed,
+    FlipFailed,
+    PoolExhausted,
+    PersistenceFailed,
+    OutOfMemory,
+};
+
+/// Execute the SPT cutover for a single tenant.
+///
+/// Steps (all in one transaction):
+///   1. BEGIN
+///   2. Check storage_mode: if already 'SCHEMA' → COMMIT (idempotent no-op)
+///   3. Copy all rows from public business tables → tenant schema
+///   4. Verify row count parity per table
+///   5. UPDATE tenant SET storage_mode = 'SCHEMA'
+///   6. COMMIT
+///
+/// On any failure: ROLLBACK. Tenant stays LEGACY_RLS.
+///
+/// allocator: for query result strings.
+/// pool: connection pool (must already be on the correct host).
+/// tenant_id_str: 36-char UUID of the tenant to migrate.
+/// tenant_schema: target schema name (e.g. "tenant_a1b2c3...").
+pub fn executeSptCutover(
+    allocator: std.mem.Allocator,
+    pool: *Pool,
+    tenant_id_str: []const u8,
+    tenant_schema: []const u8,
+) SptCutoverError!CutoverResult {
+    const conn = pool.acquire() catch |err| switch (err) {
+        PoolError.ExhaustedPool => return SptCutoverError.PoolExhausted,
+        else => return SptCutoverError.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    // Step 1: BEGIN.
+    conn.begin() catch return SptCutoverError.PersistenceFailed;
+
+    // Step 2: Idempotency guard.
+    const mode_row = conn.queryRow(
+        allocator,
+        "SELECT storage_mode FROM tenant WHERE id = $1::uuid LIMIT 1",
+        &.{tenant_id_str},
+    ) catch {
+        conn.rollback() catch {};
+        return SptCutoverError.PersistenceFailed;
+    };
+
+    if (mode_row == null) {
+        conn.rollback() catch {};
+        return SptCutoverError.TenantNotFound;
+    }
+
+    const current_mode: []const u8 = mode_row.?[0] orelse "LEGACY_RLS";
+    defer {
+        if (mode_row.?[0]) |v| allocator.free(v);
+        allocator.free(mode_row.?);
+    }
+
+    if (std.mem.eql(u8, current_mode, "SCHEMA")) {
+        // Already migrated — idempotent no-op.
+        conn.commit() catch {
+            conn.rollback() catch {};
+            return SptCutoverError.PersistenceFailed;
+        };
+        return CutoverResult{
+            .rows_copied = 0,
+            .tables_verified = 0,
+            .already_migrated = true,
+        };
+    }
+
+    // Step 3: Copy rows for each business table.
+    var rows_copied: usize = 0;
+    var tables_copied: usize = 0;
+
+    for (SPT_BUSINESS_TABLES) |table_name| {
+        // Build: INSERT INTO tenant_{slug}.{table} SELECT * FROM {table} WHERE tenant_id = $1
+        var copy_sql_buf: [512]u8 = undefined;
+        const copy_sql = std.fmt.bufPrint(
+            &copy_sql_buf,
+            "INSERT INTO {s}.{s} SELECT * FROM {s} WHERE tenant_id = $1::uuid",
+            .{ tenant_schema, table_name, table_name },
+        ) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.CopyFailed;
+        };
+
+        conn.exec(copy_sql, &.{tenant_id_str}) catch |err| {
+            // If the table doesn't exist in the tenant schema yet (migration gap),
+            // that's a setup error, not a copy error.  Rollback.
+            _ = err;
+            conn.rollback() catch {};
+            return SptCutoverError.CopyFailed;
+        };
+        tables_copied += 1;
+
+        // Count rows copied in this batch (for verification + reporting).
+        var count_sql_buf: [256]u8 = undefined;
+        const count_sql = std.fmt.bufPrint(
+            &count_sql_buf,
+            "SELECT count(*) FROM {s}.{s}",
+            .{ tenant_schema, table_name },
+        ) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.CopyFailed;
+        };
+
+        const count_row = conn.queryRow(allocator, count_sql, &.{}) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.CopyFailed;
+        };
+        if (count_row) |cr| {
+            defer {
+                if (cr[0]) |v| allocator.free(v);
+                allocator.free(cr);
+            }
+            if (cr[0]) |count_str| {
+                const n = std.fmt.parseInt(usize, count_str, 10) catch 0;
+                rows_copied += n;
+            }
+        }
+    }
+
+    // Step 3b: Copy schema_migrations entries for this tenant.
+    {
+        var copy_mig_sql_buf: [512]u8 = undefined;
+        const copy_mig_sql = std.fmt.bufPrint(
+            &copy_mig_sql_buf,
+            "INSERT INTO {s}.schema_migrations (version, applied_at) " ++
+                "SELECT version, applied_at FROM schema_migrations " ++
+                "WHERE schema_name = $1",
+            .{tenant_schema},
+        ) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.CopyFailed;
+        };
+
+        conn.exec(copy_mig_sql, &.{tenant_schema}) catch {
+            // schema_migrations might not exist in tenant schema if no per-tenant
+            // migrations have been applied.  This is non-fatal; continue.
+        };
+    }
+
+    // Step 4: Verify row count parity for each table.
+    for (SPT_BUSINESS_TABLES) |table_name| {
+        var pub_count_sql_buf: [256]u8 = undefined;
+        const pub_count_sql = std.fmt.bufPrint(
+            &pub_count_sql_buf,
+            "SELECT count(*) FROM {s} WHERE tenant_id = $1::uuid",
+            .{table_name},
+        ) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.PersistenceFailed;
+        };
+
+        const pub_row = conn.queryRow(allocator, pub_count_sql, &.{tenant_id_str}) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.PersistenceFailed;
+        };
+
+        var scm_count_sql_buf: [256]u8 = undefined;
+        const scm_count_sql = std.fmt.bufPrint(
+            &scm_count_sql_buf,
+            "SELECT count(*) FROM {s}.{s}",
+            .{ tenant_schema, table_name },
+        ) catch {
+            if (pub_row) |pr| {
+                if (pr[0]) |v| allocator.free(v);
+                allocator.free(pr);
+            }
+            conn.rollback() catch {};
+            return SptCutoverError.PersistenceFailed;
+        };
+
+        const scm_row = conn.queryRow(allocator, scm_count_sql, &.{}) catch {
+            if (pub_row) |pr| {
+                if (pr[0]) |v| allocator.free(v);
+                allocator.free(pr);
+            }
+            conn.rollback() catch {};
+            return SptCutoverError.PersistenceFailed;
+        };
+
+        const pub_count = if (pub_row) |pr| blk: {
+            defer {
+                if (pr[0]) |v| allocator.free(v);
+                allocator.free(pr);
+            }
+            if (pr[0]) |s| break :blk std.fmt.parseInt(usize, s, 10) catch 0;
+            break :blk 0;
+        } else 0;
+
+        const scm_count = if (scm_row) |sr| blk: {
+            defer {
+                if (sr[0]) |v| allocator.free(v);
+                allocator.free(sr);
+            }
+            if (sr[0]) |s| break :blk std.fmt.parseInt(usize, s, 10) catch 0;
+            break :blk 0;
+        } else 0;
+
+        if (pub_count != scm_count) {
+            conn.rollback() catch {};
+            return SptCutoverError.RowCountMismatch;
+        }
+    }
+
+    // Step 5: Flip storage_mode.
+    conn.exec(
+        "UPDATE tenant SET storage_mode = 'SCHEMA', updated_at = NOW() WHERE id = $1::uuid",
+        &.{tenant_id_str},
+    ) catch {
+        conn.rollback() catch {};
+        return SptCutoverError.FlipFailed;
+    };
+
+    // Step 6: COMMIT.
+    conn.commit() catch {
+        conn.rollback() catch {};
+        return SptCutoverError.PersistenceFailed;
+    };
+
+    return CutoverResult{
+        .rows_copied = rows_copied,
+        .tables_verified = tables_copied,
+        .already_migrated = false,
+    };
 }
 
 // ---------------------------------------------------------------------------
