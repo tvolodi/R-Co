@@ -20,6 +20,7 @@
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
+   - [Scale Anchor](#scale-anchor)
 2. [Technology Stack](#2-technology-stack)
 3. [High-Level Component Map](#3-high-level-component-map)
 4. [Process Boundaries & Data Flow](#4-process-boundaries--data-flow)
@@ -53,6 +54,7 @@
 The BPM Platform is an event-sourced process execution kernel. Its single responsibility is to faithfully execute directed process graphs while maintaining a tamper-evident, replayable audit trail of every state change. All domain logic (ERP, CRM, HRM) lives above the platform API boundary.
 
 The platform is **multi-tenant**: a single deployment serves many isolated company tenants. Tenant data is isolated at the PostgreSQL schema level (schema-per-tenant), and each tenant authenticates against its own OIDC realm. See [§11](#11-multi-tenancy--schema-per-tenant-isolation) and [§12](#12-identity-layer-pluggable-oidc--realm-per-tenant).
+<!-- Scale anchor: schema-per-tenant isolation on a single primary is sufficient below 5,000 tenants; see §Scale Anchor -->
 
 **Core architectural commitments:**
 
@@ -65,6 +67,28 @@ The platform is **multi-tenant**: a single deployment serves many isolated compa
 | Tenant isolation | Each tenant's business data lives in a dedicated PostgreSQL schema (`tenant_<slug>`); cross-tenant reads are structurally impossible, not merely filtered |
 | Pluggable identity | Authentication is delegated to an external OIDC provider (Keycloak adapter shipped) behind a provider interface; one realm per tenant |
 | Sandboxed extensibility | Customer-supplied logic (gateway expressions, service tasks, transformers) runs in resource-bounded Expr / Lua / WASM sandboxes, never in the kernel |
+
+---
+
+## Scale Anchor
+
+> This platform is designed to serve a target of **500 active tenants**, with a tested ceiling
+> of **5,000 tenants** under the current single-primary, schema-per-tenant architecture.
+>
+> Below 5,000 tenants, schema-per-tenant isolation is operationally simple and fully supported
+> without sharding. Above this ceiling, the following escape hatches apply (deferred to a future
+> release unless tenant growth requires them earlier):
+>
+> - **`db_host` sharding** (`public.tenants.db_host` column): route a tenant's connection pool
+>   to a dedicated PostgreSQL host. The `db_host` routing mechanism is already implemented in
+>   `src/db/pool.zig` (TNT-06).
+> - **Read replicas**: direct read-only queries (list, audit, reporting) to a replica DSN per
+>   tenant; write path stays on the primary.
+> - **Schema packing**: multiple tenants per database if the 10,000-schema PostgreSQL limit
+>   becomes relevant before other limits.
+>
+> All single-primary and single-sweep simplifications in this document cite this anchor as
+> their justification. When tenant count approaches 5,000, evaluate the escape hatches.
 
 ---
 
@@ -202,6 +226,7 @@ Scheduler Thread (background, every ~5 s + jitter)
   ▼
 SELECT timers WHERE fire_at <= now() FOR UPDATE SKIP LOCKED
   │  (advisory lock ensures single-node firing in cluster)
+  │  <!-- Scale anchor: single-primary is sufficient at target scale; see §Scale Anchor -->
   │
   ▼
 For each due timer:
@@ -473,6 +498,7 @@ Every inbound request passes through a fixed middleware chain in order:
 **Large payload handling (NFR-05):** Before insert, measure serialised payload size. If `> 4 KB`, store in `event_payloads_overflow` and set `payload` in the main table to `{"$ref": "overflow"}`. Reads transparently JOIN and reconstruct the full payload.
 
 **Archival background job (ES-07):** A low-priority goroutine (Zig thread) wakes hourly, scans `event_retention_policies`, and moves qualifying events to `events_archive` within a transaction. The job acquires a PostgreSQL advisory lock to prevent concurrent runs on multiple nodes.
+<!-- Scale anchor: single-sweep advisory lock is sufficient below 5,000 tenants; see §Scale Anchor -->
 
 ---
 
@@ -821,6 +847,7 @@ All configuration is read from environment variables at startup. The platform va
 ```
 
 One process handles HTTP, scheduler, and webhook dispatch. The scheduler uses a PostgreSQL advisory lock even in single-node mode (consistent code path, no special-casing).
+<!-- Scale anchor: single-node deployment is the primary target configuration below 5,000 tenants; see §Scale Anchor -->
 
 ### 8.2 Multi-node (HA production)
 
@@ -835,12 +862,14 @@ One process handles HTTP, scheduler, and webhook dispatch. The scheduler uses a 
 ```
 
 All nodes share the same PostgreSQL instance. The scheduler advisory lock (`pg_try_advisory_lock`) ensures exactly one node fires timers per cycle. HTTP requests can be served by any node because all state lives in PostgreSQL.
+<!-- Scale anchor: single-primary PostgreSQL is sufficient below 5,000 tenants; see §Scale Anchor -->
 
 **Token revocation propagation:** A `LISTEN/NOTIFY` channel broadcasts token revocations across all nodes so in-process LRU caches are invalidated promptly.
 
 ### 8.3 Migration strategy
 
 Migrations are applied by the process itself at startup using a `schema_migrations` table to track applied versions. Migrations are idempotent. In multi-node deployments, a startup advisory lock ensures only one node runs migrations concurrently.
+<!-- Scale anchor: single-sweep startup migration lock is sufficient below 5,000 tenants; see §Scale Anchor -->
 
 ---
 
