@@ -165,12 +165,3 @@ BEGIN
     resource_id := NULL;
 END;
 $$;
-
--- 4. Also remove the duplicate 089 migration from GBL-081 fix path
---    if it was applied via the renumbered migration path
-DELETE FROM schema_migrations
-WHERE filename = '089_iss103_audit_resource_id_text.sql'
-  AND EXISTS (
-    SELECT 1 FROM schema_migrations
-    WHERE filename = 'GBL-081_iss103_audit_resource_id_text.sql'
-  );
