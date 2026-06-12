@@ -129,6 +129,7 @@ fn adminActor() auth_mod.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "integration-env01",
+        .principal = "integration-env01",
         .tenant_id = tenant_id_arr,
         .tenant_source = .default_fallback,
     };

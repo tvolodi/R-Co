@@ -1,0 +1,170 @@
+[
+  {
+    "condition_id": "gw-001",
+    "source_definition_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_approval_check",
+    "condition_text": "variables.order_total > 1000",
+    "context": {
+      "order_total": 1500
+    },
+    "expected_result": true
+  },
+  {
+    "condition_id": "gw-002",
+    "source_definition_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_approval_check",
+    "condition_text": "variables.order_total > 1000",
+    "context": {
+      "order_total": 500
+    },
+    "expected_result": false
+  },
+  {
+    "condition_id": "gw-003",
+    "source_definition_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_vip_check",
+    "condition_text": "variables.customer_status == \"VIP\"",
+    "context": {
+      "customer_status": "VIP"
+    },
+    "expected_result": true
+  },
+  {
+    "condition_id": "gw-004",
+    "source_definition_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_vip_check",
+    "condition_text": "variables.customer_status == \"VIP\"",
+    "context": {
+      "customer_status": "REGULAR"
+    },
+    "expected_result": false
+  },
+  {
+    "condition_id": "gw-005",
+    "source_definition_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_amount_range",
+    "condition_text": "variables.amount >= 100 && variables.amount <= 1000",
+    "context": {
+      "amount": 500
+    },
+    "expected_result": true
+  },
+  {
+    "condition_id": "gw-006",
+    "source_definition_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_amount_range",
+    "condition_text": "variables.amount >= 100 && variables.amount <= 1000",
+    "context": {
+      "amount": 50
+    },
+    "expected_result": false
+  },
+  {
+    "condition_id": "gw-007",
+    "source_definition_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_high_value",
+    "condition_text": "variables.is_urgent == true",
+    "context": {
+      "is_urgent": true
+    },
+    "expected_result": true
+  },
+  {
+    "condition_id": "gw-008",
+    "source_definition_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_high_value",
+    "condition_text": "variables.is_urgent == true",
+    "context": {
+      "is_urgent": false
+    },
+    "expected_result": false
+  },
+  {
+    "condition_id": "gw-009",
+    "source_definition_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_compound",
+    "condition_text": "variables.risk_score > 50 || variables.is_flagged == true",
+    "context": {
+      "risk_score": 30,
+      "is_flagged": false
+    },
+    "expected_result": false
+  },
+  {
+    "condition_id": "gw-010",
+    "source_definition_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_compound",
+    "condition_text": "variables.risk_score > 50 || variables.is_flagged == true",
+    "context": {
+      "risk_score": 75,
+      "is_flagged": false
+    },
+    "expected_result": true
+  },
+  {
+    "condition_id": "gw-011",
+    "source_definition_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_not_condition",
+    "condition_text": "!(variables.skip_review == true)",
+    "context": {
+      "skip_review": false
+    },
+    "expected_result": true
+  },
+  {
+    "condition_id": "gw-012",
+    "source_definition_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_not_condition",
+    "condition_text": "!(variables.skip_review == true)",
+    "context": {
+      "skip_review": true
+    },
+    "expected_result": false
+  },
+  {
+    "condition_id": "gw-013",
+    "source_definition_id": "11111111-1111-1111-1111-111111111111",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_threshold",
+    "condition_text": "variables.count < 10",
+    "context": {
+      "count": 5
+    },
+    "expected_result": true
+  },
+  {
+    "condition_id": "gw-014",
+    "source_definition_id": "11111111-1111-1111-1111-111111111111",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_numeric_equal",
+    "condition_text": "variables.priority == 1",
+    "context": {
+      "priority": 1
+    },
+    "expected_result": true
+  },
+  {
+    "condition_id": "gw-015",
+    "source_definition_id": "22222222-2222-2222-2222-222222222222",
+    "source_definition_version": 1,
+    "source_gateway_node_id": "gateway_parens",
+    "condition_text": "(variables.a > 10) && (variables.b < 20)",
+    "context": {
+      "a": 15,
+      "b": 10
+    },
+    "expected_result": true
+  }
+]

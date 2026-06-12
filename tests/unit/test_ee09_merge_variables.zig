@@ -204,6 +204,7 @@ test "TC-EE-09-U09: mergeVariables fast-path: empty output returns current_vars,
     var store = instance_mod.InstanceStore{
         .pool = undefined,
         .snapshot_store = undefined,
+        .snapshot_writer = undefined,
     };
 
     // Build current_vars with one entry.

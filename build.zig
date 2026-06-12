@@ -735,6 +735,32 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_dsl04_eval_tests.step);
 
     // ---------------------------------------------------------------------------
+    // `zig build test-differential` — ISS-602 CEL/expr differential harness
+    // ---------------------------------------------------------------------------
+    const expr_diff_mod = b.createModule(.{
+        .root_source_file = b.path("src/expr/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const differential_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/differential/differential_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "cel", .module = cel_mod },
+                .{ .name = "expr", .module = expr_diff_mod },
+            },
+        }),
+    });
+    // Allow @embedFile to resolve files in src/ and vendor/ from the differential test
+    differential_tests.root_module.addIncludePath(b.path("."));
+    const run_differential_tests = b.addRunArtifact(differential_tests);
+    run_differential_tests.setCwd(b.path("."));
+    const test_differential_step = b.step("test-differential", "Run CEL/expr differential corpus tests (ISS-602)");
+    test_differential_step.dependOn(&run_differential_tests.step);
+
+    // ---------------------------------------------------------------------------
     // `zig build test-integration` — integration tests (requires BPM_TEST_DB_URL)
     // ---------------------------------------------------------------------------
 
@@ -1028,6 +1054,27 @@ pub fn build(b: *std.Build) void {
     run_iss205_integration_tests.setCwd(b.path("."));
     run_iss205_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-601: State Snapshots for Large-Instance Reconstruction integration tests.
+    const iss601_integration_imports: []const std.Build.Module.Import = &.{
+        .{ .name = "pg", .module = pg_mod },
+        .{ .name = "http", .module = http_mod },
+        .{ .name = "cel", .module = cel_mod },
+        .{ .name = "pool", .module = pool_root_mod },
+        .{ .name = "bpm", .module = bpm_src_mod },
+        .{ .name = "build_options", .module = build_options_mod },
+    };
+    const iss601_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss601_state_snapshots_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = iss601_integration_imports,
+        }),
+    });
+    const run_iss601_integration_tests = b.addRunArtifact(iss601_integration_tests);
+    run_iss601_integration_tests.setCwd(b.path("."));
+    run_iss601_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     // EPIC-3 (ISS-301, ISS-302, ISS-303): Scheduler concurrency and DLQ routing integration tests.
     const sch303_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1064,6 +1111,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_iss207_integration_tests.step);
     test_integration_step.dependOn(&run_iss208_integration_tests.step);
     test_integration_step.dependOn(&run_iss205_integration_tests.step);
+    test_integration_step.dependOn(&run_iss601_integration_tests.step);
     test_integration_step.dependOn(&run_sch303_integration_tests.step);
 
     const test_integration_xc04_step = b.step("test-integration-xc04", "Run XC-04 integration tests only (requires BPM_TEST_DB_URL)");
@@ -1142,6 +1190,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss208_step = b.step("test-integration-iss208", "Run ISS-208 task guard terminal instance integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss208_step.dependOn(&clean_test_db.step);
     test_integration_iss208_step.dependOn(&run_iss208_integration_tests.step);
+
+    const test_integration_iss601_step = b.step("test-integration-iss601", "Run ISS-601 state snapshots integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss601_step.dependOn(&clean_test_db.step);
+    test_integration_iss601_step.dependOn(&run_iss601_integration_tests.step);
 
     const test_integration_iss205_step = b.step("test-integration-iss205", "Run ISS-205 webhook transactional outbox integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss205_step.dependOn(&clean_test_db.step);
