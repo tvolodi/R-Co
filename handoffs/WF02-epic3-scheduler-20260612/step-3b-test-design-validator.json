@@ -1,0 +1,30 @@
+{
+  "handoff_id": "epic3-test-design-validator-3b",
+  "run_id": "WF02-epic3-scheduler-20260612",
+  "step": "3b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-12T05:20:23Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "issue_ids": ["ISS-301", "ISS-302", "ISS-303"],
+    "upstream_step": "03",
+    "stage": "Test Design Validation Gate (Hard gate)"
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER output for EPIC-3 before TEST-RUNNER executes.\n\nVerify:\n1. Every MUST requirement for ISS-301, ISS-302, ISS-303 has a runnable test\n2. No error.SkipZigTest on critical tests\n3. All fixtures use per-test UUIDs\n4. Integration tests fail clearly when BPM_TEST_DB_URL absent\n5. ISS-303 exhaustion test creates both FAILED timer status AND DLQ entry",
+    "acceptance_criteria": [
+      "All MUST criteria covered by runnable tests",
+      "No deferred or skipped MUST tests",
+      "Test isolation (per-test UUIDs)",
+      "Self-sufficient (fails clearly without services)"
+    ],
+    "functions_to_call": ["fn:validate-test-coverage"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": null,
+  "completed_at": null
+}

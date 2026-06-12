@@ -1,0 +1,39 @@
+{
+  "handoff_id": "epic3-test-designer-03",
+  "run_id": "WF02-epic3-scheduler-20260612",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-12T05:20:23Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "issue_ids": ["ISS-301", "ISS-302", "ISS-303"],
+    "upstream_step": "2a",
+    "epic": "EPIC-3",
+    "stage": "Test Design & Implementation",
+    "requirement_ids": ["ISS-301", "ISS-302", "ISS-303"],
+    "artifacts_in": [
+      "src/scheduler/scheduler.zig",
+      "migrations/089_iss303_timer_fire_error_count.sql",
+      "src/design/scheduler-concurrency-epic3.md"
+    ]
+  },
+  "task": {
+    "description": "Write test specifications and tests for EPIC-3 scheduler changes (ISS-301, ISS-302, ISS-303).\n\n## Required test specs\nCreate `tests/specs/ISS-301-skip-locked-queue.md`, `tests/specs/ISS-302-startup-sweep-lock.md`, `tests/specs/ISS-303-timer-dlq-routing.md`\n\n## ISS-301 tests\n- Unit test: `processNextDueTimer` does NOT call `pg_try_advisory_xact_lock` (verify absence)\n- Unit test: when two workers race, SKIP LOCKED ensures only one fires (mock test or integration)\n- Integration test: insert 2 due timers, run pollDueTimers concurrently from 2 goroutines, each fired exactly once\n\n## ISS-302 tests  \n- Unit tests for startup sweep lock protocol:\n  - When lock acquired: sweep runs, lock released after\n  - When lock NOT acquired: sweep skipped, is_startup_sweep set to false, polling continues\n- isFiredLate: ensure existing tests still pass (they should — no changes)\n\n## ISS-303 tests\n- Unit test: after `max_timer_fire_retries` failed attempts, timer status = 'failed' and DLQ entry created\n- Integration test (requires real PostgreSQL via BPM_TEST_DB_URL):\n  - Insert a timer for a non-existent instance (forces append event to fail)\n  - Run pollDueTimers `max_timer_fire_retries` times\n  - Assert timer.status = 'failed'\n  - Assert dead_letter_queue row with item_type='TIMER' and source_ref=timer_id\n- Unit test: `markTimerFailedInTx` SQL correctness (verify UPDATE + INSERT)\n\n## Rules\n- All integration tests must use real PostgreSQL (BPM_TEST_DB_URL)\n- No mocks, no stubs\n- Per-test UUIDs for all fixtures\n- Tests must fail clearly if BPM_TEST_DB_URL is absent\n- No error.SkipZigTest on MUST tests",
+    "acceptance_criteria": [
+      "Test specs created for all 3 issues",
+      "ISS-301 tests verify SKIP LOCKED behavior",
+      "ISS-302 tests cover startup lock acquired/not-acquired paths",
+      "ISS-303 integration tests verify exhaustion → FAILED + DLQ",
+      "All tests use real PostgreSQL",
+      "No deferred work"
+    ],
+    "functions_to_call": ["fn:read-test-developer-guide"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": null,
+  "completed_at": null
+}

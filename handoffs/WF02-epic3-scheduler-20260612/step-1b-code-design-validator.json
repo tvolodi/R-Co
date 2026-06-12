@@ -1,0 +1,48 @@
+{
+  "handoff_id": "epic3-code-design-validator-1b",
+  "run_id": "WF02-epic3-scheduler-20260612",
+  "step": "1b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-12T05:20:23Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_ids": [
+      "ISS-301",
+      "ISS-302",
+      "ISS-303"
+    ],
+    "upstream_step": "01",
+    "stage": "Design Validation Gate (Hard gate)",
+    "artifacts_in": [
+      "handoffs/WF02-epic3-scheduler-20260612/step-01-code-designer.json",
+      "src/design/scheduler-concurrency-epic3.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER output for EPIC-3 (ISS-301, ISS-302, ISS-303) before BACKEND-DEV begins implementation.\n\nVerify:\n1. ISS-301: Removal of pg_try_advisory_xact_lock is justified; SKIP LOCKED rationale is sound; no double-firing risk documented\n2. ISS-302: Startup lock protocol uses session-level lock (pg_try_advisory_lock, not xact); acquire before sweep, release after; non-holder skips sweep and goes to poll; lock ID is a fixed constant\n3. ISS-303: Migration adds fire_error_count and failed_at; atomicity guaranteed (UPDATE+DLQ INSERT in same transaction); DLQ INSERT SQL fields are correct (item_type, source_ref, instance_id match DlqItemType.TIMER)\n4. No implementation code present\n5. Error handling and rollback semantics documented for each change\n6. Test strategy covers both unit and integration scenarios",
+    "acceptance_criteria": [
+      "All 3 issues covered in design",
+      "ISS-301 rationale is technically sound",
+      "ISS-302 lock protocol uses session-level advisory lock correctly",
+      "ISS-303 atomicity guaranteed (same transaction)",
+      "No code violations",
+      "Test strategy is concrete and testable"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact scheduler-concurrency-epic3.md validated \u2014 all acceptance criteria covered for ISS-301, ISS-302, ISS-303",
+    "artifacts_out": [
+      "src/design/scheduler-concurrency-epic3.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 2a)"
+  },
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": "2026-06-12T09:19:04Z",
+  "completed_at": "2026-06-12T09:22:07Z"
+}
