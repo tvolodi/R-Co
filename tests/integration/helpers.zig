@@ -136,6 +136,7 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         try conn.begin();
         conn.simpleQuery(sql_bytes) catch |err| {
             conn.rollback() catch {};
+            std.debug.print("MIGRATION FAILED: {s} ({})\n", .{ filename, err });
             return err;
         };
         conn.exec(
