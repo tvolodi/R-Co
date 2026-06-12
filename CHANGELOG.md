@@ -2,6 +2,26 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EPIC-2 / ISS-207+208+205] — 2026-06-12
+
+### ISS-207: Convergent EXECUTION_ERROR retry
+- Bare retry (no changed cause) returns `RetryWithoutChange` (HTTP 409 with hint)
+- `retryWithInput(corrected_payload_json)` re-presents the trigger with corrected payload, marking DLQ item as `retrying`
+- `discard(dlq_id)` cancels the instance and removes the DLQ row
+- Changed-cause check: definition version promotion OR EXECUTION_CORRECTION event after the last error
+
+### ISS-208: Guard task completion against terminal instances
+- `completeTask()` returns HTTP 409 `INSTANCE_NOT_ACTIVE` when the parent instance is CANCELLED or COMPLETED
+- Guard enforced inside the transaction via `SELECT ... FOR UPDATE NOWAIT` — race-safe, not just a pre-check
+- Pre-transaction fast-path catches terminal status before acquiring the lock for early rejection
+
+### ISS-205: Webhook transactional outbox (true at-least-once)
+- `insertWebhookDeliveriesInTx()` inserts webhook_deliveries rows inside the same transaction as the event
+- Rollback eliminates all pending deliveries atomically
+- Worker pool uses `FOR UPDATE SKIP LOCKED` to drain orphaned deliveries at startup
+- Back-off ladder: 5s, 30s, 2m, 10m, 30m (OUTBOX_BACKOFF_MS)
+- After 5 consecutive failures: delivery marked `exhausted`, subscription paused, OBS-06 alert emitted
+
 ## [SPT-01] — 2026-06-05
 ### Added
 - Schema-per-tenant provisioning infrastructure (`migrations/060_schema_per_tenant_bootstrap.sql`)
@@ -14,6 +34,66 @@ All notable changes to the BPM Platform are documented here.
 - Both `search_path` and `bpm.tenant_id` session variable are set during this transition phase; SPT-03 will remove the column-based approach.
 
 ## [Unreleased]
+
+### ISS-203 — Deterministic Idempotency Keys for Engine-Emitted Events (RELEASED 2026-06-11)
+
+#### WF02-iss203-idempotency-keys-20260611 (2026-06-11)
+
+### Added
+- **ISS-203** Deterministic idempotency keys for engine-emitted cascade events. Key formula: FNV-1a-64(instance_id, triggering_event_seq, node_id, emitted_event_type, ordinal) formatted as `engine:<16-hex>`. ON CONFLICT (idempotency_key) DO NOTHING deduplicates replayed transitions in the event store. Client-supplied trigger event keys are passed through unmodified and unaffected by this change. Re-running the same transition with the same inputs always produces identical keys (replay determinism invariant R-1).
+- Validation evidence: 5/5 integration tests passing (TC-ISS-203-01 through TC-ISS-203-05). NFR benchmarks: p99 write 2.783ms, throughput 16,125 eps, replay 54.948ms — all within targets. Release approval: `docs/status/release-iss203-20260611.yaml`.
+- Requirement: ISS-203 — RELEASED
+
+### ISS-202 — Two-Phase All-or-Nothing Variable Merge (RELEASED 2026-06-12)
+
+#### WF02-iss202-20260611 (2026-06-12)
+
+### Fixed
+- **ISS-202** Two-phase all-or-nothing variable merge: Phase 1 now validates all output keys before any state change; Phase 2 applies atomically only when all keys pass. Partial variable merges that left instances in a half-applied state are eliminated. Retry after a merge failure correctly sees the pre-merge state.
+
+### ISS-107 — Tenant Storage Mode Flag (RELEASED 2026-06-11)
+
+#### WF02-iss107-storage-mode-20260611 (2026-06-11)
+
+- **Migration 086** (`migrations/086_iss107_tenant_storage_mode.sql`): Adds `storage_mode TEXT NOT NULL DEFAULT 'LEGACY_RLS' CHECK (storage_mode IN ('LEGACY_RLS','SCHEMA'))` to the `tenant` table. Additive and idempotent — uses `ADD COLUMN IF NOT EXISTS`. Creates `idx_tenant_storage_mode` index.
+- **Provisioning change** (`src/db/provisioning.zig`): Newly provisioned tenants have `storage_mode` set to `'SCHEMA'` via an UPDATE step in `provisionTenantSchema()`, matching the SPT coexistence architecture (§11.3).
+- **P0 schema formalization** (ISS-107 from architecture backlog EPIC-1): Prior to this fix, there was no `storage_mode` column on the `tenant` table, so a tenant had no authoritative storage path during the schema-per-tenant cutover (SPT). Existing tenants (including the default `0000...0000` tenant in the `bpm-default` Keycloak realm) keep `LEGACY_RLS` via the column DEFAULT. New tenants default to `SCHEMA`, aligning with the SPT provisioning pipeline.
+- Validation evidence: 5/5 integration tests passing (TC-ISS-107-01 through TC-ISS-107-05). NFR benchmarks green. Release approval: `docs/status/release-iss107-20260611.yaml`.
+- Requirement: ISS-107 — RELEASED
+
+### ISS-106 — Webhook Delivery Outbox Table Formalization (RELEASED 2026-06-11)
+
+#### WF02-iss106-webhook-outbox-20260611 (2026-06-11)
+
+- **Migration 085** (`migrations/085_iss106_webhook_deliveries_outbox.sql`): Formalizes the `webhook_deliveries` transactional outbox table per the ISS-106 schema contract. Adds `attempt INTEGER NOT NULL DEFAULT 0` column (backfilled from existing `attempt_count`). Reconciles legacy lowercase status values (`pending`→`PENDING`, `success`→`DELIVERED`, `failed`→`FAILED`, `exhausted`→`FAILED`) via idempotent pre-CHECK remap. Adds `webhook_deliveries_status_check CHECK (status IN ('PENDING','DELIVERED','FAILED','RETRYING'))`. Reasserts worker-claim index `idx_wd_status_next_attempt (status, next_attempt_at)`. Fully additive and idempotent — no columns or tables dropped; `attempt_count` retained for backward compatibility with ISS-205 dispatcher convergence.
+- **P0 schema formalization** (ISS-106 from architecture backlog EPIC-1): the `webhook_deliveries` table existed in migrations 010/023/025 with informal status values, no CHECK constraint, and no guarantee the column set matched the architecture contract. This migration reconciles the table to the contract documented in §6.9 of the architecture spec — columns: `id` (delivery_id), `subscription_id`, `event_id`, `status∈(PENDING,DELIVERED,FAILED,RETRYING)`, `attempt`, `next_attempt_at`, `last_error`, `created_at`.
+- **Scope note**: The transactional-outbox INSERT path and `FOR UPDATE SKIP LOCKED` worker-claim logic are delivered under ISS-205 (EPIC-2, Event-sourcing integrity). This requirement covers the storage layer only.
+- Validation evidence: 5/5 integration tests passing (TC-ISS-106-01 through TC-ISS-106-05). NFR benchmarks: p99_read=0.497ms, p99_write=1.499ms, throughput=63,663.7 eps, replay_10k=34.583ms — all within targets. Release approval: `docs/status/release-iss106-20260611.yaml`.
+- Requirement: ISS-106 — RELEASED
+
+### ISS-105 — Persist Token Model ({token_id,node_id} + join_counters) (RELEASED 2026-06-12)
+
+#### WF02-iss105-token-model-schema-20260611 (2026-06-12)
+
+- **Schema change:** `instance_projections.active_tokens` changed from `[]NodeId` (string array) to `[{token_id: UUID, node_id: TEXT, branch_id: TEXT}]` (JSONB object array). New `instance_projections.join_counters JSONB NOT NULL DEFAULT '{}'` column for parallel gateway convergence.
+- **Migration 088** (`migrations/088_iss105_instances_token_model_backfill.sql`): Backfills existing rows by converting old `["node_A", "node_B"]` arrays to `[{token_id, node_id, branch_id}]` format. Additive only — no columns dropped. GIN index on `active_tokens` for query optimization. Fully idempotent.
+- **Serde update** (`src/engine/instance.zig`): `completeTask()` token serialization now includes `token_id`; `active_tokens` and `join_counters` added to `completeTask()`, `cancelInstance()`, `setInstanceError()`, and child propagation UPDATE statements. Read paths tolerate missing `token_id` and `join_counters` fields for backward compatibility.
+- **P0 schema foundation** (ISS-105 from architecture backlog EPIC-1): The structured token model replaces bare node-id sets, enabling ISS-206 (engine token multiset + parallel join counters) to represent multiple tokens on the same node and persist join convergence state.
+- Validation evidence: 4/4 integration tests passing against real PostgreSQL. NFR benchmarks green. Release approval: `docs/status/release-iss105-20260612.yaml`.
+- Design artefact: `src/design/iss105_token_model_schema.md`
+- Requirement: ISS-105 — RELEASED
+
+### ISS-201 — transition() returns TransitionResult{state, emitted_events} (RELEASED 2026-06-11)
+
+#### WF02-iss201-event-return-20260611 (2026-06-11)
+
+- **Engine API change:** `transition()` now returns `TransitionResult { state: InstanceState, emitted_events: []PendingEvent }` instead of just `InstanceState`. The `pending_events` field is removed from `InstanceState` and returned as a first-class `emitted_events` slice alongside the state.
+- **Orchestrator contract:** The orchestrator (instance.zig) atomically persists the trigger event + `emitted_events` in the same PostgreSQL transaction — satisfying the architecture's at-least-once event delivery guarantee.
+- **Pure function preserved:** transition() remains zero I/O, deterministic, and does NOT re-append the trigger event to emitted_events.
+- **Call sites updated:** 5 callers in instance.zig, 2 replay loops in reconstruction.zig, and 18+ test callers destructure TransitionResult. 7 files modified.
+- **P0 foundation for EPIC-2:** This is the cornerstone refactoring that ISS-202 (two-phase merge), ISS-203 (deterministic idempotency), ISS-206 (token multiset), and ISS-207 (convergent retry) build on.
+- Validation evidence: 548 passed, 0 failed, 84 pre-existing skips. 8 ISS-201-specific tests (6 unit + 1 compile-time + 1 integration). NFR benchmarks green. Release approval: docs/status/release-iss201-20260611.yaml.
+- Requirement: ISS-201 — RELEASED
 
 ### ISS-103 — Audit Log Resource ID TEXT Support (RELEASED 2026-06-11)
 

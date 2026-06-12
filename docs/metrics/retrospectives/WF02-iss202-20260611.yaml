@@ -1,0 +1,128 @@
+run_id: WF02-iss202-20260611
+created_at: '2026-06-12T00:00:00Z'
+rules_version: '1.0'
+requirement_ids:
+  - ISS-202
+
+difficulty: 3
+difficulty_rationale: Standard complexity — two-phase validation logic with all-or-nothing semantics, depends on ISS-201 TransitionResult refactoring, requires careful state management to prevent partial applies.
+integration_surface: medium
+integration_surface_rationale: Touches src/engine/instance.zig (core merge path) and existing test infrastructure in tests/unit/ and tests/integration/. Moderate blast radius — call sites were already updated by ISS-201.
+
+steps:
+  - code-designer
+  - code-design-validator
+  - backend-dev
+  - test-designer
+  - test-design-validator
+  - test-runner
+  - release-validator
+  - doc-updater
+
+# Timing notes:
+# Most started_at fields are null (not stamped by ORCH). Actual times computed
+# from sequential completed_at deltas where possible. Test-runner had two
+# attempts: a REWORK (FAIL due to infra tenant-context issue) and the final
+# successful run; both durations are included in the test-runner actual total.
+
+by_step:
+  # step-00 git-setup is not a pipeline estimation step; omitted from per-step table
+  code-designer:
+    estimated: 30
+    actual: 20.73
+    variance_pct: -30.9
+    notes: Includes 1 rework cycle (E050 MAJOR — pseudo-code too detailed). Completed at 17:34:40.
+  code-design-validator:
+    estimated: 15
+    actual: 0.83
+    variance_pct: -94.5
+    notes: Single-artefact validation; started after code-designer at 17:34:40, completed 17:35:30. Fast because only one Type E file to validate.
+  backend-dev:
+    estimated: 90
+    actual: 3.42
+    variance_pct: -96.2
+    notes: Implementation was compact — Phase 1/Phase 2 logic added to existing mergeVariables path in src/engine/instance.zig. ISS-201 had already set up TransitionResult structure. Completed at 17:38:55.
+  test-designer:
+    estimated: 45
+    actual: 29.68
+    variance_pct: -34.0
+    notes: Includes 1 rework cycle — 14 compilation BLOCKERs fixed (ObjectMap.deinit mutability, SchemaViolationDetail namespace). 13 test cases (TC-ISS-202-01 through TC-ISS-202-INT-03). Completed at 18:08:36.
+  test-design-validator:
+    estimated: 15
+    actual: 7.8
+    variance_pct: -48.0
+    notes: Returned FAIL due to DB infrastructure issue (all tests blocked by PoolError.QueryFailed). Completed at 18:16:24. Infrastructure issue resolved by ADHOC BACKEND-DEV before test-runner dispatch.
+  test-runner:
+    estimated: 20
+    actual: 29.0
+    variance_pct: 45.0
+    notes: >
+      Two attempts. First (REWORK): 14 min — infra FAIL due to tenant context thread-local
+      not initialized for integration tests. GBL-081 migration skip also fixed during this run.
+      Second (final): ~15 min — all 13 ISS-202 tests pass; full suite 550 pass, 84 skip, exit 0.
+  release-validator:
+    estimated: 15
+    actual: 2.38
+    variance_pct: -84.1
+    notes: NFR-04 benchmark 32.887ms well within 5000ms limit. No regressions. Completed at 19:10:30.
+  doc-updater:
+    estimated: 15
+    actual: 15.0
+    variance_pct: 0.0
+    notes: Current step — estimated time used as actual.
+
+totals:
+  estimated_minutes: 245
+  actual_minutes: 108.84
+  variance_minutes: -136.16
+  variance_pct: -55.6
+
+rework_steps:
+  - step: '01'
+    agent: CODE-DESIGNER
+    rework_count: 1
+    issues:
+      - 'MAJOR: E050 violation — §4.2 pseudo-code was 62 lines of implementation-level detail; refactored to 15-line high-level algorithm per anti-patterns.md'
+  - step: '03'
+    agent: TEST-DESIGNER
+    rework_count: 1
+    issues:
+      - 'BLOCKER: 14 compilation errors — ObjectMap.deinit() mutability (10 occurrences) and SchemaViolationDetail type namespace (2 occurrences)'
+  - step: '04'
+    agent: TEST-RUNNER
+    rework_count: 1
+    issues:
+      - 'BLOCKER: Tenant context thread-local not initialized for integration test pool connections — all 13 ISS-202 tests failed with PoolError.QueryFailed at definition creation'
+      - 'FIXED: GBL-081 migration skip added to tests/integration/helpers.zig (migration assumes legacy public schema audit_entries table)'
+
+rule_adjustments: []
+
+estimation_rule_update_needed: false
+estimation_rule_update_rationale: >
+  D3/medium run. Several large negative variances appear:
+  - backend-dev: -96.2% (3.42 min vs 90 min estimated). The 90-minute estimate for D3/medium
+    backend-dev is calibrated for novel module implementations. ISS-202 was an additive change
+    to existing mergeVariables logic in instance.zig — the design was precise and ISS-201 had
+    already restructured the TransitionResult scaffolding. This is not a representative D3/medium
+    backend-dev run for calibration.
+  - code-design-validator: -94.5% and release-validator: -84.1%. These validator steps are
+    structurally fast for focused single-artefact runs — the D3 estimates assume multi-module
+    validation contexts.
+
+  Per docs/agents/metrics.md §6: rule adjustments require ≥2 consecutive runs at the same
+  difficulty level with |variance_pct| > 25% before adjusting estimation_rules.json.
+  The ISS-20x series is providing the first D3/medium dataset. Monitor ISS-203 through
+  ISS-207 to determine whether these variances are consistent.
+
+  test-runner overran at +45.0% (29 min vs 20 estimated) due to the infra rework cycle
+  (tenant context propagation issue). Infrastructure rework is not representative of
+  test-runner baseline — the second attempt alone was ~15 min, within target.
+
+notes:
+  - 'Total actual (108.84 min) is -55.6% below estimate (245 min). D3/medium estimates appear inflated for targeted engine kernel fixes where the scope is well-constrained by a prior refactoring (ISS-201).'
+  - 'test-designer rework (+14 compilation BLOCKERs) added ~15 min to the actual time. Zig API mutability rules (constCast for ObjectMap.deinit) are a recurring source of test compilation rework in the ISS-2xx series.'
+  - 'Infrastructure blocker (tenant context thread-local) during test-runner added ~14 min. Root cause: integration test pool connections bypass the request-level tenant context initialization path. ADHOC BACKEND-DEV resolved this before the second test-runner dispatch.'
+  - 'code-design-validator returned FAIL (step-03b) due to DB infrastructure rather than design quality issues. This is correctly classified as infrastructure BLOCKER, not a validator finding.'
+  - '13/13 ISS-202 tests pass. NFR-04: 32.887ms vs 5000ms limit (99.3% headroom). No regressions in 634-test suite.'
+
+completed_at: '2026-06-12T00:00:00Z'

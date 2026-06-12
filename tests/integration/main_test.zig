@@ -143,6 +143,15 @@ const env05_tenant_lifecycle_integration = @import("env05_test.zig");
 const iss101_timers_failed_status_integration = @import("iss101_timers_failed_status_test.zig");
 // ISS-102 — tasks.claimed_by and real claim path
 const iss102_claim_integration = @import("iss102_claim_test.zig");
+// ISS-106 — webhook_deliveries transactional-outbox table formalization (attempt column,
+// status CHECK domain, worker-claim index)
+const iss106_webhook_outbox_integration = @import("iss106_webhook_outbox_test.zig");
+// ISS-107 — tenant storage_mode column and schema-per-tenant provisioning
+const iss107_tenant_storage_mode_integration = @import("iss107_tenant_storage_mode_test.zig");
+// ISS-201 — TransitionResult atomic persistence (trigger + emitted_events)
+const iss201_transition_result_integration = @import("iss201_transition_result_test.zig");
+// ISS-202 — Two-phase (all-or-nothing) variable merge
+const iss202_merge_atomicity_integration = @import("iss202_merge_atomicity_test.zig");
 
 comptime {
     _ = std;
@@ -210,6 +219,10 @@ comptime {
     _ = env05_tenant_lifecycle_integration;
     _ = iss101_timers_failed_status_integration;
     _ = iss102_claim_integration;
+    _ = iss106_webhook_outbox_integration;
+    _ = iss107_tenant_storage_mode_integration;
+    _ = iss201_transition_result_integration;
+    _ = iss202_merge_atomicity_integration;
 }
 
 test "integration placeholder" {

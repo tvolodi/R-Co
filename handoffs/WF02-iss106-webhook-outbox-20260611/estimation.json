@@ -1,0 +1,33 @@
+{
+  "run_id": "WF02-iss106-webhook-outbox-20260611",
+  "created_at": "2026-06-11T13:24:37Z",
+  "rules_version": "1.1",
+  "requirement_ids": [
+    "ISS-106"
+  ],
+  "difficulty": 2,
+  "difficulty_rationale": "Single additive migration formalizing the existing webhook_deliveries outbox table; no API or engine logic (engine logic is ISS-205).",
+  "integration_surface": "low",
+  "integration_surface_rationale": "Touches only migrations/ (additive); no caller signatures change.",
+  "steps": [
+    "code-designer",
+    "code-design-validator",
+    "backend-dev",
+    "test-designer",
+    "test-design-validator",
+    "test-runner",
+    "release-validator",
+    "doc-updater"
+  ],
+  "estimated_minutes": {
+    "code-designer": 2,
+    "code-design-validator": 8,
+    "backend-dev": 4,
+    "test-designer": 1,
+    "test-design-validator": 12,
+    "test-runner": 1,
+    "release-validator": 1,
+    "doc-updater": 2,
+    "total": 31
+  }
+}

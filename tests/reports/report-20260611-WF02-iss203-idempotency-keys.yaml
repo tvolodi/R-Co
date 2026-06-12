@@ -1,0 +1,122 @@
+run_id: WF02-iss203-idempotency-keys-20260611
+workflow_id: WF02
+timestamp: "2026-06-11T23:31:02Z"
+branch: feature/WF02-iss203-idempotency-keys-20260611
+requirement_ids:
+  - ISS-203
+
+summary:
+  total: 5
+  passed: 5
+  failed: 0
+  skipped: 0
+
+test_cases:
+  - test_id: TC-ISS-203-01
+    name: "single transition emitted events carry correct deterministic keys"
+    layer: integration
+    file: tests/integration/iss203_idempotency_keys_test.zig
+    status: PASS
+    requirement_id: ISS-203
+    notes: >
+      Verified that after inst_store.create() on a START->TIMER->END definition,
+      the events table contains exactly one 'instance_started' row and at least one
+      row with idempotency_key LIKE 'engine:%'. Key length == 23, prefix == 'engine:',
+      suffix == 16 lowercase hex chars.
+
+  - test_id: TC-ISS-203-02
+    name: "replay dedup — ON CONFLICT DO NOTHING absorbs second insert"
+    layer: integration
+    file: tests/integration/iss203_idempotency_keys_test.zig
+    status: PASS
+    requirement_id: ISS-203
+    notes: >
+      Verified that re-inserting an event row with the same engine: idempotency_key
+      via ON CONFLICT (idempotency_key) DO NOTHING results in no new rows.
+      Event count before and after replay attempt is identical.
+
+  - test_id: TC-ISS-203-03
+    name: "client key passthrough — trigger event key stored as-is"
+    layer: integration
+    file: tests/integration/iss203_idempotency_keys_test.zig
+    status: PASS
+    requirement_id: ISS-203
+    notes: >
+      Verified that the instance_started trigger event does NOT have an 'engine:'
+      prefix on its idempotency_key (trigger keys are random UUID, not engine-derived).
+      On START->HUMAN_TASK definition, zero cascade events have engine: prefix (correct).
+
+  - test_id: TC-ISS-203-04
+    name: "different-instance isolation — same transition produces different keys"
+    layer: integration
+    file: tests/integration/iss203_idempotency_keys_test.zig
+    status: PASS
+    requirement_id: ISS-203
+    notes: >
+      Verified that two instances created from the same definition produce different
+      engine: idempotency keys. Both keys are 23 chars with engine: prefix.
+
+  - test_id: TC-ISS-203-05
+    name: "ordinal uniqueness — N emitted events produce N distinct keys"
+    layer: integration
+    file: tests/integration/iss203_idempotency_keys_test.zig
+    status: PASS
+    requirement_id: ISS-203
+    notes: >
+      Verified that a START->PARALLEL_GATEWAY->[TIMER_A,TIMER_B]->END definition
+      produces at least 2 engine: keyed events in the events table. All keys are
+      well-formed (23 chars, engine: prefix, hex suffix). COUNT(DISTINCT idempotency_key)
+      equals total engine: row count for the instance.
+
+failures: []
+
+fixes_applied:
+  - description: >
+      Added persistEmittedEventsInTx() function to src/engine/instance.zig.
+      The BACKEND-DEV implementation computed engine: keys in transition() but did
+      not persist cascade events as rows in the events table. This function inserts
+      each emitted event (timer_created, parallel_split, etc.) with its deterministic
+      idempotency_key using ON CONFLICT (idempotency_key) DO NOTHING.
+    files_changed:
+      - src/engine/instance.zig
+  - description: >
+      Added test-integration-iss203 build target to build.zig and wired it into
+      the main test-integration step.
+    files_changed:
+      - build.zig
+  - description: >
+      Fixed test graph definitions: all graphs were missing END nodes (CHK-02
+      requires at least one END node in validateGraph). Added END nodes and
+      connecting edges to all 5 test case graphs.
+    files_changed:
+      - tests/integration/iss203_idempotency_keys_test.zig
+  - description: >
+      Fixed TC-ISS-203-01: removed premature cleanupByName() call that deleted the
+      definition row before inst_store.create() could find it. Also removed a
+      spurious _ = def_id discard that Zig 0.16 rejects as a pointless discard.
+    files_changed:
+      - tests/integration/iss203_idempotency_keys_test.zig
+
+coverage:
+  backend_unit_line: null
+  frontend_unit_line: null
+  integration_must_requirements:
+    ISS-203: TESTED
+
+nfr_results:
+  - nfr_id: NFR-01
+    target: "p99 reads <= 200ms"
+    actual: "0.849ms"
+    passed: true
+  - nfr_id: NFR-01
+    target: "p99 writes <= 500ms"
+    actual: "17.084ms"
+    passed: true
+  - nfr_id: NFR-02
+    target: "append throughput >= 1000 eps"
+    actual: "3192.261 eps"
+    passed: true
+  - nfr_id: NFR-04
+    target: "replay 10000 events <= 5000ms"
+    actual: "80.188ms"
+    passed: true

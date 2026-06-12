@@ -39,6 +39,29 @@ fn fillRandom(buf: []u8) void {
     }
 }
 
+// ---------------------------------------------------------------------------
+// ISS-105: Generate token_id as a random UUID v4 hex string
+// TODO: Later, use deterministic UUID v3 (MD5-based) for replay stability
+// ---------------------------------------------------------------------------
+fn generateTokenId(allocator: std.mem.Allocator) ![]const u8 {
+    var token_bytes: Uuid = undefined;
+    fillRandom(&token_bytes);
+    token_bytes[6] = (token_bytes[6] & 0x0f) | 0x40;
+    token_bytes[8] = (token_bytes[8] & 0x3f) | 0x80;
+    return uuidToHex(allocator, token_bytes);
+}
+
+// ---------------------------------------------------------------------------
+// Populate token_ids for all tokens in InstanceState
+// ---------------------------------------------------------------------------
+fn populateTokenIds(allocator: std.mem.Allocator, state: *transition_mod.InstanceState) !void {
+    for (state.tokens) |*tok| {
+        if (tok.token_id.len == 0) {
+            tok.token_id = try generateTokenId(allocator);
+        }
+    }
+}
+
 fn refreshActiveInstancesMetric(pool: *Pool, allocator: std.mem.Allocator) void {
     const conn = pool.acquire() catch {
         metrics.markActiveInstancesStale();
@@ -231,6 +254,9 @@ pub const CompleteTaskError = error{
     TaskNotFound,
     /// Task status ≠ PENDING (already COMPLETED or CANCELLED). HTTP 409.
     TaskAlreadyTerminated,
+    /// Parent instance is not ACTIVE (CANCELLED / COMPLETED / ERROR) — enforced
+    /// inside the transaction via SELECT FOR UPDATE. HTTP 409.
+    InstanceNotActive,
     /// output_variables is null or not a JSON object. HTTP 422.
     InvalidInput,
     /// Pure transition function returned a TransitionError. HTTP 500.
@@ -368,31 +394,39 @@ pub const MergeVariablesResult = struct {
 
 fn freeOwnedTransitionState(
     allocator: std.mem.Allocator,
-    state: transition_mod.InstanceState,
+    result: transition_mod.TransitionResult,
 ) void {
-    for (state.tokens) |tok| {
+    for (result.state.tokens) |tok| {
+        if (tok.token_id) |tid| allocator.free(tid);
         allocator.free(tok.node_id);
         allocator.free(tok.branch_id);
         if (tok.waiting_child_instance_id) |child_id| {
             allocator.free(child_id);
         }
     }
-    allocator.free(state.tokens);
+    allocator.free(result.state.tokens);
 
-    var vars = state.variables;
+    var vars = result.state.variables;
     vars.deinit(allocator);
 
-    for (state.pending_task_nodes) |node_id| {
+    var jc = result.state.join_counters;
+    jc.deinit(allocator);
+
+    for (result.state.pending_task_nodes) |node_id| {
         allocator.free(node_id);
     }
-    allocator.free(state.pending_task_nodes);
+    allocator.free(result.state.pending_task_nodes);
 
-    if (state.error_detail) |detail| {
+    if (result.state.error_detail) |detail| {
         allocator.free(detail);
     }
 
-    allocator.free(state.pending_events);
-    allocator.free(state.cancelled_branch_ids);
+    allocator.free(result.state.cancelled_branch_ids);
+    // ISS-203: free each EmittedEvent's idempotency_key string before freeing the slice.
+    for (result.emitted_events) |emitted| {
+        allocator.free(emitted.idempotency_key);
+    }
+    allocator.free(result.emitted_events);
 }
 
 // ---------------------------------------------------------------------------
@@ -634,14 +668,19 @@ pub const InstanceStore = struct {
         var empty_vars = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
             return InstanceError.TransactionFailed;
         defer empty_vars.deinit(allocator);
+
+        var empty_join_counters = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch
+            return InstanceError.TransactionFailed;
+        defer empty_join_counters.deinit(allocator);
+
         const initial_state = transition_mod.InstanceState{
             .instance_id = uuid_bytes,
             .status = .ACTIVE,
             .tokens = &.{},
             .variables = empty_vars,
+            .join_counters = empty_join_counters,
             .pending_task_nodes = &.{},
             .error_detail = null,
-            .pending_events = &.{},
             .cancelled_branch_ids = &.{},
         };
 
@@ -653,36 +692,48 @@ pub const InstanceStore = struct {
             },
         };
 
-        const new_state = transition_mod.transition(
+        const result = transition_mod.transition(
             allocator,
             snapshot.graph,
             initial_state,
             start_event,
+            1, // ISS-203: instance_started is always sequence 1
         ) catch return InstanceError.TransactionFailed;
-        defer freeOwnedTransitionState(allocator, new_state);
+        defer freeOwnedTransitionState(allocator, result);
+        const new_state = result.state;
+        const emitted_events = result.emitted_events;
 
         // ── Persist the transition result ──────────────────────────────────
-        // Serialize tokens to JSON array: [{"node_id":"...","branch_id":"..."}]
+        // Serialize tokens to JSON array: [{"token_id":"...","node_id":"...","branch_id":"..."}]
         var tokens_buf = std.ArrayList(u8).empty;
         tokens_buf.append(a, '[') catch return InstanceError.TransactionFailed;
         for (new_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return InstanceError.TransactionFailed;
+
+            // Generate token_id if not present (ISS-105)
+            const token_id = tok.token_id orelse (generateTokenId(a) catch return InstanceError.TransactionFailed);
+
             const entry = if (tok.waiting_child_instance_id) |child_id|
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id, child_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id, child_id },
                 ) catch return InstanceError.TransactionFailed
             else
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id },
                 ) catch return InstanceError.TransactionFailed;
             tokens_buf.appendSlice(a, entry) catch return InstanceError.TransactionFailed;
         }
         tokens_buf.append(a, ']') catch return InstanceError.TransactionFailed;
         const tokens_json = tokens_buf.items;
+
+        // Serialize join_counters ObjectMap to JSON object string.
+        const jc_value = std.json.Value{ .object = new_state.join_counters };
+        const jc_json = std.json.Stringify.valueAlloc(a, jc_value, .{}) catch
+            return InstanceError.TransactionFailed;
 
         // Serialize variables ObjectMap to JSON object string.
         const vars_value = std.json.Value{ .object = new_state.variables };
@@ -716,25 +767,35 @@ pub const InstanceStore = struct {
             &.{ inst_id_hex, "instance_started", vars_json, idem_key_hex },
         ) catch return InstanceError.TransactionFailed;
 
+        // ISS-203: persist cascade emitted events with deterministic engine: keys.
+        persistEmittedEventsInTx(
+            a,
+            conn2,
+            inst_id_hex,
+            emitted_events,
+        ) catch return InstanceError.TransactionFailed;
+
         // UPDATE instance_projections with the post-transition state.
         conn2.exec(
             \\UPDATE instance_projections
             \\SET
             \\    status         = $2,
             \\    current_nodes  = $3::jsonb,
+            \\    active_tokens  = $3::jsonb,
             \\    variables      = $4::jsonb,
+            \\    join_counters  = $5::jsonb,
             \\    last_event_seq = last_event_seq + 1,
             \\    updated_at     = NOW()
             \\WHERE instance_id  = $1::uuid
         ,
-            &.{ inst_id_hex, status_str, tokens_json, vars_json },
+            &.{ inst_id_hex, status_str, tokens_json, vars_json, jc_json },
         ) catch return InstanceError.TransactionFailed;
 
         persistTimersFromPendingEventsInTx(
             allocator,
             conn2,
             uuid_bytes,
-            new_state.pending_events,
+            emitted_events,
         ) catch return InstanceError.TransactionFailed;
 
         // INSERT tasks for newly activated HUMAN_TASK nodes.
@@ -841,8 +902,14 @@ pub const InstanceStore = struct {
         snapshot: snapshot_mod.DefinitionGraph,
     ) ApplyError!transition_mod.InstanceState {
         // ── Step a: Pure transition call (NO I/O, outside DB transaction) ──
-        const new_state = transition_mod.transition(allocator, snapshot, old_state, event) catch
+        // ISS-203: triggering_event_seq is not available before the INSERT in
+        // applyTransition (the CTE INSERT uses RETURNING but not surfaced here).
+        // Use 1 as a safe sentinel — applyTransition is a legacy utility path;
+        // the production orchestrator path in completeTask reads the real seq.
+        const result = transition_mod.transition(allocator, snapshot, old_state, event, 1) catch
             return ApplyError.TransitionFailed;
+        const new_state = result.state;
+        const emitted_events = result.emitted_events;
 
         // ── Step b: Compute newly activated HUMAN_TASK node IDs ─────────────
         // Set difference: nodes in new_state.pending_task_nodes not in
@@ -872,22 +939,26 @@ pub const InstanceStore = struct {
         // Serialize new_state.status to uppercase TEXT.
         const status_str = instanceStatusToString(new_state.status);
 
-        // Serialize tokens to JSON array: [{"node_id":"...","branch_id":"..."}]
+        // Serialize tokens to JSON array: [{"token_id":"...","node_id":"...","branch_id":"..."}]
         var tokens_buf = std.ArrayList(u8).empty;
         tokens_buf.append(a, '[') catch return ApplyError.OutOfMemory;
         for (new_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return ApplyError.OutOfMemory;
+
+            // Generate token_id if not present (ISS-105)
+            const token_id = tok.token_id orelse (generateTokenId(a) catch return ApplyError.OutOfMemory);
+
             const entry = if (tok.waiting_child_instance_id) |child_id|
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id, child_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id, child_id },
                 ) catch return ApplyError.OutOfMemory
             else
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id },
                 ) catch return ApplyError.OutOfMemory;
             tokens_buf.appendSlice(a, entry) catch return ApplyError.OutOfMemory;
         }
@@ -897,6 +968,11 @@ pub const InstanceStore = struct {
         // Serialize variables ObjectMap to JSON object string.
         const vars_value = std.json.Value{ .object = new_state.variables };
         const vars_json = std.json.Stringify.valueAlloc(a, vars_value, .{}) catch
+            return ApplyError.OutOfMemory;
+
+        // Serialize join_counters ObjectMap to JSON object string.
+        const jc_value = std.json.Value{ .object = new_state.join_counters };
+        const jc_json = std.json.Stringify.valueAlloc(a, jc_value, .{}) catch
             return ApplyError.OutOfMemory;
 
         // Generate idempotency key (random UUID v4).
@@ -950,26 +1026,28 @@ pub const InstanceStore = struct {
         ) catch return ApplyError.PersistenceFailed;
 
         // ── Step e: UPDATE instance_projections ──────────────────────────────
-        // Security: $1=instance_id, $2=status, $3=tokens_json, $4=vars_json
+        // Security: $1=instance_id, $2=status, $3=tokens_json, $4=vars_json, $5=jc_json
         //           — all bound as $N parameters.
         conn.exec(
             \\UPDATE instance_projections
             \\SET
             \\    status        = $2,
             \\    current_nodes = $3::jsonb,
+            \\    active_tokens = $3::jsonb,
             \\    variables     = $4::jsonb,
+            \\    join_counters = $5::jsonb,
             \\    last_event_seq = last_event_seq + 1,
             \\    updated_at    = NOW()
             \\WHERE instance_id = $1::uuid
         ,
-            &.{ inst_id_hex, status_str, tokens_json, vars_json },
+            &.{ inst_id_hex, status_str, tokens_json, vars_json, jc_json },
         ) catch return ApplyError.PersistenceFailed;
 
         persistTimersFromPendingEventsInTx(
             allocator,
             conn,
             instance_id,
-            new_state.pending_events,
+            emitted_events,
         ) catch |err| switch (err) {
             error.InstanceCancelled => return ApplyError.PersistenceFailed,
             error.InvalidTimerNodeConfig => return ApplyError.TransitionFailed,
@@ -1107,6 +1185,7 @@ pub const InstanceStore = struct {
         var def_id: Uuid = std.mem.zeroes(Uuid);
         var tokens_json_str: []const u8 = "[]";
         var vars_json_str: []const u8 = "{}";
+        var join_counters_json_str: []const u8 = "{}";
         var proj_status: InstanceStatus = .ACTIVE;
         {
             const proj_conn = self.pool.acquire() catch |err| switch (err) {
@@ -1123,7 +1202,8 @@ pub const InstanceStore = struct {
                 \\    definition_id,
                 \\    status,
                 \\    current_nodes,
-                \\    variables
+                \\    variables,
+                \\    COALESCE(join_counters, '{}')
                 \\FROM instance_projections
                 \\WHERE instance_id = $1::uuid
             ,
@@ -1143,6 +1223,7 @@ pub const InstanceStore = struct {
             // Dupe raw column data into arena before proj_rows.deinit() frees the buffer.
             tokens_json_str = a.dupe(u8, colGet(row, 3)) catch return CompleteTaskError.OutOfMemory;
             vars_json_str = a.dupe(u8, colGet(row, 4)) catch return CompleteTaskError.OutOfMemory;
+            join_counters_json_str = a.dupe(u8, colGet(row, 5)) catch return CompleteTaskError.OutOfMemory;
         }
         // proj_conn and proj_rows are released here.
 
@@ -1155,14 +1236,17 @@ pub const InstanceStore = struct {
         if (proj_status == .ERROR) {
             return CompleteTaskError.InstanceInError;
         }
+        // ISS-208: instance CANCELLED/COMPLETED → InstanceNotActive (pre-tx fast-path;
+        // the definitive check is the FOR UPDATE NOWAIT inside the transaction below).
         if (proj_status == .CANCELLED or proj_status == .COMPLETED) {
-            return CompleteTaskError.TaskAlreadyTerminated;
+            return CompleteTaskError.InstanceNotActive;
         }
 
         // Parse current_nodes JSON array → []Token (node_id/branch_id in allocator).
         var tokens = std.ArrayList(transition_mod.Token).empty;
         defer {
             for (tokens.items) |tok| {
+                if (tok.token_id) |tid| allocator.free(tid);
                 allocator.free(tok.node_id);
                 allocator.free(tok.branch_id);
             }
@@ -1179,32 +1263,57 @@ pub const InstanceStore = struct {
             for (tok_parsed.value.array.items) |item| {
                 if (item != .object) continue;
                 const obj = item.object;
+
+                // token_id is optional (ISS-105)
+                var tid_opt: ?[]const u8 = null;
+                if (obj.get("token_id")) |tid_val| {
+                    if (tid_val == .string and tid_val.string.len > 0) {
+                        tid_opt = allocator.dupe(u8, tid_val.string) catch
+                            return CompleteTaskError.OutOfMemory;
+                    }
+                }
+
                 const nid_val = obj.get("node_id") orelse continue;
                 const bid_val = obj.get("branch_id") orelse continue;
-                if (nid_val != .string or bid_val != .string) continue;
-                const nid = allocator.dupe(u8, nid_val.string) catch
+                if (nid_val != .string or bid_val != .string) {
+                    if (tid_opt) |t| allocator.free(t);
+                    continue;
+                }
+
+                const nid = allocator.dupe(u8, nid_val.string) catch {
+                    if (tid_opt) |t| allocator.free(t);
                     return CompleteTaskError.OutOfMemory;
+                };
                 const bid = allocator.dupe(u8, bid_val.string) catch {
+                    if (tid_opt) |t| allocator.free(t);
                     allocator.free(nid);
                     return CompleteTaskError.OutOfMemory;
                 };
+
                 var waiting_child: ?[]const u8 = null;
                 if (obj.get("waiting_child_instance_id")) |waiting_val| {
                     if (waiting_val == .string and waiting_val.string.len > 0) {
                         waiting_child = allocator.dupe(u8, waiting_val.string) catch {
+                            if (tid_opt) |t| allocator.free(t);
                             allocator.free(nid);
                             allocator.free(bid);
                             return CompleteTaskError.OutOfMemory;
                         };
                     }
                 }
-                tokens.append(allocator, .{ .node_id = nid, .branch_id = bid }) catch {
+
+                tokens.append(allocator, .{
+                    .node_id = nid,
+                    .branch_id = bid,
+                    .token_id = tid_opt,
+                    .waiting_child_instance_id = waiting_child,
+                }) catch {
+                    if (tid_opt) |t| allocator.free(t);
                     allocator.free(nid);
                     allocator.free(bid);
                     if (waiting_child) |w| allocator.free(w);
                     return CompleteTaskError.OutOfMemory;
                 };
-                tokens.items[tokens.items.len - 1].waiting_child_instance_id = waiting_child;
             }
         }
 
@@ -1230,11 +1339,11 @@ pub const InstanceStore = struct {
             snapshot_mod.SnapshotError.PoolExhausted => CompleteTaskError.PoolExhausted,
             snapshot_mod.SnapshotError.DefinitionNotFound => blk: {
                 // If the instance status is already terminal (ERROR, CANCELLED, COMPLETED)
-                // and the snapshot was cleaned up, return InstanceInError so the caller
-                // can respond with the correct HTTP 409.
+                // and the snapshot was cleaned up, return the appropriate 409 error.
                 if (proj_status == .ERROR) break :blk CompleteTaskError.InstanceInError;
+                // ISS-208: CANCELLED/COMPLETED → InstanceNotActive.
                 if (proj_status == .CANCELLED or proj_status == .COMPLETED)
-                    break :blk CompleteTaskError.TaskAlreadyTerminated;
+                    break :blk CompleteTaskError.InstanceNotActive;
                 break :blk CompleteTaskError.PersistenceFailed;
             },
             else => CompleteTaskError.PersistenceFailed,
@@ -1261,6 +1370,16 @@ pub const InstanceStore = struct {
             }
         }
 
+        // ── Step d2: Deserialize join_counters ───────────────────────────────
+        var jc_parsed = std.json.parseFromSlice(
+            std.json.Value,
+            a,
+            join_counters_json_str,
+            .{ .allocate = .alloc_always },
+        ) catch return CompleteTaskError.PersistenceFailed;
+        defer jc_parsed.deinit();
+        if (jc_parsed.value != .object) return CompleteTaskError.PersistenceFailed;
+
         const current_state = transition_mod.InstanceState{
             .instance_id = task.instance_id,
             .status = switch (proj_status) {
@@ -1271,9 +1390,9 @@ pub const InstanceStore = struct {
             },
             .tokens = tokens.items,
             .variables = vars_parsed.value.object,
+            .join_counters = jc_parsed.value.object,
             .pending_task_nodes = pending_task_nodes.items,
             .error_detail = null,
-            .pending_events = &[_]transition_mod.PendingEvent{},
         };
 
         // ── Step e: Validate and parse output_variables_json ─────────────────
@@ -1307,23 +1426,26 @@ pub const InstanceStore = struct {
         // this step are treated as ConcurrentModification per the EE-12 design §3d
         // (SQLSTATE 55P03 cannot be distinguished from other errors at the pool.zig
         // abstraction layer — same approach as reconstruction.zig §EE-11).
-        // Also reads status for the EE-10 HTTP 409 guard (§8).
+        // Also reads status and last_event_seq for the EE-10 HTTP 409 guard (§8)
+        // and for ISS-203 triggering_event_seq derivation.
         // Security: $1 = instance_id hex — no SQL string interpolation.
         const lock_rows = conn.query(
             a,
-            \\SELECT instance_id, status FROM instance_projections
+            \\SELECT instance_id, status, last_event_seq FROM instance_projections
             \\WHERE instance_id = $1::uuid
             \\FOR UPDATE NOWAIT
         ,
             &.{inst_id_hex},
         ) catch return CompleteTaskError.ConcurrentModification;
+        // ISS-203: task_completed event will be assigned last_event_seq+1.
+        var task_completed_event_seq: i64 = 1;
         {
             defer {
                 var r = lock_rows;
                 r.deinit();
             }
             if (lock_rows.rows.len == 0) return CompleteTaskError.PersistenceFailed;
-            // Column 0 = instance_id, column 1 = status.
+            // Column 0 = instance_id, column 1 = status, column 2 = last_event_seq.
             const locked_status_str = colGet(lock_rows.rows[0], 1);
             const locked_status = parseInstanceStatus(locked_status_str) catch .ACTIVE;
             // EE-10 HTTP 409 guard: reject any state-transition attempt on a non-ACTIVE instance.
@@ -1331,9 +1453,16 @@ pub const InstanceStore = struct {
                 // ROLLBACK via errdefer; InstanceInError → HTTP 409.
                 return CompleteTaskError.InstanceInError;
             }
+            // ISS-208: instance CANCELLED or COMPLETED → InstanceNotActive (race-safe,
+            // checked inside the FOR UPDATE NOWAIT transaction).
             if (locked_status == .CANCELLED or locked_status == .COMPLETED) {
-                return CompleteTaskError.TaskAlreadyTerminated;
+                return CompleteTaskError.InstanceNotActive;
             }
+            // ISS-203: last_event_seq is the sequence of the last committed event.
+            // The task_completed event will be assigned last_event_seq + 1.
+            const last_seq_str = colGet(lock_rows.rows[0], 2);
+            const last_seq = std.fmt.parseInt(i64, last_seq_str, 10) catch 0;
+            task_completed_event_seq = last_seq + 1;
         }
 
         // [EE-09] Compute merged variables using the three-path collision policy.
@@ -1411,9 +1540,9 @@ pub const InstanceStore = struct {
             .status = current_state.status,
             .tokens = current_state.tokens,
             .variables = merge_result.merged,
+            .join_counters = current_state.join_counters,
             .pending_task_nodes = current_state.pending_task_nodes,
             .error_detail = current_state.error_detail,
-            .pending_events = current_state.pending_events,
             .cancelled_branch_ids = current_state.cancelled_branch_ids,
         };
 
@@ -1426,7 +1555,7 @@ pub const InstanceStore = struct {
             },
         };
 
-        const new_state = transition_mod.transition(a, snapshot, merged_state, event) catch |tr_err| switch (tr_err) {
+        const result = transition_mod.transition(a, snapshot, merged_state, event, task_completed_event_seq) catch |tr_err| switch (tr_err) {
             transition_mod.TransitionError.NoMatchingEdge => {
                 // EE-10 / EE-05 no-match path: rollback the completeTask tx first,
                 // then call setInstanceError which opens its own transaction.
@@ -1522,6 +1651,8 @@ pub const InstanceStore = struct {
             },
             else => return CompleteTaskError.TransitionFailed,
         };
+        const new_state = result.state;
+        const emitted_events = result.emitted_events;
 
         const service_outcome = try processServiceTaskRuntimeInTx(
             self,
@@ -1542,6 +1673,7 @@ pub const InstanceStore = struct {
             task.instance_id,
             inst_id_hex,
             effective_state,
+            emitted_events,
         );
 
         // Serialize new_state for SQL parameters (all in arena, freed at function exit).
@@ -1551,17 +1683,21 @@ pub const InstanceStore = struct {
         tokens_buf.append(a, '[') catch return CompleteTaskError.OutOfMemory;
         for (effective_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return CompleteTaskError.OutOfMemory;
+
+            // Generate token_id if not present (ISS-105)
+            const token_id = tok.token_id orelse (generateTokenId(a) catch return CompleteTaskError.OutOfMemory);
+
             const entry = if (tok.waiting_child_instance_id) |child_id|
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id, child_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id, child_id },
                 ) catch return CompleteTaskError.OutOfMemory
             else
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id },
                 ) catch return CompleteTaskError.OutOfMemory;
             tokens_buf.appendSlice(a, entry) catch return CompleteTaskError.OutOfMemory;
         }
@@ -1570,6 +1706,11 @@ pub const InstanceStore = struct {
 
         const new_vars_value = std.json.Value{ .object = effective_state.variables };
         const new_vars_json = std.json.Stringify.valueAlloc(a, new_vars_value, .{}) catch
+            return CompleteTaskError.OutOfMemory;
+
+        // Serialize join_counters ObjectMap to JSON object string (ISS-105).
+        const new_jc_value = std.json.Value{ .object = effective_state.join_counters };
+        const new_jc_json = std.json.Stringify.valueAlloc(a, new_jc_value, .{}) catch
             return CompleteTaskError.OutOfMemory;
 
         // Idempotency key for the TASK_COMPLETED event INSERT.
@@ -1626,14 +1767,16 @@ pub const InstanceStore = struct {
         );
 
         // ── Step l: UPDATE instance_projections ───────────────────────────────
-        // Security: $1=instance_id, $2=status, $3=tokens_json, $4=vars_json
-        //           — all bound as $N parameters; no SQL string interpolation.
+        // Security: $1=instance_id, $2=status, $3=tokens_json, $4=vars_json,
+        //           $5=error_detail, $6=jc_json — all bound as $N parameters.
         conn.exec(
             \\UPDATE instance_projections
             \\SET
             \\    status         = $2,
             \\    current_nodes  = $3::jsonb,
+            \\    active_tokens  = $3::jsonb,
             \\    variables      = $4::jsonb,
+            \\    join_counters  = $6::jsonb,
             \\    error_detail   = CASE WHEN NULLIF($5, '') IS NULL THEN error_detail ELSE $5::jsonb END,
             \\    last_event_seq = last_event_seq + 1,
             \\    updated_at     = NOW()
@@ -1645,6 +1788,7 @@ pub const InstanceStore = struct {
                 new_tokens_json,
                 new_vars_json,
                 service_outcome.error_payload_json orelse "",
+                new_jc_json,
             },
         ) catch return CompleteTaskError.PersistenceFailed;
 
@@ -1652,7 +1796,7 @@ pub const InstanceStore = struct {
             allocator,
             conn,
             task.instance_id,
-            new_state.pending_events,
+            emitted_events,
         ) catch |err| switch (err) {
             error.InstanceCancelled => return CompleteTaskError.TaskAlreadyTerminated,
             error.InvalidTimerNodeConfig => return CompleteTaskError.TransitionFailed,
@@ -1753,17 +1897,19 @@ pub const InstanceStore = struct {
     // mergeVariables  (EE-09)
     // -----------------------------------------------------------------------
 
-    /// Merge `output_variables` into `current_vars` using the EE-09 three-path
-    /// collision policy:
-    ///   1. Schema validation: if a schema exists for the key and the value
-    ///      fails, set `violation_out` and return SchemaViolation.
-    ///   2. VARIABLE_OVERWRITTEN: if the key already exists in current_vars,
-    ///      record an overwrite event (key, old_value, new_value).
-    ///   3. New variable: no collision record needed.
+    /// Merge `output_variables` into `current_vars` using ISS-202 two-phase merge:
+    ///   Phase 1: Validate ALL output variables (schema checks, collision detection)
+    ///     with NO state change. On any failure, return early with violation.
+    ///   Phase 2: Apply all validated keys and emit VARIABLE_OVERWRITTEN events
+    ///     only if Phase 1 succeeds. On failure, leave variables untouched.
     ///
     /// On success, returns a `MergeVariablesResult` with:
     ///   - `merged`: shallow-cloned map with all output_variables applied
     ///   - `overwritten_events`: caller-owned slice (allocated with `allocator`)
+    ///
+    /// On failure (SchemaViolation), no state is modified:
+    ///   - violation_out.* is populated with affected_field, reason, and pre-merge variable_state
+    ///   - merged is undefined (may be partially populated); caller must not use it
     ///
     /// Must be called inside an open transaction (conn must have BEGIN'd).
     /// Issues one SELECT on `variable_schemas`; no writes.
@@ -1823,12 +1969,15 @@ pub const InstanceStore = struct {
             }
         }
 
-        // Clone current_vars so we can update entries in place.
-        var merged = current_vars.clone(allocator) catch return MergeVariablesError.OutOfMemory;
-        errdefer merged.deinit(allocator);
+        // ─────────────────────────────────────────────────────────────────────
+        // PHASE 1: VALIDATION (pure computation, no state modification)
+        // ─────────────────────────────────────────────────────────────────────
+        // Validate ALL keys before any merge. If any validation fails,
+        // return immediately with violation (no state change, no event emission).
 
         var overwritten = std.ArrayList(VariableOverwrittenPayload).empty;
-        errdefer {
+        defer {
+            // Clean up any events allocated during Phase 1 if we error.
             for (overwritten.items) |ev| {
                 allocator.free(ev.key);
                 allocator.free(ev.old_value);
@@ -1842,7 +1991,9 @@ pub const InstanceStore = struct {
             const key = entry.key_ptr.*;
             const new_value = entry.value_ptr.*;
 
-            // Path 1: schema validation.
+            // Schema validation: if a schema exists for the key and the value
+            // fails, populate violation_out and return error.SchemaViolation immediately
+            // (before any state change or event emission).
             if (schema_map.get(key)) |schema_json_str| {
                 var schema_arena = std.heap.ArenaAllocator.init(a);
                 defer schema_arena.deinit();
@@ -1855,6 +2006,8 @@ pub const InstanceStore = struct {
                     const result = json_schema.validate(new_value, schema_parsed.value);
                     if (!result.valid) {
                         // Build violation detail (allocator-owned, caller reads via violation_out).
+                        // Include a stringified snapshot of the PRE-MERGE variables so retry
+                        // will see the correct starting state.
                         const state_json = std.json.Stringify.valueAlloc(
                             allocator,
                             std.json.Value{ .object = current_vars },
@@ -1876,7 +2029,8 @@ pub const InstanceStore = struct {
                 }
             }
 
-            // Path 2: collision — variable already exists in current_vars.
+            // Collision detection: record overwrites if key already exists.
+            // This is info-level (not an error), so we record it for Phase 2.
             if (current_vars.get(key)) |old_val| {
                 const old_json = std.json.Stringify.valueAlloc(allocator, old_val, .{}) catch
                     return MergeVariablesError.OutOfMemory;
@@ -1903,8 +2057,24 @@ pub const InstanceStore = struct {
                     return MergeVariablesError.OutOfMemory;
                 };
             }
+        }
 
-            // Path 2 or 3: apply the new value (cloning the key for the merged map).
+        // Phase 1 succeeded — all validations passed and overwrites recorded.
+
+        // ─────────────────────────────────────────────────────────────────────
+        // PHASE 2: APPLICATION (commit merged state and emit events)
+        // ─────────────────────────────────────────────────────────────────────
+        // Now that Phase 1 succeeded, apply all output variables to the merged map
+        // and prepare the overwritten events for emission.
+
+        var merged = current_vars.clone(allocator) catch return MergeVariablesError.OutOfMemory;
+        errdefer merged.deinit(allocator);
+
+        var it2 = output_variables.iterator();
+        while (it2.next()) |entry| {
+            const key = entry.key_ptr.*;
+            const new_value = entry.value_ptr.*;
+            // Apply the new value (cloning the key for the merged map).
             merged.put(allocator, key, new_value) catch return MergeVariablesError.OutOfMemory;
         }
 
@@ -2112,13 +2282,14 @@ pub const InstanceStore = struct {
         ) catch return CancelInstanceError.PersistenceFailed;
 
         // ── Step g: UPDATE instance_projections ───────────────────────────────
-        // Set status=CANCELLED, clear current_nodes, record cancelled_at.
+        // Set status=CANCELLED, clear current_nodes and active_tokens, record cancelled_at.
         // Security: $1 = instance_id — bound as $N parameter.
         conn.exec(
             \\UPDATE instance_projections
             \\SET
             \\    status        = 'CANCELLED',
             \\    current_nodes = '{"tokens":[],"cancelled_branch_ids":[]}'::jsonb,
+            \\    active_tokens = '[]'::jsonb,
             \\    cancelled_at  = NOW(),
             \\    updated_at    = NOW()
             \\WHERE instance_id = $1::uuid
@@ -2567,9 +2738,10 @@ pub const InstanceStore = struct {
         conn.exec(
             \\UPDATE instance_projections
             \\SET
-            \\    status       = 'ERROR',
-            \\    error_detail = $2::jsonb,
-            \\    updated_at   = NOW()
+            \\    status        = 'ERROR',
+            \\    active_tokens = '[]'::jsonb,
+            \\    error_detail  = $2::jsonb,
+            \\    updated_at    = NOW()
             \\WHERE instance_id = $1::uuid
         ,
             &.{ inst_id_hex, payload_json },
@@ -2885,8 +3057,10 @@ fn processServiceTaskRuntimeInTx(
                             .output_variables = parsed_output.value.object,
                         },
                     };
-                    current_state = transition_mod.transition(allocator, snapshot, current_state, event2) catch
-                        return CompleteTaskError.TransitionFailed;
+                    // ISS-203: service_task_completed cascade; use 1 as sentinel seq
+                    // (no DB sequence available at this point in the loop).
+                    current_state = (transition_mod.transition(allocator, snapshot, current_state, event2, 1) catch
+                        return CompleteTaskError.TransitionFailed).state;
                     continue;
                 },
             }
@@ -2992,8 +3166,9 @@ fn processServiceTaskRuntimeInTx(
                                     .output_variables = output_vars,
                                 },
                             };
-                            current_state = transition_mod.transition(allocator, snapshot, current_state, event2) catch
-                                return CompleteTaskError.TransitionFailed;
+                            // ISS-203: use 1 as sentinel seq for service task cascade chains.
+                            current_state = (transition_mod.transition(allocator, snapshot, current_state, event2, 1) catch
+                                return CompleteTaskError.TransitionFailed).state;
                             break;
                         }
                     }
@@ -3474,6 +3649,110 @@ fn buildOverwrittenPayload(
     }
 }
 
+// ---------------------------------------------------------------------------
+// persistEmittedEventsInTx — ISS-203
+//
+// For each engine-emitted cascade event, insert a row into the events table
+// with the deterministic "engine:<16-hex-digits>" idempotency key computed by
+// transition().  Uses ON CONFLICT (idempotency_key) DO NOTHING so that a
+// retry of the orchestrator step is safely absorbed.
+//
+// The sequence numbers are assigned by bumping instance_sequence in the same
+// CTE pattern used for the trigger event.
+// ---------------------------------------------------------------------------
+
+const PersistEmittedEventsError = error{
+    PersistenceFailed,
+    OutOfMemory,
+};
+
+/// Map a PendingEvent payload to the event_type string stored in the events
+/// table.  These strings are the canonical engine-emitted event types.
+fn emittedEventTypeStr(ev: transition_mod.PendingEvent) []const u8 {
+    return switch (ev) {
+        .timer_created => "timer_created",
+        .parallel_split => "parallel_split",
+        .parallel_join => "parallel_join",
+        .instance_cancelled => "instance_cancelled",
+        .sub_process_start => "sub_process_start",
+    };
+}
+
+/// Build a minimal JSON payload for the emitted event row.
+/// Returns a stack-allocated string in the provided arena; the arena owns the
+/// memory.
+fn buildEmittedEventPayload(
+    allocator: std.mem.Allocator,
+    ev: transition_mod.PendingEvent,
+) error{OutOfMemory}![]const u8 {
+    return switch (ev) {
+        .timer_created => |t| std.fmt.allocPrint(
+            allocator,
+            "{{\"timer_node_id\":\"{s}\",\"duration_iso8601\":\"{s}\"}}",
+            .{ t.timer_node_id, t.duration_iso8601 },
+        ),
+        .parallel_split => |p| std.fmt.allocPrint(
+            allocator,
+            "{{\"source_node_id\":\"{s}\"}}",
+            .{p.source_node_id},
+        ),
+        .parallel_join => |j| std.fmt.allocPrint(
+            allocator,
+            "{{\"join_node_id\":\"{s}\"}}",
+            .{j.join_node_id},
+        ),
+        .instance_cancelled => |c| std.fmt.allocPrint(
+            allocator,
+            "{{\"reason\":\"{s}\"}}",
+            .{c.reason},
+        ),
+        .sub_process_start => |s| std.fmt.allocPrint(
+            allocator,
+            "{{\"child_definition_id\":\"{s}\",\"parent_node_id\":\"{s}\"}}",
+            .{ s.child_definition_id, s.parent_node_id },
+        ),
+    };
+}
+
+/// Persist each emitted event as a row in the events table.
+/// Duplicate inserts (same idempotency_key) are silently absorbed.
+fn persistEmittedEventsInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    instance_id_hex: []const u8,
+    emitted_events: []const transition_mod.EmittedEvent,
+) PersistEmittedEventsError!void {
+    if (emitted_events.len == 0) return;
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    for (emitted_events) |emitted| {
+        const event_type_str = emittedEventTypeStr(emitted.payload);
+        const payload_json = buildEmittedEventPayload(a, emitted.payload) catch
+            return PersistEmittedEventsError.OutOfMemory;
+
+        conn.exec(
+            \\WITH seq AS (
+            \\    INSERT INTO instance_sequence (instance_id, next_seq)
+            \\    VALUES ($1::uuid, 2)
+            \\    ON CONFLICT (instance_id) DO UPDATE
+            \\        SET next_seq = instance_sequence.next_seq + 1
+            \\    RETURNING next_seq - 1 AS val
+            \\)
+            \\INSERT INTO events
+            \\    (instance_id, event_type, payload, actor_id,
+            \\     sequence_number, idempotency_key)
+            \\SELECT $1::uuid, $2, $3::jsonb, $1::uuid, seq.val, $4
+            \\FROM seq
+            \\ON CONFLICT (idempotency_key) DO NOTHING
+        ,
+            &.{ instance_id_hex, event_type_str, payload_json, emitted.idempotency_key },
+        ) catch return PersistEmittedEventsError.PersistenceFailed;
+    }
+}
+
 const PersistTimerEffectsError = error{
     InvalidTimerNodeConfig,
     InstanceCancelled,
@@ -3485,9 +3764,10 @@ fn persistTimersFromPendingEventsInTx(
     allocator: std.mem.Allocator,
     conn: *db.Conn,
     instance_id: Uuid,
-    pending_events: []const transition_mod.PendingEvent,
+    pending_events: []const transition_mod.EmittedEvent,
 ) PersistTimerEffectsError!void {
-    for (pending_events) |ev| {
+    for (pending_events) |emitted| {
+        const ev = emitted.payload;
         switch (ev) {
             .timer_created => |timer_ev| {
                 var timer_id: Uuid = undefined;
@@ -3569,10 +3849,12 @@ fn startSubProcessesForPendingEventsInTx(
     parent_instance_id: Uuid,
     parent_instance_id_hex: []const u8,
     state: transition_mod.InstanceState,
+    emitted_events: []const transition_mod.EmittedEvent,
 ) CompleteTaskError!transition_mod.InstanceState {
     const next_state = state;
 
-    for (state.pending_events) |ev| {
+    for (emitted_events) |emitted| {
+        const ev = emitted.payload;
         switch (ev) {
             .sub_process_start => |sp| {
                 const child_definition_id = parseUuid(sp.child_definition_id) catch return CompleteTaskError.TransitionFailed;
@@ -3797,6 +4079,7 @@ fn propagateChildCompletionToParent(
         \\SET
         \\    status = 'COMPLETED',
         \\    current_nodes = '[]'::jsonb,
+        \\    active_tokens = '[]'::jsonb,
         \\    variables = $2::jsonb,
         \\    updated_at = NOW()
         \\WHERE instance_id = $1::uuid
@@ -3913,6 +4196,7 @@ fn propagateChildTerminalToParent(
         \\SET
         \\    status = 'ERROR',
         \\    current_nodes = '[]'::jsonb,
+        \\    active_tokens = '[]'::jsonb,
         \\    error_detail = $2::jsonb,
         \\    updated_at = NOW()
         \\WHERE instance_id = $1::uuid

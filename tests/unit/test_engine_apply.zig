@@ -39,9 +39,10 @@ fn emptyState() InstanceState {
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
-        .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 }
 
@@ -71,7 +72,8 @@ test "TC-EE-03-01: HUMAN_TASK node entry populates pending_task_nodes" {
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
+    const new_state = tr.state;
 
     // Token parked on HUMAN_TASK node
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
@@ -80,6 +82,9 @@ test "TC-EE-03-01: HUMAN_TASK node entry populates pending_task_nodes" {
     // pending_task_nodes has the HUMAN_TASK node ID
     try testing.expectEqual(@as(usize, 1), new_state.pending_task_nodes.len);
     try testing.expectEqualStrings("task1", new_state.pending_task_nodes[0]);
+
+    // ISS-201: HUMAN_TASK node entry produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -109,12 +114,16 @@ test "TC-EE-03-02: START node activation does NOT add to pending_task_nodes" {
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
+    const new_state = tr.state;
 
     // START traversal must not produce pending_task_nodes entries
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
     // Reached END immediately — instance COMPLETED
     try testing.expectEqual(transition_mod.InstanceStatus.COMPLETED, new_state.status);
+
+    // ISS-201: START->END produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -153,9 +162,10 @@ test "TC-EE-03-03: END node activation does NOT add to pending_task_nodes" {
         .status = .ACTIVE,
         .tokens = try alloc.dupe(Token, &[_]Token{token}),
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending_nodes,
         .error_detail = null,
-        .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{
@@ -163,12 +173,16 @@ test "TC-EE-03-03: END node activation does NOT add to pending_task_nodes" {
         .output_variables = std.json.ObjectMap.empty,
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, parked_state, event);
+    const tr = try transition_mod.transition(alloc, snap, parked_state, event, 1);
+    const new_state = tr.state;
 
     // END node must NOT produce a pending_task_nodes entry
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
     // Instance must be COMPLETED
     try testing.expectEqual(transition_mod.InstanceStatus.COMPLETED, new_state.status);
+
+    // ISS-201: task_completed -> END produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -200,12 +214,16 @@ test "TC-EE-03-04: EXCLUSIVE_GATEWAY activation does NOT add to pending_task_nod
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
+    const new_state = tr.state;
 
     // EXCLUSIVE_GATEWAY traversal must not produce pending_task_nodes entries
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
     // Reached END — instance COMPLETED
     try testing.expectEqual(transition_mod.InstanceStatus.COMPLETED, new_state.status);
+
+    // ISS-201: EXCLUSIVE_GATEWAY traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -238,12 +256,19 @@ test "TC-EE-03-05: PARALLEL_GATEWAY activation does NOT add to pending_task_node
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
+    const new_state = tr.state;
 
     // PARALLEL_GATEWAY split must not produce pending_task_nodes entries
     try testing.expectEqual(@as(usize, 0), new_state.pending_task_nodes.len);
     // Both branches reach END immediately — instance COMPLETED
     try testing.expectEqual(transition_mod.InstanceStatus.COMPLETED, new_state.status);
+
+    // ISS-201: PARALLEL_GATEWAY split emits exactly 1 parallel_split event
+    try testing.expectEqual(@as(usize, 1), tr.emitted_events.len);
+    const split_payload = tr.emitted_events[0].payload.parallel_split;
+    try testing.expectEqualStrings("par", split_payload.source_node_id);
+    try testing.expectEqual(@as(usize, 2), split_payload.edge_count);
 }
 
 // ---------------------------------------------------------------------------

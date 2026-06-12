@@ -1,0 +1,43 @@
+{
+  "handoff_id": "5d665e0a-4a75-4ce9-bf45-7dcf9783488a",
+  "run_id": "WF02-iss204-206-20260611",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-11T23:48:28Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 / ISS-204+206",
+    "requirement_ids": [
+      "ISS-204",
+      "ISS-206"
+    ],
+    "related_handoff_ids": [
+      "003a6264-876b-4fe6-ba94-1a428c3bdaa7"
+    ],
+    "artifacts_in": [
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md",
+      "src/api/middleware/",
+      "src/obs/audit.zig",
+      "src/engine/transition.zig",
+      "src/engine/instance.zig"
+    ]
+  },
+  "task": {
+    "description": "Design ISS-204 and ISS-206. Write TWO prose design docs (Type E):\n\n1. src/design/iss204_audit_in_transaction.md\n   ISS-204: Write audit_log inside the state-change transaction.\n   Current: audit INSERT is post-handler middleware in a SEPARATE transaction.\n   Fix: enlist audit INSERT in the handler's own transaction (commits/rolls back with it).\n   - before_state/after_state captured within the same transaction\n   - post-handler middleware no longer performs audit write\n   - crash between event commit and old audit point: both present or both absent\n   Touchpoints: src/api/middleware/*, src/obs/audit.zig, all state-changing route handlers\n\n2. src/design/iss206_token_multiset_join_counters.md\n   ISS-206: Engine token multiset + persisted parallel-join counters.\n   ISS-105 schema is already RELEASED (active_tokens as [{token_id,node_id}], join_counters JSONB).\n   This issue is the ENGINE LOGIC on top of that schema.\n   - InstanceState carries active_tokens: []Token{token_id,node_id} and join_counters\n   - PARALLEL split assigns fresh token_ids\n   - Join increments persisted counter; advances only when active-branch count reached (cancelled branches subtracted)\n   - Loops/reconverging branches keep correct multiplicity\n   - Replay reproduces exact token arrangement\n   Touchpoints: src/engine/transition.zig, src/engine/instance.zig\n\nNo implementation code.",
+    "acceptance_criteria": [
+      "iss204 design: transactional audit path described, middleware change described, crash-safety stated",
+      "iss206 design: token multiset logic, parallel split, join counter algorithm, replay invariant all described",
+      "No implementation code in either doc"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T23:48:28Z",
+  "completed_at": null
+}

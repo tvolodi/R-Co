@@ -1,0 +1,200 @@
+run_id: WF02-iss106-webhook-outbox-20260611
+created_at: "2026-06-11T14:05:44Z"
+rules_version: "1.1"
+requirement_ids:
+  - ISS-106
+
+difficulty: 2
+difficulty_rationale: "Single additive migration formalizing the existing webhook_deliveries outbox table; no API or engine logic (engine logic is ISS-205)."
+integration_surface: low
+integration_surface_rationale: "Touches only migrations/ (additive); no caller signatures change."
+
+steps:
+  - code-designer
+  - code-design-validator
+  - backend-dev
+  - test-designer
+  - test-design-validator
+  - test-runner
+  - release-validator
+  - doc-updater
+
+step_actuals:
+  code-designer:
+    step: "01"
+    handoff_file: handoffs/WF02-iss106-webhook-outbox-20260611/step-01-code-designer.json
+    started_at: ~
+    completed_at: ~
+    actual_minutes: 3.2
+    estimated_minutes: 2
+    variance_minutes: 1.2
+    variance_pct: 60.0
+
+  code-design-validator:
+    step: "01b"
+    handoff_file: handoffs/WF02-iss106-webhook-outbox-20260611/step-01b-code-design-validator.json
+    started_at: ~
+    completed_at: ~
+    actual_minutes: 1.2
+    estimated_minutes: 8
+    variance_minutes: -6.8
+    variance_pct: -85.0
+
+  backend-dev:
+    step: "02a"
+    handoff_file: handoffs/WF02-iss106-webhook-outbox-20260611/step-02a-backend-dev.json
+    started_at: ~
+    completed_at: ~
+    actual_minutes: 7.7
+    estimated_minutes: 4
+    variance_minutes: 3.7
+    variance_pct: 92.5
+
+  test-designer:
+    step: "03"
+    handoff_file: handoffs/WF02-iss106-webhook-outbox-20260611/step-03-test-designer.json
+    started_at: ~
+    completed_at: ~
+    actual_minutes: 4.2
+    estimated_minutes: 1
+    variance_minutes: 3.2
+    variance_pct: 320.0
+
+  test-design-validator:
+    step: "03b"
+    handoff_file: handoffs/WF02-iss106-webhook-outbox-20260611/step-03b-test-design-validator.json
+    started_at: ~
+    completed_at: ~
+    actual_minutes: 1.1
+    estimated_minutes: 12
+    variance_minutes: -10.9
+    variance_pct: -90.8
+
+  test-runner:
+    step: "04"
+    handoff_file: handoffs/WF02-iss106-webhook-outbox-20260611/step-04-test-runner.json
+    started_at: ~
+    completed_at: ~
+    actual_minutes: 2.6
+    estimated_minutes: 1
+    variance_minutes: 1.6
+    variance_pct: 160.0
+
+  release-validator:
+    step: "05"
+    handoff_file: handoffs/WF02-iss106-webhook-outbox-20260611/step-05-release-validator.json
+    started_at: ~
+    completed_at: ~
+    actual_minutes: 1.1
+    estimated_minutes: 1
+    variance_minutes: 0.1
+    variance_pct: 10.0
+
+  doc-updater:
+    step: "06"
+    handoff_file: handoffs/WF02-iss106-webhook-outbox-20260611/step-06-doc-updater.json
+    started_at: "2026-06-11T13:57:01Z"
+    completed_at: "2026-06-11T14:05:44Z"
+    actual_minutes: 8.7
+    estimated_minutes: 2
+    variance_minutes: 6.7
+    variance_pct: 335.0
+
+totals:
+  estimated_minutes: 31
+  actual_minutes: 29.8
+  variance_minutes: -1.2
+  variance_pct: -3.9
+
+estimation_rule_update_needed: true
+estimation_rule_update_rationale: >
+  Two consecutive D=2 runs (ISS-101 and ISS-106) show consistent directional bias
+  for several steps exceeding the ±25% threshold, warranting estimation rule
+  adjustments per docs/agents/metrics.md §6.
+
+step_analysis:
+  code-designer: >
+    Over by 60% (3.2 min vs 2 min est). The design work involved reconciling the
+    existing webhook_deliveries table (created across multiple prior migrations)
+    against the architecture contract — requiring more research than a greenfield design.
+
+  code-design-validator: >
+    Under by -85% (1.2 min vs 8 min est). The artefact was a single-page migration
+    spec with no graph changes, making validation very fast. Matches ISS-101 pattern
+    at D=2 (-86%).
+
+  backend-dev: >
+    Over by 92.5% (7.7 min vs 4 min est). Implementation required more than just
+    writing the migration SQL: BACKEND-DEV also fixed pre-existing migration-tracking
+    drift under the Unblock-Everything directive, adding time. The core migration work
+    was straightforward (additive ALTER TABLE), but the latent drift fix absorbed extra
+    effort.
+
+  test-designer: >
+    Over by 320% (4.2 min vs 1 min est). The estimate of 1 min at D=2 is structurally
+    too low: even simple integration tests require test scaffolding, UUID fixtures,
+    and per-tenant schema setup code. ISS-102 at D=3 showed similar test-designer
+    overrun (+56%), suggesting the D=2 estimate needs revision.
+
+  test-design-validator: >
+    Under by -90.8% (1.1 min vs 12 min est). 12 min for validating 5 integration tests
+    on a single migration is excessive at D=2. Matches ISS-101 pattern (-92.9%).
+
+  test-runner: >
+    Over by 160% (2.6 min vs 1 min est). The test-runner estimate of 1 minute at D=2
+    is structurally too low — it does not account for DB provisioning, per-tenant
+    schema setup, and zig compilation overhead (10-20 min typical). ISS-101 also had
+    massive test-runner overrun (+2068%).
+
+  release-validator: >
+    On target at +10% (1.1 min vs 1 min est). Release validation was straightforward
+    with all acceptance criteria having clear integration-test evidence.
+
+  doc-updater: >
+    Over by 335% (8.7 min vs 2 min est). This handoff was previously dispatched and
+    hit the session limit mid-task, requiring a full re-dispatch. The 2-minute estimate
+    does not account for: reading multiple input artefacts (release decision, test report,
+    estimation JSON), writing 3 separate output files (CHANGELOG, requirement status,
+    retrospective), and running the retrospective analysis procedure.
+
+estimation_rule_adjustments:
+  - step: code-design-validator
+    difficulty: 2
+    old_estimate: 8
+    new_estimate: 5
+    reason: >
+      Observed 2 consecutive D=2 runs (ISS-101 -86%, ISS-106 -85%) with >25% under.
+      Adjustment factor 0.575 applied: 8 * 0.575 = 4.6, rounded to 5.
+
+  - step: backend-dev
+    difficulty: 2
+    old_estimate: 4
+    new_estimate: 6
+    reason: >
+      Observed 2 consecutive D=2 runs (ISS-101 +131.7%, ISS-106 +92.5%) with >25% over.
+      Adjustment factor 1.4625 applied: 4 * 1.4625 = 5.85, rounded to 6.
+
+  - step: test-design-validator
+    difficulty: 2
+    old_estimate: 12
+    new_estimate: 7
+    reason: >
+      Observed 2 consecutive D=2 runs (ISS-101 -92.9%, ISS-106 -90.8%) with >25% under.
+      Adjustment factor 0.546 applied: 12 * 0.546 = 6.55, rounded to 7.
+
+  - step: test-runner
+    difficulty: 2
+    old_estimate: 1
+    new_estimate: 2
+    reason: >
+      Observed 2 consecutive D=2 runs (ISS-101 +2068%, ISS-106 +160%) with >25% over.
+      Adjustment factor 1.8 applied: 1 * 1.8 = 1.8, rounded to 2. The D=2 test-runner
+      estimate is structurally too low: compilation + DB provisioning overhead alone
+      takes >1 min even for zero tests.
+
+notes:
+  - "Overall variance is -3.9% (within ±25%) — the run finished slightly under total estimate."
+  - "Test-runner estimate of 1 min at D=2 is structurally too low (now 2 min after adjustment)."
+  - "Backend-dev was elevated due to pre-existing migration-tracking drift fix under Unblock-Everything."
+  - "Doc-updater 8.7 min includes a prior session limit hit requiring full re-dispatch."
+  - "Test-designer 320% overrun driven by the structural D=2 undercount (1 min est for integration test writing)."

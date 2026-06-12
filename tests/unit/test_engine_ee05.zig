@@ -27,9 +27,10 @@ fn emptyState() InstanceState {
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
-        .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 }
 
@@ -69,9 +70,13 @@ test "TC-EE-05-01: numeric comparison routes to matching branch" {
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
+    const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
+
+    // ISS-201: EXCLUSIVE_GATEWAY traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -110,9 +115,13 @@ test "TC-EE-05-02: string equality routes to matching branch" {
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
+    const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
+
+    // ISS-201: EXCLUSIVE_GATEWAY traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -149,9 +158,13 @@ test "TC-EE-05-03: missing variable causes eval failure, default edge wins" {
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
+    const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t2", new_state.tokens[0].node_id);
+
+    // ISS-201: EXCLUSIVE_GATEWAY default-edge traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +200,7 @@ test "TC-EE-05-04: all conditions false with no default returns NoMatchingEdge" 
 
     try testing.expectError(
         transition_mod.TransitionError.NoMatchingEdge,
-        transition_mod.transition(alloc, snap, emptyState(), event),
+        transition_mod.transition(alloc, snap, emptyState(), event, 1),
     );
 }
 
@@ -224,9 +237,13 @@ test "TC-EE-05-05: first true condition wins among multiple true conditions" {
         .start_node_id = "start",
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, emptyState(), event);
+    const tr = try transition_mod.transition(alloc, snap, emptyState(), event, 1);
+    const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("t1", new_state.tokens[0].node_id);
+
+    // ISS-201: EXCLUSIVE_GATEWAY traversal produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 // ---------------------------------------------------------------------------
@@ -261,9 +278,10 @@ test "EXT-04-UT-03: edge transform merges object result into instance variables"
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending[0..],
         .error_detail = null,
-        .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{
@@ -271,11 +289,15 @@ test "EXT-04-UT-03: edge transform merges object result into instance variables"
         .output_variables = out_vars,
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, state, event);
+    const tr = try transition_mod.transition(alloc, snap, state, event, 1);
+    const new_state = tr.state;
     try testing.expectEqual(@as(usize, 1), new_state.tokens.len);
     try testing.expectEqualStrings("next", new_state.tokens[0].node_id);
-    try testing.expect(new_state.variables.get("approved") != null);
-    try testing.expect(new_state.variables.get("amount") != null);
+    try testing.expect(tr.state.variables.get("approved") != null);
+    try testing.expect(tr.state.variables.get("amount") != null);
+
+    // ISS-201: HUMANTASK task_completed -> next node produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }
 
 test "EXT-04-UT-04: missing transform variable returns CelEvaluationError" {
@@ -299,9 +321,10 @@ test "EXT-04-UT-04: missing transform variable returns CelEvaluationError" {
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending[0..],
         .error_detail = null,
-        .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{
@@ -311,7 +334,7 @@ test "EXT-04-UT-04: missing transform variable returns CelEvaluationError" {
 
     try testing.expectError(
         transition_mod.TransitionError.CelEvaluationError,
-        transition_mod.transition(alloc, snap, state, event),
+        transition_mod.transition(alloc, snap, state, event, 1),
     );
 }
 
@@ -339,9 +362,10 @@ test "EXT-04-UT-05: non-object transform result returns TransformResultNonObject
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending[0..],
         .error_detail = null,
-        .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{
@@ -351,7 +375,7 @@ test "EXT-04-UT-05: non-object transform result returns TransformResultNonObject
 
     try testing.expectError(
         transition_mod.TransitionError.TransformResultNonObject,
-        transition_mod.transition(alloc, snap, state, event),
+        transition_mod.transition(alloc, snap, state, event, 1),
     );
 }
 
@@ -379,9 +403,10 @@ test "EXT-04-UT-06: whitespace-only transform is treated as no-op" {
         .status = .ACTIVE,
         .tokens = tokens[0..],
         .variables = std.json.ObjectMap.empty,
+        .join_counters = std.json.ObjectMap.empty,
         .pending_task_nodes = pending[0..],
         .error_detail = null,
-        .pending_events = &[_]transition_mod.PendingEvent{},
+        .cancelled_branch_ids = &[_][]const u8{},
     };
 
     const event = TransitionEvent{ .task_completed = .{
@@ -389,7 +414,11 @@ test "EXT-04-UT-06: whitespace-only transform is treated as no-op" {
         .output_variables = out_vars,
     } };
 
-    const new_state = try transition_mod.transition(alloc, snap, state, event);
+    const tr = try transition_mod.transition(alloc, snap, state, event, 1);
+    const new_state = tr.state;
     try testing.expectEqualStrings("next", new_state.tokens[0].node_id);
-    try testing.expect(new_state.variables.get("k") != null);
+    try testing.expect(tr.state.variables.get("k") != null);
+
+    // ISS-201: whitespace transform (no-op) produces no emitted events
+    try testing.expectEqual(@as(usize, 0), tr.emitted_events.len);
 }

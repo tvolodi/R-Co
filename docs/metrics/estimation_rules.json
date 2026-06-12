@@ -1,8 +1,8 @@
 {
   "version": "1.1",
-  "updated_at": "2026-06-07T06:15:52Z",
-  "updated_by": "WF02-uat-tenant-url-20260607",
-  "update_count": 57,
+  "updated_at": "2026-06-11T14:05:44Z",
+  "updated_by": "WF02-iss106-webhook-outbox-20260611",
+  "update_count": 58,
   "difficulty_guidelines": {
     "1": "Config/doc change, single field addition, no schema changes",
     "2": "Single function or endpoint, no schema change, < 50 LOC",
@@ -20,7 +20,7 @@
     ],
     "backend-dev": [
       10,
-      4,
+      6,
       7,
       6,
       100
@@ -41,7 +41,7 @@
     ],
     "test-runner": [
       5,
-      1,
+      2,
       3,
       4,
       25
@@ -62,14 +62,14 @@
     ],
     "code-design-validator": [
       5,
-      8,
+      5,
       12,
       15,
       20
     ],
     "test-design-validator": [
       8,
-      12,
+      7,
       6,
       25,
       35

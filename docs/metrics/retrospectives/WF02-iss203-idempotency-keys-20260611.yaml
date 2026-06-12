@@ -1,0 +1,129 @@
+run_id: WF02-iss203-idempotency-keys-20260611
+created_at: '2026-06-11T19:21:22Z'
+rules_version_used: '1.1'
+requirement_ids:
+  - ISS-203
+
+difficulty: 4
+difficulty_rationale: Deterministic idempotency key generation (hash over 5-field tuple), dedup via ON CONFLICT, touches both engine and event store modules.
+integration_surface: medium
+integration_surface_rationale: Touches src/engine/transition.zig and src/event_store/store.zig; client-supplied command keys must remain unaffected.
+
+steps:
+  - code-designer
+  - code-design-validator
+  - backend-dev
+  - test-designer
+  - test-design-validator
+  - test-runner
+  - release-validator
+  - doc-updater
+
+# Timing notes:
+# All started_at fields are the same timestamp (2026-06-11T19:21:22Z) because ORCH
+# pre-stamped all handoffs at creation time, not at dispatch time. Per-step actual
+# durations are therefore computed from sequential completed_at deltas (cascade approach),
+# consistent with the ISS-202 retrospective convention.
+# Delta chain: step-00 git-setup (19:21:22→19:25:20), code-designer (19:25:20→19:27:02),
+# code-design-validator (19:27:02→19:30:17), backend-dev (19:30:17→19:52:18),
+# test-designer (19:52:18→22:59:53), test-design-validator (22:59:53→23:01:00),
+# test-runner (23:01:00→23:31:02), release-validator (23:31:02→23:35:01),
+# doc-updater (23:35:01→23:37:29).
+
+by_step:
+  code-designer:
+    estimated: 6
+    actual: 1.7
+    variance_pct: -71.7
+    notes: Design was straightforward — FNV-1a hash with 5-field tuple and sentinel-byte separation. Single Type E artefact (src/design/iss203_idempotency_keys.md). Completed at 19:27:02.
+  code-design-validator:
+    estimated: 19
+    actual: 3.3
+    variance_pct: -82.6
+    notes: Single-artefact validation; all 7 acceptance criteria satisfied. Lint tool reported 0 issues. Completed at 19:30:17.
+  backend-dev:
+    estimated: 8
+    actual: 22.0
+    variance_pct: 175.0
+    notes: Implementation required updating 7 files (transition.zig, instance.zig, reconstruction.zig, 4 test files) and adding EmittedEvent wrapper struct plus FNV-1a computation. Overran due to blast radius — wider call-site update surface than 8-minute estimate anticipated. Completed at 19:52:18.
+  test-designer:
+    estimated: 2
+    actual: 187.6
+    variance_pct: 9280.0
+    notes: >
+      Major overrun. The test-designer step ran for ~3 hours before completing.
+      The 2-minute estimate was calibrated for a trivial/simple test spec but ISS-203
+      required writing 5 integration test cases against real PostgreSQL (ON CONFLICT
+      dedup, replay determinism, client key passthrough, instance isolation, ordinal
+      uniqueness). The cascade delta methodology captures elapsed wall-clock time
+      including any agent scheduling latency. This is not a representative 2-minute run.
+      Completed at 22:59:53.
+  test-design-validator:
+    estimated: 31
+    actual: 1.1
+    variance_pct: -96.5
+    notes: All 5 hard-gate checks passed. Single MINOR gap noted (TC-203-03 negative assertion only for client key passthrough). Completed at 23:01:00.
+  test-runner:
+    estimated: 5
+    actual: 30.0
+    variance_pct: 500.0
+    notes: >
+      All 5 ISS-203 test cases passed. TEST-RUNNER fixed several integration issues:
+      added persistEmittedEventsInTx() to store cascade events in events table with
+      engine: keys; fixed test graph definitions (missing END nodes); fixed TC-01
+      premature definition cleanup; added test-integration-iss203 build target.
+      These inline fixes extended the step beyond the 5-minute estimate. Completed at 23:31:02.
+  release-validator:
+    estimated: 1
+    actual: 4.0
+    variance_pct: 300.0
+    notes: NFR benchmarks: p99 write 2.783ms (180x below 500ms threshold), throughput 16,125 eps (16x above floor), replay 54.948ms (91x below ceiling). All 5 ISS-203 acceptance criteria pass. Overran estimate slightly due to benchmark run time. Completed at 23:35:01.
+  doc-updater:
+    estimated: 1
+    actual: 2.5
+    variance_pct: 150.0
+    notes: CHANGELOG, requirement_status, retrospective, PR merge. Completed at 23:37:29.
+
+totals:
+  estimated_minutes: 73
+  actual_minutes: 252.2
+  variance_minutes: 179.2
+  variance_pct: 245.5
+
+rework_steps: []
+
+rule_adjustments: []
+
+estimation_rule_update_needed: false
+estimation_rule_update_rationale: >
+  This is the first D4/medium run in the dataset. The metrics rule (docs/agents/metrics.md §6)
+  requires >=2 consecutive runs at the same difficulty and surface combination before adjusting
+  estimation_rules.json. No prior D4/medium retrospectives exist to compare against.
+
+  The extreme total overrun (+245.5%, 252 min vs 73 min estimated) is dominated by two factors:
+
+  1. test-designer ran for ~188 minutes wall-clock time (vs 2 min estimated). The 2-minute
+     estimate is calibrated for trivial specs. Writing 5 integration tests against real
+     PostgreSQL with ON CONFLICT dedup semantics is unambiguously not trivial. The D4/medium
+     test-designer estimate of 2 minutes appears to be a data-entry error in estimation_rules.json
+     (should be closer to 15-20 min for this surface). However, the cascade timing methodology
+     also captures scheduling latency, not just active work time — the true work duration may
+     be shorter.
+
+  2. test-runner ran for ~30 min (vs 5 min estimated), because the agent performed inline
+     fixes to integration test infrastructure (persistEmittedEventsInTx, missing END nodes,
+     build target). These fixes were appropriate per the Unblock-Everything directive but
+     inflate the reported duration.
+
+  Recommendation: Monitor ISS-204 through ISS-207 D4/medium runs. If test-designer
+  consistently overruns at D4, adjust the estimate from 2 to a higher value.
+
+notes:
+  - 'Total actual (252.2 min) vs estimate (73 min) at D4/medium. Primary driver: test-designer at +9280% (187.6 min actual vs 2 min estimated). This estimate is almost certainly wrong for D4 integration test work.'
+  - 'test-runner overran at +500% (30 min vs 5 min estimated) due to inline fixes to test infrastructure (persistEmittedEventsInTx, missing graph END nodes, new build target).'
+  - 'code-designer and code-design-validator significantly underran (-71.7% and -82.6%), consistent with ISS-201 and ISS-202 patterns: focused single-artefact designs complete quickly when the design space is well-constrained.'
+  - 'backend-dev overran at +175% (22 min vs 8 min estimated): 7 files modified with EmittedEvent struct addition and FNV-1a computation across engine modules. Wider call-site blast radius than estimate anticipated.'
+  - '5/5 ISS-203 tests pass. 0 rework cycles. NFR benchmarks green across all three thresholds. Clean release.'
+  - 'No rule adjustments: first D4/medium run. Threshold requires >=2 consecutive runs (metrics.md §6 Step 4).'
+
+completed_at: '2026-06-11T23:37:29Z'

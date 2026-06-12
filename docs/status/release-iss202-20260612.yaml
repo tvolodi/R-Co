@@ -1,0 +1,63 @@
+---
+run_id: WF02-iss202-20260611
+date: "2026-06-12"
+requirement_ids:
+  - ISS-202
+overall_status: APPROVED
+
+nfr_results:
+  NFR-01:
+    p99_read_ms:
+      target: "<=200ms"
+      actual: 0.567
+      passed: true
+    p99_write_ms:
+      target: "<=500ms"
+      actual: 3.677
+      passed: true
+  NFR-02:
+    append_throughput_eps:
+      target: ">=1000 events/sec"
+      actual: 16377.331
+      passed: true
+  NFR-04:
+    replay_10000_ms:
+      target: "<=5000ms"
+      actual: 32.887
+      passed: true
+    note: >
+      Two-phase merge introduces no state-reconstruction overhead. Phase 1 is pure
+      in-memory validation (no DB writes); Phase 2 is a single atomic transaction.
+      Replay time of 32.887ms for 10k events is well within the 5000ms NFR-04 target.
+
+nfr_04_compliant: true
+
+benchmark_results: >
+  All NFR benchmarks PASS. NFR-01 p99 read 0.567ms (target <=200ms), p99 write 3.677ms
+  (target <=500ms). NFR-02 append throughput 16377 events/sec (target >=1000). NFR-04
+  state reconstruction for 10k events: 32.887ms (target <=5000ms). No performance
+  regression introduced by ISS-202 two-phase merge implementation.
+
+test_pass_count: 13
+test_fail_count: 0
+test_skip_count: 0
+regression_check:
+  total_tests: 634
+  passed: 550
+  skipped: 84
+  failed: 0
+  regression_introduced: false
+  pre_existing_skips_unchanged: true
+
+issues: []
+
+rationale: >
+  ISS-202 two-phase all-or-nothing variable merge passes all 13 integration tests (including
+  atomicity, concurrency, and crash-recovery scenarios), introduces no regressions in the
+  full 634-test suite, and all NFR benchmarks are well within targets — NFR-04 state
+  reconstruction is 153x faster than the 5-second threshold.
+
+release_validator: RELEASE-VALIDATOR
+validated_at: "2026-06-11T19:10:30Z"
+artifacts_in:
+  - tests/reports/report-20260612-WF02-iss202-20260611.yaml

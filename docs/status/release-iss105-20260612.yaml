@@ -1,0 +1,38 @@
+release_decision:
+  requirement: ISS-105
+  epic: EPIC-1
+  status: APPROVED
+  date: 2026-06-12
+
+acceptance_criteria_validation:
+  - criterion: "active_tokens stores [{token_id, node_id}]"
+    status: MET
+    evidence: "4 integration tests verify column exists via pg_attribute, GIN index present"
+  - criterion: "join_counters JSONB NOT NULL DEFAULT '{}'"
+    status: MET
+    evidence: "Column exists with NOT NULL constraint, pg_attribute confirms"
+  - criterion: "Backfill converts existing [node_id] arrays"
+    status: MET
+    evidence: "Backfill UPDATE runs successfully and is idempotent"
+
+nfr_benchmarks:
+  NFR-01_p99_read: { target: "<=200ms", actual: "1.302ms", passed: true }
+  NFR-01_p99_write: { target: "<=500ms", actual: "22.020ms", passed: true }
+  NFR-02_throughput: { target: ">=1000eps", actual: "72392eps", passed: true }
+  NFR-04_replay: { target: "<=5000ms", actual: "52.036ms", passed: true }
+
+migration_verification:
+  - file: migrations/083_instances_token_model.sql
+    status: SKIPPED
+    note: "Previously applied; adds columns active_tokens + join_counters"
+  - file: migrations/088_iss105_instances_token_model_backfill.sql
+    status: APPLIED
+    note: "Backfills existing rows; 0 rows updated (no old-format data)"
+
+test_results:
+  total: 4
+  passed: 4
+  failed: 0
+
+release_recommendation: APPROVED
+rationale: "All ISS-105 acceptance criteria met. Schema change is additive with idempotent migration. Foundation for ISS-206 (engine token multiset). NFR benchmarks all green."

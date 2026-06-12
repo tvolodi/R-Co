@@ -1,0 +1,25 @@
+{
+  "handoff_id": "iss105-test-design-validator-3b",
+  "run_id": "WF02-iss105-token-model-20260611",
+  "step": "3b",
+  "from_agent": "TEST-DESIGN-VALIDATOR",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-11T12:49:28Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "ISS-105",
+    "upstream_step": "03",
+    "stage": "Test Design Validation Gate (Hard gate)"
+  },
+  "task": {
+    "description": "Validate TEST-DESIGNER output for ISS-105 before TEST-RUNNER executes.",
+    "acceptance_criteria": [],
+    "functions_to_call": ["fn:validate-test-coverage"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1,
+  "started_at": null,
+  "completed_at": null
+}

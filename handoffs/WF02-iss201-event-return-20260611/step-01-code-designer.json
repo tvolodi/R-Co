@@ -1,0 +1,61 @@
+{
+    "handoff_id":  "iss201-code-designer-01",
+    "run_id":  "WF02-iss201-event-return-20260611",
+    "workflow_id":  "WF-02",
+    "step":  "01",
+    "from_agent":  "ORCH",
+    "to_agent":  "CODE-DESIGNER",
+    "file":  "handoffs/WF02-iss201-event-return-20260611/step-01-code-designer.json",
+    "created_at":  "2026-06-11T15:40:03Z",
+    "started_at":  "2026-06-11T15:40:03Z",
+    "completed_at":  "2026-06-11T15:44:40Z",
+    "status":  "COMPLETED",
+    "priority":  "HIGH",
+    "context":  {
+                    "issue_id":  "ISS-201",
+                    "stage":  "Step 01 — Code design",
+                    "requirement_ids":  [
+                                            "ISS-201"
+                                        ],
+                    "owned_modules":  [
+                                          "src/engine/transition.zig",
+                                          "src/engine/instance.zig",
+                                          "src/engine/reconstruction.zig"
+                                      ],
+                    "artifacts_in":  [
+                                         "docs/requirements/BPM_Architecture_Backlog.20260611.md",
+                                         "src/design/engine.md"
+                                     ],
+                    "pre_read_notes":  "Current state of the codebase (read these files for the complete picture):\n- src/engine/transition.zig lines 77-102: PendingEvent union (5 variants: parallel_split, parallel_join, instance_cancelled, timer_created, sub_process_start) + InstanceState struct with pending_events field\n- src/engine/transition.zig line 156: pub fn transition(allocator, snapshot, state, event) TransitionError!InstanceState — returns only InstanceState\n- src/engine/instance.zig: Callers at lines 689, 888, 1525, 2984, 3091 — all access .tokens, .pending_events, .pending_task_nodes, etc. on the returned state\n- src/engine/instance.zig lines 3580-3617: persistTimersFromPendingEventsInTx() consumes pending_events for timer persistence\n- src/engine/instance.zig lines 3661+: startSubProcessesForPendingEventsInTx() consumes pending_events for sub-process\n- src/engine/instance.zig lines 392-423: freeOwnedTransitionState() frees all InstanceState fields including pending_events\n- src/engine/reconstruction.zig lines 210, 322: replay callers of transition()\n- CALLERS TO UPDATE: 7+ call sites in instance.zig + reconstruction.zig + internal transition.zig status helpers\n- ALL UNIT TESTS calling transition() must also update their destructuring\n"
+                },
+    "task":  {
+                 "description":  "Design the ISS-201 refactoring: transition() returns TransitionResult{state, emitted_events} instead of just InstanceState.\n\nKey design decisions to document:\n1. TransitionResult struct shape: { state: InstanceState, emitted_events: []PendingEvent } — emitted_events are the events the engine decided on (parallel_split, timer_created, etc.)\n2. InstanceState no longer carries pending_events — it becomes a pure mirror of what\u0027s stored in the DB (tokens, status, variables, join_counters, etc.)\n3. Engine remains PURE (zero I/O) — transition() does NOT re-append the trigger event; the orchestrator does that\n4. The orchestrator (instance.zig) now: (a) saves TransitionResult.state to DB; (b) atomically persists trigger + TransitionResult.emitted_events in the transaction\n5. freeOwnedTransitionState() signature changes — now takes TransitionResult and frees both state+events\n6. reconstruction.zig replay callers — iterate events through transition(), collecting emitted_events per step\n7. Test implications — every test that calls transition() must destructure TransitionResult; unit tests for the enum variants (timer_created emitted, parallel_split emitted, etc.)\n\nBIG PICTURE: This is the foundational EPIC-2 change. ISS-202 (two-phase merge), ISS-203 (deterministic idempotency), ISS-206 (token multiset), ISS-207 (convergent retry) all build on this new interface. The design must be crystal clear about the contract.",
+                 "acceptance_criteria":  [
+                                             "Design specifies TransitionResult struct shape",
+                                             "Design identifies EXACTLY which fields move from InstanceState to TransitionResult (and which stay)",
+                                             "Design lists every call site to update (with file+line references)",
+                                             "Design specifies the new freeOwnedTransitionState() signature and what it frees",
+                                             "Design documents the orchestrator persistence contract: trigger + emitted_events in one transaction",
+                                             "Design confirms engine remains pure (no I/O, no re-append of trigger)",
+                                             "Design covers test implications: existing unit tests updated, new tests for emitted-event assertion per event type",
+                                             "Lint passes on the design artefact"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:classify-requirement",
+                                           "fn:write-design-artefact"
+                                       ]
+             },
+    "result":  {
+                   "summary":  "Type E prose design for ISS-201 TransitionResult. Separates transition() output into TransitionResult{state, emitted_events}. InstanceState no longer carries pending_events. Engine remains pure (zero I/O). Documents all call sites with file+line references, freeOwnedTransitionState() signature change, persistence contract, and test implications.",
+                   "status":  "PASS",
+                   "issues":  [
+
+                              ],
+                   "artifacts_out":  [
+                                         "src/design/iss-201-transition-result.md"
+                                     ],
+                   "next_action":  "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+               },
+    "rework_count":  0,
+    "max_rework":  3
+}

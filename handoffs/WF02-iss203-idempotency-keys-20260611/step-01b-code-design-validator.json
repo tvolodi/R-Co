@@ -1,0 +1,50 @@
+{
+  "handoff_id": "a495e4c2-6903-41fe-9c48-ad5613283db4",
+  "run_id": "WF02-iss203-idempotency-keys-20260611",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-11T19:21:22Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 / ISS-203",
+    "requirement_ids": [
+      "ISS-203"
+    ],
+    "related_handoff_ids": [
+      "8222c174-7f73-4ca1-a7ea-2cbc1aaf3521"
+    ],
+    "artifacts_in": [
+      "src/design/iss203_idempotency_keys.md"
+    ]
+  },
+  "task": {
+    "description": "Validate src/design/iss203_idempotency_keys.md for ISS-203. Hard gate - BACKEND-DEV cannot start until PASS.",
+    "acceptance_criteria": [
+      "Every ISS-203 acceptance criterion has a corresponding design element",
+      "No implementation code present",
+      "Hash function choice documented with rationale",
+      "ON CONFLICT DO NOTHING path described",
+      "Client-supplied key passthrough explicitly addressed",
+      "Replay determinism invariant stated",
+      "Function signatures implied are unambiguous enough for BACKEND-DEV"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/iss203_idempotency_keys.md passes all hard-gate checks. All seven acceptance criteria are satisfied: (1) Hash key composition covers all five required fields (instance_id, triggering_event_seq, node_id, emitted_event_type, ordinal) with sentinel-byte separation; (2) Replay determinism is stated as Invariant R-1 with four proofs; (3) ON CONFLICT DO NOTHING deduplication path in store.zig is described in Section 4 with is_duplicate=true semantics; (4) Client-supplied trigger keys are structurally excluded (Section 5, Invariant K-4); (5) FNV-1a hash choice is documented with explicit rationale vs BLAKE3/SHA-256; (6) No implementation code present \u2014 only type declarations and signatures; (7) All public function signatures (transition(), TransitionResult, EmittedEvent, computeEmittedEventKey, InvalidTriggeringSeq) are unambiguous enough for BACKEND-DEV. Lint tool reports 0 issues.",
+    "artifacts_out": [
+      "src/design/iss203_idempotency_keys.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 02a)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-11T19:21:22Z",
+  "completed_at": "2026-06-11T19:30:17Z"
+}

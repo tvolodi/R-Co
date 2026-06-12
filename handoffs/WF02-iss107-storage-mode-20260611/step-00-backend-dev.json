@@ -1,0 +1,55 @@
+{
+  "handoff_id": "iss107-git-setup-00",
+  "run_id": "WF02-iss107-storage-mode-20260611",
+  "workflow_id": "WF-02",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-iss107-storage-mode-20260611/step-00-backend-dev.json",
+  "created_at": "2026-06-11T14:18:13Z",
+  "started_at": "2026-06-11T14:18:13Z",
+  "completed_at": "2026-06-11T14:18:51Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "ISS-107",
+    "stage": "Step 00 \u2014 Git setup",
+    "requirement_ids": [
+      "ISS-107"
+    ],
+    "owned_modules": [
+      "migrations/",
+      "src/db/provisioning.zig"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md",
+      "infrastructure/keycloak/realms/bpm-default.json"
+    ]
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md. Start from clean main, pull latest, create and push feature branch feature/WF02-iss107-storage-mode-20260611.",
+    "acceptance_criteria": [
+      "Local repo on fresh feature branch feature/WF02-iss107-storage-mode-20260611 based on latest origin/main",
+      "Branch pushed to origin",
+      "branch_name, base_commit_sha, push_status recorded in result.git_evidence"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Git setup: feature branch created and pushed",
+    "artifacts_out": ["branch: feature/WF02-iss107-storage-mode-20260611"],
+    "git_evidence": {
+      "branch_name": "feature/WF02-iss107-storage-mode-20260611",
+      "base_commit_sha": "d88bd1064af333f6acb77701d50fedd69848fbef",
+      "push_status": "PUSHED_OK"
+    },
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 01)"
+  },
+  "rework_count": 0,
+  "max_rework": 0
+}

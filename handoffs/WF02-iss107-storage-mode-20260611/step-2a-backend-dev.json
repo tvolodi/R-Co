@@ -1,0 +1,69 @@
+{
+  "handoff_id": "iss107-backend-impl-2a",
+  "run_id": "WF02-iss107-storage-mode-20260611",
+  "workflow_id": "WF-02",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF02-iss107-storage-mode-20260611/step-2a-backend-dev.json",
+  "created_at": "2026-06-11T14:23:56Z",
+  "started_at": "2026-06-11T14:23:56Z",
+  "completed_at": "2026-06-11T14:26:37Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "ISS-107",
+    "stage": "Step 2a \u2014 Implementation",
+    "requirement_ids": [
+      "ISS-107"
+    ],
+    "owned_modules": [
+      "migrations/",
+      "src/db/provisioning.zig"
+    ],
+    "artifacts_in": [
+      "templates/specs/GBL-tenant-storage-mode.migration.yaml",
+      "src/db/provisioning.zig",
+      "migrations/031_adp04b_tenant_realm_binding.sql",
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md"
+    ]
+  },
+  "task": {
+    "description": "Implement ISS-107 per the design at templates/specs/GBL-tenant-storage-mode.migration.yaml. (1) Run the codegen: python tools/codegen_migration.py templates/specs/GBL-tenant-storage-mode.migration.yaml \u2014 this generates migrations/084_iss107_tenant_storage_mode.sql and a test scaffold. IMPORTANT: Verify 084 is the next free number. If taken by the concurrent ISS-104 branch, use the next free. (2) Edit src/db/provisioning.zig: in the provisionTenantSchema() function (or equivalent), after the step that updates migrations_applied_at, add step 6a: UPDATE tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid \u2014 this ensures newly provisioned tenants default to SCHEMA. The migration's DEFAULT 'LEGACY_RLS' handles existing tenants. NOTE: the actual table name is 'tenant' (singular), not 'tenants' as the requirement doc says. Use the real table name everywhere. (3) Validate: zig build (exit 0, no 'error set' output), zig build test (exit 0), zig build migrate (exit 0, idempotent on re-run). (4) Commit and push to feature branch.",
+    "acceptance_criteria": [
+      "Migration 084_iss107_tenant_storage_mode.sql exists and is additive/idempotent (ADD COLUMN IF NOT EXISTS)",
+      "Column storage_mode TEXT NOT NULL DEFAULT 'LEGACY_RLS' CHECK (storage_mode IN ('LEGACY_RLS','SCHEMA')) on 'tenant' table",
+      "provisioning.zig updated: new tenants get SCHEMA",
+      "zig build, zig build test, zig build migrate all exit 0",
+      "No 'error set' output",
+      "Committed and pushed to feature branch"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ISS-107: added storage_mode column to tenant table with migration 086 and updated provisionTenantSchema() to set SCHEMA for newly provisioned tenants.",
+    "artifacts_out": [
+      "migrations/086_iss107_tenant_storage_mode.sql",
+      "src/db/provisioning.zig",
+      "templates/specs/GBL-tenant-storage-mode.migration.yaml"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF02-iss107-storage-mode-20260611",
+      "commit_sha_list": [
+        "063a0dcbac4c2e871dff636e1ef99921c59a49f2"
+      ],
+      "remote_branch": "origin/feature/WF02-iss107-storage-mode-20260611",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-DESIGNER (Step 03)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

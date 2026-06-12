@@ -86,6 +86,36 @@ pub const RetryResult = struct {
     }
 };
 
+// ISS-207 error set for convergent retry operations.
+pub const DlqRetryError = error{
+    /// DLQ row not found. HTTP 404.
+    ItemNotFound,
+    /// Instance FK not found in instance_projections. HTTP 404.
+    InstanceNotFound,
+    /// Instance status is not ERROR. HTTP 409.
+    InstanceNotInError,
+    /// Cause unchanged: same definition version, no EXECUTION_CORRECTION event. HTTP 409.
+    RetryWithoutChange,
+    /// corrected_payload_json is not a valid JSON object. HTTP 422.
+    InvalidInput,
+    /// pool.acquire() failed. HTTP 503.
+    PoolExhausted,
+    /// Any DB write failure. HTTP 500.
+    PersistenceFailed,
+    OutOfMemory,
+};
+
+pub const RetryConvergentResult = struct {
+    dlq_id: []u8,
+    instance_id: []u8,
+    status: []const u8, // static literal, not allocated
+
+    pub fn deinit(self: RetryConvergentResult, allocator: std.mem.Allocator) void {
+        allocator.free(self.dlq_id);
+        allocator.free(self.instance_id);
+    }
+};
+
 pub const DiscardResult = struct {
     id: []u8,
 
@@ -448,6 +478,291 @@ pub fn discard(
 
     return .{
         .id = allocator.dupe(u8, row.rows[0][0] orelse "") catch return error.OutOfMemory,
+    };
+}
+
+// ---------------------------------------------------------------------------
+// ISS-207: retryConvergent — bare retry, requires changed cause
+// ---------------------------------------------------------------------------
+
+/// Attempt to retry a DLQ item whose associated instance is in ERROR status.
+/// A bare retry is only allowed when the cause has changed: either the definition
+/// version was promoted after the error, or an EXECUTION_CORRECTION event exists.
+/// If neither condition holds, returns DlqRetryError.RetryWithoutChange (HTTP 409).
+pub fn retryConvergent(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    actor_id: []const u8,
+    dlq_id: []const u8,
+) DlqRetryError!RetryConvergentResult {
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    conn.begin() catch return error.PersistenceFailed;
+    errdefer conn.rollback() catch {};
+
+    // Step 1: Load DLQ item and lock it.
+    const dlq_row = conn.queryRow(
+        allocator,
+        \\SELECT id::text, instance_id::text, original_payload::text
+        \\FROM dead_letter_queue
+        \\WHERE id = $1::uuid
+        \\FOR UPDATE
+    ,
+        &.{dlq_id},
+    ) catch return error.PersistenceFailed;
+
+    if (dlq_row == null) {
+        conn.rollback() catch {};
+        return error.ItemNotFound;
+    }
+
+    const locked = dlq_row.?;
+    defer {
+        for (locked) |col| if (col) |v| allocator.free(v);
+        allocator.free(locked);
+    }
+
+    const locked_id = locked[0] orelse return error.PersistenceFailed;
+    const maybe_instance_id = locked[1];
+
+    // Step 2: Verify instance exists and is in ERROR status.
+    const instance_id = maybe_instance_id orelse {
+        conn.rollback() catch {};
+        return error.InstanceNotFound;
+    };
+
+    const inst_row = conn.queryRow(
+        allocator,
+        \\SELECT status, definition_id::text, definition_artifact_hash
+        \\FROM instance_projections
+        \\WHERE instance_id = $1::uuid
+        \\FOR UPDATE
+    ,
+        &.{instance_id},
+    ) catch return error.PersistenceFailed;
+
+    if (inst_row == null) {
+        conn.rollback() catch {};
+        return error.InstanceNotFound;
+    }
+
+    const inst = inst_row.?;
+    defer {
+        for (inst) |col| if (col) |v| allocator.free(v);
+        allocator.free(inst);
+    }
+
+    const inst_status = inst[0] orelse "";
+    if (!std.mem.eql(u8, inst_status, "ERROR")) {
+        conn.rollback() catch {};
+        return error.InstanceNotInError;
+    }
+
+    const definition_id = inst[1] orelse "";
+    const current_artifact_hash = inst[2] orelse "";
+
+    // Step 3: Changed-cause check.
+    // Path a: promoted definition version changed since the error?
+    var cause_changed = false;
+    {
+        const def_row = conn.queryRow(
+            allocator,
+            \\SELECT definition_artifact_hash
+            \\FROM process_definitions
+            \\WHERE id = $1::uuid AND status = 'ACTIVE'
+        ,
+            &.{definition_id},
+        ) catch return error.PersistenceFailed;
+
+        if (def_row) |dr| {
+            defer {
+                for (dr) |col| if (col) |v| allocator.free(v);
+                allocator.free(dr);
+            }
+            const promoted_hash = dr[0] orelse "";
+            if (promoted_hash.len > 0 and !std.mem.eql(u8, promoted_hash, current_artifact_hash)) {
+                cause_changed = true;
+            }
+        }
+    }
+
+    // Path b: EXECUTION_CORRECTION event after the last EXECUTION_ERROR?
+    if (!cause_changed) {
+        const corr_row = conn.queryRow(
+            allocator,
+            \\SELECT event_id::text FROM events
+            \\WHERE instance_id = $1::uuid
+            \\  AND event_type = 'EXECUTION_CORRECTION'
+            \\  AND sequence_number > (
+            \\      SELECT COALESCE(MAX(sequence_number), 0) FROM events
+            \\      WHERE instance_id = $1::uuid AND event_type = 'EXECUTION_ERROR'
+            \\  )
+            \\LIMIT 1
+        ,
+            &.{instance_id},
+        ) catch return error.PersistenceFailed;
+
+        if (corr_row) |cr| {
+            defer {
+                for (cr) |col| if (col) |v| allocator.free(v);
+                allocator.free(cr);
+            }
+            cause_changed = true;
+        }
+    }
+
+    if (!cause_changed) {
+        conn.rollback() catch {};
+        return error.RetryWithoutChange;
+    }
+
+    // Step 4: Mark DLQ item as retrying (reset retry_count; worker picks it up).
+    conn.exec(
+        \\UPDATE dead_letter_queue
+        \\SET retry_count = 0,
+        \\    status = 'retrying',
+        \\    last_retried_at = NOW(),
+        \\    updated_at = NOW()
+        \\WHERE id = $1::uuid
+    ,
+        &.{locked_id},
+    ) catch return error.PersistenceFailed;
+
+    conn.exec("SELECT set_config('bpm.actor_id', $1, true)", &.{actor_id}) catch return error.PersistenceFailed;
+    conn.exec("SELECT set_config('bpm.audit_action', 'dlq.retry_convergent', true)", &.{}) catch return error.PersistenceFailed;
+
+    conn.commit() catch return error.PersistenceFailed;
+
+    return RetryConvergentResult{
+        .dlq_id = allocator.dupe(u8, locked_id) catch return error.OutOfMemory,
+        .instance_id = allocator.dupe(u8, instance_id) catch return error.OutOfMemory,
+        .status = "RETRYING",
+    };
+}
+
+// ---------------------------------------------------------------------------
+// ISS-207: retryWithInput — re-present trigger with corrected payload
+// ---------------------------------------------------------------------------
+
+/// Retry a DLQ item with an operator-supplied corrected payload.
+/// The corrected_payload_json is validated as a JSON object, then the DLQ item
+/// is marked retrying with the new payload stored for the worker to pick up.
+pub fn retryWithInput(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    actor_id: []const u8,
+    dlq_id: []const u8,
+    corrected_payload_json: []const u8,
+) DlqRetryError!RetryConvergentResult {
+    // Validate corrected_payload_json is a JSON object.
+    {
+        var val_arena = std.heap.ArenaAllocator.init(allocator);
+        defer val_arena.deinit();
+        const parsed = std.json.parseFromSlice(
+            std.json.Value,
+            val_arena.allocator(),
+            corrected_payload_json,
+            .{ .allocate = .alloc_always },
+        ) catch return error.InvalidInput;
+        defer parsed.deinit();
+        switch (parsed.value) {
+            .object => {},
+            else => return error.InvalidInput,
+        }
+    }
+
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    conn.begin() catch return error.PersistenceFailed;
+    errdefer conn.rollback() catch {};
+
+    // Load and lock the DLQ item.
+    const dlq_row = conn.queryRow(
+        allocator,
+        \\SELECT id::text, instance_id::text
+        \\FROM dead_letter_queue
+        \\WHERE id = $1::uuid
+        \\FOR UPDATE
+    ,
+        &.{dlq_id},
+    ) catch return error.PersistenceFailed;
+
+    if (dlq_row == null) {
+        conn.rollback() catch {};
+        return error.ItemNotFound;
+    }
+
+    const locked = dlq_row.?;
+    defer {
+        for (locked) |col| if (col) |v| allocator.free(v);
+        allocator.free(locked);
+    }
+
+    const locked_id = locked[0] orelse return error.PersistenceFailed;
+    const maybe_instance_id = locked[1];
+
+    const instance_id = maybe_instance_id orelse {
+        conn.rollback() catch {};
+        return error.InstanceNotFound;
+    };
+
+    // Verify instance is in ERROR status.
+    const inst_row = conn.queryRow(
+        allocator,
+        \\SELECT status FROM instance_projections
+        \\WHERE instance_id = $1::uuid
+        \\FOR UPDATE
+    ,
+        &.{instance_id},
+    ) catch return error.PersistenceFailed;
+
+    if (inst_row == null) {
+        conn.rollback() catch {};
+        return error.InstanceNotFound;
+    }
+
+    const inst = inst_row.?;
+    defer {
+        for (inst) |col| if (col) |v| allocator.free(v);
+        allocator.free(inst);
+    }
+
+    const inst_status = inst[0] orelse "";
+    if (!std.mem.eql(u8, inst_status, "ERROR")) {
+        conn.rollback() catch {};
+        return error.InstanceNotInError;
+    }
+
+    // Update the DLQ item: store corrected payload and mark retrying.
+    conn.exec(
+        \\UPDATE dead_letter_queue
+        \\SET retry_count = 0,
+        \\    status = 'retrying',
+        \\    original_payload = $2::jsonb,
+        \\    last_retried_at = NOW(),
+        \\    updated_at = NOW()
+        \\WHERE id = $1::uuid
+    ,
+        &.{ locked_id, corrected_payload_json },
+    ) catch return error.PersistenceFailed;
+
+    conn.exec("SELECT set_config('bpm.actor_id', $1, true)", &.{actor_id}) catch return error.PersistenceFailed;
+    conn.exec("SELECT set_config('bpm.audit_action', 'dlq.retry_with_input', true)", &.{}) catch return error.PersistenceFailed;
+
+    conn.commit() catch return error.PersistenceFailed;
+
+    return RetryConvergentResult{
+        .dlq_id = allocator.dupe(u8, locked_id) catch return error.OutOfMemory,
+        .instance_id = allocator.dupe(u8, instance_id) catch return error.OutOfMemory,
+        .status = "RETRYING",
     };
 }
 

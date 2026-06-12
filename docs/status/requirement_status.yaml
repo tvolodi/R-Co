@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-06-12T04:39:05Z'
+last_updated: '2026-06-11T00:00:00Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -3718,7 +3718,7 @@ requirements:
     test_run: tests/reports/report-20260605-WF02-spt-01.yaml
     last_updated: '2026-06-05T09:19:00Z'
   SPT-02:
-    title: "Data migration \u2014 copy rows into tenant schemas and remove RLS"
+    title: Data migration — copy rows into tenant schemas and remove RLS
     status: PENDING
     stage: Schema-Per-Tenant Migration
     priority: MUST
@@ -4101,23 +4101,106 @@ requirements:
     release_run: WF02-iss102-20260611
     release_decision: docs/status/release-iss102-20260611.yaml
     last_updated: '2026-06-11T00:00:00Z'
-  ISS-103:
+  ISS-105:
     status: RELEASED
     stage: correctness
     priority: MUST
-    title: Change audit_log.resource_id from UUID to TEXT NOT NULL
+    title: Persist new token model ({token_id,node_id} + join_counters)
     implemented_in:
-    - migrations/GBL-081_iss103_audit_resource_id_text.sql
-    - migrations/GBL-091_fix_audit_chain_resource_id_text.sql
-    - migrations/089_fix_audit_chain_resource_id_text.sql
-    - migrations/090_iss103_audit_resource_id_text.sql
-    - src/obs/audit.zig
-    - tests/integration/audit_iss103_test.zig
-    test_spec: tests/specs/ISS-103.md
-    test_run: tests/reports/report-20260611-iss103-rerun.yaml
+      - migrations/083_instances_token_model.sql
+      - migrations/088_iss105_instances_token_model_backfill.sql
+      - src/engine/instance.zig
+      - src/design/iss105_token_model_schema.md
+    test_spec: tests/specs/ISS-105.md
+    test_run: tests/reports/report-20260611-iss105.yaml
+    tested_at: '2026-06-12'
+    released_at: '2026-06-12'
+    release_run: WF02-iss105-token-model-schema-20260611
+    release_decision: docs/status/release-iss105-20260612.yaml
+    last_updated: '2026-06-12T00:00:00Z'
+  ISS-106:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Formalize webhook_deliveries outbox table
+    implemented_in:
+    - migrations/085_iss106_webhook_deliveries_outbox.sql
+    - tests/integration/iss106_webhook_outbox_test.zig
+    test_spec: tests/specs/ISS-106.md
+    test_run: tests/reports/report-20260611-WF02-iss106-webhook-outbox.yaml
     tested_at: '2026-06-11'
     released_at: '2026-06-11'
-    release_run: ADHOC-iss103-audit-resource-id-20260611
-    release_decision: docs/status/release-iss103-20260611.yaml
-    last_updated: '2026-06-12T04:39:05Z'
-total_requirements: 287
+    release_run: WF02-iss106-webhook-outbox-20260611
+    release_decision: docs/status/release-iss106-20260611.yaml
+    last_updated: '2026-06-11T14:00:00Z'
+  ISS-107:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Add public.tenants.storage_mode flag for SPT coexistence
+    implemented_in:
+    - migrations/086_iss107_tenant_storage_mode.sql
+    - src/db/provisioning.zig
+    - tests/integration/iss107_tenant_storage_mode_test.zig
+    test_spec: tests/specs/ISS-107.md
+    test_run: tests/reports/report-20260611-WF02-iss107-storage-mode.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11'
+    release_run: WF02-iss107-storage-mode-20260611
+    release_decision: docs/status/release-iss107-20260611.yaml
+    last_updated: '2026-06-11T14:50:00Z'
+  ISS-201:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Make transition() return TransitionResult{state, emitted_events}
+    implemented_in:
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - src/engine/reconstruction.zig
+    test_spec: tests/specs/ISS-201.md
+    test_run: tests/reports/report-20260611-WF02-iss201-event-return.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11'
+    release_run: WF02-iss201-event-return-20260611
+    release_decision: docs/status/release-iss201-20260611.yaml
+    last_updated: '2026-06-11T16:55:01Z'
+  ISS-202:
+    status: TESTED
+    stage: correctness
+    priority: MUST
+    title: Two-phase all-or-nothing variable merge
+    implemented_in:
+    - src/engine/instance.zig
+    - tests/unit/test_ee09_merge_variables.zig
+    - tests/integration/ee09_merge_variables_test.zig
+    - tests/integration/iss202_merge_atomicity_test.zig
+    test_spec: tests/specs/ISS-202.md
+    test_run: tests/reports/report-20260612-WF02-iss202-20260611.yaml
+    release_decision: docs/status/release-iss202-20260612.yaml
+    implemented_in_run: WF02-iss202-20260611
+    tested_at: '2026-06-12'
+    last_updated: '2026-06-12T00:00:00Z'
+  ISS-203:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Deterministic idempotency keys for engine-emitted cascade events
+    implemented_in:
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - src/engine/reconstruction.zig
+    - src/event_store/store.zig
+    - tests/unit/service_task_test.zig
+    - tests/unit/test_engine_apply.zig
+    - tests/unit/test_engine_ee05.zig
+    - tests/unit/test_ee07_parallel_join.zig
+    - tests/integration/iss203_idempotency_keys_test.zig
+    test_spec: tests/specs/ISS-203.md
+    test_run: tests/reports/report-20260611-WF02-iss203-idempotency-keys.yaml
+    tested_at: '2026-06-11'
+    released_at: '2026-06-11'
+    release_run: WF02-iss203-idempotency-keys-20260611
+    release_decision: docs/status/release-iss203-20260611.yaml
+    last_updated: '2026-06-11T23:35:01Z'
+total_requirements: 291

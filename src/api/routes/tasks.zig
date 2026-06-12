@@ -464,6 +464,8 @@ pub fn handleComplete(
     ) catch |err| switch (err) {
         instance_mod.CompleteTaskError.TaskNotFound => return errorResult(allocator, 404, "TASK_NOT_FOUND", "task not found"),
         instance_mod.CompleteTaskError.TaskAlreadyTerminated => return errorResult(allocator, 409, "TASK_ALREADY_TERMINATED", "task is not in PENDING status"),
+        // ISS-208: instance not ACTIVE (CANCELLED or COMPLETED) — race-safe guard.
+        instance_mod.CompleteTaskError.InstanceNotActive => return errorResult(allocator, 409, "INSTANCE_NOT_ACTIVE", "Task completion is not allowed: the parent instance is not in ACTIVE status."),
         instance_mod.CompleteTaskError.InvalidInput => return errorResult(allocator, 422, "INVALID_INPUT", "output_variables is not a valid JSON object"),
         instance_mod.CompleteTaskError.TransitionFailed => return errorResult(allocator, 500, "TRANSITION_FAILED", "state transition failed"),
         instance_mod.CompleteTaskError.PersistenceFailed => return errorResult(allocator, 500, "PERSISTENCE_FAILED", "database operation failed"),

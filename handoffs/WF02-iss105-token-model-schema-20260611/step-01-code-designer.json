@@ -1,0 +1,43 @@
+﻿{
+    "handoff_id":  "c513ac85-fb1d-4a47-a4da-24a6fbfe898c",
+    "run_id":  "WF02-iss105-token-model-schema-20260611",
+    "step":  "01",
+    "from_agent":  "ORCH",
+    "to_agent":  "CODE-DESIGNER",
+    "created_at":  "2026-06-12T02:44:19Z",
+    "status":  "COMPLETED",
+    "priority":  "NORMAL",
+    "context":  {
+                    "stage":  "EPIC-1 / ISS-105",
+                    "requirement_ids":  [
+                                            "ISS-105"
+                                        ],
+                    "related_handoff_ids":  [
+                                                "04d5b3b2-ca44-4f95-be8b-32597990ee1e"
+                                            ],
+                    "artifacts_in":  [
+                                         "docs/requirements/BPM_Architecture_Backlog.20260611.md",
+                                         "src/engine/instance.zig",
+                                         "migrations/"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Design ISS-105: Persist new token model ({token_id,node_id} + join_counters). Write src/design/iss105_token_model_schema.md (Type E prose). Must cover: (1) instances.active_tokens schema: from []NodeId to [{token_id: UUID, node_id: TEXT}] as JSONB. (2) New column: instances.join_counters JSONB NOT NULL DEFAULT \u0027{}\u0027. (3) Migration: additive only - add join_counters column, backfill active_tokens rows to new shape. (4) Backfill: existing [node_id] rows converted to [{token_id: gen_random_uuid(), node_id}]. (5) Serde in src/engine/instance.zig: read/write new shapes. (6) Replay round-trip: rebuild from events reproduces identical active_tokens + join_counters. No implementation code.",
+                 "acceptance_criteria":  [
+                                             "Migration strategy (additive, backfill) described",
+                                             "New JSONB shapes for active_tokens and join_counters described",
+                                             "Backfill approach for existing rows described",
+                                             "Serde changes in instance.zig described",
+                                             "Replay round-trip invariant stated",
+                                             "No implementation code"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:read-backend-conventions"
+                                       ]
+             },
+    "result":  "{\"summary\":\"Type E design written: src/design/iss105_token_model_schema.md covering schema, migration, backfill, serde, and replay round-trip\",\"status\":\"PASS\",\"issues\":[],\"artifacts_out\":[\"src/design/iss105_token_model_schema.md\"],\"next_action\":\"Route to CODE-DESIGN-VALIDATOR (Step 01b)\"}",
+    "rework_count":  0,
+    "max_rework":  3,
+    "started_at":  "2026-06-12T02:44:19Z",
+    "completed_at":  "2026-06-12T02:47:27Z"
+}
