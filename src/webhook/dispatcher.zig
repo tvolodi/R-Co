@@ -24,6 +24,93 @@ pub const DispatchError = error{
     PersistenceFailed,
 };
 
+// ---------------------------------------------------------------------------
+// ISS-205: Back-off ladder constants
+// ---------------------------------------------------------------------------
+// attempt 1 → 5 000 ms
+// attempt 2 → 30 000 ms  (30s)
+// attempt 3 → 120 000 ms (2 min)
+// attempt 4 → 600 000 ms (10 min)
+// attempt 5 → 1 800 000 ms (30 min)
+pub const OUTBOX_BACKOFF_MS = [_]u32{ 5_000, 30_000, 120_000, 600_000, 1_800_000 };
+pub const OUTBOX_MAX_ATTEMPTS: u8 = 5;
+
+// ---------------------------------------------------------------------------
+// ISS-205: insertWebhookDeliveriesInTx — transactional outbox insert
+// ---------------------------------------------------------------------------
+// Must be called INSIDE an open transaction on `conn`. Inserts one
+// webhook_deliveries row per matching active subscription, with
+// next_attempt_at = NOW() + 5 seconds (first backoff slot).
+//
+// Security: all values bound as $N parameters; no SQL string interpolation.
+
+pub const OutboxInsertError = error{
+    PersistenceFailed,
+    OutOfMemory,
+};
+
+pub fn insertWebhookDeliveriesInTx(
+    allocator: std.mem.Allocator,
+    conn: anytype, // *db.Conn (open transaction from caller)
+    event_type: sub_store.WebhookEventType,
+    instance_id: []const u8,
+    event_id: []const u8,
+    trace_id: []const u8,
+    payload_json: []const u8,
+) OutboxInsertError!u32 {
+    const event_type_str = event_type.toWire();
+
+    const subs = conn.query(
+        allocator,
+        \\SELECT id::text
+        \\FROM webhook_subscriptions
+        \\WHERE status = 'ACTIVE'
+        \\  AND is_active = true
+        \\  AND (event_types IS NULL OR array_length(event_types, 1) = 0 OR $1 = ANY(event_types))
+    ,
+        &.{event_type_str},
+    ) catch return error.PersistenceFailed;
+    defer {
+        var r = subs;
+        r.deinit();
+    }
+
+    var inserted: u32 = 0;
+    for (subs.rows) |row| {
+        const subscription_id = row[0] orelse continue;
+        conn.exec(
+            \\INSERT INTO webhook_deliveries
+            \\  (subscription_id, event_id, status, attempt_count, max_attempts,
+            \\   next_attempt_at, event_type, instance_id, payload_json, trace_id,
+            \\   created_at, updated_at)
+            \\VALUES
+            \\  ($1::uuid, NULLIF($2, '')::uuid, 'pending', 0, 5,
+            \\   NOW() + '5 seconds'::interval,
+            \\   $3, NULLIF($4, '')::uuid, $5::jsonb, $6,
+            \\   NOW(), NOW())
+        ,
+            &.{ subscription_id, event_id, event_type_str, instance_id, payload_json, trace_id },
+        ) catch return error.PersistenceFailed;
+        inserted += 1;
+    }
+
+    return inserted;
+}
+
+// ---------------------------------------------------------------------------
+// ISS-205: sweepOrphanedDeliveries — startup sweep to drain orphans
+// ---------------------------------------------------------------------------
+// Runs at process startup (before entering the periodic poll loop) to drain
+// any webhook_deliveries rows that were left pending by a prior crashed process.
+// Uses FOR UPDATE SKIP LOCKED so concurrent workers don't double-process.
+
+pub fn sweepOrphanedDeliveries(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+) DispatchError!void {
+    return dispatchDueWebhookAttempts(allocator, pool);
+}
+
 pub fn computeRetryDelayMs(attempt: u8, base_ms: u32, cap_ms: u32) u32 {
     if (base_ms == 0) return 0;
     if (attempt <= 1) return @min(base_ms, cap_ms);
@@ -121,6 +208,7 @@ pub fn dispatchDueWebhookAttempts(
         \\  AND s.status = 'ACTIVE'
         \\ORDER BY d.next_attempt_at ASC
         \\LIMIT 50
+        \\FOR UPDATE OF d SKIP LOCKED
     ,
         &.{},
     ) catch return error.PersistenceFailed;
@@ -324,7 +412,12 @@ fn dispatchOne(
             &.{subscription_id},
         ) catch return error.PauseTransitionFailed;
     } else {
-        const delay_ms = computeRetryDelayMs(next_attempt, 1000, 30_000);
+        // ISS-205: use the prescribed back-off ladder (5s, 30s, 2m, 10m, 30m).
+        const ladder_idx = if (next_attempt > 0 and next_attempt <= OUTBOX_BACKOFF_MS.len)
+            next_attempt - 1
+        else
+            OUTBOX_BACKOFF_MS.len - 1;
+        const delay_ms = OUTBOX_BACKOFF_MS[ladder_idx];
         const delay_txt = std.fmt.allocPrint(allocator, "{d}", .{delay_ms}) catch return error.OutOfMemory;
         defer allocator.free(delay_txt);
 

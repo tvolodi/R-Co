@@ -89,6 +89,120 @@ pub fn handleRetry(
     return .{ .status_code = 202, .body = body };
 }
 
+// ---------------------------------------------------------------------------
+// ISS-207: handleRetryConvergent — bare retry (changed-cause check)
+// ---------------------------------------------------------------------------
+
+/// POST /api/v1/dlq/:item_id/retry
+/// Requires changed cause (new definition version or EXECUTION_CORRECTION event).
+/// Returns HTTP 409 + hint if cause unchanged.
+pub fn handleRetryConvergent(
+    pool: *pool_mod.Pool,
+    allocator: std.mem.Allocator,
+    actor: Actor,
+    dlq_id: []const u8,
+) HandlerResult {
+    var derived_roles: [3]authorization.Role = undefined;
+    const roles = resolveActorRoles(actor, &derived_roles);
+    const decision = authorization.evaluateAccess(
+        .{ .user_id = actor.user_id, .roles = roles },
+        .DlqReadRetryDiscard,
+    );
+    if (decision.kind == .Deny403) {
+        return errorResult(allocator, 403, "FORBIDDEN", "caller is not authorized to retry dead letter items");
+    }
+
+    const result = dlq_store.retryConvergent(allocator, pool, actor.user_id, dlq_id) catch |err| switch (err) {
+        error.ItemNotFound => return errorResult(allocator, 404, "NOT_FOUND", "dead letter item not found"),
+        error.InstanceNotFound => return errorResult(allocator, 404, "INSTANCE_NOT_FOUND", "associated instance not found"),
+        error.InstanceNotInError => return errorResult(allocator, 409, "INSTANCE_NOT_IN_ERROR", "instance is not in ERROR status"),
+        error.RetryWithoutChange => return errorResult(allocator, 409, "RETRY_WITHOUT_CHANGE", "Instance has not changed since the error; promote a new definition version or submit a correction event before retrying."),
+        error.InvalidInput => return errorResult(allocator, 422, "INVALID_INPUT", "invalid input"),
+        error.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "database connection pool exhausted"),
+        else => return errorResult(allocator, 500, "INTERNAL_ERROR", "failed to retry dead letter item"),
+    };
+    defer result.deinit(allocator);
+
+    const body = std.fmt.allocPrint(
+        allocator,
+        "{{\"id\":\"{s}\",\"instance_id\":\"{s}\",\"status\":\"{s}\"}}",
+        .{ result.dlq_id, result.instance_id, result.status },
+    ) catch return errorResult(allocator, 500, "INTERNAL_ERROR", "serialization failed");
+
+    return .{ .status_code = 202, .body = body };
+}
+
+// ---------------------------------------------------------------------------
+// ISS-207: handleRetryWithInput — retry with corrected payload
+// ---------------------------------------------------------------------------
+
+/// POST /api/v1/dlq/:item_id/retry-with-input
+/// Body: { "payload": { ... } }  (corrected trigger payload)
+pub fn handleRetryWithInput(
+    pool: *pool_mod.Pool,
+    allocator: std.mem.Allocator,
+    actor: Actor,
+    dlq_id: []const u8,
+    body: []const u8,
+) HandlerResult {
+    var derived_roles: [3]authorization.Role = undefined;
+    const roles = resolveActorRoles(actor, &derived_roles);
+    const decision = authorization.evaluateAccess(
+        .{ .user_id = actor.user_id, .roles = roles },
+        .DlqReadRetryDiscard,
+    );
+    if (decision.kind == .Deny403) {
+        return errorResult(allocator, 403, "FORBIDDEN", "caller is not authorized to retry dead letter items");
+    }
+
+    // Parse body: must be { "payload": { ... } }
+    const body_parsed = std.json.parseFromSlice(
+        std.json.Value,
+        allocator,
+        body,
+        .{ .allocate = .alloc_always },
+    ) catch return errorResult(allocator, 422, "INVALID_INPUT", "request body is not valid JSON");
+    defer body_parsed.deinit();
+
+    if (body_parsed.value != .object) {
+        return errorResult(allocator, 422, "INVALID_INPUT", "request body must be a JSON object");
+    }
+
+    const payload_val = body_parsed.value.object.get("payload") orelse {
+        return errorResult(allocator, 422, "INVALID_INPUT", "payload field is required");
+    };
+
+    if (payload_val != .object) {
+        return errorResult(allocator, 422, "INVALID_INPUT", "payload must be a JSON object");
+    }
+
+    const corrected_payload_json = std.json.Stringify.valueAlloc(
+        allocator,
+        std.json.Value{ .object = payload_val.object },
+        .{},
+    ) catch return errorResult(allocator, 500, "INTERNAL_ERROR", "serialization failed");
+    defer allocator.free(corrected_payload_json);
+
+    const result = dlq_store.retryWithInput(allocator, pool, actor.user_id, dlq_id, corrected_payload_json) catch |err| switch (err) {
+        error.ItemNotFound => return errorResult(allocator, 404, "NOT_FOUND", "dead letter item not found"),
+        error.InstanceNotFound => return errorResult(allocator, 404, "INSTANCE_NOT_FOUND", "associated instance not found"),
+        error.InstanceNotInError => return errorResult(allocator, 409, "INSTANCE_NOT_IN_ERROR", "instance is not in ERROR status"),
+        error.RetryWithoutChange => return errorResult(allocator, 409, "RETRY_WITHOUT_CHANGE", "instance cause unchanged"),
+        error.InvalidInput => return errorResult(allocator, 422, "INVALID_INPUT", "payload is not a valid JSON object"),
+        error.PoolExhausted => return errorResult(allocator, 503, "SERVICE_UNAVAILABLE", "database connection pool exhausted"),
+        else => return errorResult(allocator, 500, "INTERNAL_ERROR", "failed to retry dead letter item with input"),
+    };
+    defer result.deinit(allocator);
+
+    const resp_body = std.fmt.allocPrint(
+        allocator,
+        "{{\"id\":\"{s}\",\"instance_id\":\"{s}\",\"status\":\"{s}\"}}",
+        .{ result.dlq_id, result.instance_id, result.status },
+    ) catch return errorResult(allocator, 500, "INTERNAL_ERROR", "serialization failed");
+
+    return .{ .status_code = 202, .body = resp_body };
+}
+
 pub fn handleDiscard(
     pool: *pool_mod.Pool,
     allocator: std.mem.Allocator,
