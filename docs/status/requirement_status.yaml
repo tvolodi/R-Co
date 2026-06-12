@@ -4101,6 +4101,23 @@ requirements:
     release_run: WF02-iss102-20260611
     release_decision: docs/status/release-iss102-20260611.yaml
     last_updated: '2026-06-11T00:00:00Z'
+  ISS-105:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Persist new token model ({token_id,node_id} + join_counters)
+    implemented_in:
+      - migrations/083_instances_token_model.sql
+      - migrations/088_iss105_instances_token_model_backfill.sql
+      - src/engine/instance.zig
+      - src/design/iss105_token_model_schema.md
+    test_spec: tests/specs/ISS-105.md
+    test_run: tests/reports/report-20260611-iss105.yaml
+    tested_at: '2026-06-12'
+    released_at: '2026-06-12'
+    release_run: WF02-iss105-token-model-schema-20260611
+    release_decision: docs/status/release-iss105-20260612.yaml
+    last_updated: '2026-06-12T00:00:00Z'
   ISS-106:
     status: RELEASED
     stage: correctness

@@ -51,6 +51,18 @@ All notable changes to the BPM Platform are documented here.
 - Validation evidence: 5/5 integration tests passing (TC-ISS-106-01 through TC-ISS-106-05). NFR benchmarks: p99_read=0.497ms, p99_write=1.499ms, throughput=63,663.7 eps, replay_10k=34.583ms — all within targets. Release approval: `docs/status/release-iss106-20260611.yaml`.
 - Requirement: ISS-106 — RELEASED
 
+### ISS-105 — Persist Token Model ({token_id,node_id} + join_counters) (RELEASED 2026-06-12)
+
+#### WF02-iss105-token-model-schema-20260611 (2026-06-12)
+
+- **Schema change:** `instance_projections.active_tokens` changed from `[]NodeId` (string array) to `[{token_id: UUID, node_id: TEXT, branch_id: TEXT}]` (JSONB object array). New `instance_projections.join_counters JSONB NOT NULL DEFAULT '{}'` column for parallel gateway convergence.
+- **Migration 088** (`migrations/088_iss105_instances_token_model_backfill.sql`): Backfills existing rows by converting old `["node_A", "node_B"]` arrays to `[{token_id, node_id, branch_id}]` format. Additive only — no columns dropped. GIN index on `active_tokens` for query optimization. Fully idempotent.
+- **Serde update** (`src/engine/instance.zig`): `completeTask()` token serialization now includes `token_id`; `active_tokens` and `join_counters` added to `completeTask()`, `cancelInstance()`, `setInstanceError()`, and child propagation UPDATE statements. Read paths tolerate missing `token_id` and `join_counters` fields for backward compatibility.
+- **P0 schema foundation** (ISS-105 from architecture backlog EPIC-1): The structured token model replaces bare node-id sets, enabling ISS-206 (engine token multiset + parallel join counters) to represent multiple tokens on the same node and persist join convergence state.
+- Validation evidence: 4/4 integration tests passing against real PostgreSQL. NFR benchmarks green. Release approval: `docs/status/release-iss105-20260612.yaml`.
+- Design artefact: `src/design/iss105_token_model_schema.md`
+- Requirement: ISS-105 — RELEASED
+
 ### ISS-201 — transition() returns TransitionResult{state, emitted_events} (RELEASED 2026-06-11)
 
 #### WF02-iss201-event-return-20260611 (2026-06-11)
