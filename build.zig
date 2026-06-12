@@ -578,6 +578,31 @@ pub fn build(b: *std.Build) void {
     });
     const run_sch06_unit_tests = b.addRunArtifact(sch06_unit_tests);
 
+    // SCH-302: Startup sweep advisory lock — pure function unit tests (no DB)
+    const sch302_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/sch302_startup_sweep_lock_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_sch302_unit_tests = b.addRunArtifact(sch302_unit_tests);
+
+    // SCH-303: Timer DLQ unit tests (migration file presence + source inspection, no DB)
+    const sch303_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/sch303_timer_dlq_unit_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{},
+        }),
+    });
+    const run_sch303_unit_tests = b.addRunArtifact(sch303_unit_tests);
+    run_sch303_unit_tests.setCwd(b.path("."));
+
     // EXT-01: service task config/retry helper unit tests (pure, no DB)
     const service_task_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -701,6 +726,8 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_oidc02_keycloak_adapter_tests.step);
     test_step.dependOn(&run_sch05_unit_tests.step);
     test_step.dependOn(&run_sch06_unit_tests.step);
+    test_step.dependOn(&run_sch302_unit_tests.step);
+    test_step.dependOn(&run_sch303_unit_tests.step);
     test_step.dependOn(&run_service_task_unit_tests.step);
     test_step.dependOn(&run_ext03_plugin_unit_tests.step);
     test_step.dependOn(&run_dsl01_parser_tests.step);
@@ -1001,6 +1028,19 @@ pub fn build(b: *std.Build) void {
     run_iss205_integration_tests.setCwd(b.path("."));
     run_iss205_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // EPIC-3 (ISS-301, ISS-302, ISS-303): Scheduler concurrency and DLQ routing integration tests.
+    const sch303_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/sch303_timer_dlq_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_sch303_integration_tests = b.addRunArtifact(sch303_integration_tests);
+    run_sch303_integration_tests.setCwd(b.path("."));
+    run_sch303_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
     clean_test_db.setCwd(b.path("."));
@@ -1024,6 +1064,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_iss207_integration_tests.step);
     test_integration_step.dependOn(&run_iss208_integration_tests.step);
     test_integration_step.dependOn(&run_iss205_integration_tests.step);
+    test_integration_step.dependOn(&run_sch303_integration_tests.step);
 
     const test_integration_xc04_step = b.step("test-integration-xc04", "Run XC-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_xc04_step.dependOn(&clean_test_db.step);
@@ -1105,6 +1146,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss205_step = b.step("test-integration-iss205", "Run ISS-205 webhook transactional outbox integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss205_step.dependOn(&clean_test_db.step);
     test_integration_iss205_step.dependOn(&run_iss205_integration_tests.step);
+
+    const test_integration_sch303_step = b.step("test-integration-sch303", "Run EPIC-3 (ISS-301/302/303) scheduler concurrency and DLQ routing integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_sch303_step.dependOn(&clean_test_db.step);
+    test_integration_sch303_step.dependOn(&run_sch303_integration_tests.step);
 
     const svc_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{

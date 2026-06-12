@@ -152,6 +152,8 @@ const iss107_tenant_storage_mode_integration = @import("iss107_tenant_storage_mo
 const iss201_transition_result_integration = @import("iss201_transition_result_test.zig");
 // ISS-202 — Two-phase (all-or-nothing) variable merge
 const iss202_merge_atomicity_integration = @import("iss202_merge_atomicity_test.zig");
+// EPIC-3 (ISS-301, ISS-302, ISS-303) — Scheduler concurrency and DLQ routing
+const sch303_timer_dlq_integration = @import("sch303_timer_dlq_test.zig");
 
 comptime {
     _ = std;
@@ -223,6 +225,7 @@ comptime {
     _ = iss107_tenant_storage_mode_integration;
     _ = iss201_transition_result_integration;
     _ = iss202_merge_atomicity_integration;
+    _ = sch303_timer_dlq_integration;
 }
 
 test "integration placeholder" {

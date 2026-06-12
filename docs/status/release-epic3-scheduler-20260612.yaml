@@ -1,0 +1,67 @@
+run_id: WF02-epic3-scheduler-20260612
+date: "2026-06-12"
+issues: [ISS-301, ISS-302, ISS-303]
+epic: EPIC-3
+release_decision: APPROVED
+nfr_status: PASS
+acceptance_criteria_status: PASS
+issues_found: []
+
+nfr_results:
+  NFR-01_p99_read_ms: "0.938ms (target <=200ms) PASS"
+  NFR-01_p99_write_ms: "3.306ms (target <=500ms) PASS"
+  NFR-02_throughput_eps: "28090 eps (target >=1000 eps) PASS"
+  NFR-04_replay_10000_ms: "58.5ms (target <=5000ms) PASS"
+
+acceptance_criteria:
+  ISS-301_xact_lock_removed:
+    status: PASS
+    detail: >
+      pg_try_advisory_xact_lock appears only in test assertion strings
+      (TC-SCH-301-01 and TC-SCH-302-04) — 0 occurrences in active code.
+      FOR UPDATE SKIP LOCKED present in 2 places (poll query + DLQ insert guard).
+      TC-SCH-301-03 PASS.
+
+  ISS-302_startup_sweep_session_lock:
+    status: PASS
+    detail: >
+      Startup sweep uses pg_try_advisory_lock (session-level, line 515) and
+      pg_advisory_unlock (line 540). TC-SCH-302-03 PASS.
+
+  ISS-303_timer_dlq_routing:
+    status: PASS
+    detail: >
+      migrations/092_iss303_timer_fire_error_count.sql present and idempotent
+      (DO $$ block with information_schema column existence check).
+      fire_error_count and failed_at columns added to timers table.
+      SchedulerConfig.max_timer_fire_retries defaults to 3 (line 22).
+      TC-SCH-303-03 PASS (exhaustion → FAILED + DLQ entry).
+      TC-SCH-303-04 PASS (sub-threshold stays PENDING).
+
+  general_regression:
+    status: PASS
+    detail: >
+      548 unit tests pass, 5 pre-existing failures in test_api08_auth.zig
+      (BPM_DB_URL not configured in unit test env — pre-existing on main).
+      Zero new failures introduced by EPIC-3 changes.
+
+bugs_fixed_during_validation:
+  - id: BUG-EPIC3-01
+    severity: BLOCKER
+    description: "INSERT INTO dead_letter_queue renamed to dead_letter_items (migration 072)"
+    resolution: "Fixed in scheduler.zig — commit fbdea5c"
+  - id: BUG-EPIC3-02
+    severity: BLOCKER
+    description: "sch303_timer_dlq_test.zig queried dead_letter_queue — table renamed"
+    resolution: "9 references replaced with dead_letter_items — commit fbdea5c"
+  - id: BUG-EPIC3-03
+    severity: MINOR
+    description: "Dev DB schema_migrations missing GBL-082 record (pre-existing rename conflict)"
+    resolution: "Record inserted directly; unrelated to EPIC-3"
+
+notes: >
+  All EPIC-3 integration tests (TC-SCH-301-03, TC-SCH-302-03, TC-SCH-303-03,
+  TC-SCH-303-04) pass. NFR benchmarks comfortably within thresholds.
+  Two BLOCKER bugs (dead_letter_queue table rename) were found and fixed
+  during TEST-RUNNER step — not blocking release as they are now resolved.
+  Release APPROVED.

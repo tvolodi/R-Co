@@ -24,35 +24,22 @@ test "TC-SCH-05-05b: SchedulerConfig default poll_interval_ms is 5000" {
     try testing.expectEqual(@as(u64, 5000), config.poll_interval_ms);
 }
 
-test "TC-SCH-05-13: advisoryLockKey produces deterministic 64-bit key from UUID" {
-    // advisoryLockKey is the sole public pure function in scheduler.zig
-    const uuid: bpm.scheduler_poller.Uuid = .{
-        0x55, 0x0e, 0x84, 0x00, 0xe2, 0x9b, 0x41, 0xd4,
-        0xa7, 0x16, 0x44, 0x66, 0x55, 0x44, 0x00, 0x00,
-    };
-    const key = bpm.scheduler_poller.advisoryLockKey(uuid);
-    // Key derived from first 8 bytes of UUID (deterministic).
-    // Just verify it's non-zero for a non-zero UUID.
-    try testing.expect(key != 0);
+test "TC-SCH-05-13: SchedulerConfig.max_timer_fire_retries default is 3 (ISS-303)" {
+    // ISS-303: Verify the default retry limit used before a timer is moved to FAILED.
+    const config = SchedulerConfig{};
+    try testing.expectEqual(@as(u32, 3), config.max_timer_fire_retries);
 }
 
-test "TC-SCH-05-13b: advisoryLockKey is deterministic (same UUID → same key)" {
-    const uuid: bpm.scheduler_poller.Uuid = .{
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-    };
-    const k1 = bpm.scheduler_poller.advisoryLockKey(uuid);
-    const k2 = bpm.scheduler_poller.advisoryLockKey(uuid);
-    try testing.expectEqual(k1, k2);
+test "TC-SCH-05-13b: SchedulerConfig.max_timer_fire_retries can be overridden (ISS-303)" {
+    // Callers can configure a custom retry limit.
+    const config = SchedulerConfig{ .max_timer_fire_retries = 5 };
+    try testing.expectEqual(@as(u32, 5), config.max_timer_fire_retries);
 }
 
-test "TC-SCH-05-13c: advisoryLockKey for zero UUID produces zero key" {
-    const uuid: bpm.scheduler_poller.Uuid = .{
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    };
-    const key = bpm.scheduler_poller.advisoryLockKey(uuid);
-    try testing.expectEqual(@as(i64, 0), key);
+test "TC-SCH-05-13c: SchedulerConfig zero max_timer_fire_retries is allowed (ISS-303)" {
+    // A zero value means every fire failure immediately routes to FAILED + DLQ.
+    const config = SchedulerConfig{ .max_timer_fire_retries = 0 };
+    try testing.expectEqual(@as(u32, 0), config.max_timer_fire_retries);
 }
 
 test "TC-SCH-05-14: PollSummary default values are zero" {

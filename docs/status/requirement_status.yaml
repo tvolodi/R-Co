@@ -4213,4 +4213,41 @@ requirements:
     implemented_in: feature/WF02-iss204-206-20260611
     released_in: EPIC-2 / ISS-204+206
     last_updated: '2026-06-12T04:54:38Z'
-total_requirements: 291
+  ISS-301:
+    status: RELEASED
+    stage: scheduler
+    priority: MUST
+    title: Remove redundant advisory lock from timer-claim path
+    implemented_in:
+    - src/scheduler/timer.zig
+    released_in: EPIC-3 / ISS-301+302+303
+    released_at: '2026-06-12'
+    release_run: WF02-epic3-scheduler-20260612
+    release_decision: docs/status/release-epic3-scheduler-20260612.yaml
+    last_updated: '2026-06-12T11:05:00Z'
+  ISS-302:
+    status: RELEASED
+    stage: scheduler
+    priority: MUST
+    title: Guard startup missed-timer sweep with advisory lock
+    implemented_in:
+    - src/scheduler/timer.zig
+    released_in: EPIC-3 / ISS-301+302+303
+    released_at: '2026-06-12'
+    release_run: WF02-epic3-scheduler-20260612
+    release_decision: docs/status/release-epic3-scheduler-20260612.yaml
+    last_updated: '2026-06-12T11:05:00Z'
+  ISS-303:
+    status: RELEASED
+    stage: scheduler
+    priority: MUST
+    title: Timer firing exhaustion routing to DLQ
+    implemented_in:
+    - src/scheduler/timer.zig
+    - migrations/092_iss303_timer_fire_error_count.sql
+    released_in: EPIC-3 / ISS-301+302+303
+    released_at: '2026-06-12'
+    release_run: WF02-epic3-scheduler-20260612
+    release_decision: docs/status/release-epic3-scheduler-20260612.yaml
+    last_updated: '2026-06-12T11:05:00Z'
+total_requirements: 294

@@ -19,6 +19,7 @@ pub const SchedulerConfig = struct {
     poll_interval_ms: u64 = 5000,
     jitter_ms: u64 = 0,
     max_timers_per_cycle: u32 = 64,
+    max_timer_fire_retries: u32 = 3,
 };
 
 pub const SchedulerError = error{
@@ -37,6 +38,12 @@ pub const EscalationFireResult = enum {
     cancelled_before_fire,
     skipped_locked,
 };
+
+/// Session-level advisory lock ID for the startup missed-timer sweep.
+/// Derived from FNV-1a hash of "bpm_scheduler_startup_sweep", truncated to i64.
+/// This value is distinct from any per-timer advisory lock key (removed by ISS-301).
+const SCHEDULER_STARTUP_LOCK_ID: i64 = 5863412975429063421;
+const SCHEDULER_STARTUP_LOCK_ID_STR: []const u8 = "5863412975429063421";
 
 pub const Scheduler = struct {
     pool: *db.Pool,
@@ -99,6 +106,38 @@ pub const Scheduler = struct {
         logger.logWithTrace(allocator, .DEBUG, poll_trace_scope.component, poll_trace, "timer poll cycle started", &start_fields) catch {};
 
         const max_per_cycle: u32 = if (self.config.max_timers_per_cycle == 0) 1 else self.config.max_timers_per_cycle;
+
+        // ISS-302: Startup sweep advisory lock guard.
+        // When multiple HA nodes start simultaneously, only one should run the missed-timer
+        // sweep. A session-level advisory lock ensures exactly one node does the sweep;
+        // others fall through to normal polling.
+        var sweep_conn_for_unlock: ?*db.Conn = null;
+        if (self.is_startup_sweep) {
+            const sweep_conn = self.pool.acquire() catch |err| switch (err) {
+                db.PoolError.ExhaustedPool => return SchedulerError.PoolExhausted,
+                else => return SchedulerError.TransactionFailed,
+            };
+            const lock_acquired = try acquireStartupSweepLock(allocator, sweep_conn);
+            if (!lock_acquired) {
+                const skip_fields = [_]logger.LogField{
+                    .{ .key = "lock_id", .value = .{ .string = SCHEDULER_STARTUP_LOCK_ID_STR } },
+                };
+                logger.logWithTrace(allocator, .WARN, poll_trace_scope.component, poll_trace,
+                    "startup sweep skipped — lock held by another node", &skip_fields) catch {};
+                self.pool.release(sweep_conn);
+                self.is_startup_sweep = false;
+                // sweep_conn_for_unlock remains null; normal polling proceeds below.
+            } else {
+                sweep_conn_for_unlock = sweep_conn;
+                // Lock acquired; while loop below runs as the startup sweep.
+                // Defer releases lock and connection after the loop completes.
+            }
+        }
+        defer if (sweep_conn_for_unlock) |sc| {
+            releaseStartupSweepLock(allocator, sc) catch {};
+            self.pool.release(sc);
+        };
+
         while (processed < max_per_cycle) {
             const outcome = try self.processNextDueTimer(allocator);
             switch (outcome) {
@@ -204,41 +243,6 @@ pub const Scheduler = struct {
         };
         logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "claimed due timer", &claim_fields) catch {};
 
-        const lock_key = advisoryLockKeyText(timer_id_text) catch return SchedulerError.TransactionFailed;
-        const lock_key_text = std.fmt.allocPrint(a, "{}", .{lock_key}) catch return SchedulerError.OutOfMemory;
-
-        const lock_rows = conn.query(
-            a,
-            \\SELECT pg_try_advisory_xact_lock($1::bigint)
-        ,
-            &.{lock_key_text},
-        ) catch return SchedulerError.TransactionFailed;
-        defer {
-            var r = lock_rows;
-            r.deinit();
-        }
-
-        if (lock_rows.rows.len == 0 or lock_rows.rows[0].len == 0) {
-            const lock_fields = [_]logger.LogField{
-                .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
-                .{ .key = "outcome", .value = .{ .string = "skipped_locked" } },
-            };
-            logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "timer advisory lock row missing", &lock_fields) catch {};
-            conn.rollback() catch {};
-            return .skipped_locked;
-        }
-
-        const locked = colGet(lock_rows.rows[0], 0);
-        if (!std.mem.eql(u8, locked, "t") and !std.mem.eql(u8, locked, "true")) {
-            const lock_fields = [_]logger.LogField{
-                .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
-                .{ .key = "outcome", .value = .{ .string = "skipped_locked" } },
-            };
-            logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "timer advisory lock not acquired", &lock_fields) catch {};
-            conn.rollback() catch {};
-            return .skipped_locked;
-        }
-
         if (std.mem.eql(u8, timer_type, "human_task_escalation")) {
             const now_rows = conn.query(
                 a,
@@ -299,90 +303,118 @@ pub const Scheduler = struct {
                 },
             }
         } else {
-            const now_rows = conn.query(
-                a,
-                \\SELECT (EXTRACT(EPOCH FROM NOW())::bigint * 1000000)::text
-            ,
-                &.{},
-            ) catch return SchedulerError.TransactionFailed;
-            defer {
-                var r = now_rows;
-                r.deinit();
-            }
-            if (now_rows.rows.len == 0) return SchedulerError.TransactionFailed;
-            const actual_fire_at_us = std.fmt.parseInt(i64, colGet(now_rows.rows[0], 0), 10) catch return SchedulerError.TransactionFailed;
-
-            const fired_late = isFiredLate(
-                fires_at_epoch_us,
-                actual_fire_at_us,
-                self.config.poll_interval_ms * 1000,
-                self.is_startup_sweep,
-            );
-
-            const ext_payload = try buildTimerFiredPayload(
-                allocator,
-                timer_id_text,
-                fires_at_epoch_us,
-                actual_fire_at_us,
-                fired_late,
-            );
-
-            try appendTimerFiredEventInTx(allocator, conn, instance_id_text, timer_id_text, ext_payload);
-            try markTimerFiredInTx(conn, timer_id_text);
-
-            const fired_fields = [_]logger.LogField{
-                .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
-                .{ .key = "outcome", .value = .{ .string = "fired" } },
-                .{ .key = "timer_type", .value = .{ .string = timer_type } },
-            };
-            logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "timer fired", &fired_fields) catch {};
-
-            const recurrence_state = try parseRecurrenceState(
-                repeat_expression,
-                repeat_total_text,
-                fired_count_text,
-                repeat_interval_us_text,
-            );
-
-            if (recurrence_state) |state| {
-                const rearm_decision = recurrence_mod.computeRearmDecision(.{
-                    .repeat_total = state.repeat_total,
-                    .fired_count = state.fired_count,
-                    .interval_us = state.interval_us,
-                    .scheduled_fire_at_us = actual_fire_at_us,
-                }) catch return SchedulerError.TransactionFailed;
-
-                if (rearm_decision == .rearm) {
-                    var next_timer_id: Uuid = undefined;
-                    fillRandom(&next_timer_id);
-                    next_timer_id[6] = (next_timer_id[6] & 0x0f) | 0x40;
-                    next_timer_id[8] = (next_timer_id[8] & 0x3f) | 0x80;
-
-                    const next_payload = try updateRecurrencePayloadFiredCount(
-                        allocator,
-                        payload_json,
-                        rearm_decision.rearm.next_fired_count,
-                    );
-
-                    store_mod.insertRecurringPendingTimerInTx(
-                        allocator,
-                        conn,
-                        .{
-                            .timer_id = next_timer_id,
-                            .instance_id = parseUuid(instance_id_text) catch return SchedulerError.TransactionFailed,
-                            .step_name = step_name,
-                            .action_type = action_type,
-                            .fire_at_us = rearm_decision.rearm.next_fire_at_us,
-                            .payload_json = next_payload,
-                            .recurrence = .{
-                                .expression = state.expression,
-                                .repeat_total = state.repeat_total,
-                                .fired_count = rearm_decision.rearm.next_fired_count,
-                                .interval_us = state.interval_us,
-                            },
-                        },
-                    ) catch return SchedulerError.TransactionFailed;
+            // ISS-303: Wrap the entire fire path in a labeled block so any failure
+            // can be caught, the transaction rolled back, and the error count incremented
+            // without propagating errors that inflate skipped_locked/fired counters.
+            const fire_ok: bool = fire_blk: {
+                const now_rows = conn.query(
+                    a,
+                    \\SELECT (EXTRACT(EPOCH FROM NOW())::bigint * 1000000)::text
+                ,
+                    &.{},
+                ) catch break :fire_blk false;
+                defer {
+                    var r = now_rows;
+                    r.deinit();
                 }
+                if (now_rows.rows.len == 0) break :fire_blk false;
+                const actual_fire_at_us = std.fmt.parseInt(i64, colGet(now_rows.rows[0], 0), 10) catch break :fire_blk false;
+
+                const fired_late = isFiredLate(
+                    fires_at_epoch_us,
+                    actual_fire_at_us,
+                    self.config.poll_interval_ms * 1000,
+                    self.is_startup_sweep,
+                );
+
+                const ext_payload = buildTimerFiredPayload(
+                    allocator,
+                    timer_id_text,
+                    fires_at_epoch_us,
+                    actual_fire_at_us,
+                    fired_late,
+                ) catch break :fire_blk false;
+
+                appendTimerFiredEventInTx(allocator, conn, instance_id_text, timer_id_text, ext_payload) catch break :fire_blk false;
+                markTimerFiredInTx(conn, timer_id_text) catch break :fire_blk false;
+
+                const fired_fields = [_]logger.LogField{
+                    .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+                    .{ .key = "outcome", .value = .{ .string = "fired" } },
+                    .{ .key = "timer_type", .value = .{ .string = timer_type } },
+                };
+                logger.logWithTrace(allocator, .DEBUG, timer_component, timer_trace, "timer fired", &fired_fields) catch {};
+
+                const recurrence_state = parseRecurrenceState(
+                    repeat_expression,
+                    repeat_total_text,
+                    fired_count_text,
+                    repeat_interval_us_text,
+                ) catch break :fire_blk false;
+
+                if (recurrence_state) |state| {
+                    const rearm_decision = recurrence_mod.computeRearmDecision(.{
+                        .repeat_total = state.repeat_total,
+                        .fired_count = state.fired_count,
+                        .interval_us = state.interval_us,
+                        .scheduled_fire_at_us = actual_fire_at_us,
+                    }) catch break :fire_blk false;
+
+                    if (rearm_decision == .rearm) {
+                        var next_timer_id: Uuid = undefined;
+                        fillRandom(&next_timer_id);
+                        next_timer_id[6] = (next_timer_id[6] & 0x0f) | 0x40;
+                        next_timer_id[8] = (next_timer_id[8] & 0x3f) | 0x80;
+
+                        const next_payload = updateRecurrencePayloadFiredCount(
+                            allocator,
+                            payload_json,
+                            rearm_decision.rearm.next_fired_count,
+                        ) catch break :fire_blk false;
+
+                        const instance_uuid = parseUuid(instance_id_text) catch break :fire_blk false;
+
+                        store_mod.insertRecurringPendingTimerInTx(
+                            allocator,
+                            conn,
+                            .{
+                                .timer_id = next_timer_id,
+                                .instance_id = instance_uuid,
+                                .step_name = step_name,
+                                .action_type = action_type,
+                                .fire_at_us = rearm_decision.rearm.next_fire_at_us,
+                                .payload_json = next_payload,
+                                .recurrence = .{
+                                    .expression = state.expression,
+                                    .repeat_total = state.repeat_total,
+                                    .fired_count = rearm_decision.rearm.next_fired_count,
+                                    .interval_us = state.interval_us,
+                                },
+                            },
+                        ) catch break :fire_blk false;
+                    }
+                }
+                break :fire_blk true;
+            };
+
+            if (!fire_ok) {
+                // ISS-303: Tx1 failed — rollback, then record the error on a new connection.
+                const err_fields = [_]logger.LogField{
+                    .{ .key = "timer_id", .value = .{ .string = timer_id_text } },
+                    .{ .key = "outcome", .value = .{ .string = "fire_failed" } },
+                };
+                logger.logWithTrace(allocator, .WARN, timer_component, timer_trace,
+                    "timer fire failed — rolling back and recording error", &err_fields) catch {};
+                conn.rollback() catch {};
+                handleTimerFireError(
+                    allocator,
+                    self.pool,
+                    self.config.max_timer_fire_retries,
+                    timer_id_text,
+                    instance_id_text,
+                    payload_json,
+                );
+                return .none;
             }
         }
 
@@ -467,17 +499,204 @@ const PollOutcome = enum {
     none,
 };
 
-pub fn advisoryLockKey(uuid: Uuid) i64 {
-    var key: u64 = 0;
-    inline for (uuid[0..8]) |byte| {
-        key = (key << 8) | @as(u64, byte);
+/// ISS-302: Acquire the startup sweep session-level advisory lock.
+/// Returns true if acquired, false if another node already holds it.
+/// The caller must hold `conn` open until `releaseStartupSweepLock` is called.
+fn acquireStartupSweepLock(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+) SchedulerError!bool {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const rows = conn.query(
+        a,
+        \\SELECT pg_try_advisory_lock($1::bigint)
+    ,
+        &.{SCHEDULER_STARTUP_LOCK_ID_STR},
+    ) catch return SchedulerError.TransactionFailed;
+    defer {
+        var r = rows;
+        r.deinit();
     }
-    return @bitCast(key);
+
+    if (rows.rows.len == 0 or rows.rows[0].len == 0) return false;
+    const result = colGet(rows.rows[0], 0);
+    return std.mem.eql(u8, result, "t") or std.mem.eql(u8, result, "true");
 }
 
-fn advisoryLockKeyText(uuid_text: []const u8) error{ InvalidUuid, OutOfMemory }!i64 {
-    const uuid = try parseUuid(uuid_text);
-    return advisoryLockKey(uuid);
+/// ISS-302: Release the startup sweep session-level advisory lock.
+fn releaseStartupSweepLock(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+) SchedulerError!void {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const rows = conn.query(
+        a,
+        \\SELECT pg_advisory_unlock($1::bigint)
+    ,
+        &.{SCHEDULER_STARTUP_LOCK_ID_STR},
+    ) catch return SchedulerError.TransactionFailed;
+    defer {
+        var r = rows;
+        r.deinit();
+    }
+    // Result ignored — unlock is best-effort.
+}
+
+/// ISS-303: After a fire transaction rollback, increment fire_error_count on a new
+/// connection (Tx2). If the updated count reaches max_timer_fire_retries, open another
+/// transaction (Tx3) to mark the timer FAILED and insert a DLQ entry.
+/// All errors are swallowed — the poll loop continues regardless of outcome here.
+fn handleTimerFireError(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    max_timer_fire_retries: u32,
+    timer_id_text: []const u8,
+    instance_id_text: []const u8,
+    payload_json: []const u8,
+) void {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    // Tx2: Increment fire_error_count in its own transaction.
+    const conn2 = pool.acquire() catch return;
+    defer pool.release(conn2);
+
+    conn2.begin() catch return;
+    conn2.exec(
+        \\UPDATE timers
+        \\SET fire_error_count = fire_error_count + 1
+        \\WHERE id = $1::uuid
+        \\  AND status = 'pending'
+    ,
+        &.{timer_id_text},
+    ) catch {
+        conn2.rollback() catch {};
+        return;
+    };
+    conn2.commit() catch {
+        conn2.rollback() catch {};
+        return;
+    };
+
+    // Read the updated fire_error_count (autocommit read on same conn).
+    const count_rows = conn2.query(
+        a,
+        \\SELECT fire_error_count FROM timers WHERE id = $1::uuid
+    ,
+        &.{timer_id_text},
+    ) catch return;
+    defer {
+        var r = count_rows;
+        r.deinit();
+    }
+
+    if (count_rows.rows.len == 0) return;
+    const count_text = colGet(count_rows.rows[0], 0);
+    const fire_error_count = std.fmt.parseInt(u32, count_text, 10) catch return;
+
+    if (fire_error_count < max_timer_fire_retries) {
+        // Timer remains PENDING; it will be re-polled after the next jitter interval.
+        return;
+    }
+
+    // Tx3: Move timer to FAILED and insert DLQ entry.
+    const conn3 = pool.acquire() catch return;
+    defer pool.release(conn3);
+
+    conn3.begin() catch return;
+    markTimerFailedInTx(a, conn3, timer_id_text, instance_id_text, payload_json, max_timer_fire_retries) catch {
+        conn3.rollback() catch {};
+        return;
+    };
+    conn3.commit() catch {
+        conn3.rollback() catch {};
+        return;
+    };
+}
+
+/// ISS-303: Within the caller's open transaction, mark a timer as FAILED and insert a
+/// dead_letter_items entry. Does NOT call moveToDlq (which acquires its own connection).
+///
+/// Precondition: `conn` must have an active transaction (BEGIN issued by caller).
+fn markTimerFailedInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    timer_id_text: []const u8,
+    instance_id_text: []const u8,
+    payload_json: []const u8,
+    max_retries: u32,
+) SchedulerError!void {
+    // Step 1: Update timers status to 'failed'.
+    conn.exec(
+        \\UPDATE timers
+        \\SET
+        \\    status           = 'failed',
+        \\    failed_at        = NOW(),
+        \\    fire_error_count = fire_error_count + 1
+        \\WHERE id = $1::uuid
+        \\  AND status = 'pending'
+    ,
+        &.{timer_id_text},
+    ) catch return SchedulerError.TransactionFailed;
+
+    // Step 2: Insert DLQ entry mirroring moveToDlq's INSERT for TIMER items.
+    const max_retries_text = std.fmt.allocPrint(allocator, "{d}", .{max_retries}) catch return SchedulerError.OutOfMemory;
+
+    const rows = conn.query(
+        allocator,
+        \\INSERT INTO dead_letter_items (
+        \\    entry_type,
+        \\    instance_id,
+        \\    reason,
+        \\    error_detail,
+        \\    retry_count,
+        \\    max_retries,
+        \\    status,
+        \\    item_type,
+        \\    retry_limit,
+        \\    original_payload,
+        \\    error_chain,
+        \\    processor_metadata,
+        \\    first_failed_at,
+        \\    last_failed_at,
+        \\    source_ref,
+        \\    updated_at
+        \\)
+        \\VALUES (
+        \\    'timer_failed',
+        \\    NULLIF($1, '')::uuid,
+        \\    'TIMER_EXHAUSTED',
+        \\    jsonb_build_object('chain', '[]'::jsonb),
+        \\    $2::int,
+        \\    $2::int,
+        \\    'pending',
+        \\    'TIMER',
+        \\    $2::int,
+        \\    $3::jsonb,
+        \\    '[]'::jsonb,
+        \\    '{}'::jsonb,
+        \\    NOW(),
+        \\    NOW(),
+        \\    $4,
+        \\    NOW()
+        \\)
+        \\ON CONFLICT (item_type, source_ref, last_failed_at)
+        \\DO NOTHING
+        \\RETURNING id::text
+    ,
+        &.{ instance_id_text, max_retries_text, payload_json, timer_id_text },
+    ) catch return SchedulerError.TransactionFailed;
+    defer {
+        var r = rows;
+        r.deinit();
+    }
 }
 
 /// Determine whether a timer firing is overdue.
@@ -1014,4 +1233,35 @@ test "TC-SCH-06-08: SchedulerConfig default jitter_ms is 0" {
 test "TC-SCH-06-09: SchedulerConfig default poll_interval_ms is 5000" {
     const config = SchedulerConfig{};
     try std.testing.expectEqual(@as(u64, 5000), config.poll_interval_ms);
+}
+
+// ISS-301 source-inspection tests — can only be placed here because @embedFile
+// paths must be within the declaring file's package root (src/scheduler/).
+
+test "TC-SCH-301-01: scheduler source has no pg_try_advisory_xact_lock call (ISS-301)" {
+    // After ISS-301 removal the per-timer advisory xact lock is gone.
+    // The startup sweep (ISS-302) uses pg_try_advisory_lock (session-level), which is correct.
+    const src = @embedFile("scheduler.zig");
+    const has_xact = std.mem.containsAtLeast(u8, src, 1, "pg_try_advisory_xact_lock");
+    try std.testing.expect(!has_xact);
+}
+
+test "TC-SCH-301-02: scheduler source has no advisoryLockKey or advisoryLockKeyText helper (ISS-301)" {
+    const src = @embedFile("scheduler.zig");
+    const has_key = std.mem.containsAtLeast(u8, src, 1, "advisoryLockKey");
+    try std.testing.expect(!has_key);
+}
+
+test "TC-SCH-302-04: scheduler uses pg_try_advisory_lock (session-level) for startup sweep (ISS-302)" {
+    const src = @embedFile("scheduler.zig");
+    // Session-level lock must be present (ISS-302 startup sweep).
+    try std.testing.expect(std.mem.containsAtLeast(u8, src, 1, "pg_try_advisory_lock"));
+    // Transaction-level lock must be absent (ISS-301 removal).
+    try std.testing.expect(!std.mem.containsAtLeast(u8, src, 1, "pg_try_advisory_xact_lock"));
+}
+
+test "TC-SCH-302-01: SCHEDULER_STARTUP_LOCK_ID value is 5863412975429063421 (ISS-302)" {
+    const src = @embedFile("scheduler.zig");
+    try std.testing.expect(std.mem.containsAtLeast(u8, src, 1, "5863412975429063421"));
+    try std.testing.expect(std.mem.containsAtLeast(u8, src, 1, "SCHEDULER_STARTUP_LOCK_ID"));
 }
