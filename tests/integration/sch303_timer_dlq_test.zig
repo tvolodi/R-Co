@@ -27,6 +27,10 @@ const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const Scheduler = bpm.scheduler_poller.Scheduler;
 const SchedulerConfig = bpm.scheduler_poller.SchedulerConfig;
+const tenant_context = bpm.api_tenant_context;
+
+// Default tenant UUID — the pool resolves this to schema 'tenant_default'.
+const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
 // SCHEDULER_STARTUP_LOCK_ID — must match the constant in scheduler.zig.
 // Using a comptime value avoids a symbol reference to the private constant.
@@ -47,6 +51,19 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 8 });
 }
 
+/// Set search_path on a connection acquired before tenant context was active,
+/// or on a non-pool pg.Conn. Idempotent — can be called multiple times.
+fn setTenantSearchPath(conn: anytype) void {
+    conn.exec("SET search_path TO tenant_default,public", &.{}) catch {};
+}
+
+/// Set the thread-local tenant context so Pool.acquire() routes to the
+/// 'tenant_default' schema. Must be called before any pool.acquire() that
+/// should resolve business tables (timers, instance_projections, events, etc.).
+fn setTestTenantContext() void {
+    tenant_context.set(DEFAULT_TENANT_ID);
+}
+
 // ---------------------------------------------------------------------------
 // TC-SCH-303-03: Timer fire exhaustion → FAILED + DLQ
 // ---------------------------------------------------------------------------
@@ -62,6 +79,10 @@ test "TC-SCH-303-03: timer fire exhaustion moves timer to FAILED and inserts DLQ
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
+
+    // Set tenant context so Pool.acquire() routes to tenant_default schema.
+    setTestTenantContext();
+    defer tenant_context.clear();
 
     var pool = try makePool(allocator, url);
     defer pool.deinit();
@@ -168,6 +189,9 @@ test "TC-SCH-303-04: timer stays pending when fire_error_count < max_timer_fire_
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
 
+    setTestTenantContext();
+    defer tenant_context.clear();
+
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
@@ -262,6 +286,9 @@ test "TC-SCH-301-03: two sequential scheduler polls on one timer fire it exactly
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
 
+    setTestTenantContext();
+    defer tenant_context.clear();
+
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
@@ -344,6 +371,9 @@ test "TC-SCH-302-03: startup sweep skipped gracefully when advisory lock is held
     const allocator = std.heap.page_allocator;
     const url = try getTestDbUrl(allocator);
     defer allocator.free(url);
+
+    setTestTenantContext();
+    defer tenant_context.clear();
 
     // Direct pg.Conn that holds the advisory lock during the test.
     // (Session-level advisory lock: held for the connection lifetime, released on close.)
