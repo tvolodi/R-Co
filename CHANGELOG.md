@@ -7,6 +7,11 @@ All notable changes to the BPM Platform are documented here.
 ### Added
 - **EXP-103 (EPIC-1)**: Persist `instance_waits` descriptors in the same transaction that arms each wait (timer, human_task). Table: `migrations/093_exp103_instance_waits.sql`. Each timer arm, task activation, timer fire, and task completion now atomically maintains the `instance_waits` table, enabling tenant-dump self-sufficiency and future restore reconciliation (EXP-402).
 
+## [EXP-102 (EPIC-1) expr cutover] — 2026-06-12
+
+### Changed
+- **EXP-102 (EPIC-1)**: Wired `src/expr` into `src/engine/transition.zig` as the production gateway condition evaluator, replacing `vendor/cel`. The differential corpus (15/15 conditions, 0 divergences) verified semantic equivalence before cutover. `vendor/cel` is now reference-only for the ISS-602 differential harness.
+
 ## [EXP-101 Scale Anchor] — 2026-06-12
 
 ### Documentation

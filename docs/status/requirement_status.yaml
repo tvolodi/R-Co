@@ -4296,6 +4296,16 @@ requirements:
     description: Scale anchor section added to architecture doc (500/5,000 tenant target/ceiling)
     released_at: '2026-06-12'
     run_id: WF02-exp101-scale-anchor-20260612
+  EXP-102:
+    status: RELEASED
+    stage: Expansion
+    priority: P1
+    title: Wire src/expr into transition.zig as production gateway condition evaluator; retire vendor/cel
+    implemented_in:
+    - src/engine/transition.zig
+    - src/expr/
+    released_at: '2026-06-12'
+    run_id: WF02-exp102-expr-cutover-20260612
   EXP-103:
     status: RELEASED
     stage: Expansion
@@ -4307,4 +4317,4 @@ requirements:
     test_spec: tests/specs/EXP-103.md
     released_at: '2026-06-12'
     run_id: WF02-exp103-instance-waits-20260612
-total_requirements: 296
+total_requirements: 297
