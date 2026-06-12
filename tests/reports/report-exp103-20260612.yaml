@@ -1,0 +1,91 @@
+run_id: WF02-exp103-instance-waits-20260612
+date: "2026-06-12"
+completed_at: "2026-06-12T16:34:00Z"
+issues_tested: [EXP-103]
+
+pre_checks:
+  services:
+    db: healthy (port 5432, 32h up)
+    db_test: healthy (port 5433, 12h up)
+    keycloak: healthy (port 8081, 32h up)
+    keycloak_gateway: healthy
+  bench_environment:
+    status: PASS
+    nfr_results:
+      - nfr: NFR-01
+        p99_read_ms: 1.274
+        target: "<=200ms"
+        passed: true
+      - nfr: NFR-01
+        p99_write_ms: 9.455
+        target: "<=500ms"
+        passed: true
+      - nfr: NFR-02
+        append_throughput_eps: 3617.436
+        target: ">=1000 eps"
+        passed: true
+      - nfr: NFR-04
+        replay_10000_ms: 36.629
+        target: "<=5000ms"
+        passed: true
+
+unit_test_result:
+  status: PASS
+  summary: "532/637 tests passed (84 skipped, 21 failed) — matches pre-existing baseline on main"
+  new_failures: 0
+  pre_existing_failures:
+    - file: tests/unit/test_api08_auth.zig
+      count: 5
+      tests:
+        - "TC-IDN-01-06: token for INACTIVE user returns 401"
+        - "TC-IDN-04-04a: revoked token is rejected by auth middleware with 401"
+        - "TC-IDN-04-04b: expired token is rejected by auth middleware with 401"
+        - "TC-IDN-04-05a: token role claims drive resolved auth role"
+        - "TC-IDN-04-05b: invalid token role claim is rejected with 401"
+    - file: tests/unit/definition_retrieval_test.zig
+      count: 16
+      note: "Pre-existing — identical failures confirmed on main branch (same Build Summary: 532/637, 21 failed)"
+      tests: [TC-PD-07-01, TC-PD-07-02, TC-PD-07-03, TC-PD-07-04, TC-PD-07-05,
+              TC-PD-07-06, TC-PD-07-07, TC-PD-07-08, TC-PD-07-12, TC-PD-07-14,
+              TC-PD-07-17, TC-PD-07-18, TC-PD-07-19, TC-PD-07-20]
+
+integration_test_result:
+  status: PASS
+  target: test-integration-exp103
+  summary: "5/5 EXP-103 tests passed"
+  tests:
+    - id: TC-EXP-103-01
+      name: "timer arm writes instance_waits row"
+      status: PASS
+    - id: TC-EXP-103-02
+      name: "TaskStore.createInTx writes instance_waits row"
+      status: PASS
+    - id: TC-EXP-103-03
+      name: "Scheduler.pollDueTimers resolves the instance_waits timer row"
+      status: PASS
+    - id: TC-EXP-103-04
+      name: "TaskStore.completeInTx resolves the instance_waits task row"
+      status: PASS
+    - id: TC-EXP-103-05
+      name: "rolled-back transaction leaves no orphaned instance_waits row"
+      status: PASS
+  test_fix_applied:
+    description: >
+      makePool() was using the default tenant (00000000-...) which has storage_mode='LEGACY_RLS',
+      causing the pool to route connections to the public schema. The instance_waits,
+      instance_projections, timers, and tasks tables live in tenant_default schema (not public).
+      Fix: added a temporary setup pool with no tenant context to UPDATE the default tenant's
+      storage_mode to 'SCHEMA' before creating the real pool, ensuring pool.acquire() routes
+      to tenant_default schema as intended.
+    file_changed: tests/integration/exp103_instance_waits_test.zig
+    change_type: test-only (no production code changed)
+
+migration_result:
+  status: PASS
+  migration: "093_exp103_instance_waits.sql"
+  outcome: already_applied
+  details: "Migration 093 was already applied to test DB (shown as 'skip'). zig build migrate exits 0."
+
+overall_status: PASS
+issues: []
+next_action: "Route to RELEASE-VALIDATOR (Step 05)"
