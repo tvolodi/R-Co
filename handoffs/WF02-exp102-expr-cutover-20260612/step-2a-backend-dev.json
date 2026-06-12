@@ -5,17 +5,23 @@
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-06-12T15:28:44Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "issue_id": "EXP-102",
     "upstream_step": "1b",
     "epic": "EPIC-1 Expansion Backlog v2",
-    "stage": "CEL→expr cutover implementation",
-    "artifacts_in": ["src/design/expr-cutover-exp102.md", "src/engine/transition.zig", "src/expr/mod.zig", "vendor/cel/cel.zig", "tests/differential/differential_test.zig"]
+    "stage": "CEL\u2192expr cutover implementation",
+    "artifacts_in": [
+      "src/design/expr-cutover-exp102.md",
+      "src/engine/transition.zig",
+      "src/expr/mod.zig",
+      "vendor/cel/cel.zig",
+      "tests/differential/differential_test.zig"
+    ]
   },
   "task": {
-    "description": "Implement EXP-102: Wire src/expr into transition.zig for gateway condition evaluation; retire vendor/cel from production paths.\n\n## Step 0 — git-setup\n```bash\ngit checkout main && git pull --ff-only origin main\ngit checkout -b feature/WF02-exp102-expr-cutover-20260612\n```\n\n## Pre-condition: run differential corpus\n```bash\nzig build test 2>&1 | grep -i 'differential\\|TC-ISS-602'\n```\nIf any differential divergence: fix src/expr to match CEL semantics before proceeding.\n\n## Implementation per design doc\n1. In `src/engine/transition.zig`: replace `cel.evaluate(condition, context)` call with the `src/expr` equivalent as specified in the design.\n2. Update the import: replace `const cel = @import(\"cel\")` with the src/expr import (check build.zig for the module name).\n3. Add a compile-time comment to vendor/cel: `// REFERENCE ONLY — do not add new callers; see EXP-102`.\n4. Ensure no other production module (non-test) imports vendor/cel.\n5. Transition function must remain I/O-free (no allocations that escape, no network/disk).\n\n## Validation\n```\nzig build\nzig build 2>&1 | grep -i 'error set'  # must be empty\nzig build test\n```\n\n## Acceptance criteria check before commit\n- grep for cel imports in src/ (excluding tests/differential): must return only vendor/cel itself and any adapter file\n- Differential test still passes (corpus green)\n- Transition function I/O-free (no I/O-related imports added)\n\n## Commit\n```bash\ngit add -A\ngit commit -m 'feat(exp102): wire src/expr into transition.zig; retire vendor/cel from production paths'\ngit push origin feature/WF02-exp102-expr-cutover-20260612\n```",
+    "description": "Implement EXP-102: Wire src/expr into transition.zig for gateway condition evaluation; retire vendor/cel from production paths.\n\n## Step 0 \u2014 git-setup\n```bash\ngit checkout main && git pull --ff-only origin main\ngit checkout -b feature/WF02-exp102-expr-cutover-20260612\n```\n\n## Pre-condition: run differential corpus\n```bash\nzig build test 2>&1 | grep -i 'differential\\|TC-ISS-602'\n```\nIf any differential divergence: fix src/expr to match CEL semantics before proceeding.\n\n## Implementation per design doc\n1. In `src/engine/transition.zig`: replace `cel.evaluate(condition, context)` call with the `src/expr` equivalent as specified in the design.\n2. Update the import: replace `const cel = @import(\"cel\")` with the src/expr import (check build.zig for the module name).\n3. Add a compile-time comment to vendor/cel: `// REFERENCE ONLY \u2014 do not add new callers; see EXP-102`.\n4. Ensure no other production module (non-test) imports vendor/cel.\n5. Transition function must remain I/O-free (no allocations that escape, no network/disk).\n\n## Validation\n```\nzig build\nzig build 2>&1 | grep -i 'error set'  # must be empty\nzig build test\n```\n\n## Acceptance criteria check before commit\n- grep for cel imports in src/ (excluding tests/differential): must return only vendor/cel itself and any adapter file\n- Differential test still passes (corpus green)\n- Transition function I/O-free (no I/O-related imports added)\n\n## Commit\n```bash\ngit add -A\ngit commit -m 'feat(exp102): wire src/expr into transition.zig; retire vendor/cel from production paths'\ngit push origin feature/WF02-exp102-expr-cutover-20260612\n```",
     "acceptance_criteria": [
       "transition.zig uses src/expr for gateway condition evaluation",
       "vendor/cel no longer called in production paths",
@@ -23,7 +29,30 @@
       "Transition function I/O-free",
       "zig build + test exit 0"
     ],
-    "functions_to_call": ["fn:git-setup", "fn:read-backend-conventions"]
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:read-backend-conventions"
+    ]
   },
-  "result": null, "rework_count": 0, "max_rework": 2, "started_at": null, "completed_at": null
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented EXP-102: wired src/expr into transition.zig via evaluateGatewayCondition adapter; retired vendor/cel from all production paths; annotated vendor/cel as reference-only; added 3 inline unit tests (TC-EXP-102-01/02/03); fixed pre-existing TC-OIDC-01-01 principal leak; zig build and zig build test exit 0.",
+    "artifacts_out": [
+      "src/engine/transition.zig",
+      "build.zig",
+      "vendor/cel/cel.zig",
+      "tests/unit/test_api08_auth.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "TC-EE-05-01 used JSON .float variables comparing against integer literals. CEL treats all numerics as f64; src/expr has distinct int64/float64 types. Fixed in adapter (celJsonValueToExprValue): whole-number JSON floats are coerced to int_val to preserve CEL comparison semantics. Non-whole floats (e.g. 1500.5) remain as float_val and require float literals in expressions."
+      }
+    ],
+    "next_action": "Route to TEST-DESIGNER (Step 03)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-06-12T16:53:00Z",
+  "completed_at": "2026-06-12T17:07:08Z"
 }

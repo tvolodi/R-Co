@@ -478,37 +478,29 @@ fn freeCorpusEntries(allocator: std.mem.Allocator, entries: []CorpusEntry) void 
 }
 
 // ---------------------------------------------------------------------------
-// TC-ISS-602-03: Cutover gate — verify no production module on engine path
-// imports src/expr/. Regression prevention: the cutover must not happen
-// until the differential corpus is 100% green.
+// TC-ISS-602-03 (updated post-EXP-102): Post-cutover gate — transition.zig
+// now imports src/expr (cutover complete) and no longer imports vendor/cel
+// (cel retired from production engine path).
+//
+// Before EXP-102: asserted "no production module imports src/expr".
+// After  EXP-102: asserts the INVERTED state — expr IS present, cel is ABSENT.
+//
+// Also satisfies TC-EXP-102-04 (static no-cel-import assertion).
 // ---------------------------------------------------------------------------
 
-test "TC-ISS-602-03: no production module on engine path imports src/expr" {
-    const testing = std.testing;
-    const alloc = testing.allocator;
+test "TC-ISS-602-03: transition.zig imports expr post-cutover, cel is retired from engine path" {
+    // Verified statically via @embedFile so the assertion is a compile-time-resolved
+    // string search against the embedded source bytes. No allocator needed.
+    const transition_src = @embedFile("../../src/engine/transition.zig");
 
-    // TC-ISS-602-03: Cutover gate — no production module on engine path imports src/expr/.
-    //
-    // This constraint is enforced at the build-system level:
-    //   - The production module graph (bpm_src, which includes transition.zig) does NOT
-    //     list `expr` as a dependency.
-    //   - If any code in bpm_src tried to `@import("expr")`, the compiler would fail with
-    //     "module 'expr' not found".
-    //   - The universal `zig build` exit-0 gate therefore proves no engine-path module
-    //     imports expr.
-    //
-    // We further confirm that the cel wrapper IS on the engine path and evaluates
-    // correctly, proving the current production evaluator is vendor/cel, not expr.
-    const cel_import_ok = @import("cel");
-    _ = cel_import_ok;
-    const ctx_json = try std.json.parseFromSlice(std.json.Value, alloc,
-        \\{"x": 42, "y": 7}
-    , .{ .allocate = .alloc_always });
-    defer ctx_json.deinit();
-    const cel_result = try cel.evaluate(alloc, "variables.x > 10", ctx_json.value.object);
-    try testing.expect(cel_result);
-    // At this point cel is confirmed as the production evaluator.
-    // The expr module is imported only in this test harness for differential comparison.
+    // Assert expr IS imported — cutover is complete (EXP-102).
+    const has_expr_import = std.mem.indexOf(u8, transition_src, "@import(\"expr\")") != null;
+    try std.testing.expect(has_expr_import);
+
+    // Assert cel is NOT imported on the production engine path — cel is retired (EXP-102).
+    // Also satisfies TC-EXP-102-04.
+    const has_cel_import = std.mem.indexOf(u8, transition_src, "@import(\"cel\")") != null;
+    try std.testing.expect(!has_cel_import);
 }
 
 // ---------------------------------------------------------------------------

@@ -62,16 +62,25 @@ pub fn build(b: *std.Build) void {
         },
     });
 
+    // expr_mod: src/expr evaluator — used by transition.zig (EXP-102) and DSL tests.
+    const expr_mod = b.createModule(.{
+        .root_source_file = b.path("src/expr/mod.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
     const transition_mod = b.createModule(.{
         .root_source_file = b.path("src/engine/transition.zig"),
         .target = target,
         .optimize = optimize,
-        // no named imports needed
+        .imports = &.{
+            .{ .name = "expr", .module = expr_mod },
+        },
     });
     const vendor_imports: []const std.Build.Module.Import = &.{
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
-        .{ .name = "cel", .module = cel_mod },
+        .{ .name = "expr", .module = expr_mod },
         .{ .name = "pool", .module = pool_root_mod },
         .{ .name = "transition", .module = transition_mod },
         .{ .name = "build_options", .module = build_options_mod },
@@ -184,6 +193,7 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             .{ .name = "pg", .module = pg_mod },
             .{ .name = "cel", .module = cel_mod },
+            .{ .name = "expr", .module = expr_mod },
             .{ .name = "pool", .module = pool_root_mod },
             .{ .name = "tenant_context", .module = tenant_context_mod },
             .{ .name = "pipeline_context", .module = pipeline_context_mod },
@@ -632,12 +642,8 @@ pub fn build(b: *std.Build) void {
     // ---------------------------------------------------------------------------
     // DSL-01: Expression DSL parser unit tests (pure — no DB, no network)
     // Tests live in src/expr/parser.zig
+    // expr_mod is declared at the top of build() (moved for EXP-102 module wiring).
     // ---------------------------------------------------------------------------
-    const expr_mod = b.createModule(.{
-        .root_source_file = b.path("src/expr/mod.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
     const dsl01_parser_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/expr/parser.zig"),
@@ -770,6 +776,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "pg", .module = pg_mod },
         .{ .name = "http", .module = http_mod },
         .{ .name = "cel", .module = cel_mod },
+        .{ .name = "expr", .module = expr_mod },
         .{ .name = "pool", .module = pool_root_mod },
         .{ .name = "bpm", .module = bpm_src_mod },
         .{ .name = "build_options", .module = build_options_mod },

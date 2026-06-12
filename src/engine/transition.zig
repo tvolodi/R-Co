@@ -11,7 +11,7 @@
 //! Design artefact: src/design/engine.md §EE-02
 const std = @import("std");
 const graph_mod = @import("../definition/graph.zig");
-const cel = @import("cel");
+const expr = @import("expr");
 const Uuid = graph_mod.Uuid;
 
 // ---------------------------------------------------------------------------
@@ -541,11 +541,11 @@ pub fn transition(
             if (!outgoing_found) return TransitionError.InvalidState;
 
             if (chosen_edge.transform) |raw_expr| {
-                const expr = std.mem.trim(u8, raw_expr, " \t\r\n");
-                if (expr.len > 0) {
+                const transform_expr = std.mem.trim(u8, raw_expr, " \t\r\n");
+                if (transform_expr.len > 0) {
                     const transform_obj = evaluateEdgeTransform(
                         allocator,
-                        expr,
+                        transform_expr,
                         new_state.variables,
                     ) catch |err| switch (err) {
                         error.TransformEvaluationFailed => return TransitionError.CelEvaluationError,
@@ -596,11 +596,11 @@ pub fn transition(
             if (!outgoing_found) return TransitionError.InvalidState;
 
             if (chosen_edge.transform) |raw_expr| {
-                const expr = std.mem.trim(u8, raw_expr, " \t\r\n");
-                if (expr.len > 0) {
+                const transform_expr = std.mem.trim(u8, raw_expr, " \t\r\n");
+                if (transform_expr.len > 0) {
                     const transform_obj = evaluateEdgeTransform(
                         allocator,
-                        expr,
+                        transform_expr,
                         new_state.variables,
                     ) catch |err| switch (err) {
                         error.TransformEvaluationFailed => return TransitionError.CelEvaluationError,
@@ -709,6 +709,177 @@ fn isSimpleIdentifier(name: []const u8) bool {
         if (idx > 0 and !(std.ascii.isAlphabetic(c) or std.ascii.isDigit(c) or c == '_')) return false;
     }
     return true;
+}
+
+// ---------------------------------------------------------------------------
+// evaluateGatewayCondition — EXP-102 adapter: CEL syntax → src/expr
+// ---------------------------------------------------------------------------
+//
+// Translates a CEL-syntax gateway condition string (as stored in definition
+// graphs) to expr syntax, then parses and evaluates it via src/expr.
+// Returns false on any translation, parse, or evaluation error — preserving
+// the same `catch false` semantics as the previous cel.evaluate call.
+//
+// I/O-free guarantee: expr.parse() and expr.evaluate() are pure computations.
+// All intermediate allocations are freed before return.
+fn evaluateGatewayCondition(
+    allocator: std.mem.Allocator,
+    cel_expression: []const u8,
+    variables: std.json.ObjectMap,
+) bool {
+    // Step 1: Translate CEL syntax → expr syntax.
+    const expr_text = translateCelToExpr(allocator, cel_expression) orelse return false;
+    defer allocator.free(expr_text);
+
+    // Step 2: Parse the translated expression.
+    const parse_result = expr.parse(allocator, expr_text) catch return false;
+    switch (parse_result) {
+        .fail => |errors| {
+            allocator.free(errors);
+            return false;
+        },
+        .ok => {},
+    }
+    var ast = parse_result.ok;
+    defer ast.deinit();
+
+    // Step 3: Build expr.Context from the JSON ObjectMap.
+    var ctx = expr.Context.init(allocator);
+    defer ctx.deinit();
+    var it = variables.iterator();
+    while (it.next()) |kv| {
+        const val = celJsonValueToExprValue(kv.value_ptr.*);
+        ctx.put(kv.key_ptr.*, val) catch return false;
+    }
+
+    // Step 4: Evaluate and extract bool result.
+    const eval_result = expr.evaluate(&ast, &ctx, allocator);
+    return switch (eval_result) {
+        .ok => |v| switch (v) {
+            .bool_val => |b| b,
+            else => false,
+        },
+        .err => false,
+    };
+}
+
+/// Translate CEL gateway condition syntax to expr syntax.
+/// Strips `variables.` prefix; replaces `&&`→`and`, `||`→`or`, `!`→`not`.
+/// Returns null if the expression uses unsupported CEL features (macros,
+/// type-conversion functions, collection functions, or ternary operator).
+/// Caller must free the returned slice with the same allocator.
+fn translateCelToExpr(allocator: std.mem.Allocator, cel_expression: []const u8) ?[]const u8 {
+    if (hasCelUnsupportedFeatures(cel_expression)) return null;
+
+    var result = std.ArrayList(u8).empty;
+    var i: usize = 0;
+    while (i < cel_expression.len) {
+        // Strip "variables." prefix
+        if (i + 10 <= cel_expression.len and std.mem.eql(u8, cel_expression[i..][0..10], "variables.")) {
+            i += 10;
+            continue;
+        }
+        // "&&" → " and "
+        if (i + 2 <= cel_expression.len and std.mem.eql(u8, cel_expression[i..][0..2], "&&")) {
+            result.appendSlice(allocator, " and ") catch return null;
+            i += 2;
+            continue;
+        }
+        // "||" → " or "
+        if (i + 2 <= cel_expression.len and std.mem.eql(u8, cel_expression[i..][0..2], "||")) {
+            result.appendSlice(allocator, " or ") catch return null;
+            i += 2;
+            continue;
+        }
+        // "!" → "not " (only logical NOT; "!=" passes through unchanged)
+        if (cel_expression[i] == '!') {
+            if (i + 1 < cel_expression.len and cel_expression[i + 1] == '=') {
+                result.appendSlice(allocator, "!=") catch return null;
+                i += 2;
+                continue;
+            }
+            result.appendSlice(allocator, "not ") catch return null;
+            i += 1;
+            continue;
+        }
+        result.append(allocator, cel_expression[i]) catch return null;
+        i += 1;
+    }
+    return result.toOwnedSlice(allocator) catch {
+        result.deinit(allocator);
+        return null;
+    };
+}
+
+/// Returns true if the CEL expression contains features outside the CEL/expr
+/// grammar intersection (macros, type-conversion functions, collection
+/// functions, map literals, or ternary operator).
+fn hasCelUnsupportedFeatures(expression: []const u8) bool {
+    const method_features = [_][]const u8{ ".all(", ".exists(", ".size(", ".map(" };
+    for (method_features) |feat| {
+        if (std.mem.indexOf(u8, expression, feat) != null) return true;
+    }
+    const standalone_features = [_][]const u8{ "has(", "matches(", "int(", "string(", "double(" };
+    for (standalone_features) |feat| {
+        var pos: usize = 0;
+        while (std.mem.indexOfPos(u8, expression, pos, feat)) |idx| {
+            if (idx == 0 or !isCelIdentChar(expression[idx - 1])) return true;
+            pos = idx + feat.len;
+        }
+    }
+    if (std.mem.indexOf(u8, expression, "map{") != null) return true;
+    {
+        var in_double = false;
+        var in_single = false;
+        for (expression) |c| {
+            if (c == '"' and !in_single) in_double = !in_double;
+            if (c == '\'' and !in_double) in_single = !in_single;
+            if (!in_double and !in_single and c == '?') return true;
+        }
+    }
+    return false;
+}
+
+fn isCelIdentChar(c: u8) bool {
+    return switch (c) {
+        'a'...'z', 'A'...'Z', '0'...'9', '_' => true,
+        else => false,
+    };
+}
+
+/// Convert a std.json.Value to an expr Value.
+/// All JSON variants map to the closest expr equivalent; unsupported variants
+/// map to null (preserves graceful-degradation semantics).
+///
+/// CEL compatibility note: CEL stores all numeric values as f64, so
+/// `1500.0` and `1500` are the same in CEL. src/expr has distinct int64 and
+/// float64 types. To preserve CEL comparison semantics, whole-number JSON
+/// floats (e.g. 1500.0) are converted to int_val so they compare correctly
+/// against integer literals in expressions (e.g. `> 1000`).
+fn celJsonValueToExprValue(jv: std.json.Value) expr.Value {
+    return switch (jv) {
+        .null => expr.valueNull(),
+        .bool => |b| expr.valueBool(b),
+        .integer => |n| expr.valueInt(n),
+        .float => |f| blk: {
+            // Convert whole-number JSON floats to int_val to avoid type
+            // mismatches when compared against integer literals in expressions.
+            // CEL treats all numbers as f64; src/expr has distinct int64/float64.
+            if (!std.math.isNan(f) and !std.math.isInf(f) and f == @trunc(f)) {
+                const as_int: i64 = @intFromFloat(f);
+                if (@as(f64, @floatFromInt(as_int)) == f) {
+                    break :blk expr.valueInt(as_int);
+                }
+            }
+            break :blk expr.valueFloat(f);
+        },
+        .string => |s| expr.valueStr(s),
+        .number_string => |s| {
+            const f = std.fmt.parseFloat(f64, s) catch 0.0;
+            return expr.valueFloat(f);
+        },
+        else => expr.valueNull(),
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -862,7 +1033,7 @@ fn processNodeEntry(
             var chosen: ?graph_mod.GraphEdge = null;
             for (non_default.items) |edge| {
                 if (edge.condition) |cond| {
-                    const match = cel.evaluate(allocator, cond, state.variables) catch false;
+                    const match = evaluateGatewayCondition(allocator, cond, state.variables);
                     if (match) {
                         chosen = edge;
                         break;
@@ -2099,4 +2270,43 @@ test "TC-EXT-05-UT-02: sub_process_completed advances waiting token" {
 
     try std.testing.expect(tr.state.status == .COMPLETED);
     try std.testing.expect(tr.state.tokens.len == 0);
+}
+
+// ---------------------------------------------------------------------------
+// EXP-102: evaluateGatewayCondition unit tests
+// ---------------------------------------------------------------------------
+
+test "TC-EXP-102-01: evaluateGatewayCondition returns true for matching condition" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var vars = std.json.ObjectMap.init(alloc);
+    defer vars.deinit();
+    try vars.put("order_total", .{ .integer = 1500 });
+
+    const result = evaluateGatewayCondition(alloc, "variables.order_total > 1000", vars);
+    try testing.expect(result == true);
+}
+
+test "TC-EXP-102-02: evaluateGatewayCondition returns false for non-matching condition" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var vars = std.json.ObjectMap.init(alloc);
+    defer vars.deinit();
+    try vars.put("order_total", .{ .integer = 500 });
+
+    const result = evaluateGatewayCondition(alloc, "variables.order_total > 1000", vars);
+    try testing.expect(result == false);
+}
+
+test "TC-EXP-102-03: evaluateGatewayCondition returns false on syntax error (no panic)" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var vars = std.json.ObjectMap.init(alloc);
+    defer vars.deinit();
+
+    const result = evaluateGatewayCondition(alloc, "variables.INVALID !!! syntax", vars);
+    try testing.expect(result == false);
 }

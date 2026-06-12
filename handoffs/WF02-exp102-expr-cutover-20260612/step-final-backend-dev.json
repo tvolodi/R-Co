@@ -7,11 +7,25 @@
   "created_at": "2026-06-12T15:28:44Z",
   "status": "PENDING",
   "priority": "NORMAL",
-  "context": {"issue_id": "EXP-102", "upstream_step": "06", "workflow_complete_after_this_step": true},
+  "context": {
+    "issue_id": "EXP-102",
+    "upstream_step": "06",
+    "workflow_complete_after_this_step": true
+  },
   "task": {
     "description": "Merge feature/WF02-exp102-expr-cutover-20260612 to main via GitHub PR. Squash merge, delete branch, return to main clean state.",
-    "acceptance_criteria": ["PR merged", "Branch deleted", "Repo on main clean"],
-    "functions_to_call": ["fn:git-merge"]
+    "acceptance_criteria": [
+      "PR merged",
+      "Branch deleted",
+      "Repo on main clean"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
   },
-  "result": null, "rework_count": 0, "max_rework": 0, "started_at": null, "completed_at": null
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 0,
+  "started_at": "2026-06-12T17:00:00Z",
+  "completed_at": null
 }
