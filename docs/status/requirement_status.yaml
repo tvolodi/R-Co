@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-06-11T00:00:00Z'
+last_updated: '2026-06-12'
 requirements:
   ES-01:
     status: RELEASED
@@ -4250,4 +4250,43 @@ requirements:
     release_run: WF02-epic3-scheduler-20260612
     release_decision: docs/status/release-epic3-scheduler-20260612.yaml
     last_updated: '2026-06-12T11:05:00Z'
+  ISS-501:
+    status: IMPLEMENTED
+    stage: Epic 5
+    priority: P0
+    title: Resolve read/write authority from storage_mode
+    implemented_in:
+    - src/api/tenant_context.zig
+    - src/db/pool.zig
+    test_spec: tests/specs/ISS-501.md
+    last_updated: '2026-06-12T12:54:02Z'
+  ISS-502:
+    status: IMPLEMENTED
+    stage: Epic 5
+    priority: P0
+    title: SPT cutover transaction flips storage_mode after verified copy
+    implemented_in:
+    - src/admin/tenant_migration.zig
+    test_spec: tests/specs/ISS-502.md
+    last_updated: '2026-06-12T12:54:02Z'
+  ISS-503:
+    status: IMPLEMENTED
+    stage: Epic 5
+    priority: P1
+    title: Remove legacy tenant_id/RLS predicates (SPT-03)
+    implemented_in:
+    - migrations/GBL-084_rls_removal.sql
+    - src/db/pool.zig
+    test_spec: tests/specs/ISS-503.md
+    last_updated: '2026-06-12T12:54:02Z'
+  ISS-504:
+    status: IMPLEMENTED
+    stage: Epic 5
+    priority: P2
+    title: Reconcile schema + per-tenant migration tracking (SPT-04)
+    implemented_in:
+    - src/db/provisioning.zig
+    - src/db/migrations.zig
+    test_spec: tests/specs/ISS-504.md
+    last_updated: '2026-06-12T12:54:02Z'
 total_requirements: 294
