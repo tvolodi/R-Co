@@ -1234,3 +1234,34 @@ test "TC-SCH-06-09: SchedulerConfig default poll_interval_ms is 5000" {
     const config = SchedulerConfig{};
     try std.testing.expectEqual(@as(u64, 5000), config.poll_interval_ms);
 }
+
+// ISS-301 source-inspection tests — can only be placed here because @embedFile
+// paths must be within the declaring file's package root (src/scheduler/).
+
+test "TC-SCH-301-01: scheduler source has no pg_try_advisory_xact_lock call (ISS-301)" {
+    // After ISS-301 removal the per-timer advisory xact lock is gone.
+    // The startup sweep (ISS-302) uses pg_try_advisory_lock (session-level), which is correct.
+    const src = @embedFile("scheduler.zig");
+    const has_xact = std.mem.containsAtLeast(u8, src, 1, "pg_try_advisory_xact_lock");
+    try std.testing.expect(!has_xact);
+}
+
+test "TC-SCH-301-02: scheduler source has no advisoryLockKey or advisoryLockKeyText helper (ISS-301)" {
+    const src = @embedFile("scheduler.zig");
+    const has_key = std.mem.containsAtLeast(u8, src, 1, "advisoryLockKey");
+    try std.testing.expect(!has_key);
+}
+
+test "TC-SCH-302-04: scheduler uses pg_try_advisory_lock (session-level) for startup sweep (ISS-302)" {
+    const src = @embedFile("scheduler.zig");
+    // Session-level lock must be present (ISS-302 startup sweep).
+    try std.testing.expect(std.mem.containsAtLeast(u8, src, 1, "pg_try_advisory_lock"));
+    // Transaction-level lock must be absent (ISS-301 removal).
+    try std.testing.expect(!std.mem.containsAtLeast(u8, src, 1, "pg_try_advisory_xact_lock"));
+}
+
+test "TC-SCH-302-01: SCHEDULER_STARTUP_LOCK_ID value is 5863412975429063421 (ISS-302)" {
+    const src = @embedFile("scheduler.zig");
+    try std.testing.expect(std.mem.containsAtLeast(u8, src, 1, "5863412975429063421"));
+    try std.testing.expect(std.mem.containsAtLeast(u8, src, 1, "SCHEDULER_STARTUP_LOCK_ID"));
+}
