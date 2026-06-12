@@ -1,0 +1,373 @@
+//! Entity record commands — EXP-202
+//!
+//! Implements the event-sourced command path for entity records:
+//! ENTITY_RECORD_CREATED, ENTITY_RECORD_UPDATED, ENTITY_RECORD_DELETED.
+//! Validates payloads against entity definitions and updates the
+//! entity_record_latest projection table atomically with the event append.
+//!
+//! Design artefact: src/design/entities.md
+
+const std = @import("std");
+const builtin = @import("builtin");
+const db = @import("pool");
+const entities_mod = @import("mod.zig");
+const events_mod = @import("events.zig");
+const definition_mod = @import("definition.zig");
+
+// ── Internal Helpers (Zig 0.16.0 CSPRNG) ───────────────────────────────────
+
+fn fillRandom(buf: []u8) void {
+    switch (comptime builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
+        else => {
+            var prng = std.Random.DefaultPrng.init(@as(u64, @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())))));
+            prng.random().bytes(buf);
+        },
+    }
+}
+
+const Uuid = entities_mod.Uuid;
+
+pub const EntityCommandError = error{
+    PoolExhausted,
+    InvalidEntityType,
+    InvalidRecord,
+    InvalidPayload,
+    TransactionFailed,
+    IdempotencyKeyMissing,
+    OutOfMemory,
+};
+
+pub const CreateRecordParams = struct {
+    entity_type: []const u8,
+    field_values: []const u8,
+    idempotency_key: []const u8,
+    actor_id: []const u8,
+    tenant_id: []const u8,
+};
+
+pub const UpdateRecordParams = struct {
+    entity_type: []const u8,
+    record_id: []const u8,
+    field_values: []const u8,
+    idempotency_key: []const u8,
+    actor_id: []const u8,
+    tenant_id: []const u8,
+};
+
+pub const DeleteRecordParams = struct {
+    entity_type: []const u8,
+    record_id: []const u8,
+    idempotency_key: []const u8,
+    actor_id: []const u8,
+    tenant_id: []const u8,
+};
+
+pub const RecordResult = struct {
+    record_id: []const u8,
+    entity_type: []const u8,
+    field_values: []const u8,
+    version_seq: i64,
+    is_duplicate: bool,
+};
+
+pub fn createRecord(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    store: anytype,
+    registry: anytype,
+    params: CreateRecordParams,
+) EntityCommandError!RecordResult {
+    _ = registry;
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.TransactionFailed,
+    };
+    defer pool.release(conn);
+
+    // 1. Load active entity definition
+    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
+        error.DefinitionNotFound => return error.InvalidEntityType,
+        else => return error.TransactionFailed,
+    };
+    var definition = def;
+    defer definition.deinit(allocator);
+
+    // 2. TODO: Validate field_values against definition.definition_json
+    // For EXP-202 Stage 1, we assume JSON is valid or validated upstream.
+
+    // 3. Get or create instance_id for this entity_type
+    const instance_id = getOrCreateEntityTypeInstance(conn, params.tenant_id, params.entity_type) catch return error.TransactionFailed;
+
+    // 4. Build event payload
+    const record_uuid = blk: {
+        var bytes: [16]u8 = undefined;
+        fillRandom(&bytes);
+        break :blk bytes;
+    };
+    const record_id = entities_mod.formatUuid(allocator, record_uuid) catch return error.OutOfMemory;
+    defer allocator.free(record_id);
+
+    const payload = events_mod.buildCreatedPayload(
+        allocator,
+        params.entity_type,
+        definition.logical_shape_version,
+        record_id,
+        params.field_values,
+    ) catch return error.OutOfMemory;
+    defer allocator.free(payload);
+
+    // 5. Append event
+    const actor_uuid = entities_mod.parseUuid(params.actor_id) catch return error.InvalidRecord;
+    const append_res = store.append(allocator, .{
+        .tenant_id = params.tenant_id,
+        .instance_id = instance_id,
+        .event_type = events_mod.EntityEventType.entity_record_created.wireName(),
+        .payload = payload,
+        .actor_id = actor_uuid,
+        .idempotency_key = params.idempotency_key,
+        .metadata = null,
+    }) catch |err| switch (err) {
+        error.PoolExhausted => return error.PoolExhausted,
+        else => return error.TransactionFailed,
+    };
+
+    if (append_res.is_duplicate) {
+        // Fetch existing record state for duplicate
+        return fetchRecordResult(allocator, conn, params.entity_type, record_id, params.tenant_id);
+    }
+
+    // 6. Update entity_record_latest projection
+    updateProjection(conn, params.tenant_id, params.entity_type, record_id, params.field_values, false, definition.logical_shape_version, append_res.record.sequence_number) catch return error.TransactionFailed;
+
+    return RecordResult{
+        .record_id = try allocator.dupe(u8, record_id),
+        .entity_type = try allocator.dupe(u8, params.entity_type),
+        .field_values = try allocator.dupe(u8, params.field_values),
+        .version_seq = append_res.record.sequence_number,
+        .is_duplicate = false,
+    };
+}
+
+pub fn updateRecord(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    store: anytype,
+    registry: anytype,
+    params: UpdateRecordParams,
+) EntityCommandError!RecordResult {
+    _ = registry;
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.TransactionFailed,
+    };
+    defer pool.release(conn);
+
+    // Load active definition
+    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
+        error.DefinitionNotFound => return error.InvalidEntityType,
+        else => return error.TransactionFailed,
+    };
+    var definition = def;
+    defer definition.deinit(allocator);
+
+    // Get instance_id
+    const instance_id = getOrCreateEntityTypeInstance(conn, params.tenant_id, params.entity_type) catch return error.TransactionFailed;
+
+    // TODO: diff against current state to find changed_fields
+
+    const payload = events_mod.buildUpdatedPayload(
+        allocator,
+        params.entity_type,
+        definition.logical_shape_version,
+        params.record_id,
+        params.field_values,
+        "[]", // changed_fields placeholder
+    ) catch return error.OutOfMemory;
+    defer allocator.free(payload);
+
+    const actor_uuid = entities_mod.parseUuid(params.actor_id) catch return error.InvalidRecord;
+    const append_res = store.append(allocator, .{
+        .tenant_id = params.tenant_id,
+        .instance_id = instance_id,
+        .event_type = events_mod.EntityEventType.entity_record_updated.wireName(),
+        .payload = payload,
+        .actor_id = actor_uuid,
+        .idempotency_key = params.idempotency_key,
+        .metadata = null,
+    }) catch |err| switch (err) {
+        error.PoolExhausted => return error.PoolExhausted,
+        else => return error.TransactionFailed,
+    };
+
+    if (append_res.is_duplicate) {
+        return fetchRecordResult(allocator, conn, params.entity_type, params.record_id, params.tenant_id);
+    }
+
+    updateProjection(conn, params.tenant_id, params.entity_type, params.record_id, params.field_values, false, definition.logical_shape_version, append_res.record.sequence_number) catch return error.TransactionFailed;
+
+    return RecordResult{
+        .record_id = try allocator.dupe(u8, params.record_id),
+        .entity_type = try allocator.dupe(u8, params.entity_type),
+        .field_values = try allocator.dupe(u8, params.field_values),
+        .version_seq = append_res.record.sequence_number,
+        .is_duplicate = false,
+    };
+}
+
+pub fn deleteRecord(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    store: anytype,
+    registry: anytype,
+    params: DeleteRecordParams,
+) EntityCommandError!RecordResult {
+    _ = registry;
+    const conn = pool.acquire() catch |err| switch (err) {
+        db.PoolError.ExhaustedPool => return error.PoolExhausted,
+        else => return error.TransactionFailed,
+    };
+    defer pool.release(conn);
+
+    // Load active definition
+    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
+        error.DefinitionNotFound => return error.InvalidEntityType,
+        else => return error.TransactionFailed,
+    };
+    var definition = def;
+    defer definition.deinit(allocator);
+
+    const instance_id = getOrCreateEntityTypeInstance(conn, params.tenant_id, params.entity_type) catch return error.TransactionFailed;
+
+    // Fetch current state for deletion payload
+    const current = fetchRecordResult(allocator, conn, params.entity_type, params.record_id, params.tenant_id) catch |err| switch (err) {
+        error.InvalidRecord => return error.InvalidRecord,
+        else => return error.TransactionFailed,
+    };
+    const current_state = current;
+    defer allocator.free(current_state.record_id);
+    defer allocator.free(current_state.entity_type);
+    defer allocator.free(current_state.field_values);
+
+    const payload = events_mod.buildDeletedPayload(
+        allocator,
+        params.entity_type,
+        definition.logical_shape_version,
+        params.record_id,
+        current_state.field_values,
+    ) catch return error.OutOfMemory;
+    defer allocator.free(payload);
+
+    const actor_uuid = entities_mod.parseUuid(params.actor_id) catch return error.InvalidRecord;
+    const append_res = store.append(allocator, .{
+        .tenant_id = params.tenant_id,
+        .instance_id = instance_id,
+        .event_type = events_mod.EntityEventType.entity_record_deleted.wireName(),
+        .payload = payload,
+        .actor_id = actor_uuid,
+        .idempotency_key = params.idempotency_key,
+        .metadata = null,
+    }) catch |err| switch (err) {
+        error.PoolExhausted => return error.PoolExhausted,
+        else => return error.TransactionFailed,
+    };
+
+    if (append_res.is_duplicate) {
+        return fetchRecordResult(allocator, conn, params.entity_type, params.record_id, params.tenant_id);
+    }
+
+    updateProjection(conn, params.tenant_id, params.entity_type, params.record_id, "{}", true, definition.logical_shape_version, append_res.record.sequence_number) catch return error.TransactionFailed;
+
+    return RecordResult{
+        .record_id = try allocator.dupe(u8, params.record_id),
+        .entity_type = try allocator.dupe(u8, params.entity_type),
+        .field_values = try allocator.dupe(u8, "{}"),
+        .version_seq = append_res.record.sequence_number,
+        .is_duplicate = false,
+    };
+}
+
+// ── Private helpers ─────────────────────────────────────────────────────────
+
+fn getOrCreateEntityTypeInstance(conn: *db.Conn, tenant_id: []const u8, entity_type: []const u8) !Uuid {
+    const row = (conn.queryRow(std.heap.page_allocator,
+        \\INSERT INTO entity_type_instances (entity_type, tenant_id, instance_id)
+        \\VALUES ($1, $2, gen_random_uuid())
+        \\ON CONFLICT (entity_type) DO UPDATE SET tenant_id = EXCLUDED.tenant_id
+        \\RETURNING instance_id::text
+    , &.{ entity_type, tenant_id }) catch return error.TransactionFailed) orelse return error.TransactionFailed;
+    defer {
+        if (row[0]) |v| std.heap.page_allocator.free(v);
+        std.heap.page_allocator.free(row);
+    }
+
+    const id_str = row[0] orelse return error.TransactionFailed;
+    return entities_mod.parseUuid(id_str);
+}
+
+fn updateProjection(
+    conn: *db.Conn,
+    tenant_id: []const u8,
+    entity_type: []const u8,
+    record_id: []const u8,
+    field_values: []const u8,
+    is_deleted: bool,
+    def_ver: u32,
+    seq: i64,
+) !void {
+    const deleted_at = if (is_deleted) "NOW()" else "NULL";
+    const def_ver_str = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{def_ver});
+    defer std.heap.page_allocator.free(def_ver_str);
+    const seq_str = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{seq});
+    defer std.heap.page_allocator.free(seq_str);
+
+    const sql = std.fmt.allocPrint(std.heap.page_allocator,
+        \\INSERT INTO entity_record_latest (tenant_id, entity_type, record_id, current_state, version_seq, entity_def_version, updated_at, deleted_at)
+        \\VALUES ($1, $2, $3, $4::jsonb, $5, $6, NOW(), {s})
+        \\ON CONFLICT (entity_type, record_id)
+        \\DO UPDATE SET current_state = EXCLUDED.current_state,
+        \\          version_seq = EXCLUDED.version_seq,
+        \\          entity_def_version = EXCLUDED.entity_def_version,
+        \\          updated_at = NOW(),
+        \\          deleted_at = {s}
+    , .{ deleted_at, deleted_at }) catch return error.OutOfMemory;
+    defer std.heap.page_allocator.free(sql);
+
+    conn.exec(sql, &.{ tenant_id, entity_type, record_id, field_values, seq_str, def_ver_str }) catch return error.TransactionFailed;
+}
+
+fn fetchRecordResult(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    entity_type: []const u8,
+    record_id: []const u8,
+    tenant_id: []const u8,
+) !RecordResult {
+    const row = (conn.queryRow(allocator,
+        \\SELECT record_id::text, entity_type, current_state::text, version_seq::text
+        \\FROM entity_record_latest
+        \\WHERE entity_type = $1 AND record_id = $2 AND tenant_id = $3
+    , &.{ entity_type, record_id, tenant_id }) catch return error.TransactionFailed) orelse return error.InvalidRecord;
+    defer {
+        for (row) |col| if (col) |v| allocator.free(v);
+        allocator.free(row);
+    }
+
+    if (row[0] == null) return error.InvalidRecord;
+
+    return RecordResult{
+        .record_id = try allocator.dupe(u8, row[0].?),
+        .entity_type = try allocator.dupe(u8, row[1].?),
+        .field_values = try allocator.dupe(u8, row[2].?),
+        .version_seq = std.fmt.parseInt(i64, row[3].?, 10) catch 0,
+        .is_duplicate = true,
+    };
+}
+

@@ -47,6 +47,7 @@ pub const dlq_store = @import("dlq/store.zig"); // OBS-05 dead-letter persistenc
 pub const dlq_routes = @import("api/routes/dlq.zig"); // OBS-05 DLQ API handlers
 pub const webhooks_routes = @import("api/routes/webhooks.zig"); // EXT-02 webhook subscription API handlers
 pub const simulation_test_routes = @import("api/routes/simulation_test.zig"); // SIM-05..SIM-08 test runner API handlers
+pub const entity_routes = @import("api/routes/entities.zig"); // EXP-201/EXP-202 entity definition + record API handlers
 pub const api_health_readiness = @import("api/health/readiness.zig"); // API-12 readiness evaluation
 pub const api_health_subsystems = @import("api/health/subsystems.zig"); // API-12 critical subsystem checks
 pub const obs_logger = @import("obs/logger.zig"); // OBS-01 structured logger
@@ -1279,6 +1280,75 @@ fn serveRequest(
             } else {
                 resp_status = 405;
                 resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+            }
+        } else if (std.mem.eql(u8, resource, "entity-definitions")) {
+            // ── /api/v1/entity-definitions — EXP-201 ─────────────────────────
+            if (seg4.len == 0) {
+                // GET /api/v1/entity-definitions  or  POST /api/v1/entity-definitions
+                if (method == .GET) {
+                    const r = entity_routes.handleListDefinitions(req_alloc, pool, user_id, query_str);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else if (method == .POST) {
+                    const r = entity_routes.handleCreateDefinition(req_alloc, pool, body, user_id, user_id);
+                    resp_status = r.status_code;
+                    resp_body = r.body;
+                } else {
+                    resp_status = 405;
+                    resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                }
+            } else if (std.mem.eql(u8, seg5, "activate") and method == .POST) {
+                // POST /api/v1/entity-definitions/:id/activate
+                const r = entity_routes.handleActivateDefinition(req_alloc, pool, seg4);
+                resp_status = r.status_code;
+                resp_body = r.body;
+            } else if (seg5.len == 0) {
+                // GET /api/v1/entity-definitions/:id  (future)
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
+            }
+        } else if (std.mem.eql(u8, resource, "entities")) {
+            // ── /api/v1/entities/:type — EXP-202 ─────────────────────────────
+            if (seg4.len > 0) {
+                if (seg5.len == 0) {
+                    // POST /api/v1/entities/:type  or  GET /api/v1/entities/:type
+                    if (method == .POST) {
+                        const r = entity_routes.handleCreateRecord(req_alloc, pool, ev_store, seg4, body, user_id, user_id);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .GET) {
+                        const r = entity_routes.handleListRecords(req_alloc, pool, seg4, user_id);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                } else {
+                    // GET/PATCH/DELETE /api/v1/entities/:type/:id
+                    if (method == .GET) {
+                        const r = entity_routes.handleGetRecord(req_alloc, pool, seg4, seg5, user_id);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .PATCH) {
+                        const r = entity_routes.handleUpdateRecord(req_alloc, pool, ev_store, seg4, seg5, body, user_id, user_id);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else if (method == .DELETE) {
+                        const r = entity_routes.handleDeleteRecord(req_alloc, pool, ev_store, seg4, seg5, user_id, user_id);
+                        resp_status = r.status_code;
+                        resp_body = r.body;
+                    } else {
+                        resp_status = 405;
+                        resp_body = "{\"type\":\"method_not_allowed\",\"status\":405}";
+                    }
+                }
+            } else {
+                resp_status = 404;
+                resp_body = "{\"type\":\"not_found\",\"status\":404}";
             }
         } else {
             resp_status = 404;

@@ -14,8 +14,9 @@ const crypto = std.crypto.hash.sha2;
 
 pub const CanonicaliserError = error{
     OutOfMemory,
-    InvalidJson,    // Malformed JSON input
-    InvalidBinary,  // Binary content has invalid header (e.g., bad Wasm magic)
+    InvalidJson, // Malformed JSON input
+    InvalidBinary, // Binary content has invalid header (e.g., bad Wasm magic)
+    NoSpaceLeft,
 };
 
 // ---------------------------------------------------------------------------
@@ -48,11 +49,11 @@ pub fn canonicaliseJson(
     defer parser.deinit();
 
     var output = try std.ArrayList(u8).initCapacity(allocator, 256);
-    errdefer output.deinit();
+    errdefer output.deinit(allocator);
 
     try serializeValue(parser.value, &output, allocator);
 
-    return output.toOwnedSlice();
+    return output.toOwnedSlice(allocator);
 }
 
 /// Compute SHA-256 hash of content.
@@ -96,7 +97,7 @@ pub fn verifyHash(
 // Private serialization helpers
 // ---------------------------------------------------------------------------
 
-fn serializeValue(value: std.json.Value, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+fn serializeValue(value: std.json.Value, output: *std.ArrayList(u8), allocator: std.mem.Allocator) CanonicaliserError!void {
     switch (value) {
         .null => try output.appendSlice(allocator, "null"),
         .bool => |b| try output.appendSlice(allocator, if (b) "true" else "false"),
@@ -109,13 +110,13 @@ fn serializeValue(value: std.json.Value, output: *std.ArrayList(u8), allocator: 
     }
 }
 
-fn serializeInteger(i: i64, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+fn serializeInteger(i: i64, output: *std.ArrayList(u8), allocator: std.mem.Allocator) CanonicaliserError!void {
     var buf: [32]u8 = undefined;
     const str = try std.fmt.bufPrint(&buf, "{}", .{i});
     try output.appendSlice(allocator, str);
 }
 
-fn serializeFloat(f: f64, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+fn serializeFloat(f: f64, output: *std.ArrayList(u8), allocator: std.mem.Allocator) CanonicaliserError!void {
     var buf: [64]u8 = undefined;
     // Normalize floats: no unnecessary decimals, compact representation
     const str = if (f == std.math.floor(f) and f >= -9007199254740992 and f <= 9007199254740992) blk: {
@@ -128,7 +129,7 @@ fn serializeFloat(f: f64, output: *std.ArrayList(u8), allocator: std.mem.Allocat
     try output.appendSlice(allocator, str);
 }
 
-fn serializeString(s: []const u8, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+fn serializeString(s: []const u8, output: *std.ArrayList(u8), allocator: std.mem.Allocator) CanonicaliserError!void {
     try output.append(allocator, '"');
     for (s) |byte| {
         switch (byte) {
@@ -146,13 +147,13 @@ fn serializeString(s: []const u8, output: *std.ArrayList(u8), allocator: std.mem
     try output.append(allocator, '"');
 }
 
-fn serializeControlChar(byte: u8, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+fn serializeControlChar(byte: u8, output: *std.ArrayList(u8), allocator: std.mem.Allocator) CanonicaliserError!void {
     var buf: [8]u8 = undefined;
-    const str = try std.fmt.bufPrint(&buf, "\\u{:0>4x}", .{byte});
+    const str = try std.fmt.bufPrint(&buf, "\\u{x:0>4}", .{byte});
     try output.appendSlice(allocator, str);
 }
 
-fn serializeArray(arr: std.json.Array, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+fn serializeArray(arr: std.json.Array, output: *std.ArrayList(u8), allocator: std.mem.Allocator) CanonicaliserError!void {
     try output.append(allocator, '[');
     for (arr.items, 0..) |item, i| {
         if (i > 0) try output.append(allocator, ',');
@@ -161,12 +162,12 @@ fn serializeArray(arr: std.json.Array, output: *std.ArrayList(u8), allocator: st
     try output.append(allocator, ']');
 }
 
-fn serializeObject(obj: std.json.ObjectMap, output: *std.ArrayList(u8), allocator: std.mem.Allocator) (std.mem.Allocator.Error || std.fmt.BufPrintError)!void {
+fn serializeObject(obj: std.json.ObjectMap, output: *std.ArrayList(u8), allocator: std.mem.Allocator) CanonicaliserError!void {
     try output.append(allocator, '{');
 
     // Collect and sort keys
     var keys = try std.ArrayList([]const u8).initCapacity(allocator, 16);
-    defer keys.deinit();
+    defer keys.deinit(allocator);
 
     var it = obj.iterator();
     while (it.next()) |entry| {
