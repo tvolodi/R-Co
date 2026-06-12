@@ -25,6 +25,7 @@ pub const scheduler = @import("scheduler/store.zig"); // SCH-01
 pub const scheduler_poller = @import("scheduler/scheduler.zig"); // SCH-02
 pub const reconstruction = @import("engine/reconstruction.zig"); // EE-11
 pub const transition = @import("engine/transition.zig"); // EE-12
+pub const snapshot_writer = @import("engine/snapshot_writer.zig"); // ISS-601
 pub const service_task = @import("engine/service_task.zig"); // EXT-01
 pub const plugin_interface = @import("engine/plugin_interface.zig"); // EXT-03
 pub const plugin_registry = @import("engine/plugin_registry.zig"); // EXT-03

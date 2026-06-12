@@ -98,6 +98,7 @@ fn adminActor(user_id: []const u8) auth.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "ext02-admin-token",
+        .principal = "ext02-admin-token",
     };
 }
 
@@ -107,6 +108,7 @@ fn nonAdminActor(user_id: []const u8) auth.AuthContext {
         .role = .PROCESS_OPERATOR,
         .is_bootstrap = false,
         .token_id = "ext02-worker-token",
+        .principal = "ext02-worker-token",
     };
 }
 

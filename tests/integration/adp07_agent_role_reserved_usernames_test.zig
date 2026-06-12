@@ -30,6 +30,7 @@ fn adminActor() auth_mod.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "integration-adp07-admin",
+        .principal = "integration-adp07-admin",
     };
 }
 
@@ -39,6 +40,7 @@ fn workerActor() auth_mod.AuthContext {
         .role = .TASK_WORKER,
         .is_bootstrap = false,
         .token_id = "integration-adp07-worker",
+        .principal = "integration-adp07-worker",
     };
 }
 

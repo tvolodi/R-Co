@@ -40,6 +40,7 @@ fn adminActor() auth_mod.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "adp04b-test-token",
+        .principal = "adp04b-test-token",
         .tenant_id = uuid36ToArray(default_tenant),
         .tenant_source = .default_fallback,
     };

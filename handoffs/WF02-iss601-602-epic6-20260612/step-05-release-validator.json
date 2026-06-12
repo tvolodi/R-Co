@@ -8,7 +8,7 @@
   "created_at": "2026-06-12T13:13:55Z",
   "started_at": null,
   "completed_at": null,
-  "status": "PENDING",
+  "status": "IN_PROGRESS",
   "priority": "NORMAL",
   "context": {
     "stage": "Epic 6 release validation",
@@ -16,7 +16,9 @@
       "ISS-601",
       "ISS-602"
     ],
-    "related_handoff_ids": [],
+    "related_handoff_ids": [
+      "bc80f005-3e65-4edb-86a0-65374e45129b"
+    ],
     "artifacts_in": [
       "tests/reports/report-20260612-WF02-iss601-602-epic6-20260612.yaml"
     ],

@@ -33,7 +33,7 @@ const SnapshotStore = bpm.snapshot.SnapshotStore;
 
 const reconstruction_mod = bpm.reconstruction;
 const transition_mod = bpm.transition;
-const snapshot_writer_mod = @import("../src/engine/snapshot_writer.zig");
+const snapshot_writer_mod = bpm.snapshot_writer;
 
 // ---------------------------------------------------------------------------
 // Helpers

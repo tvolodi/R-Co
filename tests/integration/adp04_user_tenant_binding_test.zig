@@ -35,6 +35,7 @@ fn actorForTenant(tenant_id: []const u8, token_id: []const u8) auth_mod.AuthCont
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = token_id,
+        .principal = token_id,
         .tenant_id = uuid36ToArray(tenant_id),
         .tenant_source = .token_claim,
     };
