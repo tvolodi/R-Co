@@ -1676,17 +1676,21 @@ pub const InstanceStore = struct {
         tokens_buf.append(a, '[') catch return CompleteTaskError.OutOfMemory;
         for (effective_state.tokens, 0..) |tok, i| {
             if (i > 0) tokens_buf.append(a, ',') catch return CompleteTaskError.OutOfMemory;
+
+            // Generate token_id if not present (ISS-105)
+            const token_id = tok.token_id orelse (generateTokenId(a) catch return CompleteTaskError.OutOfMemory);
+
             const entry = if (tok.waiting_child_instance_id) |child_id|
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id, child_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\",\"waiting_child_instance_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id, child_id },
                 ) catch return CompleteTaskError.OutOfMemory
             else
                 std.fmt.allocPrint(
                     a,
-                    "{{\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
-                    .{ tok.node_id, tok.branch_id },
+                    "{{\"token_id\":\"{s}\",\"node_id\":\"{s}\",\"branch_id\":\"{s}\"}}",
+                    .{ token_id, tok.node_id, tok.branch_id },
                 ) catch return CompleteTaskError.OutOfMemory;
             tokens_buf.appendSlice(a, entry) catch return CompleteTaskError.OutOfMemory;
         }
@@ -1695,6 +1699,11 @@ pub const InstanceStore = struct {
 
         const new_vars_value = std.json.Value{ .object = effective_state.variables };
         const new_vars_json = std.json.Stringify.valueAlloc(a, new_vars_value, .{}) catch
+            return CompleteTaskError.OutOfMemory;
+
+        // Serialize join_counters ObjectMap to JSON object string (ISS-105).
+        const new_jc_value = std.json.Value{ .object = effective_state.join_counters };
+        const new_jc_json = std.json.Stringify.valueAlloc(a, new_jc_value, .{}) catch
             return CompleteTaskError.OutOfMemory;
 
         // Idempotency key for the TASK_COMPLETED event INSERT.
@@ -1751,14 +1760,16 @@ pub const InstanceStore = struct {
         );
 
         // ── Step l: UPDATE instance_projections ───────────────────────────────
-        // Security: $1=instance_id, $2=status, $3=tokens_json, $4=vars_json
-        //           — all bound as $N parameters; no SQL string interpolation.
+        // Security: $1=instance_id, $2=status, $3=tokens_json, $4=vars_json,
+        //           $5=error_detail, $6=jc_json — all bound as $N parameters.
         conn.exec(
             \\UPDATE instance_projections
             \\SET
             \\    status         = $2,
             \\    current_nodes  = $3::jsonb,
+            \\    active_tokens  = $3::jsonb,
             \\    variables      = $4::jsonb,
+            \\    join_counters  = $6::jsonb,
             \\    error_detail   = CASE WHEN NULLIF($5, '') IS NULL THEN error_detail ELSE $5::jsonb END,
             \\    last_event_seq = last_event_seq + 1,
             \\    updated_at     = NOW()
@@ -1770,6 +1781,7 @@ pub const InstanceStore = struct {
                 new_tokens_json,
                 new_vars_json,
                 service_outcome.error_payload_json orelse "",
+                new_jc_json,
             },
         ) catch return CompleteTaskError.PersistenceFailed;
 
@@ -2263,13 +2275,14 @@ pub const InstanceStore = struct {
         ) catch return CancelInstanceError.PersistenceFailed;
 
         // ── Step g: UPDATE instance_projections ───────────────────────────────
-        // Set status=CANCELLED, clear current_nodes, record cancelled_at.
+        // Set status=CANCELLED, clear current_nodes and active_tokens, record cancelled_at.
         // Security: $1 = instance_id — bound as $N parameter.
         conn.exec(
             \\UPDATE instance_projections
             \\SET
             \\    status        = 'CANCELLED',
             \\    current_nodes = '{"tokens":[],"cancelled_branch_ids":[]}'::jsonb,
+            \\    active_tokens = '[]'::jsonb,
             \\    cancelled_at  = NOW(),
             \\    updated_at    = NOW()
             \\WHERE instance_id = $1::uuid
@@ -2718,9 +2731,10 @@ pub const InstanceStore = struct {
         conn.exec(
             \\UPDATE instance_projections
             \\SET
-            \\    status       = 'ERROR',
-            \\    error_detail = $2::jsonb,
-            \\    updated_at   = NOW()
+            \\    status        = 'ERROR',
+            \\    active_tokens = '[]'::jsonb,
+            \\    error_detail  = $2::jsonb,
+            \\    updated_at    = NOW()
             \\WHERE instance_id = $1::uuid
         ,
             &.{ inst_id_hex, payload_json },
@@ -4058,6 +4072,7 @@ fn propagateChildCompletionToParent(
         \\SET
         \\    status = 'COMPLETED',
         \\    current_nodes = '[]'::jsonb,
+        \\    active_tokens = '[]'::jsonb,
         \\    variables = $2::jsonb,
         \\    updated_at = NOW()
         \\WHERE instance_id = $1::uuid
@@ -4174,6 +4189,7 @@ fn propagateChildTerminalToParent(
         \\SET
         \\    status = 'ERROR',
         \\    current_nodes = '[]'::jsonb,
+        \\    active_tokens = '[]'::jsonb,
         \\    error_detail = $2::jsonb,
         \\    updated_at = NOW()
         \\WHERE instance_id = $1::uuid
