@@ -59,14 +59,34 @@ BEGIN
     RAISE NOTICE 'Successfully migrated audit_entries.resource_id from UUID to TEXT in schema %', current_schema();
 END $$;
 
--- Recreate indexes for the TEXT column (idempotent)
-DROP INDEX IF EXISTS idx_audit_entries_resource_time;
-CREATE INDEX idx_audit_entries_resource_time
-    ON audit_entries (resource_type, resource_id, timestamp DESC, audit_id DESC);
+-- Recreate indexes and functions only if audit_entries exists in the current schema.
+-- Wrapping in a DO block ensures this migration is a no-op on schemas that do not
+-- have audit_entries (e.g. when helpers.zig runs all migrations on the public schema).
+DO $$
+DECLARE
+    v_table_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_schema = current_schema()
+          AND table_name = 'audit_entries'
+    ) INTO v_table_exists;
 
--- Create simple index on resource_id for point lookups (idempotent)
-CREATE INDEX IF NOT EXISTS idx_audit_resource
-    ON audit_entries (resource_id);
+    IF NOT v_table_exists THEN
+        RAISE NOTICE '087: audit_entries not found in schema %; skipping index/function recreation', current_schema();
+        RETURN;
+    END IF;
+
+    -- Recreate indexes for the TEXT column
+    DROP INDEX IF EXISTS idx_audit_entries_resource_time;
+    EXECUTE 'CREATE INDEX idx_audit_entries_resource_time
+        ON audit_entries (resource_type, resource_id, timestamp DESC, audit_id DESC)';
+
+    -- Create simple index on resource_id for point lookups
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_resource
+        ON audit_entries (resource_id)';
+
+END $$;
 
 -- Update bpm_audit_resource_info to return TEXT resource_id
 -- Must drop first because return type is changing (idempotent via OR REPLACE where possible)
