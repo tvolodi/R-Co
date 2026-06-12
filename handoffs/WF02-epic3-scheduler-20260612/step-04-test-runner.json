@@ -36,17 +36,15 @@
   },
   "result": {
     "status": "PASS",
-    "summary": "All EPIC-3 integration tests PASS (4/4: TC-SCH-301-03, TC-SCH-302-03, TC-SCH-303-03, TC-SCH-303-04). Unit tests 548+ pass, 0 failures. Migration 092 applied cleanly. Root cause fixed: scheduler.zig and test file both referenced dead_letter_queue which was renamed to dead_letter_items by migration 072.",
+    "summary": "All EPIC-3 integration tests pass after schema routing fix (tenant_context.set). TC-SCH-301-03, TC-SCH-302-03, TC-SCH-303-03, TC-SCH-303-04 all PASS. Unit tests 548+ passed, 0 new failures.",
     "artifacts_out": [
-      "tests/reports/report-epic3-20260612.yaml",
-      "src/scheduler/scheduler.zig",
-      "tests/integration/sch303_timer_dlq_test.zig"
+      "tests/reports/report-epic3-20260612.yaml"
     ],
     "issues": [],
     "next_action": "Route to RELEASE-VALIDATOR (Step 05)"
   },
-  "rework_count": 0,
+  "rework_count": 1,
   "max_rework": 1,
   "started_at": "2026-06-12T10:05:00Z",
-  "completed_at": "2026-06-12T11:11:42Z"
+  "completed_at": "2026-06-12T10:50:00Z"
 }
