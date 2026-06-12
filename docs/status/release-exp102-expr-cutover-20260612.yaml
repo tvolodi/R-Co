@@ -1,0 +1,60 @@
+release_decision:
+  run_id: WF02-exp102-expr-cutover-20260612
+  requirement: EXP-102
+  epic: EXPANSION
+  status: APPROVED
+  date: "2026-06-12"
+  decided_at: "2026-06-12T17:28:19Z"
+
+acceptance_criteria_validation:
+  - criterion: "@import(cel) absent from src/engine/transition.zig (CEL retired from production path)"
+    status: MET
+    evidence: "Select-String returns 0 hits for '@import.*cel' in transition.zig"
+  - criterion: "evaluateGatewayCondition present in src/engine/transition.zig (expr wired)"
+    status: MET
+    evidence: "10 references found — fn definition at line 725, call site at line 1036, comment at line 715"
+  - criterion: "vendor/cel/cel.zig carries REFERENCE-ONLY annotation"
+    status: MET
+    evidence: "line 14: '// CEL REFERENCE-ONLY — do not add new callers (EXP-102)'"
+
+differential_corpus_validation:
+  command: "zig build test-differential"
+  conditions_total: 15
+  conditions_matched: 15
+  conditions_diverged: 0
+  cel_errors: 0
+  expr_errors: 0
+  status: PASS
+  output_line: "ISS-602 Differential Corpus: 15 conditions — Results: 15 total, 15 matched, 0 diverged, 0 cel-err, 0 expr-err, 0 both-err"
+
+unit_test_validation:
+  command: "zig build test"
+  exit_code: 0
+  status: PASS
+  notes: "All unit tests pass — no regressions from expr cutover"
+
+nfr_benchmarks:
+  bench_env: CLEARED
+  bench_env_note: "BENCHMARK_SETUP_INFO|db_url_source=primary_env — no blocking keywords"
+  bench_run_id: bench-1781285129348
+  NFR-01_p99_read:   { target: "<=200ms",   actual: "0.862ms",       passed: true }
+  NFR-01_p99_write:  { target: "<=500ms",   actual: "16.981ms",      passed: true }
+  NFR-02_throughput: { target: ">=1000eps", actual: "8476.754eps",   passed: true }
+  NFR-04_replay:     { target: "<=5000ms",  actual: "37.544ms",      passed: true }
+  NFR-04_snapshot:   { target: "<=1000ms",  actual: "4.664ms",       passed: true }
+  overall_passed: true
+  exit_code: 0
+
+blocking_issues: []
+
+approved_requirements:
+  - EXP-102
+
+release_recommendation: APPROVED
+rationale: >
+  EXP-102 expr cutover is fully validated. CEL is retired from the production
+  gateway condition path; the expr evaluator is wired via evaluateGatewayCondition.
+  Differential corpus 15/15: expr and cel produce identical results for all known
+  condition patterns. All NFR benchmarks are well within thresholds (p99 read 0.862ms,
+  throughput 8476eps, replay 37ms). No regressions in unit tests. vendor/cel is
+  annotated REFERENCE-ONLY to prevent new callers.
