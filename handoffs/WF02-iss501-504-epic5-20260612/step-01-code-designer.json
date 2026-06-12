@@ -1,0 +1,58 @@
+{
+  "handoff_id": "4d54003a-2d9e-40e3-a322-4a0e0a07429e",
+  "run_id": "WF02-iss501-504-epic5-20260612",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-12T12:43:09Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-5 / ISS-501..504",
+    "requirement_ids": [
+      "ISS-501",
+      "ISS-502",
+      "ISS-503",
+      "ISS-504"
+    ],
+    "related_handoff_ids": [
+      "c40c2ce6-ba83-4cf3-b764-2cb5a1786748"
+    ],
+    "artifacts_in": [
+      "docs/requirements/BPM_Architecture_Backlog.20260611.md",
+      "src/api/middleware/tenant_context.zig",
+      "src/db/",
+      "src/admin/tenant_migration.zig",
+      "src/db/provisioning.zig"
+    ]
+  },
+  "task": {
+    "description": "Design ISS-501..504. Write FOUR Type E prose design docs. Read first: docs/requirements/BPM_Architecture_Backlog.20260611.md (ISS-501..504), src/api/middleware/tenant_context.zig, src/db/*, src/admin/tenant_migration.zig, src/db/provisioning.zig, templates/lego-catalog.md.\n\n1. src/design/iss501_storage_mode_routing.md \u2014 ISS-501:\n   Resolve read/write authority from public.tenants.storage_mode (ISS-107 added the column).\n   During SPT coexistence, each tenant is served by exactly ONE path:\n   - LEGACY_RLS \u2192 search_path=public + RLS predicate (bpm.tenant_id session var)\n   - SCHEMA \u2192 search_path=tenant_{slug}\n   Tenant-context resolution (\u00a711.2) reads storage_mode once per request and pins routing.\n   No request mixes read on one path and write on the other.\n   Touchpoints: src/api/middleware/tenant_context.zig (or equivalent), src/db/*\n\n2. src/design/iss502_spt_cutover.md \u2014 ISS-502:\n   SPT cutover transaction (SPT-02): copy rows from public into tenant schema, verify parity (row counts + checksums), flip public.tenants.storage_mode to SCHEMA atomically inside a single transaction. Failure \u2192 rollback, tenant stays in LEGACY_RLS (safe). Idempotent: re-run on already-migrated tenant is no-op.\n   Touchpoints: src/admin/tenant_migration.zig\n\n3. src/design/iss503_rls_removal.md \u2014 ISS-503:\n   Remove legacy tenant_id/RLS predicates (SPT-03). Guard: only proceed when no tenant remains in LEGACY_RLS mode. Drop RLS policies, tenant_id predicates from all tables. Remove bpm.tenant_id session var usage. GBL-077 teardown referenced.\n   Touchpoints: migrations/, store modules\n\n4. src/design/iss504_migration_tracking.md \u2014 ISS-504:\n   Reconcile \u00a75 schema + per-tenant migration tracking (SPT-04). public.schema_migrations tracks GBL- migrations. Each tenant_{slug}.schema_migrations tracks per-tenant migrations. Provisioning a new tenant records its per-tenant migration state in its own schema. ADP-12 default-tenant regression updated and green.\n   Touchpoints: src/db/provisioning.zig, test suite\n\nNo implementation code. Prose signatures and behaviour only.",
+    "acceptance_criteria": [
+      "iss501: storage_mode routing, search_path pinning, no cross-path mixing described",
+      "iss502: cutover transaction with copy+verify+flip, atomic, rollback-safe, idempotent described",
+      "iss503: RLS/predicate removal guard, migration approach, teardown sequence described",
+      "iss504: dual schema_migrations tracking, per-tenant ledger on provision described",
+      "No implementation code in any doc"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created four Type E design documents: iss501_storage_mode_routing.md, iss502_spt_cutover.md, iss503_rls_removal.md, iss504_migration_tracking.md",
+    "artifacts_out": [
+      "src/design/iss501_storage_mode_routing.md",
+      "src/design/iss502_spt_cutover.md",
+      "src/design/iss503_rls_removal.md",
+      "src/design/iss504_migration_tracking.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 01b)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-12T12:43:09Z",
+  "completed_at": "2026-06-12T12:52:28Z"
+}

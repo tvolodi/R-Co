@@ -146,51 +146,94 @@ pub fn schemaNameForTenant(tenant_id: []const u8, buf: *[80]u8) []const u8 {
     return buf[0..out];
 }
 
-/// TNT-03: Set search_path and bpm.* session variables on a checked-out connection.
+/// ISS-501: Storage-mode-aware connection routing.
+/// Replaces TNT-03's applyRequestTenantContext().
 /// Called unconditionally by Pool.acquire() after selecting the connection.
 ///
-/// Branches on whether a tenant is present:
+/// Branches on the resolved tenant's storage_mode:
 ///
-///   tenant_id non-empty (resolved tenant request):
-///     SET search_path TO <schema_name>,public        ← FIRST
-///     SELECT set_config('bpm.tenant_id', $1, false)
+///   tenant_id empty/absent (no resolved tenant):
+///     SET search_path TO public
+///     (no set_config calls)
+///
+///   storage_mode = LEGACY_RLS:
+///     SET search_path TO public
+///     SELECT set_config('bpm.tenant_id', $1, false)     ← RLS active
 ///     SELECT set_config('bpm.pipeline_run_id', $1, false)
 ///
-///   tenant_id empty/absent (bootstrap token, platform-admin system call,
-///   or no resolved tenant):
-///     SET search_path TO public                      ← only public; no tenant schema
-///     (no set_config calls — no tenant context to propagate)
+///   storage_mode = SCHEMA:
+///     SET search_path TO tenant_{slug},public
+///     SELECT set_config('bpm.pipeline_run_id', $1, false)  ← no tenant_id for RLS
 ///
-/// The search_path SET is issued FIRST (before set_config) so any subsequent
-/// unqualified query immediately resolves to the correct schema.
+/// The search_path SET is issued FIRST so any subsequent unqualified query
+/// immediately resolves to the correct schema.
 /// Returns PoolError.QueryFailed if any SET fails.
-fn applyRequestTenantContext(conn: *Conn) PoolError!void {
+fn applyRequestStorageRouting(conn: *Conn) PoolError!void {
     const tenant_id = currentRequestTenantId();
 
     if (tenant_id.len == 0) {
-        // TNT-03: No-tenant branch (bootstrap token / platform-admin / no resolved tenant).
-        // Set search_path to public only; do NOT call schemaNameForTenant or set_config.
+        // No-tenant branch (bootstrap token / platform-admin / no resolved tenant).
         try conn.exec("SET search_path TO public", &.{});
         return;
     }
 
-    // TNT-03: Resolved-tenant branch.
-    // 1. SET search_path FIRST — all subsequent queries resolve to tenant schema.
-    var schema_buf: [80]u8 = undefined;
-    const schema_name = schemaNameForTenant(tenant_id, &schema_buf);
-    var path_buf: [128]u8 = undefined;
-    const search_path = std.fmt.bufPrint(
-        &path_buf,
-        "SET search_path TO {s},public",
-        .{schema_name},
-    ) catch return PoolError.QueryFailed;
-    try conn.exec(search_path, &.{});
+    // ISS-501: Resolve storage_mode once per request.
+    // On first connection acquisition: query tenant for storage_mode,
+    // cache it in tenant_context.  On subsequent acquisitions: use cached value.
+    if (!tenant_context_mod.hasStorageMode()) {
+        resolveAndCacheStorageMode: {
+            const row = conn.queryRow(
+                std.heap.page_allocator,
+                "SELECT storage_mode FROM tenant WHERE id = $1::uuid LIMIT 1",
+                &.{tenant_id},
+            ) catch {
+                break :resolveAndCacheStorageMode;
+            };
 
-    // 2. SPT-01 backward compat: keep set_config calls so RLS policies continue
-    //    working during the Stage 12 transition until TNT-07 removes them.
-    const pipeline_run_id = currentRequestPipelineRunId();
-    try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_id});
-    try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{pipeline_run_id});
+            if (row) |r| {
+                defer {
+                    if (r[0]) |v| std.heap.page_allocator.free(v);
+                    std.heap.page_allocator.free(r);
+                }
+                if (r[0]) |mode_str| {
+                    if (std.mem.eql(u8, mode_str, "SCHEMA")) {
+                        tenant_context_mod.setStorageMode(.SCHEMA);
+                        break :resolveAndCacheStorageMode;
+                    }
+                }
+            }
+            // Default: LEGACY_RLS (tenant not found, null mode, or any non-SCHEMA value).
+            tenant_context_mod.setStorageMode(.LEGACY_RLS);
+        }
+    }
+
+    const mode = tenant_context_mod.getStorageMode();
+
+    switch (mode) {
+        .LEGACY_RLS => {
+            // Legacy path: public schema + RLS predicate via set_config.
+            try conn.exec("SET search_path TO public", &.{});
+            const pipeline_run_id = currentRequestPipelineRunId();
+            try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_id});
+            try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{pipeline_run_id});
+        },
+        .SCHEMA => {
+            // Schema-per-tenant path: tenant schema first, no RLS.
+            var schema_buf: [80]u8 = undefined;
+            const schema_name = schemaNameForTenant(tenant_id, &schema_buf);
+            var path_buf: [128]u8 = undefined;
+            const search_path = std.fmt.bufPrint(
+                &path_buf,
+                "SET search_path TO {s},public",
+                .{schema_name},
+            ) catch return PoolError.QueryFailed;
+            try conn.exec(search_path, &.{});
+
+            const pipeline_run_id = currentRequestPipelineRunId();
+            try conn.exec("SELECT set_config('bpm.pipeline_run_id', $1, false)", &.{pipeline_run_id});
+            // No set_config('bpm.tenant_id', ...) — RLS is inactive in tenant schemas.
+        },
+    }
 }
 
 /// TNT-06: Redirect a connection to a tenant-specific remote host if
@@ -704,7 +747,7 @@ pub const Pool = struct {
             return err;
         };
 
-        applyRequestTenantContext(conn) catch |err| {
+        applyRequestStorageRouting(conn) catch |err| {
             self.idle_indices[self.idle_count] = idx;
             self.idle_count += 1;
             return err;

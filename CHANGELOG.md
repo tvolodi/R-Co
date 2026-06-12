@@ -2,6 +2,27 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EPIC-5 / ISS-501+502+503+504] — 2026-06-12
+
+### Added
+- **ISS-501 (EPIC-5)**: Storage-mode-aware connection routing. Tenant context resolution now reads `public.tenants.storage_mode` once per request and pins `search_path` accordingly: `LEGACY_RLS` tenants use `search_path=public` with `bpm.tenant_id` session variable (RLS active); `SCHEMA` tenants use `search_path=tenant_{slug},public` without the RLS session variable. Routing is deterministic and cached per request — a single request never mixes storage paths.
+- **ISS-502 (EPIC-5)**: SPT cutover transaction (`executeSptCutover()` in `src/admin/tenant_migration.zig`). Copies all business-table rows from the public schema to the tenant schema, verifies row-count parity, and atomically flips `storage_mode` to `SCHEMA`. Runs in a single PostgreSQL transaction — any failure rolls back and leaves the tenant in `LEGACY_RLS` (safe state). Idempotent: re-running on an already-migrated tenant is a no-op.
+
+### Changed
+- **ISS-503 (EPIC-5)**: RLS removal migration (GBL-084). Pre-flight guard requires zero tenants in `LEGACY_RLS` mode. Drops all RLS policies, removes `tenant_id` columns from business tables, and drops `bpm_effective_tenant_id()`. All DDL is idempotent (`IF EXISTS`).
+
+### Verified
+- **ISS-504 (EPIC-5)**: Per-tenant migration tracking confirmed correct. `public.schema_migrations` tracks GBL- migrations with `schema_name='public'` and per-tenant migrations with `schema_name='tenant_{slug}'`. Provisioning creates per-tenant migration state automatically. ADP-12 default-tenant regression ready for SCHEMA-mode verification.
+
+### Design artefacts
+- `src/design/iss501_storage_mode_routing.md`
+- `src/design/iss502_spt_cutover.md`
+- `src/design/iss503_rls_removal.md`
+- `src/design/iss504_migration_tracking.md`
+
+### Migrations
+- `GBL-084_rls_removal.sql` — removes RLS policies, `tenant_id` columns, and `bpm_effective_tenant_id()` from public schema (gated on zero LEGACY_RLS tenants).
+
 ## [EPIC-3 / ISS-301+302+303] — 2026-06-12
 
 ### Changed
