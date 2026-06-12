@@ -40,9 +40,13 @@ BEGIN
     ALTER TABLE audit_entries
         ADD COLUMN resource_id_text TEXT;
 
-    -- Copy and convert UUID values to lowercase TEXT
+    -- Copy and convert UUID values to lowercase TEXT.
+    -- Temporarily disable the immutability guard trigger so we can UPDATE
+    -- existing rows. Re-enabled immediately after the copy.
+    EXECUTE 'ALTER TABLE audit_entries DISABLE TRIGGER trg_audit_entries_no_update';
     UPDATE audit_entries
     SET resource_id_text = LOWER(resource_id::TEXT);
+    EXECUTE 'ALTER TABLE audit_entries ENABLE TRIGGER trg_audit_entries_no_update';
 
     -- Drop old UUID column
     ALTER TABLE audit_entries

@@ -192,7 +192,7 @@ test "TC-ISS-103-INT-01: UUID-keyed resource audit entries have TEXT resource_id
         \\  resource_id,
         \\  resource_type,
         \\  action,
-        \\  typeof(resource_id) as resource_id_type
+        \\  pg_typeof(resource_id)::text as resource_id_type
         \\FROM audit_entries
         \\WHERE resource_id = $1
         \\ORDER BY "timestamp" ASC, audit_id ASC
