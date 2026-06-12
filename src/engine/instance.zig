@@ -3862,6 +3862,23 @@ fn persistTimersFromPendingEventsInTx(
                     scheduler_store_mod.TimerStoreError.QueryFailed => return PersistTimerEffectsError.PersistenceFailed,
                     scheduler_store_mod.TimerStoreError.OutOfMemory => return PersistTimerEffectsError.OutOfMemory,
                 };
+
+                // EXP-103: arm instance_waits descriptor in the same transaction.
+                scheduler_store_mod.insertTimerWaitDescriptorInTx(
+                    allocator,
+                    conn,
+                    instance_id,
+                    timer_id,
+                    timer_ev.timer_node_id,
+                    timer_ev.duration_iso8601,
+                ) catch |err| switch (err) {
+                    scheduler_store_mod.TimerStoreError.InvalidInput => return PersistTimerEffectsError.InvalidTimerNodeConfig,
+                    scheduler_store_mod.TimerStoreError.InstanceCancelled => return PersistTimerEffectsError.PersistenceFailed,
+                    scheduler_store_mod.TimerStoreError.InstanceNotFound => return PersistTimerEffectsError.PersistenceFailed,
+                    scheduler_store_mod.TimerStoreError.DuplicateTimerId => return PersistTimerEffectsError.PersistenceFailed,
+                    scheduler_store_mod.TimerStoreError.QueryFailed => return PersistTimerEffectsError.PersistenceFailed,
+                    scheduler_store_mod.TimerStoreError.OutOfMemory => return PersistTimerEffectsError.OutOfMemory,
+                };
             },
             else => {},
         }
@@ -3908,6 +3925,16 @@ fn maybeInsertEscalationTimerInTx(
         scheduler_store_mod.TimerStoreError.OutOfMemory => return error.OutOfMemory,
         else => return error.PersistenceFailed,
     };
+
+    // EXP-103: arm instance_waits descriptor for the escalation timer in the same txn.
+    scheduler_store_mod.insertTimerWaitDescriptorInTx(
+        a,
+        conn,
+        task.instance_id,
+        timer_id,
+        task.node_id,
+        config.duration_iso8601,
+    ) catch return error.PersistenceFailed;
 }
 
 fn startSubProcessesForPendingEventsInTx(

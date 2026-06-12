@@ -1,0 +1,17 @@
+{
+  "handoff_id": "exp103-tdv-3b",
+  "run_id": "WF02-exp103-instance-waits-20260612",
+  "step": "3b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "created_at": "2026-06-12T15:28:44Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {"issue_id": "EXP-103", "upstream_step": "03", "stage": "Hard gate"},
+  "task": {
+    "description": "Validate EXP-103 test coverage: all 5 atomicity tests present, no MUST skips, per-test UUIDs, real PostgreSQL.",
+    "acceptance_criteria": ["All MUST criteria covered", "No skipped tests", "Isolation via UUIDs"],
+    "functions_to_call": []
+  },
+  "result": null, "rework_count": 0, "max_rework": 1, "started_at": null, "completed_at": null
+}

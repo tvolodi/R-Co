@@ -914,6 +914,17 @@ fn markTimerFiredInTx(conn: *db.Conn, timer_id_text: []const u8) SchedulerError!
     ,
         &.{timer_id_text},
     ) catch return SchedulerError.TransactionFailed;
+
+    // EXP-103: resolve the instance_waits descriptor in the same transaction.
+    // 0 rows updated is silent-correct (e.g. pre-migration timers have no descriptor).
+    conn.exec(
+        \\UPDATE instance_waits
+        \\SET resolved_at = NOW()
+        \\WHERE ref_id = $1::uuid
+        \\  AND resolved_at IS NULL
+    ,
+        &.{timer_id_text},
+    ) catch return SchedulerError.TransactionFailed;
 }
 
 const ParsedRecurrenceState = struct {

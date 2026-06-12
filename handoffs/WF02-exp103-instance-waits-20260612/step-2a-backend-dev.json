@@ -1,0 +1,42 @@
+{
+  "handoff_id": "exp103-backend-dev-2a",
+  "run_id": "WF02-exp103-instance-waits-20260612",
+  "step": "2a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-12T15:28:44Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "issue_id": "EXP-103",
+    "upstream_step": "1b",
+    "epic": "EPIC-1 Expansion Backlog v2",
+    "stage": "instance_waits implementation",
+    "artifacts_in": [
+      "src/design/instance-waits-persistence.md",
+      "src/scheduler/store.zig",
+      "src/tasks/store.zig",
+      "src/engine/instance.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement EXP-103: Persist instance_waits descriptors in the same transaction that arms each wait.\n\n## Step 0 \u2014 git-setup\n```bash\ngit checkout main && git pull --ff-only origin main\ngit checkout -b feature/WF02-exp103-instance-waits-20260612\n```\n\n## Migration 093\nCreate `migrations/093_exp103_instance_waits.sql` per design spec.\nPer-tenant, idempotent with to_regclass() guard. Table: instance_waits.\n\n## Scheduler integration (timer waits)\nIn `src/scheduler/store.zig` (or wherever timers are inserted):\n- In the same transaction that inserts a timer row, INSERT into instance_waits (kind='timer', ref_id=timer_id, node_id=step_name, fire_at=fires_at)\n- When a timer fires (markTimerFiredInTx in scheduler.zig): UPDATE instance_waits SET resolved_at=NOW() WHERE ref_id=$timer_id\n\n## Task integration (human_task waits)\nIn `src/tasks/store.zig` task creation:\n- When a task row is INSERTed, INSERT into instance_waits (kind='human_task', ref_id=task_id, node_id=step_name) in the same txn\n- When task is completed/cancelled: UPDATE instance_waits SET resolved_at=NOW() WHERE ref_id=$task_id\n\n## Catch event integration (catch_event waits)\nFind where catch_event subscriptions / correlation keys are stored (likely in events or a subscription table).\n- INSERT into instance_waits (kind='catch_event', ref_id=correlation_uuid, catch_event_key=key, node_id=node_id)\n- When the catch event is received and consumed: UPDATE resolved_at\n\n## Validation\n```\nzig build && zig build test && zig build migrate\nzig build 2>&1 | grep -i 'error set'  # must be empty\n```\n\n## Commit\n```bash\ngit add -A\ngit commit -m 'feat(exp103): persist instance_waits descriptors in arm transaction'\ngit push origin feature/WF02-exp103-instance-waits-20260612\n```",
+    "acceptance_criteria": [
+      "Migration 093 adds instance_waits table, idempotent",
+      "Timer arm: INSERT instance_waits in same txn as INSERT timers",
+      "Task activation: INSERT instance_waits in same txn as INSERT tasks",
+      "Timer fire: UPDATE resolved_at in same txn as markTimerFiredInTx",
+      "Task complete: UPDATE resolved_at in same txn",
+      "zig build + test + migrate all exit 0"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": "2026-06-12T15:50:00Z",
+  "completed_at": null
+}

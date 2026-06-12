@@ -4296,4 +4296,15 @@ requirements:
     description: Scale anchor section added to architecture doc (500/5,000 tenant target/ceiling)
     released_at: '2026-06-12'
     run_id: WF02-exp101-scale-anchor-20260612
-total_requirements: 295
+  EXP-103:
+    status: RELEASED
+    stage: Expansion
+    priority: P1
+    title: Persist instance_waits descriptors atomically on timer/task arm and resolve
+    implemented_in:
+    - src/engine/instance.zig
+    - migrations/093_exp103_instance_waits.sql
+    test_spec: tests/specs/EXP-103.md
+    released_at: '2026-06-12'
+    run_id: WF02-exp103-instance-waits-20260612
+total_requirements: 296
