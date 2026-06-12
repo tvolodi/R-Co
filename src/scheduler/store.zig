@@ -329,6 +329,49 @@ pub fn insertEscalationTimerInTx(
     if (ins_rows.rows.len == 0) return TimerStoreError.DuplicateTimerId;
 }
 
+/// Insert an instance_waits descriptor for a timer in the current transaction.
+///
+/// Called immediately after insertPendingTimerInTx or insertEscalationTimerInTx
+/// to atomically record the timer wait alongside the timer row. The `ON CONFLICT
+/// DO NOTHING` clause makes re-runs idempotent (matches the behaviour of
+/// `insertPendingTimerInTx` which also uses `ON CONFLICT (id) DO NOTHING`).
+///
+/// fire_at is stored as NOW() + duration_iso8601::interval. For escalation
+/// timers the approximation is acceptable because the authoritative fire_at
+/// lives in the timers table; this column is used only for reconciliation.
+///
+/// Security: all values are bound via $N positional parameters — no SQL
+/// string interpolation of user-supplied or snapshot-derived data.
+pub fn insertTimerWaitDescriptorInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    instance_id: Uuid,
+    timer_id: Uuid,
+    step_name: []const u8,
+    duration_iso8601: []const u8,
+) TimerStoreError!void {
+    if (step_name.len == 0 or duration_iso8601.len == 0) {
+        return TimerStoreError.InvalidInput;
+    }
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const instance_id_hex = uuidToHex(a, instance_id) catch return TimerStoreError.OutOfMemory;
+    const timer_id_hex = uuidToHex(a, timer_id) catch return TimerStoreError.OutOfMemory;
+
+    conn.exec(
+        \\INSERT INTO instance_waits
+        \\    (instance_id, kind, ref_id, node_id, fire_at)
+        \\VALUES
+        \\    ($1::uuid, 'timer', $2::uuid, $3, NOW() + $4::interval)
+        \\ON CONFLICT (instance_id, ref_id) DO NOTHING
+    ,
+        &.{ instance_id_hex, timer_id_hex, step_name, duration_iso8601 },
+    ) catch return TimerStoreError.QueryFailed;
+}
+
 pub fn cancelPendingEscalationTimersForTaskInTx(
     allocator: std.mem.Allocator,
     conn: *db.Conn,

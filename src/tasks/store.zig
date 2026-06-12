@@ -217,7 +217,12 @@ pub const TaskStore = struct {
         }
 
         if (rows.rows.len == 0) return TaskError.InvalidInput;
-        return rowToTask(allocator, rows.rows[0]) catch TaskError.InvalidInput;
+        const task = rowToTask(allocator, rows.rows[0]) catch return TaskError.InvalidInput;
+
+        // EXP-103: arm instance_waits descriptor in the same transaction.
+        try insertTaskWaitDescriptorInTx(allocator, conn, instance_id, task.task_id, node_id);
+
+        return task;
     }
 
     // -----------------------------------------------------------------------
@@ -346,7 +351,20 @@ pub const TaskStore = struct {
         // Either non-existent (getById already confirmed existence) or
         // concurrently completed/cancelled. Return AlreadyTerminated (HTTP 409).
         if (rows.rows.len == 0) return TaskError.AlreadyTerminated;
-        return rowToTask(allocator, rows.rows[0]) catch TaskError.InvalidInput;
+        const completed_task = rowToTask(allocator, rows.rows[0]) catch return TaskError.InvalidInput;
+
+        // EXP-103: resolve the instance_waits descriptor in the same transaction.
+        // 0 rows updated is silent-correct (pre-migration tasks have no descriptor).
+        conn.exec(
+            \\UPDATE instance_waits
+            \\SET resolved_at = NOW()
+            \\WHERE ref_id = $1::uuid
+            \\  AND resolved_at IS NULL
+        ,
+            &.{task_id_hex},
+        ) catch return TaskError.InvalidInput;
+
+        return completed_task;
     }
 
     // -----------------------------------------------------------------------
@@ -392,7 +410,22 @@ pub const TaskStore = struct {
             r.deinit();
         }
 
-        return @as(u64, rows.rows.len);
+        const count = @as(u64, rows.rows.len);
+
+        // EXP-103: bulk-resolve all human_task instance_waits descriptors for this
+        // instance in the same transaction. resolved_at IS NULL guard restricts to
+        // still-open descriptors only; 0 rows updated is silent-correct.
+        conn.exec(
+            \\UPDATE instance_waits
+            \\SET resolved_at = NOW()
+            \\WHERE instance_id = $1::uuid
+            \\  AND kind = 'human_task'
+            \\  AND resolved_at IS NULL
+        ,
+            &.{inst_id_hex},
+        ) catch return TaskError.InvalidInput;
+
+        return count;
     }
 
     // -----------------------------------------------------------------------
@@ -957,6 +990,45 @@ pub fn freeTask(allocator: std.mem.Allocator, task: Task) void {
     if (task.assignee_ref) |ar| allocator.free(ar);
     if (task.form_schema) |fs| allocator.free(fs);
     if (task.correlation_key) |ck| allocator.free(ck);
+}
+
+// ---------------------------------------------------------------------------
+// insertTaskWaitDescriptorInTx  (EXP-103)
+// ---------------------------------------------------------------------------
+
+/// Insert an instance_waits descriptor for a human_task wait in the current transaction.
+///
+/// Called immediately after the tasks INSERT in TaskStore.createInTx to
+/// atomically record the task wait alongside the task row. The `ON CONFLICT
+/// DO NOTHING` clause makes re-runs idempotent.
+///
+/// Security: all values are bound via $N positional parameters — no SQL
+/// string interpolation of user-supplied or snapshot-derived data.
+pub fn insertTaskWaitDescriptorInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    instance_id: Uuid,
+    task_id: Uuid,
+    node_id: []const u8,
+) TaskError!void {
+    if (node_id.len == 0) return TaskError.InvalidInput;
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const inst_id_hex = uuidToHex(a, instance_id) catch return TaskError.InvalidInput;
+    const task_id_hex_val = uuidToHex(a, task_id) catch return TaskError.InvalidInput;
+
+    conn.exec(
+        \\INSERT INTO instance_waits
+        \\    (instance_id, kind, ref_id, node_id)
+        \\VALUES
+        \\    ($1::uuid, 'human_task', $2::uuid, $3)
+        \\ON CONFLICT (instance_id, ref_id) DO NOTHING
+    ,
+        &.{ inst_id_hex, task_id_hex_val, node_id },
+    ) catch return TaskError.InvalidInput;
 }
 
 /// Parse one DB row into a Task struct.
