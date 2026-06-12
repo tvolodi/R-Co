@@ -298,6 +298,75 @@ fn computeTokenId(
     return std.fmt.allocPrint(allocator, "{x:0>16}", .{h});
 }
 
+// ---------------------------------------------------------------------------
+// ISS-206: Join counter helpers (operate on InstanceState.join_counters ObjectMap)
+// ---------------------------------------------------------------------------
+
+/// Read the join counter for a node_id from state.join_counters.
+/// Returns default {received_count: 0, expected_from_branches: 0} if absent.
+fn getJoinCounter(state: InstanceState, node_id: []const u8) JoinCounter {
+    const val = state.join_counters.get(node_id) orelse return JoinCounter{
+        .received_count = 0,
+        .expected_from_branches = 0,
+    };
+    if (val.* != .object) return JoinCounter{
+        .received_count = 0,
+        .expected_from_branches = 0,
+    };
+    const rc = val.*.object.get("received_count");
+    const eb = val.*.object.get("expected_from_branches");
+    const received: u32 = if (rc != null and rc.?.* == .integer)
+        @intCast(rc.?.*.integer)
+    else
+        0;
+    const expected: u32 = if (eb != null and eb.?.* == .integer)
+        @intCast(eb.?.*.integer)
+    else
+        0;
+    return JoinCounter{
+        .received_count = received,
+        .expected_from_branches = expected,
+    };
+}
+
+/// Increment the received_count for a join node in state.join_counters.
+/// Creates the entry with expected_from_branches if absent.
+/// Returns the updated counter.
+fn incrementJoinCounter(
+    allocator: std.mem.Allocator,
+    state: *InstanceState,
+    node_id: []const u8,
+    additional_arrived: u32,
+    expected_branches: u32,
+) error{OutOfMemory}!JoinCounter {
+    const current = getJoinCounter(state.*, node_id);
+    const new_received = current.received_count + additional_arrived;
+    const new_expected = if (current.expected_from_branches == 0)
+        expected_branches
+    else
+        current.expected_from_branches;
+
+    // Build JSON object: {"received_count": N, "expected_from_branches": M}
+    var obj = std.json.ObjectMap.init(allocator);
+    errdefer obj.deinit(allocator);
+    try obj.put(allocator, "received_count", std.json.Value{ .integer = @as(i64, new_received) });
+    try obj.put(allocator, "expected_from_branches", std.json.Value{ .integer = @as(i64, new_expected) });
+
+    const key_dup = try allocator.dupe(u8, node_id);
+    errdefer allocator.free(key_dup);
+    try state.join_counters.put(allocator, key_dup, std.json.Value{ .object = obj });
+
+    return JoinCounter{
+        .received_count = new_received,
+        .expected_from_branches = new_expected,
+    };
+}
+
+/// Remove a join counter entry after the join fires.
+fn clearJoinCounter(state: *InstanceState, node_id: []const u8) void {
+    _ = state.join_counters.remove(node_id);
+}
+
 /// Return the canonical event-type tag string for a PendingEvent variant.
 /// Used as the event_type_tag field in the idempotency key computation.
 fn pendingEventTag(ev: PendingEvent) []const u8 {
