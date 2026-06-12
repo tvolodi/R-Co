@@ -10,6 +10,11 @@ const DefinitionGraph = bpm.definition.DefinitionGraph;
 const GraphNode = bpm.definition.GraphNode;
 const GraphEdge = bpm.definition.GraphEdge;
 
+// Root-level exports required by TestHarness.init() to set the pool's tenant context.
+// Without these, pool connections use search_path=public and cannot find tenant-schema
+// tables like audit_entries.
+pub const api_tenant_context = bpm.api_tenant_context;
+
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
@@ -22,7 +27,30 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
-    return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
+    // Set the tenant context BEFORE Pool.init so that every pool.acquire()
+    // applies SET search_path TO tenant_default,public (schema isolation).
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
+    var pool = try Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
+    errdefer pool.deinit();
+    // Apply any pending migrations to tenant_default (including 087_iss103_audit_resource_id_text_tenant).
+    // runForSchema is idempotent: it only applies migrations not already tracked in
+    // schema_migrations for (schema_name='tenant_default', version=...).
+    // Use an arena allocator so internal allocations are freed immediately, avoiding
+    // std.testing.allocator leak failures.
+    const build_opts = @import("build_options");
+    {
+        var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena.deinit();
+        bpm.migrations.Migrations.runForSchema(
+            arena.allocator(),
+            &pool,
+            build_opts.migrations_dir,
+            "tenant_default",
+        ) catch |err| {
+            std.debug.print("makePool: provisionTenantSchema failed: {}\n", .{err});
+        };
+    }
+    return pool;
 }
 
 fn parseUuid(s: []const u8) ![16]u8 {
