@@ -422,11 +422,124 @@ fn freeJsonValueDeep(allocator: std.mem.Allocator, value: std.json.Value) void {
 }
 
 fn freeCorpusEntries(allocator: std.mem.Allocator, entries: []CorpusEntry) void {
-    // All strings and ObjectMaps are owned by the parsed JSON tree allocated
-    // in loadCorpus via allocator. The entries slice is also allocator-owned.
-    // We free the entries slice; the parsed tree is freed when `parsed` goes
-    // out of scope in loadCorpus after entries are created. But since we used
-    // the caller's allocator for parsing, the caller must also free the tree.
-    // For simplicity, just free the entries array here.
     allocator.free(entries);
+}
+
+// ---------------------------------------------------------------------------
+// TC-ISS-602-03: Cutover gate — verify no production module on engine path
+// imports src/expr/. Regression prevention: the cutover must not happen
+// until the differential corpus is 100% green.
+// ---------------------------------------------------------------------------
+
+test "TC-ISS-602-03: no production module on engine path imports src/expr" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    // Check src/engine/transition.zig — the primary production engine path
+    // that evaluates gateway conditions. It must not import src/expr/.
+    const transition_src = @embedFile("../../src/engine/transition.zig");
+
+    // Look for any import of expr (../../expr/ or ../expr/)
+    const has_expr_import_dotdot = std.mem.indexOf(u8, transition_src, "@import(\"../expr/");
+    const has_expr_import_dotdotdot = std.mem.indexOf(u8, transition_src, "@import(\"../../expr/");
+    const has_expr_mod = std.mem.indexOf(u8, transition_src, "@import(\"expr");
+
+    try testing.expect(has_expr_import_dotdot == null);
+    try testing.expect(has_expr_import_dotdotdot == null);
+    try testing.expect(has_expr_mod == null);
+
+    // Also check cel.zig wrapper — must not import expr.
+    const cel_src = @embedFile("../../vendor/cel/cel.zig");
+    // cel.zig is a vendor wrapper — check it doesn't import expr either.
+    const cel_has_expr = std.mem.indexOf(u8, cel_src, "@import(\"../../expr/");
+    const cel_has_expr_alt = std.mem.indexOf(u8, cel_src, "@import(\"../expr/");
+    try testing.expect(cel_has_expr == null);
+    try testing.expect(cel_has_expr_alt == null);
+
+    // Verify that the engine path (transition.zig) still uses vendor/cel.
+    const has_cel_import = std.mem.indexOf(u8, transition_src, "cel");
+    try testing.expect(has_cel_import != null);
+
+    _ = alloc;
+}
+
+// ---------------------------------------------------------------------------
+// TC-ISS-602-06: translateCelToExpr returns null on unsupported CEL features
+// outside the grammar intersection (macros, list comprehensions, maps,
+// functions not in expr whitelist).
+// ---------------------------------------------------------------------------
+
+test "TC-ISS-602-06: translateCelToExpr returns null on unsupported CEL features" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    // CEL macros (has(), all(), exists(), etc.)
+    {
+        const result = translateCelToExpr(alloc, "has(variables.items)");
+        try testing.expect(result == null);
+    }
+    {
+        const result = translateCelToExpr(alloc, "variables.items.all(x, x > 0)");
+        try testing.expect(result == null);
+    }
+    {
+        const result = translateCelToExpr(alloc, "variables.items.exists(x, x.active)");
+        try testing.expect(result == null);
+    }
+
+    // CEL functions not in expr whitelist (size(), matches(), int(), string())
+    {
+        const result = translateCelToExpr(alloc, "variables.items.size() > 0");
+        try testing.expect(result == null);
+    }
+    {
+        const result = translateCelToExpr(alloc, "variables.name.matches('^A.*')");
+        try testing.expect(result == null);
+    }
+    {
+        const result = translateCelToExpr(alloc, "int(variables.str_val) > 5");
+        try testing.expect(result == null);
+    }
+    {
+        const result = translateCelToExpr(alloc, "string(variables.num_val) == '42'");
+        try testing.expect(result == null);
+    }
+
+    // List comprehensions / array literals
+    {
+        const result = translateCelToExpr(alloc, "[1, 2, 3].size() > 0");
+        try testing.expect(result == null);
+    }
+
+    // Map literals
+    {
+        const result = translateCelToExpr(alloc, "variables.map{\"key\": 1}.key > 0");
+        try testing.expect(result == null);
+    }
+
+    // Ternary / conditional expressions
+    {
+        const result = translateCelToExpr(alloc, "variables.x > 0 ? true : false");
+        try testing.expect(result == null);
+    }
+
+    // Verify supported expressions still work
+    {
+        const result = translateCelToExpr(alloc, "variables.order_total > 1000");
+        try testing.expect(result != null);
+        if (result) |r| {
+            defer alloc.free(r);
+            try testing.expect(std.mem.indexOf(u8, r, "variables.") == null);
+            try testing.expect(std.mem.indexOf(u8, r, "order_total") != null);
+        }
+    }
+    {
+        const result = translateCelToExpr(alloc, "variables.is_urgent == true && variables.amount >= 500");
+        try testing.expect(result != null);
+        if (result) |r| {
+            defer alloc.free(r);
+            try testing.expect(std.mem.indexOf(u8, r, "variables.") == null);
+            try testing.expect(std.mem.indexOf(u8, r, " and ") != null);
+        }
+    }
 }

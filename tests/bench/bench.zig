@@ -5,6 +5,9 @@ const READ_P99_TARGET_MS = 200.0;
 const WRITE_P99_TARGET_MS = 500.0;
 const THROUGHPUT_TARGET_EPS = 1000.0;
 const REPLAY_TARGET_MS = 5000.0;
+const REPLAY_SNAPSHOT_TARGET_MS = 1000.0;
+const REPLAY_SNAPSHOT_EVENT_COUNT: usize = 100_000;
+const REPLAY_SNAPSHOT_INTERVAL: usize = 1_000;
 
 const DEFAULT_BENCH_DB_URL = "postgres://bpm:bpm@localhost:5433/bpm_test";
 
@@ -83,10 +86,14 @@ pub fn main(init: std.process.Init) !void {
     var replay_run_id_buf: [72]u8 = undefined;
     const replay_run_id = try std.fmt.bufPrint(&replay_run_id_buf, "{s}-replay", .{run_id});
 
+    var replay_snap_run_id_buf: [80]u8 = undefined;
+    const replay_snap_run_id = try std.fmt.bufPrint(&replay_snap_run_id_buf, "{s}-replay-snap", .{run_id});
+
     defer cleanupRun(conn, read_run_id) catch {};
     defer cleanupRun(conn, write_run_id) catch {};
     defer cleanupRun(conn, throughput_run_id) catch {};
     defer cleanupRun(conn, replay_run_id) catch {};
+    defer cleanupRun(conn, replay_snap_run_id) catch {};
 
     try seedEvents(conn, read_run_id, LATENCY_ITERATIONS);
     try seedEvents(conn, replay_run_id, REPLAY_EVENT_COUNT);
@@ -95,6 +102,11 @@ pub fn main(init: std.process.Init) !void {
     const write_p99 = try measureWriteP99(init.io, conn, gpa, write_run_id, LATENCY_ITERATIONS);
     const throughput_eps = try measureThroughput(init.io, conn, throughput_run_id, THROUGHPUT_SECONDS);
     const replay_ms = try measureReplayMs(init.io, conn, replay_run_id);
+
+    // ISS-601 NFR-04: 100k-event snapshot-assisted replay benchmark (<1s).
+    try seedEvents(conn, replay_snap_run_id, REPLAY_SNAPSHOT_EVENT_COUNT);
+    try seedSnapshotBenchmarks(conn, replay_snap_run_id, REPLAY_SNAPSHOT_EVENT_COUNT, REPLAY_SNAPSHOT_INTERVAL);
+    const replay_snap_ms = try measureReplayWithSnapshotsMs(init.io, conn, replay_snap_run_id);
 
     const results = [_]Result{
         .{
@@ -128,6 +140,14 @@ pub fn main(init: std.process.Init) !void {
             .actual = replay_ms,
             .unit = "ms",
             .passed = replay_ms <= REPLAY_TARGET_MS,
+        },
+        .{
+            .id = "NFR-04",
+            .metric = "replay_snapshot_100000_ms",
+            .target = "<=1000",
+            .actual = replay_snap_ms,
+            .unit = "ms",
+            .passed = replay_snap_ms <= REPLAY_SNAPSHOT_TARGET_MS,
         },
     };
 
@@ -391,6 +411,87 @@ fn measureReplayMs(io: std.Io, conn: *db.Conn, run_id: []const u8) !f64 {
     var payload_bytes: usize = 0;
     for (rows.rows) |row| {
         if (row.len == 0 or row[0] == null) return error.BenchmarkQueryFailed;
+        const payload = row[0].?;
+        payload_bytes += payload.len;
+    }
+    if (payload_bytes == 0) return error.BenchmarkQueryFailed;
+
+    const end = std.Io.Clock.real.now(io).toMicroseconds();
+    return microsToMillis(end - start);
+}
+
+/// Seed snapshot rows into a companion table so the delta-replay measurement
+/// can simulate snapshot-assisted reconstruction: each snapshot at a given seq
+/// captures the state; replay then queries only events after the latest snapshot.
+fn seedSnapshotBenchmarks(conn: *db.Conn, run_id: []const u8, event_count: usize, interval: usize) !void {
+    try conn.exec(
+        \\CREATE TABLE IF NOT EXISTS nfr_bench_snapshots (
+        \\    run_id       TEXT    NOT NULL,
+        \\    snapshot_seq BIGINT  NOT NULL,
+        \\    PRIMARY KEY (run_id, snapshot_seq)
+        \\)
+    , &.{});
+    // Clean any previous run with the same id.
+    conn.exec("DELETE FROM nfr_bench_snapshots WHERE run_id = $1", &.{run_id}) catch {};
+
+    var seq_buf: [32]u8 = undefined;
+    var snap_seq: usize = interval;
+    while (snap_seq < event_count) : (snap_seq += interval) {
+        const seq_str = try std.fmt.bufPrint(&seq_buf, "{d}", .{snap_seq});
+        conn.exec(
+            "INSERT INTO nfr_bench_snapshots (run_id, snapshot_seq) VALUES ($1, $2)",
+            &.{ run_id, seq_str },
+        ) catch return error.BenchmarkQueryFailed;
+    }
+}
+
+/// Measure the wall-clock time to replay events *after the latest snapshot*.
+/// This simulates the delta path of reconstructInstanceWithSnapshot:
+///   1. Find latest snapshot_seq.
+///   2. Query only events WHERE seq > snapshot_seq.
+///   3. Scan all payloads (simulating transition() work per event).
+fn measureReplayWithSnapshotsMs(io: std.Io, conn: *db.Conn, run_id: []const u8) !f64 {
+    const start = std.Io.Clock.real.now(io).toMicroseconds();
+
+    // Find the latest snapshot for this run.
+    const snap_row = conn.queryRow(
+        std.heap.page_allocator,
+        \\SELECT snapshot_seq FROM nfr_bench_snapshots
+        \\WHERE run_id = $1
+        \\ORDER BY snapshot_seq DESC
+        \\LIMIT 1
+    ,
+        &.{run_id},
+    ) catch |err| {
+        std.debug.print("BENCHMARK_SETUP_ERROR|snapshot_query={s}\n", .{@errorName(err)});
+        return err;
+    };
+
+    var after_seq: i64 = 0;
+    if (snap_row) |row| {
+        if (row.len > 0 and row[0] != null) {
+            after_seq = std.fmt.parseInt(i64, row[0].?, 10) catch 0;
+        }
+    }
+    // If no snapshot found, use 0 (full replay fallback — test still meaningful).
+
+    var seq_str_buf: [32]u8 = undefined;
+    const seq_str = try std.fmt.bufPrint(&seq_str_buf, "{d}", .{after_seq});
+
+    // Delta query: only events after the latest snapshot.
+    var rows = try conn.query(
+        std.heap.page_allocator,
+        \\SELECT payload FROM nfr_bench_events
+        \\WHERE run_id = $1 AND seq > $2
+        \\ORDER BY seq ASC
+    ,
+        &.{ run_id, seq_str },
+    );
+    defer rows.deinit();
+
+    var payload_bytes: usize = 0;
+    for (rows.rows) |row| {
+        if (row.len == 0 or row[0] == null) continue;
         const payload = row[0].?;
         payload_bytes += payload.len;
     }

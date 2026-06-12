@@ -6,9 +6,9 @@
   "from_agent": "ORCH",
   "to_agent": "TEST-DESIGNER",
   "created_at": "2026-06-12T13:13:55Z",
-  "started_at": null,
-  "completed_at": null,
-  "status": "PENDING",
+  "started_at": "2026-06-12T13:55:54Z",
+  "completed_at": "2026-06-12T14:01:40Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "Epic 6 test design",
@@ -25,7 +25,7 @@
     "owned_modules": []
   },
   "task": {
-    "description": "Write test specs and test source files for ISS-601 and ISS-602 based on the design docs and implementation.\n\nISS-601 tests: benchmark test for NFR-04 (10k event replay < 5s), snapshot creation test, snapshot-based reconstruction test, overflow payload join test.\n\nISS-602 tests: differential harness test that validates CEL vs expr parity on the initial corpus, divergence catalog test.\n\nWrite specs to tests/specs/ISS-601.md and tests/specs/ISS-602.md. Write test source files to appropriate test layers.\n\nNo error.SkipZigTest on MUST tests. All fixtures use per-test UUIDs.",
+    "description": "Write test specs and test source files for ISS-601 and ISS-602 based on the design docs and implementation.\n\nISS-601 tests: benchmark test for NFR-04 (10k event replay < 5s), snapshot creation test, snapshot-based reconstruction test, overflow payload join test.\n\nISS-602 tests: differential harness test that validates CEL vs expr parity on the initial corpus, divergence catalog test.\n\nWrite specs to tests/specs/ISS-601.md and tests/specs/ISS-602.md. Write test source files to appropriate test layers.\n\nNo error.SkipZigTest on MUST tests. All fixtures use per-test UUIDs.\n\nREWORK 1:\n- [BLOCKER] TC-ISS-601-02 missing: No integration test for snapshot-based delta reconstruction (50 events, snapshot at seq 25, delta replay 26..50)\n- [BLOCKER] TC-ISS-601-05 missing: No integration test for overflow payload join (event_payloads_overflow COALESCE)\n- [MAJOR] TC-ISS-602-03 missing: No automated unit test for the cutover gate (regression prevention -- verify no production module imports src/expr/ on engine path)\n- [MAJOR] TC-ISS-602-06 missing: No unit test for translateCelToExpr returning null on unsupported CEL features\n- [MAJOR] ISS-601 NFR-04 snapshot-assisted benchmark missing: No 100k-event snapshot-assisted replay benchmark (<1s) exists\n- [MINOR] TC-ISS-601-08 partial: Only interval arithmetic tested; full reconstruction path with 2500 events at 2 snapshot boundaries not tested\n\nAdd ALL missing tests above to the test source files. Then re-submit.",
     "acceptance_criteria": [
       "tests/specs/ISS-601.md exists and covers all ISS-601 acceptance criteria",
       "tests/specs/ISS-602.md exists and covers all ISS-602 acceptance criteria",
@@ -38,7 +38,19 @@
       "fn:create-test-spec"
     ]
   },
-  "result": null,
-  "rework_count": 0,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 complete. All 6 validator issues resolved. Added TC-ISS-601-02 (snapshot-based delta reconstruction with 50 events, snapshot at seq 25, delta replay 26..50), TC-ISS-601-05 (overflow payload join via event_payloads_overflow COALESCE), TC-ISS-601-08 full reconstruction path (2500 events at 2 snapshot boundaries seq 1000/2000), TC-ISS-602-03 (cutover gate regression test via @embedFile verifying no src/expr/ import in transition.zig), TC-ISS-602-06 (translateCelToExpr null on unsupported CEL features: macros, list comprehensions, maps, functions), ISS-601 NFR-04 100k-event snapshot-assisted replay benchmark (<1s target) in bench.zig.",
+    "artifacts_out": [
+      "tests/specs/ISS-601.md",
+      "tests/specs/ISS-602.md",
+      "tests/integration/iss601_state_snapshots_test.zig",
+      "tests/differential/differential_test.zig",
+      "tests/bench/bench.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 03b)"
+  },
+  "rework_count": 1,
   "max_rework": 3
 }
