@@ -10,6 +10,13 @@
 //
 // Only top-level boolean results are accepted; numeric/string primaries are only valid
 // as operands of comparison operators.
+//
+// CEL REFERENCE-ONLY — do not add new callers (EXP-102)
+// This evaluator is retained as the reference implementation for the
+// differential test harness (tests/differential/differential_test.zig).
+// All production gateway condition evaluation now uses src/expr.
+// Full removal is gated on: (a) differential test archived and (b) all
+// stored definition conditions verified expr-compatible.
 
 const std = @import("std");
 

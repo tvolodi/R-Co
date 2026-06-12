@@ -681,6 +681,7 @@ test "TC-OIDC-01-01: JWT-like token uses configured IdentityProvider verify path
         .authenticated => |ctx| {
             defer alloc.free(ctx.user_id);
             defer alloc.free(ctx.token_id);
+            defer alloc.free(ctx.principal);
 
             try testing.expectEqual(@as(usize, 1), stub_ctx.verify_call_count);
             try testing.expectEqual(auth.Role.PROCESS_OPERATOR, ctx.role);
