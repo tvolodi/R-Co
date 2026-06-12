@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-06-11T00:00:00Z'
+last_updated: '2026-06-12T03:40:38Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -4101,6 +4101,23 @@ requirements:
     release_run: WF02-iss102-20260611
     release_decision: docs/status/release-iss102-20260611.yaml
     last_updated: '2026-06-11T00:00:00Z'
+  ISS-105:
+    status: RELEASED
+    stage: correctness
+    priority: MUST
+    title: Persist new token model ({token_id,node_id} + join_counters)
+    implemented_in:
+    - migrations/083_instances_token_model.sql
+    - migrations/088_iss105_instances_token_model_backfill.sql
+    - src/engine/instance.zig
+    - src/design/iss105_token_model_schema.md
+    test_spec: tests/specs/ISS-105.md
+    test_run: tests/reports/report-20260611-iss105.yaml
+    tested_at: '2026-06-12'
+    released_at: '2026-06-12'
+    release_run: WF02-iss105-token-model-schema-20260611
+    release_decision: docs/status/release-iss105-20260612.yaml
+    last_updated: '2026-06-12T00:00:00Z'
   ISS-106:
     status: RELEASED
     stage: correctness
@@ -4186,4 +4203,37 @@ requirements:
     release_run: WF02-iss203-idempotency-keys-20260611
     release_decision: docs/status/release-iss203-20260611.yaml
     last_updated: '2026-06-11T23:35:01Z'
+  ISS-205:
+    status: RELEASED
+    stage: EPIC-2
+    priority: P0
+    title: Webhook transactional outbox (true at-least-once)
+    implemented_in:
+    - src/webhook/dispatcher.zig
+    - src/webhook/subscription_store.zig
+    - tests/integration/iss205_webhook_outbox_test.zig
+    tested_by:
+    - tests/integration/iss205_webhook_outbox_test.zig
+  ISS-207:
+    status: RELEASED
+    stage: EPIC-2
+    priority: P1
+    title: Convergent EXECUTION_ERROR retry
+    implemented_in:
+    - src/dlq/store.zig
+    - src/api/routes/dlq.zig
+    - tests/integration/iss207_error_retry_test.zig
+    tested_by:
+    - tests/integration/iss207_error_retry_test.zig
+  ISS-208:
+    status: RELEASED
+    stage: EPIC-2
+    priority: P1
+    title: Guard task completion against terminal instances
+    implemented_in:
+    - src/engine/instance.zig
+    - src/api/routes/tasks.zig
+    - tests/integration/iss208_task_guard_test.zig
+    tested_by:
+    - tests/integration/iss208_task_guard_test.zig
 total_requirements: 291

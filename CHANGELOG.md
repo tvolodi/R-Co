@@ -2,6 +2,26 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EPIC-2 / ISS-207+208+205] — 2026-06-12
+
+### ISS-207: Convergent EXECUTION_ERROR retry
+- Bare retry (no changed cause) returns `RetryWithoutChange` (HTTP 409 with hint)
+- `retryWithInput(corrected_payload_json)` re-presents the trigger with corrected payload, marking DLQ item as `retrying`
+- `discard(dlq_id)` cancels the instance and removes the DLQ row
+- Changed-cause check: definition version promotion OR EXECUTION_CORRECTION event after the last error
+
+### ISS-208: Guard task completion against terminal instances
+- `completeTask()` returns HTTP 409 `INSTANCE_NOT_ACTIVE` when the parent instance is CANCELLED or COMPLETED
+- Guard enforced inside the transaction via `SELECT ... FOR UPDATE NOWAIT` — race-safe, not just a pre-check
+- Pre-transaction fast-path catches terminal status before acquiring the lock for early rejection
+
+### ISS-205: Webhook transactional outbox (true at-least-once)
+- `insertWebhookDeliveriesInTx()` inserts webhook_deliveries rows inside the same transaction as the event
+- Rollback eliminates all pending deliveries atomically
+- Worker pool uses `FOR UPDATE SKIP LOCKED` to drain orphaned deliveries at startup
+- Back-off ladder: 5s, 30s, 2m, 10m, 30m (OUTBOX_BACKOFF_MS)
+- After 5 consecutive failures: delivery marked `exhausted`, subscription paused, OBS-06 alert emitted
+
 ## [SPT-01] — 2026-06-05
 ### Added
 - Schema-per-tenant provisioning infrastructure (`migrations/060_schema_per_tenant_bootstrap.sql`)

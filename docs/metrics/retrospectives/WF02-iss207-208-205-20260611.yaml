@@ -1,0 +1,98 @@
+# Retrospective — WF02-iss207-208-205-20260611
+
+run_id: WF02-iss207-208-205-20260611
+timestamp: "2026-06-12T03:40:38Z"
+branch: feature/WF02-iss207-208-205-20260611
+
+requirement_ids:
+  - ISS-207
+  - ISS-208
+  - ISS-205
+
+difficulty: 3  # Standard
+integration_surface: medium
+rationale: >
+  ISS-207: New functions retryConvergent/retryWithInput in dlq/store.zig + dlq routes.
+  ISS-208: Guard inside completeTask (instance.zig) + error mapping in tasks routes.
+  ISS-205: Transactional outbox in webhook/dispatcher.zig, dispatcher pattern overhaul.
+  Touches 3-4 modules (dlq, engine, webhook, routes).
+
+steps:
+  - step: "00-git-setup"
+    agent: BACKEND-DEV
+    status: COMPLETED
+    actual_minutes: ~5
+
+  - step: "01-code-designer"
+    agent: CODE-DESIGNER
+    status: COMPLETED
+    actual_minutes: ~10
+
+  - step: "01b-code-design-validator"
+    agent: CODE-DESIGN-VALIDATOR
+    status: COMPLETED
+    actual_minutes: ~5
+
+  - step: "02a-backend-dev"
+    agent: BACKEND-DEV
+    status: COMPLETED
+    actual_minutes: ~30
+
+  - step: "03-test-designer"
+    agent: TEST-DESIGNER
+    status: COMPLETED
+    actual_minutes: ~15
+
+  - step: "03b-test-design-validator"
+    agent: TEST-DESIGN-VALIDATOR
+    status: COMPLETED
+    actual_minutes: ~20
+
+  - step: "04-test-runner"
+    agent: TEST-RUNNER
+    status: FAIL
+    actual_minutes: ~60
+    issues:
+      - "DB audit trigger type mismatch blocks all integration test INSERTs"
+      - "dead_letter_queue vs dead_letter_items table name inconsistency in tenant_default"
+      - "Same infrastructure issues block ISS-202 and ISS-203 tests on fresh DB"
+
+  - step: "05-release-validator"
+    agent: RELEASE-VALIDATOR
+    status: FAIL
+    actual_minutes: ~5
+    issues:
+      - "Cannot verify acceptance criteria — tests blocked"
+
+  - step: "06-doc-updater"
+    agent: DOC-UPDATER
+    status: COMPLETED
+    actual_minutes: ~10
+
+total_actual_minutes: ~160
+infrastructure_blockers:
+  - description: >
+      Audit trigger trg_bpm_audit_process_definitions (and similar triggers on
+      instance_projections, tasks, webhook tables) calls bpm_audit_compute_chain_hash
+      with a signature expecting audit_entries.resource_id as uuid, but the column
+      was changed to text by GBL-081 migration. The function exists with the old
+      signature in tenant_default schema. INSERTS fail until triggers are disabled.
+  - description: >
+      Migration 072 renamed dead_letter_queue to dead_letter_items in tenant_default
+      but store.zig code still references the old table name. Other tenant schemas
+      created after 072 retain the dead_letter_queue name, making a universal rename
+      unsafe.
+  - fix: >
+      Trigger disable compatibility shim added to helpers.zig applyCompatibilityShims()
+      (ALTER TABLE ... DISABLE TRIGGER ALL). Additionally, a VIEW or table rename is
+      needed in tenant_default to reconcile dead_letter_queue/dead_letter_items.
+  - fix: >
+      Manual repair sequence confirmed working on previous DB state:
+      1. ALTER TABLE tenant_default.dead_letter_items RENAME TO dead_letter_queue
+      2. ALTER TABLE tenant_default.process_definitions DISABLE TRIGGER ALL
+      After both fixes, ISS-207-TC1 and ISS-207-TC3 passed.
+
+lessons:
+  - "Integration tests with raw SQL INSERTs are fragile against evolving table schemas — prefer using the module's own store/API (DefinitionStore, TaskStore) for setup"
+  - "Test harness should apply DB-state reconciliation shims BEFORE the connection transaction starts, not after"
+  - "Migration renames must be accompanied by code updates or VIEW compatibility layers"
