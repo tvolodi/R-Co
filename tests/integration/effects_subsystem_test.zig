@@ -772,14 +772,18 @@ test "TC-EXP-301-09: email adapter returns 200 (stub, no SMTP)" {
     defer testing.allocator.free(effect_event_id);
     const definition_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(definition_id);
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "EMAIL_1:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
     try seedInstanceProjection(&h.conn, instance_id, definition_id);
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
         .instance_id = instance_id,
         .node_id = "EMAIL_1",
-        .token_id = "tok_001",
-        .correlation_key = "EMAIL_1:tok_001",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .email,
         .spec_json = "{\"to\":\"test@example.com\",\"subject\":\"Test\",\"body\":\"Hello\"}",
     };
@@ -818,22 +822,38 @@ test "TC-EXP-301-10: worker query filters out delivered and dead_lettered rows" 
     defer testing.allocator.free(effect_id_2);
     const effect_id_3 = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(effect_id_3);
+    const instance_id_1 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(instance_id_1);
+    const token_id_1 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id_1);
+    const correlation_key_1 = try std.fmt.allocPrint(testing.allocator, "T1:{s}", .{token_id_1});
+    defer testing.allocator.free(correlation_key_1);
+    const token_id_2 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id_2);
+    const correlation_key_2 = try std.fmt.allocPrint(testing.allocator, "T1:{s}", .{token_id_2});
+    defer testing.allocator.free(correlation_key_2);
+    const token_id_3 = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id_3);
+    const correlation_key_3 = try std.fmt.allocPrint(testing.allocator, "T1:{s}", .{token_id_3});
+    defer testing.allocator.free(correlation_key_3);
 
     const spec1 = EffectSpec{
         .effect_event_id = effect_id_1,
-        .instance_id = try generateTestUuid(testing.allocator),
+        .instance_id = instance_id_1,
         .node_id = "T1",
-        .token_id = "tok1",
-        .correlation_key = "T1:tok1",
+        .token_id = token_id_1,
+        .correlation_key = correlation_key_1,
         .kind = .http_call,
         .spec_json = "{}",
     };
     var spec2 = spec1;
     spec2.effect_event_id = effect_id_2;
-    spec2.correlation_key = "T1:tok2";
+    spec2.token_id = token_id_2;
+    spec2.correlation_key = correlation_key_2;
     var spec3 = spec1;
     spec3.effect_event_id = effect_id_3;
-    spec3.correlation_key = "T1:tok3";
+    spec3.token_id = token_id_3;
+    spec3.correlation_key = correlation_key_3;
 
     const id1 = try Queue.insertEffectInTx(testing.allocator, h.conn, spec1);
     defer testing.allocator.free(id1);
@@ -1369,14 +1389,18 @@ test "TC-EXP-303-01: StubEffectsExecutor increments http_call_count" {
 
     try testing.expectEqual(executor.http_call_count, 0);
     try testing.expectEqual(executor.email_count, 0);
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "T1:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     // Simulate an HTTP call
     const spec = EffectSpec{
         .effect_event_id = try generateTestUuid(testing.allocator),
         .instance_id = try generateTestUuid(testing.allocator),
         .node_id = "T1",
-        .token_id = "tok1",
-        .correlation_key = "T1:tok1",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -1398,13 +1422,17 @@ test "TC-EXP-303-02: StubEffectsExecutor increments email_count independently" {
     executor.reset();
 
     executor.http_call_count = 5;
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "E1:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = try generateTestUuid(testing.allocator),
         .instance_id = try generateTestUuid(testing.allocator),
         .node_id = "E1",
-        .token_id = "tok1",
-        .correlation_key = "E1:tok1",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .email,
         .spec_json = "{}",
     };
@@ -1426,13 +1454,17 @@ test "TC-EXP-303-06: reset() clears counters and recorded map" {
 
     executor.http_call_count = 3;
     executor.email_count = 2;
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = try generateTestUuid(testing.allocator),
         .instance_id = try generateTestUuid(testing.allocator),
         .node_id = "svc",
-        .token_id = "tok",
-        .correlation_key = "svc:tok",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -1443,7 +1475,7 @@ test "TC-EXP-303-06: reset() clears counters and recorded map" {
 
     try testing.expectEqual(executor.http_call_count, 0);
     try testing.expectEqual(executor.email_count, 0);
-    try testing.expect(executor.getRecorded("svc:tok") == null);
+    try testing.expect(executor.getRecorded(correlation_key) == null);
 }
 
 // ---------------------------------------------------------------------------
@@ -1459,13 +1491,17 @@ test "TC-EXP-303-08: StubEffectsExecutor returns idempotency_key_sent from effec
     defer testing.allocator.free(effect_event_id);
     const instance_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(instance_id);
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "T1:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
         .instance_id = instance_id,
         .node_id = "T1",
-        .token_id = "tok1",
-        .correlation_key = "T1:tok1",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -1480,32 +1516,40 @@ test "TC-EXP-303-03: StubEffectsExecutor recorded map preserves effect specs" {
     var executor = StubEffectsExecutor.init(testing.allocator);
     defer executor.deinit();
     executor.reset();
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = try generateTestUuid(testing.allocator),
         .instance_id = try generateTestUuid(testing.allocator),
         .node_id = "svc",
-        .token_id = "tok",
-        .correlation_key = "svc:tok",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{\"keep\":true}",
     };
     const result = try executor.execute(testing.allocator, spec, 0);
     defer if (result.response_body) |b| testing.allocator.free(b);
-    try testing.expectEqualStrings("{\"keep\":true}", executor.getRecorded("svc:tok").?);
+    try testing.expectEqualStrings("{\"keep\":true}", executor.getRecorded(correlation_key).?);
 }
 
 test "TC-EXP-303-04: StubEffectsExecutor reset clears counters and recorded state" {
     var executor = StubEffectsExecutor.init(testing.allocator);
     defer executor.deinit();
     executor.reset();
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = try generateTestUuid(testing.allocator),
         .instance_id = try generateTestUuid(testing.allocator),
         .node_id = "svc",
-        .token_id = "tok",
-        .correlation_key = "svc:tok",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -1523,13 +1567,17 @@ test "TC-EXP-303-05: StubEffectsExecutor failure response is configurable" {
     defer executor.deinit();
     executor.reset();
     executor.stub_status_code = 500;
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = try generateTestUuid(testing.allocator),
         .instance_id = try generateTestUuid(testing.allocator),
         .node_id = "svc",
-        .token_id = "tok",
-        .correlation_key = "svc:tok",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -1542,13 +1590,17 @@ test "TC-EXP-303-07: StubEffectsExecutor executes deterministically with no exte
     var executor = StubEffectsExecutor.init(testing.allocator);
     defer executor.deinit();
     executor.reset();
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = try generateTestUuid(testing.allocator),
         .instance_id = try generateTestUuid(testing.allocator),
         .node_id = "svc",
-        .token_id = "tok",
-        .correlation_key = "svc:tok",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -1599,13 +1651,17 @@ test "TC-EXP-303-10: zero-attempt execution returns a deterministic result" {
     var executor = StubEffectsExecutor.init(testing.allocator);
     defer executor.deinit();
     executor.reset();
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = try generateTestUuid(testing.allocator),
         .instance_id = try generateTestUuid(testing.allocator),
         .node_id = "svc",
-        .token_id = "tok",
-        .correlation_key = "svc:tok",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -1618,13 +1674,17 @@ test "TC-EXP-303-11: changing the configured response changes behavior" {
     var executor = StubEffectsExecutor.init(testing.allocator);
     defer executor.deinit();
     executor.reset();
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = try generateTestUuid(testing.allocator),
         .instance_id = try generateTestUuid(testing.allocator),
         .node_id = "svc",
-        .token_id = "tok",
-        .correlation_key = "svc:tok",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -1646,12 +1706,16 @@ test "TC-EXP-303-11: changing the configured response changes behavior" {
 
 test "effects module imports compile successfully" {
     // Verify that the module compiles and key types are accessible
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "svc:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
     const spec = EffectSpec{
         .effect_event_id = "test",
         .instance_id = "inst",
         .node_id = "node",
-        .token_id = "tok",
-        .correlation_key = "key",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
