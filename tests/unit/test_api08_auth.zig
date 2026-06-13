@@ -59,20 +59,35 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 /// provisioned. This helper is idempotent: if the schema is already set up
 /// it returns immediately.
 fn ensureTenantDefaultSchema(allocator: std.mem.Allocator, db_pool: *pool.Pool) !void {
+    const default_tenant_id = "00000000-0000-0000-0000-000000000000";
+
     provisioning_mod.provisionTenantSchema(
         allocator,
         db_pool,
-        "00000000-0000-0000-0000-000000000000",
+        default_tenant_id,
         build_options.migrations_dir,
     ) catch |err| switch (err) {
-        // MigrationFailed can occur when GBL migrations were already applied
-        // to the public schema and the provisioning runner encounters them —
-        // but after the migrations.zig GBL-skip fix this should not happen.
-        // Log and continue; the schema may already have been provisioned.
+        // Some local test DBs can carry a partially-applied tenant_default
+        // migration state from earlier runs. Repair by resetting tenant_default
+        // metadata and re-running canonical provisioning once.
         error.MigrationFailed => {
-            std.debug.print(
-                "ensureTenantDefaultSchema: provisioning returned MigrationFailed — schema may already exist\n",
-                .{},
+            const conn = try db_pool.acquire();
+            defer db_pool.release(conn);
+
+            try conn.exec("DROP SCHEMA IF EXISTS tenant_default CASCADE", &.{});
+            try conn.exec(
+                "DELETE FROM public.tenant_schemas WHERE tenant_id = $1::uuid",
+                &[_][]const u8{default_tenant_id},
+            );
+            try conn.exec(
+                "DELETE FROM public.schema_migrations WHERE schema_name = 'tenant_default'",
+                &.{});
+
+            try provisioning_mod.provisionTenantSchema(
+                allocator,
+                db_pool,
+                default_tenant_id,
+                build_options.migrations_dir,
             );
         },
         else => return err,

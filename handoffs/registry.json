@@ -3,6 +3,20 @@
   "note": "Active registry \u2014 entries before 2026-05-28 archived to handoffs/history/registry-archive-pre-20260528.json",
   "entries": [
     {
+      "handoff_id": "3d80de9c-0ed6-4d54-97e6-ed43e331e0c8",
+      "file": "handoffs/ADHOC-auth-test-fix-20260613/step-01-issue-fixer.json",
+      "run_id": "ADHOC-auth-test-fix-20260613",
+      "workflow_id": "ADHOC",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-06-13T09:00:53Z",
+      "started_at": "2026-06-13T09:02:12Z",
+      "completed_at": "2026-06-13T09:08:47Z",
+      "status": "COMPLETED",
+      "stage": "Pre-existing auth test failures blocking WF-02 epic3 test gate"
+    },
+    {
       "handoff_id": "exp201-202-test-runner-04",
       "file": "handoffs/WF02-exp201-202-20260612/step-04-test-runner.json",
       "run_id": "WF02-exp201-202-20260612",
@@ -164,7 +178,7 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-06-11T17:13:56Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "ISS-202 Correctness Remediation"
     },
     {
@@ -6694,7 +6708,47 @@
       "created_at": "2026-06-13T08:11:09Z",
       "status": "COMPLETED",
       "stage": "EPIC-3 Async Outbound Effects"
+    },
+    {
+      "handoff_id": "66ccd96e-f502-46a1-ad77-0b37e2fc8b9e",
+      "file": "handoffs/WF02-exp3-async-effects-20260613/step-03b-revalidation-test-design-validator.json",
+      "run_id": "WF02-exp3-async-effects-20260613",
+      "workflow_id": "WF-02",
+      "step": "03b-revalidation",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-06-13T08:57:29Z",
+      "started_at": "2026-06-13T08:57:50Z",
+      "completed_at": "2026-06-13T08:59:47Z",
+      "status": "COMPLETED",
+      "stage": "EPIC-3 Async Outbound Effects"
+    },
+    {
+      "handoff_id": "cf19a860-6c8d-49d1-8e47-66232a861864",
+      "file": "handoffs/WF02-exp3-async-effects-20260613/step-03b-test-design-validator.json",
+      "run_id": "WF02-exp3-async-effects-20260613",
+      "workflow_id": "WF-02",
+      "step": "03b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-06-13T08:34:07Z",
+      "status": "COMPLETED",
+      "stage": "EPIC-3 Async Outbound Effects"
+    },
+    {
+      "handoff_id": "bb23f45f-d422-4f6a-b8a2-20a559f8d7cf",
+      "file": "handoffs/WF02-exp3-async-effects-20260613/step-03-rework-test-designer.json",
+      "run_id": "WF02-exp3-async-effects-20260613",
+      "workflow_id": "WF-02",
+      "step": "03-rework",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-06-13T08:39:02Z",
+      "started_at": "2026-06-13T08:39:25Z",
+      "completed_at": "2026-06-13T08:56:35Z",
+      "status": "COMPLETED",
+      "stage": "EPIC-3 Async Outbound Effects"
     }
   ],
-  "last_updated": "2026-06-13T08:11:09Z"
+  "last_updated": "2026-06-13T08:59:47Z"
 }
