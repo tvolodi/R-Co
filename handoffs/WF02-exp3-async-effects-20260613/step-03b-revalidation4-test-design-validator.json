@@ -1,0 +1,51 @@
+{
+  "handoff_id": "8ce3a04e-e884-4dd5-be2a-3d01bce2f9e0",
+  "run_id": "WF02-exp3-async-effects-20260613",
+  "step": "03b-revalidation4",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGN-VALIDATOR",
+  "workflow_id": "WF-02",
+  "created_at": "2026-06-13T10:36:06Z",
+  "started_at": "2026-06-13T10:36:19Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Epic 3 \u2014 Async Outbound Effects",
+    "requirement_ids": [
+      "EXP-301",
+      "EXP-302",
+      "EXP-303"
+    ],
+    "related_handoff_ids": [
+      "c8cf2752-5b13-4f5a-bdfd-4cdcf0e46335"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXP-301.md",
+      "tests/specs/EXP-302.md",
+      "tests/specs/EXP-303.md",
+      "tests/integration/effects_subsystem_test.zig",
+      "handoffs/WF02-exp3-async-effects-20260613/step-03-rework4-test-designer.json"
+    ]
+  },
+  "task": {
+    "description": "FINAL hard-gate re-validation after rework4.\n\nValidate all Step 03b criteria with focus on closure of fixture-isolation blocker.\nRun required command checks and issue scans.\n\nIf PASS: set next_action to route TEST-RUNNER Step 4.\nIf FAIL: provide exact residual blockers for escalation decision.",
+    "acceptance_criteria": [
+      "EXP-301/302/303 MUST tests complete and runnable",
+      "No static fixture literals violating isolation in MUST-scope integration tests",
+      "No test.skip on MUST tests",
+      "zig build test exits 0",
+      "zig build test-integration-tm exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Final validation: all EXP-301/302/303 MUST test cases implemented and runnable; fixture isolation blocker closure verified; no static fixtures in integration tests; zig build test and test-integration-tm both exit 0.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 4)"
+  },
+  "rework_count": 4,
+  "max_rework": 4,
+  "completed_at": "2026-06-13T10:38:26Z"
+}

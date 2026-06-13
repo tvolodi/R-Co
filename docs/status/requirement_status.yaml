@@ -4317,4 +4317,54 @@ requirements:
     test_spec: tests/specs/EXP-103.md
     released_at: '2026-06-12'
     run_id: WF02-exp103-instance-waits-20260612
-total_requirements: 297
+  EXP-301:
+    status: RELEASED
+    stage: Expansion
+    priority: P1
+    title: Effects subsystem with transactional outbox, worker polling, and retry/backoff
+    implemented_in:
+    - src/effects/outbox.zig
+    - src/effects/worker.zig
+    - src/effects/retry.zig
+    - src/api/routes/effects.zig
+    - migrations/094_exp301_effects_outbox.sql
+    test_spec: tests/specs/EXP-301.md
+    test_run: tests/reports/report-2026-06-13-WF02-exp3-async-effects-20260613.yaml
+    tested_at: '2026-06-13'
+    released_at: '2026-06-13'
+    release_run: WF02-exp3-async-effects-20260613
+    release_decision: docs/status/release-exp3-async-effects-20260613.yaml
+    last_updated: '2026-06-13T10:46:47Z'
+  EXP-302:
+    status: RELEASED
+    stage: Expansion
+    priority: P1
+    title: SERVICE_TASK migration to async effects with emit-and-wait semantics
+    implemented_in:
+    - src/engine/service_task.zig
+    - src/effects/service_task_effect.zig
+    - src/engine/transition.zig
+    - migrations/095_exp302_service_task_effects.sql
+    test_spec: tests/specs/EXP-302.md
+    test_run: tests/reports/report-2026-06-13-WF02-exp3-async-effects-20260613.yaml
+    tested_at: '2026-06-13'
+    released_at: '2026-06-13'
+    release_run: WF02-exp3-async-effects-20260613
+    release_decision: docs/status/release-exp3-async-effects-20260613.yaml
+    last_updated: '2026-06-13T10:46:47Z'
+  EXP-303:
+    status: RELEASED
+    stage: Expansion
+    priority: P1
+    title: Stub effects executor for sandbox and deterministic testing
+    implemented_in:
+    - src/effects/stub_executor.zig
+    - src/simulation/effects_interceptor.zig
+    test_spec: tests/specs/EXP-303.md
+    test_run: tests/reports/report-2026-06-13-WF02-exp3-async-effects-20260613.yaml
+    tested_at: '2026-06-13'
+    released_at: '2026-06-13'
+    release_run: WF02-exp3-async-effects-20260613
+    release_decision: docs/status/release-exp3-async-effects-20260613.yaml
+    last_updated: '2026-06-13T10:46:47Z'
+total_requirements: 300
