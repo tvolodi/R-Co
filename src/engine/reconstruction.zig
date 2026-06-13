@@ -45,6 +45,12 @@ pub const ReconstructionError = error{
     OutOfMemory,
 };
 
+pub const RestoreReconciliationResult = struct {
+    restored_instances: u32,
+    rearmed_waits: u32,
+    orphaned_instances: u32,
+};
+
 pub const ReplayDefinitionSource = enum {
     artifact_repository,
     snapshot_fallback,
@@ -220,6 +226,161 @@ pub fn reconstructInstance(
     }
 
     return state;
+}
+
+/// Re-arm unresolved waits from the durable instance_waits table.
+pub fn rearmWaitsFromDescriptorsInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    instance_id: Uuid,
+) ReconstructionError!u32 {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const inst_id_hex = uuidToHex(a, instance_id) catch return ReconstructionError.OutOfMemory;
+
+    const rows = conn.query(
+        a,
+        \\SELECT kind, ref_id::text
+        \\FROM instance_waits
+        \\WHERE instance_id = $1::uuid
+        \\  AND resolved_at IS NULL
+        \\ORDER BY created_at ASC
+    ,
+        &.{inst_id_hex},
+    ) catch return ReconstructionError.QueryFailed;
+    defer rows.deinit();
+
+    var rearmed: u32 = 0;
+    for (rows.rows) |row| {
+        const kind = colGet(row, 0);
+        const ref_id = colGet(row, 1);
+
+        if (std.mem.eql(u8, kind, "timer")) {
+            const live = conn.queryRow(
+                a,
+                \\SELECT 1
+                \\FROM timers
+                \\WHERE id = $1::uuid
+                \\  AND status = 'pending'
+                \\LIMIT 1
+            ,
+                &.{ref_id},
+            ) catch return ReconstructionError.QueryFailed;
+            if (live != null) rearmed += 1;
+            continue;
+        }
+
+        if (std.mem.eql(u8, kind, "human_task")) {
+            const live = conn.queryRow(
+                a,
+                \\SELECT 1
+                \\FROM tasks
+                \\WHERE id = $1::uuid
+                \\  AND status = 'PENDING'
+                \\LIMIT 1
+            ,
+                &.{ref_id},
+            ) catch return ReconstructionError.QueryFailed;
+            if (live != null) rearmed += 1;
+            continue;
+        }
+    }
+
+    return rearmed;
+}
+
+/// Mark an instance as an orphan when its waits cannot all be safely re-armed.
+pub fn markRestoredOrphanInTx(
+    allocator: std.mem.Allocator,
+    conn: *db.Conn,
+    instance_id: Uuid,
+    reason: []const u8,
+) ReconstructionError!void {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const inst_id_hex = uuidToHex(a, instance_id) catch return ReconstructionError.OutOfMemory;
+
+    conn.exec(
+        \\UPDATE instance_projections
+        \\SET status = 'RESTORED_ORPHAN',
+        \\    error_detail = jsonb_build_object('restored_orphan_reason', $2),
+        \\    updated_at = NOW()
+        \\WHERE instance_id = $1::uuid
+    ,
+        &.{ inst_id_hex, reason },
+    ) catch return ReconstructionError.QueryFailed;
+}
+
+/// Reconcile all waits for a restored tenant.
+pub fn restoreTenantWithWaitReconciliation(
+    allocator: std.mem.Allocator,
+    pool: *Pool,
+    tenant_id: Uuid,
+) ReconstructionError!RestoreReconciliationResult {
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    const tenant_hex = uuidToHex(a, tenant_id) catch return ReconstructionError.OutOfMemory;
+
+    const conn = pool.acquire() catch |err| switch (err) {
+        PoolError.ExhaustedPool => return ReconstructionError.PoolExhausted,
+        else => return ReconstructionError.QueryFailed,
+    };
+    defer pool.release(conn);
+
+    const rows = conn.query(
+        a,
+        \\SELECT instance_id::text
+        \\FROM instance_projections
+        \\WHERE tenant_id = $1::uuid
+        \\ORDER BY instance_id ASC
+    ,
+        &.{tenant_hex},
+    ) catch return ReconstructionError.QueryFailed;
+    defer rows.deinit();
+
+    var result = RestoreReconciliationResult{
+        .restored_instances = 0,
+        .rearmed_waits = 0,
+        .orphaned_instances = 0,
+    };
+
+    for (rows.rows) |row| {
+        const instance_hex = colGet(row, 0);
+        const instance_uuid = parseUuid(instance_hex) catch return ReconstructionError.QueryFailed;
+        const total_waits_row = conn.queryRow(
+            a,
+            \\SELECT COUNT(*)::text
+            \\FROM instance_waits
+            \\WHERE instance_id = $1::uuid
+            \\  AND resolved_at IS NULL
+        ,
+            &.{instance_hex},
+        ) catch return ReconstructionError.QueryFailed;
+        const total_waits: u32 = if (total_waits_row) |r| blk: {
+            defer {
+                for (r) |col| if (col) |v| a.free(v);
+                a.free(r);
+            }
+            break :blk std.fmt.parseInt(u32, r[0] orelse "0", 10) catch 0;
+        } else 0;
+
+        const rearmed = rearmWaitsFromDescriptorsInTx(allocator, conn, instance_uuid) catch return ReconstructionError.QueryFailed;
+        result.restored_instances += 1;
+        result.rearmed_waits += rearmed;
+
+        if (rearmed < total_waits) {
+            try markRestoredOrphanInTx(allocator, conn, instance_uuid, "unrearmable instance_waits descriptors");
+            result.orphaned_instances += 1;
+        }
+    }
+
+    return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -956,6 +1117,37 @@ fn uuidToHex(allocator: std.mem.Allocator, uuid: Uuid) error{OutOfMemory}![]u8 {
     );
 }
 
+/// Parse a canonical UUID string into raw bytes.
+fn parseUuid(hex: []const u8) error{InvalidUuid}![16]u8 {
+    if (hex.len != 36) return error.InvalidUuid;
+    var uuid: [16]u8 = undefined;
+    var byte_idx: usize = 0;
+    var i: usize = 0;
+    while (i < hex.len) {
+        if (hex[i] == '-') {
+            i += 1;
+            continue;
+        }
+        if (i + 1 >= hex.len) return error.InvalidUuid;
+        const hi = hexNibble(hex[i]) catch return error.InvalidUuid;
+        const lo = hexNibble(hex[i + 1]) catch return error.InvalidUuid;
+        uuid[byte_idx] = (hi << 4) | lo;
+        byte_idx += 1;
+        i += 2;
+    }
+    if (byte_idx != 16) return error.InvalidUuid;
+    return uuid;
+}
+
+fn hexNibble(c: u8) error{InvalidUuid}!u8 {
+    return switch (c) {
+        '0'...'9' => c - '0',
+        'a'...'f' => c - 'a' + 10,
+        'A'...'F' => c - 'A' + 10,
+        else => error.InvalidUuid,
+    };
+}
+
 /// Return column `i` of `row` as a non-null slice, or "" if null/absent.
 inline fn colGet(row: []?[]u8, i: usize) []const u8 {
     if (i >= row.len) return "";
@@ -969,6 +1161,7 @@ fn instanceStatusToString(status: InstanceStatus) []const u8 {
         .COMPLETED => "COMPLETED",
         .CANCELLED => "CANCELLED",
         .ERROR => "ERROR",
+        .RESTORED_ORPHAN => "RESTORED_ORPHAN",
     };
 }
 

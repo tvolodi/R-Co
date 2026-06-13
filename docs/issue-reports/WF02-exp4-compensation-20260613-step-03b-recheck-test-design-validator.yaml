@@ -1,0 +1,58 @@
+report_id: WF02-exp4-compensation-20260613-step-03b-recheck-test-design-validator
+agent_id: TEST-DESIGN-VALIDATOR
+run_id: WF02-exp4-compensation-20260613
+step: "03b-recheck"
+created_at: 2026-06-13T15:33:07Z
+summary: >-
+  Recheck PASS for EXP-401 and EXP-402 test design hard gate. The prior fixture-isolation
+  blocker (static fixture UUID reuse in EXP-402 tests) is resolved: runtime fixtures now
+  use per-test UUID generation, cleanup is present, and integration execution against real
+  PostgreSQL passed.
+commands_run:
+  - "Select-String -Path docs/BPM_Platform_Functional_Requirements.md -Pattern 'EXP-401|EXP-402'"
+  - "Select-String -Path tests/specs/EXP-401.md,tests/specs/EXP-402.md,tests/integration/exp401_exp402_comp_restore_test.zig -Pattern 'error\\.SkipZigTest|deferred|future|phase 2'"
+  - "Select-String -Path tests/integration/exp401_exp402_comp_restore_test.zig -Pattern '^test\\s+\"'"
+  - "Select-String -Path tests/integration/exp401_exp402_comp_restore_test.zig -Pattern 'makeFixtureUuidString|creator_uuid_str|DEFAULT_TENANT_ID|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'"
+  - "Select-String -Path tests/integration/exp401_exp402_comp_restore_test.zig -Pattern 'BPM_TEST_DB_URL|EnvironmentVariableMissing|MissingTestDatabaseUrl|defer\\s*\\{|DELETE FROM|tenant_context\\.set|Pool\\.init'"
+  - "Select-String -Path tests/integration/exp401_exp402_comp_restore_test.zig -Pattern '\\$1::uuid|\\$2::uuid|\\$3::uuid|VALUES\\s*\\(\\$1|WHERE\\s+.*\\$1|DELETE FROM .*\\$1'"
+  - "run_task: shell: zig-test-integration-cmd2"
+evidence:
+  requirement_mapping:
+    - requirement_id: EXP-401
+      spec_file: tests/specs/EXP-401.md
+      integration_tests:
+        - "TC-EXP-401-01"
+        - "TC-EXP-401-02"
+        - "TC-EXP-401-03"
+        - "TC-EXP-401-04"
+        - "TC-EXP-401-05"
+    - requirement_id: EXP-402
+      spec_file: tests/specs/EXP-402.md
+      integration_tests:
+        - "TC-EXP-402-01"
+        - "TC-EXP-402-02"
+  fixture_isolation:
+    status: PASS
+    details:
+      - "Per-test UUID generator function present: tests/integration/exp401_exp402_comp_restore_test.zig:88"
+      - "EXP-402-01 uses generated fixture IDs for instance/definition/token/task/timer: lines 342, 344, 346, 348, 350"
+      - "EXP-402-02 uses generated fixture IDs for instance/definition/missing_timer_ref: lines 439, 441, 443"
+      - "No static e402* fixture UUID literals remain in file"
+      - "Cleanup is explicit with pre-delete and defer delete blocks for created rows"
+  hard_gate_checks:
+    must_coverage_implemented: PASS
+    skip_or_deferred_cases: PASS
+    fixture_isolation_uuid_uniqueness: PASS
+    fixture_cleanup_on_failure_path: PASS
+    real_postgresql_integration: PASS
+    env_var_absence_fails_clearly: PASS
+    sql_parameterization_only: PASS
+  runtime_validation:
+    task: shell: zig-test-integration-cmd2
+    result: PASS
+    output_excerpt:
+      - "Cleaning test database..."
+      - "Test database cleaned."
+      - "INTEGRATION_EXIT_CODE=0"
+issues_found: []
+next_action: "Route to TEST-RUNNER (Step 4)"

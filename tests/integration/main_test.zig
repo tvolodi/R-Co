@@ -154,6 +154,8 @@ const iss201_transition_result_integration = @import("iss201_transition_result_t
 const iss202_merge_atomicity_integration = @import("iss202_merge_atomicity_test.zig");
 // EPIC-3 (ISS-301, ISS-302, ISS-303) — Scheduler concurrency and DLQ routing
 const sch303_timer_dlq_integration = @import("sch303_timer_dlq_test.zig");
+// EPIC-4 (EXP-401, EXP-402) — compensation metadata validation and restore reconciliation
+const exp401_exp402_comp_restore_integration = @import("exp401_exp402_comp_restore_test.zig");
 
 comptime {
     _ = std;
@@ -226,6 +228,7 @@ comptime {
     _ = iss201_transition_result_integration;
     _ = iss202_merge_atomicity_integration;
     _ = sch303_timer_dlq_integration;
+    _ = exp401_exp402_comp_restore_integration;
 }
 
 test "integration placeholder" {

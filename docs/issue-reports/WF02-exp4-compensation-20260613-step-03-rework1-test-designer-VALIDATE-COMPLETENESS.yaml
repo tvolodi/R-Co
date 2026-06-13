@@ -1,0 +1,44 @@
+run_id: WF02-exp4-compensation-20260613
+step: "03-rework1"
+agent_id: TEST-DESIGNER
+function: fn:validate-completeness
+timestamp_utc: 2026-06-13T15:29:28Z
+all_met: true
+criteria:
+  - criterion: No fixed UUID fixtures remain in EXP-402 tests
+    type: functionality
+    status: MET
+    evidence:
+      - tests/integration/exp401_exp402_comp_restore_test.zig:342
+      - tests/integration/exp401_exp402_comp_restore_test.zig:344
+      - tests/integration/exp401_exp402_comp_restore_test.zig:346
+      - tests/integration/exp401_exp402_comp_restore_test.zig:348
+      - tests/integration/exp401_exp402_comp_restore_test.zig:350
+      - tests/integration/exp401_exp402_comp_restore_test.zig:439
+      - tests/integration/exp401_exp402_comp_restore_test.zig:441
+      - tests/integration/exp401_exp402_comp_restore_test.zig:443
+      - grep_search(e40201|e40202|000000000099) => no matches
+  - criterion: Per-test UUID isolation is used
+    type: functionality
+    status: MET
+    evidence:
+      - tests/integration/exp401_exp402_comp_restore_test.zig:88
+      - tests/integration/exp401_exp402_comp_restore_test.zig:342
+      - tests/integration/exp401_exp402_comp_restore_test.zig:439
+  - criterion: Coverage remains intact
+    type: functionality
+    status: MET
+    evidence:
+      - tests/specs/EXP-401.md
+      - tests/specs/EXP-402.md
+      - tests/integration/exp401_exp402_comp_restore_test.zig:329
+      - tests/integration/exp401_exp402_comp_restore_test.zig:426
+  - criterion: Real PostgreSQL integration preserved
+    type: functionality
+    status: MET
+    evidence:
+      - tests/integration/exp401_exp402_comp_restore_test.zig:33
+      - tests/integration/exp401_exp402_comp_restore_test.zig:44
+      - tests/integration/exp401_exp402_comp_restore_test.zig:337
+      - task:shell: zig-test-integration-cmd2 => INTEGRATION_EXIT_CODE=0
+unmet: []

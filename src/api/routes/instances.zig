@@ -337,6 +337,7 @@ pub fn handleReconstruct(
         .COMPLETED => "COMPLETED",
         .CANCELLED => "CANCELLED",
         .ERROR => "ERROR",
+        .RESTORED_ORPHAN => "RESTORED_ORPHAN",
     };
 
     // tokens JSON array
@@ -433,6 +434,7 @@ pub fn handleGetById(
         .COMPLETED => "COMPLETED",
         .CANCELLED => "CANCELLED",
         .ERROR => "ERROR",
+        .RESTORED_ORPHAN => "RESTORED_ORPHAN",
     };
 
     // correlation_key: JSON string or null
@@ -710,6 +712,7 @@ pub fn handleList(
             .COMPLETED => "COMPLETED",
             .CANCELLED => "CANCELLED",
             .ERROR => "ERROR",
+            .RESTORED_ORPHAN => "RESTORED_ORPHAN",
         };
         const entry = std.fmt.allocPrint(
             sa,

@@ -343,5 +343,6 @@ fn instanceStatusToString(status: InstanceStatus) []const u8 {
         .COMPLETED => "COMPLETED",
         .CANCELLED => "CANCELLED",
         .ERROR => "ERROR",
+        .RESTORED_ORPHAN => "RESTORED_ORPHAN",
     };
 }

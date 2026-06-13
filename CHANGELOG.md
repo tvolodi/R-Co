@@ -2,6 +2,21 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EXP-401/402 (Epic 4) Compensation and Restore Reconciliation] — 2026-06-13
+
+### Added
+- **EXP-401 (Epic 4)**: Compensation handler and error-boundary metadata support in definition validation and engine touchpoints. Graph validation now enforces handler scope reachability, reversible activity gating, reverse-order compensation requirement, and error-boundary event completeness for declarative compensation chains.
+- **EXP-402 (Epic 4)**: Restore reconciliation from durable `instance_waits` descriptors (introduced by EXP-103), including `RESTORED_ORPHAN` marking when unresolved descriptors cannot be safely re-armed. Reconciliation now surfaces operator-visible orphan reasons to avoid silent restore hangs.
+
+### Test Coverage
+- **EXP-401**: Integration validation of compensation/error-boundary metadata acceptance and violation paths using real PostgreSQL (`tests/specs/EXP-401.md`, `tests/integration/exp401_exp402_comp_restore_test.zig`).
+- **EXP-402**: Integration validation of wait re-arm reconciliation and unrearmable-wait orphan handling (`tests/specs/EXP-402.md`, `tests/integration/exp401_exp402_comp_restore_test.zig`).
+- Consolidated execution evidence: `tests/reports/report-2026-06-13-WF02-exp4-compensation-20260613.yaml`.
+
+### NFR Validation
+- Release decision: `docs/status/release-epic4-compensation-2026-06-13.yaml`.
+- Benchmark/NFR recheck passed after benchmark-path unblock: p99 read/write, append throughput, and replay targets verified in release evidence.
+
 ## [EXP-301/302/303 (Epic 3) Async Outbound Effects] — 2026-06-13
 
 ### Added

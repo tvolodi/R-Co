@@ -1,0 +1,89 @@
+---
+run_id: WF02-exp4-compensation-20260613
+workflow_id: WF-02
+stage: "Epic 4 — Compensation / Error-Boundary Constructs"
+requirement_ids:
+  - EXP-401
+  - EXP-402
+retrospective_date: 2026-06-13
+estimation_version: "1.1"
+
+# Estimation parameters
+difficulty: 4
+difficulty_rationale: "This is a cross-module compensation and restore feature with engine, validator, and admin touchpoints."
+integration_surface: "high"
+integration_surface_rationale: "It touches engine flow control, definition/graph validation, restoration logic, and transactional event/effects behavior."
+
+# Estimation vs actual
+steps:
+  code-designer:
+    estimated_minutes: 20
+    actual_minutes: 1.13
+    variance_percent: -94.35
+    variance_assessment: "Completed much faster than estimated with a focused design artefact and no rework."
+
+  code-design-validator:
+    estimated_minutes: 23
+    actual_minutes: 0.62
+    variance_percent: -97.32
+    variance_assessment: "Validation was very quick; artefact quality enabled first-pass approval."
+
+  backend-dev:
+    estimated_minutes: 9
+    actual_minutes: 10.88
+    variance_percent: 20.83
+    variance_assessment: "Slight overrun due to cross-module implementation touchpoints; still close to estimate."
+
+  test-designer:
+    estimated_minutes: 8
+    actual_minutes: 9.87
+    variance_percent: 23.33
+    variance_assessment: "Slightly over estimate because a rework cycle was needed to correct fixture isolation."
+
+  test-design-validator:
+    estimated_minutes: 38
+    actual_minutes: 3.30
+    variance_percent: -91.32
+    variance_assessment: "Initial validation plus recheck remained far below estimate despite one failed pass."
+
+  test-runner:
+    estimated_minutes: 6
+    actual_minutes: 8.40
+    variance_percent: 40.00
+    variance_assessment: "Over estimate due to full prechecks and integration command set execution."
+
+  release-validator:
+    estimated_minutes: 2
+    actual_minutes: 10.55
+    variance_percent: 427.50
+    variance_assessment: "Significant overrun due to failed first validation and benchmark unblock/recheck cycle."
+
+  doc-updater:
+    estimated_minutes: 2
+    actual_minutes: 1.23
+    variance_percent: -38.33
+    variance_assessment: "Documentation updates and registry archival completed within expected range."
+
+# Summary
+total_estimated_minutes: 108
+total_actual_minutes: 45.98
+total_variance_percent: -57.42
+
+# Key findings
+findings: |
+  1. The largest driver of delay was release validation, not implementation. Step 05 needed an ADHOC benchmark unblock and recheck, producing a +427.50% variance.
+
+  2. Design and validation estimates are materially inflated for this run profile. Code-designer and code-design-validator combined took 1.75 minutes versus 43 estimated.
+
+  3. Test execution and backend implementation were close to expected order of magnitude, but both were stretched by realistic integration and rework behavior.
+
+  4. Even with one failed test-design-validator pass and one failed release-validation pass, total actual time remained below estimate because early design phases completed quickly.
+
+# Recommendations for future estimation
+recommendations:
+  - "Keep high-surface surcharge for release-validator when benchmark/environment fragility is present."
+  - "Recalibrate code-designer and code-design-validator base estimates for similar Type-E targeted design runs."
+  - "Model recheck probability in test-design-validator and release-validator steps to better predict tail variance."
+
+created_at: 2026-06-13T18:57:23Z
+completed_at: 2026-06-13T18:57:23Z

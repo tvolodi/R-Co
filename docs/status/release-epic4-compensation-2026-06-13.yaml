@@ -1,0 +1,20 @@
+stage: "Epic 4 — Compensation / Error-Boundary Constructs"
+date: "2026-06-13"
+decision: APPROVED
+nfr_results:
+  benchmark_command: "powershell -NoProfile -ExecutionPolicy Bypass -File .vscode/run-zig-bench.ps1 -Precheck"
+  benchmark_status: "completed"
+  benchmark_evidence:
+    - "BENCHMARK_SETUP_INFO|db_url_source=primary_env"
+    - "NFR_RESULT|NFR-01|p99_read_ms|target=<=200|actual=0.960|unit=ms|passed=true"
+    - "NFR_RESULT|NFR-01|p99_write_ms|target=<=500|actual=3.222|unit=ms|passed=true"
+    - "NFR_RESULT|NFR-02|append_throughput_eps|target=>=1000|actual=65663.518|unit=events_per_second|passed=true"
+    - "NFR_RESULT|NFR-04|replay_10000_ms|target=<=5000|actual=48.113|unit=ms|passed=true"
+    - "NFR benchmark suite PASSED (exit code 0)"
+  nfr_01: "verified"
+  nfr_02: "verified"
+  nfr_04: "verified"
+blocking_issues: []
+approved_requirements:
+  - EXP-401
+  - EXP-402

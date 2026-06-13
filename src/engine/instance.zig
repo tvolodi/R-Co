@@ -118,6 +118,7 @@ pub const InstanceStatus = enum {
     COMPLETED,
     CANCELLED,
     ERROR,
+    RESTORED_ORPHAN,
 };
 
 // ---------------------------------------------------------------------------
@@ -1398,6 +1399,7 @@ pub const InstanceStore = struct {
                 .COMPLETED => transition_mod.InstanceStatus.COMPLETED,
                 .CANCELLED => transition_mod.InstanceStatus.CANCELLED,
                 .ERROR => transition_mod.InstanceStatus.ERROR,
+                .RESTORED_ORPHAN => transition_mod.InstanceStatus.RESTORED_ORPHAN,
             },
             .tokens = tokens.items,
             .variables = vars_parsed.value.object,
@@ -4385,6 +4387,7 @@ fn parseInstanceStatus(s: []const u8) error{InvalidStatus}!InstanceStatus {
     if (std.mem.eql(u8, s, "COMPLETED")) return .COMPLETED;
     if (std.mem.eql(u8, s, "CANCELLED")) return .CANCELLED;
     if (std.mem.eql(u8, s, "ERROR")) return .ERROR;
+    if (std.mem.eql(u8, s, "RESTORED_ORPHAN")) return .RESTORED_ORPHAN;
     return error.InvalidStatus;
 }
 
@@ -4449,6 +4452,7 @@ fn instanceStatusToString(status: transition_mod.InstanceStatus) []const u8 {
         .COMPLETED => "COMPLETED",
         .CANCELLED => "CANCELLED",
         .ERROR => "ERROR",
+        .RESTORED_ORPHAN => "RESTORED_ORPHAN",
     };
 }
 
