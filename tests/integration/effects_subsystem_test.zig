@@ -302,13 +302,17 @@ test "TC-EXP-301-02: sweepOnce selects pending effects with past next_attempt_at
     defer testing.allocator.free(effect_event_id);
     const instance_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(instance_id);
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "TASK_1:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
         .instance_id = instance_id,
         .node_id = "TASK_1",
-        .token_id = "tok_001",
-        .correlation_key = "TASK_1:tok_001",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -349,13 +353,17 @@ test "TC-EXP-301-03: markDelivered sets status=delivered and records http_status
     defer testing.allocator.free(effect_event_id);
     const instance_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(instance_id);
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "TASK_1:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
         .instance_id = instance_id,
         .node_id = "TASK_1",
-        .token_id = "tok_001",
-        .correlation_key = "TASK_1:tok_001",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -391,13 +399,17 @@ test "TC-EXP-301-04: markRetry increments attempt_count and updates next_attempt
     defer testing.allocator.free(effect_event_id);
     const instance_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(instance_id);
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "TASK_1:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
         .instance_id = instance_id,
         .node_id = "TASK_1",
-        .token_id = "tok_001",
-        .correlation_key = "TASK_1:tok_001",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -573,13 +585,17 @@ test "TC-EXP-301-06: max_attempts reached triggers dead_lettering" {
     defer testing.allocator.free(effect_event_id);
     const instance_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(instance_id);
+    const token_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(testing.allocator, "TASK_1:{s}", .{token_id});
+    defer testing.allocator.free(correlation_key);
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
         .instance_id = instance_id,
         .node_id = "TASK_1",
-        .token_id = "tok_001",
-        .correlation_key = "TASK_1:tok_001",
+        .token_id = token_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{}",
     };
@@ -622,14 +638,16 @@ test "TC-EXP-301-07: HTTP adapter injects Idempotency-Key header from effect_eve
     defer allocator.free(effect_event_id);
     const definition_id = try generateTestUuid(allocator);
     defer allocator.free(definition_id);
+    const correlation_key = try std.fmt.allocPrint(allocator, "svc:{s}", .{effect_event_id});
+    defer allocator.free(correlation_key);
     try seedInstanceProjection(&h.conn, instance_id, definition_id);
 
     const delivery_id = try Queue.insertEffectInTx(allocator, h.conn, .{
         .effect_event_id = effect_event_id,
         .instance_id = instance_id,
         .node_id = "svc",
-        .token_id = "tok",
-        .correlation_key = "svc:tok",
+        .token_id = effect_event_id,
+        .correlation_key = correlation_key,
         .kind = .http_call,
         .spec_json = "{\"url\":\"http://127.0.0.1:18192/hook\",\"method\":\"POST\"}",
     });
@@ -752,7 +770,9 @@ test "TC-EXP-301-09: email adapter returns 200 (stub, no SMTP)" {
     defer testing.allocator.free(instance_id);
     const effect_event_id = try generateTestUuid(testing.allocator);
     defer testing.allocator.free(effect_event_id);
-    try seedInstanceProjection(&h.conn, instance_id, try generateTestUuid(testing.allocator));
+    const definition_id = try generateTestUuid(testing.allocator);
+    defer testing.allocator.free(definition_id);
+    try seedInstanceProjection(&h.conn, instance_id, definition_id);
 
     const spec = EffectSpec{
         .effect_event_id = effect_event_id,
@@ -839,6 +859,130 @@ test "TC-EXP-301-10: worker query filters out delivered and dead_lettered rows" 
 
     try testing.expect(rows.rows.len >= 1);
     // Should contain id2 (the only pending one we just created)
+}
+
+// ---------------------------------------------------------------------------
+// TC-EXP-301-11: EFFECT_COMPLETED Re-entry Persists Event and Resolves Wait
+// ---------------------------------------------------------------------------
+
+test "TC-EXP-301-11: reenterEffectResult success inserts EFFECT_COMPLETED and resolves wait" {
+    const allocator = testing.allocator;
+    var h = try TestHarness.init(allocator);
+    defer h.deinit();
+
+    const instance_id = try generateTestUuid(allocator);
+    defer allocator.free(instance_id);
+    const definition_id = try generateTestUuid(allocator);
+    defer allocator.free(definition_id);
+    const token_id = try generateTestUuid(allocator);
+    defer allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(allocator, "svc:{s}", .{token_id});
+    defer allocator.free(correlation_key);
+
+    try seedInstanceProjection(&h.conn, instance_id, definition_id);
+    const wait_id = try seedInstanceWait(&h.conn, instance_id, "svc", correlation_key);
+    defer allocator.free(wait_id);
+
+    try Worker.reenterEffectResult(allocator, .{
+        .pool = &h.pool,
+        .correlation_key = correlation_key,
+        .succeeded = true,
+        .response_body = "{\"result\":\"ok\"}",
+        .http_status = 200,
+    });
+
+    const event_rows = try h.conn.query(
+        allocator,
+        \\SELECT event_type, payload::text
+        \\FROM events
+        \\WHERE instance_id = $1::uuid
+        \\  AND event_type = 'EFFECT_COMPLETED'
+        \\ORDER BY sequence_no DESC
+        \\LIMIT 1
+    ,
+        &.{instance_id},
+    );
+    defer {
+        var r = event_rows;
+        r.deinit();
+    }
+    try testing.expectEqual(@as(usize, 1), event_rows.rows.len);
+    try testing.expectEqualStrings("EFFECT_COMPLETED", event_rows.rows[0][0].?);
+    try testing.expect(std.mem.containsAtLeast(u8, event_rows.rows[0][1].?, 1, correlation_key));
+
+    const wait_rows = try h.conn.query(
+        allocator,
+        "SELECT resolved_at IS NOT NULL FROM instance_waits WHERE id = $1::uuid",
+        &.{wait_id},
+    );
+    defer {
+        var r = wait_rows;
+        r.deinit();
+    }
+    try testing.expectEqual(@as(usize, 1), wait_rows.rows.len);
+    try testing.expectEqualStrings("t", wait_rows.rows[0][0].?);
+}
+
+// ---------------------------------------------------------------------------
+// TC-EXP-301-12: EFFECT_FAILED Re-entry Persists Event and Resolves Wait
+// ---------------------------------------------------------------------------
+
+test "TC-EXP-301-12: reenterEffectResult failure inserts EFFECT_FAILED and resolves wait" {
+    const allocator = testing.allocator;
+    var h = try TestHarness.init(allocator);
+    defer h.deinit();
+
+    const instance_id = try generateTestUuid(allocator);
+    defer allocator.free(instance_id);
+    const definition_id = try generateTestUuid(allocator);
+    defer allocator.free(definition_id);
+    const token_id = try generateTestUuid(allocator);
+    defer allocator.free(token_id);
+    const correlation_key = try std.fmt.allocPrint(allocator, "svc:{s}", .{token_id});
+    defer allocator.free(correlation_key);
+
+    try seedInstanceProjection(&h.conn, instance_id, definition_id);
+    const wait_id = try seedInstanceWait(&h.conn, instance_id, "svc", correlation_key);
+    defer allocator.free(wait_id);
+
+    try Worker.reenterEffectResult(allocator, .{
+        .pool = &h.pool,
+        .correlation_key = correlation_key,
+        .succeeded = false,
+        .response_body = null,
+        .http_status = 500,
+    });
+
+    const event_rows = try h.conn.query(
+        allocator,
+        \\SELECT event_type, payload::text
+        \\FROM events
+        \\WHERE instance_id = $1::uuid
+        \\  AND event_type = 'EFFECT_FAILED'
+        \\ORDER BY sequence_no DESC
+        \\LIMIT 1
+    ,
+        &.{instance_id},
+    );
+    defer {
+        var r = event_rows;
+        r.deinit();
+    }
+    try testing.expectEqual(@as(usize, 1), event_rows.rows.len);
+    try testing.expectEqualStrings("EFFECT_FAILED", event_rows.rows[0][0].?);
+    try testing.expect(std.mem.containsAtLeast(u8, event_rows.rows[0][1].?, 1, correlation_key));
+
+    const wait_rows = try h.conn.query(
+        allocator,
+        "SELECT resolved_at IS NOT NULL FROM instance_waits WHERE id = $1::uuid",
+        &.{wait_id},
+    );
+    defer {
+        var r = wait_rows;
+        r.deinit();
+    }
+    try testing.expectEqual(@as(usize, 1), wait_rows.rows.len);
+    try testing.expectEqualStrings("t", wait_rows.rows[0][0].?);
 }
 
 // ---------------------------------------------------------------------------

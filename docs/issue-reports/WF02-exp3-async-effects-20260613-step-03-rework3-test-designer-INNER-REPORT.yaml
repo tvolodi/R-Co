@@ -1,0 +1,28 @@
+report_id: WF02-exp3-async-effects-20260613-step-03-rework3-test-designer
+agent_id: TEST-DESIGNER
+run_id: WF02-exp3-async-effects-20260613
+step: "03-rework3"
+created_at: "2026-06-13T10:28:23Z"
+status: PASS
+summary: >-
+  Completed hard-gate rework #3 for EXP-301 by adding missing integration tests
+  TC-EXP-301-11 and TC-EXP-301-12 and strengthening fixture isolation in EXP-301
+  tests to use per-test unique token/correlation values.
+files_changed:
+  - tests/integration/effects_subsystem_test.zig
+  - handoffs/WF02-exp3-async-effects-20260613/step-03-rework3-test-designer.json
+  - handoffs/registry.json
+validation:
+  commands:
+    - zig build test
+    - zig build test-integration-tm
+  outcomes:
+    - "zig build test => exit 0"
+    - "zig build test-integration-tm => exit 0"
+key_assertions:
+  - "EXP-301 case count now matches spec: 12 implemented tests (TC-EXP-301-01..12)"
+  - "TC-EXP-301-11 verifies Worker.reenterEffectResult success path inserts EFFECT_COMPLETED and resolves instance_waits"
+  - "TC-EXP-301-12 verifies Worker.reenterEffectResult failure path inserts EFFECT_FAILED and resolves instance_waits"
+  - "Static TASK_1:tok_001 fixture values in EXP-301 tests replaced with per-test generated UUID-based values"
+issues: []
+next_action: "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"

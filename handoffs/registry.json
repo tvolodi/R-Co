@@ -6762,7 +6762,35 @@
       "completed_at": "2026-06-13T10:15:52Z",
       "status": "COMPLETED",
       "stage": "EPIC-3 Async Outbound Effects"
+    },
+    {
+      "handoff_id": "f3956342-696c-4cd3-9724-be592698556c",
+      "file": "handoffs/WF02-exp3-async-effects-20260613/step-03b-revalidation2-test-design-validator.json",
+      "run_id": "WF02-exp3-async-effects-20260613",
+      "workflow_id": "WF-02",
+      "step": "03b-revalidation2",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-06-13T10:17:19Z",
+      "started_at": "2026-06-13T10:18:11Z",
+      "status": "COMPLETED",
+      "stage": "Epic 3 - Async Outbound Effects",
+      "completed_at": "2026-06-13T10:23:42Z"
+    },
+    {
+      "handoff_id": "e3b277cc-be53-47c5-9f74-ec7c5bf66bc8",
+      "file": "handoffs/WF02-exp3-async-effects-20260613/step-03-rework3-test-designer.json",
+      "run_id": "WF02-exp3-async-effects-20260613",
+      "workflow_id": "WF-02",
+      "step": "03-rework3",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-06-13T10:24:30Z",
+      "started_at": "2026-06-13T10:24:44Z",
+      "status": "COMPLETED",
+      "stage": "Epic 3 - Async Outbound Effects",
+      "completed_at": "2026-06-13T10:28:23Z"
     }
   ],
-  "last_updated": "2026-06-13T10:15:52Z"
+  "last_updated": "2026-06-13T10:28:23Z"
 }
