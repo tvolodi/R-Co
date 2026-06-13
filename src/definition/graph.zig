@@ -111,6 +111,18 @@ pub const GraphError = error{
     OutOfMemory,
 };
 
+const CompensationNodeConfig = struct {
+    scope_id: []const u8,
+    handler_node_id: []const u8,
+    reverse_order: bool,
+};
+
+const ErrorBoundaryConfig = struct {
+    attached_to_node_id: []const u8,
+    on_error_event: []const u8,
+    on_cancel_event: []const u8,
+};
+
 /// A single structural violation found during graph validation (PD-02).
 pub const Violation = struct {
     /// Short machine-readable code — one of the CHK-XX codes in the design.
@@ -434,6 +446,96 @@ fn nodeIndex(nodes: []const GraphNode, id: []const u8) ?usize {
         if (std.mem.eql(u8, n.id, id)) return i;
     }
     return null;
+}
+
+fn isReachable(graph: DefinitionGraph, from_id: []const u8, to_id: []const u8) bool {
+    if (std.mem.eql(u8, from_id, to_id)) return true;
+    const n_safe = if (graph.nodes.len > MAX_NODES) MAX_NODES else graph.nodes.len;
+    const e_safe = if (graph.edges.len > MAX_EDGES) MAX_EDGES else graph.edges.len;
+    const nodes = graph.nodes[0..n_safe];
+    const edges = graph.edges[0..e_safe];
+
+    const start_idx = nodeIndex(nodes, from_id) orelse return false;
+    const target_idx = nodeIndex(nodes, to_id) orelse return false;
+
+    var visited = std.mem.zeroes([MAX_NODES]bool);
+    var queue = std.mem.zeroes([MAX_NODES]usize);
+    var head: usize = 0;
+    var tail: usize = 0;
+    queue[tail] = start_idx;
+    tail += 1;
+    visited[start_idx] = true;
+
+    while (head < tail) : (head += 1) {
+        const idx = queue[head];
+        if (idx == target_idx) return true;
+        const node_id = nodes[idx].id;
+        for (edges) |edge| {
+            if (!std.mem.eql(u8, edge.source, node_id)) continue;
+            const next_idx = nodeIndex(nodes, edge.target) orelse continue;
+            if (!visited[next_idx]) {
+                visited[next_idx] = true;
+                queue[tail] = next_idx;
+                tail += 1;
+            }
+        }
+    }
+
+    return false;
+}
+
+fn parseCompensationNodeConfig(value: std.json.Value) error{InvalidInput}!CompensationNodeConfig {
+    if (value != .object) return error.InvalidInput;
+    const obj = value.object;
+    const scope = obj.get("scope_id") orelse return error.InvalidInput;
+    const handler = obj.get("handler_node_id") orelse return error.InvalidInput;
+
+    const scope_id = switch (scope) {
+        .string => |s| if (s.len > 0) s else return error.InvalidInput,
+        else => return error.InvalidInput,
+    };
+    const handler_node_id = switch (handler) {
+        .string => |s| if (s.len > 0) s else return error.InvalidInput,
+        else => return error.InvalidInput,
+    };
+
+    const reverse_order = if (obj.get("reverse_order")) |rev| switch (rev) {
+        .bool => |b| b,
+        else => return error.InvalidInput,
+    } else true;
+
+    return CompensationNodeConfig{
+        .scope_id = scope_id,
+        .handler_node_id = handler_node_id,
+        .reverse_order = reverse_order,
+    };
+}
+
+fn parseErrorBoundaryConfig(value: std.json.Value) error{InvalidInput}!ErrorBoundaryConfig {
+    if (value != .object) return error.InvalidInput;
+    const obj = value.object;
+    const attached = obj.get("attached_to_node_id") orelse return error.InvalidInput;
+    const on_error = obj.get("on_error_event") orelse return error.InvalidInput;
+    const on_cancel = obj.get("on_cancel_event") orelse return error.InvalidInput;
+
+    const attached_to_node_id = switch (attached) {
+        .string => |s| if (s.len > 0) s else return error.InvalidInput,
+        else => return error.InvalidInput,
+    };
+    const on_error_event = switch (on_error) {
+        .string => |s| if (s.len > 0) s else return error.InvalidInput,
+        else => return error.InvalidInput,
+    };
+    const on_cancel_event = switch (on_cancel) {
+        .string => |s| if (s.len > 0) s else return error.InvalidInput,
+        else => return error.InvalidInput,
+    };
+
+    return ErrorBoundaryConfig{
+        .attached_to_node_id = attached_to_node_id,
+        .on_error_event = on_error_event,
+        .on_cancel_event = on_cancel_event,
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -1079,4 +1181,112 @@ pub fn validateEdgeTransforms(
         .valid = owned.len == 0,
         .violations = owned,
     };
+}
+
+/// Conservative validation for compensation metadata.
+pub fn validateCompensationHandlers(
+    allocator: std.mem.Allocator,
+    graph: DefinitionGraph,
+) GraphError!ValidationResult {
+    var violations: std.ArrayList(Violation) = .empty;
+    errdefer {
+        for (violations.items) |v| allocator.free(v.message);
+        violations.deinit(allocator);
+    }
+
+    const n_safe = if (graph.nodes.len > MAX_NODES) MAX_NODES else graph.nodes.len;
+    const nodes = graph.nodes[0..n_safe];
+
+    for (nodes) |node| {
+        const raw = node.attributes orelse continue;
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, raw, .{}) catch continue;
+        defer parsed.deinit();
+        if (parsed.value != .object) continue;
+
+        const obj = parsed.value.object;
+        if (obj.get("compensation_handler")) |handler_val| {
+            const handler = parseCompensationNodeConfig(handler_val) catch {
+                try addViolation(allocator, &violations, "COMPENSATION_HANDLER_INVALID", "Node '{s}' has invalid compensation_handler metadata", .{node.id});
+                continue;
+            };
+
+            if (!nodeExists(nodes, handler.scope_id)) {
+                try addViolation(allocator, &violations, "COMPENSATION_HANDLER_SCOPE_UNKNOWN", "Node '{s}' references compensation scope '{s}' that does not exist", .{ node.id, handler.scope_id });
+            }
+            if (!nodeExists(nodes, handler.handler_node_id)) {
+                try addViolation(allocator, &violations, "COMPENSATION_HANDLER_TARGET_UNKNOWN", "Node '{s}' references compensation handler node '{s}' that does not exist", .{ node.id, handler.handler_node_id });
+            } else if (!isReachable(graph, handler.scope_id, handler.handler_node_id)) {
+                try addViolation(allocator, &violations, "COMPENSATION_HANDLER_NOT_REACHABLE", "Compensation handler node '{s}' is not reachable from scope '{s}'", .{ handler.handler_node_id, handler.scope_id });
+            }
+
+            if (!handler.reverse_order) {
+                try addViolation(allocator, &violations, "COMPENSATION_HANDLER_NOT_REVERSED", "Node '{s}' compensation handler must opt into reverse_order", .{node.id});
+            }
+        }
+
+        if (obj.get("error_boundary")) |boundary_val| {
+            const boundary = parseErrorBoundaryConfig(boundary_val) catch {
+                try addViolation(allocator, &violations, "ERROR_BOUNDARY_INVALID", "Node '{s}' has invalid error_boundary metadata", .{node.id});
+                continue;
+            };
+
+            if (!nodeExists(nodes, boundary.attached_to_node_id)) {
+                try addViolation(allocator, &violations, "ERROR_BOUNDARY_UNKNOWN_ATTACHMENT", "Node '{s}' attaches error_boundary to unknown node '{s}'", .{ node.id, boundary.attached_to_node_id });
+            } else if (!isReachable(graph, boundary.attached_to_node_id, node.id)) {
+                try addViolation(allocator, &violations, "ERROR_BOUNDARY_NOT_REACHABLE", "Error boundary node '{s}' is not reachable from attached node '{s}'", .{ node.id, boundary.attached_to_node_id });
+            }
+
+            if (boundary.on_error_event.len == 0 or boundary.on_cancel_event.len == 0) {
+                try addViolation(allocator, &violations, "ERROR_BOUNDARY_EVENTS_MISSING", "Node '{s}' error_boundary requires on_error_event and on_cancel_event", .{node.id});
+            }
+        }
+    }
+
+    const owned = try violations.toOwnedSlice(allocator);
+    return ValidationResult{ .valid = owned.len == 0, .violations = owned };
+}
+
+/// Conservative reversibility validation for nodes that declare compensation metadata.
+pub fn validateReversibility(
+    allocator: std.mem.Allocator,
+    graph: DefinitionGraph,
+) GraphError!ValidationResult {
+    var violations: std.ArrayList(Violation) = .empty;
+    errdefer {
+        for (violations.items) |v| allocator.free(v.message);
+        violations.deinit(allocator);
+    }
+
+    const n_safe = if (graph.nodes.len > MAX_NODES) MAX_NODES else graph.nodes.len;
+    const nodes = graph.nodes[0..n_safe];
+
+    for (nodes) |node| {
+        const raw = node.attributes orelse continue;
+        const parsed = std.json.parseFromSlice(std.json.Value, allocator, raw, .{}) catch continue;
+        defer parsed.deinit();
+        if (parsed.value != .object) continue;
+
+        const obj = parsed.value.object;
+        if (obj.get("compensation_handler") == null and obj.get("error_boundary") == null) continue;
+
+        switch (node.node_type) {
+            .START, .END, .EXCLUSIVE_GATEWAY, .PARALLEL_GATEWAY => {
+                try addViolation(allocator, &violations, "NON_REVERSIBLE_ACTIVITY", "Node '{s}' cannot declare compensation metadata on a non-reversible node type", .{node.id});
+            },
+            else => {},
+        }
+
+        if (obj.get("reversible")) |rev_val| {
+            const reversible = switch (rev_val) {
+                .bool => |b| b,
+                else => false,
+            };
+            if (!reversible) {
+                try addViolation(allocator, &violations, "NON_REVERSIBLE_ACTIVITY", "Node '{s}' declares compensation metadata but is marked irreversible", .{node.id});
+            }
+        }
+    }
+
+    const owned = try violations.toOwnedSlice(allocator);
+    return ValidationResult{ .valid = owned.len == 0, .violations = owned };
 }

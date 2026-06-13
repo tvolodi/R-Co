@@ -146,6 +146,7 @@ pub const InstanceStatus = enum {
     COMPLETED,
     CANCELLED,
     ERROR,
+    RESTORED_ORPHAN,
 };
 
 // ---------------------------------------------------------------------------
