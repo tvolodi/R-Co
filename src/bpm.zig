@@ -63,6 +63,7 @@ pub const effects_mod = @import("effects/mod.zig");
 pub const effects_stub = @import("effects/stub.zig");
 pub const effects_queue = @import("effects/queue.zig");
 pub const effects_worker = @import("effects/worker.zig");
+pub const secrets = @import("secrets/mod.zig");
 pub const promotion_mod = @import("definition/promotion.zig"); // ENV-03 definition promotion domain
 pub const promotion_routes = @import("api/routes/promotion.zig"); // ENV-03 promotion HTTP handler
 pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle

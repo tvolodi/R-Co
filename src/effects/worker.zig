@@ -19,6 +19,7 @@ const queue = @import("queue.zig");
 const http_adapter = @import("adapters/http.zig");
 const email_adapter = @import("adapters/email.zig");
 const logger = @import("../obs/logger.zig");
+const secrets = @import("../secrets/mod.zig");
 
 pub const EffectSpec = mod.EffectSpec;
 pub const EffectKind = mod.EffectKind;
@@ -32,6 +33,9 @@ pub const EFFECT_MAX_ATTEMPTS = mod.EFFECT_MAX_ATTEMPTS;
 pub const WorkerConfig = struct {
     poll_interval_ms: u64 = 5_000,
     max_rows_per_cycle: u32 = 64,
+    secret_wrapping_key_ref: []const u8 = "local:master",
+    secret_wrapping_key_version: []const u8 = "v1",
+    secret_master_key_hex: []const u8 = "0000000000000000000000000000000000000000000000000000000000000000",
 };
 
 // ---------------------------------------------------------------------------
@@ -168,7 +172,7 @@ pub fn sweepOnce(
     }
 
     for (rows) |row| {
-        processRow(allocator, pool, &row, executor_kind);
+        processRow(allocator, pool, &row, executor_kind, config);
     }
 }
 
@@ -182,6 +186,7 @@ fn processRow(
     pool: *db.Pool,
     row: *const queue.OutboxRow,
     executor_kind: ExecutorKind,
+    config: WorkerConfig,
 ) void {
     const kind = mod.EffectKind.fromWire(row.kind_str) orelse {
         // Invalid kind — DLQ immediately (no retry slot consumed).
@@ -193,6 +198,7 @@ fn processRow(
 
     const spec = EffectSpec{
         .effect_event_id = row.effect_event_id,
+        .tenant_id = "default",
         .instance_id = row.instance_id,
         .node_id = row.node_id,
         .token_id = "",
@@ -201,7 +207,7 @@ fn processRow(
         .spec_json = row.spec_json,
     };
 
-    const result = deliverSpec(allocator, spec, row.attempt_count, executor_kind) catch |err| {
+    const result = deliverSpec(allocator, pool, spec, row.attempt_count, executor_kind, config) catch |err| {
         // Transport error — schedule retry.
         const backoff = mod.computeEffectBackoffMs(row.attempt_count);
         const conn = pool.acquire() catch return;
@@ -275,9 +281,11 @@ fn processRow(
 
 fn deliverSpec(
     allocator: std.mem.Allocator,
+    pool: *db.Pool,
     spec: EffectSpec,
     attempt: u8,
     executor_kind: ExecutorKind,
+    config: WorkerConfig,
 ) EffectDeliveryError!EffectDeliveryResult {
     switch (executor_kind) {
         .stub_noop => {
@@ -295,13 +303,29 @@ fn deliverSpec(
                     const http_spec = parseHttpEffectSpec(allocator, spec.spec_json) catch {
                         return error.InvalidSpec;
                     };
-                    return http_adapter.deliver(allocator, spec, http_spec);
+                    var resolved_secret: ?[]u8 = null;
+                    defer if (resolved_secret) |secret| {
+                        std.crypto.secureZero(u8, secret);
+                        allocator.free(secret);
+                    };
+                    if (http_spec.secret_ref) |secret_ref| {
+                        resolved_secret = resolveSecretValue(allocator, pool, config, spec.tenant_id, secret_ref, .effects_http) catch return error.SecretResolutionFailed;
+                    }
+                    return http_adapter.deliver(allocator, spec, http_spec, resolved_secret);
                 },
                 .email => {
                     const email_spec = parseEmailEffectSpec(allocator, spec.spec_json) catch {
                         return error.InvalidSpec;
                     };
-                    return email_adapter.deliver(allocator, spec, email_spec);
+                    var resolved_secret: ?[]u8 = null;
+                    defer if (resolved_secret) |secret| {
+                        std.crypto.secureZero(u8, secret);
+                        allocator.free(secret);
+                    };
+                    if (email_spec.secret_ref) |secret_ref| {
+                        resolved_secret = resolveSecretValue(allocator, pool, config, spec.tenant_id, secret_ref, .effects_email) catch return error.SecretResolutionFailed;
+                    }
+                    return email_adapter.deliver(allocator, spec, email_spec, resolved_secret);
                 },
             }
         },
@@ -342,14 +366,30 @@ fn parseHttpEffectSpec(
         else => 5,
     } else 5;
 
+    const headers_json = if (obj.get("headers_json")) |h| switch (h) {
+        .string => |s| try allocator.dupe(u8, s),
+        else => null,
+    } else null;
+
+    const body_json = if (obj.get("body_json")) |b| switch (b) {
+        .string => |s| try allocator.dupe(u8, s),
+        else => null,
+    } else null;
+
+    const secret_ref = if (obj.get("secret_ref")) |s| switch (s) {
+        .string => |v| if (v.len == 0) null else try allocator.dupe(u8, v),
+        .null => null,
+        else => null,
+    } else null;
+
     return mod.HttpEffectSpec{
         .url = url,
         .method = method,
-        .headers_json = null,
-        .body_json = null,
+        .headers_json = headers_json,
+        .body_json = body_json,
         .timeout_ms = timeout_ms,
         .retry_limit = retry_limit,
-        .secret_ref = null,
+        .secret_ref = secret_ref,
     };
 }
 
@@ -379,12 +419,40 @@ fn parseEmailEffectSpec(
         else => try allocator.dupe(u8, ""),
     } else try allocator.dupe(u8, "");
 
+    const secret_ref = if (obj.get("secret_ref")) |s| switch (s) {
+        .string => |v| if (v.len == 0) null else try allocator.dupe(u8, v),
+        .null => null,
+        else => null,
+    } else null;
+
     return mod.EmailEffectSpec{
         .to = to,
         .subject = subject,
         .body = body,
-        .secret_ref = null,
+        .secret_ref = secret_ref,
     };
+}
+
+fn resolveSecretValue(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    config: WorkerConfig,
+    tenant_id: []const u8,
+    secret_ref: []const u8,
+    consumer: secrets.Consumer,
+) ![]u8 {
+    var store = try secrets.Store.init(allocator, pool, .{
+        .wrapping_key_ref = config.secret_wrapping_key_ref,
+        .wrapping_key_version = config.secret_wrapping_key_version,
+        .master_key_hex = config.secret_master_key_hex,
+    });
+    const resolved = try store.resolveSecret(allocator, .{
+        .tenant_id = tenant_id,
+        .secret_ref = secret_ref,
+        .consumer = consumer,
+    });
+    defer resolved.deinit(allocator);
+    return allocator.dupe(u8, resolved.value);
 }
 
 fn logWorkerError(allocator: std.mem.Allocator, component: []const u8, message: []const u8) void {

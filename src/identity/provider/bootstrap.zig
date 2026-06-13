@@ -197,7 +197,7 @@ fn buildKeycloakProvider(
     allocator: std.mem.Allocator,
     cfg: idp_config.IdentityProviderConfig,
 ) ProviderBootstrapError!ActiveProvider {
-    var secret_resolver = EnvSecretResolver{};
+    var secret_resolver = EnvSecretResolver{ .allocator = allocator };
     var clock = SystemClock{};
 
     const adapter = keycloak.Adapter.init(allocator, .{
@@ -248,20 +248,81 @@ const SystemClock = struct {
     }
 };
 
-const EnvSecretResolver = struct {
-    fn resolve(_: *anyopaque, allocator: std.mem.Allocator, secret_ref: []const u8) anyerror![]const u8 {
-        if (!std.mem.startsWith(u8, secret_ref, "env:")) return error.UnsupportedSecretReference;
-        const env_name = secret_ref[4..];
-        if (env_name.len == 0) return error.UnsupportedSecretReference;
 
-        const environ: std.process.Environ = .{ .block = .global };
-        return environ.getAlloc(allocator, env_name) catch |err| switch (err) {
-            error.EnvironmentVariableMissing => error.SecretNotFound,
-            error.OutOfMemory => error.OutOfMemory,
-            error.InvalidWtf8 => unreachable,
-        };
+const EnvSecretResolver = struct {
+    allocator: std.mem.Allocator,
+
+    fn resolve(raw_ctx: *anyopaque, allocator: std.mem.Allocator, secret_ref: []const u8) anyerror![]const u8 {
+        const self: *EnvSecretResolver = @ptrCast(@alignCast(raw_ctx));
+
+        if (std.mem.startsWith(u8, secret_ref, "env:")) {
+            const env_name = secret_ref[4..];
+            if (env_name.len == 0) return error.UnsupportedSecretReference;
+
+            const environ: std.process.Environ = .{ .block = .global };
+            return environ.getAlloc(allocator, env_name) catch |err| switch (err) {
+                error.EnvironmentVariableMissing => error.SecretNotFound,
+                error.OutOfMemory => error.OutOfMemory,
+                error.InvalidWtf8 => unreachable,
+            };
+        }
+
+        if (std.mem.startsWith(u8, secret_ref, "sec://tenant/")) {
+            _ = self;
+            if (!isValidSecTenantRef(secret_ref)) return error.UnsupportedSecretReference;
+            return error.UnsupportedSecretReference;
+        }
+
+        return error.UnsupportedSecretReference;
     }
 };
+
+fn isValidSecTenantRef(value: []const u8) bool {
+    const prefix = "sec://tenant/";
+    if (!std.mem.startsWith(u8, value, prefix)) return false;
+
+    const body = value[prefix.len..];
+    const slash1 = std.mem.indexOfScalar(u8, body, '/') orelse return false;
+    const tenant_id = body[0..slash1];
+    if (!isRefSegment(tenant_id)) return false;
+
+    const rest = body[slash1 + 1 ..];
+    const slash2 = std.mem.indexOfScalar(u8, rest, '/') orelse return false;
+    const namespace = rest[0..slash2];
+    if (!isRefSegment(namespace)) return false;
+
+    const tail = rest[slash2 + 1 ..];
+    if (tail.len == 0) return false;
+
+    const hash_idx = std.mem.indexOfScalar(u8, tail, '#');
+    const name = if (hash_idx) |idx| tail[0..idx] else tail;
+    if (!isRefSegment(name)) return false;
+
+    if (hash_idx) |idx| {
+        const key_id = tail[idx + 1 ..];
+        if (key_id.len == 0) return false;
+        if (!isRefKeyId(key_id)) return false;
+    }
+
+    return true;
+}
+
+fn isRefSegment(value: []const u8) bool {
+    if (value.len == 0) return false;
+    for (value) |ch| {
+        if (std.ascii.isLower(ch) or std.ascii.isDigit(ch) or ch == '_' or ch == '-') continue;
+        return false;
+    }
+    return true;
+}
+
+fn isRefKeyId(value: []const u8) bool {
+    for (value) |ch| {
+        if (std.ascii.isAlphanumeric(ch) or ch == '-' or ch == '_' or ch == '.' or ch == '~') continue;
+        return false;
+    }
+    return true;
+}
 
 /// KcHttpCallState carries all state needed for a single outgoing KC HTTP call
 /// that runs on a dedicated OS thread. Running in a fresh thread avoids the

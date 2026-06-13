@@ -3,6 +3,7 @@ const db = @import("pool");
 const sub_store = @import("subscription_store.zig");
 const signing = @import("signing.zig");
 const alerts = @import("../obs/alerts.zig");
+const secrets = @import("../secrets/mod.zig");
 
 pub const WebhookEnvelope = struct {
     event_type: sub_store.WebhookEventType,
@@ -200,7 +201,7 @@ pub fn dispatchDueWebhookAttempts(
         \\  d.attempt_count::text,
         \\  d.max_attempts::text,
         \\  s.url,
-        \\  COALESCE(s.secret, '')
+        \\  COALESCE(s.secret_ref, '')
         \\FROM webhook_deliveries d
         \\JOIN webhook_subscriptions s ON s.id = d.subscription_id
         \\WHERE d.status IN ('pending', 'failed')
@@ -244,7 +245,7 @@ pub fn dispatchDueWebhookAttemptsForTrace(
         \\  d.attempt_count::text,
         \\  d.max_attempts::text,
         \\  s.url,
-        \\  COALESCE(s.secret, '')
+        \\  COALESCE(s.secret_ref, '')
         \\FROM webhook_deliveries d
         \\JOIN webhook_subscriptions s ON s.id = d.subscription_id
         \\WHERE d.status IN ('pending', 'failed')
@@ -288,7 +289,7 @@ pub fn dispatchDueWebhookAttemptsForSubscription(
         \\  d.attempt_count::text,
         \\  d.max_attempts::text,
         \\  s.url,
-        \\  COALESCE(s.secret, '')
+        \\  COALESCE(s.secret_ref, '')
         \\FROM webhook_deliveries d
         \\JOIN webhook_subscriptions s ON s.id = d.subscription_id
         \\WHERE d.status IN ('pending', 'failed')
@@ -323,19 +324,32 @@ fn dispatchOne(
     const prev_attempt = std.fmt.parseInt(u8, row[5] orelse "0", 10) catch 0;
     const max_attempts = std.fmt.parseInt(u8, row[6] orelse "5", 10) catch 5;
     const url = row[7] orelse return error.InvalidSubscription;
-    const secret = row[8] orelse "";
+    const secret_ref = row[8] orelse "";
+
+    var resolved_secret: ?[]u8 = null;
+    defer if (resolved_secret) |value| {
+        std.crypto.secureZero(u8, value);
+        allocator.free(value);
+    };
 
     const next_attempt: u8 = prev_attempt + 1;
-    const send_result = sendWebhook(
-        allocator,
-        url,
-        payload,
-        event_type,
-        delivery_id,
-        next_attempt,
-        trace_id,
-        secret,
-    ) catch null;
+    const send_result = blk: {
+        var secret_value: []const u8 = "";
+        if (secret_ref.len > 0) {
+            resolved_secret = resolveWebhookSecret(allocator, pool, secret_ref) catch break :blk null;
+            secret_value = resolved_secret.?;
+        }
+        break :blk sendWebhook(
+            allocator,
+            url,
+            payload,
+            event_type,
+            delivery_id,
+            next_attempt,
+            trace_id,
+            secret_value,
+        ) catch null;
+    };
 
     const conn = pool.acquire() catch |err| switch (err) {
         db.PoolError.ExhaustedPool => return error.PoolExhausted,
@@ -510,6 +524,25 @@ fn sendAlertHook(_: ?*anyopaque, request: alerts.DeliveryRequest) alerts.SendErr
     }) catch return error.Transport;
 
     return @intFromEnum(result.status);
+}
+
+fn resolveWebhookSecret(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    secret_ref: []const u8,
+) ![]u8 {
+    var secret_store = try secrets.Store.init(allocator, pool, .{
+        .wrapping_key_ref = "local:master",
+        .wrapping_key_version = "v1",
+        .master_key_hex = "0000000000000000000000000000000000000000000000000000000000000000",
+    });
+    const resolved = try secret_store.resolveSecret(allocator, .{
+        .tenant_id = "default",
+        .secret_ref = secret_ref,
+        .consumer = .webhook_dispatcher,
+    });
+    defer resolved.deinit(allocator);
+    return allocator.dupe(u8, resolved.value);
 }
 
 fn sendWebhook(

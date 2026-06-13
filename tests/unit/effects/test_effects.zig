@@ -56,6 +56,7 @@ test "effect_event_id is used as Idempotency-Key in stub response" {
 
     const spec = effects_mod.EffectSpec{
         .effect_event_id = "550e8400-e29b-41d4-a716-446655440000",
+        .tenant_id = "default",
         .instance_id = "inst-001",
         .node_id = "node-svc-01",
         .token_id = "tok-001",
@@ -100,6 +101,7 @@ test "StubEffectsExecutor.execute increments email_count" {
 
     const spec = effects_mod.EffectSpec{
         .effect_event_id = "email-event-id",
+        .tenant_id = "default",
         .instance_id = "inst-002",
         .node_id = "node-email",
         .token_id = "tok-002",
@@ -123,6 +125,7 @@ test "StubEffectsExecutor.execute records spec_json under correlation_key" {
     const corr = "node-svc-01:tok-001";
     const spec = effects_mod.EffectSpec{
         .effect_event_id = "evt-001",
+        .tenant_id = "default",
         .instance_id = "inst-001",
         .node_id = "node-svc-01",
         .token_id = "tok-001",
@@ -233,6 +236,7 @@ test "classifyHttpOutcome: 5xx → retry" {
 fn makeHttpSpec() effects_mod.EffectSpec {
     return effects_mod.EffectSpec{
         .effect_event_id = "evt-001",
+        .tenant_id = "default",
         .instance_id = "inst-001",
         .node_id = "node-svc-01",
         .token_id = "tok-001",

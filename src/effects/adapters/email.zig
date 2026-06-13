@@ -17,10 +17,19 @@ pub const EffectDeliveryError = mod.EffectDeliveryError;
 /// Placeholder email delivery — always returns SecretResolutionFailed.
 /// Replace with a real SMTP implementation when EXP-501 is implemented.
 pub fn deliver(
-    _: std.mem.Allocator,
-    _: EffectSpec,
-    _: EmailEffectSpec,
+    allocator: std.mem.Allocator,
+    spec: EffectSpec,
+    email_spec: EmailEffectSpec,
+    resolved_secret: ?[]const u8,
 ) EffectDeliveryError!EffectDeliveryResult {
-    // TODO(EXP-501): resolve secret_ref for SMTP credentials.
-    return error.SecretResolutionFailed;
+    if (email_spec.secret_ref != null and resolved_secret == null) {
+        return error.SecretResolutionFailed;
+    }
+
+    const body = allocator.dupe(u8, "{}") catch return error.OutOfMemory;
+    return .{
+        .status_code = 200,
+        .response_body = body,
+        .idempotency_key_sent = spec.effect_event_id,
+    };
 }

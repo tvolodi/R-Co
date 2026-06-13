@@ -3,6 +3,8 @@ const auth = @import("../middleware/auth.zig");
 const pool_mod = @import("pool");
 const store = @import("../../webhook/subscription_store.zig");
 const dispatcher = @import("../../webhook/dispatcher.zig");
+const secrets = @import("../../secrets/mod.zig");
+const webhook_keys = @import("../../secrets/integration/webhook_keys.zig");
 const uuid = @import("../../util/uuid.zig");
 
 pub const HandlerResult = struct {
@@ -58,15 +60,50 @@ pub fn handleCreateSubscription(
         };
     };
 
-    var generated_secret: ?[]u8 = null;
-    defer if (generated_secret) |value| allocator.free(value);
+    const secret_ref_input: ?[]const u8 = blk: {
+        const raw = obj.get("secret_ref") orelse break :blk null;
+        break :blk switch (raw) {
+            .null => null,
+            .string => |value| if (value.len == 0) null else value,
+            else => return errorResult(allocator, 422, "secret_ref_invalid"),
+        };
+    };
 
-    const effective_secret: ?[]const u8 = blk: {
-        if (secret) |provided| break :blk provided;
-        const created_secret = generateOneTimeSecret(allocator) catch
-            return errorResult(allocator, 500, "internal_error");
-        generated_secret = created_secret;
-        break :blk created_secret;
+    if (secret != null and secret_ref_input != null) {
+        return errorResult(allocator, 422, "secret_conflict");
+    }
+
+    var generated_secret: ?[]u8 = null;
+    defer if (generated_secret) |value| {
+        std.crypto.secureZero(u8, value);
+        allocator.free(value);
+    };
+
+    var created_secret_ref: ?[]u8 = null;
+    defer if (created_secret_ref) |value| allocator.free(value);
+
+    var created_secret_key_id: ?[]u8 = null;
+    defer if (created_secret_key_id) |value| allocator.free(value);
+
+    const effective_secret_ref: ?[]const u8 = blk: {
+        if (secret_ref_input) |provided_ref| break :blk provided_ref;
+        if (secret) |provided_secret| {
+            generated_secret = allocator.dupe(u8, provided_secret) catch
+                return errorResult(allocator, 500, "internal_error");
+            const stored = storeWebhookSecret(
+                allocator,
+                pool,
+                actor.user_id,
+                provided_secret,
+            ) catch return errorResult(allocator, 500, "internal_error");
+            defer stored.deinit(allocator);
+            created_secret_ref = allocator.dupe(u8, stored.secret_ref) catch
+                return errorResult(allocator, 500, "internal_error");
+            created_secret_key_id = allocator.dupe(u8, stored.key_id) catch
+                return errorResult(allocator, 500, "internal_error");
+            break :blk created_secret_ref;
+        }
+        break :blk null;
     };
 
     const created = store.createSubscription(
@@ -76,7 +113,9 @@ pub fn handleCreateSubscription(
         .{
             .target_url = target_url,
             .event_types = event_types,
-            .secret = effective_secret,
+            .secret = null,
+            .secret_ref = effective_secret_ref,
+            .secret_key_id = if (created_secret_key_id) |value| value else null,
         },
         production_mode,
     ) catch |err| switch (err) {
@@ -87,7 +126,7 @@ pub fn handleCreateSubscription(
     };
     errdefer created.deinit(allocator);
 
-    const response_body = serializeSubscription(allocator, created, effective_secret) catch
+    const response_body = serializeSubscription(allocator, created, generated_secret) catch
         return errorResult(allocator, 500, "serialization_failed");
     created.deinit(allocator);
 
@@ -300,6 +339,16 @@ fn serializeSubscription(
     if (item.paused_at) |value| try appendJsonField(allocator, &out, false, "paused_at", value) else try out.appendSlice(allocator, ",\"paused_at\":null");
     try appendJsonField(allocator, &out, false, "created_at", item.created_at);
     try appendJsonField(allocator, &out, false, "updated_at", item.updated_at);
+    if (item.secret_ref) |value| {
+        try appendJsonField(allocator, &out, false, "secret_ref", value);
+    } else {
+        try out.appendSlice(allocator, ",\"secret_ref\":null");
+    }
+    if (item.secret_key_id) |value| {
+        try appendJsonField(allocator, &out, false, "secret_key_id", value);
+    } else {
+        try out.appendSlice(allocator, ",\"secret_key_id\":null");
+    }
     if (hmac_secret_once) |value| {
         try appendJsonField(allocator, &out, false, "hmac_secret_once", value);
     }
@@ -312,6 +361,32 @@ fn generateOneTimeSecret(allocator: std.mem.Allocator) ![]u8 {
     const token = try uuid.newUuidV4(allocator);
     defer allocator.free(token);
     return std.fmt.allocPrint(allocator, "whsec_{s}", .{token});
+}
+
+fn storeWebhookSecret(
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    actor_id: []const u8,
+    secret_value: []const u8,
+) secrets.SecretError!secrets.PutSecretOutput {
+    var secret_store = try secrets.Store.init(allocator, pool, .{
+        .wrapping_key_ref = "local:master",
+        .wrapping_key_version = "v1",
+        .master_key_hex = "0000000000000000000000000000000000000000000000000000000000000000",
+    });
+    var owner = webhook_keys.WebhookKeyOwner{ .store = &secret_store };
+    const suffix = try uuid.newUuidV4(allocator);
+    defer allocator.free(suffix);
+    const secret_name = try std.fmt.allocPrint(allocator, "subscription-{s}", .{suffix});
+    defer allocator.free(secret_name);
+
+    return owner.putWebhookHmacSecret(
+        allocator,
+        "default",
+        secret_name,
+        secret_value,
+        actor_id,
+    );
 }
 
 fn appendJsonField(
