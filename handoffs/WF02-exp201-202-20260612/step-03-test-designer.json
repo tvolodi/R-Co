@@ -1,0 +1,45 @@
+{
+  "handoff_id": "exp201-202-test-designer-03",
+  "run_id": "WF02-exp201-202-20260612",
+  "workflow_id": "WF-02",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-06-12T19:32:13Z",
+  "started_at": "2026-06-12T19:32:50Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 Run 1: Entity Definition Format + Entity Command API",
+    "requirement_ids": ["EXP-201", "EXP-202"],
+    "artifacts_in": [
+      "src/design/entities.md",
+      "src/entities/mod.zig",
+      "src/entities/commands.zig",
+      "src/entities/events.zig",
+      "src/entities/projector.zig",
+      "src/entities/validator.zig",
+      "src/api/routes/entities.zig",
+      "migrations/094_entity_subsystem.sql"
+    ],
+    "branch_name": "feature/WF02-exp201-202-20260612"
+  },
+  "task": {
+    "description": "Design and implement integration tests for EXP-201 and EXP-202.\n\n## Requirements to cover\n\n### EXP-201: Entity definition format\n- Verify entity definition JSON parsing and validation.\n- Test the queried/json exclusion rule (certain fields cannot be both queried and stored in JSON blob).\n- Test validation of field names, index types, and FK relationships.\n\n### EXP-202: Entity command API\n- Verify POST /api/v1/entities/:type creates a record and appends events.\n- Verify PATCH /api/v1/entities/:type/:id updates the record projection and appends events.\n- Verify DELETE /api/v1/entities/:type/:id marks the record as deleted and appends events.\n- Verify that events and projection updates happen within a single database transaction.\n\n## Testing rules\n- No mocks, no stubs. Use real PostgreSQL via BPM_TEST_DB_URL.\n- Use unique UUIDs for all test fixtures (tenants, entities).\n- Write test specs to tests/specs/EXP-201.md and tests/specs/EXP-202.md.\n- Implement integration tests in tests/integration/entity_subsystem_test.zig.\n- Ensure tests clean up after themselves or use isolated schemas/tenants.",
+    "acceptance_criteria": [
+      "Test spec files exist for EXP-201 and EXP-202",
+      "Integration tests cover create/update/delete paths",
+      "Integration tests cover validation failure cases",
+      "All tests pass against a real PostgreSQL instance",
+      "Tests are self-sufficient and isolated"
+    ],
+    "functions_to_call": [
+      "fn:read-test-conventions",
+      "fn:run-integration-tests"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

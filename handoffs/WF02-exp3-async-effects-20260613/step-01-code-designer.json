@@ -1,0 +1,65 @@
+﻿{
+    "run_id":  "WF02-exp3-async-effects-20260613",
+    "handoff_id":  "81d6efa2-e477-4220-9915-f410269b021d",
+    "workflow_id":  "WF-02",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "Design covers EXP-301, EXP-302, EXP-303 explicitly",
+                                             "No source implementation code in artifact",
+                                             "Transition function I/O-free invariant preserved",
+                                             "Idempotency and DLQ strategy specified",
+                                             "Test strategy for unit/integration specified"
+                                         ],
+                 "description":  "Produce implementation design for EXP-301/302/303 (Epic 3 async outbound effects). Design only, no implementation code. Cover: 1) new effects subsystem module boundaries (queue storage, worker, adapters, retry/backoff, idempotency header from effect-event-id, dead-letter path), 2) result re-entry model as effect.completed/effect.failed events with correlation_id, 3) migration path for service tasks from inline I/O to effect emit + wait + branch, including any decision-gated sync exceptions clearly marked, 4) sandbox stub executor behavior and hooks for deterministic tests, 5) touchpoints and incremental rollout plan preserving pure transition function and audit invariants.",
+                 "functions_to_call":  [
+                                           "fn:read-backend-conventions"
+                                       ]
+             },
+    "max_rework":  3,
+    "created_at":  "2026-06-13T06:36:11Z",
+    "result":  {
+                   "status":  "PASS",
+                   "summary":  "Type E prose design for EXP-301/302/303 (EPIC-3 async outbound effects): effects subsystem module boundaries, outbox schema, worker loop, HTTP adapter, stub executor, service task migration path with sync-exception decision gate, idempotency strategy, error taxonomy, state transitions, test strategy, and incremental rollout plan.",
+                   "artifacts_out":  [
+                                         "src/design/exp-03-async-effects.md"
+                                     ],
+                   "issues":  [
+                                  {
+                                      "severity":  "MINOR",
+                                      "description":  "EXP-501 (secrets module) not yet implemented. HttpEffectSpec.secret_ref fields are defined but will return EffectDeliveryError.SecretResolutionFailed until EXP-501 lands. Marked with TODO(EXP-501) comments in design."
+                                  },
+                                  {
+                                      "severity":  "MINOR",
+                                      "description":  "CATCH_EVENT node type not yet in definition/graph.zig. BACKEND-DEV must verify and extend graph format before EXP-302 phase 2 begins."
+                                  }
+                              ],
+                   "next_action":  "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+               },
+    "rework_count":  0,
+    "started_at":  "2026-06-13T06:36:15Z",
+    "status":  "COMPLETED",
+    "from_agent":  "ORCH",
+    "step":  "01",
+    "to_agent":  "CODE-DESIGNER",
+    "completed_at":  "2026-06-13T06:40:01Z",
+    "context":  {
+                    "related_handoff_ids":  [
+                                                "81bbf7b0-0b8f-48d2-af20-9f8fff9c0299"
+                                            ],
+                    "requirement_ids":  [
+                                            "EXP-301",
+                                            "EXP-302",
+                                            "EXP-303"
+                                        ],
+                    "stage":  "EPIC-3 Async Outbound Effects",
+                    "artifacts_in":  [
+                                         "docs/requirements/BPM_Platform_Expansion_Backlog.20260611.md",
+                                         "docs/BPM_Platform_Backend_Architecture.md",
+                                         "docs/guides/backend_developer_guide.md",
+                                         "src/engine/service_task.zig",
+                                         "src/webhook/mod.zig",
+                                         "src/webhook/store.zig"
+                                     ]
+                },
+    "priority":  "HIGH"
+}

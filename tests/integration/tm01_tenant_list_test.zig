@@ -45,6 +45,7 @@ fn adminActor() auth_mod.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "integration-tm01",
+        .principal = "integration-tm01",
         .tenant_id = uuid36ToArray(auth_mod.DEFAULT_TENANT_ID),
         .tenant_source = .default_fallback,
     };
@@ -56,6 +57,7 @@ fn viewerActor() auth_mod.AuthContext {
         .role = .VIEWER,
         .is_bootstrap = false,
         .token_id = "integration-tm01-viewer",
+        .principal = "integration-tm01-viewer",
         .tenant_id = uuid36ToArray(auth_mod.DEFAULT_TENANT_ID),
         .tenant_source = .default_fallback,
     };

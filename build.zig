@@ -702,6 +702,20 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_db_tests.step);
+    // EXP-301/302/303: Effects subsystem unit tests (pure — no DB, no network)
+    const effects_unit_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/effects/test_effects.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "bpm", .module = bpm_src_mod },
+            },
+        }),
+    });
+    const run_effects_unit_tests = b.addRunArtifact(effects_unit_tests);
+    test_step.dependOn(&run_effects_unit_tests.step);
+
     test_step.dependOn(&run_event_store_tests.step);
     test_step.dependOn(&run_definition_tests.step);
     test_step.dependOn(&run_graph_node_attributes_tests.step);
@@ -889,6 +903,18 @@ pub fn build(b: *std.Build) void {
     const run_tm_integration_tests = b.addRunArtifact(tm_integration_tests);
     run_tm_integration_tests.setCwd(b.path("."));
     run_tm_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
+    const exp_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/entity_subsystem_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_exp_integration_tests = b.addRunArtifact(exp_integration_tests);
+    run_exp_integration_tests.setCwd(b.path("."));
+    run_exp_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
     const spt01_iss0068_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1148,6 +1174,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_tm_step = b.step("test-integration-tm", "Run TM integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_tm_step.dependOn(&clean_test_db.step);
     test_integration_tm_step.dependOn(&run_tm_integration_tests.step);
+
+    const test_integration_exp_step = b.step("test-integration-exp", "Run Entity Subsystem integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_exp_step.dependOn(&clean_test_db.step);
+    test_integration_exp_step.dependOn(&run_exp_integration_tests.step);
 
     const test_integration_spt01_iss68_step = b.step("test-integration-spt01-iss68", "Run SPT-01 ISS-0068 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_spt01_iss68_step.dependOn(&clean_test_db.step);

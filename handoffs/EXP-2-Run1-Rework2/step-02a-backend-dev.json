@@ -1,0 +1,31 @@
+{
+  "handoff_id": "a92c1031-645b-4355-829d-9d41314995f7",
+  "run_id": "EXP-2-Run1-Rework2",
+  "step": "02a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-12T20:24:18Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Epic 2 Run 1 Rework",
+    "requirement_ids": ["EXP-201", "EXP-202"],
+    "related_handoff_ids": ["a95c808f-28b3-4089-808b-70068ea5b95e"],
+    "artifacts_in": ["src/entities/commands.zig", "migrations/094_entity_subsystem.sql", "tests/integration/entity_subsystem_test.zig"]
+  },
+  "task": {
+    "description": "Fix runtime SQL errors in src/entities/commands.zig and ensure integration tests pass.\n\n1. Wrap createRecord in a transaction (try conn.begin() and defer reset on error).\n2. Add explicit type casts to the SQL in updateProjection: $1::uuid, $3::uuid, $4::jsonb, $5::bigint, $6::integer.\n3. Verify if tenant_id and record_id strings are being handled correctly as UUIDs by the pg driver.\n4. Ensure all integration tests in tests/integration/entity_subsystem_test.zig pass.\n\nNote: PgError.ServerError is being thrown from conn.exec in updateProjection.",
+    "acceptance_criteria": ["zig build test exits 0", "integration tests pass", "SQL syntax handles UUID/BIGINT types properly"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed runtime SQL errors in updateProjection by adding explicit casts and ensured atomicity with transaction wrapping in createRecord. Verified all integration tests pass (12/12).",
+    "artifacts_out": ["src/entities/commands.zig"],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 04)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-06-12T20:24:38Z",
+  "completed_at": "2026-06-12T20:40:24Z"
+}

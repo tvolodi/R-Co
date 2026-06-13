@@ -7,7 +7,7 @@
 -- PERMITTED_PUBLIC_TABLES additions (src/bootstrap/audit.zig):
 --   tnt05_progress, tnt05_orphans  (updated before this migration runs)
 
-CREATE TABLE IF NOT EXISTS tnt05_progress (
+CREATE TABLE IF NOT EXISTS public.tnt05_progress (
     tenant_id    UUID        NOT NULL,
     table_name   TEXT        NOT NULL,
     rows_copied  BIGINT      NOT NULL DEFAULT 0,
@@ -19,10 +19,10 @@ CREATE TABLE IF NOT EXISTS tnt05_progress (
         CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED', 'FAILED'))
 );
 
-COMMENT ON TABLE tnt05_progress IS
+COMMENT ON TABLE public.tnt05_progress IS
     'Per-tenant per-table backfill progress for TNT-05. Idempotency gate for GBL-075.';
 
-CREATE TABLE IF NOT EXISTS tnt05_orphans (
+CREATE TABLE IF NOT EXISTS public.tnt05_orphans (
     row_id      TEXT        NOT NULL,
     table_name  TEXT        NOT NULL,
     tenant_id   UUID        NOT NULL,
@@ -31,6 +31,6 @@ CREATE TABLE IF NOT EXISTS tnt05_orphans (
     PRIMARY KEY (table_name, row_id)
 );
 
-COMMENT ON TABLE tnt05_orphans IS
+COMMENT ON TABLE public.tnt05_orphans IS
     'Rows from public business tables whose tenant_id was not found in public.tenant. '
     'Written by GBL-075; requires manual review before deletion.';

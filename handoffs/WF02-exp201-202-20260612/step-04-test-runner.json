@@ -1,0 +1,58 @@
+{
+  "handoff_id": "exp201-202-test-runner-04",
+  "run_id": "WF02-exp201-202-20260612",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-12T20:40:39Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "EPIC-2 Run 1: Entity Subsystem Validation",
+    "requirement_ids": [
+      "EXP-201",
+      "EXP-202"
+    ],
+    "artifacts_in": [
+      "tests/integration/entity_subsystem_test.zig",
+      "src/entities/commands.zig",
+      "src/api/routes/entities.zig"
+    ],
+    "branch_name": "feature/WF02-exp201-202-20260612"
+  },
+  "task": {
+    "description": "Execute the full test suite for Epic 2 Run 1.\n\n1. Run all integration tests in tests/integration/entity_subsystem_test.zig.\n2. Run 'zig build test' to ensure no regressions in the core build.\n3. Run 'zig build bench' precheck to ensure benchmark environment is clean.\n4. Produce a YAML test report to tests/reports/report-20260612-exp201-202.yaml.",
+    "acceptance_criteria": [
+      "All 12 integration tests in entity_subsystem_test.zig pass",
+      "zig build test exits 0",
+      "Benchmark environment pre-check passes",
+      "YAML report generated in the correct format"
+    ],
+    "functions_to_call": [
+      "fn:run-integration-tests",
+      "fn:check-benchmark-env"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Entity Subsystem integration tests failed. EXP-201 passed (validation), but EXP-202 failed (integration) due to schema/table reference issues.",
+    "artifacts_out": [
+      "tests/reports/report-20260612-exp201-202.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "Relation process_events does not exist in integration tests. Commands.zig uses unqualified names which fail even when search_path is set to tenant_default, possibly because some tables only exist in tenant schemas or the search_path is lost in nested transactions."
+      },
+      {
+        "severity": "MAJOR",
+        "description": "zig build migrate skips all migrations on test DB, preventing schema refreshment."
+      }
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-06-12T20:45:18Z"
+}

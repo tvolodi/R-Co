@@ -39,6 +39,8 @@ pub fn set(tenant_id: []const u8) void {
         clear();
         return;
     }
+    // Always clear storage mode resolution when tenant changes
+    _storage_mode_resolved = false;
     @memcpy(_current[0..], tenant_id);
     _has_value = true;
 }

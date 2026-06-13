@@ -1,0 +1,121 @@
+---
+run_id: WF02-exp3-async-effects-20260613
+workflow_id: WF-02
+stage: "Epic 3 — Async Outbound Effects"
+requirement_ids:
+  - EXP-301
+  - EXP-302
+  - EXP-303
+retrospective_date: 2026-06-13
+estimation_version: "1.1"
+
+# Estimation parameters
+difficulty: 4
+difficulty_rationale: "Cross-module async effects architecture with worker, API re-entry, and migration off inline I/O."
+integration_surface: "high"
+integration_surface_rationale: "Touches engine, API routes, outbound adapters/webhook patterns, and new effects module boundaries."
+
+# Estimation vs actual
+steps:
+  code-designer:
+    estimated_minutes: 8
+    actual_minutes: 3
+    variance_percent: -62.5
+    variance_assessment: "Very fast. Designer produced minimal prose; no back-and-forth."
+  
+  code-design-validator:
+    estimated_minutes: 23
+    actual_minutes: 6
+    variance_percent: -74.0
+    variance_assessment: "Much faster than expected. Design was clear and focused; minimal rework."
+  
+  backend-dev:
+    estimated_minutes: 9
+    actual_minutes: 30
+    variance_percent: 233.0
+    variance_assessment: "Significantly overrun. Multiple rework cycles on effects subsystem integration; test harness setup required more iteration than predicted."
+  
+  test-designer:
+    estimated_minutes: 3
+    actual_minutes: 21
+    variance_percent: 600.0
+    variance_assessment: "Massive overrun. Test coverage for effects subsystem, worker polling, retry logic, and stub executor required extensive scenario design. Estimate was unrealistically low."
+  
+  test-design-validator:
+    estimated_minutes: 38
+    actual_minutes: 11
+    variance_percent: -71.0
+    variance_assessment: "Faster than expected due to small feature scope. Validation cycles fewer than anticipated."
+  
+  test-runner:
+    estimated_minutes: 6
+    actual_minutes: 2
+    variance_percent: -67.0
+    variance_assessment: "Quick execution. No infrastructure or test failures; all layers passed on first run."
+  
+  release-validator:
+    estimated_minutes: 2
+    actual_minutes: 4
+    variance_percent: 100.0
+    variance_assessment: "Slightly longer. NFR validation required detailed analysis of effect outbox storage and throughput."
+  
+  doc-updater:
+    estimated_minutes: 2
+    actual_minutes: null
+    variance_percent: null
+    variance_assessment: "Not yet completed; in progress."
+
+# Summary
+total_estimated_minutes: 91
+total_actual_minutes: 77  # Excluding doc-updater which is in progress
+total_variance_percent: -15.4
+
+# Key findings
+findings: |
+  1. **Test-designer massive overrun (+600%)**: The initial estimate of 3 minutes was unrealistic. Designing comprehensive tests for a new async effects subsystem required:
+     - 7 test cases for transactional outbox (state machine, worker polling, idempotency)
+     - 6 test cases for SERVICE_TASK effect emission and resumption semantics
+     - 7 test cases for stub executor and deterministic outcome replay
+     Total: 20 test cases across three separate test modules.
+     
+     **Recommendation for next similar feature (complexity level 4)**: Allocate minimum 20-30 minutes for test-designer when the feature involves:
+     - New subsystem with worker/polling patterns
+     - Cross-module state machine changes
+     - Deterministic stub for testing integration
+  
+  2. **Backend-dev overrun (+233%)**: Implementation required more iteration than the 9-minute estimate:
+     - Effects outbox table design and retry logic
+     - Worker initialization and polling loop
+     - SERVICE_TASK integration with effect emission/resumption
+     - Test harness setup (stub executor, mock scenarios)
+     Multiple rework cycles to get the integration right.
+     
+     **Recommendation**: For features involving new subsystems with async I/O patterns, allocate 25-35 minutes (difficulty 4).
+  
+  3. **Overall variance**: Despite 233% backend overrun and 600% test-designer overrun, the pipeline completed only 15% behind estimate due to quick validation and test execution phases. The "slow" phases (designer, validator) came in 62-74% faster than predicted.
+  
+  4. **Integration surface was high**: The feature touched engine/transition, API routes, definition, effects module (new), and simulation. This justified the "high" surface rating and may explain why designer validation was quick (clear boundaries) but implementation required iteration (cross-module wiring).
+
+# Recommendations for future estimation
+recommendations:
+  - "For new subsystems with polling/worker patterns (e.g., scheduler, effects worker), set test-designer minimum at 20 minutes instead of 3. Current rule assumes simple feature."
+  - "Backend-dev estimate for complexity level 4 cross-module work should be 20-30 minutes, not 9. Current rule may underestimate integration complexity."
+  - "Code-designer and code-design-validator both came in 62-74% faster. This suggests good architecture clarity; no change recommended."
+  - "Overall WF-02 pipeline for this run: 77 minutes actual (estimated 91). Pipeline efficiency is good; estimation errors are in individual step calibration, not workflow design."
+
+# Metrics for future estimation rules update (to docs/metrics/estimation_rules.json)
+suggested_adjustments:
+  - step: "test-designer"
+    difficulty_level: 4
+    current_estimate: 3
+    suggested_estimate: 25
+    notes: "Async subsystems with worker patterns and multi-layer testing require more scenario design."
+  
+  - step: "backend-dev"
+    difficulty_level: 4
+    current_estimate: 9
+    suggested_estimate: 28
+    notes: "High integration surface (4+ modules) with new subsystem requires more implementation and rework cycles."
+
+created_at: 2026-06-13T10:46:47Z
+completed_at: 2026-06-13T10:47:02Z
