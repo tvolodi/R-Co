@@ -36,7 +36,9 @@ pub const SubscriptionStatus = enum {
 pub const CreateSubscriptionRequest = struct {
     target_url: []const u8,
     event_types: []const WebhookEventType,
-    secret: ?[]const u8,
+    secret: ?[]const u8 = null,
+    secret_ref: ?[]const u8 = null,
+    secret_key_id: ?[]const u8 = null,
 };
 
 pub const WebhookSubscription = struct {
@@ -52,6 +54,8 @@ pub const WebhookSubscription = struct {
     created_at: []u8,
     updated_at: []u8,
     secret_configured: bool,
+    secret_ref: ?[]u8,
+    secret_key_id: ?[]u8,
 
     pub fn deinit(self: WebhookSubscription, allocator: std.mem.Allocator) void {
         allocator.free(self.subscription_id);
@@ -62,6 +66,8 @@ pub const WebhookSubscription = struct {
         if (self.paused_at) |value| allocator.free(value);
         allocator.free(self.created_at);
         allocator.free(self.updated_at);
+        if (self.secret_ref) |value| allocator.free(value);
+        if (self.secret_key_id) |value| allocator.free(value);
     }
 };
 
@@ -140,13 +146,12 @@ pub fn createSubscription(
     const event_types_pg = eventTypesPgArrayLiteral(allocator, req.event_types) catch return error.OutOfMemory;
     defer allocator.free(event_types_pg);
 
-    const secret_value = req.secret orelse "";
     const rows = conn.query(
         allocator,
         \\INSERT INTO webhook_subscriptions
-        \\  (owner_id, url, secret, event_types, is_active, status, consecutive_failures, max_attempts, created_at, updated_at)
+        \\  (owner_id, url, secret, secret_ref, secret_key_id, event_types, is_active, status, consecutive_failures, max_attempts, created_at, updated_at)
         \\VALUES
-        \\  ($1::uuid, $2, $3, $4::text[], true, 'ACTIVE', 0, 5, NOW(), NOW())
+        \\  ($1::uuid, $2, '', $3, $4, $5::text[], true, 'ACTIVE', 0, 5, NOW(), NOW())
         \\RETURNING
         \\  id::text,
         \\  url,
@@ -158,9 +163,11 @@ pub fn createSubscription(
         \\  NULL::timestamptz,
         \\  NULL::timestamptz,
         \\  to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-        \\  to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+        \\  to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+        \\  secret_ref,
+        \\  secret_key_id
     ,
-        &.{ owner_id, req.target_url, secret_value, event_types_pg },
+        &.{ owner_id, req.target_url, req.secret_ref orelse "", req.secret_key_id orelse "", event_types_pg },
     ) catch return error.PersistenceFailed;
     if (rows.rows.len == 0) return error.PersistenceFailed;
 
@@ -168,7 +175,7 @@ pub fn createSubscription(
     const subscription_id = allocator.dupe(u8, row[0] orelse "") catch return error.OutOfMemory;
     defer allocator.free(subscription_id);
 
-    const created = try rowToSubscription(allocator, row, req.secret != null);
+    const created = try rowToSubscription(allocator, row, req.secret_ref != null);
     errdefer created.deinit(allocator);
 
     var inserted_rows = rows;
@@ -242,7 +249,9 @@ pub fn listSubscriptions(
         \\  to_char(paused_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-        \\  CASE WHEN secret IS NULL OR secret = '' THEN 'false' ELSE 'true' END
+        \\  CASE WHEN secret_ref IS NULL OR secret_ref = '' THEN 'false' ELSE 'true' END,
+        \\  secret_ref,
+        \\  secret_key_id
         \\FROM webhook_subscriptions
         \\ORDER BY created_at DESC
     ,
@@ -343,7 +352,9 @@ pub fn updateSubscriptionStatus(
         \\  to_char(paused_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-        \\  CASE WHEN secret IS NULL OR secret = '' THEN 'false' ELSE 'true' END
+        \\  CASE WHEN secret_ref IS NULL OR secret_ref = '' THEN 'false' ELSE 'true' END,
+        \\  secret_ref,
+        \\  secret_key_id
     ,
         &.{ subscription_id, status_text },
     ) catch return error.PersistenceFailed;
@@ -462,6 +473,18 @@ fn rowToSubscription(
         .created_at = try allocator.dupe(u8, if (row.len > 9) row[9] orelse "" else row[6] orelse ""),
         .updated_at = try allocator.dupe(u8, if (row.len > 10) row[10] orelse "" else row[7] orelse ""),
         .secret_configured = secret_configured,
+        .secret_ref = if (row.len > 13 and row[12] != null and row[12].?.len > 0)
+            try allocator.dupe(u8, row[12].?)
+        else if (row.len > 12 and row[11] != null and row[11].?.len > 0)
+            try allocator.dupe(u8, row[11].?)
+        else
+            null,
+        .secret_key_id = if (row.len > 13 and row[13] != null and row[13].?.len > 0)
+            try allocator.dupe(u8, row[13].?)
+        else if (row.len > 12 and row[12] != null and row[12].?.len > 0)
+            try allocator.dupe(u8, row[12].?)
+        else
+            null,
     };
 }
 
@@ -510,6 +533,8 @@ test "TC-EXT-02-U01: create request validation enforces URL policy and non-empty
         .target_url = "",
         .event_types = &.{.task_completed},
         .secret = null,
+        .secret_ref = null,
+        .secret_key_id = null,
     };
     try std.testing.expectError(error.ValidationFailed, validateCreateRequest(req_empty_url, false));
 
@@ -517,6 +542,8 @@ test "TC-EXT-02-U01: create request validation enforces URL policy and non-empty
         .target_url = "http://example.test/hook",
         .event_types = &.{.task_completed},
         .secret = null,
+        .secret_ref = null,
+        .secret_key_id = null,
     };
     try validateCreateRequest(req_http_nonprod, false);
 
@@ -524,6 +551,8 @@ test "TC-EXT-02-U01: create request validation enforces URL policy and non-empty
         .target_url = "http://example.test/hook",
         .event_types = &.{.task_completed},
         .secret = null,
+        .secret_ref = null,
+        .secret_key_id = null,
     };
     try std.testing.expectError(error.ValidationFailed, validateCreateRequest(req_http_prod, true));
 
@@ -531,6 +560,8 @@ test "TC-EXT-02-U01: create request validation enforces URL policy and non-empty
         .target_url = "https://example.test/hook",
         .event_types = &.{},
         .secret = null,
+        .secret_ref = null,
+        .secret_key_id = null,
     };
     try std.testing.expectError(error.ValidationFailed, validateCreateRequest(req_empty_events, false));
 }
@@ -551,6 +582,8 @@ test "TC-EXT-02-U10: create/delete audit payload shape is deterministic and atom
         .target_url = "https://example.test/hook",
         .event_types = &event_types,
         .secret = null,
+        .secret_ref = null,
+        .secret_key_id = null,
     };
 
     try validateCreateRequest(req, true) catch |err| switch (err) {

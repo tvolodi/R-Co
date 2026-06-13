@@ -49,6 +49,7 @@ pub const EffectSpec = struct {
     effect_event_id: []const u8,
 
     /// Back-reference to the instance/node that produced this effect.
+    tenant_id: []const u8,
     instance_id: []const u8,
     node_id: []const u8,
     token_id: []const u8,
@@ -71,10 +72,7 @@ pub const HttpEffectSpec = struct {
     body_json: ?[]const u8,
     timeout_ms: u32,
     retry_limit: u8,
-    /// Secret reference resolved via EXP-501 at delivery time.
-    /// If non-null and EXP-501 is not yet implemented, delivery returns
-    /// EffectDeliveryError.SecretResolutionFailed.
-    // TODO(EXP-501): resolve secret_ref via secrets module when available.
+    /// Secret reference resolved at delivery time through the secrets module.
     secret_ref: ?[]const u8,
 };
 
@@ -83,7 +81,7 @@ pub const EmailEffectSpec = struct {
     to: []const u8,
     subject: []const u8,
     body: []const u8,
-    // TODO(EXP-501): resolve SMTP credential reference.
+    /// SMTP credential secret reference resolved at delivery time.
     secret_ref: ?[]const u8,
 };
 
@@ -102,8 +100,7 @@ pub const EffectDeliveryError = error{
     TransportError,
     /// Per-call deadline exceeded — retry.
     Timeout,
-    /// EXP-501 secret reference not resolvable — retry (infrastructure concern).
-    // TODO(EXP-501): remove once secrets module lands.
+    /// Secret reference not resolvable — retry (infrastructure concern).
     SecretResolutionFailed,
     OutOfMemory,
     /// spec_json failed to deserialise — DLQ immediately, no retry.

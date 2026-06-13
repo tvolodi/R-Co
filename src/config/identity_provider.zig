@@ -189,12 +189,63 @@ fn isValidSecretReference(value: []const u8) bool {
         return path.len > 0 and key.len > 0;
     }
 
+    if (std.mem.startsWith(u8, value, "sec://tenant/")) {
+        return isValidSecTenantRef(value);
+    }
+
     return false;
 }
 
 fn isAlphaNumUnderscore(value: []const u8) bool {
     for (value) |c| {
         if (std.ascii.isAlphanumeric(c) or c == '_') continue;
+        return false;
+    }
+    return true;
+}
+
+fn isValidSecTenantRef(value: []const u8) bool {
+    const prefix = "sec://tenant/";
+    if (!std.mem.startsWith(u8, value, prefix)) return false;
+
+    const body = value[prefix.len..];
+    const slash1 = std.mem.indexOfScalar(u8, body, '/') orelse return false;
+    const tenant_id = body[0..slash1];
+    if (!isRefSegment(tenant_id)) return false;
+
+    const rest = body[slash1 + 1 ..];
+    const slash2 = std.mem.indexOfScalar(u8, rest, '/') orelse return false;
+    const namespace = rest[0..slash2];
+    if (!isRefSegment(namespace)) return false;
+
+    const tail = rest[slash2 + 1 ..];
+    if (tail.len == 0) return false;
+
+    const hash_idx = std.mem.indexOfScalar(u8, tail, '#');
+    const name = if (hash_idx) |idx| tail[0..idx] else tail;
+    if (!isRefSegment(name)) return false;
+
+    if (hash_idx) |idx| {
+        const key_id = tail[idx + 1 ..];
+        if (key_id.len == 0) return false;
+        if (!isRefKeyId(key_id)) return false;
+    }
+
+    return true;
+}
+
+fn isRefSegment(value: []const u8) bool {
+    if (value.len == 0) return false;
+    for (value) |ch| {
+        if (std.ascii.isLower(ch) or std.ascii.isDigit(ch) or ch == '_' or ch == '-') continue;
+        return false;
+    }
+    return true;
+}
+
+fn isRefKeyId(value: []const u8) bool {
+    for (value) |ch| {
+        if (std.ascii.isAlphanumeric(ch) or ch == '-' or ch == '_' or ch == '.' or ch == '~') continue;
         return false;
     }
     return true;

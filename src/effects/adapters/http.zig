@@ -17,12 +17,8 @@ pub fn deliver(
     allocator: std.mem.Allocator,
     spec: EffectSpec,
     http_spec: HttpEffectSpec,
+    resolved_secret: ?[]const u8,
 ) EffectDeliveryError!EffectDeliveryResult {
-    // TODO(EXP-501): if http_spec.secret_ref != null, resolve secret before use.
-    if (http_spec.secret_ref != null) {
-        return error.SecretResolutionFailed;
-    }
-
     const method = parseMethod(http_spec.method) orelse .POST;
 
     var client: std.http.Client = .{
@@ -37,6 +33,9 @@ pub fn deliver(
 
     header_list.append(allocator, .{ .name = "content-type", .value = "application/json" }) catch return error.OutOfMemory;
     header_list.append(allocator, .{ .name = "Idempotency-Key", .value = spec.effect_event_id }) catch return error.OutOfMemory;
+    if (resolved_secret) |secret| {
+        header_list.append(allocator, .{ .name = "Authorization", .value = secret }) catch return error.OutOfMemory;
+    }
 
     // Merge caller-supplied headers from headers_json if present.
     if (http_spec.headers_json) |hdr_json| {
