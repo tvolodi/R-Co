@@ -1,0 +1,51 @@
+{
+  "run_id": "WF02-exp3-async-effects-20260613",
+  "handoff_id": "211bd3d9-b7e9-45fe-ba21-3c67c4398619",
+  "workflow_id": "WF-02",
+  "task": {
+    "acceptance_criteria": [
+      "lint_design_artefact exits 0 (no BLOCKER/MAJOR)",
+      "Design coverage for EXP-301/302/303 remains intact",
+      "No implementation code added"
+    ],
+    "description": "REWORK ITERATION 1: Fix design lint MAJOR E050. Split or rewrite oversized fenced code block at src/design/exp-03-async-effects.md line ~218 so each fenced block is <=40 lines. Keep existing design substance and open questions unchanged.",
+    "functions_to_call": [
+      "fn:fix-design-lint"
+    ]
+  },
+  "max_rework": 3,
+  "created_at": "2026-06-13T06:42:42Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed E050 lint violation: split oversized EXP-301 data-flow block into three fenced blocks each <=40 lines. Design substance and open questions unchanged.",
+    "artifacts_out": [
+      "src/design/exp-03-async-effects.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 1b)"
+  },
+  "rework_count": 1,
+  "started_at": "2026-06-13T06:42:46Z",
+  "status": "COMPLETED",
+  "from_agent": "ORCH",
+  "step": "01-rework",
+  "to_agent": "CODE-DESIGNER",
+  "completed_at": "2026-06-13T06:44:58Z",
+  "context": {
+    "related_handoff_ids": [
+      "81d6efa2-e477-4220-9915-f410269b021d",
+      "f00ea90a-0850-4a0b-afdb-32b43bde88d8"
+    ],
+    "requirement_ids": [
+      "EXP-301",
+      "EXP-302",
+      "EXP-303"
+    ],
+    "stage": "EPIC-3 Async Outbound Effects",
+    "artifacts_in": [
+      "src/design/exp-03-async-effects.md",
+      "handoffs/WF02-exp3-async-effects-20260613/step-01b-code-design-validator.json"
+    ]
+  },
+  "priority": "HIGH"
+}

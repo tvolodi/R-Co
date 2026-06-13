@@ -12,10 +12,10 @@
 -- lint_migration_schema.py business-table check.
 
 -- Add db_host column to tenant_schemas (idempotent)
-ALTER TABLE tenant_schemas
+ALTER TABLE public.tenant_schemas
     ADD COLUMN IF NOT EXISTS db_host TEXT DEFAULT NULL;
 
-COMMENT ON COLUMN tenant_schemas.db_host IS
+COMMENT ON COLUMN public.tenant_schemas.db_host IS
     'Override PostgreSQL host for this tenant. NULL = use BPM_DB_URL host.';
 
 -- Update the tenant_status_check constraint to include MIGRATING.
@@ -31,7 +31,7 @@ BEGIN
            AND constraint_name = 'tenant_status_check'
            AND constraint_type = 'CHECK'
     ) THEN
-        ALTER TABLE tenant DROP CONSTRAINT tenant_status_check;
+        ALTER TABLE public.tenant DROP CONSTRAINT tenant_status_check;
     END IF;
 END $$;
 
@@ -45,7 +45,7 @@ BEGIN
            AND constraint_name = 'tenant_status_check'
            AND constraint_type = 'CHECK'
     ) THEN
-        ALTER TABLE tenant
+        ALTER TABLE public.tenant
             ADD CONSTRAINT tenant_status_check
             CHECK (status IN ('ACTIVE', 'INACTIVE', 'MIGRATING'));
     END IF;

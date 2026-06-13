@@ -34,18 +34,18 @@ BEGIN
         RAISE EXCEPTION 'TNT-07 pre-flight failed: tnt05_progress table does not exist. Run GBL-074 and GBL-075 first.';
     END IF;
 
-    FOR v_tenant IN SELECT id FROM tenant LOOP
+    FOR v_tenant IN SELECT id FROM public.tenant LOOP
 
         -- Check tenant_schemas row with migrations_applied_at IS NOT NULL
         SELECT EXISTS (
-            SELECT 1 FROM tenant_schemas
+            SELECT 1 FROM public.tenant_schemas
              WHERE tenant_id            = v_tenant.id
                AND migrations_applied_at IS NOT NULL
         ) INTO v_has_schema;
 
         -- Check at least one COMPLETED progress row for this tenant
         SELECT EXISTS (
-            SELECT 1 FROM tnt05_progress
+            SELECT 1 FROM public.tnt05_progress
              WHERE tenant_id = v_tenant.id
                AND status    = 'COMPLETED'
         ) INTO v_has_progress;
@@ -70,34 +70,34 @@ BEGIN
     -- -------------------------------------------------------------------------
 
     -- process_definitions
-    ALTER TABLE IF EXISTS process_definitions DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS process_definitions_tenant_policy ON process_definitions;
-    ALTER TABLE IF EXISTS process_definitions DROP COLUMN IF EXISTS tenant_id;
+    ALTER TABLE IF EXISTS public.process_definitions DISABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS process_definitions_tenant_policy ON public.process_definitions;
+    ALTER TABLE IF EXISTS public.process_definitions DROP COLUMN IF EXISTS tenant_id;
 
     -- instance_projections
-    ALTER TABLE IF EXISTS instance_projections DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS instance_projections_tenant_policy ON instance_projections;
-    ALTER TABLE IF EXISTS instance_projections DROP COLUMN IF EXISTS tenant_id;
+    ALTER TABLE IF EXISTS public.instance_projections DISABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS instance_projections_tenant_policy ON public.instance_projections;
+    ALTER TABLE IF EXISTS public.instance_projections DROP COLUMN IF EXISTS tenant_id;
 
     -- tasks
-    ALTER TABLE IF EXISTS tasks DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS tasks_tenant_policy ON tasks;
-    ALTER TABLE IF EXISTS tasks DROP COLUMN IF EXISTS tenant_id;
+    ALTER TABLE IF EXISTS public.tasks DISABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS tasks_tenant_policy ON public.tasks;
+    ALTER TABLE IF EXISTS public.tasks DROP COLUMN IF EXISTS tenant_id;
 
     -- tokens
-    ALTER TABLE IF EXISTS tokens DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS tokens_tenant_policy ON tokens;
-    ALTER TABLE IF EXISTS tokens DROP COLUMN IF EXISTS tenant_id;
+    ALTER TABLE IF EXISTS public.tokens DISABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS tokens_tenant_policy ON public.tokens;
+    ALTER TABLE IF EXISTS public.tokens DROP COLUMN IF EXISTS tenant_id;
 
     -- audit_entries
-    ALTER TABLE IF EXISTS audit_entries DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS audit_entries_tenant_policy ON audit_entries;
-    ALTER TABLE IF EXISTS audit_entries DROP COLUMN IF EXISTS tenant_id;
+    ALTER TABLE IF EXISTS public.audit_entries DISABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS audit_entries_tenant_policy ON public.audit_entries;
+    ALTER TABLE IF EXISTS public.audit_entries DROP COLUMN IF EXISTS tenant_id;
 
     -- audit_log
-    ALTER TABLE IF EXISTS audit_log DISABLE ROW LEVEL SECURITY;
-    DROP POLICY IF EXISTS audit_log_tenant_policy ON audit_log;
-    ALTER TABLE IF EXISTS audit_log DROP COLUMN IF EXISTS tenant_id;
+    ALTER TABLE IF EXISTS public.audit_log DISABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS audit_log_tenant_policy ON public.audit_log;
+    ALTER TABLE IF EXISTS public.audit_log DROP COLUMN IF EXISTS tenant_id;
 
     -- -------------------------------------------------------------------------
     -- DDL: Remove tenant_id column from tables that had it without RLS
@@ -130,12 +130,12 @@ BEGIN
 
     -- -------------------------------------------------------------------------
     -- Drop bpm_effective_tenant_id() function
-    -- (If a dependent trigger/view still references it, DROP will fail with a
-    --  dependency error and the migration aborts, listing dependent objects.
-    --  The operator must clean up dependents before re-running.)
+    -- (We use CASCADE to ensure default values and policies in tenant schemas
+    --  that still reference this global function are also dropped. In Stage 12,
+    --  these columns are no longer used for RLS anyway.)
     -- -------------------------------------------------------------------------
-    DROP FUNCTION IF EXISTS bpm_effective_tenant_id();
+    DROP FUNCTION IF EXISTS public.bpm_effective_tenant_id() CASCADE;
 
-    RAISE NOTICE 'GBL-077: RLS cleanup complete. tenant_id columns and RLS policies removed from public business tables.';
+    RAISE NOTICE 'GBL-077: RLS cleanup complete. tenant_id columns and RLS policies removed from public business tables (and global helper function dropped).';
 
 END $$;

@@ -257,10 +257,17 @@ pub const Migrations = struct {
 
 fn migrationOrder(filename: []const u8) u32 {
     // GBL-NNN_... files: skip "GBL-" prefix then parse the numeric part.
+    // We add an offset (1000) for GBL migrations so they don't clash with
+    // regular NNN prefix migrations numerically.
     var start: usize = 0;
-    if (std.mem.startsWith(u8, filename, "GBL-")) start = 4;
+    var offset: u32 = 0;
+    if (std.mem.startsWith(u8, filename, "GBL-")) {
+        start = 4;
+        offset = 1000;
+    }
     var i: usize = start;
     while (i < filename.len and std.ascii.isDigit(filename[i])) : (i += 1) {}
     if (i == start) return 0;
-    return std.fmt.parseInt(u32, filename[start..i], 10) catch 0;
+    const base_order = std.fmt.parseInt(u32, filename[start..i], 10) catch 0;
+    return base_order + offset;
 }

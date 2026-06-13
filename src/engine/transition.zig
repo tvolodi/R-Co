@@ -80,6 +80,23 @@ pub const PendingEvent = union(enum) {
     instance_cancelled: InstanceCancelledPayload, // EE-07
     timer_created: TimerCreatedPayload, // SCH-01
     sub_process_start: SubProcessStartPayload,
+    effect_emitted: EffectEmittedPayload, // EXP-301: async effect activated
+};
+
+// ---------------------------------------------------------------------------
+// EXP-301: EffectEmittedPayload — emitted when engine activates an effect node
+// ---------------------------------------------------------------------------
+
+/// Emitted when transition() activates a SERVICE_TASK node (EXP-302 path)
+/// or any EFFECT node in the graph. Pure data — no I/O.
+/// The event-store writer uses this to insert the EFFECT_EMITTED event and
+/// the effects_outbox row in the same transaction.
+pub const EffectEmittedPayload = struct {
+    node_id: []const u8,
+    token_id: []const u8, // empty string if token has no stable ID
+    correlation_key: []const u8, // "<node_id>:<token_id_or_branch_id>"
+    kind: []const u8, // "http_call" | "email"
+    spec_json: []const u8, // raw node attributes JSON (rendered at emit time)
 };
 
 // ---------------------------------------------------------------------------
@@ -153,6 +170,18 @@ pub const TransitionEvent = union(enum) {
     },
     unknown: struct {
         event_type: []const u8,
+    },
+    /// EXP-301: effect delivery succeeded. Advances the token past the
+    /// parked SERVICE_TASK node, merging response_body_json into variables.
+    effect_completed: struct {
+        correlation_key: []const u8,
+        response_body_json: ?[]const u8,
+    },
+    /// EXP-301: effect delivery failed (max attempts exhausted or permanent).
+    /// Drives the error boundary edge or sets instance to ERROR.
+    effect_failed: struct {
+        correlation_key: []const u8,
+        error_detail: []const u8,
     },
 };
 
@@ -391,6 +420,7 @@ fn pendingEventTag(ev: PendingEvent) []const u8 {
         .instance_cancelled => "instance_cancelled",
         .timer_created => "timer_created",
         .sub_process_start => "sub_process_start",
+        .effect_emitted => "effect_emitted",
     };
 }
 
@@ -402,8 +432,10 @@ fn pendingEventNodeId(ev: PendingEvent) []const u8 {
         .instance_cancelled => |p| p.join_node_id orelse "",
         .timer_created => |p| p.timer_node_id,
         .sub_process_start => |p| p.parent_node_id,
+        .effect_emitted => |p| p.node_id,
     };
 }
+
 
 // ---------------------------------------------------------------------------
 // transition() function
@@ -645,6 +677,50 @@ pub fn transition(
             new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
             break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
         },
+        // EXP-301: effect delivery succeeded — advance token past SERVICE_TASK.
+        .effect_completed => |payload| blk: {
+            const node_id_from_key = extractNodeIdFromCorrelationKey(payload.correlation_key);
+            var token_idx: ?usize = null;
+            for (new_state.tokens, 0..) |t, i| {
+                if (std.mem.eql(u8, t.node_id, node_id_from_key)) {
+                    token_idx = i;
+                    break;
+                }
+            }
+            if (token_idx == null) return TransitionError.InvalidState;
+            if (payload.response_body_json) |body| {
+                const key_dup = try allocator.dupe(u8, "effect_result");
+                errdefer allocator.free(key_dup);
+                try new_state.variables.put(allocator, key_dup, std.json.Value{ .string = body });
+            }
+            var outgoing_found = false;
+            var next_node_id: []const u8 = undefined;
+            for (snapshot.edges) |edge| {
+                if (std.mem.eql(u8, edge.source, node_id_from_key)) {
+                    next_node_id = edge.target;
+                    outgoing_found = true;
+                    break;
+                }
+            }
+            if (!outgoing_found) return TransitionError.InvalidState;
+            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+            break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
+        },
+        // EXP-301: effect delivery failed — set instance to ERROR.
+        .effect_failed => |payload| blk: {
+            const node_id_from_key = extractNodeIdFromCorrelationKey(payload.correlation_key);
+            var new_s = new_state;
+            new_s.status = .ERROR;
+            new_s.error_detail = try allocator.dupe(u8, payload.error_detail);
+            var surviving = std.ArrayList(Token).empty;
+            defer surviving.deinit(allocator);
+            for (new_s.tokens) |t| {
+                if (!std.mem.eql(u8, t.node_id, node_id_from_key))
+                    try surviving.append(allocator, t);
+            }
+            new_s.tokens = try surviving.toOwnedSlice(allocator);
+            break :blk new_s;
+        },
         else => return TransitionError.UnknownEventType,
     };
 
@@ -709,6 +785,38 @@ fn isSimpleIdentifier(name: []const u8) bool {
         if (idx > 0 and !(std.ascii.isAlphabetic(c) or std.ascii.isDigit(c) or c == '_')) return false;
     }
     return true;
+}
+
+// ---------------------------------------------------------------------------
+// EXP-301: Correlation key helpers
+// ---------------------------------------------------------------------------
+
+/// Extract the node_id from a correlation_key formatted as "<node_id>:<token_id>".
+/// Returns the portion before the first ':'. If no ':' is found, returns the
+/// full key (safe fallback for legacy or malformed keys).
+fn extractNodeIdFromCorrelationKey(correlation_key: []const u8) []const u8 {
+    const colon_pos = std.mem.indexOfScalar(u8, correlation_key, ':') orelse return correlation_key;
+    return correlation_key[0..colon_pos];
+}
+
+/// Return true when node attributes contain "sync_inline": true.
+/// Used by EXP-302 Path B: SERVICE_TASK nodes that retain inline execution.
+fn parseSyncInline(node_attrs: ?[]const u8) bool {
+    const raw = node_attrs orelse return false;
+    if (raw.len == 0) return false;
+    // Simple substring check — avoids allocator dependency in a helper.
+    return std.mem.indexOf(u8, raw, "\"sync_inline\":true") != null or
+        std.mem.indexOf(u8, raw, "\"sync_inline\": true") != null;
+}
+
+/// Infer effect kind from node attributes JSON.
+/// Returns "http_call" by default if not specified or if kind is unrecognised.
+fn parseEffectKind(node_attrs: ?[]const u8) []const u8 {
+    const raw = node_attrs orelse return "http_call";
+    if (std.mem.indexOf(u8, raw, "\"kind\":\"email\"") != null or
+        std.mem.indexOf(u8, raw, "\"kind\": \"email\"") != null)
+        return "email";
+    return "http_call";
 }
 
 // ---------------------------------------------------------------------------
@@ -1284,6 +1392,31 @@ fn processNodeEntry(
             } else {
                 return state;
             }
+        },
+        // EXP-302: SERVICE_TASK — async effect (Path A) or sync_inline pass (Path B).
+        .SERVICE_TASK => {
+            if (parseSyncInline(node_attrs)) return state;
+            var tok_id: []const u8 = "";
+            var br_id: []const u8 = "";
+            for (state.tokens) |tok| {
+                if (std.mem.eql(u8, tok.node_id, node_id)) {
+                    if (tok.token_id) |tid| tok_id = tid;
+                    br_id = tok.branch_id;
+                    break;
+                }
+            }
+            const stable = if (tok_id.len > 0) tok_id else br_id;
+            const ckey = try std.fmt.allocPrint(allocator, "{s}:{s}", .{ node_id, stable });
+            const kstr = parseEffectKind(node_attrs);
+            const sraw = node_attrs orelse "{}";
+            try events.append(allocator, PendingEvent{ .effect_emitted = .{
+                .node_id = try allocator.dupe(u8, node_id),
+                .token_id = try allocator.dupe(u8, stable),
+                .correlation_key = ckey,
+                .kind = kstr,
+                .spec_json = try allocator.dupe(u8, sraw),
+            } });
+            return state;
         },
         else => return state,
     }

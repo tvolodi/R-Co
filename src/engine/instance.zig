@@ -3743,8 +3743,11 @@ fn emittedEventTypeStr(ev: transition_mod.PendingEvent) []const u8 {
         .parallel_join => "parallel_join",
         .instance_cancelled => "instance_cancelled",
         .sub_process_start => "sub_process_start",
+        .effect_emitted => "EFFECT_EMITTED",
     };
 }
+// EXP-301: effect_emitted is a special case — it needs the outbox insert too.
+// EXP-301: effect_emitted is a special case — it needs the outbox insert too.
 
 /// Build a minimal JSON payload for the emitted event row.
 /// Returns a stack-allocated string in the provided arena; the arena owns the
@@ -3778,6 +3781,12 @@ fn buildEmittedEventPayload(
             allocator,
             "{{\"child_definition_id\":\"{s}\",\"parent_node_id\":\"{s}\"}}",
             .{ s.child_definition_id, s.parent_node_id },
+        ),
+        // EXP-301: effect_emitted payload includes correlation key and kind.
+        .effect_emitted => |e| std.fmt.allocPrint(
+            allocator,
+            "{{\"node_id\":\"{s}\",\"correlation_key\":\"{s}\",\"kind\":\"{s}\"}}",
+            .{ e.node_id, e.correlation_key, e.kind },
         ),
     };
 }

@@ -312,7 +312,8 @@ pub const Conn = struct {
                     }
                 },
                 'E' => { // ErrorResponse
-                    try self.skipBytes(payload_len);
+                    const err_raw = self.reader.interface.take(payload_len) catch return PgError.ConnectionFailed;
+                    std.debug.print("\nPOSTGRES ERROR: {s}\n", .{err_raw});
                     got_error = true;
                 },
                 // All other messages are safely skipped.

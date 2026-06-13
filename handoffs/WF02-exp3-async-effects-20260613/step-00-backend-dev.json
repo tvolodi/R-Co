@@ -1,0 +1,58 @@
+﻿{
+    "run_id":  "WF02-exp3-async-effects-20260613",
+    "handoff_id":  "81bbf7b0-0b8f-48d2-af20-9f8fff9c0299",
+    "workflow_id":  "WF-02",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "Current branch is feature/WF02-exp3-async-effects-20260613",
+                                             "Branch pushed to origin",
+                                             "result.git_evidence.branch_name populated",
+                                             "result.git_evidence.push_status = ok",
+                                             "No source code changes in Step 00"
+                                         ],
+                 "description":  "Execute Step 00 git wrapper for WF-02 EXP-301/302/303 run: run fn:git-setup exactly per docs/agents/protocols/GIT_SETUP.md. Create and push feature branch feature/WF02-exp3-async-effects-20260613 from main. Return git evidence fields in result.",
+                 "functions_to_call":  [
+                                           "fn:git-setup"
+                                       ]
+             },
+    "max_rework":  3,
+    "created_at":  "2026-06-13T06:31:51Z",
+    "result":  {
+        "status": "PASS",
+        "summary": "Feature branch feature/WF02-exp3-async-effects-20260613 created from main and pushed to origin (forced-reset prior aborted branch).",
+        "artifacts_out": ["branch: feature/WF02-exp3-async-effects-20260613"],
+        "issues": [],
+        "git_evidence": {
+            "branch_name": "feature/WF02-exp3-async-effects-20260613",
+            "base_commit": "480b7dc",
+            "push_status": "ok",
+            "remote": "origin/feature/WF02-exp3-async-effects-20260613"
+        },
+        "next_action": "ORCH routes to next step per active workflow"
+    },
+    "rework_count":  0,
+    "started_at":  "2026-06-13T06:31:57Z",
+    "status":  "COMPLETED",
+    "from_agent":  "ORCH",
+    "step":  "00",
+    "to_agent":  "BACKEND-DEV",
+    "completed_at":  "2026-06-13T06:35:34Z",
+    "context":  {
+                    "related_handoff_ids":  [
+
+                                            ],
+                    "requirement_ids":  [
+                                            "EXP-301",
+                                            "EXP-302",
+                                            "EXP-303"
+                                        ],
+                    "stage":  "EPIC-3 Async Outbound Effects",
+                    "artifacts_in":  [
+                                         "docs/requirements/BPM_Platform_Expansion_Backlog.20260611.md",
+                                         "docs/Audit-Reports/BPM_vs_ASCOA-GO_Gap_Analysis.20260611.md",
+                                         "docs/agents/protocols/GIT_SETUP.md",
+                                         "docs/agents/protocols/GIT_MERGE.md"
+                                     ]
+                },
+    "priority":  "HIGH"
+}

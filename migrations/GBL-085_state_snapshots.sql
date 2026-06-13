@@ -17,7 +17,7 @@
 -- GBL-prefix: operates on public schema.
 -- No schema-qualified names — uses unqualified table names.
 
-CREATE TABLE IF NOT EXISTS instance_state_snapshots (
+CREATE TABLE IF NOT EXISTS public.instance_state_snapshots (
     instance_id   UUID        NOT NULL,
     snapshot_seq  BIGINT      NOT NULL,
     state_blob    JSONB       NOT NULL,
@@ -27,4 +27,4 @@ CREATE TABLE IF NOT EXISTS instance_state_snapshots (
 );
 
 CREATE INDEX IF NOT EXISTS idx_instance_state_snapshots_latest
-    ON instance_state_snapshots (instance_id, snapshot_seq DESC);
+    ON public.instance_state_snapshots (instance_id, snapshot_seq DESC);

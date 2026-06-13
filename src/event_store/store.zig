@@ -87,6 +87,12 @@ pub const EventRecord = struct {
     metadata: []const u8,
     /// Cross-instance monotone; from events_global_seq PostgreSQL sequence (ES-04).
     global_seq: i64,
+
+    pub fn deinit(self: *EventRecord, allocator: std.mem.Allocator) void {
+        if (self.event_type.len > 0) allocator.free(self.event_type);
+        if (self.payload.len > 0) allocator.free(self.payload);
+        if (self.metadata.len > 0) allocator.free(self.metadata);
+    }
 };
 
 pub const AppendParams = struct {
@@ -426,42 +432,50 @@ pub const Store = struct {
             // Invariant #5: check events_archive for post-archival duplicate.
             // Query only the scalar sequence_number to avoid dangling string
             // pointers from rowToEventRecord. (ES-03, security: parameterised)
-            const dup_conn = self.pool.acquire() catch return StoreError.TransactionFailed;
+            const dup_conn = self.pool.acquire() catch return StoreError.PoolExhausted;
             defer self.pool.release(dup_conn);
 
-            const orig_seq: i64 = orig_blk: {
-                // Check live events table first.
-                const live_seq_rows = dup_conn.query(
+            const orig = orig_blk: {
+                // Check live events table first — select all columns needed by rowToEventRecord
+                const live_rows = dup_conn.query(
                     allocator,
-                    "SELECT sequence_number FROM events WHERE idempotency_key = $1",
+                    \\SELECT event_id, instance_id, event_type, payload, actor_id,
+                    \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
+                    \\       sequence_number, idempotency_key, metadata, global_seq
+                    \\FROM events WHERE idempotency_key = $1
+                ,
                     &.{params.idempotency_key},
-                ) catch break :orig_blk sequence_number;
+                ) catch break :orig_blk duplicateFromParams(params, sequence_number, metadata);
                 defer {
-                    var mr = live_seq_rows;
+                    var mr = live_rows;
                     mr.deinit();
                 }
-                if (live_seq_rows.rows.len > 0 and live_seq_rows.rows[0].len > 0) {
-                    if (live_seq_rows.rows[0][0]) |s|
-                        break :orig_blk std.fmt.parseInt(i64, s, 10) catch sequence_number;
+                if (live_rows.rows.len > 0) {
+                    break :orig_blk rowToEventRecord(allocator, live_rows.rows[0], "") catch
+                        duplicateFromParams(params, sequence_number, metadata);
                 }
                 // Check events_archive (post-archival duplicate).
-                const arch_seq_rows = dup_conn.query(
+                const arch_rows = dup_conn.query(
                     allocator,
-                    "SELECT sequence_number FROM events_archive WHERE idempotency_key = $1",
+                    \\SELECT event_id, instance_id, event_type, payload, actor_id,
+                    \\       (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint AS created_at_us,
+                    \\       sequence_number, idempotency_key, metadata, global_seq
+                    \\FROM events_archive WHERE idempotency_key = $1
+                ,
                     &.{params.idempotency_key},
-                ) catch break :orig_blk sequence_number;
+                ) catch break :orig_blk duplicateFromParams(params, sequence_number, metadata);
                 defer {
-                    var mr = arch_seq_rows;
+                    var mr = arch_rows;
                     mr.deinit();
                 }
-                if (arch_seq_rows.rows.len > 0 and arch_seq_rows.rows[0].len > 0) {
-                    if (arch_seq_rows.rows[0][0]) |s|
-                        break :orig_blk std.fmt.parseInt(i64, s, 10) catch sequence_number;
+                if (arch_rows.rows.len > 0) {
+                    break :orig_blk rowToEventRecord(allocator, arch_rows.rows[0], "") catch
+                        duplicateFromParams(params, sequence_number, metadata);
                 }
-                break :orig_blk sequence_number;
+                break :orig_blk duplicateFromParams(params, sequence_number, metadata);
             };
             return AppendResult{
-                .record = duplicateFromParams(params, orig_seq, metadata),
+                .record = orig,
                 .is_duplicate = true,
             };
         }
@@ -1160,16 +1174,17 @@ fn rowToEventRecord(
 }
 
 fn duplicateFromParams(params: AppendParams, sequence_number: i64, metadata: []const u8) EventRecord {
+    _ = metadata;
     return EventRecord{
         .event_id = std.mem.zeroes(Uuid),
         .instance_id = params.instance_id,
-        .event_type = params.event_type,
-        .payload = params.payload,
+        .event_type = "",
+        .payload = "",
         .actor_id = params.actor_id,
         .created_at = 0,
         .sequence_number = sequence_number,
         .idempotency_key = params.idempotency_key,
-        .metadata = metadata,
+        .metadata = "",
         .global_seq = 0,
     };
 }

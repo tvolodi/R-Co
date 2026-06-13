@@ -275,7 +275,7 @@ pub fn reconstructInstancePointInTime(
         \\WHERE instance_id = $1::uuid AND sequence_number <= $2
     ;
 
-    var rows: db.QueryResults = undefined;
+    var rows: db.QueryResult = undefined;
     if (up_to_sequence) |seq| {
         const seq_str = std.fmt.allocPrint(ra, "{d}", .{seq}) catch return ReconstructionError.OutOfMemory;
         rows = conn.query(ra, with_cutoff_sql, &.{ inst_id_hex, seq_str }) catch

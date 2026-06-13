@@ -112,21 +112,26 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     }
 
     for (names.items) |filename| {
+        std.debug.print("CHECKING MIGRATION: {s}\n", .{filename});
         if (applied.contains(filename)) continue;
+        std.debug.print("APPLYING MIGRATION: {s}\n", .{filename});
 
         // Skip GBL migrations that have data pre-conditions in production but
         // are not needed for isolated integration test runs. These migrations require
         // pre-existing tenant migration state that test harness doesn't set up.
         // - GBL-074/075: TNT-05 backfill tracking (requires pre-existing migration state)
         // - GBL-077: TNT-07 RLS cleanup (requires schema-per-tenant state)
+        // - GBL-084: RLS removal (requires public.tenant table)
         if (std.mem.eql(u8, filename, "GBL-074_tnt05_backfill_tracking.sql") or
             std.mem.eql(u8, filename, "GBL-075_tnt05_backfill_run.sql") or
-            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql")) {
+            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql") or
+            std.mem.eql(u8, filename, "GBL-084_rls_removal.sql"))
+        {
             // Record as applied but skip execution
             conn.exec(
                 "INSERT INTO schema_migrations(version) VALUES ($1) ON CONFLICT DO NOTHING",
                 &.{filename},
-            ) catch {};  // Ignore errors; table may not exist on first run
+            ) catch {}; // Ignore errors; table may not exist on first run
             continue;
         }
 
@@ -143,6 +148,141 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
             "INSERT INTO schema_migrations(version) VALUES ($1)",
             &.{filename},
         ) catch |err| {
+            conn.rollback() catch {};
+            return err;
+        };
+        try conn.commit();
+    }
+
+    return;
+}
+
+fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, schema: []const u8) !void {
+    // Bootstrap table qualified with the target schema.
+    const create_sql = try std.fmt.allocPrint(allocator,
+        \\CREATE TABLE IF NOT EXISTS {s}.schema_migrations (
+        \\  version    TEXT        PRIMARY KEY,
+        \\  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        \\)
+    , .{schema});
+    defer allocator.free(create_sql);
+    try conn.exec(create_sql, &.{});
+
+    // Set search_path temporarily to prioritize the target schema.
+    const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
+    defer allocator.free(set_path_sql);
+    try conn.exec(set_path_sql, &.{});
+
+    const environ: std.process.Environ = .{ .block = .global };
+    const env_migrations_dir = environ.getAlloc(allocator, "BPM_MIGRATIONS_DIR") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => null,
+        error.OutOfMemory => return error.OutOfMemory,
+        error.InvalidWtf8 => unreachable,
+    };
+    defer if (env_migrations_dir) |path| allocator.free(path);
+
+    const migrations_dir = if (env_migrations_dir) |path| path else build_options.migrations_dir;
+    const migration_candidates = [_][]const u8{
+        "migrations",
+        "../migrations",
+        "../../migrations",
+        "../../../migrations",
+        "../../../../migrations",
+    };
+
+    const dir: std.Io.Dir = blk: {
+        const opened_absolute = std.Io.Dir.openDirAbsolute(io, migrations_dir, .{ .iterate = true }) catch {
+            const opened_relative = std.Io.Dir.cwd().openDir(io, migrations_dir, .{ .iterate = true }) catch {
+                for (migration_candidates) |candidate| {
+                    const opened_candidate = std.Io.Dir.cwd().openDir(io, candidate, .{ .iterate = true }) catch |candidate_open_err| {
+                        if (candidate_open_err == error.FileNotFound) continue;
+                        return candidate_open_err;
+                    };
+                    break :blk opened_candidate;
+                }
+                return error.FileNotFound;
+            };
+            break :blk opened_relative;
+        };
+        break :blk opened_absolute;
+    };
+    defer dir.close(io);
+
+    var names = std.ArrayList([]u8).empty;
+    defer {
+        for (names.items) |n| allocator.free(n);
+        names.deinit(allocator);
+    }
+
+    var it = dir.iterate();
+    while (try it.next(io)) |entry| {
+        if (entry.kind != .file) continue;
+        if (!std.mem.endsWith(u8, entry.name, ".sql")) continue;
+        const copy = try allocator.dupe(u8, entry.name);
+        errdefer allocator.free(copy);
+        try names.append(allocator, copy);
+    }
+
+    std.sort.block([]u8, names.items, {}, struct {
+        fn lt(_: void, a: []u8, b: []u8) bool {
+            return std.mem.lessThan(u8, a, b);
+        }
+    }.lt);
+
+    var applied = std.StringHashMap(void).init(allocator);
+    defer {
+        var key_iter = applied.keyIterator();
+        while (key_iter.next()) |key| allocator.free(key.*);
+        applied.deinit();
+    }
+
+    const select_sql = try std.fmt.allocPrint(allocator, "SELECT version FROM {s}.schema_migrations ORDER BY version", .{schema});
+    defer allocator.free(select_sql);
+
+    var existing = try conn.query(allocator, select_sql, &.{});
+    defer existing.deinit();
+    for (existing.rows) |row| {
+        if (row.len > 0) {
+            if (row[0]) |ver| {
+                if (applied.contains(ver)) continue;
+                const ver_copy = try allocator.dupe(u8, ver);
+                errdefer allocator.free(ver_copy);
+                try applied.put(ver_copy, {});
+            }
+        }
+    }
+
+    const insert_sql = try std.fmt.allocPrint(allocator, "INSERT INTO {s}.schema_migrations(version) VALUES ($1)", .{schema});
+    defer allocator.free(insert_sql);
+    const insert_on_conflict_sql = try std.fmt.allocPrint(allocator, "INSERT INTO {s}.schema_migrations(version) VALUES ($1) ON CONFLICT DO NOTHING", .{schema});
+    defer allocator.free(insert_on_conflict_sql);
+
+    for (names.items) |filename| {
+        std.debug.print("CHECKING SCHEMA MIGRATION: {s}.{s}\n", .{ schema, filename });
+        if (applied.contains(filename)) continue;
+        std.debug.print("APPLYING SCHEMA MIGRATION: {s}.{s}\n", .{ schema, filename });
+
+        // Skip GBL migrations that have data pre-conditions in production but
+        // are not needed for isolated integration test runs.
+        if (std.mem.eql(u8, filename, "GBL-074_tnt05_backfill_tracking.sql") or
+            std.mem.eql(u8, filename, "GBL-075_tnt05_backfill_run.sql") or
+            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql") or
+            std.mem.eql(u8, filename, "GBL-084_rls_removal.sql"))
+        {
+            conn.exec(insert_on_conflict_sql, &.{filename}) catch {};
+            continue;
+        }
+
+        const sql_bytes = try dir.readFileAlloc(io, filename, allocator, std.Io.Limit.limited(16 * 1024 * 1024));
+        defer allocator.free(sql_bytes);
+
+        try conn.begin();
+        conn.simpleQuery(sql_bytes) catch |err| {
+            conn.rollback() catch {};
+            std.debug.print("SCHEMA MIGRATION FAILED: {s}.{s} ({})\n", .{ schema, filename, err });
+            return err;
+        };
+        conn.exec(insert_sql, &.{filename}) catch |err| {
             conn.rollback() catch {};
             return err;
         };
@@ -197,6 +337,12 @@ fn applyCompatibilityShims(conn: *pg.Conn) !void {
 
     // Legacy XC integration fixtures still reference `instances` and omit
     // newer mandatory event fields. These shims preserve test intent while
+    // preventing NOT NULL violations.
+    try execCompatibilitySql(conn,
+        \\CREATE OR REPLACE VIEW tenant_default.tenant_schemas AS
+        \\SELECT '00000000-0000-0000-0000-000000000000'::uuid AS tenant_id, 'tenant_default' AS schema_name
+    );
+
     // keeping production schema unchanged.
     try execCompatibilitySql(conn,
         \\CREATE TABLE IF NOT EXISTS instances (
@@ -295,21 +441,25 @@ fn execCompatibilitySql(conn: *pg.Conn, sql: []const u8) !void {
 fn resetTestData(conn: *pg.Conn) !void {
     // Keep migration/seed/config tables intact and only clear transient test data.
     // Truncate tables one-by-one so one missing legacy table does not skip cleanup.
-    try truncateTableBestEffort(conn, "instance_definition_snapshots");
-    try truncateTableBestEffort(conn, "process_events");
-    try truncateTableBestEffort(conn, "tasks");
-    try truncateTableBestEffort(conn, "timers");
-    try truncateTableBestEffort(conn, "instance_projections");
-    try truncateTableBestEffort(conn, "variable_schemas");
-    try truncateTableBestEffort(conn, "process_definitions");
-    try truncateTableBestEffort(conn, "events");
-    try truncateTableBestEffort(conn, "event_store");
-    try truncateTableBestEffort(conn, "audit_log");
-    try truncateTableBestEffort(conn, "audit_entries");
-    try truncateTableBestEffort(conn, "dlq");
-    try truncateTableBestEffort(conn, "webhook_subscriptions");
-    // SVC-04 uses the service catalog; truncate so LIMIT-50 page-1 tests stay deterministic.
-    try truncateTableBestEffort(conn, "service_catalog");
+    // Fixed: Use tenant_default schema for SPT tables.
+    try truncateTableBestEffort(conn, "tenant_default.instance_definition_snapshots");
+    try truncateTableBestEffort(conn, "tenant_default.instances");
+    try truncateTableBestEffort(conn, "tenant_default.tasks");
+    try truncateTableBestEffort(conn, "tenant_default.timers");
+    try truncateTableBestEffort(conn, "tenant_default.instance_projections");
+    try truncateTableBestEffort(conn, "tenant_default.variable_schemas");
+    try truncateTableBestEffort(conn, "tenant_default.process_definitions");
+    try truncateTableBestEffort(conn, "tenant_default.events");
+    try truncateTableBestEffort(conn, "tenant_default.event_payload_store");
+    try truncateTableBestEffort(conn, "tenant_default.audit_log");
+    try truncateTableBestEffort(conn, "tenant_default.audit_entries");
+    try truncateTableBestEffort(conn, "tenant_default.dead_letter_items");
+    try truncateTableBestEffort(conn, "tenant_default.webhook_subscriptions");
+    try truncateTableBestEffort(conn, "tenant_default.service_catalog");
+    // Public schema tables — entity subsystem uses instance_sequence and events in public.
+    try truncateTableBestEffort(conn, "public.instance_sequence");
+    try truncateTableBestEffort(conn, "public.events");
+    try truncateTableBestEffort(conn, "public.instance_projections");
 }
 
 fn truncateTableBestEffort(conn: *pg.Conn, comptime table_name: []const u8) !void {
@@ -323,19 +473,21 @@ fn truncateTableBestEffort(conn: *pg.Conn, comptime table_name: []const u8) !voi
 
 fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
     try conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, storage_mode)
         \\VALUES (
         \\  '00000000-0000-0000-0000-000000000000'::uuid,
         \\  'default',
         \\  'Default Tenant',
         \\  'ACTIVE',
-        \\  'bpm-default'
+        \\  'bpm-default',
+        \\  'SCHEMA'
         \\)
         \\ON CONFLICT (id) DO UPDATE
         \\SET slug = EXCLUDED.slug,
         \\    display_name = EXCLUDED.display_name,
         \\    status = EXCLUDED.status,
         \\    idp_realm_id = COALESCE(tenant.idp_realm_id, EXCLUDED.idp_realm_id),
+        \\    storage_mode = EXCLUDED.storage_mode,
         \\    updated_at = NOW()
     , &.{});
 
@@ -377,6 +529,9 @@ pub const TestHarness = struct {
     conn: pg.Conn,
     allocator: std.mem.Allocator,
 
+    // EXP-201 integration shim: pool points back to our connection
+    pool: bpm.pool.Pool,
+
     /// Initialise the harness:
     ///  1. Reads BPM_TEST_DB_URL from the environment.
     ///  2. Connects directly to the test database (no pool overhead needed).
@@ -400,6 +555,7 @@ pub const TestHarness = struct {
         };
         defer allocator.free(url);
 
+        std.debug.print("Connecting to: {s}\n", .{url});
         var conn = pg.Conn.connectUrl(std.testing.io, allocator, url) catch |err| {
             std.debug.print("pg.Conn.connectUrl failed: {}\n", .{err});
             return err;
@@ -411,11 +567,20 @@ pub const TestHarness = struct {
             return err;
         };
 
-        // Run migrations against the test database.
-        // Must run BEFORE configureTestSearchPath because runMigrations creates
-        // public.schema_migrations and expects search_path to start with public.
+        // Run migrations against the test database for the public schema.
         runMigrations(std.testing.io, allocator, &conn) catch |err| {
-            std.debug.print("runMigrations failed: {}\n", .{err});
+            std.debug.print("runMigrations (public) failed: {}\n", .{err});
+            return err;
+        };
+
+        // Provision the default tenant schema if it doesn't exist
+        _ = try conn.simpleQuery("SELECT bpm_provision_tenant_schema('00000000-0000-0000-0000-000000000000');");
+
+        // Run migrations for the tenant schema (tenant_default).
+        // This ensures the tenant-specific tables exist and are up to date.
+        // We MUST run this BEFORE setting search_path permanently for the connection.
+        runMigrationsForSchema(std.testing.io, allocator, &conn, "tenant_default") catch |err| {
+            std.debug.print("runMigrationsForSchema (tenant_default) failed: {}\n", .{err});
             return err;
         };
 
@@ -444,6 +609,34 @@ pub const TestHarness = struct {
             return err;
         };
 
+        // EXP-201: Mock pool that routes to our active connection
+        // Increased pool size to 5 to avoid ExhaustedPool on nested acquires
+        // within a single thread (e.g. commands -> store -> registry).
+        const pool = bpm.pool.Pool{
+            .allocator = allocator,
+            .io = std.testing.io,
+            .config = .{
+                .url = "",
+                .pool_size = 5,
+            },
+            .conns = allocator.alloc(bpm.pool.Conn, 5) catch return error.OutOfMemory,
+            .idle_indices = allocator.alloc(usize, 5) catch return error.OutOfMemory,
+            .idle_count = 5,
+            .mutex = .init,
+            .pg_version = conn.server_version,
+        };
+        for (pool.conns, 0..) |*c, i| {
+            c.* = .{
+                ._pool_idx = i,
+                ._is_valid = true,
+                ._url = "",
+                ._remote_host = null,
+                ._io = std.testing.io,
+                ._pg = conn,
+            };
+            pool.idle_indices[i] = i;
+        }
+
         // Initialize test tenant context for all pool connections.
         // Pool.acquire() calls applyRequestTenantContext() which reads this thread-local.
         // Without it, search_path stays on 'public' and all tenant-schema tables
@@ -461,7 +654,47 @@ pub const TestHarness = struct {
         return TestHarness{
             .conn = conn,
             .allocator = allocator,
+            .pool = pool,
         };
+    }
+
+    /// Provision a new tenant schema and run all migrations.
+    pub fn provisionTenant(self: *TestHarness, tenant_id_str: []const u8) !void {
+        if (tenant_id_str.len != 36) return error.InvalidTenantId;
+
+        // 1. Register tenant in public.tenant table so storage_mode resolution works
+        const tenant_sql =
+            \\INSERT INTO public.tenant (id, slug, display_name, status, storage_mode)
+            \\VALUES ($1::uuid, $2, $3, 'ACTIVE', 'SCHEMA')
+            \\ON CONFLICT (id) DO NOTHING
+        ;
+        var slug_buf: [40]u8 = undefined;
+        const slug = std.fmt.bufPrint(&slug_buf, "t-{s}", .{tenant_id_str[0..8]}) catch "test-tenant";
+        _ = try self.conn.exec(tenant_sql, &.{ tenant_id_str, slug, slug });
+
+        // 2. Create the schema
+        _ = try self.conn.exec("SELECT bpm_provision_tenant_schema($1::uuid)", &.{tenant_id_str});
+
+        var schema_buf: [80]u8 = undefined;
+        const schema = bpm.pool.schemaNameForTenant(tenant_id_str, &schema_buf);
+
+        // 3. Run migrations for the new tenant schema to create all required tables.
+        try runMigrationsForSchema(std.testing.io, self.allocator, &self.conn, schema);
+
+        // 4. Update the harness's own connection search path to focus on this tenant
+        var sp_buf: [128]u8 = undefined;
+        const sp_query = try std.fmt.bufPrint(&sp_buf, "SET search_path TO {s}, public", .{schema});
+        try self.conn.exec(sp_query, &.{});
+    }
+
+    /// Set the thread-local tenant context so pool acquisitions use the correct schema.
+    pub fn setTenant(self: *TestHarness, tenant_id_str: []const u8) void {
+        _ = self;
+        bpm.api_tenant_context.set(tenant_id_str);
+        // TNT-01: All tenants in this branch use SCHEMA mode. Setting it here
+        // skips the DB lookup in Pool.acquire(), which is crucial for tests
+        // where the tenant record might be uncommitted in the harness transaction.
+        bpm.api_tenant_context.setStorageMode(.SCHEMA);
     }
 
     /// Roll back the open transaction and close the connection.
@@ -469,5 +702,7 @@ pub const TestHarness = struct {
     pub fn deinit(self: *TestHarness) void {
         self.conn.rollback() catch {};
         self.conn.close();
+        self.allocator.free(self.pool.conns);
+        self.allocator.free(self.pool.idle_indices);
     }
 };
