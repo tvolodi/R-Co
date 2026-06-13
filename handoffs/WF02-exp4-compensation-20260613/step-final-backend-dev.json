@@ -1,0 +1,48 @@
+{
+  "handoff_id": "631c9ca7-b4e9-4f6f-ba7f-e81472a1eedc",
+  "run_id": "WF02-exp4-compensation-20260613",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "workflow_id": "WF-02",
+  "created_at": "2026-06-13T19:00:32Z",
+  "started_at": "2026-06-13T19:00:56Z",
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Epic 4 \u2014 Compensation / Error-Boundary Constructs",
+    "requirement_ids": [
+      "EXP-401",
+      "EXP-402"
+    ],
+    "related_handoff_ids": [
+      "35e3d8c3-f473-4b05-99c4-12df513cf53a"
+    ],
+    "artifacts_in": [
+      "handoffs/WF02-exp4-compensation-20260613/step-01-code-designer.json",
+      "handoffs/WF02-exp4-compensation-20260613/step-01b-code-design-validator.json",
+      "handoffs/WF02-exp4-compensation-20260613/step-02a-backend-dev.json",
+      "handoffs/WF02-exp4-compensation-20260613/step-03-test-designer.json",
+      "handoffs/WF02-exp4-compensation-20260613/step-03-rework1-test-designer.json",
+      "handoffs/WF02-exp4-compensation-20260613/step-03b-test-design-validator-recheck.json",
+      "handoffs/WF02-exp4-compensation-20260613/step-04-test-runner.json",
+      "handoffs/WF02-exp4-compensation-20260613/step-05-recheck-release-validator.json",
+      "handoffs/WF02-exp4-compensation-20260613/step-06-doc-updater.json"
+    ]
+  },
+  "task": {
+    "description": "Execute Step Final (git merge closeout) for WF02-exp4-compensation-20260613.\n\nRequired outcomes:\n- Ensure feature branch feature/WF02-exp4-compensation-20260613 is mergeable\n- Create PR if needed\n- Merge with squash and delete remote feature branch\n- Return local repo to main and verify clean working tree\n- Record PR number and merge commit SHA in result artifacts\n\nNo force push and no direct push to main.",
+    "acceptance_criteria": [
+      "PR merged to main",
+      "remote branch deleted",
+      "local branch on main",
+      "git status clean",
+      "PR number + merge SHA recorded"
+    ],
+    "functions_to_call": []
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": null
+}

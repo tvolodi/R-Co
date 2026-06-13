@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-06-12'
+last_updated: '2026-06-13'
 requirements:
   ES-01:
     status: RELEASED
@@ -4367,4 +4367,43 @@ requirements:
     release_run: WF02-exp3-async-effects-20260613
     release_decision: docs/status/release-exp3-async-effects-20260613.yaml
     last_updated: '2026-06-13T10:46:47Z'
-total_requirements: 300
+  EXP-401:
+    status: RELEASED
+    stage: Expansion
+    priority: P1
+    title: Compensation handler + error-boundary node types
+    implemented_in:
+    - src/definition/graph.zig
+    - src/engine/transition.zig
+    - src/engine/instance.zig
+    - src/engine/reconstruction.zig
+    - src/engine/snapshot_writer.zig
+    - src/api/routes/instances.zig
+    test_spec: tests/specs/EXP-401.md
+    test_run: tests/reports/report-2026-06-13-WF02-exp4-compensation-20260613.yaml
+    tested_at: '2026-06-13'
+    released_at: '2026-06-13'
+    release_run: WF02-exp4-compensation-20260613
+    release_decision: docs/status/release-epic4-compensation-2026-06-13.yaml
+    last_updated: '2026-06-13T18:57:23Z'
+  EXP-402:
+    status: RELEASED
+    stage: Expansion
+    priority: P2
+    title: Restore reconciliation using wait descriptors
+    implemented_in:
+    - src/engine/reconstruction.zig
+    - src/engine/instance.zig
+    - src/engine/snapshot_writer.zig
+    - src/api/routes/instances.zig
+    - migrations/093_exp103_instance_waits.sql
+    test_spec: tests/specs/EXP-402.md
+    test_run: tests/reports/report-2026-06-13-WF02-exp4-compensation-20260613.yaml
+    tested_at: '2026-06-13'
+    released_at: '2026-06-13'
+    release_run: WF02-exp4-compensation-20260613
+    release_decision: docs/status/release-epic4-compensation-2026-06-13.yaml
+    depends_on:
+    - EXP-103
+    last_updated: '2026-06-13T18:57:23Z'
+total_requirements: 302
