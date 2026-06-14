@@ -175,12 +175,23 @@ export async function loginWithToken(page: Page, token: string): Promise<void> {
 
 // ─── SPA navigation ───────────────────────────────────────────────────────────
 
+/**
+ * Navigate the browser to a SPA route deterministically.
+ *
+ * Uses `page.goto` instead of `history.pushState` + synthetic `popstate`:
+ * the latter raced with React Router v6.4's `createBrowserRouter` lazy
+ * history listener and intermittently failed to mount the target route.
+ *
+ * `loginWithToken`'s `addInitScript` re-runs on every `page.goto`, so the
+ * E2E session is re-injected before React's first read on each navigation.
+ *
+ * Mirrors the proven pattern at web/tests/e2e/tenants.e2e.spec.ts:74-79.
+ */
 export async function navigateSpa(page: Page, targetPath: string): Promise<void> {
-  await page.evaluate((nextPath) => {
-    window.history.pushState({}, '', nextPath)
-    window.dispatchEvent(new PopStateEvent('popstate'))
-  }, targetPath)
-  await page.waitForURL((url) => `${url.pathname}${url.search}` === targetPath, { timeout: 10_000 })
+  await page.goto(targetPath, { waitUntil: 'domcontentloaded' })
+  await page.waitForURL((url) => `${url.pathname}${url.search}` === targetPath, {
+    timeout: 10_000,
+  })
 }
 
 // ─── ID extraction ────────────────────────────────────────────────────────────
