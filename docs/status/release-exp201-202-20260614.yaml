@@ -1,0 +1,61 @@
+---
+run_id: WF02-exp201-202-20260612
+date: "2026-06-14"
+requirement_ids:
+  - EXP-201
+  - EXP-202
+overall_status: APPROVED
+
+nfr_results:
+  benchmark_setup:
+    db_url_source: primary_env
+  NFR-01:
+    p99_read_ms:
+      target: "<=200ms"
+      actual: 1.085
+      passed: true
+    p99_write_ms:
+      target: "<=500ms"
+      actual: 28.729
+      passed: true
+  NFR-02:
+    append_throughput_eps:
+      target: ">=1000 events/sec"
+      actual: 45515.516
+      passed: true
+  NFR-04:
+    replay_10000_ms:
+      target: "<=5000ms"
+      actual: 45.339
+      passed: true
+    replay_snapshot_100000_ms:
+      target: "<=1000ms"
+      actual: 6.936
+      passed: true
+  overall_passed: true
+  bench_run_id: bench-1781410230621
+
+step04_validation:
+  report_file: tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml
+  overall_status: PASS
+  passed: 2
+  failed: 0
+  skipped: 0
+  unresolved_blocker_major: false
+
+blocking_issues: []
+
+approved_requirements:
+  - EXP-201
+  - EXP-202
+
+release_recommendation: APPROVED
+rationale: >
+  Step 04 test report is PASS for EXP-201/202 with zero failures and no unresolved
+  BLOCKER/MAJOR issues. NFR benchmark suite passed in this validation cycle;
+  all required thresholds are satisfied with substantial margin.
+
+release_validator: RELEASE-VALIDATOR
+validated_at: "2026-06-14T05:24:58Z"
+artifacts_in:
+  - tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml

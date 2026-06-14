@@ -1,0 +1,44 @@
+{
+  "handoff_id": "exp201-202-final-backend-dev-rework",
+  "run_id": "WF02-exp201-202-20260612",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-14T09:17:56Z",
+  "started_at": "2026-06-14T09:17:56Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "EPIC-2 Run 1 Rework 2: final git merge",
+    "requirement_ids": [
+      "EXP-201",
+      "EXP-202"
+    ],
+    "related_handoff_ids": [
+      "exp201-202-doc-updater-06-rework"
+    ],
+    "artifacts_in": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml",
+      "docs/status/release-exp201-202-20260614.yaml"
+    ],
+    "branch_name": "feature/WF02-exp201-202-20260612"
+  },
+  "task": {
+    "description": "Execute final git merge flow for WF02-exp201-202-20260612. Create PR if needed, ensure checks pass, squash merge, delete branch, return repo to main clean, and record PR/merge evidence. This completes EXP-201 and EXP-202 release workflow.\n\nREWORK 3:\n- Resolve rebase conflicts against origin/main in these files: handoffs/WF02-exp201-202-20260612/step-02a-backend-dev.json, handoffs/orchestrator.log, handoffs/registry.json, src/entities/commands.zig, src/entities/definition.zig, src/entities/events.zig, src/entities/mod.zig, src/entities/validator.zig.\n- Complete the rebase/merge path and finish PR merge + branch deletion.\n- Do not stop at conflict detection; resolve and retry within this final allowed rework.",
+    "acceptance_criteria": [
+      "PR created and merged",
+      "Remote feature branch deleted",
+      "Repo returned to main clean",
+      "next_action indicates workflow complete"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 3,
+  "max_rework": 3
+}

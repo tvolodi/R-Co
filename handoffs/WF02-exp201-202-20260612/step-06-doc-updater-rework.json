@@ -1,0 +1,56 @@
+{
+  "handoff_id": "exp201-202-doc-updater-06-rework",
+  "run_id": "WF02-exp201-202-20260612",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-06-14T09:14:25Z",
+  "started_at": "2026-06-14T09:14:25Z",
+  "completed_at": "2026-06-14T09:16:17Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "EPIC-2 Run 1 Rework 2: documentation update",
+    "requirement_ids": [
+      "EXP-201",
+      "EXP-202"
+    ],
+    "related_handoff_ids": [
+      "exp201-202-release-validator-05-rework"
+    ],
+    "artifacts_in": [
+      "docs/status/release-exp201-202-20260614.yaml"
+    ],
+    "branch_name": "feature/WF02-exp201-202-20260612"
+  },
+  "task": {
+    "description": "Update CHANGELOG.md and docs/status/requirement_status.yaml to mark EXP-201 and EXP-202 as RELEASED from this run. Add release artifact references, maintain YAML integrity, and prepare this workflow for final git merge. Write any retrospective/update artifacts required by process.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated for EXP-201 and EXP-202",
+      "requirement_status.yaml contains RELEASED entries for EXP-201 and EXP-202",
+      "No duplicate/broken YAML structure introduced",
+      "next_action routes to BACKEND-DEV Step Final"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-requirement-status"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md and requirement_status.yaml for EXP-201/202 RELEASED status, generated the run retrospective, archived terminal registry entries for this run, and prepared the workflow for BACKEND-DEV Step Final.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml",
+      "docs/metrics/retrospectives/WF02-exp201-202-20260612.yaml",
+      "docs/issue-reports/WF02-exp201-202-20260612-step-06-doc-updater-INNER-REPORT.yaml",
+      "handoffs/registry.json",
+      "handoffs/WF02-exp201-202-20260612/registry.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV Step Final"
+  },
+  "rework_count": 2,
+  "max_rework": 3
+}

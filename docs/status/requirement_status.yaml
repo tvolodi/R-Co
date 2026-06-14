@@ -1,5 +1,5 @@
 schema_version: '1.0'
-last_updated: '2026-06-13'
+last_updated: '2026-06-14T09:16:17Z'
 requirements:
   ES-01:
     status: RELEASED
@@ -3893,41 +3893,7 @@ requirements:
     released_at: '2026-06-10T02:49:11Z'
     release_run: WF02-tnt-batch1-20260609
     release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
-  EXP-601:
-    status: RELEASED
-    stage: 6
-    priority: MUST
-    title: Central tier to quota enforcement in kernel middleware
-    implementation_run: WF02-exp601-tier-quota-20260614
-    test_spec: tests/specs/EXP-601.md
-    test_run: tests/reports/report-20260614-WF02-exp601-tier-quota-20260614-r1.yaml
-    tested_at: '2026-06-14'
-    released_at: '2026-06-14T03:07:57Z'
-    release_run: WF02-exp601-tier-quota-20260614
-    release_decision: docs/status/release-exp601-20260614.yaml
-    last_updated: '2026-06-14T03:07:57Z'
-    implemented_in:
-    - src/config/quota_policy.zig
-    - src/api/middleware/quota_enforcement.zig
-    - src/config/loader.zig
-    - src/main.zig
-    - tests/specs/EXP-601.md
-    - tests/integration/exp601_tier_quota_test.zig
-  EXP-701:
-    status: RELEASED
-    stage: 7
-    priority: MUST
-    title: Sandbox threat-model go-live gate for untrusted runtimes
-    implemented_in:
-    - docs/sandbox_threat_model.md
-    - docs/BPM_Platform_Backend_Architecture.md
-    test_spec: tests/specs/EXP-701.md
-    test_run: tests/reports/report-20260614-WF02-exp701-sandbox-threatmodel-20260614.yaml
-    tested_at: '2026-06-14'
-    released_at: '2026-06-14'
-    release_run: WF02-exp701-sandbox-threatmodel-20260614
-    release_decision: docs/status/release-exp701-20260614.yaml
-    last_updated: '2026-06-14T04:13:23Z'
+    last_updated: '2026-06-10T02:49:11Z'
   TNT-02:
     status: RELEASED
     stage: 12
@@ -4351,93 +4317,40 @@ requirements:
     test_spec: tests/specs/EXP-103.md
     released_at: '2026-06-12'
     run_id: WF02-exp103-instance-waits-20260612
-  EXP-301:
+  EXP-201:
     status: RELEASED
     stage: Expansion
-    priority: P1
-    title: Effects subsystem with transactional outbox, worker polling, and retry/backoff
+    priority: P0
+    title: Entity definition format + Repository artifact
     implemented_in:
-    - src/effects/outbox.zig
-    - src/effects/worker.zig
-    - src/effects/retry.zig
-    - src/api/routes/effects.zig
-    - migrations/094_exp301_effects_outbox.sql
-    test_spec: tests/specs/EXP-301.md
-    test_run: tests/reports/report-2026-06-13-WF02-exp3-async-effects-20260613.yaml
-    tested_at: '2026-06-13'
-    released_at: '2026-06-13'
-    release_run: WF02-exp3-async-effects-20260613
-    release_decision: docs/status/release-exp3-async-effects-20260613.yaml
-    last_updated: '2026-06-13T10:46:47Z'
-  EXP-302:
+    - src/entities/definition.zig
+    - src/entities/validator.zig
+    - src/entities/mod.zig
+    - src/repository/canonicaliser.zig
+    - migrations/094_entity_subsystem.sql
+    test_spec: tests/specs/EXP-201.md
+    test_run: tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml
+    tested_at: '2026-06-14'
+    release_decision: docs/status/release-exp201-202-20260614.yaml
+    released_at: '2026-06-14'
+    release_run: WF02-exp201-202-20260612
+    last_updated: '2026-06-14T09:16:17Z'
+  EXP-202:
     status: RELEASED
     stage: Expansion
-    priority: P1
-    title: SERVICE_TASK migration to async effects with emit-and-wait semantics
+    priority: P0
+    title: Entity command API -> event family
     implemented_in:
-    - src/engine/service_task.zig
-    - src/effects/service_task_effect.zig
-    - src/engine/transition.zig
-    - migrations/095_exp302_service_task_effects.sql
-    test_spec: tests/specs/EXP-302.md
-    test_run: tests/reports/report-2026-06-13-WF02-exp3-async-effects-20260613.yaml
-    tested_at: '2026-06-13'
-    released_at: '2026-06-13'
-    release_run: WF02-exp3-async-effects-20260613
-    release_decision: docs/status/release-exp3-async-effects-20260613.yaml
-    last_updated: '2026-06-13T10:46:47Z'
-  EXP-303:
-    status: RELEASED
-    stage: Expansion
-    priority: P1
-    title: Stub effects executor for sandbox and deterministic testing
-    implemented_in:
-    - src/effects/stub_executor.zig
-    - src/simulation/effects_interceptor.zig
-    test_spec: tests/specs/EXP-303.md
-    test_run: tests/reports/report-2026-06-13-WF02-exp3-async-effects-20260613.yaml
-    tested_at: '2026-06-13'
-    released_at: '2026-06-13'
-    release_run: WF02-exp3-async-effects-20260613
-    release_decision: docs/status/release-exp3-async-effects-20260613.yaml
-    last_updated: '2026-06-13T10:46:47Z'
-  EXP-401:
-    status: RELEASED
-    stage: Expansion
-    priority: P1
-    title: Compensation handler + error-boundary node types
-    implemented_in:
-    - src/definition/graph.zig
-    - src/engine/transition.zig
-    - src/engine/instance.zig
-    - src/engine/reconstruction.zig
-    - src/engine/snapshot_writer.zig
-    - src/api/routes/instances.zig
-    test_spec: tests/specs/EXP-401.md
-    test_run: tests/reports/report-2026-06-13-WF02-exp4-compensation-20260613.yaml
-    tested_at: '2026-06-13'
-    released_at: '2026-06-13'
-    release_run: WF02-exp4-compensation-20260613
-    release_decision: docs/status/release-epic4-compensation-2026-06-13.yaml
-    last_updated: '2026-06-13T18:57:23Z'
-  EXP-402:
-    status: RELEASED
-    stage: Expansion
-    priority: P2
-    title: Restore reconciliation using wait descriptors
-    implemented_in:
-    - src/engine/reconstruction.zig
-    - src/engine/instance.zig
-    - src/engine/snapshot_writer.zig
-    - src/api/routes/instances.zig
-    - migrations/093_exp103_instance_waits.sql
-    test_spec: tests/specs/EXP-402.md
-    test_run: tests/reports/report-2026-06-13-WF02-exp4-compensation-20260613.yaml
-    tested_at: '2026-06-13'
-    released_at: '2026-06-13'
-    release_run: WF02-exp4-compensation-20260613
-    release_decision: docs/status/release-epic4-compensation-2026-06-13.yaml
-    depends_on:
-    - EXP-103
-    last_updated: '2026-06-13T18:57:23Z'
-total_requirements: 302
+    - src/entities/events.zig
+    - src/entities/commands.zig
+    - src/entities/projector.zig
+    - src/api/routes/entities.zig
+    - migrations/094_entity_subsystem.sql
+    test_spec: tests/specs/EXP-202.md
+    test_run: tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml
+    tested_at: '2026-06-14'
+    release_decision: docs/status/release-exp201-202-20260614.yaml
+    released_at: '2026-06-14'
+    release_run: WF02-exp201-202-20260612
+    last_updated: '2026-06-14T09:16:17Z'
+total_requirements: 299
