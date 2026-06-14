@@ -2,6 +2,20 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EXP-701 (Epic 7) Sandbox Threat-Model Go-Live Gate] — 2026-06-14
+
+### Documentation
+- **EXP-701 (Epic 7)**: Released the reviewed sandbox threat-model gate document in `docs/sandbox_threat_model.md`, covering Lua and Wasm untrusted-runtime threat surfaces, capability boundaries, resource-limit controls, sandbox-control authentication, and go-live verification criteria.
+- **Go-live dependency gate**: EXP-701 is the explicit go-live gate for EXP-702 and EXP-703. Those expansions must not proceed to production execution until this gate document remains approved and traceable in release artifacts.
+
+### Test Coverage
+- **EXP-701**: Static validation checks for document structure and gate references in `tests/specs/EXP-701.md` and `tests/unit/exp701_sandbox_threatmodel_test.zig`.
+- Execution evidence: `tests/reports/report-20260614-WF02-exp701-sandbox-threatmodel-20260614.yaml`.
+
+### NFR Validation
+- Release decision: `docs/status/release-exp701-20260614.yaml`.
+- Benchmark/NFR gate passed in the release-validation session, including successful `zig build bench` verification.
+
 ## [EXP-601 (Epic 6) Tier-to-Quota Enforcement] — 2026-06-14
 
 ### Added

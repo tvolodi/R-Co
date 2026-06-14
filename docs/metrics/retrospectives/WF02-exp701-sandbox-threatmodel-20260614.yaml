@@ -1,0 +1,117 @@
+---
+run_id: WF02-exp701-sandbox-threatmodel-20260614
+workflow_id: WF-02
+stage: "Epic 7 / EXP-701 sandbox threat model"
+requirement_ids:
+  - EXP-701
+retrospective_date: 2026-06-14
+estimation_version: "1.1"
+
+# Estimation parameters
+difficulty: 2
+difficulty_rationale: "Documentation-only artefact. No code, schema, or migration changes. Requires deep security analysis but no implementation."
+integration_surface: "low"
+integration_surface_rationale: "Touches only docs/; no source module changes."
+
+# Estimation vs actual
+steps:
+  code-designer:
+    estimated_minutes: 2
+    actual_minutes: 9.65
+    variance_percent: 382.5
+    variance_assessment: "Design overran estimate due to one rework loop and expanded threat-model detail depth."
+
+  code-design-validator:
+    estimated_minutes: 5
+    actual_minutes: 5.35
+    variance_percent: 7.0
+    variance_assessment: "Validation stayed close to estimate with a single pass after design rework completion."
+
+  backend-dev:
+    estimated_minutes: 6
+    actual_minutes: 2.42
+    variance_percent: -59.67
+    variance_assessment: "Doc-only implementation step was faster than estimate because no code-path changes were required."
+
+  test-designer:
+    estimated_minutes: 1
+    actual_minutes: 17.2
+    variance_percent: 1620.0
+    variance_assessment: "Test design significantly exceeded estimate due to explicit separation of automatable vs human gate checks and one rework cycle."
+
+  test-design-validator:
+    estimated_minutes: 7
+    actual_minutes: 18.75
+    variance_percent: 167.86
+    variance_assessment: "Validation overran estimate because the gate waited for rework completion and final confirmation pass."
+
+  test-runner:
+    estimated_minutes: 2
+    actual_minutes: 28.9
+    variance_percent: 1345.0
+    variance_assessment: "Execution time includes pre-check and rework rerun before final PASS report issuance."
+
+  release-validator:
+    estimated_minutes: 1
+    actual_minutes: 35.63
+    variance_percent: 3463.0
+    variance_assessment: "Release gate duration dominated by benchmark setup/verification and final approval authoring."
+
+  doc-updater:
+    estimated_minutes: 2
+    actual_minutes: 0.0
+    variance_percent: -100.0
+    variance_assessment: "Placeholder until Step 06 completion timestamp is stamped; this value is updated at handoff close."
+
+# Summary
+total_estimated_minutes: 26
+total_actual_minutes: 117.9
+total_variance_percent: 353.46
+
+# Rework tracking
+rework_steps:
+  - step: "01"
+    agent: CODE-DESIGNER
+    rework_count: 1
+    issues:
+      - "E010 lint finding required explicit error taxonomy mapping; resolved by adding structured error section."
+  - step: "03"
+    agent: TEST-DESIGNER
+    rework_count: 1
+    issues:
+      - "Spec required explicit separation between human sign-off and automatable assertions; resolved in rework."
+  - step: "04"
+    agent: TEST-RUNNER
+    rework_count: 1
+    issues:
+      - "Initial run required rerun path before final PASS report publication."
+
+rule_adjustments: []
+estimation_rule_update_needed: false
+estimation_rule_update_rationale: >
+  This run shows large positive variance concentrated in release/test phases for a doc-only workflow,
+  but it is a single D2/low data point and does not establish the required multi-run same-difficulty trend.
+  No estimation_rules update is justified from this run alone.
+
+# Key findings
+findings: |
+  1. The largest delays were in test execution and release validation rather than implementation, indicating that
+  process overhead for gate-heavy documentation runs can dominate engineering effort.
+
+  2. The code-designer and test-designer estimates for doc-only D2 runs are currently too optimistic when rework
+  loops and compliance-level detail are required.
+
+  3. Backend implementation estimate was conservative for this run shape because the step only committed document
+  artifacts and architecture cross-reference updates.
+
+  4. EXP-701 effectively functioned as a release-governance gate for dependent work (EXP-702/703), increasing
+  validator and release-authoring time beyond baseline doc task assumptions.
+
+# Recommendations for future estimation
+recommendations:
+  - "Track one more D2/low documentation gate run before adjusting rule baselines for test-runner/release-validator."
+  - "Consider introducing a documentation-gate surcharge when a requirement explicitly blocks downstream go-live work."
+  - "Keep separating human-attestation checks from automatable checks early in test design to reduce rework churn."
+
+created_at: 2026-06-14T04:13:23Z
+completed_at: 2026-06-14T04:13:23Z
