@@ -27,7 +27,7 @@
     "branch_name": "feature/WF02-exp201-202-20260612"
   },
   "task": {
-    "description": "Execute final git merge flow for WF02-exp201-202-20260612. Create PR if needed, ensure checks pass, squash merge, delete branch, return repo to main clean, and record PR/merge evidence. This completes EXP-201 and EXP-202 release workflow.",
+    "description": "Execute final git merge flow for WF02-exp201-202-20260612. Create PR if needed, ensure checks pass, squash merge, delete branch, return repo to main clean, and record PR/merge evidence. This completes EXP-201 and EXP-202 release workflow.\n\nREWORK 3:\n- Resolve rebase conflicts against origin/main in these files: handoffs/WF02-exp201-202-20260612/step-02a-backend-dev.json, handoffs/orchestrator.log, handoffs/registry.json, src/entities/commands.zig, src/entities/definition.zig, src/entities/events.zig, src/entities/mod.zig, src/entities/validator.zig.\n- Complete the rebase/merge path and finish PR merge + branch deletion.\n- Do not stop at conflict detection; resolve and retry within this final allowed rework.",
     "acceptance_criteria": [
       "PR created and merged",
       "Remote feature branch deleted",
@@ -39,6 +39,6 @@
     ]
   },
   "result": null,
-  "rework_count": 2,
+  "rework_count": 3,
   "max_rework": 3
 }
