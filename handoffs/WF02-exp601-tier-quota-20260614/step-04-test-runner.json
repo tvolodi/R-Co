@@ -1,0 +1,53 @@
+{
+  "handoff_id": "2e0cb069-7f96-44a8-b0d1-5b2911c33c4f",
+  "run_id": "WF02-exp601-tier-quota-20260614",
+  "workflow_id": "WF-02",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-14T02:45:46Z",
+  "started_at": "2026-06-14T02:45:46Z",
+  "completed_at": "2026-06-14T02:47:49Z",
+  "status": "FAILED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Epic 6 / EXP-601 test execution",
+    "requirement_ids": [
+      "EXP-601"
+    ],
+    "related_handoff_ids": [
+      "e08bd7bc-0cdd-45e6-997d-e8279eebd8b9"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXP-601.md",
+      "tests/integration/exp601_tier_quota_test.zig"
+    ]
+  },
+  "task": {
+    "description": "Run EXP-601 test execution with required pre-checks. Execute relevant build/tests and produce a structured YAML test report at tests/reports/report-20260614-WF02-exp601-tier-quota-20260614.yaml. Validate central quota enforcement behavior against spec cases.",
+    "acceptance_criteria": [
+      "Required pre-checks executed",
+      "EXP-601 integration tests executed and reported",
+      "YAML report written to tests/reports/report-20260614-WF02-exp601-tier-quota-20260614.yaml",
+      "No unresolved BLOCKER/MAJOR issues for PASS"
+    ],
+    "functions_to_call": [
+      "fn:run-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Integration suite blocked during shared migration setup before EXP-601 assertions could run.",
+    "artifacts_out": ["tests/reports/report-20260614-WF02-exp601-tier-quota-20260614.yaml"],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "description": "The integration harness fails during tenant_default.047_repository_form_schemas.sql because relation \"uq_form_schema_field\" already exists, so EXP-601 tests cannot execute."
+      }
+    ],
+    "next_action": "Route to ISSUE-FIXER / BACKEND-DEV for migration cleanup and retry"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

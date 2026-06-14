@@ -1,0 +1,41 @@
+{
+  "handoff_id": "4d9cf884-7d8f-42bc-8a01-d6c539bc17ca",
+  "run_id": "WF02-exp601-tier-quota-20260614",
+  "workflow_id": "WF-02",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-14T03:07:07Z",
+  "started_at": "2026-06-14T03:07:07Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Epic 6 / EXP-601 git-merge",
+    "requirement_ids": [
+      "EXP-601"
+    ],
+    "related_handoff_ids": [
+      "6ac144f9-6868-4a35-b3f8-4dcdd18c3693"
+    ],
+    "artifacts_in": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml"
+    ]
+  },
+  "task": {
+    "description": "Execute fn:git-merge for feature/WF02-exp601-tier-quota-20260614: create PR, squash merge, delete branch, return local repo to main clean, and record git evidence.",
+    "acceptance_criteria": [
+      "PR created and merged",
+      "Feature branch deleted from GitHub",
+      "Local repo on main with clean working tree",
+      "Git evidence recorded in result"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

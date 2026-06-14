@@ -3893,6 +3893,26 @@ requirements:
     released_at: '2026-06-10T02:49:11Z'
     release_run: WF02-tnt-batch1-20260609
     release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
+  EXP-601:
+    status: RELEASED
+    stage: 6
+    priority: MUST
+    title: Central tier to quota enforcement in kernel middleware
+    implementation_run: WF02-exp601-tier-quota-20260614
+    test_spec: tests/specs/EXP-601.md
+    test_run: tests/reports/report-20260614-WF02-exp601-tier-quota-20260614-r1.yaml
+    tested_at: '2026-06-14'
+    released_at: '2026-06-14T03:07:57Z'
+    release_run: WF02-exp601-tier-quota-20260614
+    release_decision: docs/status/release-exp601-20260614.yaml
+    last_updated: '2026-06-14T03:07:57Z'
+    implemented_in:
+    - src/config/quota_policy.zig
+    - src/api/middleware/quota_enforcement.zig
+    - src/config/loader.zig
+    - src/main.zig
+    - tests/specs/EXP-601.md
+    - tests/integration/exp601_tier_quota_test.zig
     last_updated: '2026-06-10T02:49:11Z'
   TNT-02:
     status: RELEASED

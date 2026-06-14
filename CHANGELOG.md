@@ -2,6 +2,19 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EXP-601 (Epic 6) Tier-to-Quota Enforcement] — 2026-06-14
+
+### Added
+- **EXP-601 (Epic 6)**: Central tier-to-quota enforcement in kernel middleware with a single quota-policy configuration surface. Tier classification now resolves script CPU and memory limits, entity-storage quota, file quota, concurrent sandbox quota, and agent retry budget through one policy model before request execution proceeds.
+
+### Test Coverage
+- **EXP-601**: Integration coverage validates centralized quota-profile resolution and rejection paths for entity, file, sandbox, and retry-budget limits in `tests/specs/EXP-601.md` and `tests/integration/exp601_tier_quota_test.zig`.
+- Execution evidence: `tests/reports/report-20260614-WF02-exp601-tier-quota-20260614-r1.yaml`.
+
+### NFR Validation
+- Release decision: `docs/status/release-exp601-20260614.yaml`.
+- Benchmark/NFR gate passed in the release-validation session, including successful benchmark wrapper and direct `zig build bench` validation.
+
 ## [EXP-401/402 (Epic 4) Compensation and Restore Reconciliation] — 2026-06-13
 
 ### Added

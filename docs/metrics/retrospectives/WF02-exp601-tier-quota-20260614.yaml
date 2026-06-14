@@ -1,0 +1,105 @@
+---
+run_id: WF02-exp601-tier-quota-20260614
+workflow_id: WF-02
+stage: "Epic 6 / EXP-601 Tier-to-Quota Model"
+requirement_ids:
+  - EXP-601
+retrospective_date: 2026-06-14
+estimation_version: "1.1"
+
+# Estimation parameters
+difficulty: 4
+difficulty_rationale: "Central tier-to-quota enforcement is cross-cutting middleware/configuration work spanning quota surfaces."
+integration_surface: "medium"
+integration_surface_rationale: "Touches src/api/middleware and src/config with enforcement wiring across quota dimensions, without engine-core rewrites."
+
+# Estimation vs actual
+steps:
+  code-designer:
+    estimated_minutes: 6
+    actual_minutes: 3.48
+    variance_percent: -42.0
+    variance_assessment: "Faster than estimate; the design scope was narrow and converged in a single pass."
+
+  code-design-validator:
+    estimated_minutes: 19
+    actual_minutes: 2.25
+    variance_percent: -88.16
+    variance_assessment: "Validation was brief because the Type E artefact was focused and passed without rework."
+
+  backend-dev:
+    estimated_minutes: 8
+    actual_minutes: 16.97
+    variance_percent: 112.13
+    variance_assessment: "Implementation overran due to central middleware wiring plus quota-policy integration across multiple dimensions."
+
+  test-designer:
+    estimated_minutes: 3
+    actual_minutes: 5.97
+    variance_percent: 99.0
+    variance_assessment: "Designing runnable integration coverage for all quota dimensions took materially longer than the estimate."
+
+  test-design-validator:
+    estimated_minutes: 31
+    actual_minutes: 6.52
+    variance_percent: -78.97
+    variance_assessment: "Validation completed well under estimate because coverage mapping was straightforward once the spec existed."
+
+  test-runner:
+    estimated_minutes: 5
+    actual_minutes: 3.83
+    variance_percent: -23.4
+    variance_assessment: "Combined execution remained close to estimate even with one blocked first pass and one successful rerun."
+
+  release-validator:
+    estimated_minutes: 1
+    actual_minutes: 11.35
+    variance_percent: 1035.0
+    variance_assessment: "Release validation was far above estimate because benchmark verification and release-gate review dominated the step."
+
+  doc-updater:
+    estimated_minutes: 1
+    actual_minutes: 0.85
+    variance_percent: -15.0
+    variance_assessment: "Documentation updates and registry archival were completed within the expected range."
+
+# Summary
+total_estimated_minutes: 74
+total_actual_minutes: 51.22
+total_variance_percent: -30.78
+
+# Rework tracking
+rework_steps:
+  - step: "04"
+    agent: TEST-RUNNER
+    rework_count: 1
+    issues:
+      - "BLOCKER: Shared migration setup failed because relation \"uq_form_schema_field\" already existed during tenant_default.047_repository_form_schemas.sql."
+      - "Resolved before Step 04r1 rerun; final report passed with no remaining BLOCKER or MAJOR issues."
+
+rule_adjustments: []
+estimation_rule_update_needed: false
+estimation_rule_update_rationale: >
+  Although backend-dev, test-designer, and release-validator exceeded their D4/medium estimates by
+  more than 25%, this run does not establish the required consecutive same-difficulty trend for safe
+  recalibration. Existing retrospective history also shows mixed variance direction for comparable D4
+  runs, so no estimation_rules.json change is justified from this run alone.
+
+# Key findings
+findings: |
+  1. The largest overrun was release validation, not implementation. Step 05 took 11.35 minutes against a 1-minute estimate because benchmark confirmation and acceptance review were both explicit parts of the gate.
+
+  2. Backend implementation and test design were both underestimated for this D4/medium profile. Central quota enforcement touched multiple limit dimensions and required more realistic cross-surface reasoning than the estimate assumed.
+
+  3. The test-runner total stayed near estimate because the first blocked run failed quickly and the second run passed quickly after the migration fix.
+
+  4. Design-validation estimates remain materially inflated for focused single-artefact runs in this workflow shape.
+
+# Recommendations for future estimation
+recommendations:
+  - "Keep monitoring D4/medium backend-dev and test-designer variance before changing base estimates; one run is not enough evidence."
+  - "Consider whether release-validator D4 estimate of 1 minute is too low for runs that require both benchmark evidence review and release-decision authoring."
+  - "Continue recording combined test-runner actual time across failed and successful attempts so rework cost remains visible."
+
+created_at: 2026-06-14T03:07:57Z
+completed_at: 2026-06-14T03:07:57Z
