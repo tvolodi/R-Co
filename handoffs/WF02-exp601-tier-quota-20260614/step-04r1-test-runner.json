@@ -1,0 +1,52 @@
+{
+  "handoff_id": "17e7352a-b573-47cc-906a-a2a902804c7d",
+  "run_id": "WF02-exp601-tier-quota-20260614",
+  "workflow_id": "WF-02",
+  "step": "04r1",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-14T02:52:28Z",
+  "started_at": "2026-06-14T02:52:28Z",
+  "completed_at": "2026-06-14T02:54:35Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "Epic 6 / EXP-601 test execution rework",
+    "requirement_ids": [
+      "EXP-601"
+    ],
+    "related_handoff_ids": [
+      "2e0cb069-7f96-44a8-b0d1-5b2911c33c4f",
+      "8625b560-c8b1-4da7-bdd5-fdce19d0907c"
+    ],
+    "artifacts_in": [
+      "tests/specs/EXP-601.md",
+      "tests/integration/exp601_tier_quota_test.zig",
+      "migrations/047_repository_form_schemas.sql"
+    ]
+  },
+  "task": {
+    "description": "REWORK 1: rerun EXP-601 test execution after blocker fix. Run required pre-checks and execute relevant tests. Write YAML report to tests/reports/report-20260614-WF02-exp601-tier-quota-20260614-r1.yaml. Confirm blocker around uq_form_schema_field is resolved and evaluate EXP-601 acceptance coverage.",
+    "acceptance_criteria": [
+      "Pre-checks executed",
+      "EXP-601 tests executed after migration fix",
+      "YAML report written",
+      "No unresolved BLOCKER/MAJOR issues for PASS"
+    ],
+    "functions_to_call": [
+      "fn:run-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "EXP-601 integration rerun passed after the migration blocker fix; uq_form_schema_field is no longer blocking the test path.",
+    "artifacts_out": [
+      "tests/reports/report-20260614-WF02-exp601-tier-quota-20260614-r1.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5)"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}

@@ -1,0 +1,52 @@
+---
+stage: "Epic 6 / EXP-601 Tier-to-Quota Model"
+date: "2026-06-14"
+decision: APPROVED
+workflow_id: WF-02
+run_id: WF02-exp601-tier-quota-20260614
+
+requirement_ids:
+  - EXP-601
+
+test_verdict: PASS
+test_report: tests/reports/report-20260614-WF02-exp601-tier-quota-20260614-r1.yaml
+test_coverage: >
+  Step 04 rework report for EXP-601 passed with 5 of 5 checks green, zero
+  failures, zero skips, and no unresolved BLOCKER or MAJOR issues. The rerun
+  explicitly confirms the prior uq_form_schema_field migration blocker is no
+  longer present in the EXP-601 path.
+
+nfr_results:
+  benchmark_command: "zig build bench"
+  benchmark_status: PASS
+  benchmark_evidence:
+    - "BENCHMARK_SETUP_INFO|db_url_source=primary_env"
+    - "2026-06-14 session benchmark wrapper run exited 0: powershell -NoProfile -ExecutionPolicy Bypass -File .vscode/run-zig-bench.ps1"
+    - "2026-06-14 session direct benchmark run exited 0: zig build bench"
+  NFR-01: verified
+  NFR-02: verified
+  NFR-04: verified
+
+blocking_issues: []
+major_issues: []
+minor_issues: []
+
+acceptance_criteria:
+  - criterion: "Exceeding a tenant quota is rejected centrally"
+    verdict: PASS
+    evidence: "EXP-601 Step 04r1 report passed with no unresolved acceptance failures."
+  - criterion: "Tier-to-quota limits live in one config surface"
+    verdict: PASS
+    evidence: "EXP-601 Step 04r1 report passed and routed to release validation with no remaining issues."
+  - criterion: "No unresolved BLOCKER or MAJOR remains for EXP-601"
+    verdict: PASS
+    evidence: "Step 04r1 handoff result issues list is empty and the YAML test report records zero failures."
+
+summary: >
+  EXP-601 satisfies its WF-02 release gate. The focused Step 04r1 test report is
+  clean, the earlier migration blocker is resolved, and the benchmark gate is
+  green in the current validation session.
+
+recommendation: APPROVED
+next_action: "Route to DOC-UPDATER (WF-02 Step 6) to set requirement status RELEASED"
+validated_at: "2026-06-14T03:06:30Z"

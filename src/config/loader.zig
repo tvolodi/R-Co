@@ -17,6 +17,7 @@ pub const ConfigKind = enum {
     budget_limits,
     monitoring_config,
     oidc_config,
+    quota_policy,
 };
 
 /// Per-node capability timeouts (milliseconds).
@@ -125,8 +126,6 @@ pub fn loadActiveConfig(
 }
 
 fn parseU32FromJson(key: []const u8, json: []const u8) ?u32 {
-    const pattern_start = "\"";
-    const pattern_mid = "\":";
     var search: []const u8 = json;
     while (search.len > 0) {
         const key_start = std.mem.indexOf(u8, search, key) orelse return null;
@@ -196,6 +195,7 @@ pub fn loadConfigArtifact(
         .budget_limits => "config",
         .monitoring_config => "config",
         .oidc_config => "config",
+        .quota_policy => "config",
     };
 
     const conn = pool.acquire() catch return ConfigError.DatabaseError;
@@ -219,6 +219,15 @@ pub fn loadConfigArtifact(
 
     const content_json = rows.rows[0][0] orelse return null;
     return allocator.dupe(u8, content_json) catch ConfigError.OutOfMemory;
+}
+
+/// Load active EXP-601 quota policy JSON for a tenant.
+pub fn loadActiveQuotaPolicy(
+    allocator: std.mem.Allocator,
+    pool: *db.Pool,
+    tenant_id: []const u8,
+) ConfigError!?[]const u8 {
+    return loadConfigArtifact(allocator, pool, tenant_id, .quota_policy, "tier_quota_policy");
 }
 
 /// Validate a configuration artifact JSON against schema.
