@@ -3913,7 +3913,21 @@ requirements:
     - src/main.zig
     - tests/specs/EXP-601.md
     - tests/integration/exp601_tier_quota_test.zig
-    last_updated: '2026-06-10T02:49:11Z'
+  EXP-701:
+    status: RELEASED
+    stage: 7
+    priority: MUST
+    title: Sandbox threat-model go-live gate for untrusted runtimes
+    implemented_in:
+    - docs/sandbox_threat_model.md
+    - docs/BPM_Platform_Backend_Architecture.md
+    test_spec: tests/specs/EXP-701.md
+    test_run: tests/reports/report-20260614-WF02-exp701-sandbox-threatmodel-20260614.yaml
+    tested_at: '2026-06-14'
+    released_at: '2026-06-14'
+    release_run: WF02-exp701-sandbox-threatmodel-20260614
+    release_decision: docs/status/release-exp701-20260614.yaml
+    last_updated: '2026-06-14T04:13:23Z'
   TNT-02:
     status: RELEASED
     stage: 12

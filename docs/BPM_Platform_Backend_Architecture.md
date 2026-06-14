@@ -1148,3 +1148,33 @@ Top-level `src/` layout as of this revision:
 
 **Vendored dependencies** (`vendor/`): `pg` (PostgreSQL driver), `http` (HTTP server), `cel`
 (legacy expression interpreter, superseded by `src/expr/` for new work).
+
+---
+
+## 17. Sandbox Threat Model
+
+The full threat model for the Lua/LuaJIT scripting sandbox, the Wasm/Wasmtime extension
+sandbox, and the agent pipeline auth surface is maintained as a standalone document:
+
+**[docs/sandbox_threat_model.md](sandbox_threat_model.md)** (Document ID: EXP-701, Version 1.0)
+
+This document enumerates:
+- Host-API contracts for Lua and Wasm runtimes (§1–2)
+- Agent pipeline auth and session binding (§3)
+- Full threat enumeration with severity ratings (§4)
+- Error taxonomy for both runtimes (§5)
+- Mitigations per threat — mapped to source files (§6)
+- Go-live gate checklist that a reviewer must clear before tenant- or agent-authored code executes in production (§7)
+
+### Go-Live Gate (EXP-702 / EXP-703 Prerequisite)
+
+`docs/sandbox_threat_model.md` is the **go-live gate** for:
+
+| Requirement | Title | Blocked until |
+|---|---|---|
+| **EXP-702** | Ephemeral Sandbox Tier | All checklist items in §7 of the threat model must be VERIFIED |
+| **EXP-703** | Virtual Clock + Sandbox Auth | All checklist items in §7 of the threat model must be VERIFIED |
+
+No production deployment of the ephemeral sandbox tier (EXP-702) or virtual-clock sandbox auth
+(EXP-703) may proceed until the go-live gate in `docs/sandbox_threat_model.md §7` is fully
+signed off by the security reviewer.

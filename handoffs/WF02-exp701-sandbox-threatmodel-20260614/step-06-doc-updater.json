@@ -1,0 +1,61 @@
+{
+  "handoff_id": "85de69ba-eb83-44ff-9cdd-9871f50bfbe1",
+  "run_id": "WF02-exp701-sandbox-threatmodel-20260614",
+  "workflow_id": "WF-02",
+  "step": "06",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-06-14T03:37:44Z",
+  "started_at": "2026-06-14T03:37:45Z",
+  "completed_at": "2026-06-14T04:20:13Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Epic 7 / EXP-701 documentation",
+    "requirement_ids": [
+      "EXP-701"
+    ],
+    "related_handoff_ids": [
+      "115abfc8-c9f3-4cb6-a0bf-1c6e111f2c0c"
+    ],
+    "artifacts_in": [
+      "docs/status/release-exp701-20260614.yaml",
+      "handoffs/WF02-exp701-sandbox-threatmodel-20260614/estimation.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md and docs/status/requirement_status.yaml: mark EXP-701 as RELEASED. Write retrospective for WF02-exp701-sandbox-threatmodel-20260614. Then execute fn:git-merge: create PR, squash merge, delete branch, return to main clean. Note: EXP-701 is document-only and gates EXP-702/703 go-live \u2014 mention this in the changelog entry.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated for EXP-701",
+      "requirement_status.yaml: EXP-701 = RELEASED",
+      "Retrospective written",
+      "PR merged, branch deleted, repo on main clean"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-requirement-status",
+      "fn:git-merge"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated EXP-701 to RELEASED, added changelog gate note for EXP-702/703, wrote retrospective, and completed git merge flow via PR #103.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/status/requirement_status.yaml",
+      "docs/metrics/retrospectives/WF02-exp701-sandbox-threatmodel-20260614.yaml",
+      "docs/status/release-exp701-20260614.yaml",
+      "handoffs/registry.json",
+      "handoffs/WF02-exp701-sandbox-threatmodel-20260614/registry.json",
+      "PR #103"
+    ],
+    "git_evidence": {
+      "pr_number": 103,
+      "pr_url": "https://github.com/tvolodi/My-Fab/pull/103"
+    },
+    "issues": [],
+    "next_action": "Workflow complete for this stage / cycle"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

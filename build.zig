@@ -639,6 +639,24 @@ pub fn build(b: *std.Build) void {
     });
     const run_ext03_plugin_unit_tests = b.addRunArtifact(ext03_plugin_unit_tests);
 
+    // EXP-701: static sandbox threat model document gate checks (no DB, no network)
+    const exp701_doc_embed_mod = b.createModule(.{
+        .root_source_file = b.path("docs/exp701_doc_embed.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const exp701_sandbox_threatmodel_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/exp701_sandbox_threatmodel_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "exp701_doc_embed", .module = exp701_doc_embed_mod },
+            },
+        }),
+    });
+    const run_exp701_sandbox_threatmodel_tests = b.addRunArtifact(exp701_sandbox_threatmodel_tests);
+
     // ---------------------------------------------------------------------------
     // DSL-01: Expression DSL parser unit tests (pure — no DB, no network)
     // Tests live in src/expr/parser.zig
@@ -750,6 +768,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_sch303_unit_tests.step);
     test_step.dependOn(&run_service_task_unit_tests.step);
     test_step.dependOn(&run_ext03_plugin_unit_tests.step);
+    test_step.dependOn(&run_exp701_sandbox_threatmodel_tests.step);
     test_step.dependOn(&run_dsl01_parser_tests.step);
     test_step.dependOn(&run_expr_error_recovery_tests.step);
     test_step.dependOn(&run_dsl04_eval_tests.step);

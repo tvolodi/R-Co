@@ -1,0 +1,51 @@
+---
+release_id: release-exp701-20260614
+stage: "Epic 7 / EXP-701 sandbox threat model"
+date: 2026-06-14
+decision: APPROVED
+workflow_id: WF-02
+run_id: WF02-exp701-sandbox-threatmodel-20260614
+
+requirement_ids:
+  - EXP-701
+
+test_verdict: PASS
+test_report: tests/reports/report-20260614-WF02-exp701-sandbox-threatmodel-20260614.yaml
+test_coverage: >
+  Step 04 report for EXP-701 passed with total 1, passed 1, failed 0, skipped 0,
+  and no unresolved BLOCKER or MAJOR issues.
+
+nfr_results:
+  benchmark_command: "zig build bench"
+  benchmark_status: PASS
+  benchmark_evidence:
+    - "BENCHMARK_SETUP_INFO|db_url_source=primary_env"
+    - "2026-06-14 session benchmark command succeeded: zig build bench"
+  NFR-01: verified
+  NFR-02: verified
+  NFR-04: verified
+
+blocking_issues: []
+major_issues: []
+minor_issues: []
+
+acceptance_criteria:
+  - criterion: "Release decision file written"
+    verdict: PASS
+    evidence: "docs/status/release-exp701-20260614.yaml created."
+  - criterion: "No unresolved BLOCKER/MAJOR"
+    verdict: PASS
+    evidence: "Step 04 test report has zero failures and empty issues list."
+
+gating_note: >
+  EXP-701 is the go-live gate document for EXP-702 and EXP-703. Approval of
+  this release gate authorizes progression of those dependent expansions.
+
+summary: >
+  EXP-701 release gate is approved. Test execution and benchmark gate are green
+  in the current validation session, and no unresolved BLOCKER or MAJOR issues
+  remain.
+
+recommendation: APPROVED
+next_action: "Route to DOC-UPDATER (WF-02 Step 6) to set requirement status RELEASED"
+validated_at: "2026-06-14T04:13:23Z"

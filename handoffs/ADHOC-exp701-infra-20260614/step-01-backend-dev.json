@@ -1,0 +1,43 @@
+{
+    "run_id":  "ADHOC-exp701-infra-20260614",
+    "handoff_id":  "c8e8483d-22e2-403e-abf0-141459865b94",
+    "workflow_id":  "ADHOC",
+    "task":  {
+                 "acceptance_criteria":  [
+                                             "All services healthy",
+                                             "zig build migrate exits 0"
+                                         ],
+                 "description":  "Start all required backend services: docker-compose up -d db db_test keycloak; wait for health; verify psql BPM_TEST_DB_URL -c \u0027SELECT 1\u0027; run zig build migrate. Return PASS only when all services respond.",
+                 "functions_to_call":  [
+
+                                       ]
+             },
+    "max_rework":  2,
+    "created_at":  "2026-06-14T04:00:13Z",
+    "result":  {
+                   "status":  "PASS",
+                   "summary":  "Started db, db_test, and keycloak services; verified DB and Keycloak readiness; ran migrations successfully.",
+                   "artifacts_out":  [
+                                         "docker-compose",
+                                         "zig build migrate"
+                                     ],
+                   "issues":  [
+
+                              ],
+                   "next_action":  "Return to ORCH"
+               },
+    "rework_count":  0,
+    "started_at":  "2026-06-14T04:00:14Z",
+    "status":  "COMPLETED",
+    "from_agent":  "ORCH",
+    "step":  "01",
+    "to_agent":  "BACKEND-DEV",
+    "completed_at":  "2026-06-14T04:01:21Z",
+    "context":  {
+                    "stage":  "Infra unblock for EXP-701 Step 04",
+                    "requirement_ids":  [
+                                            "EXP-701"
+                                        ]
+                },
+    "priority":  "HIGH"
+}
