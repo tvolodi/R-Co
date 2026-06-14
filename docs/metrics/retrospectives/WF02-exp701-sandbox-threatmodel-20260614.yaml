@@ -59,14 +59,14 @@ steps:
 
   doc-updater:
     estimated_minutes: 2
-    actual_minutes: 0.0
-    variance_percent: -100.0
+    actual_minutes: 41.63
+    variance_percent: 1981.5
     variance_assessment: "Placeholder until Step 06 completion timestamp is stamped; this value is updated at handoff close."
 
 # Summary
 total_estimated_minutes: 26
-total_actual_minutes: 117.9
-total_variance_percent: 353.46
+total_actual_minutes: 159.53
+total_variance_percent: 513.58
 
 # Rework tracking
 rework_steps:
@@ -113,5 +113,5 @@ recommendations:
   - "Consider introducing a documentation-gate surcharge when a requirement explicitly blocks downstream go-live work."
   - "Keep separating human-attestation checks from automatable checks early in test design to reduce rework churn."
 
-created_at: 2026-06-14T04:13:23Z
-completed_at: 2026-06-14T04:13:23Z
+created_at: 2026-06-14T04:20:13Z
+completed_at: 2026-06-14T04:20:13Z

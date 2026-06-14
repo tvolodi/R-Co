@@ -1,0 +1,48 @@
+{
+  "handoff_id": "bf3f1381-e5d9-4f2b-ac43-9c191c89f338",
+  "run_id": "WF02-exp701-sandbox-threatmodel-20260614",
+  "workflow_id": "WF-02",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-14T03:31:25Z",
+  "started_at": "2026-06-14T03:31:26Z",
+  "completed_at": "2026-06-14T03:36:47Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Epic 7 / EXP-701 Sandbox Threat Model validation",
+    "requirement_ids": [
+      "EXP-701"
+    ],
+    "related_handoff_ids": [
+      "d3523d37-8a8d-4efe-8ab5-68ca0004955f"
+    ],
+    "artifacts_in": [
+      "docs/sandbox_threat_model.md",
+      "docs/requirements/BPM_Platform_Expansion_Backlog.20260611.md"
+    ]
+  },
+  "task": {
+    "description": "Validate docs/sandbox_threat_model.md against EXP-701 acceptance criteria: (1) Lua + Wasm host-API surface documented, (2) capability gating described, (3) fuel/memory/timeout limiters specified, (4) sandbox-control auth covered, (5) document is referenced as a go-live gate. No implementation code present. All six sections present.",
+    "acceptance_criteria": [
+      "All EXP-701 acceptance criteria explicitly met",
+      "No implementation code present",
+      "Go-live gate checklist exists and is complete"
+    ],
+    "functions_to_call": [
+      "fn:validate-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "docs/sandbox_threat_model.md validated — lint_design_artefact.py exits 0, §5 Error Cases maps T-01 through T-11 to concrete platform error outcomes, all EXP-701 acceptance criteria met, no implementation code present, go-live gate checklist complete",
+    "artifacts_out": [
+      "docs/sandbox_threat_model.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 02a)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
