@@ -37,6 +37,7 @@ pub const api_tenant_context = @import("tenant_context"); // ADP-03 request tena
 pub const api_pipeline_context = @import("pipeline_context"); // ADP-06 request pipeline context
 pub const api_trace = @import("api/middleware/trace.zig"); // API-09 trace middleware
 pub const api_rate_limit = @import("api/middleware/rate_limit.zig"); // API-10 rate limiting
+pub const api_quota_enforcement = @import("api/middleware/quota_enforcement.zig"); // EXP-601 centralized quota enforcement
 pub const api_openapi = @import("api/openapi/mod.zig"); // API-11 OpenAPI builder/serializer
 pub const openapi_routes = @import("api/routes/openapi.zig"); // API-11 public /openapi.json route handler
 pub const health_routes = @import("api/routes/health.zig"); // API-12 public /health/live and /health/ready handlers
@@ -103,6 +104,9 @@ pub fn main() !void {
     api_auth.configureIdentityProviderManager(idp_boot.active.manager);
     try api_auth.init(allocator, config.bootstrap_token);
     defer api_auth.deinit();
+
+    try api_quota_enforcement.init(allocator);
+    defer api_quota_enforcement.deinit();
 
     const fields = [_]obs_logger.LogField{
         .{ .key = "port", .value = .{ .integer = config.port } },
@@ -498,6 +502,66 @@ fn serveRequest(
                 .authenticated => |ctx| {
                     authenticated_ctx = ctx;
                 },
+            }
+        }
+
+        // EXP-601: central quota guard at the kernel middleware boundary.
+        if (authenticated_ctx) |ctx| {
+            if (api_quota_enforcement.classifyTarget(path, method)) |quota_target| {
+                const quota_check = api_quota_enforcement.check(
+                    req_alloc,
+                    pool,
+                    .{
+                        .tenant_id = ctx.tenant_id[0..],
+                        .target = quota_target,
+                        .requested_delta = 1,
+                        .request_path = path,
+                        .request_method = method,
+                    },
+                ) catch |err| switch (err) {
+                    api_quota_enforcement.QuotaMiddlewareError.NotInitialized,
+                    api_quota_enforcement.QuotaMiddlewareError.QuotaPolicyInvalid,
+                    api_quota_enforcement.QuotaMiddlewareError.QuotaPolicyNotConfigured,
+                    api_quota_enforcement.QuotaMiddlewareError.QuotaUsageReadFailed,
+                    api_quota_enforcement.QuotaMiddlewareError.QuotaDimensionUnsupported,
+                    => {
+                        const pd = api_errors.problemServiceUnavailable("quota policy unavailable");
+                        const err_body = api_errors.serialise(req_alloc, pd) catch "{\"type\":\"https://bpm.example.com/problems/service-unavailable\",\"title\":\"Service Unavailable\",\"status\":503,\"detail\":\"quota policy unavailable\"}";
+                        const tid = api_trace_context.get();
+                        const hdrs = [_]std.http.Header{
+                            .{ .name = "content-type", .value = "application/json" },
+                            .{ .name = "X-Trace-Id", .value = tid },
+                        };
+                        try request.respond(err_body, .{ .status = @enumFromInt(503), .keep_alive = false, .extra_headers = &hdrs });
+                        return;
+                    },
+                    api_quota_enforcement.QuotaMiddlewareError.OutOfMemory,
+                    api_quota_enforcement.QuotaMiddlewareError.PoolExhausted,
+                    => {
+                        const pd = api_errors.problemServiceUnavailable("quota check unavailable");
+                        const err_body = api_errors.serialise(req_alloc, pd) catch "{\"type\":\"https://bpm.example.com/problems/service-unavailable\",\"title\":\"Service Unavailable\",\"status\":503,\"detail\":\"quota check unavailable\"}";
+                        const tid = api_trace_context.get();
+                        const hdrs = [_]std.http.Header{
+                            .{ .name = "content-type", .value = "application/json" },
+                            .{ .name = "X-Trace-Id", .value = tid },
+                        };
+                        try request.respond(err_body, .{ .status = @enumFromInt(503), .keep_alive = false, .extra_headers = &hdrs });
+                        return;
+                    },
+                };
+
+                switch (quota_check) {
+                    .allowed => {},
+                    .rejected => |reject| {
+                        const tid = api_trace_context.get();
+                        const hdrs = [_]std.http.Header{
+                            .{ .name = "content-type", .value = "application/json" },
+                            .{ .name = "X-Trace-Id", .value = tid },
+                        };
+                        try request.respond(reject.body, .{ .status = @enumFromInt(reject.status_code), .keep_alive = false, .extra_headers = &hdrs });
+                        return;
+                    },
+                }
             }
         }
 
