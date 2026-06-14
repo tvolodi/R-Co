@@ -93,7 +93,7 @@ pub fn createRecord(
     defer pool.release(conn);
 
     // 1. Load active entity definition
-    const def = definition_mod.getDefinitionByName(allocator, conn, params.tenant_id, params.entity_type) catch |err| switch (err) {
+    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
         error.DefinitionNotFound => return error.InvalidEntityType,
         else => return error.TransactionFailed,
     };
@@ -171,7 +171,7 @@ pub fn updateRecord(
     defer pool.release(conn);
 
     // Load active definition
-    const def = definition_mod.getDefinitionByName(allocator, conn, params.tenant_id, params.entity_type) catch |err| switch (err) {
+    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
         error.DefinitionNotFound => return error.InvalidEntityType,
         else => return error.TransactionFailed,
     };
@@ -237,7 +237,7 @@ pub fn deleteRecord(
     defer pool.release(conn);
 
     // Load active definition
-    const def = definition_mod.getDefinitionByName(allocator, conn, params.tenant_id, params.entity_type) catch |err| switch (err) {
+    const def = definition_mod.getDefinitionByName(allocator, pool, params.tenant_id, params.entity_type) catch |err| switch (err) {
         error.DefinitionNotFound => return error.InvalidEntityType,
         else => return error.TransactionFailed,
     };
@@ -297,12 +297,18 @@ pub fn deleteRecord(
 // ── Private helpers ─────────────────────────────────────────────────────────
 
 fn getOrCreateEntityTypeInstance(conn: *db.Conn, tenant_id: []const u8, entity_type: []const u8) !Uuid {
-    const row = (conn.queryRow(std.heap.page_allocator,
-        \\INSERT INTO entity_type_instances (entity_type, tenant_id, instance_id)
+    var schema_buf: [80]u8 = undefined;
+    const schema_name = db.schemaNameForTenant(tenant_id, &schema_buf);
+
+    const query_sql = std.fmt.allocPrint(std.heap.page_allocator,
+        \\INSERT INTO {s}.entity_type_instances (entity_type, tenant_id, instance_id)
         \\VALUES ($1, $2, gen_random_uuid())
         \\ON CONFLICT (entity_type) DO UPDATE SET tenant_id = EXCLUDED.tenant_id
         \\RETURNING instance_id::text
-    , &.{ entity_type, tenant_id }) catch return error.TransactionFailed) orelse return error.TransactionFailed;
+    , .{schema_name}) catch return error.OutOfMemory;
+    defer std.heap.page_allocator.free(query_sql);
+
+    const row = (conn.queryRow(std.heap.page_allocator, query_sql, &.{ entity_type, tenant_id }) catch return error.TransactionFailed) orelse return error.TransactionFailed;
     defer {
         if (row[0]) |v| std.heap.page_allocator.free(v);
         std.heap.page_allocator.free(row);
@@ -328,8 +334,11 @@ fn updateProjection(
     const seq_str = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{seq});
     defer std.heap.page_allocator.free(seq_str);
 
+    var schema_buf: [80]u8 = undefined;
+    const schema_name = db.schemaNameForTenant(tenant_id, &schema_buf);
+
     const sql = std.fmt.allocPrint(std.heap.page_allocator,
-        \\INSERT INTO entity_record_latest (tenant_id, entity_type, record_id, current_state, version_seq, entity_def_version, updated_at, deleted_at)
+        \\INSERT INTO {s}.entity_record_latest (tenant_id, entity_type, record_id, current_state, version_seq, entity_def_version, updated_at, deleted_at)
         \\VALUES ($1, $2, $3, $4::jsonb, $5, $6, NOW(), {s})
         \\ON CONFLICT (entity_type, record_id)
         \\DO UPDATE SET current_state = EXCLUDED.current_state,
@@ -337,7 +346,7 @@ fn updateProjection(
         \\          entity_def_version = EXCLUDED.entity_def_version,
         \\          updated_at = NOW(),
         \\          deleted_at = {s}
-    , .{ deleted_at, deleted_at }) catch return error.OutOfMemory;
+    , .{ schema_name, deleted_at, deleted_at }) catch return error.OutOfMemory;
     defer std.heap.page_allocator.free(sql);
 
     conn.exec(sql, &.{ tenant_id, entity_type, record_id, field_values, seq_str, def_ver_str }) catch return error.TransactionFailed;
@@ -350,11 +359,17 @@ fn fetchRecordResult(
     record_id: []const u8,
     tenant_id: []const u8,
 ) !RecordResult {
-    const row = (conn.queryRow(allocator,
+    var schema_buf: [80]u8 = undefined;
+    const schema_name = db.schemaNameForTenant(tenant_id, &schema_buf);
+
+    const query_sql = try std.fmt.allocPrint(allocator,
         \\SELECT record_id::text, entity_type, current_state::text, version_seq::text
-        \\FROM entity_record_latest
+        \\FROM {s}.entity_record_latest
         \\WHERE entity_type = $1 AND record_id = $2 AND tenant_id = $3
-    , &.{ entity_type, record_id, tenant_id }) catch return error.TransactionFailed) orelse return error.InvalidRecord;
+    , .{schema_name});
+    defer allocator.free(query_sql);
+
+    const row = (conn.queryRow(allocator, query_sql, &.{ entity_type, record_id, tenant_id }) catch return error.TransactionFailed) orelse return error.InvalidRecord;
     defer {
         for (row) |col| if (col) |v| allocator.free(v);
         allocator.free(row);
