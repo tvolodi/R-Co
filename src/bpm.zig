@@ -58,20 +58,7 @@ pub const tenant_status = @import("api/middleware/tenant_status.zig"); // TNT-06
 pub const service_catalog = @import("repository/service_catalog.zig"); // SVC-01, SVC-04
 pub const service_scope_validator = @import("definition/service_scope_validator.zig"); // SVC-03
 pub const services_routes = @import("api/routes/services.zig"); // SVC-04
-// EXP-301/302/303: Async effects subsystem
-pub const effects_mod = @import("effects/mod.zig");
-pub const effects_stub = @import("effects/stub.zig");
-pub const effects_queue = @import("effects/queue.zig");
-pub const effects_worker = @import("effects/worker.zig");
-pub const secrets = @import("secrets/mod.zig");
 pub const promotion_mod = @import("definition/promotion.zig"); // ENV-03 definition promotion domain
 pub const promotion_routes = @import("api/routes/promotion.zig"); // ENV-03 promotion HTTP handler
 pub const tenant_lifecycle_admin = @import("admin/tenant_lifecycle.zig"); // ENV-05 reset/delete lifecycle
-pub const entities = @import("entities/mod.zig"); // EXP-201, EXP-202
-pub const event_store = struct {
-    pub const Store = @import("event_store/store.zig").Store;
-    pub const Registry = @import("event_store/registry.zig").Registry;
-};
-pub const repository = struct {
-    pub const Registry = @import("repository/artifacts.zig").Artifacts;
-};
+pub const entities = @import("entities/mod.zig"); // EXP-201/EXP-202 entities subsystem

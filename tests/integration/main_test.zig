@@ -141,6 +141,8 @@ const env03_definition_promotion_integration = @import("env03_test.zig");
 const env05_tenant_lifecycle_integration = @import("env05_test.zig");
 // ISS-101 — timers.status FAILED constraint (allow 'failed' in timers.status CHECK)
 const iss101_timers_failed_status_integration = @import("iss101_timers_failed_status_test.zig");
+// EPIC-2 Run 1 — entities subsystem integration tests (EXP-201, EXP-202)
+const exp201_202_entities_integration = @import("exp201_202_entities_test.zig");
 // ISS-102 — tasks.claimed_by and real claim path
 const iss102_claim_integration = @import("iss102_claim_test.zig");
 // ISS-106 — webhook_deliveries transactional-outbox table formalization (attempt column,
@@ -222,6 +224,7 @@ comptime {
     _ = env03_definition_promotion_integration;
     _ = env05_tenant_lifecycle_integration;
     _ = iss101_timers_failed_status_integration;
+    _ = exp201_202_entities_integration;
     _ = iss102_claim_integration;
     _ = iss106_webhook_outbox_integration;
     _ = iss107_tenant_storage_mode_integration;

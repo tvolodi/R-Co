@@ -1,0 +1,35 @@
+run_id: WF02-exp201-202-20260612
+handoff_id: exp201-202-test-designer-03-rework2
+step: "03"
+agent: TEST-DESIGNER
+timestamp_utc: 2026-06-14T05:06:40Z
+status: PASS
+summary: Rework 2 completed for EXP-201/EXP-202 by enforcing one-spec-case-to-one-runnable-test parity, replacing static fixture IDs with per-test UUID fixtures, and removing stale legacy token wording from the active run-chain summary.
+validate_completeness:
+  requirement_ids:
+    - EXP-201
+    - EXP-202
+  resolved_issues:
+    - id: TDV-EXP201202-001
+      status: fixed
+      evidence: tests/integration/exp201_202_entities_test.zig now has six runnable test blocks matching six spec cases (TC-EXP-201-01..03, TC-EXP-202-01..03)
+    - id: TDV-EXP201202-002
+      status: fixed
+      evidence: tests/integration/exp201_202_entities_test.zig uses UUID-generated tenant_id, actor_id, entity_type suffixes, and idempotency keys per test via newFixture()
+    - id: TDV-EXP201202-003
+      status: fixed
+      evidence: handoffs/WF02-exp201-202-20260612/step-03-test-designer-rework.json summary text no longer contains entity_subsystem_test token
+  artifacts_updated:
+    - tests/integration/exp201_202_entities_test.zig
+    - handoffs/WF02-exp201-202-20260612/step-03-test-designer-rework.json
+runnable_evidence:
+  integration:
+    - command: zig build test-integration-tm
+      result: PASS
+      evidence: task shell: zig-test-integration-cmd returned INTEGRATION_EXIT_CODE=0
+  build_and_tests:
+    - command: zig build test
+      result: PASS
+      evidence: task shell: zig-build-and-test completed with no errors
+issues: []
+next_action: Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)
