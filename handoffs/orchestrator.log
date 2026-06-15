@@ -910,3 +910,18 @@
 2026-06-14T09:17:56Z | REWORK | WF02-exp201-202-20260612 | exp201-202-final-backend-dev-rework | BACKEND-DEV | REWORK(2/3)
 2026-06-14T09:21:30Z | REWORK | WF02-exp201-202-20260612 | exp201-202-final-backend-dev-rework | BACKEND-DEV | REWORK(3/3)
 >>>>>>> ed2426f (feat(WF02-exp201-202-20260612): finalize rework handoff metadata)
+2026-06-14T09:31:15Z | ROUTE | WF02-exp203-20260614 | exp203-git-setup-00 | ORCH -> BACKEND-DEV | IN_PROGRESS
+2026-06-14T10:14:10Z | ROUTE | ADHOC-tenant-onboarding-tests-20260614 | 3dc34248-1359-4192-b7a4-8f7e4a27cd1b | ORCH -> TEST-RUNNER | PENDING
+2026-06-14T10:25:42Z | INFRA_BLOCK | ADHOC-tenant-onboarding-tests-20260614 | --- | ORCH | BLOCKED -> routing to BACKEND-DEV for service startup\n2026-06-14T10:25:42Z | ROUTE | ADHOC-tenant-onboarding-tests-20260614 | 178eb1ef-85c8-42da-b3bc-772c9259f2ae | ORCH -> BACKEND-DEV | PENDING\n2026-06-14T10:35:25Z | INFRA_UNBLOCK | ADHOC-tenant-onboarding-tests-20260614 | --- | ORCH | Services healthy - redispatching TEST-RUNNER\n2026-06-14T10:35:25Z | ROUTE | ADHOC-tenant-onboarding-tests-20260614 | 7952ec87-317c-438f-9441-4b7957b83ef1 | ORCH -> TEST-RUNNER | PENDING\n2026-06-14T18:47:35Z | ROUTE | WF03-onboarding-e2e-fix-20260614 | d3383bc2-385d-43f6-b18e-d2b254615bcb | ORCH -> BACKEND-DEV | PENDING
+2026-06-14T18:47:35Z | WF03_START | WF03-onboarding-e2e-fix-20260614 | --- | ORCH | Tenant onboarding E2E/pipeline failures
+2026-06-14T18:51:44Z | ROUTE | WF03-onboarding-e2e-fix-20260614 | ed0b5d20-67f6-4486-9951-c1814c5c6d5f | ORCH -> ISSUE-FIXER | PENDING
+2026-06-14T18:56:48Z | DIAGNOSE | WF03-onboarding-e2e-fix-20260614 | ed0b5d20 | ISSUE-FIXER | PASS | ISS-0069 (CATEGORY E, test-harness navigateSpa pushState race); next: CODE-DESIGNER
+2026-06-14T19:01:00Z | ROUTE | WF03-onboarding-e2e-fix-20260614 | 903efcc2-ccdf-4165-b408-7580924e0168 | ORCH -> CODE-DESIGNER | PENDING
+2026-06-14T19:04:32Z | COMPLETE | WF03-onboarding-e2e-fix-20260614 | 903efcc2 | CODE-DESIGNER | PASS -> route to CODE-DESIGN-VALIDATOR
+2026-06-14T19:06:38Z | ROUTE | WF03-onboarding-e2e-fix-20260614 | b9c0d1e2 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
+2026-06-14T19:08:39Z | GATE_PASS | WF03-onboarding-e2e-fix-20260614 | b9c0d1e2 | CODE-DESIGN-VALIDATOR | PASS — hard gate cleared, route to FRONTEND-DEV Step 03
+2026-06-14T19:10:15Z | ROUTE | WF03-onboarding-e2e-fix-20260614 | c1d2e3f4 | ORCH -> FRONTEND-DEV | PENDING
+2026-06-14T19:15:10Z | ROUTE | WF03-onboarding-e2e-fix-20260614 | d2e3f4a5 | ORCH -> TEST-RUNNER | PENDING
+2026-06-15T15:03:45Z | COMPLETE | WF03-onboarding-e2e-fix-20260614 | d2e3f4a5 | TEST-RUNNER | FAIL — 3 BLOCKER (saga stuck pending), 14 pass
+2026-06-15T15:05:40Z | ROUTE | WF03-onboarding-saga-fix-20260615 | e3f4a5b6 | ORCH -> ISSUE-FIXER | PENDING
+2026-06-15T15:05:40Z | NEW_CYCLE | WF03-onboarding-saga-fix-20260615 | --- | ORCH | Spawned from WF03-onboarding-e2e-fix-20260614 Step 04 BLOCKER (saga stuck pending). Reuses feature branch feature/WF03-onboarding-e2e-fix-20260614.

@@ -121,7 +121,8 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
         // - GBL-077: TNT-07 RLS cleanup (requires schema-per-tenant state)
         if (std.mem.eql(u8, filename, "GBL-074_tnt05_backfill_tracking.sql") or
             std.mem.eql(u8, filename, "GBL-075_tnt05_backfill_run.sql") or
-            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql")) {
+            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql"))
+        {
             // Skip execution in isolated integration harness runs.
             // Do not mark as applied; otherwise later runs can incorrectly
             // skip required migrations when schema state has changed.
