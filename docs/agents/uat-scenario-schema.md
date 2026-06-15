@@ -82,9 +82,15 @@ steps:
     # Describes the business action, not the technical implementation.
     # E.g.: "submits a shipment request for 12 packages to Hamburg,
     #         declared value €750, cargo type standard"
-    via: <gui | api>
-    # gui: UAT-RUNNER drives the Playwright test for this step
-    # api: UAT-RUNNER calls the BPM API directly (faster, for setup steps)
+    via: gui
+    # ONLY gui is permitted for scenario steps.
+    # UAT-RUNNER must drive every process execution step through the browser UI
+    # via Playwright — exactly as a human business user would perform it.
+    #
+    # ⛔ via: api is FORBIDDEN for scenario steps. If the action cannot be
+    # performed through the UI, that is a BLOCKER issue (missing UI), not a
+    # reason to fall back to an API call. UAT-RUNNER will stop the scenario
+    # and register a missing-UI issue for FRONTEND-DEV to resolve.
     input:
       <variable_name>: <value>
       # These map to process variables defined in process_*.yaml.
@@ -110,12 +116,20 @@ expected_outcomes:
     # E.g.: "The operations manager receives a task to review the shipment
     #         within 4 hours of submission"
     verification:
-      method: <task_assigned | instance_state | audit_event | gui_screen | api_response>
-      # task_assigned:  a task exists for the specified role/actor
-      # instance_state: the instance's variable map contains expected values
-      # audit_event:    the audit log contains an event of the specified type
-      # gui_screen:     a Playwright screenshot shows the described UI state
-      # api_response:   a direct API call returns the expected value
+      method: <gui_screen | task_assigned | instance_state | audit_event>
+      # gui_screen:     PRIMARY — a Playwright screenshot shows the described UI state.
+      #                 This is the preferred verification method for anything a
+      #                 business user would see. Evidence = screenshot path + screen text.
+      # task_assigned:  supplementary — a task exists for the specified role/actor
+      #                 (verified via audit log or task list screen, not raw API).
+      # instance_state: supplementary — the process instance reached the expected state
+      #                 (verified by reading the instance detail screen or status indicator).
+      # audit_event:    supplementary — the audit log (visible on screen) shows the event.
+      #
+      # ⛔ api_response is REMOVED. Direct API response bodies are NOT acceptable as
+      # primary verification evidence. If the expected outcome is only verifiable via
+      # a raw API call and has no UI representation, that is a BLOCKER issue
+      # (missing UI) — register it and stop.
       detail: "<what specifically to check>"
       # For task_assigned:   "task type 'ops-review' assigned to role-ops-manager"
       # For instance_state:  "variable ops_decision == 'approve'"
@@ -171,17 +185,16 @@ steps:
   - step: 1
     actor: dispatcher
     action: >
-      Submits a shipment request for 20 packages to Munich,
-      declared value €750, cargo type standard
-    via: api
+      Logs into the platform and opens the shipment submission form.
+      Fills in the destination (Munich), declares the cargo value (€750),
+      selects cargo type standard, and submits the request.
+    via: gui
     input:
-      shipment_id: sim-ship-001
       destination: Munich
       declared_value: 750
       cargo_type: standard
-      requesting_actor_id: actor-swiftroute-lena
     produces:
-      instance_id: "the process instance ID for this shipment request"
+      instance_id: "the process instance ID visible on the confirmation screen"
     sla_context:
       expected_within_hours: 4
 
