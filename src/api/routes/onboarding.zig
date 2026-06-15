@@ -466,9 +466,15 @@ fn persistOnboardingResult(
     const status_str = try std.fmt.allocPrint(std.heap.page_allocator, "{d}", .{status});
     defer std.heap.page_allocator.free(status_str);
 
+    // ISS-0070 fix: The background saga thread does not inherit the request
+    // thread's threadlocal tenant context, so pool.acquire() would give a
+    // connection whose search_path resolves to public rather than
+    // tenant_default.  The onboarding_registry is always in the
+    // tenant_default schema (platform admin scope), so we schema-qualify the
+    // table name explicitly to ensure the UPDATE reaches the correct row.
     _ = conn.queryRow(
         std.heap.page_allocator,
-        \\UPDATE onboarding_registry
+        \\UPDATE tenant_default.onboarding_registry
         \\SET response_status = $2::smallint, response_body = $3::jsonb, state = $4, completed_at = NOW()
         \\WHERE onboarding_id = $1::uuid
         \\RETURNING id::text

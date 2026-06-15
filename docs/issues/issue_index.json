@@ -1,8 +1,39 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-06-07T01:47:30Z",
-  "next_issue_id": 69,
+  "last_updated": "2026-06-15T15:05:40Z",
+  "next_issue_id": 71,
   "issues": [
+    {
+      "id": "ISS-0070",
+      "title": "Onboarding saga background thread never transitions onboarding_registry row from 'pending' to terminal state (completed/failed)",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "backend logic error",
+      "run_id": "WF03-onboarding-saga-fix-20260615",
+      "handoff_id": "e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7081",
+      "affected_areas": [
+        "src/api/routes/onboarding.zig",
+        "src/identity/onboarding.zig"
+      ],
+      "created_at": "2026-06-15T15:05:40Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0069",
+      "title": "Onboarding E2E/pipeline tests fail: pipeline.ts navigateSpa uses history.pushState + manual popstate dispatch which does not reliably trigger React Router data router re-render",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "run_id": "WF03-onboarding-e2e-fix-20260614",
+      "handoff_id": "ed0b5d20-67f6-4486-9951-c1814c5c6d5f",
+      "affected_areas": [
+        "web/tests/e2e/pipeline.ts",
+        "web/tests/e2e/onboarding/onb-ui-01.e2e.spec.ts",
+        "web/tests/e2e/onboarding/onb-ui-02.e2e.spec.ts",
+        "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts"
+      ],
+      "created_at": "2026-06-14T18:56:48Z",
+      "resolved_at": null
+    },
     {
       "id": "ISS-0068",
       "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",
