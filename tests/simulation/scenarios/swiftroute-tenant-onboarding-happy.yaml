@@ -1,0 +1,191 @@
+---
+id: swiftroute-tenant-onboarding-happy
+company_id: swiftroute
+process_id: sys-tenant-onboarding
+title: SwiftRoute Ltd onboards successfully and Alice Bauer gains immediate access
+version: "1.0"
+tags: [happy_path, onboarding]
+
+description: >
+  The platform operator provisions SwiftRoute Ltd as a new tenant on the BPM
+  platform. Alice Bauer is set up as the company's admin user and can log in
+  the moment onboarding is confirmed. SwiftRoute receives its own isolated
+  workspace — no other company's data is visible. This scenario verifies the
+  full provisioning flow completes without manual intervention and that the
+  resulting workspace is correctly isolated and accessible.
+
+actors:
+  platform_admin: actor-platform-admin
+  tenant_admin:   actor-swiftroute-alice
+
+preconditions:
+  - description: >
+      The company slug 'swiftroute' and hostname 'swiftroute.bpm.example' are
+      not already registered on the platform
+    check: custom
+    detail: >
+      Confirm no existing tenant record exists for slug 'swiftroute' before
+      the scenario begins — prevents a duplicate-slug rejection that would
+      make the onboarding request fail for the wrong reason
+  - description: No open onboarding requests are in progress for swiftroute
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: platform_admin
+    action: >
+      Submits an onboarding request for SwiftRoute Ltd, providing the company
+      name, the slug that will identify the workspace, Alice Bauer's contact
+      details as the designated admin, the company hostname, and the
+      production environment flag
+    via: api
+    input:
+      slug: swiftroute
+      display_name: SwiftRoute Ltd
+      admin_email: alice.bauer@swiftroute.example
+      admin_username: alice.bauer
+      admin_display_name: Alice Bauer
+      hostname: swiftroute.bpm.example
+      tenant_type: production
+    produces:
+      onboarding_id: >
+        the onboarding record identifier returned immediately after submission
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: platform_admin
+    action: >
+      Reviews the onboarding confirmation to verify that SwiftRoute's workspace
+      was fully set up without errors — the status shown must be 'completed'
+      and the slug and hostname must match what was submitted
+    via: api
+    input:
+      onboarding_id: "{{produces.onboarding_id}}"
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: tenant_admin
+    action: >
+      Logs in to the BPM platform using the Alice Bauer credentials that were
+      registered during onboarding — this is her first login to the new
+      SwiftRoute workspace
+    via: gui
+    input:
+      username: alice.bauer
+      company_workspace: swiftroute
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: tenant_admin
+    action: >
+      Reviews the SwiftRoute dashboard after logging in and confirms that
+      the workspace shows only SwiftRoute's content — no other company's
+      processes, instances, or users are visible
+    via: gui
+    input:
+      expected_company_name: SwiftRoute Ltd
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      SwiftRoute's onboarding record shows status 'completed' — the
+      provisioning finished without any step failing or requiring manual
+      intervention
+    verification:
+      method: api_state_check
+      detail: >
+        Onboarding record status == 'completed'; no error field is set
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        SwiftRoute's workspace was not set up. Alice cannot log in, no
+        processes can run, and the company has no presence on the platform.
+        The platform operator must investigate before any work can start.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      The company slug 'swiftroute' and hostname 'swiftroute.bpm.example' are
+      registered and look up correctly — the workspace is reachable under the
+      agreed company address
+    verification:
+      method: api_existence_check
+      detail: >
+        Tenant lookup by slug 'swiftroute' returns a record with
+        hostname == 'swiftroute.bpm.example' and status == 'active'
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        SwiftRoute cannot be reached at its designated hostname. Users
+        attempting to navigate to the company workspace will see a 'not found'
+        error. The company effectively does not exist on the platform.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      SwiftRoute has its own isolated identity workspace — a dedicated
+      authentication realm is registered exclusively for SwiftRoute users
+    verification:
+      method: api_existence_check
+      detail: >
+        Identity provider realm with ID 'swiftroute' exists and is in
+        ACTIVE state; realm is not shared with any other company
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        SwiftRoute users cannot authenticate. There is no identity workspace
+        for the company. Alice Bauer cannot log in and no one at SwiftRoute
+        can access the platform.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      Alice Bauer can log in immediately after onboarding completes — no
+      further setup steps or password resets are needed before first access
+    verification:
+      method: gui_screen_check
+      detail: >
+        After entering Alice Bauer's credentials, the screen shows the
+        SwiftRoute dashboard — no error message, no 'account not found'
+        notice, and no forced password-change screen blocking entry
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        The designated admin cannot access the platform. SwiftRoute cannot
+        configure their processes or onboard their own team members.
+        The company is locked out from day one.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      Once logged in, Alice Bauer sees only SwiftRoute's workspace — no
+      processes, instances, users, or company data from any other tenant
+      appear in her dashboard
+    verification:
+      method: gui_screen_check
+      detail: >
+        The dashboard header shows 'SwiftRoute Ltd'; the company name shown
+        in the workspace matches 'SwiftRoute Ltd'; no other company's name
+        or data is visible anywhere on the screen
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Data isolation has failed. SwiftRoute can potentially see confidential
+        operational data belonging to other companies. This is a serious
+        privacy and compliance breach that must be resolved before any
+        company uses the platform.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    Onboarding records are immutable after completion — there is no instance
+    to cancel. If the scenario is run in a clean test environment, the
+    'swiftroute' tenant record created by this scenario will be removed by
+    the test environment teardown. Do not run this scenario against a
+    production environment where a real SwiftRoute tenant already exists.

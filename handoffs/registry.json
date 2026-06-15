@@ -6856,6 +6856,50 @@
       "created_at": "2026-06-15T15:05:40Z",
       "status": "PENDING",
       "stage": "WF-03 Issue Resolving \u2014 New Cycle (backend saga bug)"
+    },
+    {
+      "handoff_id": "f0a1b2c3-d4e5-6f70-8192-a3b4c5d6e7f8",
+      "file": "handoffs/ADHOC-swiftroute-cleanup-20260616/step-01-backend-dev.json",
+      "run_id": "ADHOC-swiftroute-cleanup-20260616",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-15T20:18:19Z",
+      "status": "COMPLETED",
+      "stage": "ADHOC cleanup"
+    },
+    {
+      "handoff_id": "a1b2c3d4-e5f6-7081-9293-a4b5c6d7e8f9",
+      "file": "handoffs/WF06-swiftroute-onboarding-scenario-20260616/step-01-bo-swiftroute.json",
+      "run_id": "WF06-swiftroute-onboarding-scenario-20260616",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "BO-SWIFTROUTE",
+      "created_at": "2026-06-15T20:21:24Z",
+      "status": "COMPLETED",
+      "stage": "WF-06 Scenario Authoring"
+    },
+    {
+      "handoff_id": "b2c3d4e5-f6a7-8192-a3b4-c5d6e7f8a9b0",
+      "file": "handoffs/WF06-swiftroute-onboarding-scenario-20260616/step-1b-uat-runner.json",
+      "run_id": "WF06-swiftroute-onboarding-scenario-20260616",
+      "step": "1b",
+      "from_agent": "ORCH",
+      "to_agent": "UAT-RUNNER",
+      "created_at": "2026-06-15T20:24:24Z",
+      "status": "COMPLETED",
+      "stage": "WF-06 Schema Validation"
+    },
+    {
+      "handoff_id": "c3d4e5f6-a7b8-9203-b4c5-d6e7f8a9b0c1",
+      "file": "handoffs/WF06-swiftroute-onboarding-scenario-20260616/step-03-backend-dev.json",
+      "run_id": "WF06-swiftroute-onboarding-scenario-20260616",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-15T20:26:39Z",
+      "status": "PENDING",
+      "stage": "WF-06 Commit"
     }
   ],
   "last_updated": "2026-06-14T19:01:00Z"

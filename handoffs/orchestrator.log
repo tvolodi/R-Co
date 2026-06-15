@@ -925,3 +925,9 @@
 2026-06-15T15:03:45Z | COMPLETE | WF03-onboarding-e2e-fix-20260614 | d2e3f4a5 | TEST-RUNNER | FAIL — 3 BLOCKER (saga stuck pending), 14 pass
 2026-06-15T15:05:40Z | ROUTE | WF03-onboarding-saga-fix-20260615 | e3f4a5b6 | ORCH -> ISSUE-FIXER | PENDING
 2026-06-15T15:05:40Z | NEW_CYCLE | WF03-onboarding-saga-fix-20260615 | --- | ORCH | Spawned from WF03-onboarding-e2e-fix-20260614 Step 04 BLOCKER (saga stuck pending). Reuses feature branch feature/WF03-onboarding-e2e-fix-20260614.
+2026-06-15T16:29:49Z | COMPLETE | WF03-onboarding-e2e-fix-20260614 | --- | ORCH | All 17 onboarding E2E PASS. ISS-0069 + ISS-0070 fixed. PR #106 merged to main (166728f).
+2026-06-15T16:29:49Z | FINAL | WF03-onboarding-e2e-fix-20260614 | --- | ORCH | Workflow complete. Feature branch deleted. main at 166728f.
+2026-06-15T20:18:19Z | ROUTE | ADHOC-swiftroute-cleanup-20260616 | f0a1b2c3 | ORCH -> BACKEND-DEV | PENDING — delete swiftroute tenant before UAT run
+2026-06-15T20:21:24Z | ROUTE | WF06-swiftroute-onboarding-scenario-20260616 | a1b2c3d4 | ORCH -> BO-SWIFTROUTE | PENDING — author onboarding scenario
+2026-06-15T20:24:24Z | ROUTE | WF06-swiftroute-onboarding-scenario-20260616 | b2c3d4e5 | ORCH -> UAT-RUNNER | PENDING — schema validation only
+2026-06-15T20:26:39Z | ROUTE | WF06-swiftroute-onboarding-scenario-20260616 | c3d4e5f6 | ORCH -> BACKEND-DEV | PENDING — commit scenario file to main
