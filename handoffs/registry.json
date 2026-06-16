@@ -6970,7 +6970,7 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-06-16T04:51:08Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "WF-03 Fix 1 backend"
     },
     {
@@ -6981,8 +6981,19 @@
       "from_agent": "ORCH",
       "to_agent": "FRONTEND-DEV",
       "created_at": "2026-06-16T04:51:08Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "WF-03 Fix 2+3 frontend"
+    },
+    {
+      "handoff_id": "6fa7b8c9-d0e1-2345-6fa7-b8c9d0e12345",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-04-test-designer.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-06-16T04:55:58Z",
+      "status": "PENDING",
+      "stage": "WF-03 Test Design ISS-0072"
     }
   ]
 }
