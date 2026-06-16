@@ -1,0 +1,41 @@
+{
+  "id": "ISS-0071",
+  "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "test harness error + backend state inconsistency",
+  "run_id": "WF03-uat-onboarding-realm-sync-20260616",
+  "handoff_id": "d3e4f5a6-b7c8-9012-d3e4-f5a6b7c89012",
+  "affected_areas": [
+    "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+    "src/identity/onboarding.zig",
+    "src/identity/registry.zig"
+  ],
+  "root_causes": [
+    {
+      "id": "A",
+      "label": "Pipeline test slug mismatch",
+      "description": "The pipeline test hardcodes `const slug = 'pl-' + randomUUID().slice(0,8)` regardless of UAT scenario input. There is no mechanism to inject the scenario's canonical slug ('swiftroute'). EO-003 (Alice Bauer can log into the SwiftRoute workspace) can therefore never be verified by this test — it always verifies a proxy tenant.",
+      "category": "test harness error",
+      "primary": true
+    },
+    {
+      "id": "B",
+      "label": "Orphaned tenant DB record without matching Keycloak realm",
+      "description": "At UAT time, bpm_dev.public.tenant had slug='swiftroute' (count=1) but Keycloak GET /admin/realms/swiftroute returned 404. The saga compensate() function correctly deletes the Keycloak realm before the DB record, so the inconsistency most likely resulted from a manual or out-of-band Keycloak realm deletion (or Keycloak state reset) after the saga completed. The open ISS-0070 (background saga thread not transitioning to terminal state) may also contribute if partial saga runs fail to compensate.",
+      "category": "backend state inconsistency",
+      "primary": false
+    }
+  ],
+  "evidence": {
+    "pipeline_slug_code": "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts lines 67-68: const uid = randomUUID().slice(0, 8); const slug = 'pl-' + uid",
+    "uat_proxy_slug": "pl-f8db07e7",
+    "uat_precondition_db": "bpm_dev.public.tenant slug='swiftroute' count=1 at UAT time (2026-06-15T21:29:35Z)",
+    "uat_precondition_kc": "Keycloak GET /admin/realms/swiftroute → 404 (Realm not found) at UAT time",
+    "db_current_state": "bpm_dev.public.tenant slug='swiftroute' count=0 (cleaned up after UAT run; pl-f8db07e7 and default remain)",
+    "uat_report": "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui.yaml",
+    "related_issues": ["ISS-0070"]
+  },
+  "created_at": "2026-06-15T21:53:31Z",
+  "resolved_at": null
+}

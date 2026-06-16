@@ -1,0 +1,29 @@
+run_id: WF01-tenant-dashboard-20260616
+workflow_id: WF-01
+step: '01'
+agent: REQ-ANALYST
+handoff_id: c2d3e4f5-a6b7-8901-c2d3-e4f5a6b78901
+status: PASS
+summary: >
+  Drafted Stage F1.7 — Tenant Dashboard & Workspace Identity in
+  docs/BPM_Platform_Frontend_Requirements.md.
+  Three requirements added: TD-UI-01 (tenant-scoped landing page, MUST),
+  TD-UI-02 (tenant identity indicator, MUST), TD-UI-03 (tenant realm routing, SHOULD).
+  Origin: UAT ISSUE-EO004 — tenant admin Alice Bauer sees generic BPM UI after login.
+  Appendix A, B, and C updated to reflect new stage.
+requirement_ids:
+  - TD-UI-01
+  - TD-UI-02
+  - TD-UI-03
+artifacts_out:
+  - docs/BPM_Platform_Frontend_Requirements.md
+issues: []
+completeness_check:
+  all_must_have_acceptance_criteria: true
+  all_acceptance_criteria_gui_testable: true
+  cross_references_present: true
+  stage_assigned: F1.7
+  ids_sequential_from_last: true
+  last_existing_prefix_checked: OIDC-F-06
+  new_prefix: TD-UI
+next_action: Route to REQ-VALIDATOR (WF-01 Step 2)

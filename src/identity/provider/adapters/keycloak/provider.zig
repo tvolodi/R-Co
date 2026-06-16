@@ -152,6 +152,7 @@ pub const Adapter = struct {
             .deleteRealmFn = deleteRealmKeycloak,
             .updateClientFn = updateClientKeycloak,
             .updateRealmFrontendUrlFn = updateRealmFrontendUrlKeycloak,
+            .checkRealmExistsFn = checkRealmExistsKeycloak,
         };
     }
 };
@@ -461,6 +462,26 @@ fn deleteRealmKeycloak(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input:
     if (response.status == 204 or response.status == 200) return;
     if (response.status == 404) return error.RealmNotFound;
     return mapStatus(response.status, .provision_realm);
+}
+
+// --- ISS-0071: Realm-existence guard ---
+
+fn checkRealmExistsKeycloak(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.CheckRealmExistsInput) provider_errors.ProviderError!bool {
+    const self: *Adapter = @ptrCast(@alignCast(raw_ctx));
+    const bearer = try ensureAdminToken(self, allocator);
+
+    const url = keycloak_urls.realm(allocator, self.config, input.realm_id) catch return error.OutOfMemory;
+    defer allocator.free(url);
+
+    const response = try sendRequest(self, allocator, .{
+        .method = .GET,
+        .url = url,
+        .bearer_token = bearer,
+    });
+
+    if (response.status == 200) return true;
+    if (response.status == 404) return false;
+    return error.UpstreamProtocolError;
 }
 
 // --- F8: Tenant management ---

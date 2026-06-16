@@ -931,3 +931,24 @@
 2026-06-15T20:21:24Z | ROUTE | WF06-swiftroute-onboarding-scenario-20260616 | a1b2c3d4 | ORCH -> BO-SWIFTROUTE | PENDING — author onboarding scenario
 2026-06-15T20:24:24Z | ROUTE | WF06-swiftroute-onboarding-scenario-20260616 | b2c3d4e5 | ORCH -> UAT-RUNNER | PENDING — schema validation only
 2026-06-15T20:26:39Z | ROUTE | WF06-swiftroute-onboarding-scenario-20260616 | c3d4e5f6 | ORCH -> BACKEND-DEV | PENDING — commit scenario file to main
+2026-06-15T20:28:16Z | ROUTE | WF05-swiftroute-onboarding-uat-20260616 | d4e5f6a7 | ORCH -> UAT-RUNNER | PENDING — execute onboarding UAT
+2026-06-15T20:42:19Z | UAT_PASS | WF05-swiftroute-onboarding-uat-20260616 | d4e5f6a7 | ORCH | All 5 outcomes PASS routing to BO-SWIFTROUTE
+2026-06-15T20:42:19Z | BO_PARALLEL | WF05-swiftroute-onboarding-uat-20260616 | --- | ORCH | Dispatching BO-SWIFTROUTE for onboarding sign-off
+2026-06-15T20:44:16Z | ROUTE | WF05-swiftroute-onboarding-uat-20260616 | f6a7b8c9 | ORCH -> PRODUCT-OWNER | PENDING — platform sign-off hard gate
+2026-06-15T20:44:16Z | PO_APPROVED | WF05-swiftroute-onboarding-uat-20260616 | --- | ORCH | PRODUCT-OWNER APPROVED. SwiftRoute onboarding UAT complete. All 5 outcomes PASS, BO-SWIFTROUTE APPROVED.
+2026-06-15T21:18:14Z | ROUTE | WF05-swiftroute-onboarding-gui-20260616 | a0b1c2d3 | ORCH -> UAT-RUNNER | PENDING GUI-only onboarding UAT v2
+2026-06-15T21:29:35Z | UAT_COMPLETE | WF05-swiftroute-onboarding-gui-20260616 | a0b1c2d3 | UAT-RUNNER | FAIL: BLOCKER(swiftroute-realm-missing) MAJOR(precondition,no-tenant-dashboard)
+2026-06-15T21:44:11Z | ROUTE | WF03-uat-onboarding-realm-sync-20260616 | b1c2d3e4 | ORCH -> BACKEND-DEV | PENDING -- git-setup for ISS-EO003 fix
+2026-06-15T21:44:11Z | ROUTE | WF01-tenant-dashboard-20260616 | c2d3e4f5 | ORCH -> REQ-ANALYST | PENDING -- draft per-tenant dashboard requirement from ISSUE-EO004
+2026-06-15T21:46:21Z | COMPLETE | WF01-tenant-dashboard-20260616 | c2d3e4f5 | REQ-ANALYST | PASS -- drafted TD-UI-01 TD-UI-02 TD-UI-03
+2026-06-15T21:48:39Z | ROUTE | WF03-uat-onboarding-realm-sync-20260616 | d3e4f5a6 | ORCH -> ISSUE-FIXER | PENDING
+2026-06-15T21:48:39Z | ROUTE | WF01-tenant-dashboard-20260616 | e4f5a6b7 | ORCH -> REQ-VALIDATOR | PENDING
+2026-06-15T21:55:21Z | ROUTE | WF03-uat-onboarding-realm-sync-20260616 | f5a6b7c8 | ORCH -> CODE-DESIGNER | PENDING -- design dual fix ISS-0071
+2026-06-15T21:55:21Z | REWORK | WF01-tenant-dashboard-20260616 | a6b7c8d9 | ORCH -> REQ-ANALYST | REWORK(1/2) -- fix TD-UI-03 SHALL->SHOULD and AC3
+2026-06-15T22:01:17Z | COMPLETE | WF03-uat-onboarding-realm-sync-20260616 | f5a6b7c8 | CODE-DESIGNER | PASS — src/design/iss-0071-onboarding-realm-sync.md
+2026-06-15T22:01:35Z | ROUTE | WF03-uat-onboarding-realm-sync-20260616 | b7c8d9e0 | ORCH -> CODE-DESIGN-VALIDATOR | PENDING
+2026-06-15T22:01:35Z | ROUTE | WF01-tenant-dashboard-20260616 | c8d9e0f1 | ORCH -> REQ-VALIDATOR | PENDING re-check after rework
+2026-06-15T22:03:22Z | COMPLETE | WF03-uat-onboarding-realm-sync-20260616 | b7c8d9e0 | CODE-DESIGN-VALIDATOR | PASS -> Route BACKEND-DEV (03a) + FRONTEND-DEV (03b)
+2026-06-16T02:03:47Z | ROUTE | WF03-uat-onboarding-realm-sync-20260616 | d9e0f1a2 | ORCH -> BACKEND-DEV | PENDING Fix B realm guard
+2026-06-16T02:03:47Z | ROUTE | WF03-uat-onboarding-realm-sync-20260616 | e0f1a2b3 | ORCH -> FRONTEND-DEV | PENDING Fix A slug injection
+2026-06-16T02:03:47Z | ROUTE | WF02-tenant-dashboard-20260616 | f1a2b3c4 | ORCH -> BACKEND-DEV | PENDING git-setup TD-UI-01/02/03

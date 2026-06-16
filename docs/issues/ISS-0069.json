@@ -1,0 +1,104 @@
+{
+  "issue_id": "ISS-0069",
+  "title": "Onboarding E2E/pipeline tests fail: pipeline.ts navigateSpa uses history.pushState + manual popstate dispatch which does not reliably trigger React Router data router re-render",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "E",
+  "run_id": "WF03-onboarding-e2e-fix-20260614",
+  "workflow_id": "WF-03",
+  "handoff_id": "ed0b5d20-67f6-4486-9951-c1814c5c6d5f",
+  "requirement_ids": ["sys-tenant-onboarding"],
+  "summary": "Two BLOCKER failures (ADHOC-TNT-TEST-003 and ADHOC-TNT-TEST-004) reported by TEST-RUNNER for the tenant-onboarding UI/pipeline E2E suite. Symptoms: nav sidebar selector timeout at onb-ui-01:55, non-platform-admin direct-route guard assertion failing at onb-ui-01:115, register button timeout at onb-ui-02:63, and pipeline execution-context-destroyed at pipeline.ts:179 followed by nav selector timeout on retry at onboarding-wizard.pipeline.e2e.spec.ts:91. Investigation shows the root cause is test-harness flakiness in the navigateSpa helper used by all three failing tests: it uses window.history.pushState + window.dispatchEvent(new PopStateEvent('popstate')) which is not a reliable way to drive React Router v6.4+ data routers. The reliable pattern (already used in tenants.e2e.spec.ts and proven across the F8 tenant-management suite) is page.goto(targetPath) with addInitScript-based session injection.",
+  "root_cause": {
+    "type": "test_harness_spa_navigation_race",
+    "details": "The navigateSpa helper in web/tests/e2e/pipeline.ts (lines 171-177) drives SPA navigation by calling window.history.pushState({}, '', targetPath) followed by window.dispatchEvent(new PopStateEvent('popstate')). React Router v6.4+ createBrowserRouter (used in web/src/router.tsx) listens for popstate via its internal history subscriber, but this listener is attached lazily and the dispatchEvent in the same microtask as pushState can fire before the router's listener is wired up, or it can race with concurrent React effect scheduling. This produces three observable failure modes: (1) the target route's component never renders, so waitForSelector('nav') / waitForSelector('form') / getByRole('link', {name: /register tenant/i}) time out; (2) the Navigate-based role guard in RegisterTenantPage.tsx:234-235 never fires because the component never mounts, so the test's redirect assertion fails; (3) page.evaluate() invoked by navigateSpa's evaluate call returns after the page context has been torn down by an in-flight navigation, producing Playwright's 'execution context destroyed' error. By contrast, tenants.e2e.spec.ts defines a LOCAL navigateSpa helper (lines 74-79) that uses page.goto(targetPath, {waitUntil: 'domcontentloaded'}) followed by page.waitForURL(). This is documented in the file as 'reliable SPA navigation' and is the proven pattern across the F8 tenant-management suite. The onboarding tests imported navigateSpa from pipeline.ts instead of using the goto-based pattern. There is also a SECONDARY (non-blocking) observation: routes in router.tsx have NO route-level role guard (the <ProtectedRoute> wrapper at line 40-44 only checks authentication, not authorization). Role enforcement for /admin/onboarding/* lives entirely in per-component <Navigate> redirects (RegisterTenantPage.tsx:234, OnboardingProgressPage.tsx:107, OnboardingResultPage.tsx:137). This is acceptable for the failing tests because the component-level guard exists and would fire correctly IF the route actually rendered — but it is brittle: any future component that forgets the guard would leak access. CODE-DESIGNER may want to note a follow-up to add a role-aware ProtectedRoute variant. Note: this is NOT the root cause of the current test failures — the current failures are 100% test-harness navigation flakiness."
+  },
+  "evidence": {
+    "failure_report": "tests/reports/report-2026-06-14-ADHOC-tenant-onboarding-tests-20260614.yaml",
+    "primary_source_under_test": {
+      "file": "web/src/components/layout/AppShell.tsx",
+      "lines": "28 (NAV_ITEMS includes 'Register Tenant' gated on PLATFORM_ADMIN), 117-121 (<nav> element renders visibleNav via NavLink)",
+      "note": "AppShell has NO data-testid='nav-sidebar' attribute. Tests fall back to the bare 'nav' tag selector. This works only if the AppShell actually renders."
+    },
+    "test_harness_root_cause": {
+      "file": "web/tests/e2e/pipeline.ts",
+      "lines": "171-177 (navigateSpa via history.pushState + dispatchEvent)",
+      "compare_to": {
+        "file": "web/tests/e2e/tenants.e2e.spec.ts",
+        "lines": "74-79",
+        "comment": "Local navigateSpa uses page.goto(targetPath) — proven reliable across F8 suite"
+      },
+      "loginWithToken_uses_addInitScript": {
+        "file": "web/tests/e2e/pipeline.ts",
+        "lines": "138-165",
+        "comment": "addInitScript re-runs on every page.goto, so session injection survives page.goto navigations. This is why the goto pattern works while the pushState pattern races."
+      }
+    },
+    "role_guards_present": {
+      "register_tenant_page": "web/src/pages/admin/onboarding/RegisterTenantPage.tsx:234-235",
+      "progress_page": "web/src/pages/admin/onboarding/OnboardingProgressPage.tsx:107-108",
+      "result_page": "web/src/pages/admin/onboarding/OnboardingResultPage.tsx:137-138",
+      "all_redirect_to": "/instances",
+      "note": "Guards exist at component level; route-level guard is absent but not required for these tests to pass."
+    },
+    "router_role_guard_gap": {
+      "file": "web/src/router.tsx",
+      "lines": "39-67 (the children of the / route are wrapped by <ProtectedRoute> which only checks isAuthenticated, not roles)",
+      "file_protected_route": "web/src/auth/ProtectedRoute.tsx",
+      "lines": "8-35 (no role parameter; only checks isLoading/isAuthenticated)"
+    },
+    "symptom_to_root_cause_mapping": {
+      "ADHOC-TNT-TEST-003": {
+        "onb-ui-01:55_nav_sidebar_timeout": "AppShell never rendered because navigateSpa (pushState) did not trigger React Router to mount the /admin/users route under AppShell",
+        "onb-ui-01:115_role_guard_assertion_failed": "RegisterTenantPage never mounted (pushState race), so the <Navigate to='/instances'> guard at RegisterTenantPage.tsx:234 never executed — the form was never replaced because the component was never rendered in the first place; the assertion expects the form to be hidden, but on a stuck prior page the assertion logic becomes undefined",
+        "onb-ui-02:63_register_button_timeout": "loginAsAdmin calls navigateSpa(page, '/admin/onboarding/new') then waitForSelector('form'); form never appeared because navigateSpa did not drive React Router to render RegisterTenantPage"
+      },
+      "ADHOC-TNT-TEST-004": {
+        "pipeline.ts:179_execution_context_destroyed": "page.evaluate inside navigateSpa ran during an in-flight React Router reconciliation triggered by the dispatchEvent, tearing down the JS context mid-evaluate",
+        "onb-wizard:91_nav_selector_timeout_on_retry": "Same pushState-based navigateSpa unreliability on retry; retry cannot recover because the underlying pattern is broken, not transient"
+      }
+    }
+  },
+  "category_classification": "CATEGORY E — Test code error (test-harness navigation pattern is wrong; source code is correct)",
+  "is_source_code_bug": false,
+  "is_test_harness_bug": true,
+  "files_to_change": [
+    "web/tests/e2e/pipeline.ts"
+  ],
+  "files_considered_but_NOT_root_cause": [
+    "web/src/components/layout/AppShell.tsx",
+    "web/src/pages/admin/onboarding/RegisterTenantPage.tsx",
+    "web/src/pages/admin/onboarding/OnboardingProgressPage.tsx",
+    "web/src/pages/admin/onboarding/OnboardingResultPage.tsx",
+    "web/src/auth/ProtectedRoute.tsx",
+    "web/src/router.tsx"
+  ],
+  "recommended_fix_strategy": {
+    "primary_action": "Rewrite navigateSpa in web/tests/e2e/pipeline.ts to use page.goto(targetPath, {waitUntil: 'domcontentloaded'}) followed by page.waitForURL matcher, mirroring the proven pattern in web/tests/e2e/tenants.e2e.spec.ts:74-79. Session injection via addInitScript in loginWithToken (pipeline.ts:138-165) already re-runs on every page.goto, so authenticated state is preserved automatically across goto navigations.",
+    "rationale": "page.goto forces a full document load, which deterministically bootstraps React + React Router + the AppShell on the target URL. The pushState + popstate dispatch pattern races with React Router's lazy popstate listener and can lose the navigation event entirely. The F8 tenant-management suite has been green on the goto pattern for two weeks; adopting it for onboarding eliminates the entire failure class.",
+    "secondary_optional_followup": "OPTIONAL — not required to resolve the BLOCKER. CODE-DESIGNER may want to consider introducing a role-aware variant of ProtectedRoute (e.g. <ProtectedRoute requireRole='PLATFORM_ADMIN'>) and wrapping the /admin/onboarding/* routes in router.tsx with it. This would centralize role enforcement at the route level instead of relying on per-component <Navigate> redirects. Punt to a separate WF-02 if desired; do NOT bundle into this WF-03 fix.",
+    "what_NOT_to_do": [
+      "Do NOT add data-testid='nav-sidebar' to AppShell.tsx as the primary fix — the 'nav' fallback selector already matches when AppShell renders. The selector works once the navigation race is fixed.",
+      "Do NOT change the role guard logic in RegisterTenantPage/Progress/Result — those are correct.",
+      "Do NOT raise the test timeouts — the failure is deterministic under the pushState pattern; longer timeouts will not help.",
+      "Do NOT add waits/retries around the pushState pattern — it is fundamentally racy."
+    ]
+  },
+  "resolution": null,
+  "occurrences": [
+    {
+      "occurred_at": "2026-06-14T11:10:29Z",
+      "run_id": "ADHOC-tenant-onboarding-tests-20260614",
+      "handoff_id": "7952ec87-317c-438f-9441-4b7957b83ef1",
+      "trigger": "test_failure",
+      "context": "TEST-RUNNER reported ADHOC-TNT-TEST-003 (onboarding E2E suite — 5 sub-failures across onb-ui-01 and onb-ui-02) and ADHOC-TNT-TEST-004 (onboarding-wizard pipeline — execution context destroyed + nav selector timeout on retry) as BLOCKERs."
+    }
+  ],
+  "files_changed": [],
+  "created_at": "2026-06-14T18:56:48Z",
+  "resolved_at": null,
+  "prevention": [
+    "Use page.goto(targetPath) for all SPA E2E navigation when addInitScript-based session injection is in use. Reserve history.pushState/popstate patterns for cases where a full document reload is explicitly undesired — and even then, prefer page.evaluate that calls the app's own router.navigate() API rather than synthetic popstate.",
+    "When adding new pipeline tests, prefer the tenants.e2e.spec.ts navigation pattern over pipeline.ts's pushState pattern until pipeline.ts is updated."
+  ]
+}

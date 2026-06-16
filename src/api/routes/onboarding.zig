@@ -6,6 +6,8 @@ const identity_service = @import("../../identity/service.zig");
 const onboarding_mod = @import("../../identity/onboarding.zig");
 const pool_mod = @import("pool");
 const errors = @import("../errors.zig");
+const identity_provider = @import("identity_provider");
+const provider_manager_mod = identity_provider.manager;
 
 /// Fill buf with cryptographically secure random bytes (platform-aware, thread-safe).
 fn fillRandom(buf: []u8) void {
@@ -160,8 +162,6 @@ pub fn handleOnboarding(
 
 // ── Background saga ────────────────────────────────────────────────────────────
 
-const identity_provider = @import("identity_provider");
-
 const SagaContext = struct {
     pool: *pool_mod.Pool,
     manager: identity_provider.manager.Manager,
@@ -274,6 +274,7 @@ fn runSagaBackground(ctx: *SagaContext) void {
 
 pub fn handleGetOnboarding(
     service: *identity_service.Service,
+    manager: provider_manager_mod.Manager,
     allocator: std.mem.Allocator,
     actor: auth.AuthContext,
     onboarding_id: []const u8,
@@ -297,12 +298,64 @@ pub fn handleGetOnboarding(
     };
     defer record_val.deinit(allocator);
 
+    // Realm-existence guard: only probe Keycloak for completed records.
+    if (record_val.state == .completed) realm_guard: {
+        // Extract idp_realm_id from the stored JSON.
+        const parsed = std.json.parseFromSlice(
+            std.json.Value,
+            allocator,
+            record_val.response_body_json,
+            .{ .allocate = .alloc_always },
+        ) catch break :realm_guard; // malformed JSON — skip guard
+        defer parsed.deinit();
+
+        const obj = if (parsed.value == .object) parsed.value.object else break :realm_guard;
+        const realm_entry = obj.get("idp_realm_id") orelse break :realm_guard;
+        const realm_id = if (realm_entry == .string) realm_entry.string else break :realm_guard;
+
+        const exists = manager.checkRealmExists(allocator, .{ .realm_id = realm_id }) catch break :realm_guard; // transient failure — skip guard
+
+        if (!exists) {
+            markOnboardingRealmMissing(allocator, service.registry.pool, onboarding_id);
+            const failed_body = allocator.dupe(u8,
+                \\{"state":"failed","error":"realm_missing"}
+            ) catch return errorResult(allocator, 500, "internal_error");
+            return .{ .status_code = 200, .body = failed_body };
+        }
+    }
+
     const body = allocator.dupe(u8, record_val.response_body_json) catch
         return errorResult(allocator, 500, "internal_error");
     return .{ .status_code = 200, .body = body };
 }
 
 // ── GET /api/v1/onboarding?hostname={hostname} ────────────────────────────────
+
+/// Transition a completed onboarding record to failed with error=realm_missing.
+/// Uses a parameterised UPDATE — no string interpolation. Discards errors silently
+/// (consistent with persistOnboardingResult). A no-op if the row was already updated.
+fn markOnboardingRealmMissing(
+    allocator: std.mem.Allocator,
+    pool: *pool_mod.Pool,
+    onboarding_id: []const u8,
+) void {
+    const conn = pool.acquire() catch return;
+    defer pool.release(conn);
+
+    _ = conn.queryRow(
+        allocator,
+        \\UPDATE tenant_default.onboarding_registry
+        \\SET state         = 'failed',
+        \\    response_body = (COALESCE(response_body, '{}'::jsonb)
+        \\                     || '{"state":"failed","error":"realm_missing"}'::jsonb),
+        \\    completed_at  = NOW()
+        \\WHERE onboarding_id = $1::uuid
+        \\  AND state = 'completed'
+        \\RETURNING id::text
+    ,
+        &[_][]const u8{onboarding_id},
+    ) catch {};
+}
 
 pub fn handleGetOnboardingByHostname(
     service: *identity_service.Service,

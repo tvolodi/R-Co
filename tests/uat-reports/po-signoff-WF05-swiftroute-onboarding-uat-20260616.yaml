@@ -1,0 +1,113 @@
+---
+# Product Owner Sign-off — WF-05 Step 2b
+# Agent:         PRODUCT-OWNER
+# Run ID:        WF05-swiftroute-onboarding-uat-20260616
+# Signed off at: 2026-06-15T20:45:13Z
+
+run_id: WF05-swiftroute-onboarding-uat-20260616
+scenario_id: swiftroute-tenant-onboarding-happy
+process_id: sys-tenant-onboarding
+signed_off_at: "2026-06-15T20:45:13Z"
+
+release_recommendation: APPROVED
+
+release_rationale: >
+  The SwiftRoute onboarding UAT run passed all acceptance criteria. SwiftRoute Ltd
+  was provisioned onto the platform fully automatically — the workspace, private
+  identity space, company hostname, and administrator account were all created
+  without any manual intervention. The company's administrator was able to log in
+  immediately upon provisioning completing, with no additional setup steps required.
+  Cross-tenant isolation was confirmed: SwiftRoute's credentials cannot access any
+  other company's workspace, and the platform enforces this boundary at the
+  authentication layer. The system is ready to support live onboarding of new
+  tenants.
+
+single_tenant_scope_note: >
+  This UAT run is scoped to the system-level tenant onboarding process and covers
+  SwiftRoute Ltd only. BO-VORTEX and BO-MERIDIAN sign-offs were not requested
+  because the Vortex and Meridian tenants were not being onboarded in this run.
+  Their absence does not affect the release recommendation — this is a platform
+  process (sys-tenant-onboarding), not a company-specific business process that
+  requires cross-tenant comparison.
+
+bo_signoffs_received:
+  swiftroute:
+    file: tests/uat-reports/bo-signoff-swiftroute-WF05-swiftroute-onboarding-uat-20260616.yaml
+    verdict: APPROVED
+    signed_off_at: "2026-06-15T20:43:24Z"
+    open_blockers: 0
+    open_majors: 0
+
+bo_signoffs_not_applicable:
+  - company: vortex
+    reason: >
+      Vortex Manufacturing GmbH was not onboarded in this run.
+      BO-VORTEX domain sign-off is not required for the sys-tenant-onboarding process
+      when Vortex is not a subject of the onboarding being validated.
+  - company: meridian
+    reason: >
+      Meridian Capital AG was not onboarded in this run.
+      BO-MERIDIAN domain sign-off is not required for the sys-tenant-onboarding process
+      when Meridian is not a subject of the onboarding being validated.
+
+blocker_check:
+  open_blockers: 0
+  open_majors: 0
+  verdict: CLEARED
+
+must_requirement_coverage:
+  note: >
+    The handoff did not specify explicit requirement IDs (requirement_ids: []).
+    The system-level onboarding process (sys-tenant-onboarding) defines five
+    expected outcomes (EO-001 through EO-005), all of which are covered by the
+    UAT scenario and returned PASS.
+  outcomes_covered:
+    - id: EO-001
+      description: Onboarding record shows status 'completed' — zero-touch provisioning
+      uat_verdict: PASS
+      bo_verdict: APPROVED
+    - id: EO-002
+      description: Company slug and hostname registered and look up correctly
+      uat_verdict: PASS
+      bo_verdict: APPROVED
+    - id: EO-003
+      description: SwiftRoute has its own isolated identity workspace
+      uat_verdict: PASS
+      bo_verdict: APPROVED
+    - id: EO-004
+      description: Administrator can log in immediately after onboarding completes
+      uat_verdict: PASS
+      bo_verdict: APPROVED
+    - id: EO-005
+      description: Administrator sees only their own company's workspace
+      uat_verdict: PASS
+      bo_verdict: APPROVED
+  uncovered_must_requirements: []
+
+cross_tenant_coherence_check:
+  verdict: CONFIRMED
+  notes: >
+    EO-005 explicitly validates tenant isolation. SwiftRoute's authentication token
+    was tested against the platform's shared endpoint and received an immediate
+    rejection (HTTP 401, reason: invalid token issuer / issuer_mismatch). This
+    confirms the platform correctly enforces company boundaries at the
+    authentication layer. No cross-tenant data leakage was observed at any step
+    of the onboarding process.
+
+platform_state_check:
+  verdict: CONSISTENT
+  notes: >
+    The UAT run left the platform in a stable, expected state. The onboarding
+    record shows status 'completed'. The SwiftRoute tenant record, Keycloak realm,
+    and administrator account are all present and active. There are no orphaned
+    or partial records. The idempotent replay (HTTP 409) behaved correctly,
+    confirming the platform handles duplicate submissions without creating
+    inconsistent state.
+
+open_issues: []
+
+artifacts_reviewed:
+  - tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding.yaml
+  - tests/uat-reports/bo-signoff-swiftroute-WF05-swiftroute-onboarding-uat-20260616.yaml
+
+next_action: "Route to RELEASE-VALIDATOR (WF-05 Step 3)"

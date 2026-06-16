@@ -1,0 +1,49 @@
+{
+  "handoff_id": "c2d3e4f5-a6b7-8901-c2d3-e4f5a6b78901",
+  "run_id": "WF01-tenant-dashboard-20260616",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "REQ-ANALYST",
+  "created_at": "2026-06-15T21:44:11Z",
+  "started_at": "2026-06-15T21:44:11Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-01 Step 1 \u2014 Draft per-tenant dashboard requirement (origin: UAT ISSUE-EO004)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a0b1c2d3-e4f5-6789-a0b1-c2d3e4f56789"
+    ],
+    "artifacts_in": [
+      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui.yaml",
+      "docs/BPM_Platform_Frontend_Requirements.md",
+      "tests/simulation/companies/swiftroute/company.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-01 Step 1: Draft a requirement for a per-tenant dashboard / landing page for tenant administrators.\n\nOrigin: UAT run WF05-swiftroute-onboarding-gui-20260616, ISSUE-EO004.\nBusiness finding: After completing tenant onboarding, when Alice Bauer (tenant admin) logs into the BPM platform using her company's Keycloak realm, she sees the generic platform UI with no indication of which company workspace she is in. There is no per-tenant branding, no company name shown, no scoped view of processes or instances. A tenant admin cannot confirm they are in the right workspace.\n\nDraft requirement entries in docs/BPM_Platform_Frontend_Requirements.md covering:\n\n1. Tenant-scoped landing page (MUST):\n   - After login from a tenant realm, the authenticated user sees a dashboard that shows the tenant's display_name prominently\n   - The dashboard scopes all visible data (processes, instances, tasks, users) to the authenticated user's tenant\n   - No data from other tenants is visible\n\n2. Tenant identity indicator (MUST):\n   - Every page in the authenticated session shows the tenant name (e.g. in the nav bar or header) so the user always knows which company workspace they are in\n\n3. Tenant realm routing (SHOULD):\n   - The platform frontend detects which Keycloak realm the token was issued from and routes to the correct tenant context automatically\n   - No manual tenant selection step is required\n\nAcceptance criteria for each requirement must be testable via GUI (Playwright screenshot showing company name on screen).\n\nComplete handoff with PASS, list drafted requirement IDs, set next_action='Route to REQ-VALIDATOR (Step 2)'.",
+    "acceptance_criteria": [
+      "At least 2 MUST requirements drafted in BPM_Platform_Frontend_Requirements.md",
+      "Each requirement has acceptance criteria testable via GUI screenshot",
+      "Requirement IDs assigned and logged"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Drafted Stage F1.7 in docs/BPM_Platform_Frontend_Requirements.md: TD-UI-01 (tenant-scoped landing page, MUST), TD-UI-02 (tenant identity indicator, MUST), TD-UI-03 (tenant realm routing, SHOULD). Appendix A/B/C updated.",
+    "artifacts_out": [
+      "docs/BPM_Platform_Frontend_Requirements.md"
+    ],
+    "requirement_ids": [
+      "TD-UI-01",
+      "TD-UI-02",
+      "TD-UI-03"
+    ],
+    "issues": [],
+    "next_action": "Route to REQ-VALIDATOR (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-15T21:46:21Z"
+}
