@@ -305,7 +305,7 @@ pub const Registry = struct {
                 if (input.idp_realm_id) |realm| {
                     break :blk conn.queryRow(
                         allocator,
-                        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+                        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id)
                         \\VALUES ($1::uuid, $2, $3, $4, $5)
                         \\ON CONFLICT (slug) DO NOTHING
                         \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
@@ -317,7 +317,7 @@ pub const Registry = struct {
 
                 break :blk conn.queryRow(
                     allocator,
-                    \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+                    \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id)
                     \\VALUES ($1::uuid, $2, $3, $4, NULL)
                     \\ON CONFLICT (slug) DO NOTHING
                     \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
@@ -330,7 +330,7 @@ pub const Registry = struct {
             if (input.idp_realm_id) |realm| {
                 break :blk conn.queryRow(
                     allocator,
-                    \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+                    \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id)
                     \\VALUES (gen_random_uuid(), $1, $2, $3, $4)
                     \\ON CONFLICT (slug) DO NOTHING
                     \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
@@ -342,7 +342,7 @@ pub const Registry = struct {
 
             break :blk conn.queryRow(
                 allocator,
-                \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+                \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id)
                 \\VALUES (gen_random_uuid(), $1, $2, $3, NULL)
                 \\ON CONFLICT (slug) DO NOTHING
                 \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
@@ -380,7 +380,7 @@ pub const Registry = struct {
             allocator,
             \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text,
             \\       tenant_type, production_tenant_id::text
-            \\FROM tenant
+            \\FROM public.tenant
             \\WHERE id = $1::uuid
             \\LIMIT 1
         ,
@@ -414,7 +414,7 @@ pub const Registry = struct {
             allocator,
             \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text,
             \\       tenant_type, production_tenant_id::text
-            \\FROM tenant
+            \\FROM public.tenant
             \\WHERE idp_realm_id = $1
             \\LIMIT 1
         ,
@@ -448,7 +448,7 @@ pub const Registry = struct {
             allocator,
             \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text,
             \\       tenant_type, production_tenant_id::text
-            \\FROM tenant
+            \\FROM public.tenant
             \\WHERE slug = $1
             \\LIMIT 1
         ,
@@ -480,7 +480,7 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\UPDATE tenant
+            \\UPDATE public.tenant
             \\SET display_name = $2, updated_at = NOW()
             \\WHERE slug = $1
             \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
@@ -514,7 +514,7 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            \\UPDATE tenant
+            \\UPDATE public.tenant
             \\SET status = $2, updated_at = NOW()
             \\WHERE slug = $1
             \\RETURNING id::text, slug, display_name, status, idp_realm_id, created_at::text,
@@ -554,7 +554,7 @@ pub const Registry = struct {
         const count_row = conn.queryRow(
             allocator,
             \\SELECT COUNT(*)::text
-            \\FROM tenant
+            \\FROM public.tenant
             \\WHERE ($1 = '' OR slug ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%')
         ,
             &[_][]const u8{search_text},
@@ -576,7 +576,7 @@ pub const Registry = struct {
             allocator,
             \\SELECT id::text, slug, display_name, status, idp_realm_id, created_at::text,
             \\       tenant_type, production_tenant_id::text
-            \\FROM tenant
+            \\FROM public.tenant
             \\WHERE ($1 = '' OR slug ILIKE '%' || $1 || '%' OR display_name ILIKE '%' || $1 || '%')
             \\ORDER BY created_at DESC
             \\OFFSET $2::int

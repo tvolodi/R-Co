@@ -435,7 +435,7 @@ fn createTenantInDb(
     // Check for duplicate slug first.
     const existing = conn.queryRow(
         allocator,
-        "SELECT id::text FROM tenant WHERE slug = $1 LIMIT 1",
+        "SELECT id::text FROM public.tenant WHERE slug = $1 LIMIT 1",
         &[_][]const u8{input.slug},
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
@@ -501,9 +501,9 @@ fn deleteTenantInDb(pool: *pool_mod.Pool, tenant_id: []const u8, tenant_slug: ?[
     defer pool.release(conn);
 
     if (tenant_slug) |slug| {
-        conn.exec("DELETE FROM tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
+        conn.exec("DELETE FROM public.tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
     }
-    conn.exec("DELETE FROM tenant WHERE id::text = $1", &[_][]const u8{tenant_id}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE id::text = $1", &[_][]const u8{tenant_id}) catch {};
 }
 
 fn dropTenantSchemaInDb(pool: *pool_mod.Pool, tenant_id: []const u8) void {
@@ -631,7 +631,7 @@ fn validateProductionTenantRef(
 
     const row = conn.queryRow(
         allocator,
-        "SELECT tenant_type FROM tenant WHERE id = $1::uuid LIMIT 1",
+        "SELECT tenant_type FROM public.tenant WHERE id = $1::uuid LIMIT 1",
         &[_][]const u8{production_tenant_id},
     ) catch |err| return switch (err) {
         pool_mod.PoolError.StaleConnection,
