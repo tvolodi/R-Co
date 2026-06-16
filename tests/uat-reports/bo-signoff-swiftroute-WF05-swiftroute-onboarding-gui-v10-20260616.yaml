@@ -1,0 +1,136 @@
+---
+signoff_id: bo-signoff-swiftroute-WF05-swiftroute-onboarding-gui-v10-20260616
+company_id: swiftroute
+run_id: WF05-swiftroute-onboarding-gui-v10-20260616
+uat_report_ref: tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v10.yaml
+scenario_ref: tests/simulation/scenarios/swiftroute-tenant-onboarding-happy.yaml
+signed_off_at: "2026-06-16T10:42:29Z"
+agent: BO-SWIFTROUTE
+
+overall_verdict: APPROVED
+
+persona_statements:
+
+  alice_bauer_ceo:
+    persona: Alice Bauer, CEO — SwiftRoute Ltd
+    scope: Login access, workspace identity, administrative role assignment
+    statement: >
+      I can confirm that everything I needed to hit the ground running was
+      in place the moment our workspace was confirmed. I logged straight into
+      the SwiftRoute workspace, my name and role came up correctly on the
+      dashboard, and I could see SwiftRoute Ltd branding throughout — no
+      confusion with any other company. The PLATFORM_ADMIN role was assigned
+      exactly as requested, so I can get the rest of the team set up
+      immediately without waiting for anyone else to intervene. This is
+      exactly how a fast-moving logistics company expects a new tool to work:
+      you sign up, you're in, you get to work.
+    verdict: APPROVED
+
+  marco_stein_operations_manager:
+    persona: Marco Stein, Operations Manager — SwiftRoute Ltd
+    scope: Onboarding wizard completion, provisioning progress visibility
+    statement: >
+      The registration process was clean and predictable. The operator filled
+      in SwiftRoute's details — our company name, slug, Alice's contact
+      information — and clicked Register. The platform immediately showed a
+      progress screen with a spinner so there was no doubt the system was
+      working. When the result screen appeared, it confirmed "swiftroute"
+      as our platform identifier and showed the workspace was active. No
+      blank screens, no dead ends, no manual chasing of anyone to finish the
+      setup. For a dispatch-first team that cannot afford to wait, this is
+      the right behaviour.
+    verdict: APPROVED
+
+outcome_evaluations:
+
+  - id: EO-001
+    title: Onboarding wizard completed — slug=swiftroute, SwiftRoute Ltd name on result screen
+    evaluating_persona: Marco Stein (Operations Manager)
+    verdict: APPROVED
+    business_description: >
+      The operator completed the wizard and the result screen confirmed
+      SwiftRoute Ltd as the company name with "swiftroute" as the platform
+      identifier. The database record shows the workspace is ACTIVE and
+      the Keycloak realm was created. From an operations standpoint the
+      workspace is ready to receive drivers, dispatch staff, and shipment
+      workflows the moment the wizard finishes.
+
+  - id: EO-002
+    title: Progress screen showed onboarding in progress — no blank screen
+    evaluating_persona: Marco Stein (Operations Manager)
+    verdict: APPROVED
+    business_description: >
+      A loading spinner appeared immediately after the operator submitted
+      the registration form and remained visible throughout the provisioning
+      period. There was no blank screen, no frozen state, and no ambiguity
+      about whether the system was doing anything. For a team that runs on
+      tight SLAs, knowing the platform is working rather than stalled is
+      a basic operational requirement — it passed.
+
+  - id: EO-003
+    title: Alice Bauer can log into the SwiftRoute workspace immediately after onboarding
+    evaluating_persona: Alice Bauer (CEO)
+    verdict: APPROVED
+    hard_rule_check: SATISFIED
+    business_description: >
+      Alice's login credentials were usable the moment the result screen
+      confirmed the workspace. She authenticated against the SwiftRoute
+      Keycloak realm — not the default platform realm — confirming her
+      account was correctly placed in SwiftRoute's isolated workspace.
+      There was no delay, no password reset step, and no manual account
+      activation required. Immediate access after onboarding is a
+      non-negotiable expectation for an executive who needs to delegate
+      access to staff on day one.
+
+  - id: EO-004
+    title: Alice's dashboard shows "SwiftRoute Ltd" as workspace name with PLATFORM_ADMIN role
+    evaluating_persona: Alice Bauer (CEO)
+    verdict: APPROVED
+    hard_rule_check: SATISFIED
+    business_description: >
+      The BPM Platform dashboard loaded with "SwiftRoute Ltd" displayed as
+      the workspace name and Alice's session carried the PLATFORM_ADMIN role.
+      There was no authentication loop and no confusion with another company's
+      workspace. The fix applied in this run — ensuring the platform reads
+      Alice's role correctly from her session — is confirmed working. Alice
+      can manage users, configure workflows, and perform all administrative
+      actions without needing to contact the platform team for role corrections.
+
+hard_rule_checks:
+  - rule: >
+      EO-003 and EO-004 MUST be APPROVED — Alice must be able to log in and
+      see her workspace
+    status: SATISFIED
+    notes: >
+      Both EO-003 and EO-004 passed with direct screenshot and JWT evidence.
+      Alice authenticated successfully and the dashboard displayed SwiftRoute
+      Ltd with the correct PLATFORM_ADMIN role. Hard rule is met.
+
+  - rule: >
+      CEO co-sign bypass on shipment > €500 → always BLOCKER
+    status: NOT_APPLICABLE
+    notes: >
+      This scenario covers tenant onboarding only. No shipment approval
+      or high-value transaction is involved. Financial approval hard rules
+      apply to subsequent shipment-workflow UAT runs.
+
+  - rule: >
+      Incident case closed before all parallel tracks complete → always BLOCKER
+    status: NOT_APPLICABLE
+    notes: >
+      No incident case is raised in this onboarding scenario.
+
+issues: []
+
+business_rationale: >
+  SwiftRoute Ltd was onboarded successfully in a single wizard session.
+  The operator experience was smooth — one form, a brief wait on the
+  progress screen, and a confirmed result. Alice Bauer, as the company
+  administrator, had immediate and correct access to the SwiftRoute workspace
+  with the right branding and the right role from the first login. No manual
+  steps were needed after the wizard completed. SwiftRoute approves this
+  onboarding flow for production use.
+
+next_action: >
+  Route to PRODUCT-OWNER after all three BO sign-offs complete
+  (BO-VORTEX and BO-MERIDIAN sign-offs pending for this run).

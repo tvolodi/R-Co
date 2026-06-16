@@ -1,0 +1,113 @@
+---
+signoff_id: po-signoff-WF05-swiftroute-onboarding-gui-v10-20260616
+run_id: WF05-swiftroute-onboarding-gui-v10-20260616
+signed_off_at: "2026-06-16T10:43:40Z"
+agent: PRODUCT-OWNER
+
+uat_report_ref: tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v10.yaml
+bo_signoffs_evaluated:
+  - company: swiftroute
+    file: tests/uat-reports/bo-signoff-swiftroute-WF05-swiftroute-onboarding-gui-v10-20260616.yaml
+    verdict: APPROVED
+
+non_applicable_companies:
+  - company: vortex
+    reason: >
+      This is a single-tenant UAT covering the system-level onboarding
+      process only. Vortex Manufacturing is not being onboarded in this
+      run and has no scenarios applicable to the onboarding wizard workflow.
+      BO-VORTEX sign-off is not required.
+  - company: meridian
+    reason: >
+      This is a single-tenant UAT covering the system-level onboarding
+      process only. Meridian Capital is not being onboarded in this run
+      and has no scenarios applicable to the onboarding wizard workflow.
+      BO-MERIDIAN sign-off is not required.
+
+blocker_check:
+  open_blockers: []
+  verdict: CLEARED
+
+must_requirement_coverage:
+  requirements_in_scope:
+    - id: ONB-UI-01
+      title: Register Tenant entry point
+      status: RELEASED
+      uat_coverage: EO-001 (pipeline test ONB-UI-01..04)
+      verdict: COVERED
+    - id: ONB-UI-02
+      title: Tenant registration form
+      status: RELEASED
+      uat_coverage: EO-001 (pipeline test ONB-UI-01..04)
+      verdict: COVERED
+    - id: ONB-UI-03
+      title: Onboarding progress display
+      status: RELEASED
+      uat_coverage: EO-002 (spinner visible on progress screen)
+      verdict: COVERED
+    - id: ONB-UI-04
+      title: Onboarding result screen
+      status: RELEASED
+      uat_coverage: EO-001 (result screen slug and display name confirmed)
+      verdict: COVERED
+  uncovered_must_requirements: []
+  coverage_verdict: ALL_MUST_COVERED
+
+cross_tenant_coherence:
+  applicable: false
+  reason: >
+    Single-tenant UAT. Cross-tenant coherence checks apply when multiple
+    tenants are validated in the same run. Not applicable here.
+
+tenant_isolation_check:
+  applicable: true
+  findings:
+    - id: ISO-01
+      check: Alice's OIDC authentication routed to swiftroute realm, not bpm-default
+      evidence: >
+        EO-004 screenshot uat-v5-eo-004-02-kc-login.png confirms redirect
+        to Keycloak swiftroute realm login page. JWT verification confirms
+        roles claim originates from swiftroute realm.
+      verdict: PASS
+    - id: ISO-02
+      check: Pre-onboarding database state shows zero swiftroute tenant records
+      evidence: >
+        Pre-flight query "SELECT count(*) FROM public.tenant WHERE slug='swiftroute'"
+        returned 0, confirming no prior data contamination from previous runs.
+      verdict: PASS
+    - id: ISO-03
+      check: Alice's dashboard displays SwiftRoute Ltd branding exclusively
+      evidence: >
+        EO-004 screenshot uat-v5-eo-004-05-final.png shows "SwiftRoute Ltd"
+        heading and "SWIFTROUTE LTD" in sidebar. No other tenant names visible.
+      verdict: PASS
+  isolation_verdict: CONFIRMED
+
+platform_state_assessment:
+  backend_healthy: true
+  keycloak_healthy: true
+  swiftroute_tenant_active: true
+  d6cad79_fix_confirmed: true
+  notes: >
+    Commit d6cad79 (User Realm Role mapper in provisioned Keycloak client)
+    is confirmed working. The platform correctly reads roles from the
+    top-level JWT claim. This fix is now validated in a live end-to-end
+    UAT run and is ready for production deployment.
+
+issues: []
+
+release_recommendation: APPROVED
+
+release_rationale: >
+  The SwiftRoute Ltd onboarding UAT run passed on all four expected outcomes.
+  A platform administrator completed the tenant registration wizard, and
+  SwiftRoute's workspace was provisioned automatically — no manual steps
+  were required. Alice Bauer, SwiftRoute's designated administrator, logged
+  into her company workspace immediately after onboarding and found her
+  account, branding, and administrative permissions all correctly in place.
+  Tenant isolation was confirmed: Alice's session was authenticated against
+  SwiftRoute's dedicated workspace and no data from other tenants was
+  present. The platform is operating correctly and the onboarding journey
+  is ready for production use.
+
+next_action: Route to RELEASE-VALIDATOR (WF-05 Step 3)

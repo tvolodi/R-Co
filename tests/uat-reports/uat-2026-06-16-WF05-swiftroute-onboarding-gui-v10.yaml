@@ -1,0 +1,182 @@
+---
+report_id: uat-2026-06-16-WF05-swiftroute-onboarding-gui-v10
+run_id: WF05-swiftroute-onboarding-gui-v10-20260616
+handoff_ref: handoffs/WF05-swiftroute-onboarding-gui-v5-20260616/step-01-uat-runner.json
+scenario_ref: tests/simulation/scenarios/swiftroute-tenant-onboarding-happy.yaml
+scenario_version: "2.0"
+executed_at: "2026-06-16T10:31:58Z"
+completed_at: "2026-06-16T10:39:53Z"
+
+fix_stack_applied:
+  - commit: d6cad79
+    description: >
+      Provisioned Keycloak client now includes a User Realm Role mapper
+      (claim.name='roles', flat token claim) alongside the audience mapper.
+      Alice's JWT now carries a top-level roles array that AuthProvider.tsx
+      reads correctly, eliminating the infinite redirect loop from v9.
+
+pre_flight:
+  backend_ready:
+    url: http://127.0.0.1:8080/health/ready
+    status: 200
+    verdict: PASS
+  keycloak_ready:
+    url: http://localhost:8081/health/ready
+    status: 200
+    verdict: PASS
+  swiftroute_tenant_count_pre_onboarding:
+    query: "SELECT count(*) FROM public.tenant WHERE slug='swiftroute'"
+    database: bpm_dev (port 5432)
+    result: 0
+    verdict: PASS
+    notes: >
+      Clean state confirmed. Pre-flight check 4 (tenant-config returning
+      swiftroute authority) is a post-onboarding verification — it
+      correctly returned the default realm before provisioning began.
+
+process_execution:
+  playwright_command: >
+    npx playwright test pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+    --reporter=json --timeout=300000
+  playwright_exit_code: 0
+  playwright_stats:
+    expected: 1
+    skipped: 0
+    unexpected: 0
+    duration_ms: 92572
+
+outcomes:
+
+  - id: EO-001
+    title: Result screen shows slug=swiftroute and SwiftRoute Ltd confirmed
+    verdict: PASS
+    business_summary: >
+      The onboarding wizard completed successfully. The result screen
+      displayed "swiftroute" as the company's platform identifier and
+      confirmed SwiftRoute Ltd's workspace was ready. The Keycloak authority
+      link for the new realm was visible on the result screen.
+    evidence:
+      - type: playwright_test
+        test_name: "ONB-UI-01..04: PLATFORM_ADMIN registers a tenant end-to-end"
+        status: passed
+        duration_ms: 91630
+      - type: database
+        query: "SELECT id, slug, display_name, status FROM public.tenant WHERE slug='swiftroute'"
+        result: "397ee938-bb05-45e6-a9d7-69bff603f218 | swiftroute | SwiftRoute Ltd | ACTIVE"
+      - type: keycloak_realm
+        url: http://localhost:8081/realms/swiftroute/.well-known/openid-configuration
+        status: 200
+        verdict: Realm created successfully
+      - type: tenant_config_api
+        url: http://127.0.0.1:8080/api/tenant-config?realm=swiftroute
+        response: '{"oidc_authority":"http://localhost:8081/realms/swiftroute","client_id":"bpm-platform-api"}'
+        verdict: Backend correctly returns swiftroute authority post-onboarding
+      - type: screenshot
+        path: web/scratch/pipeline-onboarding-wizard-02-form-filled.png
+        description: Onboarding form filled before submission
+
+  - id: EO-002
+    title: Progress screen shows spinner while workspace is being prepared
+    verdict: PASS
+    business_summary: >
+      Immediately after the operator clicked "Register Tenant", the platform
+      showed a progress screen with a loading spinner indicating the workspace
+      was being prepared. The spinner was visible throughout the provisioning
+      period until the result screen appeared automatically.
+    evidence:
+      - type: playwright_test
+        step: "03: progress screen shows spinner"
+        assertion: "role='status' spinner visible"
+        status: passed
+        notes: Part of the passing ONB-UI-01..04 pipeline test
+
+  - id: EO-003
+    title: Alice Bauer can log into the swiftroute Keycloak account page
+    verdict: PASS
+    business_summary: >
+      Alice Bauer logged into the Keycloak account management page for the
+      SwiftRoute workspace using her assigned credentials. The account UI
+      loaded successfully after authentication — confirming her user account
+      was correctly created in the new workspace during onboarding.
+    evidence:
+      - type: playwright_test
+        test_name: "EO-003: Alice logs into swiftroute Keycloak account page"
+        status: passed
+        duration_ms: 1890
+      - type: screenshot
+        path: scratch/uat-v5-eo-003-01-kc-account.png
+        description: Keycloak swiftroute realm login page before credentials entered
+      - type: screenshot
+        path: scratch/uat-v5-eo-003-02-creds-filled.png
+        description: Login form with alice.bauer credentials filled
+      - type: screenshot
+        path: scratch/uat-v5-eo-003-03-after-login.png
+        description: Keycloak account page after successful login (URL no longer on /login-actions)
+
+  - id: EO-004
+    title: Alice Bauer accesses the SwiftRoute workspace dashboard with correct role
+    verdict: PASS
+    business_summary: >
+      Alice Bauer navigated to the SwiftRoute workspace login at
+      http://127.0.0.1:8080/?realm=swiftroute. The platform correctly
+      redirected her to the SwiftRoute Keycloak realm — not the default
+      realm. After she entered her credentials, the authentication completed
+      without any redirect loop. The BPM Platform dashboard loaded and
+      displayed "SwiftRoute Ltd" as the company name in the workspace
+      header. Alice's session showed her assigned PLATFORM_ADMIN role.
+      This confirms that the fix applied in commit d6cad79 is effective:
+      the provisioned Keycloak client now includes a protocol mapper that
+      exposes roles as a flat top-level claim, which the platform reads
+      correctly when establishing Alice's session.
+    evidence:
+      - type: playwright_test
+        test_name: "EO-004: Alice logs into BPM platform via ?realm=swiftroute and sees SwiftRoute Ltd dashboard"
+        status: passed
+        duration_ms: 16787
+      - type: screenshot
+        path: scratch/uat-v5-eo-004-01-initial.png
+        description: Initial navigation to /?realm=swiftroute
+      - type: screenshot
+        path: scratch/uat-v5-eo-004-02-kc-login.png
+        description: Redirected to Keycloak swiftroute realm login (not bpm-default)
+      - type: screenshot
+        path: scratch/uat-v5-eo-004-03-creds-filled.png
+        description: alice.bauer credentials entered
+      - type: screenshot
+        path: scratch/uat-v5-eo-004-04-after-callback.png
+        description: After OIDC callback — SPA processing the auth code
+      - type: screenshot
+        path: scratch/uat-v5-eo-004-05-final.png
+        description: >
+          DASHBOARD LOADED. Screen shows 'SwiftRoute Ltd' heading.
+          Sidebar shows 'SWIFTROUTE LTD' (CSS text-transform uppercase).
+          User shown as 'Alice Bauer' with roles: default-roles-swiftroute,
+          offline_access, uma_authorization, PLATFORM_ADMIN. No redirect loop.
+      - type: jwt_verification
+        claim_check: "top-level 'roles' array contains PLATFORM_ADMIN"
+        result: "ROLES_TOP_LEVEL=default-roles-swiftroute offline_access uma_authorization PLATFORM_ADMIN"
+        verdict: d6cad79 fix confirmed working
+
+overall_verdict: PASS
+issues: []
+
+test_quality_note:
+  id: TQ-V10-001
+  severity: MINOR
+  description: >
+    The EO-004 assertion in uat-eo-003-004-v5.e2e.spec.ts used a case-sensitive
+    'toContain(SwiftRoute)' comparison on innerText(), which returned the
+    CSS-uppercased string 'SWIFTROUTE LTD'. Fixed to use case-insensitive
+    comparison. This was a test quality issue, not a system defect — the
+    dashboard correctly displayed the tenant name.
+
+business_summary: >
+  SwiftRoute Ltd was successfully onboarded onto the BPM Platform. The operator
+  completed the registration wizard, the workspace was provisioned automatically,
+  and Alice Bauer — SwiftRoute's designated administrator — gained immediate
+  access to her company workspace without any manual intervention. Alice can
+  log into the platform, see SwiftRoute Ltd branding throughout her workspace,
+  and holds the correct administrative role. No cross-tenant data was observed.
+  The fix deployed in this run (commit d6cad79) resolved the previous session
+  authentication issue and the platform now correctly establishes Alice's
+  identity from the moment the onboarding wizard completes.

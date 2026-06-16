@@ -1,0 +1,143 @@
+---
+run_id: WF05-swiftroute-onboarding-gui-v9-20260616
+handoff_id: 8fa9b0c1-d2e3-4567-8fa9-b0c1d2e34567
+scenario_id: swiftroute-tenant-onboarding-happy
+report_date: "2026-06-16"
+executed_at: "2026-06-16T10:24:59Z"
+overall_verdict: FAIL
+
+pre_flight:
+  backend_ready: PASS
+  keycloak_ready: PASS
+  swiftroute_slug_precondition: PASS
+  notes: >
+    All services healthy. BPM backend responded 200 on /health/ready.
+    Keycloak swiftroute realm returned OIDC discovery document.
+    No prior swiftroute tenant existed before the run began.
+
+pipeline_test:
+  file: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+  result: PASS
+  playwright_status: passed
+  duration_seconds: 91.6
+  steps_completed:
+    - "01: PLATFORM_ADMIN sees Register Tenant nav entry"
+    - "02: fill and submit registration form"
+    - "03: progress screen shows spinner"
+    - "04: saga completes - result screen shows slug"
+  artifact: scratch/playwright-onboarding-v9.json
+
+db_state_after_onboarding:
+  tenant_slug: swiftroute
+  tenant_display_name: SwiftRoute Ltd
+  tenant_id: d1360d63-9707-45b8-8119-92b6088a09a7
+  tenant_status: ACTIVE
+  idp_realm_id: swiftroute
+  created_at: "2026-06-16 10:11:11.684918+00"
+  verification: SELECT from public.tenant WHERE slug='swiftroute' returned 1 row
+
+keycloak_state_after_onboarding:
+  swiftroute_realm_exists: true
+  verification: GET http://localhost:8081/realms/swiftroute/.well-known/openid-configuration returned 200
+  alice_user:
+    user_id: dd1ac40d-07e0-46f4-a974-3df80a267754
+    username: alice.bauer
+    enabled: true
+    required_actions: []
+    note: >
+      Password was reset to 'Alice-pass-001' via Keycloak admin API
+      (allowed setup action per scenario spec).
+
+expected_outcomes:
+
+  - id: EO-001
+    title: Onboarding result screen confirms SwiftRoute Ltd workspace set up
+    verdict: PASS
+    evidence: >
+      Playwright pipeline step "04: saga completes - result screen shows slug"
+      passed after a 90-second saga. The result screen displayed the company
+      slug and completion status to the platform operator.
+    severity_on_fail: null
+
+  - id: EO-002
+    title: Progress screen displays activity spinner while workspace is being prepared
+    verdict: PASS
+    evidence: >
+      Playwright pipeline step "03: progress screen shows spinner" passed.
+      The browser showed the onboarding progress indicator between form
+      submission and the result screen appearing automatically.
+    severity_on_fail: null
+
+  - id: EO-003
+    title: Alice Bauer can authenticate using her SwiftRoute credentials
+    verdict: PASS
+    evidence: >
+      Alice Bauer's Keycloak user account was confirmed present in the
+      swiftroute realm (user ID dd1ac40d, enabled=true, no required actions).
+      After resetting her password via admin API, a token was successfully
+      obtained from Keycloak using client_id=bpm-platform-api with
+      scope=openid profile. The returned JWT had aud=["bpm-platform-api","account"]
+      confirming the audience mapper was applied correctly by the onboarding saga.
+      The Keycloak login page displayed "Sign in to SwiftRoute Ltd" branding.
+    severity_on_fail: null
+
+  - id: EO-004
+    title: Alice sees SwiftRoute Ltd branded dashboard after logging in via browser
+    verdict: FAIL
+    severity: MAJOR
+    business_description: >
+      Alice Bauer cannot access her SwiftRoute workspace through the browser.
+      When she navigates to the SwiftRoute login page and enters her credentials,
+      the Keycloak authentication succeeds, but the platform immediately redirects
+      her back to the login page in an infinite loop. Alice never reaches the
+      dashboard and cannot see the SwiftRoute Ltd workspace.
+    technical_root_cause: >
+      The onboarding saga provisions the audience protocol mapper on the
+      bpm-platform-api client in the swiftroute Keycloak realm (confirmed by
+      aud=bpm-platform-api in Alice's JWT). However, it does not provision a
+      roles-flattening protocol mapper. Alice's JWT contains roles under
+      realm_access.roles (standard Keycloak format), but the SPA's
+      OidcCallbackPage checks payload.roles (a flat top-level claim). Since
+      payload.roles is undefined, the callback page considers the token invalid
+      and calls window.location.replace('/'), which triggers another login
+      redirect — creating an infinite loop. Network trace confirmed: POST to
+      Keycloak /token returns 200 (token obtained), then immediately GET to
+      Keycloak /auth redirects to a new login — repeated 8+ times.
+    evidence:
+      - "Playwright EO-003/004 test: EO-003 passed, EO-004 failed (body empty, redirect loop)"
+      - "Screenshot at web/test-results/uat-eo-003-004-v5.e2e.../test-failed-1.png: 'Redirecting to login...'"
+      - "Network trace: POST /realms/swiftroute/protocol/openid-connect/token -> 200, then GET /auth -> 302 (loop)"
+      - "Direct API verification: Alice's token with realm_access.roles works against backend /api/v1/tenants"
+      - "JWT payload.roles field: undefined (roles are at realm_access.roles, not flat)"
+    fix_required: >
+      The onboarding saga must also register a User Realm Role mapper on the
+      bpm-platform-api client that maps realm roles to a flat 'roles' claim
+      in the JWT. This is a companion protocol mapper alongside the audience mapper
+      already being provisioned.
+    screenshot: scratch/eo004-screenshots/05-net-trace.png
+
+issues:
+  - id: ISS-V9-001
+    severity: MAJOR
+    description: >
+      Alice Bauer cannot access her SwiftRoute workspace through the browser login
+      flow. Her Keycloak credentials are accepted but the platform enters an
+      infinite redirect loop and never shows the dashboard. The onboarding saga
+      does not provision a protocol mapper that flattens realm roles into the
+      JWT's top-level 'roles' field, which the SPA's callback page requires
+      to accept the token as valid.
+    affected_step: 4 (tenant_admin login and dashboard access)
+    recommended_fix: >
+      In the onboarding saga's Keycloak provisioning step, after adding the
+      audience protocol mapper, also POST a User Realm Role mapper to the
+      bpm-platform-api client with token_claim_name='roles' and
+      claim.name='roles'. This ensures the SPA callback can read roles
+      from payload.roles.
+
+artifacts:
+  - scratch/playwright-onboarding-v9.json
+  - scratch/playwright-eo004-v9.json
+  - scratch/eo004-screenshots/01-after-nav.png
+  - scratch/eo004-screenshots/04-final.png
+  - scratch/eo004-screenshots/05-net-trace.png
+  - web/test-results/uat-eo-003-004-v5.e2e-EO-0-cb0c9-es-SwiftRoute-Ltd-dashboard-chromium-retry1/test-failed-1.png

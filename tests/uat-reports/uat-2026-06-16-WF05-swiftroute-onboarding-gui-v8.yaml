@@ -1,0 +1,290 @@
+---
+run_id: WF05-swiftroute-onboarding-gui-v8-20260616
+scenario_id: swiftroute-tenant-onboarding-happy
+scenario_version: "2.0"
+executed_at: "2026-06-16T09:33:56Z"
+completed_at: "2026-06-16T09:53:33Z"
+executed_by: UAT-RUNNER
+pipeline_test: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+fix_stack_included:
+  - PR#111 (OidcCallbackPage tenant context)
+  - PR#112 (backend accepts tenant realm tokens)
+  - PR#113 (audience mapper added to onboarding client)
+
+overall_verdict: FAIL
+overall_verdict_reason: >
+  Two blockers prevented the scenario from passing. First, the onboarding
+  saga fails on its first attempt because the code that registers the
+  audience and roles mappers sends the request to a Keycloak URL that
+  does not exist — the platform's URL builder targets a realm-level
+  protocol-mapper path that Keycloak returns 404 for. As a result, the
+  platform operator sees an "Onboarding failed" message when they submit
+  the new-tenant form. Second, even after a second attempt succeeded in
+  provisioning the workspace, Alice Bauer cannot log in: her authentication
+  token carries the wrong audience value, so the backend rejects it. Both
+  blockers trace to the same URL bug introduced in PR #113.
+
+pre_flight:
+  backend_health: PASS
+  backend_url: "http://127.0.0.1:8080/health/ready"
+  backend_status: 200
+  keycloak_health: PASS
+  keycloak_url: "http://localhost:8081/health/ready"
+  keycloak_status: 200
+  swiftroute_not_in_db: PASS
+  swiftroute_db_count: 0
+  tenant_config_endpoint: PASS
+  tenant_config_note: >
+    Endpoint returned 200 with default realm config (expected — swiftroute
+    not yet registered at preflight time).
+
+playwright_execution:
+  test_file: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+  overall_status: unexpected (failed)
+  total_duration_ms: 468075
+  attempts:
+    - attempt: 1
+      status: failed
+      duration_ms: 152296
+      onboarding_id: "10104e35071141df85e1bedeb55dbdb9"
+      saga_outcome: failed
+      failure_point: >
+        Playwright step 04 (page.waitForURL /result/, timeout 150 000 ms) timed
+        out. The onboarding saga completed in state "failed" within ~10 seconds
+        of form submission (Step 10 returned HTTP 404 from the wrong mapper URL,
+        causing mapStatus to return ProvisionRealmError). The browser progress
+        page displayed "Onboarding failed. onboarding_failed" with a Try Again
+        button — but the page URL remained on /progress (not /result), so
+        waitForURL never matched.
+      screenshot: >
+        web/test-results/pipelines-onboarding-wizar-c66d4-gisters-a-tenant-end-to-end-chromium/test-failed-1.png
+      screenshot_description: >
+        Screen shows "Onboarding failed." heading and error code "onboarding_failed"
+        with a "Try Again" button. Left sidebar shows the platform admin navigation
+        (Register Tenant, Tenants, Services). Header reads "UNKNOWN WORKSPACE".
+
+    - attempt: 2
+      status: timedOut
+      duration_ms: 310132
+      onboarding_id: "adf61a3774234f8b952375a772168bd7"
+      saga_outcome: succeeded (observed post-test)
+      failure_point: >
+        The 300-second overall test timeout expired while the saga was still
+        running on the progress screen. The backend completed provisioning
+        seconds after the test was terminated: the swiftroute realm appeared in
+        Keycloak and the tenant was marked ACTIVE in the database. The Playwright
+        process was killed before the browser could navigate to the result screen.
+      screenshot: >
+        web/test-results/pipelines-onboarding-wizar-c66d4-gisters-a-tenant-end-to-end-chromium-retry1/test-failed-1.png
+      screenshot_description: >
+        Screen shows "Onboarding in Progress — Setting up tenant, this may take
+        a moment..." with an animated spinner and the onboarding ID
+        adf61a3774234f8b952375a772168bd7 visible below the heading. The saga was
+        actively running when the screenshot was taken.
+
+post_test_verification:
+  swiftroute_realm_exists_in_keycloak: true
+  swiftroute_tenant_in_db: true
+  swiftroute_tenant_status: ACTIVE
+  alice_bauer_exists_in_keycloak: true
+  alice_bauer_enabled: true
+  alice_bauer_roles: [default-roles-swiftroute, offline_access, uma_authorization, PLATFORM_ADMIN]
+  bpm_platform_api_client_exists: true
+  bpm_platform_api_client_mappers: []
+  audience_mapper_applied: false
+  alice_token_aud_claim: account
+  alice_token_backend_accepts: false
+  alice_token_backend_status: 401
+  alice_token_backend_error: invalid token audience
+
+outcomes:
+  - id: EO-001
+    title: >
+      Result screen confirms SwiftRoute's workspace was set up successfully
+    verdict: FAIL
+    severity: BLOCKER
+    evidence:
+      screenshot_attempt1: >
+        web/test-results/pipelines-onboarding-wizar-c66d4-gisters-a-tenant-end-to-end-chromium/test-failed-1.png
+      screenshot_attempt2: >
+        web/test-results/pipelines-onboarding-wizar-c66d4-gisters-a-tenant-end-to-end-chromium-retry1/test-failed-1.png
+    business_summary: >
+      When the platform operator submitted the SwiftRoute registration form, the
+      onboarding process reported a failure. The screen displayed "Onboarding
+      failed" with an error code. The operator was given a "Try Again" button
+      but no explanation of what went wrong. The wizard did not show a
+      confirmation screen with the company slug or the login URL that Alice would
+      use. The workspace was eventually created behind the scenes, but the operator
+      had no way to verify this from the wizard — they only saw a failure.
+    business_impact: >
+      A platform operator registering a new customer company would believe the
+      registration failed and would be unable to hand over login details. They
+      would need to investigate the internal system state manually to confirm the
+      workspace was actually created.
+    root_cause_technical: >
+      The onboarding backend saga fails at Step 10 (realm-roles mapper) because
+      keycloak_urls.protocolMappersCollection generates
+      /admin/realms/{realm}/protocol-mappers/models — an endpoint that Keycloak
+      returns HTTP 404 for. Step 10 treats any non-201/204/409 status as a
+      provisioning failure and aborts the saga. The URL should target the
+      bpm-platform-api client's mapper endpoint:
+      /admin/realms/{realm}/clients/{client-id}/protocol-mappers/models.
+      This bug was introduced by PR #113 which added Step 11 (audience mapper)
+      using the same incorrect URL builder, and the existing Step 10 already had
+      the same URL bug that was previously hidden because Step 9 silently ignored
+      the 404.
+
+  - id: EO-002
+    title: >
+      Progress screen appears immediately after form submission with a spinner
+    verdict: PASS
+    severity: ~
+    evidence:
+      screenshot: >
+        web/test-results/pipelines-onboarding-wizar-c66d4-gisters-a-tenant-end-to-end-chromium-retry1/test-failed-1.png
+    business_summary: >
+      After the operator submitted the registration form, a progress screen
+      appeared immediately. The screen showed a spinner and the message "Setting
+      up tenant — this may take a moment…" along with the onboarding reference
+      number. The operator was not left on a blank page.
+
+  - id: EO-003
+    title: >
+      Alice Bauer can log in to the SwiftRoute workspace immediately after
+      completion without additional setup
+    verdict: PARTIAL
+    severity: MINOR
+    evidence:
+      alice_exists_in_keycloak: true
+      alice_enabled: true
+      password_reset_required: true
+      password_policy_note: >
+        The swiftroute realm enforces an uppercase character requirement.
+        The password "alice-pass-001" (all lowercase) used by the pipeline
+        test fails this policy. The password must be reset to "Alice-Pass-001"
+        or equivalent before Alice can log in.
+    business_summary: >
+      Alice Bauer's account was created in the SwiftRoute workspace and is
+      active. However, the password set during onboarding does not meet the
+      workspace's password policy, which requires at least one uppercase letter.
+      Alice cannot log in immediately with the credentials provided during
+      onboarding. A separate password reset step is required, which means Alice
+      does not gain "immediate access" as the scenario requires.
+    root_cause_technical: >
+      The onboarding saga creates alice.bauer but does not set a temporary
+      password that satisfies the realm's password policy (minUpperCase >= 1).
+      The pipeline test attempts login with "alice-pass-001" which fails the
+      policy constraint.
+
+  - id: EO-004
+    title: >
+      Alice's dashboard shows only SwiftRoute's workspace with correct branding
+    verdict: FAIL
+    severity: BLOCKER
+    evidence:
+      alice_token_aud: account
+      expected_aud: bpm-platform-api
+      backend_response: "HTTP 401 invalid token audience"
+      audience_mapper_in_client: false
+      realm_protocol_mapper_endpoint_status: 404
+    business_summary: >
+      Alice cannot reach her SwiftRoute workspace. When she logs in through
+      the Keycloak authentication screen, her session token is rejected by the
+      platform. The platform shows a "Redirecting to login..." loop and Alice
+      never sees her workspace dashboard. She is effectively locked out of the
+      system that was just created for her company.
+    business_impact: >
+      SwiftRoute's administrator cannot begin using the platform. No processes
+      can be started, no users can be invited, and no company configuration can
+      be done. The workspace exists in the system but is inaccessible.
+    root_cause_technical: >
+      Alice's JWT carries aud="account" instead of aud="bpm-platform-api".
+      The backend's audience validation rejects this token with HTTP 401.
+      The root cause is the same as EO-001: the keycloak_urls.protocolMappersCollection
+      URL returns HTTP 404 from Keycloak, so the audience protocol mapper
+      (oidc-audience-mapper with included.client.audience=bpm-platform-api)
+      was never added to the bpm-platform-api Keycloak client in the swiftroute
+      realm. The oidc-audience-resolve-mapper in the "roles" scope does not
+      substitute for an explicit audience mapper because bpm-platform-api has
+      no client roles defined.
+
+issues:
+  - id: ISS-V8-001
+    severity: BLOCKER
+    title: >
+      Onboarding saga fails at Step 10 due to wrong Keycloak protocol-mapper URL
+    business_description: >
+      The platform's workspace registration process fails on the first attempt
+      for every new company. The operator sees an error message and must retry.
+      When retrying, the system recovers by accident (the workspace was partially
+      created on the first attempt), but the recovery is silent and unreliable.
+    technical_detail: >
+      keycloak_urls.protocolMappersCollection generates
+      /admin/realms/{realm}/protocol-mappers/models which Keycloak returns
+      HTTP 404 for. Steps 10 (realm-roles mapper) and 11 (audience mapper)
+      in src/identity/provider/adapters/keycloak/provider.zig both check
+      the response status and return ProvisionRealmError on non-201/204/409.
+      The correct endpoint for adding protocol mappers to the bpm-platform-api
+      client is /admin/realms/{realm}/clients/{client-id}/protocol-mappers/models.
+      Step 9 (tenant_id mapper) silently ignores the 404 (uses _ = try) so it
+      does not cause a visible failure, but the mapper is also never applied.
+    suggested_action: route_to_wf03
+
+  - id: ISS-V8-002
+    severity: BLOCKER
+    title: >
+      Alice cannot access her workspace — JWT audience mismatch persists
+    business_description: >
+      Even when the workspace is successfully provisioned, Alice Bauer cannot
+      log in. The authentication system issues a token that the platform
+      does not recognise as valid. Alice sees an endless redirect loop
+      rather than her company dashboard.
+    technical_detail: >
+      Alice's access token from the swiftroute realm has aud="account" because
+      the audience mapper (oidc-audience-mapper with
+      included.client.audience=bpm-platform-api) was never applied to the
+      bpm-platform-api client. This is a consequence of ISS-V8-001. Fixing the
+      mapper URL in provisionRealm will resolve both issues simultaneously.
+    suggested_action: route_to_wf03
+
+  - id: ISS-V8-003
+    severity: MINOR
+    title: >
+      Onboarding progress page stays at /progress URL on saga failure, blocking
+      the pipeline test
+    business_description: >
+      When workspace registration fails, the page displays the error inline
+      on the progress screen rather than navigating to a dedicated result page.
+      This is acceptable for a human operator (who sees the error message) but
+      causes the automated acceptance test to wait 150 seconds before recognising
+      the failure.
+    technical_detail: >
+      The Playwright pipeline test waits for navigation to
+      /admin/onboarding/{id}/result but on saga failure the browser remains on
+      /admin/onboarding/{id}/progress (or equivalent). The waitForURL pattern
+      should include the failure URL or the progress page should navigate to
+      /result with a failure payload regardless of saga outcome.
+    suggested_action: route_to_frontend_dev
+
+  - id: ISS-V8-004
+    severity: MINOR
+    title: >
+      Pipeline test total timeout insufficient for two attempts
+    business_description: >
+      The automated acceptance test stops before it can confirm that the
+      workspace registration succeeded on a second attempt, even when the
+      workspace is created correctly.
+    technical_detail: >
+      The 300-second per-test timeout leaves only ~148 seconds for the retry
+      attempt after the first 152-second failure. The saga requires ~130 seconds,
+      making the timing too tight. Increase the overall test timeout to 600
+      seconds or reduce saga duration. ISS-V8-001 is the prerequisite fix —
+      once the saga succeeds on the first attempt, this timeout issue disappears.
+    suggested_action: route_to_frontend_dev
+
+artifacts:
+  playwright_output: scratch/playwright-onboarding-v8.json
+  screenshot_attempt1_fail: >
+    web/test-results/pipelines-onboarding-wizar-c66d4-gisters-a-tenant-end-to-end-chromium/test-failed-1.png
+  screenshot_attempt2_progress: >
+    web/test-results/pipelines-onboarding-wizar-c66d4-gisters-a-tenant-end-to-end-chromium-retry1/test-failed-1.png
