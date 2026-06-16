@@ -34,7 +34,7 @@ const INJECTED_DISPLAY_NAME: string | undefined   = process.env.ONBOARDING_PIPEL
 const INJECTED_ADMIN_DISPLAY: string | undefined  = process.env.ONBOARDING_PIPELINE_ADMIN_DISPLAY_NAME
 
 // Allow generous time for the Keycloak-backed saga
-test.setTimeout(120_000)
+test.setTimeout(300_000)
 
 const API_BASE_URL       = process.env.BPM_TEST_URL     ?? 'http://127.0.0.1:8080'
 const KEYCLOAK_BASE_URL  = process.env.BPM_IDP_BASE_URL ?? 'http://localhost:8081'

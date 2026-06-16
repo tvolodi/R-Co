@@ -507,6 +507,15 @@ test "TC-OIDC-02-03: keycloak adapter admin contract stays inside adapter-specif
                 .body_contains = &.{ "\"protocolMapper\":\"oidc-usermodel-realm-role-mapper\"", "\"realm roles\"" },
                 .response = .{ .status = 201 },
             },
+            // ISS-UAT-V7-001: Add audience mapper so JWT aud claim includes 'bpm-platform-api'.
+            .{
+                .method = .POST,
+                .url = "https://kc.example.com/admin/realms/acme/protocol-mappers/models",
+                .bearer_token = "admin-token",
+                .content_type = "application/json",
+                .body_contains = &.{ "\"protocolMapper\":\"oidc-audience-mapper\"", "\"bpm-platform-api audience\"" },
+                .response = .{ .status = 201 },
+            },
             .{
                 .method = .GET,
                 .url = "https://kc.example.com/admin/realms/acme/users?q=external_id:ext-7&exact=true",

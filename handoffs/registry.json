@@ -7125,7 +7125,8 @@
       "to_agent": "UAT-RUNNER",
       "created_at": "2026-06-16T06:07:20Z",
       "status": "COMPLETED",
-      "stage": "WF-05 UAT v5 final"
+      "stage": "WF-05 UAT v7 \u2014 ISS-UAT-V7-001 BLOCKER (audience mapper)",
+      "completed_at": "2026-06-16T09:24:07Z"
     },
     {
       "handoff_id": "9ab0c1d2-e3f4-5678-9ab0-c1d2e3f45678",
@@ -7146,8 +7147,19 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-06-16T08:54:44Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "WF-03 FAST-TRACK tenant auth"
+    },
+    {
+      "handoff_id": "1cd2e3f4-a5b6-7890-1cd2-e3f4a5b67890",
+      "file": "handoffs/WF03-audience-mapper-20260616/step-00-03-backend-dev.json",
+      "run_id": "WF03-audience-mapper-20260616",
+      "step": "00-03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-16T09:26:36Z",
+      "status": "PENDING",
+      "stage": "WF-03 audience mapper"
     }
   ]
 }
