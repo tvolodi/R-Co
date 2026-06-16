@@ -1,0 +1,179 @@
+run_id: WF05-swiftroute-onboarding-gui-v3-20260616
+executed_at: "2026-06-16T04:32:01Z"
+scenario_id: swiftroute-tenant-onboarding-happy
+scenario_version: "2.0"
+pipeline_test: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+playwright_exit_code: 0
+playwright_duration_ms: 101660
+overall_verdict: FAIL
+
+pre_flight:
+  backend_ready: PASS
+  keycloak_ready: PASS
+  swiftroute_precondition: PASS
+  notes: >
+    No existing SwiftRoute tenant was found before the scenario began. All services
+    were healthy and ready. The onboarding pipeline ran with slug injection
+    (ONBOARDING_PIPELINE_SLUG=swiftroute, ONBOARDING_PIPELINE_ADMIN_USERNAME=alice.bauer).
+
+pipeline_steps:
+  - step: "01"
+    title: PLATFORM_ADMIN sees Register Tenant nav entry
+    status: passed
+  - step: "02"
+    title: Fill and submit registration form
+    status: passed
+  - step: "03"
+    title: Progress screen shows spinner
+    status: passed
+  - step: "04"
+    title: Saga completes — result screen shows slug
+    status: passed
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The result screen confirms that SwiftRoute's workspace was set up successfully.
+    verdict: PASS
+    screenshot: tests/uat-reports/uat-eo-001-result-screen.png
+    business_summary: >
+      After the operator submitted the registration form and the system finished
+      setting up the workspace, the screen displayed a clear green confirmation
+      banner reading "Tenant onboarding completed successfully." The slug
+      "swiftroute" was shown on the result screen, along with the identity
+      authority address where Alice will authenticate. No failure message or
+      error banner appeared at any point.
+    evidence:
+      slug_on_screen: swiftroute
+      success_banner: "Tenant onboarding completed successfully."
+      oidc_authority_link: "http://keycloak:8081/realms/swiftroute"
+      no_failure_banner: true
+
+  - id: EO-002
+    description: >
+      The onboarding progress screen appeared immediately after form submission
+      and showed that the platform was actively preparing the workspace.
+    verdict: PASS
+    screenshot: tests/uat-reports/uat-eo-002-progress-spinner.png
+    business_summary: >
+      Immediately after the operator clicked the Register Tenant button, the
+      screen changed to an "Onboarding in Progress" page. A circular spinner
+      appeared alongside the message "Setting up tenant — this may take a
+      moment." The operator was not left looking at a blank page or an error.
+      The system clearly communicated that work was underway. The onboarding
+      identifier was shown on screen so the operator could track the request.
+    evidence:
+      heading_visible: "Onboarding in Progress"
+      spinner_visible: true
+      progress_message: "Setting up tenant — this may take a moment..."
+
+  - id: EO-003
+    description: >
+      Alice Bauer can log in to the SwiftRoute workspace immediately after
+      the result screen confirms completion.
+    verdict: PASS
+    screenshot: tests/uat-reports/uat-eo-003-alice-account-page.png
+    business_summary: >
+      Alice was able to log in to the SwiftRoute workspace's identity portal
+      using the username alice.bauer and the credentials set during onboarding.
+      No password reset was required and no error appeared during login. The
+      Keycloak account management page opened successfully, showing Alice's
+      account details and confirming she is authenticated in the SwiftRoute
+      workspace. Her account was enabled and accessible without any operator
+      intervention.
+    evidence:
+      alice_username_shown: alice.bauer
+      account_page_reached: true
+      login_required_password_reset: false
+      realm: swiftroute
+    notes: >
+      MINOR deviation: the pipeline test does not support injecting the
+      admin display name or admin email via environment variables. Alice's
+      display name shows as "PL Admin 450e0eae" and email as
+      "admin@pl-450e0eae.example.com" rather than "Alice Bauer" and
+      "alice.bauer@swiftroute.example" as specified in the scenario inputs.
+      The pipeline test needs ONBOARDING_PIPELINE_ADMIN_DISPLAY_NAME and
+      ONBOARDING_PIPELINE_ADMIN_EMAIL injection support. The core login
+      capability (can Alice authenticate) was confirmed.
+
+  - id: EO-004
+    description: >
+      Alice's dashboard shows only SwiftRoute's workspace — no content from
+      other companies is visible.
+    verdict: FAIL
+    severity: MAJOR
+    screenshot: tests/uat-reports/uat-eo-004-bpm-login-redirect.png
+    business_summary: >
+      When Alice attempted to open the platform management console, the
+      system redirected her to the platform's default sign-in page rather
+      than showing her SwiftRoute workspace. The platform only accepts users
+      who authenticate through the platform's central identity service.
+      Alice's account was created in the SwiftRoute-specific identity space
+      during onboarding, but the platform's management console does not yet
+      support signing in through a company-specific identity service. Alice
+      is effectively locked out of the BPM management console even though
+      her workspace was successfully created.
+    evidence:
+      page_shown: "BPM Default Realm sign-in screen"
+      expected_page: "SwiftRoute workspace dashboard"
+      tenant_display_name_found: false
+      cross_tenant_data_visible: false
+    business_impact: >
+      SwiftRoute has been onboarded and their workspace was created, but
+      Alice Bauer cannot access the process management console to begin
+      using the platform. The onboarding journey is incomplete from the
+      tenant administrator's perspective. SwiftRoute cannot start running
+      business processes until this access gap is resolved.
+    suggested_action: route_to_wf03
+
+issues:
+  - id: UAT-WF05-v3-001
+    severity: MAJOR
+    eo_ref: EO-004
+    title: >
+      Tenant administrator cannot access BPM platform management console
+      using company-specific identity credentials
+    business_description: >
+      After a company is successfully onboarded, the company's designated
+      administrator is locked out of the BPM platform management console.
+      The platform's management console requires users to sign in through
+      the platform's central identity service (BPM Default Realm), but the
+      onboarding wizard creates the new administrator's account in the
+      company's own dedicated identity service. There is no path for Alice
+      to reach her SwiftRoute workspace dashboard using the credentials
+      she was assigned during onboarding.
+    affected_component: BPM platform frontend authentication
+    root_cause_hypothesis: >
+      The platform frontend is configured to use only the bpm-default Keycloak
+      realm for authentication. Tokens issued by per-tenant realms (e.g.
+      swiftroute) are rejected because the token issuer does not match the
+      configured OIDC provider. No identity federation or per-tenant login
+      routing is implemented in the frontend.
+    suggested_action: route_to_wf03
+
+  - id: UAT-WF05-v3-002
+    severity: MINOR
+    eo_ref: EO-003
+    title: >
+      Pipeline test does not inject tenant display name or admin display name
+    business_description: >
+      The onboarding pipeline test correctly injects the company slug and
+      administrator username via environment variables, but does not support
+      injecting the company display name or the administrator's full name.
+      As a result, the test created the company as "Pipeline Tenant 450e0eae"
+      instead of "SwiftRoute Ltd", and the administrator's display name was
+      set to "PL Admin 450e0eae" instead of "Alice Bauer". This is a gap in
+      the test tooling, not in the platform itself.
+    affected_component: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+    suggested_action: add_ONBOARDING_PIPELINE_DISPLAY_NAME_and_ADMIN_DISPLAY_NAME_env_vars
+
+overall_summary: >
+  The SwiftRoute tenant onboarding wizard completed successfully end-to-end
+  through the browser interface. The platform operator was guided clearly
+  through form submission, a progress indicator, and a success result screen.
+  Alice Bauer's account was created and she can authenticate in the SwiftRoute
+  identity workspace. However, the onboarding journey has an open gap: Alice
+  cannot reach the BPM platform management console using her SwiftRoute
+  credentials. Until this is resolved, SwiftRoute cannot begin using the
+  platform for their business processes. This gap must be routed for
+  investigation and resolution before the release can be approved.
