@@ -1,0 +1,47 @@
+{
+  "handoff_id": "2de3f4a5-b6c7-8901-2de3-f4a5b6c78901",
+  "run_id": "WF03-client-mapper-url-20260616",
+  "step": "00-03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-16T09:56:32Z",
+  "started_at": "2026-06-16T09:56:32Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 FAST-TRACK — fix client protocol-mapper URL",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "src/identity/provider/adapters/keycloak/provider.zig",
+      "src/identity/provider/adapters/keycloak/urls.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 FAST-TRACK: Fix the protocol mapper URL in provider.zig.\n\nRoot cause: Steps 9, 10, 11 in provisionRealm/provisionClient use `keycloak_urls.protocolMappersCollection(allocator, config, realm_id)` which generates `/admin/realms/{realm}/protocol-mappers/models`. This is the REALM-LEVEL mapper endpoint — it returns 404 for mapper creation via this path. Protocol mappers for a specific client must go to the CLIENT-LEVEL endpoint: `/admin/realms/{realm}/clients/{clientUuid}/protocol-mappers/models`.\n\nFix in src/identity/provider/adapters/keycloak/urls.zig:\nAdd a new function: clientProtocolMappersCollection that takes realm_id AND client_uuid:\n  `/admin/realms/{realm}/clients/{client_uuid}/protocol-mappers/models`\n\nFix in src/identity/provider/adapters/keycloak/provider.zig:\nIn provisionRealm (where Steps 9/10/11 post the mappers), change the URL from:\n  keycloak_urls.protocolMappersCollection(allocator, config, realm_id)\nto:\n  keycloak_urls.clientProtocolMappersCollection(allocator, config, realm_id, client_uuid)\nwhere client_uuid is the UUID returned from the createClient step (the client's internal Keycloak UUID, different from clientId='bpm-platform-api').\n\nNote: the client UUID comes from the Location header or response body when the client is created. Read how provisionRealm or provisionClient currently obtains the client UUID after creation. If it's not captured, add code to GET /admin/realms/{realm}/clients?clientId=bpm-platform-api and read [0].id to get the UUID.\n\nSteps that need updating:\n- Step 9: tenant_id protocol mapper (OIDC-13) — from PR #109\n- Step 10: realm-roles mapper — from PR #112\n- Step 11: audience mapper — from PR #113\nAll three must use the client-level URL.\n\nBranch: feature/WF03-client-mapper-url-20260616\nfn:git-setup, implement, build/test, git-merge.\n\nAfter implementation:\n  zig build → exits 0\n  zig build test → exits 0\n\nCommit:\n  'fix(WF03): use client-level protocol-mapper URL for Steps 9/10/11 (ISS-V8-001)'\n\ngit-merge:\n  PR title: 'fix(WF03): fix protocol mapper URL — use client endpoint not realm endpoint (ISS-V8-001)'\n  gh pr merge --squash --delete-branch\n  git checkout main ; git pull --rebase origin main",
+    "acceptance_criteria": [
+      "clientProtocolMappersCollection URL function added",
+      "Steps 9, 10, 11 use client-level URL",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "PR merged to main"
+    ],
+    "functions_to_call": ["fn:git-setup", "fn:read-backend-conventions", "fn:check-zig-build", "fn:git-merge"]
+  },
+  "completed_at": "2026-06-16T10:07:42Z",
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed protocol mapper URL: moved Steps 9/10/11 from provisionRealm (realm-level endpoint) to provisionClient (client-level endpoint). Added clientProtocolMappersCollection URL helper. Added tenant_id field to ProvisionClientInput. Onboarding saga passes tenant_id to provisionClient. Unit test mock updated.",
+    "artifacts_out": [
+      "src/identity/provider/adapters/keycloak/urls.zig",
+      "src/identity/provider/adapters/keycloak/provider.zig",
+      "src/identity/provider/types.zig",
+      "src/identity/onboarding.zig",
+      "src/identity/provider/test_oidc02_keycloak_adapter.zig"
+    ],
+    "issues": [],
+    "next_action": "DONE — PR #114 merged to main (f456346)"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}

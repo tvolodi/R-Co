@@ -34,36 +34,23 @@
   },
   "result": {
     "status": "FAIL",
-    "summary": "UAT v7: EO-001 PARTIAL/MINOR (saga completed — tenant ACTIVE in DB, swiftroute realm + alice.bauer in KC — but Playwright test timed out before result screen was observed; saga took ~130s vs 120s test timeout). EO-002 PASS (progress spinner visible in step 03). EO-003 PASS (Alice Bauer successfully logged into swiftroute Keycloak account page — screenshot confirmed). EO-004 FAIL BLOCKER: onboarding saga creates bpm-platform-api Keycloak client without audience protocol mapper. Alice JWT has aud='account' instead of aud='bpm-platform-api'. Backend rejects with HTTP 401 invalid token audience. Screen shows 'Redirecting to login...' loop — Alice cannot reach workspace. New issue vs v6: ISS-0073 fix confirmed working (redirect goes to swiftroute KC realm), but audience check is the new blocker.",
+    "summary": "UAT v9: EO-001 PASS (onboarding wizard complete, slug=swiftroute confirmed on result screen). EO-002 PASS (progress spinner shown). EO-003 PASS (Alice Bauer account in swiftroute Keycloak realm, aud=bpm-platform-api confirmed). EO-004 FAIL MAJOR: Alice cannot reach dashboard \u2014 onboarding saga does not provision roles-flattening protocol mapper; SPA OidcCallbackPage receives JWT with realm_access.roles but checks payload.roles (undefined) and enters infinite redirect loop.",
     "artifacts_out": [
-      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v7.yaml",
-      "scratch/playwright-onboarding-v7.json",
-      "scratch/playwright-eo-003-004-v7.json",
-      "scratch/uat-v5-eo-003-01-kc-account.png",
-      "scratch/uat-v5-eo-003-02-creds-filled.png",
-      "scratch/uat-v5-eo-003-03-after-login.png",
-      "scratch/uat-v5-eo-004-01-initial.png",
-      "scratch/uat-v5-eo-004-02-kc-login.png",
-      "scratch/uat-v5-eo-004-03-creds-filled.png",
-      "scratch/uat-v5-eo-004-04-after-callback.png",
-      "scratch/uat-v5-eo-004-05-final.png",
-      "scratch/uat-v5-eo-004-06-debug.png"
+      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v9.yaml",
+      "scratch/playwright-onboarding-v9.json",
+      "scratch/playwright-eo004-v9.json",
+      "scratch/eo004-screenshots/05-net-trace.png"
     ],
     "issues": [
       {
-        "id": "ISS-UAT-V7-001",
-        "severity": "BLOCKER",
-        "description": "The SwiftRoute workspace login is blocked. The onboarding saga creates the bpm-platform-api Keycloak client in the tenant realm without an audience protocol mapper. Alice's JWT has aud='account' instead of aud='bpm-platform-api'. Backend returns HTTP 401 invalid token audience. Alice sees 'Redirecting to login...' in a loop and cannot access her workspace."
-      },
-      {
-        "id": "ISS-UAT-V7-002",
-        "severity": "MINOR",
-        "description": "Onboarding pipeline Playwright test timeout (120s) is shorter than saga execution time (~130s). test.setTimeout should be increased to >=200s to allow saga to complete and result screen to be observed."
+        "id": "ISS-V9-001",
+        "severity": "MAJOR",
+        "description": "Alice Bauer cannot access the SwiftRoute workspace through the browser. After successful Keycloak authentication, the SPA enters an infinite redirect loop and never shows the dashboard. Root cause: the onboarding saga provisions the audience protocol mapper but not the User Realm Role mapper that flattens realm_access.roles into a top-level roles claim. The SPA OidcCallbackPage checks payload.roles which is undefined, treats the JWT as invalid, and redirects to login again. Fix: provision a User Realm Role mapper (token_claim_name=roles) alongside the audience mapper during onboarding provisioning."
       }
     ],
-    "next_action": "Route ISS-UAT-V7-001 to BACKEND-DEV via WF-03: add audience protocol mapper to onboarding saga's bpm-platform-api client creation. Re-run WF-05 v8 after fix. ISS-UAT-V7-002 route to TEST-DESIGNER."
+    "next_action": "Route to ORCH \u2014 ISS-V9-001 MAJOR requires WF-03 routing to BACKEND-DEV to add roles mapper provisioning to onboarding saga"
   },
-  "rework_count": 1,
+  "rework_count": 2,
   "max_rework": 2,
-  "completed_at": "2026-06-16T09:24:07Z"
+  "completed_at": "2026-06-16T10:24:59Z"
 }

@@ -920,7 +920,7 @@ fn addClientProtocolMappers(
         .bearer_token = bearer,
         .content_type = "application/json",
         .body =
-        \\{"name":"realm roles","protocol":"openid-connect","protocolMapper":"oidc-usermodel-realm-role-mapper","config":{"claim.name":"realm_access.roles","jsonType.label":"String","access.token.claim":"true","id.token.claim":"false","multivalued":"true"}}
+        \\{"name":"realm roles","protocol":"openid-connect","protocolMapper":"oidc-usermodel-realm-role-mapper","config":{"claim.name":"roles","jsonType.label":"String","access.token.claim":"true","id.token.claim":"false","multivalued":"true"}}
         ,
     });
     if (roles_resp.status != 201 and roles_resp.status != 204 and roles_resp.status != 409) {

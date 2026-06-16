@@ -7125,8 +7125,8 @@
       "to_agent": "UAT-RUNNER",
       "created_at": "2026-06-16T06:07:20Z",
       "status": "COMPLETED",
-      "stage": "WF-05 UAT v7 \u2014 ISS-UAT-V7-001 BLOCKER (audience mapper)",
-      "completed_at": "2026-06-16T09:24:07Z"
+      "stage": "WF-05 UAT v9 \u2014 ISS-V9-001 MAJOR (roles mapper missing from onboarding saga)",
+      "completed_at": "2026-06-16T10:24:59Z"
     },
     {
       "handoff_id": "9ab0c1d2-e3f4-5678-9ab0-c1d2e3f45678",
@@ -7158,8 +7158,19 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-06-16T09:26:36Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "WF-03 audience mapper"
+    },
+    {
+      "handoff_id": "2de3f4a5-b6c7-8901-2de3-f4a5b6c78901",
+      "file": "handoffs/WF03-client-mapper-url-20260616/step-00-03-backend-dev.json",
+      "run_id": "WF03-client-mapper-url-20260616",
+      "step": "00-03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-16T09:56:32Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 client mapper URL fix"
     }
   ]
 }
