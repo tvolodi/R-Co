@@ -59,18 +59,38 @@ pub fn handleTenantConfig(
     const client_id = getEnvVar(allocator, "OIDC_CLIENT_ID", "bpm-platform-api");
 
     var realm_id: []const u8 = "bpm-default";
+    var realm_resolved = false;
 
-    if (getQueryParam(query_str, "host")) |host| {
-        if (queryRealmByHostname(allocator, pool, host)) |realm_opt| {
+    // Step 1: ?realm=<slug> lookup — bypasses hostname lookup when slug resolves.
+    if (getQueryParam(query_str, "realm")) |slug| {
+        if (resolveTenantBySlug(allocator, pool, slug)) |realm_opt| {
             if (realm_opt) |r| {
                 realm_id = r;
+                realm_resolved = true;
             }
         } else |err| {
             const fields = [_]logger.LogField{
                 .{ .key = "error", .value = .{ .string = @errorName(err) } },
-                .{ .key = "hostname", .value = .{ .string = host } },
+                .{ .key = "slug", .value = .{ .string = slug } },
             };
-            logger.log(allocator, .WARN, "api.tenant_config", "hostname lookup failed; using default realm", &fields) catch {};
+            logger.log(allocator, .WARN, "api.tenant_config", "realm slug lookup failed; falling through to host", &fields) catch {};
+        }
+    }
+
+    // Step 2: ?host=<hostname> lookup — only when realm not already resolved.
+    if (!realm_resolved) {
+        if (getQueryParam(query_str, "host")) |host| {
+            if (queryRealmByHostname(allocator, pool, host)) |realm_opt| {
+                if (realm_opt) |r| {
+                    realm_id = r;
+                }
+            } else |err| {
+                const fields = [_]logger.LogField{
+                    .{ .key = "error", .value = .{ .string = @errorName(err) } },
+                    .{ .key = "hostname", .value = .{ .string = host } },
+                };
+                logger.log(allocator, .WARN, "api.tenant_config", "hostname lookup failed; using default realm", &fields) catch {};
+            }
         }
     }
 
@@ -99,6 +119,46 @@ pub fn handleTenantConfig(
         .body = body,
         .content_type = "application/json",
     };
+}
+
+/// Query tenant by slug to get its idp_realm_id.
+/// Returns null if no tenant row matches the slug.
+fn resolveTenantBySlug(
+    allocator: std.mem.Allocator,
+    pool: *db_pool.Pool,
+    slug: []const u8,
+) TenantConfigError!?[]const u8 {
+    const conn = pool.acquire() catch |err| return switch (err) {
+        db_pool.PoolError.ExhaustedPool => error.PoolExhausted,
+        else => error.PersistenceFailed,
+    };
+    defer pool.release(conn);
+
+    const row = conn.queryRow(
+        allocator,
+        \\SELECT idp_realm_id FROM public.tenant WHERE slug = $1 LIMIT 1
+    ,
+        &[_][]const u8{slug},
+    ) catch |err| return switch (err) {
+        db_pool.PoolError.StaleConnection,
+        db_pool.PoolError.ConnectionFailed,
+        db_pool.PoolError.QueryFailed,
+        => error.PersistenceFailed,
+        db_pool.PoolError.ExhaustedPool => error.PoolExhausted,
+        else => error.PersistenceFailed,
+    };
+
+    const row_data = row orelse return null;
+    defer {
+        for (row_data) |col| {
+            if (col) |c| allocator.free(c);
+        }
+        allocator.free(row_data);
+    }
+
+    if (row_data.len < 1) return null;
+    const realm = row_data[0] orelse return null;
+    return try allocator.dupe(u8, realm);
 }
 
 /// Query tenant_hostnames -> tenant to resolve idp_realm_id for a given hostname.

@@ -216,6 +216,25 @@ export default function OnboardingResultPage() {
           </tbody>
         </table>
 
+        {view.result.slug && (
+          <a
+            href={`${window.location.origin}/?realm=${view.result.slug}`}
+            style={{
+              display: 'inline-block',
+              marginBottom: '1rem',
+              padding: '.5rem 1.2rem',
+              background: '#0f766e',
+              color: '#fff',
+              textDecoration: 'none',
+              borderRadius: '6px',
+              fontWeight: 600,
+              fontSize: '.9rem',
+            }}
+          >
+            Open {view.result.slug} workspace
+          </a>
+        )}
+
         <button
           onClick={() => navigate('/admin/users')}
           style={primaryButtonStyle}

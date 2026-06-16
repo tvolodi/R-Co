@@ -16,6 +16,7 @@ pub const task_routes = @import("api/routes/tasks.zig"); // API-04 / EE-04
 pub const instance_routes = @import("api/routes/instances.zig"); // API-03 / OBS-04
 pub const metrics_routes = @import("api/routes/metrics.zig"); // OBS-02
 pub const health_routes = @import("api/routes/health.zig"); // API-12
+pub const tenant_config_routes = @import("api/routes/tenant_config.zig"); // OIDC-F-05
 pub const api_health_readiness = @import("api/health/readiness.zig"); // API-12
 pub const audit_routes = @import("api/routes/audit.zig"); // OBS-03
 pub const dlq_store = @import("dlq/store.zig"); // OBS-05

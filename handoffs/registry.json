@@ -6906,6 +6906,127 @@
       "created_at": "2026-06-16T03:43:32Z",
       "status": "COMPLETED",
       "stage": "WF-02 Final git-merge"
+    },
+    {
+      "handoff_id": "f3a4b5c6-d7e8-9012-f3a4-b5c6d7e89012",
+      "file": "handoffs/WF05-swiftroute-onboarding-gui-v3-20260616/step-01-uat-runner.json",
+      "run_id": "WF05-swiftroute-onboarding-gui-v3-20260616",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "UAT-RUNNER",
+      "created_at": "2026-06-16T04:18:55Z",
+      "status": "COMPLETED",
+      "stage": "WF-05 UAT v3 all fixes"
+    },
+    {
+      "handoff_id": "09a1b2c3-d4e5-6789-09a1-b2c3d4e56789",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-00-backend-dev-gitsetup.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-16T04:36:13Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 git-setup OIDC-F-05/06"
+    },
+    {
+      "handoff_id": "1ab2c3d4-e5f6-7890-1ab2-c3d4e5f67890",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-01-issue-fixer.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "0.5-1",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-06-16T04:37:43Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Diagnose OIDC-F-05/06"
+    },
+    {
+      "handoff_id": "2bc3d4e5-f6a7-8901-2bc3-d4e5f6a78901",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-02-code-designer.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-06-16T04:44:27Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Design ISS-0072"
+    },
+    {
+      "handoff_id": "3cd4e5f6-a7b8-9012-3cd4-e5f6a7b89012",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-02b-code-design-validator.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-06-16T04:48:32Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Design Gate ISS-0072"
+    },
+    {
+      "handoff_id": "4de5f6a7-b8c9-0123-4de5-f6a7b8c90123",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-03a-backend-dev.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "03a",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-16T04:51:08Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Fix 1 backend"
+    },
+    {
+      "handoff_id": "5ef6a7b8-c9d0-1234-5ef6-a7b8c9d01234",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-03b-frontend-dev.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "03b",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-06-16T04:51:08Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Fix 2+3 frontend"
+    },
+    {
+      "handoff_id": "6fa7b8c9-d0e1-2345-6fa7-b8c9d0e12345",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-04-test-designer.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-06-16T04:55:58Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Test Design ISS-0072"
+    },
+    {
+      "handoff_id": "7ab8c9d0-e1f2-3456-7ab8-c9d0e1f23456",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-04b-test-design-validator.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "04b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-06-16T05:09:16Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Test Gate ISS-0072"
+    },
+    {
+      "handoff_id": "8bc9d0e1-f2a3-4567-8bc9-d0e1f2a34567",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-05-test-runner.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-06-16T05:11:51Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Test Run ISS-0072"
+    },
+    {
+      "handoff_id": "9cd0e1f2-a3b4-5678-9cd0-e1f2a3b45678",
+      "file": "handoffs/WF03-oidc-tenant-config-20260616/step-final-backend-dev-gitmerge.json",
+      "run_id": "WF03-oidc-tenant-config-20260616",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-06-16T05:14:33Z",
+      "status": "PENDING",
+      "stage": "WF-03 Final git-merge"
     }
   ]
 }

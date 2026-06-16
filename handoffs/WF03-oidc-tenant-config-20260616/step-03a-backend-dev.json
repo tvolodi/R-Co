@@ -1,0 +1,50 @@
+{
+  "handoff_id": "4de5f6a7-b8c9-0123-4de5-f6a7b8c90123",
+  "run_id": "WF03-oidc-tenant-config-20260616",
+  "step": "03a",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-16T04:51:08Z",
+  "started_at": "2026-06-16T04:51:08Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 03a \u2014 BACKEND-DEV implements Fix 1 (?realm= override)",
+    "requirement_ids": [
+      "OIDC-F-05"
+    ],
+    "related_handoff_ids": [
+      "3cd4e5f6-a7b8-9012-3cd4-e5f6a7b89012"
+    ],
+    "artifacts_in": [
+      "src/design/iss-0072-realm-override.md",
+      "src/api/routes/tenant_config.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 03a: Implement Fix 1 (backend ?realm= override) per src/design/iss-0072-realm-override.md.\n\nIn src/api/routes/tenant_config.zig:\n1. Add function resolveTenantBySlug(allocator, pool, slug) that queries:\n   SELECT idp_realm_id FROM public.tenant WHERE slug = $1 LIMIT 1\n   Returns the realm slug or null. Uses prepared statement ($1 placeholder \u2014 no string interpolation).\n\n2. In handleGetTenantConfig (or equivalent function): check if ?realm= query param is present BEFORE the hostname lookup:\n   - If ?realm=<slug> present: call resolveTenantBySlug; if found, return {oidc_authority: oidcAuthorityForRealm(realm_slug), client_id: 'bpm-platform-api'}\n   - If not found or param absent: fall through to existing ?host= hostname lookup\n   - If nothing found: return default bpm-default config (existing fallback)\n\n3. The oidcAuthorityForRealm helper derives: '{BPM_IDP_BASE_URL}/realms/{realm_slug}'\n\nSecurity: resolveTenantBySlug uses $1 prepared statement. No string interpolation.\n\nAfter implementation:\n  zig build 2>&1 | grep -i 'error set' \u2192 must be empty\n  zig build \u2192 exits 0\n  zig build test \u2192 exits 0\n\nCommit:\n  git add -A\n  git commit -m 'fix(WF03): add ?realm= override to tenant-config endpoint (ISS-0072 Fix 1)'\n  git push origin feature/WF03-oidc-tenant-config-20260616",
+    "acceptance_criteria": [
+      "?realm= param supported in handleGetTenantConfig",
+      "resolveTenantBySlug uses $1 prepared statement",
+      "zig build exits 0",
+      "Committed and pushed"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented ?realm= override in tenant-config endpoint (ISS-0072 Fix 1). Added resolveTenantBySlug using prepared statement SELECT idp_realm_id FROM public.tenant WHERE slug = \\ LIMIT 1. Modified handleTenantConfig to check ?realm= first, falling through to ?host= if not resolved.",
+    "artifacts_out": [
+      "src/api/routes/tenant_config.zig"
+    ],
+    "commit_sha": "696f07c50550cf2656535c917acb2ba5c567e7c6",
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-16T04:55:36Z"
+}

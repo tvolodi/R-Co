@@ -1,0 +1,57 @@
+{
+  "handoff_id": "2bc3d4e5-f6a7-8901-2bc3-d4e5f6a78901",
+  "run_id": "WF03-oidc-tenant-config-20260616",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-06-16T04:44:27Z",
+  "started_at": "2026-06-16T04:44:27Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 02 \u2014 Design fix for ISS-0072 (realm override + workspace link)",
+    "requirement_ids": [
+      "OIDC-F-05",
+      "OIDC-F-06"
+    ],
+    "related_handoff_ids": [
+      "1ab2c3d4-e5f6-7890-1ab2-c3d4e5f67890"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0072.json",
+      "docs/issue-reports/report-2026-06-16-WF03-oidc-tenant-config-20260616-step-01-issue-fixer.yaml",
+      "src/api/routes/tenant_config.zig",
+      "web/src/auth/tenantConfig.ts",
+      "web/src/pages/admin/onboarding/OnboardingResultPage.tsx"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 02: Produce a Type E prose design for ISS-0072 (three-part fix).\n\nRoot cause: GET /api/tenant-config?host=127.0.0.1 finds no binding, falls back to bpm-default, so Alice's swiftroute realm token is rejected.\n\nDesign artefact: src/design/iss-0072-realm-override.md (Type E)\n\nFix 1 \u2014 Backend (BACKEND-DEV): add ?realm= override to tenant_config.zig\n  - If ?realm=<slug> query param is present, query public.tenant WHERE slug=$1 to get the tenant's realm\n  - Derive oidc_authority from the tenant's registered Keycloak realm (same logic as hostname path)\n  - Return {oidc_authority, client_id} for that realm\n  - Security: slug is bound via $1 prepared statement. If slug not found: return default (do not 404)\n  - Function signatures to document: handleGetTenantConfig changes, new function resolveTenantBySlug\n\nFix 2 \u2014 Frontend (FRONTEND-DEV): read ?realm= from URL in tenantConfig.ts\n  - Before hostname lookup: read URLSearchParams for 'realm' key\n  - If present: call GET /api/tenant-config?realm=<slug> instead of GET /api/tenant-config?host=<hostname>\n  - Persist the resolved realm slug in sessionStorage as 'bpm_realm_slug' so page refreshes keep the correct realm\n  - On page load: check sessionStorage first, then URL params, then hostname\n  - Public interface: add resolveRealmFromUrl() helper function\n\nFix 3 \u2014 Frontend (FRONTEND-DEV): add workspace link to OnboardingResultPage\n  - On the 'completed' result screen, add a button/link: 'Open SwiftRoute workspace'\n  - URL: http://[current-origin]?realm=[slug] (or use the oidc_authority from the result to derive the slug)\n  - This gives the platform admin a one-click path to Alice's login URL without DNS setup\n  - The link opens in the same tab\n\nAll three fixes are MINOR code changes. No new tables. No migration required.\n\nDesign must cover:\n- Modified function signatures (resolveTenantBySlug, handleGetTenantConfig, resolveRealmFromUrl)\n- Session storage key name and lifecycle\n- Security: the ?realm= param only controls which realm's config is returned \u2014 it cannot grant access to data; authorization remains in the bearer token validation\n- No implementation code \u2014 prose design only\n\nRun python tools/lint_design_artefact.py src/design/iss-0072-realm-override.md\n\nComplete with next_action='Route to CODE-DESIGN-VALIDATOR (Step 02b)'.",
+    "acceptance_criteria": [
+      "src/design/iss-0072-realm-override.md written",
+      "Three fixes designed (backend override, frontend URL param, result page link)",
+      "Security note on ?realm= param",
+      "No implementation code",
+      "lint exits 0"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E prose design for ISS-0072 realm override: (1) backend resolveTenantBySlug + handleTenantConfig ?realm= priority path, (2) frontend resolveRealmFromUrl with sessionStorage persistence, (3) OnboardingResultPage workspace link with ?realm= embedded.",
+    "artifacts_out": [
+      "src/design/iss-0072-realm-override.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "code": "E060",
+        "description": "lint E060: ISS-0072 is not a <PREFIX>-<NN> ID \u2014 expected by linter, does not block."
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 02b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-16T04:48:17Z"
+}

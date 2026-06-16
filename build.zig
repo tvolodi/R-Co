@@ -1327,6 +1327,24 @@ pub fn build(b: *std.Build) void {
     test_integration_env_step.dependOn(&clean_test_db.step);
     test_integration_env_step.dependOn(&run_env_integration_tests.step);
 
+    // ISS-0072: tenant-config ?realm= hint integration tests.
+    const iss0072_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/tenant_config_realm_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0072_integration_tests = b.addRunArtifact(iss0072_integration_tests);
+    run_iss0072_integration_tests.setCwd(b.path("."));
+    run_iss0072_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
+    const test_integration_iss0072_step = b.step("test-integration-iss0072", "Run ISS-0072 tenant-config realm override integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0072_step.dependOn(&clean_test_db.step);
+    test_integration_iss0072_step.dependOn(&run_iss0072_integration_tests.step);
+    test_integration_step.dependOn(&run_iss0072_integration_tests.step);
+
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner
     // ---------------------------------------------------------------------------
