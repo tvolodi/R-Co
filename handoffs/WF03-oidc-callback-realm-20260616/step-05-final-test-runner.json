@@ -1,0 +1,35 @@
+{
+  "handoff_id": "7ef8a9b0-c1d2-3456-7ef8-a9b0c1d23456",
+  "run_id": "WF03-oidc-callback-realm-20260616",
+  "step": "05-final",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-16T06:03:15Z",
+  "started_at": "2026-06-16T06:03:15Z",
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step 05 \u2014 TEST-RUNNER + then BACKEND-DEV git-merge (ISS-0073)",
+    "requirement_ids": [
+      "OIDC-F-02"
+    ],
+    "related_handoff_ids": [
+      "6de7f8a9-b0c1-2345-6de7-f8a9b0c12345"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 05 + Final: Run tests and merge.\n\nPre-flight: backend :8080, Keycloak :8081. STOP BLOCKER if DOWN.\n\nTests:\n1. cd web && npm run test (Vitest \u2014 includes buildRedirectArgs.test.ts, tenantConfig.test.ts)\n2. cd web && npm run build\n\nIf all pass: then git-merge:\n  git fetch origin main\n  git rebase origin/main\n  git push origin feature/WF03-oidc-callback-realm-20260616\n  gh pr create --base main --title 'fix(WF03): embed realm in OIDC redirect_uri to fix callback loop (ISS-0073)' --body 'Root cause: signinRedirect() used a hard-coded redirect_uri without the realm param. Keycloak does not forward custom query params through the auth code flow, so the callback handler could not determine which realm to use for the token exchange, causing a redirect loop.\\n\\nFix: buildRedirectArgs() reads resolveRealmFromUrl() and appends ?realm=<slug> to the redirect_uri before the OIDC flow starts. The realm survives through Keycloak and is available at callback time.\\n\\n3/3 unit tests pass.'\n  gh pr merge --squash --delete-branch\n  git checkout main\n  git pull --ff-only origin main\n\nWrite test report to tests/reports/report-2026-06-16-WF03-oidc-callback-realm-20260616-step-05.yaml\n\nReturn: test verdict, PR number, merge SHA.",
+    "acceptance_criteria": [
+      "npm run test passes",
+      "npm run build passes",
+      "PR merged to main",
+      "Branch deleted"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1
+}
