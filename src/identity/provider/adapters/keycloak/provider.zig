@@ -300,50 +300,6 @@ fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: prov
     // Step 2: Create standard platform roles in the new realm.
     try createStandardRoles(self, allocator, fresh_bearer, realm_id);
 
-    // Step 9: Create tenant_id protocol mapper (OIDC-13).
-    const mapper_body = try buildTenantIdMapperBodySimple(allocator, input.tenant_id);
-    defer allocator.free(mapper_body);
-    const mappers_url = keycloak_urls.protocolMappersCollection(allocator, self.config, realm_id) catch return error.OutOfMemory;
-    defer allocator.free(mappers_url);
-
-    _ = try sendRequest(self, allocator, .{
-        .method = .POST,
-        .url = mappers_url,
-        .bearer_token = fresh_bearer,
-        .content_type = "application/json",
-        .body = mapper_body,
-    });
-
-    // Step 10: Add realm-roles mapper so role claims appear in JWT (ISS-UAT-V6-001).
-    // 201 = created, 409 = already exists — both are acceptable (idempotent).
-    const roles_mapper_resp = try sendRequest(self, allocator, .{
-        .method = .POST,
-        .url = mappers_url,
-        .bearer_token = fresh_bearer,
-        .content_type = "application/json",
-        .body =
-        \\{"name":"realm roles","protocol":"openid-connect","protocolMapper":"oidc-usermodel-realm-role-mapper","config":{"claim.name":"realm_access.roles","jsonType.label":"String","access.token.claim":"true","id.token.claim":"false","multivalued":"true"}}
-        ,
-    });
-    if (roles_mapper_resp.status != 201 and roles_mapper_resp.status != 204 and roles_mapper_resp.status != 409) {
-        return mapStatus(roles_mapper_resp.status, .provision_realm);
-    }
-
-    // Step 11: Add audience mapper so JWT aud claim includes 'bpm-platform-api' (ISS-UAT-V7-001).
-    // 201 = created, 409 = already exists — both are acceptable (idempotent).
-    const audience_mapper_resp = try sendRequest(self, allocator, .{
-        .method = .POST,
-        .url = mappers_url,
-        .bearer_token = fresh_bearer,
-        .content_type = "application/json",
-        .body =
-        \\{"name":"bpm-platform-api audience","protocol":"openid-connect","protocolMapper":"oidc-audience-mapper","config":{"included.client.audience":"bpm-platform-api","access.token.claim":"true","id.token.claim":"false"}}
-        ,
-    });
-    if (audience_mapper_resp.status != 201 and audience_mapper_resp.status != 204 and audience_mapper_resp.status != 409) {
-        return mapStatus(audience_mapper_resp.status, .provision_realm);
-    }
-
     return .{
         .realm_id = allocator.dupe(u8, realm_id) catch return error.OutOfMemory,
         .created = true,
@@ -893,6 +849,12 @@ fn provisionClient(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: pro
     });
     if (lookup_response.status != 200) return mapStatus(lookup_response.status, .provision_client);
     if (try hasClient(allocator, lookup_response.body, input.client_name)) {
+        // Client already exists — add mappers idempotently if tenant_id provided.
+        if (input.tenant_id) |tenant_id| {
+            const existing_uuid = (try firstClientUuidFromSearch(allocator, lookup_response.body)) orelse return error.UpstreamProtocolError;
+            defer allocator.free(existing_uuid);
+            try addClientProtocolMappers(self, allocator, bearer, input.realm_id, existing_uuid, tenant_id);
+        }
         return .{
             .client_id = allocator.dupe(u8, input.client_name) catch return error.OutOfMemory,
             .created = false,
@@ -912,10 +874,72 @@ fn provisionClient(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: pro
     });
     if (create_response.status != 201 and create_response.status != 204) return mapStatus(create_response.status, .provision_client);
 
+    // Add standard protocol mappers to the client-level endpoint (Steps 9/10/11).
+    // The client UUID comes from the Location header returned by Keycloak on creation.
+    if (input.tenant_id) |tenant_id| {
+        const location = create_response.header("Location") orelse return error.UpstreamProtocolError;
+        const new_uuid = lastPathSegment(location) orelse return error.UpstreamProtocolError;
+        try addClientProtocolMappers(self, allocator, bearer, input.realm_id, new_uuid, tenant_id);
+    }
+
     return .{
         .client_id = allocator.dupe(u8, input.client_name) catch return error.OutOfMemory,
         .created = true,
     };
+}
+
+/// Add the three standard protocol mappers to a client's mapper collection.
+/// Steps 9 (tenant_id), 10 (realm-roles), 11 (audience).
+/// 201 = created, 409 = already exists — both are acceptable (idempotent).
+fn addClientProtocolMappers(
+    self: *Adapter,
+    allocator: std.mem.Allocator,
+    bearer: []const u8,
+    realm_id: []const u8,
+    client_uuid: []const u8,
+    tenant_id: []const u8,
+) (provider_errors.ProviderError || error{OutOfMemory})!void {
+    const mappers_url = keycloak_urls.clientProtocolMappersCollection(allocator, self.config, realm_id, client_uuid) catch return error.OutOfMemory;
+    defer allocator.free(mappers_url);
+
+    // Step 9: tenant_id hardcoded-claim mapper (OIDC-13).
+    const tenant_mapper_body = try buildTenantIdMapperBodySimple(allocator, tenant_id);
+    defer allocator.free(tenant_mapper_body);
+    _ = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = mappers_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body = tenant_mapper_body,
+    });
+
+    // Step 10: realm-roles mapper (ISS-UAT-V6-001).
+    const roles_resp = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = mappers_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body =
+        \\{"name":"realm roles","protocol":"openid-connect","protocolMapper":"oidc-usermodel-realm-role-mapper","config":{"claim.name":"realm_access.roles","jsonType.label":"String","access.token.claim":"true","id.token.claim":"false","multivalued":"true"}}
+        ,
+    });
+    if (roles_resp.status != 201 and roles_resp.status != 204 and roles_resp.status != 409) {
+        return mapStatus(roles_resp.status, .provision_realm);
+    }
+
+    // Step 11: audience mapper (ISS-UAT-V7-001).
+    const aud_resp = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = mappers_url,
+        .bearer_token = bearer,
+        .content_type = "application/json",
+        .body =
+        \\{"name":"bpm-platform-api audience","protocol":"openid-connect","protocolMapper":"oidc-audience-mapper","config":{"included.client.audience":"bpm-platform-api","access.token.claim":"true","id.token.claim":"false"}}
+        ,
+    });
+    if (aud_resp.status != 201 and aud_resp.status != 204 and aud_resp.status != 409) {
+        return mapStatus(aud_resp.status, .provision_realm);
+    }
 }
 
 fn upsertFederation(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: provider_types.UpsertFederationInput) provider_errors.ProviderError!provider_types.FederationResult {

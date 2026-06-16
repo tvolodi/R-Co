@@ -182,6 +182,10 @@ pub const ProvisionClientInput = struct {
     client_name: []const u8,
     redirect_uris: []const []const u8,
     service_account_enabled: bool,
+    /// When provided, standard protocol mappers (tenant_id, realm-roles,
+    /// audience) are posted to the client-level mapper endpoint after the
+    /// client is created or confirmed to exist.
+    tenant_id: ?[]const u8 = null,
 };
 
 pub const ProvisionClientResult = struct {

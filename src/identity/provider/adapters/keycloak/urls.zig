@@ -79,6 +79,10 @@ pub fn protocolMappersCollection(allocator: std.mem.Allocator, config: keycloak_
     return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/protocol-mappers/models", .{ config.adminBase(), realm_id });
 }
 
+pub fn clientProtocolMappersCollection(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8, client_uuid: []const u8) ![]u8 {
+    return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/clients/{s}/protocol-mappers/models", .{ config.adminBase(), realm_id, client_uuid });
+}
+
 pub fn protocolMapperById(allocator: std.mem.Allocator, config: keycloak_config.Config, realm_id: []const u8, mapper_id: []const u8) ![]u8 {
     return std.fmt.allocPrint(allocator, "{s}/admin/realms/{s}/protocol-mappers/models/{s}", .{ config.adminBase(), realm_id, mapper_id });
 }
