@@ -937,6 +937,205 @@ pub fn syncAttributesFromIdentityContextShim(
     return jit_provisioning.syncAttributesFromIdentityContext(allocator, pool, identity_ctx, tenant_id);
 }
 
+/// Extract the `iss` (issuer) claim from a JWT without verifying signature.
+/// Used only to check whether the issuer is a registered tenant realm.
+/// Caller owns the returned slice.
+fn extractIssClaim(allocator: std.mem.Allocator, raw_token: []const u8) error{ InvalidToken, OutOfMemory }![]const u8 {
+    const payload_json = decodeJwtPayload(allocator, raw_token) catch return error.InvalidToken;
+    defer allocator.free(payload_json);
+    const parsed = std.json.parseFromSlice(std.json.Value, allocator, payload_json, .{ .allocate = .alloc_always }) catch return error.InvalidToken;
+    defer parsed.deinit();
+    if (parsed.value != .object) return error.InvalidToken;
+    const iss_field = parsed.value.object.get("iss") orelse return error.InvalidToken;
+    if (iss_field != .string) return error.InvalidToken;
+    return allocator.dupe(u8, iss_field.string) catch error.OutOfMemory;
+}
+
+/// Extract the realm slug from a Keycloak issuer URL.
+/// Matches the trailing path component after "/realms/".
+/// Returns a slice into `iss` (no allocation).
+fn realmSlugFromIssuer(iss: []const u8) ?[]const u8 {
+    const marker = "/realms/";
+    const pos = std.mem.lastIndexOf(u8, iss, marker) orelse return null;
+    const slug = iss[pos + marker.len ..];
+    if (slug.len == 0) return null;
+    return slug;
+}
+
+/// Query `public.tenant` for a row with the given `idp_realm_id`.
+/// Returns the tenant UUID as a 36-byte array, or null if not found.
+/// Uses a parameterised query — no string interpolation of user data.
+fn lookupTenantByRealmSlug(
+    allocator: std.mem.Allocator,
+    db_pool: *pool_mod.Pool,
+    realm_slug: []const u8,
+) error{ OutOfMemory, PersistenceFailed }!?[36]u8 {
+    const conn = db_pool.acquire() catch return error.PersistenceFailed;
+    defer db_pool.release(conn);
+    const row = conn.queryRow(
+        allocator,
+        "SELECT id::text FROM public.tenant WHERE idp_realm_id = $1 LIMIT 1",
+        &[_][]const u8{realm_slug},
+    ) catch return error.PersistenceFailed;
+    if (row == null) return null;
+    defer {
+        if (row.?[0]) |v| allocator.free(v);
+        allocator.free(row.?);
+    }
+    const id_str = row.?[0] orelse return null;
+    if (id_str.len != 36) return null;
+    var result: [36]u8 = undefined;
+    @memcpy(&result, id_str[0..36]);
+    return result;
+}
+
+/// Tenant-realm authentication fallback (ISS-UAT-V6-002).
+///
+/// Called when the primary issuer validation fails (TokenIssuerMismatch).
+/// Checks whether the token's `iss` claim corresponds to a registered tenant
+/// realm in `public.tenant.idp_realm_id`. If so, re-verifies the token's
+/// signature against that realm's JWKS and returns an AuthContext for the
+/// tenant principal.
+///
+/// Security invariants:
+/// - Issuer is extracted from the unverified JWT only to derive a realm slug.
+/// - The realm slug is checked against the database with a parameterised query.
+/// - Signature verification is performed by the identity provider after the
+///   DB check, using the tenant-specific issuer URL as `expected_issuer`.
+/// - Tokens from unregistered issuers are always rejected with 401.
+fn tryTenantRealmAuth(
+    allocator: std.mem.Allocator,
+    raw_token: []const u8,
+    db_pool: *pool_mod.Pool,
+    inspection: TokenInspectionResult,
+) AuthResult {
+    // 1. Extract `iss` claim without signature verification.
+    const iss = extractIssClaim(allocator, raw_token) catch {
+        return .{ .unauthenticated = buildUnauthorizedAuth(
+            allocator,
+            .token_invalid_issuer,
+            "invalid token issuer",
+            .oidc_jwt,
+            inspection.reason,
+            DEFAULT_TENANT_ID,
+            "issuer_mismatch",
+        ) };
+    };
+    defer allocator.free(iss);
+
+    // 2. Extract realm slug from issuer URL.
+    const realm_slug = realmSlugFromIssuer(iss) orelse {
+        return .{ .unauthenticated = buildUnauthorizedAuth(
+            allocator,
+            .token_invalid_issuer,
+            "invalid token issuer",
+            .oidc_jwt,
+            inspection.reason,
+            DEFAULT_TENANT_ID,
+            "issuer_mismatch",
+        ) };
+    };
+
+    // 3. Verify the realm slug is registered in public.tenant.
+    const maybe_tenant_id = lookupTenantByRealmSlug(allocator, db_pool, realm_slug) catch {
+        return .{ .unauthenticated = buildUnauthorized(allocator, "service unavailable") };
+    };
+    const tenant_uuid = maybe_tenant_id orelse {
+        return .{ .unauthenticated = buildUnauthorizedAuth(
+            allocator,
+            .token_invalid_issuer,
+            "invalid token issuer",
+            .oidc_jwt,
+            inspection.reason,
+            DEFAULT_TENANT_ID,
+            "issuer_unregistered",
+        ) };
+    };
+
+    // 4. Re-verify token with the tenant's actual issuer as `expected_issuer`.
+    //    All JWT claims (signature, audience, expiry, etc.) are validated by
+    //    the identity provider; only the expected_issuer changes.
+    var principal = identity_provider_manager.verifyBearerTokenWithIssuer(allocator, raw_token, iss) catch |err| switch (err) {
+        error.TokenExpired => return .{ .unauthenticated = buildUnauthorizedAuth(
+            allocator,
+            .token_expired,
+            "token expired",
+            .oidc_jwt,
+            inspection.reason,
+            &tenant_uuid,
+            "token_expired",
+        ) },
+        error.TokenNotYetValid => return .{ .unauthenticated = buildUnauthorizedAuth(
+            allocator,
+            .token_not_yet_valid,
+            "token not yet valid",
+            .oidc_jwt,
+            inspection.reason,
+            &tenant_uuid,
+            "token_not_yet_valid",
+        ) },
+        error.TokenAudienceMismatch => return .{ .unauthenticated = buildUnauthorizedAuth(
+            allocator,
+            .token_invalid_audience,
+            "invalid token audience",
+            .oidc_jwt,
+            inspection.reason,
+            &tenant_uuid,
+            "audience_mismatch",
+        ) },
+        error.SignatureVerificationFailed => return .{ .unauthenticated = buildUnauthorizedAuth(
+            allocator,
+            .token_invalid_signature,
+            "invalid token signature",
+            .oidc_jwt,
+            inspection.reason,
+            &tenant_uuid,
+            "signature_invalid",
+        ) },
+        error.UpstreamUnavailable,
+        error.UpstreamTimeout,
+        error.RateLimited,
+        => return .{ .unauthenticated = buildUnauthorized(allocator, "service unavailable") },
+        else => return .{ .unauthenticated = buildUnauthorized(allocator, "invalid bearer token") },
+    };
+    defer principal.deinit(allocator);
+
+    // 5. Resolve tenant context: prefer the tenant_id embedded in the JWT by
+    //    the platform mapper (provisionRealm step 9); fall back to the DB-
+    //    resolved UUID from step 3.
+    const resolved_tenant = if (principal.tenant_id) |tid|
+        ResolvedTenantContext{ .tenant_id = tid, .source = .token_claim }
+    else
+        ResolvedTenantContext{ .tenant_id = tenant_uuid, .source = .default_fallback };
+
+    tenant_context.set(resolved_tenant.tenant_id[0..]);
+
+    // 6. Build AuthContext.
+    const role = primaryProviderRole(principal.roles);
+    const user_id = allocator.dupe(u8, principal.provider_subject) catch
+        return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
+    const token_id = allocator.dupe(u8, principal.token_id_hint orelse "oidc") catch {
+        allocator.free(user_id);
+        return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
+    };
+    const oidc_realm = principal.external_realm orelse realm_slug;
+    const oidc_principal = std.fmt.allocPrint(allocator, "{s}:{s}", .{ oidc_realm, principal.provider_subject }) catch {
+        allocator.free(user_id);
+        allocator.free(token_id);
+        return .{ .unauthenticated = buildUnauthorized(allocator, "internal error") };
+    };
+
+    return .{ .authenticated = .{
+        .user_id = user_id,
+        .role = role,
+        .is_bootstrap = false,
+        .token_id = token_id,
+        .principal = oidc_principal,
+        .tenant_id = resolved_tenant.tenant_id,
+        .tenant_source = resolved_tenant.source,
+    } };
+}
+
 /// Authenticate a single HTTP request.  Called by the HTTP server in the
 /// middleware chain BEFORE any route handler is dispatched.
 ///
@@ -1014,15 +1213,7 @@ pub fn authenticate(
         };
 
         var principal = identity_provider_manager.verifyBearerToken(allocator, raw_token) catch |err| switch (err) {
-            error.TokenIssuerMismatch => return .{ .unauthenticated = buildUnauthorizedAuth(
-                allocator,
-                .token_invalid_issuer,
-                "invalid token issuer",
-                .oidc_jwt,
-                inspection.reason,
-                tenant_id_for_error[0..],
-                "issuer_mismatch",
-            ) },
+            error.TokenIssuerMismatch => return tryTenantRealmAuth(allocator, raw_token, db_pool, inspection),
             error.TokenAudienceMismatch => return .{ .unauthenticated = buildUnauthorizedAuth(
                 allocator,
                 .token_invalid_audience,

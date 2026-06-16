@@ -314,6 +314,21 @@ fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: prov
         .body = mapper_body,
     });
 
+    // Step 10: Add realm-roles mapper so role claims appear in JWT (ISS-UAT-V6-001).
+    // 201 = created, 409 = already exists — both are acceptable (idempotent).
+    const roles_mapper_resp = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = mappers_url,
+        .bearer_token = fresh_bearer,
+        .content_type = "application/json",
+        .body =
+        \\{"name":"realm roles","protocol":"openid-connect","protocolMapper":"oidc-usermodel-realm-role-mapper","config":{"claim.name":"realm_access.roles","jsonType.label":"String","access.token.claim":"true","id.token.claim":"false","multivalued":"true"}}
+        ,
+    });
+    if (roles_mapper_resp.status != 201 and roles_mapper_resp.status != 204 and roles_mapper_resp.status != 409) {
+        return mapStatus(roles_mapper_resp.status, .provision_realm);
+    }
+
     return .{
         .realm_id = allocator.dupe(u8, realm_id) catch return error.OutOfMemory,
         .created = true,
@@ -1381,10 +1396,26 @@ fn buildRoleMappingsBody(allocator: std.mem.Allocator, roles: []const KeycloakRo
     return std.json.Stringify.valueAlloc(allocator, roles, .{}) catch return error.OutOfMemory;
 }
 
+/// Platform callback URLs added to every provisioned Keycloak client (ISS-UAT-V6-003).
+/// These are additive to the user-specified redirect_uris from the onboarding form.
+const PLATFORM_REDIRECT_URIS = [_][]const u8{
+    "http://127.0.0.1:8080/*",
+    "http://127.0.0.1:4173/*",
+    "http://localhost:8080/*",
+    "http://localhost:4173/*",
+};
+
 fn buildClientCreateBody(allocator: std.mem.Allocator, input: provider_types.ProvisionClientInput) provider_errors.ProviderError![]u8 {
+    // Merge user-specified redirect_uris with platform callback URLs.
+    const platform: []const []const u8 = &PLATFORM_REDIRECT_URIS;
+    const merged = allocator.alloc([]const u8, input.redirect_uris.len + platform.len) catch return error.OutOfMemory;
+    defer allocator.free(merged);
+    @memcpy(merged[0..input.redirect_uris.len], input.redirect_uris);
+    @memcpy(merged[input.redirect_uris.len..], platform);
+
     return std.json.Stringify.valueAlloc(allocator, .{
         .clientId = input.client_name,
-        .redirectUris = input.redirect_uris,
+        .redirectUris = merged,
         .serviceAccountsEnabled = input.service_account_enabled,
         .protocol = "openid-connect",
     }, .{}) catch return error.OutOfMemory;

@@ -498,6 +498,15 @@ test "TC-OIDC-02-03: keycloak adapter admin contract stays inside adapter-specif
                 .body_contains = &.{ "\"protocolMapper\":\"oidc-hardcoded-claim-mapper\"", "\"claimValue\":\"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\"" },
                 .response = .{ .status = 201 },
             },
+            // ISS-UAT-V6-001: Add realm-roles mapper so role claims appear in JWT.
+            .{
+                .method = .POST,
+                .url = "https://kc.example.com/admin/realms/acme/protocol-mappers/models",
+                .bearer_token = "admin-token",
+                .content_type = "application/json",
+                .body_contains = &.{ "\"protocolMapper\":\"oidc-usermodel-realm-role-mapper\"", "\"realm roles\"" },
+                .response = .{ .status = 201 },
+            },
             .{
                 .method = .GET,
                 .url = "https://kc.example.com/admin/realms/acme/users?q=external_id:ext-7&exact=true",

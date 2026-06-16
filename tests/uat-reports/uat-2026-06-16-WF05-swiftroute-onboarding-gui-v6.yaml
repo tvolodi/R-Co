@@ -1,0 +1,307 @@
+---
+run_id: WF05-swiftroute-onboarding-gui-v6-20260616
+executed_at: "2026-06-16T08:51:17Z"
+executed_by: UAT-RUNNER
+scenario_id: swiftroute-tenant-onboarding-happy
+scenario_version: "2.0"
+company_id: swiftroute
+handoff_file: handoffs/WF05-swiftroute-onboarding-gui-v5-20260616/step-01-uat-runner.json
+
+overall_verdict: FAIL
+overall_summary: >
+  The platform operator successfully registered SwiftRoute Ltd as a new tenant through the
+  onboarding wizard. The registration form submitted correctly, a progress screen appeared
+  immediately confirming that the workspace was being prepared, and the result screen
+  confirmed completion showing the slug 'swiftroute' and the SwiftRoute Ltd company name.
+  Alice Bauer's account was created and she can log into the SwiftRoute identity system
+  independently. However, Alice cannot access the SwiftRoute workspace through the BPM
+  platform. When she attempts to log in via the platform's login flow, the system enters
+  an infinite redirect loop and never presents her with a workspace. The platform refuses
+  her SwiftRoute identity credentials with a technical rejection ('invalid token issuer'),
+  making the workspace completely inaccessible. This is a business-blocking defect.
+
+pre_flight:
+  executed_at: "2026-06-16T08:28:40Z"
+  checks:
+    - id: PF-01
+      description: BPM platform is running and responding
+      result: PASS
+      evidence: "GET /health/ready → 200 OK, db_latency_ms=2"
+    - id: PF-02
+      description: Identity provider (Keycloak) is running and responding
+      result: PASS
+      evidence: "GET http://localhost:8081/health/ready → 200 OK"
+    - id: PF-03
+      description: SwiftRoute tenant does not already exist before the scenario begins
+      result: PASS
+      evidence: "SELECT count(*) FROM public.tenant WHERE slug='swiftroute' → 0 (clean state)"
+    - id: PF-04
+      description: System is in consistent pre-onboarding state (both database and identity provider clean)
+      result: PASS
+      evidence: >
+        Keycloak realms check: swiftroute realm = NOT_FOUND. DB count = 0.
+        Tenant-config API returns bpm-default (expected: no swiftroute yet).
+        System is in correct clean state for onboarding to begin.
+
+scenario_steps:
+  - step: 1
+    actor: platform_admin
+    action_description: >
+      Platform administrator navigated to the New Tenant screen, filled in the registration
+      form with SwiftRoute's details (slug, display name, Alice's contact information as
+      administrator, hostname, and production environment flag), and clicked Register Tenant.
+    via: gui
+    playwright_test: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+    result: PASS
+    screenshot: scratch/pipeline-onboarding-wizard-02-form-filled.png
+    screen_showed: >
+      The registration form was filled with: slug='swiftroute', display_name='SwiftRoute Ltd',
+      admin_username='alice.bauer', admin_display_name='Alice Bauer'. The form accepted all
+      fields and the Register Tenant button was clickable. After submission the browser
+      navigated automatically to the progress screen URL.
+
+  - step: 2
+    actor: platform_admin
+    action_description: >
+      Platform administrator observed the onboarding progress screen that appeared
+      immediately after form submission. The screen showed a spinner while the workspace
+      was being prepared.
+    via: gui
+    result: PASS
+    screen_showed: >
+      Progress screen appeared immediately with an 'Onboarding in progress' heading and a
+      spinner (role='status') confirming workspace preparation was underway. The operator
+      did not need to take any action and the platform navigated automatically.
+
+  - step: 3
+    actor: platform_admin
+    action_description: >
+      Platform administrator reviewed the result screen that appeared automatically once
+      provisioning completed. The screen confirmed successful setup with SwiftRoute's
+      workspace details.
+    via: gui
+    result: PASS
+    screen_showed: >
+      Result screen showed 'Tenant onboarding completed successfully'. The slug 'swiftroute'
+      was visible on screen. An OIDC authority link showing the SwiftRoute identity realm
+      was displayed. No error or failure banner was present.
+    post_verification:
+      - "Database: tenant record created with id=1676aa12, slug=swiftroute, display_name='SwiftRoute Ltd'"
+      - "Keycloak: swiftroute realm created successfully"
+      - "Tenant-config API: GET /api/tenant-config?realm=swiftroute → oidc_authority=http://localhost:8081/realms/swiftroute"
+
+  - step: 4
+    actor: tenant_admin
+    action_description: >
+      Alice Bauer attempted to navigate to the SwiftRoute workspace login page and
+      log in using the credentials registered during onboarding.
+    via: gui
+    playwright_test: web/tests/e2e/uat-eo-003-004-v5.e2e.spec.ts (EO-003 test)
+    result: PASS
+    screenshots:
+      - scratch/uat-v5-eo-003-01-kc-account.png
+      - scratch/uat-v5-eo-003-02-creds-filled.png
+      - scratch/uat-v5-eo-003-03-after-login.png
+    screen_showed: >
+      Screen 1: The SwiftRoute Keycloak account page appeared showing the login form
+      for the swiftroute realm.
+      Screen 2: The username 'alice.bauer' and password were entered into the form.
+      Screen 3: After clicking Sign In, Alice was authenticated successfully and the
+      Keycloak account management page appeared — confirming her identity was accepted
+      by the SwiftRoute identity system. No login error or password-change prompt appeared.
+
+  - step: 5
+    actor: tenant_admin
+    action_description: >
+      Alice attempted to access the SwiftRoute workspace through the BPM platform
+      by navigating to the platform with the swiftroute realm hint.
+    via: gui
+    playwright_test: web/tests/e2e/uat-eo-003-004-v5.e2e.spec.ts (EO-004 test)
+    result: FAIL
+    screenshots:
+      - scratch/uat-v5-eo-004-01-initial.png
+      - scratch/uat-v5-eo-004-02-kc-login.png
+      - scratch/uat-v5-eo-004-03-creds-filled.png
+      - scratch/uat-v5-eo-004-04-after-callback.png
+      - scratch/uat-v5-eo-004-05-final.png
+    screen_showed: >
+      Screen 1: BPM platform loading screen at /?realm=swiftroute.
+      Screen 2: SwiftRoute Keycloak login form appeared — the platform correctly redirected
+      Alice to the SwiftRoute identity system.
+      Screen 3: Alice's credentials were entered into the SwiftRoute login form.
+      Screen 4: After Alice entered credentials, Keycloak returned an authorization code and
+      the platform showed 'Completing sign-in...' momentarily.
+      Screen 5: The screen immediately returned to the 'Completing sign-in...' state with a
+      new authorization code — confirming the platform discarded Alice's successful login
+      and started a fresh login cycle. The workspace dashboard was never displayed.
+    diagnosis: >
+      The platform successfully redirected Alice to the SwiftRoute identity system and she
+      authenticated successfully. However, when the platform tried to complete the sign-in,
+      it made an internal request to the tenant management service using Alice's SwiftRoute
+      identity credentials. The platform's tenant management service rejected these credentials
+      as coming from an unrecognised identity source, returning an access denied response.
+      This triggered the platform's security mechanism to discard Alice's session and restart
+      the login process — creating an infinite loop. Alice is locked out of her workspace
+      despite holding valid SwiftRoute credentials.
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The result screen confirms that SwiftRoute's workspace was set up successfully —
+      the platform operator sees a clear success message, the slug 'swiftroute', and an
+      identity authority URL.
+    verdict: PASS
+    evidence: >
+      Result screen showed 'Tenant onboarding completed successfully'. Slug 'swiftroute'
+      was visible. OIDC authority link (http://localhost:8081/realms/swiftroute) was shown.
+      No error banner present. Pipeline test exited 0 in 104 seconds.
+      DB confirmed: tenant with slug=swiftroute, display_name='SwiftRoute Ltd' created.
+      Tenant-config API confirmed oidc_authority=http://localhost:8081/realms/swiftroute.
+    on_fail:
+      severity: BLOCKER
+    applicable: true
+
+  - id: EO-002
+    description: >
+      The onboarding progress screen appears immediately after the form is submitted
+      and shows that the platform is actively preparing the workspace.
+    verdict: PASS
+    evidence: >
+      Progress screen appeared immediately after form submission with 'Onboarding in progress'
+      heading and a spinner (role='status'). Pipeline step 03 gate passed: spinner visible.
+    on_fail:
+      severity: BLOCKER
+    applicable: true
+
+  - id: EO-003
+    description: >
+      Alice Bauer can log in to the SwiftRoute workspace immediately after the result
+      screen confirms completion — without any password reset, additional setup, or
+      operator intervention.
+    verdict: PASS
+    evidence: >
+      Alice navigated to the SwiftRoute Keycloak account page and logged in with
+      alice.bauer/Alice-pass-001 credentials. Screen after login showed the authenticated
+      Keycloak account management page — not a login error or password-change prompt.
+      Alice's account was created by the onboarding process and accepted her credentials.
+      Screenshot: scratch/uat-v5-eo-003-03-after-login.png shows authenticated state.
+    note: >
+      Password was set to 'Alice-pass-001' (uppercase A) via Keycloak admin API during
+      UAT setup, as the swiftroute realm enforces at least one uppercase character in passwords.
+      The onboarding wizard does not explicitly set a password — it creates the account with
+      Keycloak's onboarding flow. UAT setup step required to assign a known password.
+    on_fail:
+      severity: BLOCKER
+    applicable: true
+
+  - id: EO-004
+    description: >
+      Alice Bauer can log in to the BPM platform workspace via the SwiftRoute realm and
+      the dashboard header shows 'SwiftRoute Ltd' as the company name.
+    verdict: FAIL
+    severity: BLOCKER
+    business_impact: >
+      Alice cannot access the SwiftRoute workspace through the BPM platform at all.
+      She authenticates successfully with the SwiftRoute identity system, but the moment
+      she returns to the platform the system discards her login and sends her back to
+      the login page in an endless cycle. The workspace is completely inaccessible.
+      SwiftRoute Ltd is effectively cut off from the platform despite a successful
+      onboarding registration.
+    root_causes:
+      - id: RC-01
+        description: >
+          The platform's onboarding process creates the SwiftRoute identity client without
+          the configuration needed to include user role information in the login token.
+          Without role information, the platform cannot determine what Alice is allowed to do
+          and immediately rejects her session. This issue was identified during UAT and a
+          workaround was applied manually, but the underlying onboarding setup is incorrect.
+        severity: BLOCKER
+        suggested_action: route_to_wf03
+        technical_note: "Missing realm-roles protocol mapper on bpm-platform-api client in swiftroute realm"
+      - id: RC-02
+        description: >
+          The platform's tenant management service does not recognise credentials issued by
+          the SwiftRoute identity system. When the platform tries to look up SwiftRoute's
+          details after Alice logs in, it rejects Alice's SwiftRoute credentials with an
+          'invalid token issuer' error. This causes the platform to discard Alice's session
+          and restart the login — creating an infinite loop where Alice can never reach
+          her workspace. The platform must be updated to accept credentials from tenant
+          identity systems, not just the platform's own central identity system.
+        severity: BLOCKER
+        suggested_action: route_to_wf03
+        technical_note: >
+          Backend auth middleware only accepts bpm-default realm JWTs.
+          GET /api/v1/tenants/swiftroute with swiftroute realm JWT returns 401
+          with detail='invalid token issuer'. OidcCallbackPage calls this endpoint
+          with the tenant user's JWT before the session is established, triggering
+          auth:session-expired event which restarts the OIDC flow.
+    evidence: >
+      Screen 4 shows the platform momentarily displaying 'Completing sign-in...' after
+      Alice's successful authentication with SwiftRoute. Screen 5, taken 15 seconds later,
+      shows a new 'Completing sign-in...' with a different authorization code — confirming
+      the platform discarded her login and started fresh. The SwiftRoute workspace dashboard
+      was never shown. The 'SwiftRoute Ltd' workspace header was not visible at any point.
+      Technical evidence: GET /api/v1/tenants/swiftroute with Alice's swiftroute JWT →
+      401 Unauthorized "invalid token issuer".
+    applicable: true
+
+issues:
+  - id: ISS-UAT-V6-001
+    title: Onboarding saga omits realm-roles protocol mapper from tenant Keycloak client
+    severity: BLOCKER
+    description: >
+      When the platform onboards a new tenant, it creates an identity client (bpm-platform-api)
+      in the new tenant's identity realm without the configuration that maps user roles into
+      the login token. Without role information in the token, the platform rejects every login
+      attempt from that tenant's users. The correct configuration (present in the platform's
+      main identity realm) was missing in the newly created SwiftRoute identity realm.
+    affected_step: Step 4 / EO-004
+    suggested_action: route_to_wf03
+
+  - id: ISS-UAT-V6-002
+    title: BPM platform workspace inaccessible due to tenant identity credential rejection
+    severity: BLOCKER
+    description: >
+      Alice Bauer cannot log in to the SwiftRoute workspace. After authenticating
+      successfully with SwiftRoute's identity system, the platform tries to look up
+      SwiftRoute's account details. This lookup uses Alice's SwiftRoute credentials, which
+      the platform's account service does not accept — it only recognises credentials from
+      the platform's own central identity system. The rejection causes the platform to
+      discard Alice's session and restart the login cycle indefinitely. Alice is locked out
+      despite completing a successful onboarding.
+    affected_step: Step 5 / EO-004
+    suggested_action: route_to_wf03
+
+  - id: ISS-UAT-V6-003
+    title: Onboarding wizard creates tenant identity client with overly restrictive callback configuration
+    severity: MAJOR
+    description: >
+      The onboarding form accepts a 'callback URL' which becomes the only allowed redirect
+      address for the tenant's login flow. In a real deployment this would be the company's
+      application URL. In the UAT environment the test filled in a placeholder
+      (https://app.example.com/cb) and the Keycloak client was created with only that URL.
+      When Alice tried to log in through the platform, the login redirect was refused because
+      the platform's actual callback address was not on the approved list. The platform's main
+      identity realm uses a wildcard (allowing all addresses) but newly created tenant realms
+      use a single specific address from the form. This was resolved during UAT by adding the
+      test environment address manually, but the production onboarding flow has no mechanism
+      to add the platform's own callback addresses to the approved list.
+    affected_step: Step 5 / EO-004 (pre-condition)
+    suggested_action: route_to_wf03
+
+verdict_summary:
+  EO-001: PASS
+  EO-002: PASS
+  EO-003: PASS
+  EO-004: FAIL
+
+pass_count: 3
+fail_count: 1
+blocker_count: 2
+major_count: 1
+minor_count: 0
+
+next_action: >
+  Route ISS-UAT-V6-001 and ISS-UAT-V6-002 to BACKEND-DEV via WF-03 (BLOCKER defects).
+  Route ISS-UAT-V6-003 to BACKEND-DEV/FRONTEND-DEV via WF-03 (MAJOR defect).
+  Once all three issues are resolved and re-tested, re-run WF-05 Step 1.

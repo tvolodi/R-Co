@@ -31,6 +31,21 @@ pub const Manager = struct {
         });
     }
 
+    /// Verify a bearer token against an explicit expected issuer.
+    /// Used by the multi-realm tenant fallback path (ISS-UAT-V6-002):
+    /// after confirming the issuer matches a registered tenant realm via the
+    /// database, this method re-verifies the token's signature with the
+    /// tenant-specific issuer URL so all other JWT claims are still validated.
+    pub fn verifyBearerTokenWithIssuer(self: Manager, allocator: std.mem.Allocator, raw_token: []const u8, expected_issuer: []const u8) errors.ProviderError!types.VerifiedPrincipal {
+        const provider = self.provider orelse return error.NotImplemented;
+        return provider.verifyToken(allocator, .{
+            .raw_token = raw_token,
+            .expected_audience = self.expected_audience,
+            .expected_issuer = expected_issuer,
+            .now_unix_seconds = 0,
+        });
+    }
+
     pub fn lookupUser(self: Manager, allocator: std.mem.Allocator, input: types.LookupUserInput) errors.ProviderError!?types.ProviderUser {
         const provider = self.provider orelse return error.NotImplemented;
         return provider.lookupUser(allocator, input);
