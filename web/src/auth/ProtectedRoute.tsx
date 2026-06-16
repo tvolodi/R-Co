@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { useAuth } from './AuthContext'
 import { getOidcManager } from './OidcManager'
+import { buildRedirectArgs } from './oidcRedirectArgs'
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
@@ -13,7 +14,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     if (!isLoading && !isAuthenticated && !redirecting) {
       setRedirecting(true)
       void getOidcManager().then(m => {
-        void m.signinRedirect()
+        void m.signinRedirect(buildRedirectArgs())
       })
     }
   }, [isLoading, isAuthenticated, redirecting])

@@ -7027,6 +7027,94 @@
       "created_at": "2026-06-16T05:14:33Z",
       "status": "COMPLETED",
       "stage": "WF-03 Final git-merge"
+    },
+    {
+      "handoff_id": "0de1f2a3-b4c5-6789-0de1-f2a3b4c56789",
+      "file": "handoffs/WF05-swiftroute-onboarding-gui-v4-20260616/step-01-uat-runner.json",
+      "run_id": "WF05-swiftroute-onboarding-gui-v4-20260616",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "UAT-RUNNER",
+      "created_at": "2026-06-16T05:17:29Z",
+      "status": "COMPLETED",
+      "stage": "WF-05 UAT v4 all fixes"
+    },
+    {
+      "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
+      "file": "handoffs/WF03-oidc-callback-realm-20260616/step-00-01-issue-fixer.json",
+      "run_id": "WF03-oidc-callback-realm-20260616",
+      "step": "00-01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-06-16T05:39:27Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 ISS-0073 callback realm"
+    },
+    {
+      "handoff_id": "2fa3b4c5-d6e7-8901-2fa3-b4c5d6e78901",
+      "file": "handoffs/WF03-oidc-callback-realm-20260616/step-02-code-designer.json",
+      "run_id": "WF03-oidc-callback-realm-20260616",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-06-16T05:49:51Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Design ISS-0073"
+    },
+    {
+      "handoff_id": "3ab4c5d6-e7f8-9012-3ab4-c5d6e7f89012",
+      "file": "handoffs/WF03-oidc-callback-realm-20260616/step-02b-code-design-validator.json",
+      "run_id": "WF03-oidc-callback-realm-20260616",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-06-16T05:54:11Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Design Gate ISS-0073"
+    },
+    {
+      "handoff_id": "4bc5d6e7-f8a9-0123-4bc5-d6e7f8a90123",
+      "file": "handoffs/WF03-oidc-callback-realm-20260616/step-03-frontend-dev.json",
+      "run_id": "WF03-oidc-callback-realm-20260616",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "FRONTEND-DEV",
+      "created_at": "2026-06-16T05:55:59Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Implement ISS-0073"
+    },
+    {
+      "handoff_id": "5cd6e7f8-a9b0-1234-5cd6-e7f8a9b01234",
+      "file": "handoffs/WF03-oidc-callback-realm-20260616/step-04-test-designer.json",
+      "run_id": "WF03-oidc-callback-realm-20260616",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-06-16T05:59:17Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Test Design ISS-0073"
+    },
+    {
+      "handoff_id": "6de7f8a9-b0c1-2345-6de7-f8a9b0c12345",
+      "file": "handoffs/WF03-oidc-callback-realm-20260616/step-04b-test-design-validator.json",
+      "run_id": "WF03-oidc-callback-realm-20260616",
+      "step": "04b",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGN-VALIDATOR",
+      "created_at": "2026-06-16T06:01:53Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Test Gate ISS-0073"
+    },
+    {
+      "handoff_id": "7ef8a9b0-c1d2-3456-7ef8-a9b0c1d23456",
+      "file": "handoffs/WF03-oidc-callback-realm-20260616/step-05-final-test-runner.json",
+      "run_id": "WF03-oidc-callback-realm-20260616",
+      "step": "05-final",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-06-16T06:03:15Z",
+      "status": "PENDING",
+      "stage": "WF-03 Test+Merge ISS-0073"
     }
   ]
 }

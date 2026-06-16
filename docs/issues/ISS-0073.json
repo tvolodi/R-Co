@@ -1,0 +1,26 @@
+{
+  "id": "ISS-0073",
+  "title": "OIDC callback uses bpm-default realm authority instead of tenant realm — signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "logic error — singleton cache bypasses realm resolution at callback time",
+  "run_id": "WF03-oidc-callback-realm-20260616",
+  "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
+  "affected_areas": [
+    "web/src/pages/OidcCallbackPage.tsx",
+    "web/src/auth/OidcManager.ts",
+    "web/src/auth/tenantConfig.ts"
+  ],
+  "created_at": "2026-06-16T05:47:49Z",
+  "resolved_at": null,
+  "diagnosis": {
+    "symptom": "After Alice logs in via the SwiftRoute Keycloak realm, Keycloak redirects to /auth/callback. A redirect loop starts. The app keeps cycling back to / and re-initiating Keycloak login.",
+    "root_cause_file": "web/src/pages/OidcCallbackPage.tsx",
+    "root_cause_line": 35,
+    "root_cause_function": "getOidcManager() — OidcManager.ts",
+    "root_cause_detail": "OidcCallbackPage calls getOidcManager() (line 35), which returns a cached _resolvedManager if already set, or builds one via fetchTenantConfig(window.location.hostname). At /auth/callback the URL contains no ?realm= parameter. fetchTenantConfig calls resolveRealmFromUrl() which reads sessionStorage['bpm_realm_slug']. If this key is absent (sessionStorage was not populated during the login-initiation flow, or was cleared), resolveRealmFromUrl returns null and fetchTenantConfig falls back to ?host=hostname, which returns the bpm-default realm. getOidcManager() then creates a bpm-default UserManager and caches it. signinRedirectCallback() called on that UserManager attempts to exchange the swiftroute-issued auth code with the bpm-default token endpoint, which rejects it. The catch block calls window.location.replace('/'), reloading the app, which re-initiates login — with the same cached bpm-default manager — producing an infinite redirect loop.",
+    "secondary_factor": "fetchTenantConfig() caches its result in module-level _cachedConfig. If the first call at callback time fetches bpm-default (due to missing sessionStorage entry), all subsequent calls in the same page load also return bpm-default. The singleton cache makes the error self-perpetuating within the session.",
+    "tertiary_factor": "OidcManager.ts exports a synchronous oidcManager singleton (line 36) built from VITE_OIDC_AUTHORITY defaults (bpm-default). If any code path consumes this sync export at module-load time and triggers getOidcManager() before sessionStorage is checked, _resolvedManager could be initialized to bpm-default before OidcCallbackPage's useEffect fires."
+  },
+  "fix_approach": "The redirect_uri supplied to signinRedirect() must include the realm slug as a query parameter (e.g. /auth/callback?realm=swiftroute). This ensures resolveRealmFromUrl() at callback time reads ?realm= from the actual URL, independently of sessionStorage state. OidcCallbackPage must also bypass the _resolvedManager singleton and create a fresh UserManager from the result of fetchTenantConfig() for the callback exchange, to avoid stale bpm-default cache poisoning the code exchange."
+}
