@@ -1,0 +1,57 @@
+{
+  "handoff_id": "0de1f2a3-b4c5-6789-0de1-f2a3b4c56789",
+  "run_id": "WF05-swiftroute-onboarding-gui-v4-20260616",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "UAT-RUNNER",
+  "created_at": "2026-06-16T05:17:29Z",
+  "started_at": "2026-06-16T05:17:29Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-05 Step 1 \u2014 UAT v4 (all fixes applied including ISS-0072)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f3a4b5c6-d7e8-9012-f3a4-b5c6d7e89012"
+    ],
+    "artifacts_in": [
+      "tests/simulation/scenarios/swiftroute-tenant-onboarding-happy.yaml",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "WF-05 Step 1 (v4): Execute SwiftRoute onboarding UAT with all fixes applied including ISS-0072 (?realm= override + workspace link).\n\nPre-flight:\n1. GET http://127.0.0.1:8080/health/ready \u2192 200\n2. GET http://localhost:8081/health/ready \u2192 200\n3. psycopg2 bpm_dev (port 5432): SELECT count(*) FROM public.tenant WHERE slug='swiftroute' \u2192 must be 0\n4. Verify GET http://127.0.0.1:8080/api/tenant-config?realm=swiftroute returns oidc_authority containing 'swiftroute' \u2014 confirms ISS-0072 Fix 1 is live\nSTOP BLOCKER if any fails.\n\nProcess execution (Playwright with slug injection):\n  cd web\n  $env:BPM_TEST_URL='http://127.0.0.1:8080'\n  $env:BPM_IDP_BASE_URL='http://localhost:8081'\n  $env:ONBOARDING_PIPELINE_SLUG='swiftroute'\n  $env:ONBOARDING_PIPELINE_ADMIN_USERNAME='alice.bauer'\n  npx playwright test pipelines/onboarding-wizard.pipeline.e2e.spec.ts --reporter=json *> ../scratch/playwright-onboarding-v4.json\n\nEO-001: result screen shows slug='swiftroute' and success message (ISS-0071 Fix A).\nEO-002: progress screen with spinner.\n\nCheck for 'Open swiftroute workspace' link on result screen (ISS-0072 Fix 3) \u2014 screenshot and report whether visible.\n\nPost-pipeline setup (allowed):\n- Reset Alice's password via Keycloak admin API\n\nEO-003 via Playwright:\n- Navigate to http://localhost:8081/realms/swiftroute/account\n- Login as alice.bauer/alice-pass-001\n- Screenshot \u2192 EO-003 evidence\n\nEO-004 via Playwright \u2014 THIS IS THE KEY TEST:\n- Navigate to http://127.0.0.1:8080/?realm=swiftroute  \u2190 ISS-0072 Fix 2\n- The frontend should read ?realm=swiftroute, call GET /api/tenant-config?realm=swiftroute, get swiftroute OIDC authority, and redirect Alice to the swiftroute Keycloak login (NOT bpm-default)\n- Log in as alice.bauer/alice-pass-001\n- After login: take screenshot of the dashboard\n- Assert: data-testid='tenant-display-name' visible showing 'SwiftRoute Ltd' (TD-UI-02)\n- Verdict: 'Screen shows SwiftRoute Ltd in the workspace header'\n\nWrite report: tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v4.yaml\nBusiness language only. Primary evidence: screenshots.\n\nPASS criteria: all 4 EOs have screenshot evidence showing expected screen state.",
+    "acceptance_criteria": [
+      "Playwright pipeline test exits 0",
+      "EO-001: result screen shows slug=swiftroute and success",
+      "EO-002: progress screen with spinner",
+      "EO-003: Alice logged into swiftroute Keycloak realm",
+      "EO-004: dashboard shows SwiftRoute Ltd in TenantHeader"
+    ],
+    "functions_to_call": [
+      "fn:run-uat-scenarios"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "WF-05 v4 UAT: EO-001 PASS (onboarding wizard complete, slug=swiftroute on result screen). EO-002 PASS (progress spinner visible). EO-003 PASS (Alice logged into swiftroute Keycloak realm directly). EO-004 FAIL BLOCKER (ISS-0072 Fix 2 confirmed working \u2014 correct realm login shown \u2014 but OIDC auth callback loop prevents Alice from reaching the BPM dashboard after login).",
+    "artifacts_out": [
+      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v4.yaml",
+      "web/scratch/pipeline-onboarding-wizard-02-form-filled.png",
+      "web/scratch/uat-v4-eo-003-03-after-login.png",
+      "web/scratch/uat-v4-eo-004-01-initial-redirect.png",
+      "web/scratch/uat-v4-eo-004-02-swiftroute-login.png"
+    ],
+    "issues": [
+      {
+        "id": "ISS-UAT-EO004-LOOP",
+        "severity": "BLOCKER",
+        "description": "Alice cannot reach the SwiftRoute workspace after login \u2014 OIDC callback loop. After Keycloak issues the authorisation code for the swiftroute realm, the workspace application enters a redirect loop and never delivers the dashboard. ISS-0072 Fix 1 (tenant-config API) and Fix 2 (realm routing) are confirmed live. The token exchange / auth callback handling is not using the swiftroute OIDC authority \u2014 root cause to be diagnosed in WF-03."
+      }
+    ],
+    "next_action": "ORCH: spawn WF-03 for ISS-UAT-EO004-LOOP (BLOCKER). Then re-run WF-05 Step 1 after fix."
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-16T05:38:13Z"
+}

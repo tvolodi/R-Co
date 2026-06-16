@@ -6,6 +6,8 @@ import { getOidcManager } from '@/auth/OidcManager'
 import { useAuth } from '@/auth/AuthContext'
 import { setToken } from '@/api/client'
 import { decodeTokenPayload, resolveDisplayName } from '@/auth/tokenUtils'
+import { resolveRealmFromUrl } from '@/auth/tenantConfig'
+import { tenantsApi } from '@/api/tenants'
 
 /**
  * Module-level guard: prevent double-invocation of signinRedirectCallback().
@@ -40,13 +42,23 @@ export default function OidcCallbackPage() {
           return
         }
         setToken(token)
+        const realmSlug = resolveRealmFromUrl() ?? sessionStorage.getItem('bpm_realm_slug') ?? null
+        let tenantDisplayName: string | null = null
+        if (realmSlug) {
+          try {
+            const tenantData = await tenantsApi.getBySlug(realmSlug)
+            tenantDisplayName = tenantData?.display_name ?? null
+          } catch {
+            // non-fatal — workspace header will show slug as fallback
+          }
+        }
         setSession({
           token,
           display_name: resolveDisplayName(payload),
           roles: payload.roles,
           loginSource: 'oidc',
-          tenant_slug: null,
-          tenant_display_name: null,
+          tenant_slug: realmSlug,
+          tenant_display_name: tenantDisplayName,
         })
         navigate('/', { replace: true })
       } catch {
