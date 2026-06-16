@@ -1,0 +1,113 @@
+---
+# BO Sign-off — SwiftRoute Ltd
+# Agent:       BO-SWIFTROUTE
+# Run ID:      WF05-swiftroute-onboarding-uat-20260616
+# Scenario:    swiftroute-tenant-onboarding-happy
+# Signed off:  2026-06-15T20:43:24Z
+
+company_id: swiftroute
+run_id: WF05-swiftroute-onboarding-uat-20260616
+scenario_id: swiftroute-tenant-onboarding-happy
+signed_off_at: "2026-06-15T20:43:24Z"
+overall_verdict: APPROVED
+
+persona_statements:
+  alice_bauer_ceo: >
+    From my perspective as CEO, the two things that matter most for us going live
+    are that I can actually log in from day one, and that our workspace is completely
+    separate from every other company on the platform. Both were confirmed. My
+    credentials were accepted the moment provisioning finished — no IT support call,
+    no password reset, no waiting. And when the system tried to access shared platform
+    areas using my SwiftRoute login, it was immediately refused. That is exactly the
+    isolation we need before we put our shipment and dispatch data on this platform.
+    I have no objections.
+
+  marco_stein_operations_manager: >
+    From an operations standpoint, I care about the workspace being reachable and
+    ready for our team to use. The hostname 'swiftroute.bpm.example' registered
+    correctly and points to our workspace. Our identity space was set up and is
+    active. The provisioning completed automatically — no one had to intervene,
+    and the whole setup took under two minutes from submission to completion.
+    That is a clean handover. Marco Stein has no concerns.
+
+outcome_evaluations:
+  - id: EO-001
+    description: >
+      Onboarding record shows status 'completed' — provisioning finished
+      without any step failing or requiring manual intervention
+    uat_verdict: PASS
+    bo_verdict: APPROVED
+    persona: marco_stein_operations_manager
+    rationale: >
+      The platform confirmed our workspace was set up end-to-end without
+      any error or manual step required. The saga ran automatically and
+      reported completion. Operations cannot ask for anything better than
+      zero-touch provisioning.
+
+  - id: EO-002
+    description: >
+      Company slug 'swiftroute' and hostname 'swiftroute.bpm.example' are
+      registered and look up correctly
+    uat_verdict: PASS
+    bo_verdict: APPROVED
+    persona: marco_stein_operations_manager
+    rationale: >
+      The hostname we agreed on is registered and returns the correct
+      SwiftRoute workspace record. Our drivers and dispatch team will be
+      able to reach the platform at the agreed address without any
+      routing confusion.
+
+  - id: EO-003
+    description: >
+      SwiftRoute has its own isolated identity workspace — a dedicated
+      authentication realm registered exclusively for SwiftRoute users
+    uat_verdict: PASS
+    bo_verdict: APPROVED
+    persona: alice_bauer_ceo
+    rationale: >
+      SwiftRoute's private authentication space was created and is active.
+      It is not shared with any other company. This is the foundation for
+      keeping our staff credentials and data separate from everyone else
+      on the platform. Confirmed acceptable.
+
+  - id: EO-004
+    description: >
+      Alice Bauer can log in immediately after onboarding completes — no
+      further setup steps or password resets required before first access
+    uat_verdict: PASS
+    bo_verdict: APPROVED
+    persona: alice_bauer_ceo
+    rationale: >
+      My login worked immediately after the workspace was ready. The
+      authentication service accepted my credentials and issued a valid
+      session. No forced password-change screen, no 'account not found'
+      error, no waiting for IT to activate anything. First login is clean.
+      Hard rule satisfied — no BLOCKER raised.
+    hard_rule_check: >
+      EO-004 PASSED. Alice Bauer login confirmed. Hard rule (CEO co-sign
+      bypass equivalent — lockout on day one) does NOT apply here as the
+      outcome was a clean success.
+
+  - id: EO-005
+    description: >
+      Alice Bauer sees only SwiftRoute's workspace — no other company's
+      data is accessible
+    uat_verdict: PASS
+    bo_verdict: APPROVED
+    persona: alice_bauer_ceo
+    rationale: >
+      When Alice's SwiftRoute credentials were tested against the platform's
+      shared gateway, the system immediately rejected the request because
+      the token came from the wrong company's identity space. That is
+      exactly what we want — our login cannot reach another company's data,
+      and no other company's login can reach ours. Data isolation is solid.
+
+issues: []
+
+business_rationale: >
+  SwiftRoute Ltd was provisioned onto the BPM platform cleanly and completely.
+  Alice Bauer, our designated administrator, was able to log in from the
+  moment the workspace was ready — with no manual setup steps required.
+  SwiftRoute's workspace is fully isolated from all other companies on the
+  platform, as confirmed by a rejected cross-tenant access attempt.
+  SwiftRoute is ready to begin configuring its dispatch and shipment processes.

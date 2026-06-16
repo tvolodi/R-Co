@@ -198,6 +198,31 @@ Protocol:
 
 Forbidden: asking the user to start services, pausing between INFRA_BLOCK and ADHOC dispatch, treating service downtime as a reason to mark the run FAILED.
 
+## Business process execution — HARD RULE
+
+**Any request to run, test, demonstrate, or validate a business process MUST go through UAT-RUNNER via WF-05. Direct API calls, raw curl, or PowerShell scripts are FORBIDDEN as a substitute.**
+
+This applies to:
+- "Run the [company] onboarding process"
+- "Test the shipment approval flow"
+- "Execute [process] for [company]"
+- "Demonstrate [scenario]"
+- Any phrasing that implies running a real business scenario end-to-end
+
+**Correct path (always):**
+1. Verify a scenario YAML exists in `tests/simulation/scenarios/` for the requested process + company. If not, launch WF-06 first to author the scenario.
+2. Verify a matching Playwright pipeline test exists in `web/tests/e2e/pipelines/<scenario-id>.pipeline.e2e.spec.ts`. If not, launch WF-02 first to build it.
+3. Launch WF-05 with UAT-RUNNER executing the scenario through the GUI (Playwright). UAT-RUNNER uses NO direct API calls for process steps.
+4. Route BO sign-off to the appropriate BO agent (BO-SWIFTROUTE / BO-VORTEX / BO-MERIDIAN).
+5. Do NOT report success until UAT-RUNNER, the BO agent, and PRODUCT-OWNER have all returned PASS/APPROVED.
+
+**Additional rule — GUI-only enforcement:**
+When UAT-RUNNER reports a BLOCKER with `suggested_action: route_to_frontend_dev` and message containing "missing UI" or "no screen exists": ORCH MUST route to FRONTEND-DEV via WF-03 to build the missing screen BEFORE re-dispatching UAT-RUNNER. Do NOT instruct UAT-RUNNER to use API calls as a workaround.
+
+**Forbidden:** Running a business process by calling the API directly, writing curl commands, or using any shortcut that bypasses UAT-RUNNER. A process that was not run through UAT-RUNNER has no audit trail, no BO sign-off, and no formal result — it does not count as executed for any operational or compliance purpose.
+
+**Only exception:** Preliminary infrastructure verification (health checks, DB connectivity) before WF-05 launches — these are pre-flight checks, not process execution.
+
 ## Execution style
 
 **Never explain before acting.** Do not write sentences like "The orchestrator instructions are clear: Zero Manual Work means I invoke subagents directly..." or any other preamble before executing. Just invoke subagents immediately.

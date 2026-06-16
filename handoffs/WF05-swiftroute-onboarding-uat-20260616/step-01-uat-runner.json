@@ -1,0 +1,51 @@
+{
+  "handoff_id": "d4e5f6a7-b8c9-0314-c5d6-e7f8a9b0c1d2",
+  "run_id": "WF05-swiftroute-onboarding-uat-20260616",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "UAT-RUNNER",
+  "created_at": "2026-06-15T20:28:16Z",
+  "started_at": "2026-06-15T20:28:16Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-05 Step 1 \u2014 UAT execution",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "a1b2c3d4-e5f6-7081-9293-a4b5c6d7e8f9"
+    ],
+    "artifacts_in": [
+      "tests/simulation/scenarios/swiftroute-tenant-onboarding-happy.yaml",
+      "tests/simulation/companies/swiftroute/company.yaml",
+      "tests/simulation/companies/swiftroute/org_structure.yaml",
+      "docs/agents/UAT_RUNNER.md"
+    ]
+  },
+  "task": {
+    "description": "WF-05 Step 1: Execute the SwiftRoute tenant onboarding UAT scenario against the real backend.\n\nScenario: tests/simulation/scenarios/swiftroute-tenant-onboarding-happy.yaml\nBackend: http://127.0.0.1:8080 (bpm_dev DB, localhost:5432)\nKeycloak: http://localhost:8081\n\nPre-flight checks (mandatory before execution):\n1. GET http://127.0.0.1:8080/health/ready \u2192 must be 200\n2. GET http://localhost:8081/health/ready \u2192 must be 200\n3. SELECT 1 from bpm_dev DB\n4. SELECT count(*) FROM public.tenant WHERE slug='swiftroute' \u2192 must be 0 (confirm cleanup ran)\nIf any pre-flight fails: STOP, return FAIL BLOCKER.\n\nExecution \u2014 the onboarding process is 'via: api' (no GUI pipeline test exists for onboarding yet, per WF-05 protocol use API calls):\n\nStep 1: Submit onboarding via POST /api/v1/onboarding:\n  - Get platform admin token from http://localhost:8081/realms/bpm-default/protocol/openid-connect/token (admin-user/admin-pass, client_id=bpm-platform-api)\n  - POST /api/v1/onboarding with:\n    slug: swiftroute, display_name: SwiftRoute Ltd, admin_email: alice.bauer@swiftroute.example\n    admin_username: alice.bauer, admin_display_name: Alice Bauer\n    hostname: swiftroute.bpm.example, tenant_type: production\n    Idempotency-Key: uat-wf05-swiftroute-onb-20260616\n  - Must return 201 with onboarding_id\n\nStep 2: Poll GET /api/v1/onboarding/{onboarding_id} every 5s until state = 'completed' or 'failed' (timeout 180s)\n  - Collect the final result as evidence\n\nStep 3: Verify expected outcomes (EO-001 to EO-005) from the scenario:\n  EO-001 api_state_check: state = 'completed' AND result.slug = 'swiftroute'\n  EO-002 api_existence_check: GET /api/v1/onboarding?hostname=swiftroute.bpm.example returns the record\n  EO-003 api_existence_check: Keycloak GET /admin/realms/swiftroute returns 200 with enabled=true\n  EO-004 gui_screen_check: Simulate Alice login \u2014 GET token from http://localhost:8081/realms/swiftroute/protocol/openid-connect/token using alice.bauer credentials; token must be returned (password needs to be set \u2014 use the Keycloak admin API to reset Alice's password to 'alice-pass-001' before testing)\n  EO-005 gui_screen_check: Alice's token from swiftroute realm must NOT be accepted on bpm-default realm (verify tenant isolation)\n\nFor EO-004: before testing, reset Alice's password via Keycloak admin API:\n  PUT /admin/realms/swiftroute/users/{alice_user_id}/reset-password\n  body: {type: password, value: alice-pass-001, temporary: false}\n\nStep 4: Write UAT report to tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding.yaml\n  - Business language only \u2014 no stack traces, no selector strings\n  - Include evidence (onboarding_id, tenant_id, realm confirmed)\n  - Verdict per outcome + overall verdict\n\nPASS criteria: state='completed', EO-001 to EO-005 all PASS.\n\nNote: EO-004 password reset is a necessary setup step for the UAT, not a deviation.",
+    "acceptance_criteria": [
+      "Onboarding state = completed",
+      "EO-001: state and slug verified",
+      "EO-002: hostname registered",
+      "EO-003: Keycloak swiftroute realm exists and enabled",
+      "EO-004: Alice can authenticate in swiftroute realm",
+      "EO-005: Tenant isolation confirmed",
+      "UAT report written to tests/uat-reports/"
+    ],
+    "functions_to_call": [
+      "fn:run-uat-scenarios"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "SwiftRoute Ltd onboarding UAT passed all 5 expected outcomes. Tenant provisioning completed automatically (90s), Keycloak realm created and enabled, Alice Bauer authenticated successfully in the SwiftRoute realm, and tenant isolation confirmed (swiftroute token rejected on bpm-default endpoint).",
+    "artifacts_out": [
+      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BO-SWIFTROUTE, BO-VORTEX, BO-MERIDIAN (parallel, WF-05 Steps 2a)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-15T20:40:58Z"
+}

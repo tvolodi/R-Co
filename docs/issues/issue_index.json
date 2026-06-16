@@ -1,8 +1,23 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-06-15T15:05:40Z",
-  "next_issue_id": 71,
+  "last_updated": "2026-06-15T21:53:31Z",
+  "next_issue_id": 72,
   "issues": [
+    {
+      "id": "ISS-0071",
+      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "test harness error + backend state inconsistency",
+      "run_id": "WF03-uat-onboarding-realm-sync-20260616",
+      "handoff_id": "d3e4f5a6-b7c8-9012-d3e4-f5a6b7c89012",
+      "affected_areas": [
+        "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+        "src/identity/onboarding.zig"
+      ],
+      "created_at": "2026-06-15T21:53:31Z",
+      "resolved_at": null
+    },
     {
       "id": "ISS-0070",
       "title": "Onboarding saga background thread never transitions onboarding_registry row from 'pending' to terminal state (completed/failed)",

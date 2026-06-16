@@ -125,6 +125,59 @@ The frontend has no business logic of its own. All data mutations go through the
 
 ---
 
+## Stage F1.7 — Tenant Dashboard & Workspace Identity
+
+**Goal:** Tenant administrators see a branded, scoped workspace immediately after login via their company's Keycloak realm. Every authenticated page confirms which company workspace the user is in, and the platform routes them to the correct tenant context automatically without requiring a manual selection step.
+
+<!-- Origin: UAT run WF05-swiftroute-onboarding-gui-20260616, ISSUE-EO004 — tenant admin Alice Bauer sees a generic BPM UI with no company context after completing tenant onboarding. -->
+
+| ID | Requirement | Description | Priority |
+|---|---|---|---|
+| **TD-UI-01** | **Tenant-scoped landing page** | After login via a tenant Keycloak realm, the authenticated user SHALL be redirected to a dashboard page that prominently displays the tenant's `display_name` (e.g. "SwiftRoute Ltd") as the page heading. All data tiles on the dashboard (recent process definitions, active instances, pending tasks) SHALL be scoped to the authenticated user's tenant. No data from other tenants SHALL be visible on this page. | **MUST** |
+| **TD-UI-02** | **Tenant identity indicator** | Every authenticated page in the application SHALL display the tenant's `display_name` in the global navigation bar or header area, alongside the user's own `display_name` (SH-04). The tenant name SHALL be hidden on the login screen (unauthenticated state) and SHALL be cleared from the header immediately upon logout. | **MUST** |
+| **TD-UI-03** | **Tenant realm routing** | The frontend SHOULD detect the Keycloak realm from the authenticated access token's `iss` (issuer) claim after OIDC login and route the user to the correct tenant context automatically. No manual tenant selection step or "choose your organisation" prompt SHOULD be presented to users who authenticate via a known tenant realm. | **SHOULD** |
+
+### TD-UI-01 — Tenant-scoped landing page `[MUST]`
+
+> After completing OIDC login via a tenant realm (e.g. `bpm-swiftroute`), the frontend MUST redirect the authenticated user to a tenant dashboard page. This page MUST display the tenant's `display_name` as a visible heading or hero element (readable in a Playwright screenshot without additional interaction). All data presented on this page — recent process definitions, active instances, pending tasks — MUST be fetched using the authenticated user's token, which is scoped to their tenant, so only that tenant's data is returned. The page MUST NOT render any cross-tenant data, admin-only data, or platform-level global views unless the user also holds PLATFORM_ADMIN role.
+
+**Acceptance Criteria:**
+- A Playwright screenshot taken immediately after OIDC login via a tenant realm shows the tenant `display_name` (e.g. "SwiftRoute Ltd") as a heading on the landing page.
+- The tenant dashboard is the first route rendered after the OIDC callback redirect completes (OIDC-F-02).
+- Data tiles on the dashboard return only tenant-scoped results (verified by the absence of data from a second, independently created tenant).
+- The page loads and displays the tenant name within 2.5 s (per FNFR-01).
+
+**See:** OIDC-F-02 (OIDC callback redirect), OIDC-F-06 (dynamic realm detection), TD-UI-02 (identity indicator on every page), TD-UI-03 (automatic routing to tenant context)
+
+---
+
+### TD-UI-02 — Tenant identity indicator `[MUST]`
+
+> The authenticated application shell MUST display the tenant's `display_name` in the global navigation bar or header, visible on every route that requires authentication. The tenant name MUST appear alongside the user's own `display_name` (per SH-04). It MUST NOT be shown on the login screen, the `/auth/callback` route, or any other unauthenticated route. On logout (SH-04), the tenant name MUST be cleared from the header and MUST NOT persist after the session is destroyed.
+
+**Acceptance Criteria:**
+- A Playwright screenshot taken from any authenticated route (tenant dashboard, instance board, task inbox, definitions list) shows the tenant `display_name` in the nav/header region.
+- A Playwright screenshot taken on the login page does NOT show any tenant name.
+- After logout, the login screen screenshot does NOT show the tenant name.
+- The tenant name is rendered as accessible text (readable by screen reader, WCAG 2.1 AA per FNFR-03), not embedded only in an image or icon.
+
+**See:** SH-03 (role-aware navigation shell), SH-04 (active user indicator), TD-UI-01 (tenant-scoped landing page), OIDC-F-04 (OIDC logout clears session)
+
+---
+
+### TD-UI-03 — Tenant realm routing `[SHOULD]`
+
+> After a successful OIDC login, the frontend SHOULD parse the `iss` claim of the access token to determine which Keycloak realm the session originated from. This realm maps to a specific tenant (per OIDC-12 and OIDC-F-05). The frontend SHOULD use this mapping to initialise the tenant context (populate the tenant `display_name` per TD-UI-02 and route to the correct tenant dashboard per TD-UI-01) without requiring the user to perform any additional selection step. If realm-to-tenant mapping cannot be resolved (e.g. unknown realm), the user SHOULD be shown an informative error message and redirected to the login screen — not left on a generic or broken page.
+
+**Acceptance Criteria:**
+- After OIDC login via `http://localhost:8081/realms/bpm-swiftroute`, a Playwright screenshot immediately after the callback shows the SwiftRoute tenant dashboard, with no "select tenant" or "choose organisation" prompt visible at any point.
+- If the token `iss` claim refers to an unrecognised realm, the user is redirected to the login page with a clear error message (not a blank screen or unhandled exception).
+- A Playwright screenshot taken on the first authenticated route after OIDC callback completion shows the correct tenant display_name — no untitled or generic placeholder text is present.
+
+**See:** OIDC-12 (realm-tenant binding), OIDC-F-05 (tenant-config discovery endpoint), OIDC-F-06 (dynamic OIDC config from hostname), TD-UI-01 (tenant-scoped landing page), TD-UI-02 (tenant identity indicator)
+
+---
+
 ## Stage F2 — Process Definition Management
 
 **Goal:** PROCESS_DESIGNER and PLATFORM_ADMIN users can create, version, and manage process definitions through both a list view and a visual canvas editor.
@@ -260,6 +313,8 @@ The frontend has no business logic of its own. All data mutations go through the
 ```
 Sidebar navigation (role-gated items hidden by role)
 │
+├── Tenant Dashboard                    [all authenticated roles — first page after login]
+│
 ├── Task Inbox                          [TASK_WORKER, PROCESS_OPERATOR, PLATFORM_ADMIN]
 │
 ├── Instances                           [PROCESS_OPERATOR, PLATFORM_ADMIN]
@@ -290,12 +345,13 @@ Sidebar navigation (role-gated items hidden by role)
 | Stage | MUST | SHOULD | COULD | Total |
 |---|---|---|---|---|
 | F1 — Shell & Auth | 5 | 1 | 1 | **7** |
+| F1.7 — Tenant Dashboard | 2 | 1 | 0 | **3** |
 | F2 — Definition Management | 9 (list) + 7 (canvas) = **16** | 5 | 2 | **23** |
 | F3 — Instance Monitoring | 7 | 3 | 0 | **10** |
 | F4 — Task Inbox | 7 | 3 | 0 | **10** |
 | F5 — Admin & Identity | 9 | 2 | 0 | **11** |
 | F6 — DLQ & Alerting | 7 | 3 | 0 | **10** |
-| **Total** | **51** | **17** | **3** | **71** |
+| **Total** | **53** | **18** | **3** | **74** |
 
 ---
 
@@ -304,6 +360,7 @@ Sidebar navigation (role-gated items hidden by role)
 | Frontend area | Primary backend endpoints consumed |
 |---|---|
 | Login / session | `GET /health/ready` (token validation probe) |
+| Tenant dashboard | `GET /api/tenant-config?host={hostname}` (display_name + realm), `GET /instances?limit=5`, `GET /tasks?limit=5`, `GET /definitions?limit=5` |
 | Definition list | `GET /definitions`, `DELETE /definitions/:id`, `POST /definitions/:id/activate` |
 | Definition canvas | `POST /definitions`, `GET /definitions/:id`, `PUT /definitions/:id` |
 | Instance board | `GET /instances`, `POST /instances` |

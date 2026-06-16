@@ -29,6 +29,9 @@ pub const IdentityProvider = struct {
     updateClientFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.UpdateClientInput) errors.ProviderError!types.UpdateClientResult,
     updateRealmFrontendUrlFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.UpdateRealmFrontendUrlInput) errors.ProviderError!void,
 
+    // --- ISS-0071: Realm-existence guard ---
+    checkRealmExistsFn: *const fn (ctx: *anyopaque, allocator: std.mem.Allocator, input: types.CheckRealmExistsInput) errors.ProviderError!bool,
+
     pub fn verifyToken(self: IdentityProvider, allocator: std.mem.Allocator, input: types.VerifyTokenInput) errors.ProviderError!types.VerifiedPrincipal {
         return self.verifyTokenFn(self.ctx, allocator, input);
     }
@@ -86,5 +89,10 @@ pub const IdentityProvider = struct {
 
     pub fn updateRealmFrontendUrl(self: IdentityProvider, allocator: std.mem.Allocator, input: types.UpdateRealmFrontendUrlInput) errors.ProviderError!void {
         return self.updateRealmFrontendUrlFn(self.ctx, allocator, input);
+    }
+
+    // --- ISS-0071: Realm-existence guard ---
+    pub fn checkRealmExists(self: IdentityProvider, allocator: std.mem.Allocator, input: types.CheckRealmExistsInput) errors.ProviderError!bool {
+        return self.checkRealmExistsFn(self.ctx, allocator, input);
     }
 };

@@ -1,0 +1,182 @@
+run_id: WF03-uat-onboarding-realm-sync-20260616
+workflow_id: WF-03
+step: "0.5+1"
+agent: ISSUE-FIXER
+handoff_id: d3e4f5a6-b7c8-9012-d3e4-f5a6b7c89012
+created_at: "2026-06-15T21:53:31Z"
+issue_id: ISS-0071
+existing_issue: false
+
+trigger:
+  source: uat_failure
+  run_id: WF05-swiftroute-onboarding-gui-20260616
+  report: tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui.yaml
+  blockers:
+    - ISSUE-EO003-SWIFTROUTE-REALM-MISSING
+  uat_scenario: swiftroute-tenant-onboarding-happy
+  uat_outcome_failed: EO-003 (PARTIAL — proxy tenant only, canonical slug not verified)
+
+search_issues_result:
+  searched_index: docs/issues/issue_index.json
+  matched_existing_issue: false
+  related_issues_considered:
+    - id: ISS-0070
+      title: "Onboarding saga background thread never transitions registry row to terminal state"
+      verdict: RELATED — background thread hang may contribute to orphaned DB state, but is a
+               separate defect. ISS-0071 covers two distinct causes of EO-003 failure.
+    - id: ISS-0069
+      title: "Pipeline navigateSpa race in React Router v6.4 createBrowserRouter"
+      verdict: NOT RELATED — covers navigation timing, not slug injection or KC state.
+    - id: ISS-0068
+      title: "SPT-01 executeSaga never calls provisionTenantSchema"
+      verdict: NOT RELATED — resolved; schema provisioning works correctly.
+  verdict: NEW issue. Registered as ISS-0071.
+
+diagnosis:
+  category: A+D
+  category_label: >
+    DUAL ROOT CAUSE:
+    (A) Backend state inconsistency — orphaned tenant DB record without matching Keycloak realm.
+    (D) Test harness error — pipeline test generates its own random slug, cannot verify canonical
+    scenario slug.
+  is_source_code_bug: true
+  is_test_harness_bug: true
+  severity: BLOCKER
+
+  root_cause_a:
+    type: pipeline_test_slug_mismatch
+    summary: >
+      The pipeline test web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+      unconditionally generates its own random slug at lines 67-68:
+
+        const uid  = randomUUID().slice(0, 8)
+        const slug = `pl-${uid}`
+
+      There is no mechanism for UAT-RUNNER to inject the scenario's canonical
+      slug ('swiftroute') into the test. The pipeline test and the UAT scenario
+      are therefore decoupled: the pipeline verifies that the onboarding UI
+      mechanics work for *some* tenant, but cannot confirm that they work for
+      the specific tenant ('swiftroute') that Alice Bauer expects to log into.
+
+      At UAT time, the pipeline created tenant 'pl-f8db07e7'. Alice Bauer's
+      workspace is 'swiftroute'. These are different realms. EO-003 (Alice can
+      log in immediately after the result screen confirms success) cannot be
+      verified by the current pipeline design.
+
+    affected_file: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+    affected_lines: 67-68
+    evidence: >
+      UAT report EO-001 shows slug 'pl-f8db07e7' on the result screen.
+      UAT precondition notes confirm: "The pipeline test was executed using a
+      randomly generated slug (pl-f8db07e7) as it does by design."
+
+  root_cause_b:
+    type: orphaned_tenant_db_record_missing_kc_realm
+    summary: >
+      At UAT execution time (2026-06-15T21:29:35Z), the database bpm_dev.public.tenant
+      contained a row with slug='swiftroute' (count=1), but the Keycloak identity
+      provider had no realm named 'swiftroute' (GET /admin/realms/swiftroute → 404).
+
+      This inconsistent state means Alice Bauer's company was visible in the
+      platform database but had no identity realm — Alice could not log in anywhere.
+
+      DB state as of investigation (2026-06-15T21:53:31Z):
+        bpm_dev.public.tenant: slug='swiftroute' count=0 (record has since been removed)
+        bpm_dev.public.tenant: slug='pl-f8db07e7' exists (from pipeline run)
+        bpm_dev.public.tenant: slug='default' exists (system default)
+
+      The swiftroute record was present during UAT but is absent now, indicating
+      it was cleaned up out-of-band (manual or script) between 21:29Z and 21:53Z.
+
+      Root cause of the inconsistency itself: The onboarding saga compensate()
+      function (src/identity/onboarding.zig:371-420) correctly deletes the Keycloak
+      realm BEFORE deleting the DB record. The reverse scenario (DB record present,
+      KC realm absent) can only arise if:
+        (i)  The Keycloak realm was manually deleted after a successful onboarding, OR
+        (ii) Keycloak's state was reset (docker restart / volume wipe) after the saga
+             committed the DB record, OR
+        (iii) ISS-0070 — the background saga thread exited after DB write but before
+              Keycloak provisioning, with compensation not executing because the
+              thread aborted without returning an error.
+
+      Scenario (iii) is the most operationally likely given ISS-0070 (OPEN):
+      the background thread never transitions the registry row to a terminal state.
+      If the thread exits midway, errdefer-based compensation will not run.
+
+    affected_files:
+      - src/identity/onboarding.zig  (compensate function, executeSaga background call)
+    evidence: >
+      UAT report precondition notes:
+        "Database bpm_dev.public.tenant: count=1 for slug='swiftroute'"
+        "Keycloak realm 'swiftroute' does not exist"
+        "Keycloak GET /admin/realms/swiftroute returned 404 (Realm not found)"
+      Live DB check (post-UAT): swiftroute count=0, cleanup occurred.
+      ISS-0070 (OPEN): background thread lifecycle is broken.
+
+  overall_finding: >
+    EO-003 failed for two independent reasons:
+    1. The canonical SwiftRoute Keycloak realm was absent (realm-missing inconsistency,
+       root cause B), so Alice Bauer had no workspace to log into.
+    2. The pipeline test cannot be directed to verify the 'swiftroute' slug because it
+       always generates its own random slug (root cause A). Even after the
+       realm-missing state is repaired, EO-003 cannot be confirmed as PASS by the
+       current pipeline design without this fix.
+
+    Both root causes must be fixed for a clean EO-003 PASS.
+
+recommended_fix:
+  for_root_cause_a:
+    summary: >
+      Make the pipeline test accept an optional external slug via an environment
+      variable (e.g. ONBOARDING_PIPELINE_SLUG). When set, use that slug and
+      hostname instead of generating random ones. UAT-RUNNER sets this variable
+      to the scenario's canonical slug ('swiftroute') before invoking the test.
+      When not set (CI / isolated test runs), the existing random slug behaviour
+      is preserved.
+    files_to_change:
+      - web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+    approach: >
+      Add at the top of the test file:
+        const FORCED_SLUG = process.env.ONBOARDING_PIPELINE_SLUG ?? null
+        const slug     = FORCED_SLUG ?? `pl-${uid}`
+        const hostname = FORCED_SLUG
+          ? `${FORCED_SLUG}.example.com`
+          : `pl-tenant-${uid}.example.com`
+      UAT-RUNNER sets: process.env.ONBOARDING_PIPELINE_SLUG = scenario.inputs.slug
+      before spawning the Playwright process.
+    notes: >
+      If slug='swiftroute' is already registered in the DB, the pipeline will hit
+      DuplicateTenantSlug (HTTP 409). UAT-RUNNER must clean up prior swiftroute
+      records before injecting the canonical slug. This aligns with the UAT
+      pre-flight responsibility to ensure preconditions are met (fresh state).
+
+  for_root_cause_b:
+    summary: >
+      Fix the background saga thread lifecycle (see ISS-0070). Ensure that when
+      the background thread's saga errors, the errdefer compensation block runs
+      before the thread exits. Additionally, add a reconciliation check in the
+      onboarding saga's background thread: after the saga returns error, if the
+      DB record exists but the KC realm does not, delete the DB record.
+    files_to_change:
+      - src/identity/onboarding.zig
+      - src/api/routes/onboarding.zig
+    approach: >
+      Fix is contingent on ISS-0070 being resolved first. The compensation
+      function already has the correct logic (delete KC realm → delete DB record).
+      The fix is ensuring the background thread wrapper properly propagates the
+      error so errdefer fires. Also add a post-saga state verification step:
+      if saga.tenant_created and not saga.realm_provisioned → compensate().
+    notes: >
+      Root cause B may also require a one-time data remediation: scan for tenant
+      DB records with no matching Keycloak realm and either re-provision the realm
+      or delete the orphaned DB record. This is an operational task, not a code fix.
+
+  implementation_order:
+    - "1. Fix ISS-0070 (background thread lifecycle) — prerequisite for B"
+    - "2. Fix B (saga compensation robustness)"
+    - "3. Fix A (pipeline slug injection) — can be done independently of 1+2"
+    - "4. Re-run WF-05 swiftroute onboarding scenario with clean preconditions"
+
+artifacts_out:
+  - docs/issues/ISS-0071.json
+  - docs/issue-reports/report-2026-06-15-WF03-uat-onboarding-realm-sync-20260616-step-0.5-1-issue-fixer.yaml

@@ -9,9 +9,29 @@
 ## 1. Purpose
 
 UAT-RUNNER is the **business owner's voice** in the pipeline. It executes
-business-language scenario scripts against the running system — through the
-real GUI, end-to-end — and evaluates each outcome against the business
-expectation written in the scenario file.
+business-language scenario scripts against the running system — **through the
+real GUI, end-to-end, exactly as a human business user would** — and evaluates
+each outcome against the business expectation written in the scenario file.
+
+### ⛔ GUI-only rule — ABSOLUTE CONSTRAINT
+
+**Every process execution step MUST be performed through the browser UI via Playwright.
+Direct API calls are FORBIDDEN for any scenario step that a business user would perform.**
+
+This means:
+- A dispatcher submits a shipment by filling in a form in the browser — not by POSTing JSON
+- A CEO approves a request by clicking a button on screen — not by calling an API endpoint
+- A platform admin onboards a tenant by using the onboarding wizard in the browser — not by curl
+
+**Pre-flight infrastructure checks** (health endpoints, DB connectivity) are NOT process steps — they are allowed as raw HTTP/DB calls before the scenario begins. They do not appear in scenario YAMLs.
+
+**If a process step cannot be executed through the GUI** because the UI for that action does not exist:
+1. Do NOT fall back to an API call as a workaround
+2. Record it as a BLOCKER issue: _"The [action] cannot be performed via the UI. No screen or form exists for this step."
+3. STOP the scenario at that step
+4. ORCH will route to FRONTEND-DEV via WF-03 to build the missing UI
+
+**Verification of outcomes** uses screenshots and on-screen text as primary evidence. API calls to read final state (instance status, audit log) are permitted as SUPPLEMENTARY evidence after the GUI action has been performed and screenshotted — but the primary verdict must come from what the screen shows.
 
 Its report is written in business terms, not technical terms. A finding reads:
 _"CEO approval step was reached ✓ but timeout escalation fired after 2 h
@@ -150,12 +170,18 @@ issue for that scenario and skip it. Do not abort the entire run.
 
 For each scenario, UAT-RUNNER:
 
-1. **Seeds scenario state** — calls `fn:run-uat-scenarios` which executes the
-   corresponding Playwright pipeline test (`tests/simulation/scenarios/<id>.pipeline.e2e.spec.ts`
-   or synthesises API calls for API-only scenarios)
+1. **Executes scenario steps through the browser** — runs the Playwright pipeline test
+   that matches the scenario `id` (`web/tests/e2e/pipelines/<id>.pipeline.e2e.spec.ts`).
+   Every step marked `via: gui` is performed by Playwright navigating the actual browser UI.
+   There is no fallback to direct API calls for steps a business user would perform.
+   If no matching Playwright pipeline test exists: STOP. Record BLOCKER issue:
+   _"No UI pipeline test found for scenario <id>. The GUI for this process has not been
+   implemented. ORCH must route to FRONTEND-DEV."
 
-2. **Captures evidence** — screenshots, API response bodies, final instance
-   state (fetched via `GET /api/v1/instances/:id`)
+2. **Captures evidence via screenshots** — after every significant UI action (form submit,
+   button click, page navigation), a screenshot is taken. Evidence is primarily visual:
+   what the screen shows is the verdict. API calls to read final state (`GET /api/v1/instances/:id`,
+   audit log) are supplementary — they confirm what the screen already showed.
 
 3. **Evaluates business outcomes** — for each `expected_outcomes` entry in the
    scenario YAML, reasons about whether the system's actual behaviour matches
@@ -277,6 +303,38 @@ result = {
 ---
 
 ## 7. What UAT-RUNNER must never do
+
+- **Execute a process step via direct API call** — this is the most important rule.
+  A step that a business user performs (submit a form, approve a task, review a result)
+  MUST go through Playwright and the browser. Using curl or an HTTP library as a
+  shortcut is forbidden even if the Playwright test would be slower.
+- **Invent evidence** — never report a screen as showing something that was not screenshotted.
+  Every outcome verdict must be backed by a screenshot path or an on-screen text extract.
+- **Lower acceptance criteria** to make a failing scenario pass — if the UI does not show
+  the expected result, the verdict is FAIL regardless of what the API says.
+- **Create or modify source code** — UAT-RUNNER observes; it does not fix.
+
+## 8. Missing UI — issue registration template
+
+When a scenario step cannot be executed because the UI does not exist:
+
+```yaml
+- id: UAT-<nnn>
+  scenario_id: <id>
+  step: <step number>
+  severity: BLOCKER
+  business_description: >
+    The [actor] cannot perform [action] because no screen or form exists for this
+    action in the platform. The [actor] would normally [describe what they expect
+    to see]. Until this screen is built, the [process name] cannot be completed
+    through the platform's user interface.
+  technical_hint: "Missing UI for [action] — route to FRONTEND-DEV to build the screen."
+  affected_process: <process_id>
+  affected_company: <company_id>
+  suggested_action: route_to_frontend_dev
+```
+
+Original §7:
 
 - Modify source code, migrations, or test files
 - Fix failing scenarios by adjusting expected outcomes downward

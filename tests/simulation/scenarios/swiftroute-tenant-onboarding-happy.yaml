@@ -3,6 +3,216 @@ id: swiftroute-tenant-onboarding-happy
 company_id: swiftroute
 process_id: sys-tenant-onboarding
 title: SwiftRoute Ltd onboards successfully and Alice Bauer gains immediate access
+version: "2.0"
+tags: [happy_path, onboarding]
+
+description: >
+  The platform operator provisions SwiftRoute Ltd as a new tenant using the
+  platform's onboarding wizard — the same browser form any operator would use.
+  Alice Bauer is set up as the company's admin user through the wizard and can
+  log in the moment the result screen confirms completion. SwiftRoute receives
+  its own isolated workspace and no other company's data is visible. This
+  scenario verifies the full wizard flow from form submission through the
+  progress screen to the completion result, entirely through the browser UI.
+
+pipeline_test: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for all process steps.
+# If this file does not exist or the test cannot run, that is a BLOCKER
+# (missing UI) and must be routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  platform_admin: actor-platform-admin
+  tenant_admin:   actor-swiftroute-alice
+
+preconditions:
+  - description: >
+      The company slug 'swiftroute' and hostname 'swiftroute.bpm.example' are
+      not already registered on the platform
+    check: custom
+    detail: >
+      Confirm no existing tenant record exists for slug 'swiftroute' before
+      the scenario begins. UAT-RUNNER verifies this by navigating to the
+      onboarding wizard — if the platform rejects the slug with a
+      "already registered" message, this precondition fails.
+  - description: No open onboarding requests are in progress for swiftroute
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: platform_admin
+    action: >
+      Logs into the platform as a platform administrator, navigates to the
+      New Tenant screen, fills in the onboarding form with SwiftRoute's
+      details — company name, slug, Alice Bauer's contact information as
+      the designated administrator, the company hostname, and the
+      production environment flag — and clicks the Register Tenant button.
+    via: gui
+    input:
+      slug: swiftroute
+      display_name: SwiftRoute Ltd
+      admin_email: alice.bauer@swiftroute.example
+      admin_username: alice.bauer
+      admin_display_name: Alice Bauer
+      hostname: swiftroute.bpm.example
+      tenant_type: production
+      callback_url: https://swiftroute.bpm.example/callback
+    produces:
+      onboarding_id: >
+        the onboarding identifier shown in the browser URL after the form
+        is submitted and the progress screen appears
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: platform_admin
+    action: >
+      Watches the onboarding progress screen that appears immediately after
+      form submission. The screen shows a spinner indicating the workspace
+      is being prepared. The operator waits without taking any action until
+      the platform automatically navigates to the result screen.
+    via: gui
+    input:
+      expected_screen: onboarding progress indicator
+    produces:
+      result_url: >
+        the result screen URL that the browser navigates to automatically
+        once provisioning completes
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: platform_admin
+    action: >
+      Reviews the result screen that appeared automatically. The screen must
+      confirm that SwiftRoute Ltd's workspace was set up successfully,
+      showing the company slug and the identity authority URL that Alice
+      will use to log in. No error message is present.
+    via: gui
+    input:
+      expected_slug: swiftroute
+      expected_status: completed
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: tenant_admin
+    action: >
+      Alice Bauer navigates to the SwiftRoute workspace login page and logs
+      in using the credentials that were registered during onboarding.
+      This is her very first login to the new workspace — no additional
+      setup or password reset should be required.
+    via: gui
+    input:
+      username: alice.bauer
+      realm: swiftroute
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: tenant_admin
+    action: >
+      Alice reviews the dashboard after logging in and confirms that
+      the workspace is correctly branded as SwiftRoute Ltd and that no
+      other company's processes, instances, or users are visible.
+    via: gui
+    input:
+      expected_company_display: SwiftRoute Ltd
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The result screen confirms that SwiftRoute's workspace was set up
+      successfully — the platform operator sees a clear success message,
+      the slug 'swiftroute', and an identity authority URL. No error
+      message or failure banner is shown.
+    verification:
+      method: gui_screen
+      detail: >
+        Result screen shows the heading or text confirming successful onboarding,
+        the slug 'swiftroute', and the OIDC authority URL. Screenshot taken
+        at step 3. No 'Onboarding failed' banner is visible.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        SwiftRoute's workspace was not created. Alice cannot log in, no
+        company processes can run, and SwiftRoute has no presence on the
+        platform. The operator sees a failure on screen and must investigate.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      The onboarding progress screen appears immediately after the form is
+      submitted and shows that the platform is actively preparing the
+      workspace — the operator is not left staring at a blank screen
+      or an error page.
+    verification:
+      method: gui_screen
+      detail: >
+        Progress screen is shown after form submission (step 2). Screen
+        contains a loading or spinner element and a heading indicating
+        onboarding is in progress. Screenshot taken at step 2.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        After submitting the form the operator sees nothing — no confirmation
+        that anything is happening. The operator cannot tell if the request
+        was accepted or lost. This breaks the platform's onboarding user journey.
+      suggested_action: route_to_frontend_dev
+
+  - id: EO-003
+    description: >
+      Alice Bauer can log in to the SwiftRoute workspace immediately after
+      the result screen confirms completion — without any password reset,
+      additional setup, or operator intervention.
+    verification:
+      method: gui_screen
+      detail: >
+        After logging in with alice.bauer credentials in the swiftroute
+        realm (step 4), the browser shows a logged-in dashboard or landing
+        page — not a login error, not a password-change prompt. Screenshot
+        taken at step 4.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Alice cannot access her company's workspace even though onboarding
+        completed. She is effectively locked out before she has done anything.
+        The platform operator would need to manually fix the account before
+        SwiftRoute can start using the platform.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      Alice's dashboard shows only SwiftRoute's workspace — no content
+      from other companies is visible. She cannot accidentally see or
+      interact with another company's processes or data.
+    verification:
+      method: gui_screen
+      detail: >
+        Dashboard shown at step 5 displays SwiftRoute Ltd branding or name.
+        No other company names, tenant names, or foreign process instances
+        appear on the screen. Screenshot taken at step 5.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Cross-tenant data is visible to SwiftRoute's administrator. This is
+        a serious data isolation failure that would violate SwiftRoute's
+        confidentiality expectations and potentially expose commercially
+        sensitive information from other companies.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    No process instances are created by this scenario — the onboarding
+    wizard creates a tenant record, not a process instance. No cleanup
+    is required after a successful run. After a failed run, the operator
+    may need to manually remove a partial tenant record before retrying.
+
+company_id: swiftroute
+process_id: sys-tenant-onboarding
+title: SwiftRoute Ltd onboards successfully and Alice Bauer gains immediate access
 version: "1.0"
 tags: [happy_path, onboarding]
 

@@ -26,6 +26,11 @@ import {
   navigateSpa,
 } from '../pipeline'
 
+// Env-var injection — allows UAT-RUNNER to drive the test with a canonical slug.
+// When absent: falls back to random generation (existing behaviour).
+const INJECTED_SLUG: string | undefined           = process.env.ONBOARDING_PIPELINE_SLUG
+const INJECTED_ADMIN_USERNAME: string | undefined = process.env.ONBOARDING_PIPELINE_ADMIN_USERNAME
+
 // Allow generous time for the Keycloak-backed saga
 test.setTimeout(120_000)
 
@@ -63,7 +68,7 @@ test.describe('Pipeline: onboarding-wizard', () => {
     await loginWithToken(page, adminToken)
 
     const uid      = randomUUID().slice(0, 8)
-    const slug     = `pl-${uid}`
+    const slug     = INJECTED_SLUG ?? `pl-${uid}`
     const hostname = `pl-tenant-${uid}.example.com`
 
     const pl = createPipeline<OnboardingWizardState>('onboarding-wizard', { page, request })
@@ -110,7 +115,7 @@ test.describe('Pipeline: onboarding-wizard', () => {
       await page.locator('#slug').fill(slug)
       await page.locator('#display_name').fill(`Pipeline Tenant ${uid}`)
       await page.locator('#admin_email').fill(`admin@pl-${uid}.example.com`)
-      await page.locator('#admin_username').fill(`pl-admin-${uid}`)
+      await page.locator('#admin_username').fill(INJECTED_ADMIN_USERNAME ?? `pl-admin-${uid}`)
       await page.locator('#admin_display_name').fill(`PL Admin ${uid}`)
       await page.locator('#hostname').fill(hostname)
       await page.locator('input[placeholder*="callback"]').first().fill('https://app.example.com/cb')

@@ -98,6 +98,12 @@ pub const Manager = struct {
         const provider = self.provider orelse return error.NotImplemented;
         return provider.updateRealmFrontendUrl(allocator, input);
     }
+
+    // --- ISS-0071: Realm-existence guard ---
+    pub fn checkRealmExists(self: Manager, allocator: std.mem.Allocator, input: types.CheckRealmExistsInput) errors.ProviderError!bool {
+        const provider = self.provider orelse return true; // no provider = local-only mode, treat realm as present
+        return provider.checkRealmExists(allocator, input);
+    }
 };
 
 fn looksLikeJwt(token: []const u8) bool {

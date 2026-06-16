@@ -1,0 +1,59 @@
+{
+  "handoff_id": "d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f70",
+  "run_id": "WF03-onboarding-e2e-fix-20260614",
+  "step": "04",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-06-14T19:15:10Z",
+  "started_at": "2026-06-14T19:15:10Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Verification",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f"
+    ],
+    "artifacts_in": [
+      "web/tests/e2e/pipeline.ts",
+      "src/design/onboarding-e2e-nav-fix.md",
+      "docs/issues/ISS-0069.json",
+      "tests/reports/report-2026-06-14-ADHOC-tenant-onboarding-tests-20260614.yaml"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 04: Verify the ISS-0069 fix by re-running the onboarding E2E suite that originally failed. The fix rewrote navigateSpa in web/tests/e2e/pipeline.ts to use page.goto (commit 202d74da on feature/WF03-onboarding-e2e-fix-20260614). Run the SAME onboarding E2E suite from the ADHOC run that returned 2/2 BLOCKER failures:\n\n1) Pre-checks (per CLAUDE.md TEST-RUNNER section):\n   - docker-compose ps (keycloak, db must be healthy)\n   - curl http://localhost:8081/health/ready (Keycloak)\n   - psql $BPM_TEST_DB_URL -c \"SELECT 1\" (test DB)\n   - If any service down: STOP and return FAIL BLOCKER 'services unavailable' (ORCH will dispatch ADHOC BACKEND-DEV infra)\n\n2) Run the onboarding E2E suite against the real backend (NO mocks \u2014 DIRECTIVE T-2):\n   cd web\n   npx playwright test onboarding/ --reporter=json > playwright-onboarding.json\n   Also run the pipeline test:\n   npx playwright test pipelines/onboarding-wizard.pipeline.e2e.spec.ts --reporter=json > playwright-pipeline.json\n\n3) Write report to tests/reports/report-2026-06-14-WF03-onboarding-e2e-fix-20260614-step-04.yaml per test guide \u00a79 format.\n\nPASS criteria: all onboarding E2E tests (onb-ui-01 through onb-ui-04 + onboarding-wizard pipeline) PASS. The original failures were navigation timeouts and role-guard assertion failures caused by the racy navigateSpa \u2014 those must now be resolved.\n\nIf tests FAIL: determine root cause; if still the same root cause, route to FRONTEND-DEV for rework via handoff issues. If a new failure, report it. Do NOT mask failures.",
+    "acceptance_criteria": [
+      "All onb-ui-01 through onb-ui-04 E2E tests PASS",
+      "onboarding-wizard pipeline test PASSES",
+      "No navigation timeouts",
+      "No role-guard assertion failures",
+      "Report written to tests/reports/"
+    ],
+    "functions_to_call": [
+      "fn:run-e2e-onboarding"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "ISS-0069 nav fix VERIFIED (14/17 pass). 3 BLOCKER failures in onb-ui-03/04 caused by backend onboarding saga stuck in pending state (20/20 rows never transition to terminal). Route to BACKEND-DEV for saga background-thread diagnosis.",
+    "artifacts_out": [
+      "tests/reports/report-2026-06-15-WF03-onboarding-e2e-fix-20260614-step-04-test-runner.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "code": "ONB-SAGA-STUCK-PENDING",
+        "description": "Onboarding saga background thread never transitions onboarding_registry row from pending to completed/failed. 20/20 rows stuck pending. Blocks all result-screen tests and the real onboarding user journey.",
+        "affected_files": [
+          "src/api/routes/onboarding.zig",
+          "src/identity/onboarding.zig"
+        ]
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV for saga background-thread root cause (new WF-03 cycle)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "completed_at": "2026-06-15T15:03:45Z"
+}

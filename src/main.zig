@@ -1332,7 +1332,7 @@ fn serveRequest(
                 resp_body = r.body;
             } else if (seg4.len > 0 and seg5.len == 0 and method == .GET) {
                 // GET /api/v1/onboarding/:onboarding_id
-                const r = onboarding_routes.handleGetOnboarding(id_svc, req_alloc, actor, seg4);
+                const r = onboarding_routes.handleGetOnboarding(id_svc, api_auth.getIdentityProviderManager(), req_alloc, actor, seg4);
                 resp_status = r.status_code;
                 resp_body = r.body;
             } else if (seg4.len == 0 and method == .GET) {
