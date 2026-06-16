@@ -30,6 +30,8 @@ import {
 // When absent: falls back to random generation (existing behaviour).
 const INJECTED_SLUG: string | undefined           = process.env.ONBOARDING_PIPELINE_SLUG
 const INJECTED_ADMIN_USERNAME: string | undefined = process.env.ONBOARDING_PIPELINE_ADMIN_USERNAME
+const INJECTED_DISPLAY_NAME: string | undefined   = process.env.ONBOARDING_PIPELINE_DISPLAY_NAME
+const INJECTED_ADMIN_DISPLAY: string | undefined  = process.env.ONBOARDING_PIPELINE_ADMIN_DISPLAY_NAME
 
 // Allow generous time for the Keycloak-backed saga
 test.setTimeout(120_000)
@@ -113,10 +115,10 @@ test.describe('Pipeline: onboarding-wizard', () => {
       await page.waitForSelector('form', { timeout: 15_000 })
 
       await page.locator('#slug').fill(slug)
-      await page.locator('#display_name').fill(`Pipeline Tenant ${uid}`)
+      await page.locator('#display_name').fill(INJECTED_DISPLAY_NAME ?? `Pipeline Tenant ${uid}`)
       await page.locator('#admin_email').fill(`admin@pl-${uid}.example.com`)
       await page.locator('#admin_username').fill(INJECTED_ADMIN_USERNAME ?? `pl-admin-${uid}`)
-      await page.locator('#admin_display_name').fill(`PL Admin ${uid}`)
+      await page.locator('#admin_display_name').fill(INJECTED_ADMIN_DISPLAY ?? `PL Admin ${uid}`)
       await page.locator('#hostname').fill(hostname)
       await page.locator('input[placeholder*="callback"]').first().fill('https://app.example.com/cb')
 

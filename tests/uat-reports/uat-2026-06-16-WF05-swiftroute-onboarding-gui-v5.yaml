@@ -1,0 +1,156 @@
+run_id: WF05-swiftroute-onboarding-gui-v5-20260616
+scenario_id: swiftroute-tenant-onboarding-happy
+scenario_version: "2.0"
+executed_at: "2026-06-16T08:18:01Z"
+executed_by: UAT-RUNNER
+
+overall_verdict: FAIL
+
+business_summary: >
+  SwiftRoute Ltd was provisioned on the platform and the onboarding wizard completed
+  successfully. Alice Bauer's account was created and she can log in to the SwiftRoute
+  identity provider. However, once Alice follows the workspace link and completes the
+  login, her dashboard does not display the company name — it shows "Unknown Workspace"
+  instead of the registered company name. The workspace exists and no other company's
+  data is visible, but Alice cannot confirm she is working in the correct environment
+  because the workspace branding is absent.
+
+pre_flight_checks:
+  - check: "GET http://127.0.0.1:8080/health/ready"
+    result: PASS
+    detail: "Backend returned HTTP 200"
+  - check: "GET http://localhost:8081/health/ready"
+    result: PASS
+    detail: "Keycloak returned HTTP 200"
+  - check: "SELECT count(*) FROM public.tenant WHERE slug='swiftroute'"
+    result: PASS
+    detail: "Count = 0, precondition satisfied"
+  - check: "GET /api/tenant-config?realm=swiftroute (pre-onboarding)"
+    result: DEFERRED
+    detail: >
+      Returns bpm-default authority before provisioning because the tenant does not yet
+      exist. This is correct fallback behaviour. The check is verified post-onboarding
+      where it correctly returns the swiftroute OIDC authority.
+  - check: "GET /api/tenant-config?realm=swiftroute (post-onboarding)"
+    result: PASS
+    detail: "oidc_authority = http://localhost:8081/realms/swiftroute (ISS-0072 confirmed)"
+
+outcomes:
+  - id: EO-001
+    verdict: PASS
+    business_description: >
+      The onboarding wizard completed without error. The result screen shows a
+      green confirmation banner reading "Tenant onboarding completed successfully",
+      lists the slug as 'swiftroute', and displays the identity authority URL for
+      the new workspace. An "Open swiftroute workspace" button is visible. No failure
+      banner appeared.
+    evidence:
+      method: gui_screen
+      screenshot: web/tests/screenshots/pipelines/onboarding-wizard-04--saga-completes---result-screen-shows-slug.png
+      screen_shows: >
+        Success banner, slug field = swiftroute, OIDC authority = http://keycloak:8081/realms/swiftroute,
+        "Open swiftroute workspace" and "Back to Admin" buttons visible.
+    on_fail:
+      severity: BLOCKER
+
+  - id: EO-002
+    verdict: PASS
+    business_description: >
+      After submitting the registration form, the browser immediately navigated to a
+      progress screen showing "Onboarding in Progress" with a spinner indicating that
+      the platform was preparing the workspace. The operator was not left looking at
+      a blank screen or an error.
+    evidence:
+      method: gui_screen
+      screenshot: web/tests/screenshots/pipelines/onboarding-wizard-03--progress-screen-shows-spinner.png
+      screen_shows: >
+        "Onboarding in Progress" heading with an animated spinner and the message
+        "Setting up tenant — this may take a moment..." The onboarding ID is visible.
+    on_fail:
+      severity: BLOCKER
+
+  - id: EO-003
+    verdict: PASS
+    business_description: >
+      Alice Bauer was able to log in to the SwiftRoute identity provider account
+      page immediately after the result screen confirmed successful onboarding.
+      No password reset was required. Her account page showed her username
+      (alice.bauer) and profile information.
+    evidence:
+      method: gui_screen
+      screenshot: scratch/uat-v5-eo-003-03-after-login.png
+      screen_shows: >
+        Keycloak Account Management page at http://localhost:8081/realms/swiftroute/account.
+        Username field shows "alice.bauer". The page navigation shows "Personal info",
+        "Account security", and "Applications" — confirming Alice is authenticated in the
+        swiftroute realm. No login error or password-change prompt was shown.
+    on_fail:
+      severity: BLOCKER
+
+  - id: EO-004
+    verdict: FAIL
+    business_description: >
+      Alice was able to log in to the BPM platform workspace via the swiftroute link
+      and the login redirected correctly to the SwiftRoute identity provider
+      (confirming ISS-0073 is working). After login, the dashboard loaded but displays
+      "Unknown Workspace" in the header instead of the company name registered during
+      onboarding. Alice can see the platform menu (Instances, My Tasks, Definitions)
+      but cannot confirm she is in the SwiftRoute workspace because the workspace
+      name is missing. No other company's data appeared on the screen.
+    evidence:
+      method: gui_screen
+      screenshot: scratch/uat-v5-eo-004-02-kc-login.png
+      screen_shows: >
+        KC login page shows "PIPELINE TENANT E8587D2A" realm name (the generated name
+        from the onboarding pipeline). Login proceeds to the BPM Platform dashboard.
+      additional_evidence:
+        - name: "OIDC redirect confirmed ISS-0073"
+          detail: >
+            Redirect URL captured: http://localhost:8081/realms/swiftroute/protocol/openid-connect/auth?
+            ...&redirect_uri=http%3A%2F%2F127.0.0.1%3A4173%2Fauth%2Fcallback%3Frealm%3Dswiftroute
+            The redirect_uri correctly includes ?realm=swiftroute (ISS-0073 fix confirmed).
+        - name: "Dashboard body text"
+          detail: >
+            After login, page body contains: "BPM Platform UNKNOWN WORKSPACE Instances My Tasks
+            Definitions DLQ..." — dashboard rendered but workspace name is absent.
+        - name: "Cross-tenant isolation"
+          detail: "Vortex and Meridian names were not visible on the dashboard. Data isolation confirmed."
+    issues:
+      - id: EO-004-A
+        severity: MAJOR
+        description: >
+          After completing login via the SwiftRoute workspace link, Alice's dashboard shows
+          "Unknown Workspace" instead of the company name. The workspace exists and Alice
+          is authenticated, but the company name registered during onboarding is not
+          displayed in the workspace header. Alice has no visual confirmation that she is
+          in the correct workspace.
+        technical_note: >
+          OidcCallbackPage sets tenant_slug and tenant_display_name to null after
+          completing the OIDC code exchange. The frontend needs to look up the tenant
+          name from the BPM API after login using the realm slug from the callback URL.
+          Separately, the onboarding pipeline test fills the display_name field with a
+          generated placeholder ("Pipeline Tenant e8587d2a") rather than the
+          scenario-provided value ("SwiftRoute Ltd"), so even if the API lookup worked,
+          the displayed name would differ from the expected company name.
+      - id: EO-004-B
+        severity: MINOR
+        description: >
+          The SwiftRoute workspace was created with the display name "Pipeline Tenant e8587d2a"
+          rather than "SwiftRoute Ltd". This is because the onboarding wizard test fills
+          the company name field with a generated value rather than the name specified in
+          the scenario. This makes the Keycloak login page and user profile show
+          "Pipeline Tenant" branding instead of SwiftRoute branding.
+        technical_note: >
+          The onboarding pipeline test (onboarding-wizard.pipeline.e2e.spec.ts) does not
+          accept the display_name via environment variable. It always generates a name as
+          "Pipeline Tenant {uid}". A ONBOARDING_PIPELINE_DISPLAY_NAME env var injection
+          should be added to allow UAT to use the scenario-defined company name.
+    on_fail:
+      severity: BLOCKER
+
+cleanup:
+  performed: false
+  note: >
+    The swiftroute tenant remains provisioned in the platform after this UAT run.
+    No process instances were created. The tenant record in the database and the
+    Keycloak realm remain as evidence of the onboarding test.

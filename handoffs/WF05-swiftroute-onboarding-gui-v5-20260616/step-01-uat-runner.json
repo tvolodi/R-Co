@@ -1,0 +1,62 @@
+{
+  "handoff_id": "8fa9b0c1-d2e3-4567-8fa9-b0c1d2e34567",
+  "run_id": "WF05-swiftroute-onboarding-gui-v5-20260616",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "UAT-RUNNER",
+  "created_at": "2026-06-16T06:07:20Z",
+  "started_at": "2026-06-16T06:07:20Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-05 Step 1 \u2014 UAT v5 (complete fix stack: ISS-0069/70/71/72/73 + TD-UI-01/02/03)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "0de1f2a3-b4c5-6789-0de1-f2a3b4c56789"
+    ],
+    "artifacts_in": [
+      "tests/simulation/scenarios/swiftroute-tenant-onboarding-happy.yaml",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts"
+    ]
+  },
+  "task": {
+    "description": "WF-05 Step 1 (v5): Final UAT run. All fixes now merged:\n- ISS-0069: navigateSpa page.goto fix\n- ISS-0070: saga schema-qualification fix\n- ISS-0071 A+B: pipeline slug injection + realm-existence guard\n- ISS-0072: ?realm= override in tenant-config + workspace link\n- ISS-0073: realm embedded in OIDC redirect_uri\n- TD-UI-01/02/03: per-tenant dashboard + TenantHeader\n\nGUI-ONLY: all process steps through Playwright.\n\nPre-flight:\n1. GET http://127.0.0.1:8080/health/ready \u2192 200\n2. GET http://localhost:8081/health/ready \u2192 200\n3. psycopg2 bpm_dev (port 5432): SELECT count(*) FROM public.tenant WHERE slug='swiftroute' \u2192 0\n4. GET http://127.0.0.1:8080/api/tenant-config?realm=swiftroute \u2192 oidc_authority contains 'swiftroute'\nSTOP BLOCKER if any fails.\n\nProcess (Playwright):\n  cd web\n  $env:BPM_TEST_URL='http://127.0.0.1:8080'\n  $env:BPM_IDP_BASE_URL='http://localhost:8081'\n  $env:ONBOARDING_PIPELINE_SLUG='swiftroute'\n  $env:ONBOARDING_PIPELINE_ADMIN_USERNAME='alice.bauer'\n  npx playwright test pipelines/onboarding-wizard.pipeline.e2e.spec.ts --reporter=json *> ../scratch/playwright-onboarding-v5.json\n\nEO-001: slug=swiftroute on result screen\nEO-002: progress spinner\nCheck: 'Open swiftroute workspace' link on result screen\n\nSetup (allowed): reset Alice's password via Keycloak admin API.\n\nEO-003 via Playwright: Keycloak swiftroute account page, login alice.bauer/alice-pass-001, screenshot.\n\nEO-004 via Playwright \u2014 final test:\n  Navigate to http://127.0.0.1:8080/?realm=swiftroute\n  Alice logs in \u2192 OIDC flow uses ?realm=swiftroute in redirect_uri (ISS-0073 fix)\n  Keycloak redirects to /auth/callback?code=...&realm=swiftroute\n  OidcCallbackPage reads ?realm=swiftroute, uses swiftroute authority for token exchange\n  After successful login \u2192 dashboard appears\n  Screenshot: look for data-testid='tenant-display-name' showing 'SwiftRoute Ltd'\n  Verdict: 'Screen shows SwiftRoute Ltd in the workspace header'\n\nWrite report: tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v5.yaml\n\nPASS criteria: all 4 EOs pass with screenshot evidence.",
+    "acceptance_criteria": [
+      "Playwright exits 0",
+      "EO-001: slug=swiftroute on result screen",
+      "EO-002: progress spinner",
+      "EO-003: Alice logged in to swiftroute realm",
+      "EO-004: dashboard shows SwiftRoute Ltd in TenantHeader"
+    ],
+    "functions_to_call": [
+      "fn:run-uat-scenarios"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Onboarding wizard completed and Alice is authenticated (EO-001, EO-002, EO-003 PASS). EO-004 FAIL (MAJOR): After OIDC login the workspace header shows \"Unknown Workspace\" instead of the company name. ISS-0073 fix is confirmed working (correct realm redirect_uri). Data isolation confirmed (no cross-tenant data visible).",
+    "artifacts_out": [
+      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v5.yaml",
+      "web/tests/screenshots/pipelines/onboarding-wizard-04--saga-completes---result-screen-shows-slug.png",
+      "web/tests/screenshots/pipelines/onboarding-wizard-03--progress-screen-shows-spinner.png",
+      "scratch/uat-v5-eo-003-03-after-login.png",
+      "scratch/uat-v5-eo-004-02-kc-login.png"
+    ],
+    "issues": [
+      {
+        "id": "EO-004-A",
+        "severity": "MAJOR",
+        "description": "After logging in via the SwiftRoute workspace link, the dashboard shows \"Unknown Workspace\" instead of the company name. The OidcCallbackPage does not populate the tenant_slug/tenant_display_name in the session, so the workspace header has no company context."
+      },
+      {
+        "id": "EO-004-B",
+        "severity": "MINOR",
+        "description": "The onboarding pipeline test fills the display_name field with a generated placeholder (\"Pipeline Tenant e8587d2a\") instead of the scenario value (\"SwiftRoute Ltd\"). The ONBOARDING_PIPELINE_DISPLAY_NAME env var is not supported by the pipeline test."
+      }
+    ],
+    "next_action": "Route to BO-SWIFTROUTE, BO-VORTEX, BO-MERIDIAN (WF-05 Steps 2a parallel) \u2014 only EO-001/002/003 available for sign-off; EO-004 requires WF-03 for MAJOR issues EO-004-A and EO-004-B"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-16T08:18:01Z"
+}

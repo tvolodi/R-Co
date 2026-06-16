@@ -1,0 +1,258 @@
+---
+run_id: WF05-swiftroute-onboarding-gui-v4-20260616
+scenario_id: swiftroute-tenant-onboarding-happy
+scenario_version: "2.0"
+executed_at: "2026-06-16T05:36:54Z"
+executed_by: UAT-RUNNER
+overall_verdict: FAIL
+
+business_summary: >
+  SwiftRoute's workspace was successfully set up through the onboarding wizard and Alice
+  Bauer received her credentials immediately. The "Register Tenant" form was completed in
+  full and the progress screen confirmed the workspace was being prepared — both as
+  expected. Alice can log into her Keycloak account page directly (her credentials work
+  in the SwiftRoute identity space). However, when Alice tries to reach the SwiftRoute
+  workspace via the intended entry URL with the realm selector, the login completes in
+  Keycloak but the workspace fails to open afterwards — the screen keeps refreshing
+  without loading her dashboard. Alice cannot access her SwiftRoute workspace through the
+  workspace URL entry point. This is the blocking defect for this run.
+
+pre_flight:
+  backend_health:
+    status: PASS
+    detail: "GET /health/ready → 200 OK"
+  keycloak_health:
+    status: PASS
+    detail: "GET http://localhost:8081/health/ready → 200 OK"
+  db_precondition:
+    status: PASS
+    detail: >
+      Previous run (v3) left a residual swiftroute tenant record. It was cleaned up
+      (DB DELETE + Keycloak realm DELETE) before this run so the wizard could execute
+      on a clean slate. Post-cleanup count = 0. Precondition met.
+  iss0072_fix1_endpoint:
+    status: PASS
+    detail: >
+      GET /api/tenant-config?realm=swiftroute returned 200 with
+      oidc_authority=http://localhost:8081/realms/swiftroute before cleanup (tenant existed),
+      and falls back to bpm-default when tenant is absent — both correct behaviours.
+      ISS-0072 Fix 1 endpoint is live.
+
+scenario_steps:
+  - step: 1
+    description: Platform admin fills in the Register Tenant form with SwiftRoute details and submits
+    via: gui
+    evidence:
+      screenshot: web/scratch/pipeline-onboarding-wizard-02-form-filled.png
+      description: >
+        Screen shows the Register Tenant form filled in. Slug field reads "swiftroute",
+        Admin Username reads "alice.bauer". The form is complete and the Register Tenant
+        button is visible at the bottom of the screen. Platform admin is logged in as
+        "admin-user / PLATFORM_ADMIN" (shown in the sidebar footer).
+    verdict: PASS
+
+  - step: 2
+    description: Platform admin watches progress screen — spinner indicates workspace is being prepared
+    via: gui
+    evidence:
+      note: >
+        Playwright pipeline step 03 asserted role="status" spinner visible and passed
+        the gate. No direct screenshot captured at this step as the wizard auto-navigated
+        to the result screen before a manual screenshot could be taken.
+      pipeline_assertion: "step 03 gate PASS — spinner visible on progress screen"
+    verdict: PASS
+
+  - step: 3
+    description: Result screen confirms SwiftRoute workspace was set up — slug and OIDC authority shown
+    via: gui
+    evidence:
+      note: >
+        Playwright pipeline step 04 asserted: page.getByText('swiftroute', exact=true) visible
+        AND a link matching /http.*realms/i visible. Both assertions passed (gate PASS).
+        The DB confirms tenant slug=swiftroute, status=ACTIVE after the wizard completed.
+        Note: display_name was set to "Pipeline Tenant 78bf92a6" by the test harness
+        (the wizard uses the injected slug but generates a test display name). The workspace
+        link was present on the result screen per the pipeline assertion.
+      db_verification: "SELECT slug, display_name, status FROM tenant WHERE slug='swiftroute' → (swiftroute, Pipeline Tenant 78bf92a6, ACTIVE)"
+    verdict: PASS
+
+  - step: 4
+    description: Alice Bauer navigates to the SwiftRoute workspace login and logs in
+    via: gui
+    evidence:
+      screenshot: web/scratch/uat-v4-eo-003-03-after-login.png
+      description: >
+        Screen shows the Keycloak account management page for the swiftroute realm.
+        The top-right shows "PL Admin 78bf92a6" (Alice's display name in the test realm).
+        Username field reads "alice.bauer". The page is the Keycloak Personal Info page —
+        Alice is successfully logged in. No error message visible. This confirms Alice's
+        credentials were accepted by the SwiftRoute identity space immediately after
+        onboarding.
+      url_evidence: "http://localhost:8081/realms/swiftroute/account — URL contains 'swiftroute'"
+    verdict: PASS
+
+  - step: 5
+    description: Alice opens the BPM workspace via the realm-routed URL and reaches her dashboard
+    via: gui
+    evidence:
+      screenshot_routing: web/scratch/uat-v4-eo-004-01-initial-redirect.png
+      screenshot_login: web/scratch/uat-v4-eo-004-02-swiftroute-login.png
+      description: >
+        Screenshot 1 (initial-redirect): After navigating to the workspace app with the
+        SwiftRoute realm selector, the browser shows the SwiftRoute workspace login page
+        — titled "PIPELINE TENANT 78BF92A6" (the SwiftRoute realm branding). This confirms
+        the workspace router correctly directed Alice to the SwiftRoute login, not the
+        platform-default login. The routing fix is working.
+
+        Screenshot 2 (login credentials filled): Alice's username "alice.bauer" and
+        password (masked) are entered. The Sign In button is visible.
+
+        After clicking Sign In, Keycloak accepted the credentials and issued an
+        authorisation code. However, the workspace application then entered an
+        unresolvable redirect loop — the screen kept refreshing without loading the
+        SwiftRoute workspace dashboard. The test timed out after 30 seconds of
+        continuous redirect cycles. Alice's workspace dashboard was never shown.
+      failure_detail: >
+        The OIDC authorisation code callback at http://127.0.0.1:4173/auth/callback
+        triggered a redirect loop. Multiple page-load events fired in sequence
+        (domcontentloaded → load → commit, repeated 3+ times) without the application
+        settling. This indicates the workspace application could not complete the
+        token exchange after Keycloak issued the authorisation code.
+    verdict: FAIL
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The result screen confirms SwiftRoute's workspace was set up successfully —
+      the operator sees a success message, the slug 'swiftroute', and an identity
+      authority URL.
+    verdict: PASS
+    evidence:
+      screenshots: [web/scratch/pipeline-onboarding-wizard-02-form-filled.png]
+      pipeline_assertions:
+        - "step 04 PASS: page.getByText('swiftroute', exact=true).isVisible() = true"
+        - "step 04 PASS: link matching /http.*realms/i visible on result screen"
+        - "DB: tenant slug=swiftroute status=ACTIVE"
+      business_description: >
+        The operator saw the swiftroute workspace identifier on the result screen and
+        the identity authority link was visible. The workspace was confirmed as
+        successfully registered.
+
+  - id: EO-002
+    description: >
+      The onboarding progress screen appears immediately after form submission and
+      shows that the platform is actively preparing the workspace.
+    verdict: PASS
+    evidence:
+      pipeline_assertions:
+        - "step 03 PASS: spinner element with role='status' visible on progress screen"
+      business_description: >
+        After the operator submitted the form, the screen immediately showed a loading
+        spinner confirming the workspace was being set up. The operator was not left
+        staring at a blank or error page.
+
+  - id: EO-003
+    description: >
+      Alice Bauer can log in to the SwiftRoute workspace immediately after onboarding —
+      no password reset or additional setup required.
+    verdict: PASS
+    evidence:
+      screenshots:
+        - web/scratch/uat-v4-eo-003-03-after-login.png
+      url_evidence: "http://localhost:8081/realms/swiftroute/account (post-login URL contains swiftroute)"
+      business_description: >
+        Alice logged into her SwiftRoute identity account immediately after onboarding.
+        The screen shows her Keycloak personal information page — username alice.bauer
+        confirmed — with no error messages or password change prompts. Alice's
+        credentials were ready to use the moment onboarding completed.
+
+  - id: EO-004
+    description: >
+      Alice's dashboard shows only SwiftRoute's workspace — no content from other
+      companies visible. She reaches the workspace via the realm-routed entry URL.
+    verdict: FAIL
+    severity: BLOCKER
+    on_fail_triggered: route_to_wf03
+    evidence:
+      screenshots:
+        - web/scratch/uat-v4-eo-004-01-initial-redirect.png
+        - web/scratch/uat-v4-eo-004-02-swiftroute-login.png
+      business_description: >
+        The workspace entry point correctly directed Alice to the SwiftRoute login page —
+        the screen shows "PIPELINE TENANT 78BF92A6" branding (the SwiftRoute realm),
+        not the platform-default login. Alice's credentials were entered and accepted
+        by Keycloak. However, after Keycloak granted access, the workspace application
+        could not complete loading Alice's dashboard. The screen went through a series
+        of redirects and refreshes and did not settle on Alice's workspace. Alice was
+        left unable to access the SwiftRoute workspace through this entry point.
+      technical_note_for_orch: >
+        ISS-0072 Fix 1 (GET /api/tenant-config) and Fix 2 (frontend realm routing)
+        are confirmed working — the browser was correctly directed to the SwiftRoute
+        Keycloak login. The defect is in the post-login OIDC token exchange or
+        auth callback handling: after Keycloak issues the authorisation code, the
+        workspace application enters a redirect loop and never delivers the dashboard.
+        Root cause investigation needed: the auth/callback route may not be using
+        the swiftroute OIDC authority for the token exchange.
+
+issues:
+  - id: ISS-UAT-EO004-LOOP
+    severity: BLOCKER
+    title: >
+      Alice cannot reach the SwiftRoute workspace after login — OIDC callback loop
+    business_description: >
+      When Alice tries to open her SwiftRoute workspace using the workspace entry URL,
+      the login screen correctly shows the SwiftRoute sign-in page (not the wrong
+      company). Alice's username and password are accepted by Keycloak. But after
+      Keycloak confirms her identity, the workspace application keeps reloading without
+      ever showing Alice's dashboard. Alice is effectively locked out of her workspace
+      even though her credentials are correct.
+    suggested_action: route_to_wf03
+    technical_context: >
+      OIDC auth code was issued by Keycloak swiftroute realm. Callback to
+      http://127.0.0.1:4173/auth/callback triggered a redirect loop
+      (3+ page-load cycles). Token exchange may be using wrong authority (bpm-default
+      instead of swiftroute). Correlates with ISS-0072 incomplete fix — Fix 1 and Fix 2
+      are live but token exchange authority may not be updated.
+
+iss0072_fix_status:
+  fix_1_tenant_config_api:
+    status: CONFIRMED_LIVE
+    detail: "GET /api/tenant-config?realm=swiftroute → {oidc_authority: http://localhost:8081/realms/swiftroute}"
+  fix_2_frontend_realm_routing:
+    status: CONFIRMED_LIVE
+    detail: >
+      Navigating to /?realm=swiftroute redirected to
+      http://localhost:8081/realms/swiftroute/protocol/openid-connect/auth
+      (swiftroute Keycloak, not bpm-default). Screenshot confirms swiftroute
+      realm branding on login page.
+  fix_3_workspace_link_on_result:
+    status: UNVERIFIED
+    detail: >
+      Pipeline assertion confirmed a link matching /http.*realms/i was visible on
+      the result screen. Whether this is specifically an 'Open swiftroute workspace'
+      link was not separately verified — the pipeline spec does not check link text.
+  fix_4_oidc_token_exchange:
+    status: FAIL
+    detail: >
+      Post-login OIDC callback loop — auth code received from swiftroute Keycloak
+      but token exchange or SPA auth callback handling failed, preventing dashboard load.
+
+artifacts:
+  screenshots:
+    - path: web/scratch/pipeline-onboarding-wizard-02-form-filled.png
+      description: Register Tenant form filled with swiftroute slug and alice.bauer username
+    - path: web/scratch/uat-v4-eo-003-01-login-page.png
+      description: Keycloak swiftroute login page before credentials entry (EO-003)
+    - path: web/scratch/uat-v4-eo-003-03-after-login.png
+      description: Keycloak swiftroute account page — Alice logged in successfully (EO-003 PASS)
+    - path: web/scratch/uat-v4-eo-004-01-initial-redirect.png
+      description: Keycloak swiftroute login page shown after navigating /?realm=swiftroute (ISS-0072 Fix 2 confirmed)
+    - path: web/scratch/uat-v4-eo-004-02-swiftroute-login.png
+      description: Keycloak swiftroute login with alice.bauer credentials filled in
+  playwright_reports:
+    - path: scratch/playwright-onboarding-v4.json
+      description: Pipeline test (EO-001/EO-002) — status PASS, 1 test, 101.8s
+    - path: scratch/playwright-v4-eo3-eo4-v2.json
+      description: EO-003/EO-004 initial run — status PASS (EO-004 had wrong URL; ISS-0072 Fix 2 still confirmed)
+    - path: scratch/playwright-v4-eo4-final.json
+      description: EO-004 isolated re-run — FAIL, OIDC callback timeout after 79.5s
