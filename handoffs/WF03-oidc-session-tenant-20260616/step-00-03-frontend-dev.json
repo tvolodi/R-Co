@@ -6,7 +6,7 @@
   "to_agent": "FRONTEND-DEV",
   "created_at": "2026-06-16T08:20:08Z",
   "started_at": "2026-06-16T08:20:08Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "WF-03 FAST-TRACK — ISS-0074 + MINOR pipeline display_name fix",
@@ -30,7 +30,20 @@
     ],
     "functions_to_call": ["fn:read-frontend-conventions", "fn:git-setup", "fn:git-merge"]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Fix 1: OidcCallbackPage.tsx now resolves realmSlug (via resolveRealmFromUrl/sessionStorage) and fetches tenant display_name via tenantsApi.getBySlug() after OIDC code exchange, populating tenant_slug and tenant_display_name in setSession(). Fix 2: onboarding-wizard pipeline adds INJECTED_DISPLAY_NAME and INJECTED_ADMIN_DISPLAY env var constants with fallback. Pre-existing lint error (unused BPM_URL in uat-eo-003-004-v5) also fixed.",
+    "artifacts_out": [
+      "web/src/pages/OidcCallbackPage.tsx",
+      "web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts",
+      "web/tests/e2e/uat-eo-003-004-v5.e2e.spec.ts"
+    ],
+    "issues": [],
+    "pr_url": "https://github.com/tvolodi/My-Fab/pull/111",
+    "merge_sha": "2a0e307",
+    "next_action": "COMPLETED — PR #111 merged and branch deleted"
+  },
   "rework_count": 0,
-  "max_rework": 2
+  "max_rework": 2,
+  "completed_at": "2026-06-16T08:24:17Z"
 }
