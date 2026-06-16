@@ -952,3 +952,5 @@
 2026-06-16T02:03:47Z | ROUTE | WF03-uat-onboarding-realm-sync-20260616 | d9e0f1a2 | ORCH -> BACKEND-DEV | PENDING Fix B realm guard
 2026-06-16T02:03:47Z | ROUTE | WF03-uat-onboarding-realm-sync-20260616 | e0f1a2b3 | ORCH -> FRONTEND-DEV | PENDING Fix A slug injection
 2026-06-16T02:03:47Z | ROUTE | WF02-tenant-dashboard-20260616 | f1a2b3c4 | ORCH -> BACKEND-DEV | PENDING git-setup TD-UI-01/02/03
+2026-06-16T03:15:35Z | ROUTE | WF03-uat-onboarding-realm-sync-20260616 | a8b9c0d1 | ORCH -> BACKEND-DEV | PENDING final git-merge
+2026-06-16T03:15:35Z | ROUTE | WF02-tenant-dashboard-20260616 | b9c0d1e2 | ORCH -> TEST-DESIGNER | PENDING TD-UI tests
