@@ -339,11 +339,11 @@ fn markOnboardingRealmMissing(
     pool: *pool_mod.Pool,
     onboarding_id: []const u8,
 ) void {
+    _ = allocator;
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
 
-    _ = conn.queryRow(
-        allocator,
+    conn.exec(
         \\UPDATE tenant_default.onboarding_registry
         \\SET state         = 'failed',
         \\    response_body = (COALESCE(response_body, '{}'::jsonb)
@@ -351,7 +351,6 @@ fn markOnboardingRealmMissing(
         \\    completed_at  = NOW()
         \\WHERE onboarding_id = $1::uuid
         \\  AND state = 'completed'
-        \\RETURNING id::text
     ,
         &[_][]const u8{onboarding_id},
     ) catch {};
