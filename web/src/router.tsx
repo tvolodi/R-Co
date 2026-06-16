@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import OidcCallbackPage from '@/pages/OidcCallbackPage'
 import { AppShell } from '@/components/layout/AppShell'
 import { ErrorBoundary } from '@/components/layout/ErrorBoundary'
+import TenantDashboardPage from '@/pages/dashboard/TenantDashboardPage'
 import DefinitionListPage from '@/pages/definitions/DefinitionListPage'
 import DefinitionEditorPage from '@/pages/definitions/DefinitionEditorPage'
 import InstanceBoardPage from '@/pages/instances/InstanceBoardPage'
@@ -45,7 +46,8 @@ export const router = createBrowserRouter([
       </AuthProvider>
     ),
     children: [
-      { index: true, element: <InstanceBoardPage /> },
+      { index: true, element: <TenantDashboardPage /> },
+      { path: 'dashboard', element: <TenantDashboardPage /> },
       { path: 'definitions', element: <DefinitionListPage /> },
       { path: 'definitions/new', element: <DefinitionEditorPage /> },
       { path: 'definitions/:id', element: <DefinitionEditorPage /> },

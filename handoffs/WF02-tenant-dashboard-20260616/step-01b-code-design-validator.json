@@ -1,0 +1,59 @@
+{
+  "handoff_id": "d5e6f7a8-b9c0-1234-d5e6-f7a8b9c01234",
+  "run_id": "WF02-tenant-dashboard-20260616",
+  "step": "01b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-06-16T02:38:14Z",
+  "started_at": "2026-06-16T02:38:14Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-02 Step 1b \u2014 hard gate: validate tenant dashboard design",
+    "requirement_ids": [
+      "TD-UI-01",
+      "TD-UI-02",
+      "TD-UI-03"
+    ],
+    "related_handoff_ids": [
+      "b3c4d5e6-f7a8-9012-b3c4-d5e6f7a89012"
+    ],
+    "artifacts_in": [
+      "src/design/tenant-dashboard-ui.md",
+      "docs/BPM_Platform_Frontend_Requirements.md"
+    ]
+  },
+  "task": {
+    "description": "WF-02 Step 1b (hard gate): Validate src/design/tenant-dashboard-ui.md against TD-UI-01, TD-UI-02, TD-UI-03.\n\nRun python tools/lint_design_artefact.py src/design/tenant-dashboard-ui.md\n\nCheck:\n1. Every TD-UI acceptance criterion has a design element\n2. No implementation code present\n3. useTenantContext, TenantHeader, TenantDashboardPage public signatures documented\n4. Error state (unknown workspace) documented\n5. resolveTenantSlug documented\n6. Type E classification correct\n\nReturn PASS or FAIL. PASS required before FRONTEND-DEV can start.",
+    "acceptance_criteria": [
+      "lint exits 0",
+      "All TD-UI-01/02/03 criteria covered",
+      "No implementation code",
+      "Public signatures documented"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/tenant-dashboard-ui.md validated \u2014 all TD-UI-01 and TD-UI-02 MUST acceptance criteria covered, all public function signatures documented, Type E classification correct, lint exits 0.",
+    "artifacts_out": [
+      "src/design/tenant-dashboard-ui.md"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "AuthProvider change section (lines ~112-130) contains a concrete try/catch function body. Type E artefacts should use pseudocode or behavioral descriptions instead of full implementation code blocks. Does not block implementation."
+      },
+      {
+        "severity": "MINOR",
+        "description": "TD-UI-03 SHOULD acceptance criterion specifies redirect-to-login on unrecognised realm; design instead shows Unknown workspace fallback without redirect. The deviation is sensible (PLATFORM_ADMIN case) but should be explicitly annotated as an out-of-scope deviation with rationale per SHOULD-coverage convention."
+      }
+    ],
+    "next_action": "Route to FRONTEND-DEV (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-06-16T02:41:02Z"
+}

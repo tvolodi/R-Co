@@ -45,6 +45,8 @@ export default function OidcCallbackPage() {
           display_name: resolveDisplayName(payload),
           roles: payload.roles,
           loginSource: 'oidc',
+          tenant_slug: null,
+          tenant_display_name: null,
         })
         navigate('/', { replace: true })
       } catch {

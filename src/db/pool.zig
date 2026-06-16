@@ -184,7 +184,7 @@ fn applyRequestStorageRouting(conn: *Conn) PoolError!void {
         resolveAndCacheStorageMode: {
             const row = conn.queryRow(
                 std.heap.page_allocator,
-                "SELECT storage_mode FROM tenant WHERE id = $1::uuid LIMIT 1",
+                "SELECT storage_mode FROM public.tenant WHERE id = $1::uuid LIMIT 1",
                 &.{tenant_id},
             ) catch {
                 break :resolveAndCacheStorageMode;
