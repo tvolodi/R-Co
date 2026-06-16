@@ -307,6 +307,7 @@ pub fn executeSaga(
         .client_name = "bpm-platform-api",
         .redirect_uris = client_redirect_uris,
         .service_account_enabled = if (input.client_config) |cc| cc.service_account_enabled orelse true else true,
+        .tenant_id = tenant.tenant_id,
     }) catch |err| switch (err) {
         error.NotImplemented => return error.ClientProvisioningFailed,
         error.UpstreamUnavailable,
