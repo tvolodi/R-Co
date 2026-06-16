@@ -6,16 +6,22 @@
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-06-16T02:03:47Z",
   "started_at": "2026-06-16T02:03:47Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
-    "stage": "WF-03 Step 03a — BACKEND-DEV implements Fix B (realm-existence guard)",
+    "stage": "WF-03 Step 03a \u2014 BACKEND-DEV implements Fix B (realm-existence guard)",
     "requirement_ids": [],
-    "related_handoff_ids": ["b7c8d9e0-f1a2-3456-b7c8-d9e0f1a23456"],
-    "artifacts_in": ["src/design/iss-0071-onboarding-realm-sync.md", "src/api/routes/onboarding.zig", "docs/issues/ISS-0071.json"]
+    "related_handoff_ids": [
+      "b7c8d9e0-f1a2-3456-b7c8-d9e0f1a23456"
+    ],
+    "artifacts_in": [
+      "src/design/iss-0071-onboarding-realm-sync.md",
+      "src/api/routes/onboarding.zig",
+      "docs/issues/ISS-0071.json"
+    ]
   },
   "task": {
-    "description": "WF-03 Step 03a: Implement Fix B from src/design/iss-0071-onboarding-realm-sync.md on branch feature/WF03-uat-onboarding-realm-sync-20260616.\n\nFix B — Realm-existence guard in GET /api/v1/onboarding/:id:\nIn src/api/routes/onboarding.zig, handleGetOnboarding: after loading a record with state='completed', call the Keycloak adapter to check if the realm actually exists (GET /admin/realms/{realm_id}). If the realm is missing (404 from Keycloak), call a new function markOnboardingRealmMissing() that runs:\n  UPDATE tenant_default.onboarding_registry\n  SET state = 'failed',\n      response_body = jsonb_set(response_body, '{error}', '\"realm_missing\"'),\n      completed_at = NOW()\n  WHERE onboarding_id = $1::uuid AND state = 'completed'\nThen return the updated record to the caller (HTTP 200 with state='failed', error='realm_missing').\n\nNew items to add:\n- `realm_missing` failure state variant documented in error taxonomy (add to the error body handling in runSagaBackground fallback comment)\n- `checkRealmExists` function: calls the identity provider manager's realm check (or a direct HTTP call to Keycloak admin API if the manager doesn't expose it)\n- `markOnboardingRealmMissing` function: the UPDATE above (security: parameterised query, no string interpolation)\n\nIMPORTANT: if the identity provider manager does not expose a realm-existence check, add a minimal `realmExists(realm_id)` function to the Keycloak adapter in src/identity/provider/adapters/keycloak/provider.zig that calls GET /admin/realms/{realm_id} and returns bool. Also add it to the interface in src/identity/provider/interface.zig and implement a stub in the stub adapter (src/identity/provider/adapters/stub/provider.zig) that returns true.\n\nSecurity rule: UPDATE uses $1::uuid placeholder — no string interpolation.\nI/O rule: No I/O in src/engine/transition.zig.\nError-set rule: run `zig build 2>&1 | grep -i \"error set\"` before completing — must be empty.\n\nAfter implementation: zig build exits 0, zig build test exits 0.\nCommit: git add -A; git commit -m \"fix(WF03): add realm-existence guard to GET onboarding endpoint (ISS-0071 Fix B)\"\ngit push origin feature/WF03-uat-onboarding-realm-sync-20260616",
+    "description": "WF-03 Step 03a: Implement Fix B from src/design/iss-0071-onboarding-realm-sync.md on branch feature/WF03-uat-onboarding-realm-sync-20260616.\n\nFix B \u2014 Realm-existence guard in GET /api/v1/onboarding/:id:\nIn src/api/routes/onboarding.zig, handleGetOnboarding: after loading a record with state='completed', call the Keycloak adapter to check if the realm actually exists (GET /admin/realms/{realm_id}). If the realm is missing (404 from Keycloak), call a new function markOnboardingRealmMissing() that runs:\n  UPDATE tenant_default.onboarding_registry\n  SET state = 'failed',\n      response_body = jsonb_set(response_body, '{error}', '\"realm_missing\"'),\n      completed_at = NOW()\n  WHERE onboarding_id = $1::uuid AND state = 'completed'\nThen return the updated record to the caller (HTTP 200 with state='failed', error='realm_missing').\n\nNew items to add:\n- `realm_missing` failure state variant documented in error taxonomy (add to the error body handling in runSagaBackground fallback comment)\n- `checkRealmExists` function: calls the identity provider manager's realm check (or a direct HTTP call to Keycloak admin API if the manager doesn't expose it)\n- `markOnboardingRealmMissing` function: the UPDATE above (security: parameterised query, no string interpolation)\n\nIMPORTANT: if the identity provider manager does not expose a realm-existence check, add a minimal `realmExists(realm_id)` function to the Keycloak adapter in src/identity/provider/adapters/keycloak/provider.zig that calls GET /admin/realms/{realm_id} and returns bool. Also add it to the interface in src/identity/provider/interface.zig and implement a stub in the stub adapter (src/identity/provider/adapters/stub/provider.zig) that returns true.\n\nSecurity rule: UPDATE uses $1::uuid placeholder \u2014 no string interpolation.\nI/O rule: No I/O in src/engine/transition.zig.\nError-set rule: run `zig build 2>&1 | grep -i \"error set\"` before completing \u2014 must be empty.\n\nAfter implementation: zig build exits 0, zig build test exits 0.\nCommit: git add -A; git commit -m \"fix(WF03): add realm-existence guard to GET onboarding endpoint (ISS-0071 Fix B)\"\ngit push origin feature/WF03-uat-onboarding-realm-sync-20260616",
     "acceptance_criteria": [
       "handleGetOnboarding checks realm existence for completed records",
       "markOnboardingRealmMissing transitions state to failed with error=realm_missing",
@@ -24,9 +30,27 @@
       "zig build test exits 0",
       "Committed to feature/WF03-uat-onboarding-realm-sync-20260616"
     ],
-    "functions_to_call": ["fn:read-backend-conventions", "fn:check-zig-build"]
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented Fix B: realm-existence guard in GET /api/v1/onboarding/:id. Added CheckRealmExistsInput to types.zig, checkRealmExistsFn to interface.zig and manager.zig, checkRealmExistsKeycloak implementation in keycloak adapter, checkRealmExistsStub (returns true) in stub adapter, markOnboardingRealmMissing helper in onboarding.zig, updated handleGetOnboarding signature to accept manager, added realm-guard logic, and threaded manager from main.zig call site.",
+    "artifacts_out": [
+      "src/identity/provider/types.zig",
+      "src/identity/provider/interface.zig",
+      "src/identity/provider/manager.zig",
+      "src/identity/provider/adapters/keycloak/provider.zig",
+      "src/identity/provider/adapters/stub/provider.zig",
+      "src/api/routes/onboarding.zig",
+      "src/main.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGNER or TEST-RUNNER"
+  },
   "rework_count": 0,
-  "max_rework": 3
+  "max_rework": 3,
+  "completed_at": "2026-06-16T02:14:32Z"
 }
