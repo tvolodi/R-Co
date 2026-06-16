@@ -2,6 +2,7 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/auth/AuthContext'
 import { ApiConnectivityBanner } from './ApiConnectivityBanner'
+import { TenantHeader } from './TenantHeader'
 import { dlqApi } from '@/api/dlq'
 import { queryKeys } from '@/api/queryKeys'
 
@@ -64,6 +65,8 @@ export function AppShell() {
         <div style={{ padding: '0 1.25rem', marginBottom: '1.5rem', fontWeight: 700, fontSize: '1.1rem', color: '#f1f5f9' }}>
           BPM Platform
         </div>
+
+        <TenantHeader />
 
         <nav style={{ flex: 1 }}>
           {visibleNav.map((n) => (

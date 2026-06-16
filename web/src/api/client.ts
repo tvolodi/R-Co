@@ -33,11 +33,11 @@ export function tryRestoreE2eToken(): string | null {
  * E2E session restore: read session from sessionStorage (written by test runner).
  * Returns the session object or null.
  */
-export function tryRestoreE2eSession(): { token: string; display_name: string; roles: string[] } | null {
+export function tryRestoreE2eSession(): { token: string; display_name: string; roles: string[]; tenant_slug?: string | null; tenant_display_name?: string | null } | null {
   try {
     const raw = sessionStorage.getItem('__e2e_session')
     if (!raw) return null
-    const session = JSON.parse(raw) as { token: string; display_name: string; roles: string[] }
+    const session = JSON.parse(raw) as { token: string; display_name: string; roles: string[]; tenant_slug?: string | null; tenant_display_name?: string | null }
     if (session.token && session.roles?.length > 0) {
       _token = session.token
       return session

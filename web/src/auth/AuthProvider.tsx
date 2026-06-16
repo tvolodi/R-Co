@@ -3,17 +3,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { clearToken, setToken, tryRestoreE2eSession } from '@/api/client'
-import { decodeTokenPayload, resolveDisplayName } from './tokenUtils'
+import { decodeTokenPayload, resolveDisplayName, resolveTenantSlug } from './tokenUtils'
 import type { UserSession } from '@/types/api'
 import { AuthContext, type AuthContextValue } from './AuthContext'
 import { getOidcManager } from './OidcManager'
+import { tenantsApi } from '@/api/tenants'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSessionState] = useState<UserSession | null>(() => {
     // E2E support: restore session from sessionStorage if present (written by test runner)
     const e2e = tryRestoreE2eSession()
     if (e2e) {
-      return { token: e2e.token, display_name: e2e.display_name, roles: e2e.roles, loginSource: 'oidc' }
+      return {
+        token: e2e.token,
+        display_name: e2e.display_name,
+        roles: e2e.roles,
+        loginSource: 'oidc',
+        tenant_slug: e2e.tenant_slug ?? null,
+        tenant_display_name: e2e.tenant_display_name ?? null,
+      }
     }
     return null
   })
@@ -71,7 +79,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setToken(token)
-    setSessionState({ token, display_name: resolveDisplayName(payload), roles: payload.roles, loginSource: 'oidc' })
+
+    const tenantSlug = resolveTenantSlug(payload)
+    let tenantDisplayName: string | null = null
+    if (tenantSlug) {
+      try {
+        const tenant = await tenantsApi.getBySlug(tenantSlug)
+        tenantDisplayName = tenant.display_name
+      } catch {
+        console.error('[AuthProvider] Could not resolve tenant display name', tenantSlug)
+        // tenantDisplayName stays null → rendered as 'Unknown workspace'
+      }
+    }
+
+    setSessionState({
+      token,
+      display_name: resolveDisplayName(payload),
+      roles: payload.roles,
+      loginSource: 'oidc',
+      tenant_slug: tenantSlug,
+      tenant_display_name: tenantDisplayName,
+    })
   }, [])
 
   const logout = useCallback(() => {

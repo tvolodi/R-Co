@@ -197,6 +197,7 @@ export interface JwtPayload {
   exp?: number
   iat?: number
   iss?: string
+  tenant_id?: string
 }
 
 export interface UserSession {
@@ -204,6 +205,8 @@ export interface UserSession {
   display_name: string
   roles: string[]
   loginSource: 'oidc' | null
+  tenant_slug: string | null
+  tenant_display_name: string | null
 }
 
 export interface User {
