@@ -34,36 +34,36 @@
   },
   "result": {
     "status": "FAIL",
-    "summary": "UAT v6: EO-001 PASS (result screen shows swiftroute/SwiftRoute Ltd/success). EO-002 PASS (progress spinner). EO-003 PASS (Alice logs into swiftroute Keycloak account). EO-004 FAIL BLOCKER: (1) Onboarding saga omits realm-roles protocol mapper from tenant Keycloak client - Alice JWT lacks roles claim. (2) Backend rejects swiftroute realm JWTs with invalid token issuer causing auth session-expired loop; Alice cannot access workspace. (3) Onboarding creates client with single callback URL instead of platform wildcard.",
+    "summary": "UAT v7: EO-001 PARTIAL/MINOR (saga completed — tenant ACTIVE in DB, swiftroute realm + alice.bauer in KC — but Playwright test timed out before result screen was observed; saga took ~130s vs 120s test timeout). EO-002 PASS (progress spinner visible in step 03). EO-003 PASS (Alice Bauer successfully logged into swiftroute Keycloak account page — screenshot confirmed). EO-004 FAIL BLOCKER: onboarding saga creates bpm-platform-api Keycloak client without audience protocol mapper. Alice JWT has aud='account' instead of aud='bpm-platform-api'. Backend rejects with HTTP 401 invalid token audience. Screen shows 'Redirecting to login...' loop — Alice cannot reach workspace. New issue vs v6: ISS-0073 fix confirmed working (redirect goes to swiftroute KC realm), but audience check is the new blocker.",
     "artifacts_out": [
-      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v6.yaml",
-      "scratch/playwright-onboarding-v6.json",
-      "scratch/playwright-eo-003-004-v6.json",
+      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v7.yaml",
+      "scratch/playwright-onboarding-v7.json",
+      "scratch/playwright-eo-003-004-v7.json",
       "scratch/uat-v5-eo-003-01-kc-account.png",
+      "scratch/uat-v5-eo-003-02-creds-filled.png",
       "scratch/uat-v5-eo-003-03-after-login.png",
+      "scratch/uat-v5-eo-004-01-initial.png",
       "scratch/uat-v5-eo-004-02-kc-login.png",
-      "scratch/uat-v5-eo-004-05-final.png"
+      "scratch/uat-v5-eo-004-03-creds-filled.png",
+      "scratch/uat-v5-eo-004-04-after-callback.png",
+      "scratch/uat-v5-eo-004-05-final.png",
+      "scratch/uat-v5-eo-004-06-debug.png"
     ],
     "issues": [
       {
-        "id": "ISS-UAT-V6-001",
+        "id": "ISS-UAT-V7-001",
         "severity": "BLOCKER",
-        "description": "Onboarding saga creates bpm-platform-api Keycloak client in tenant realm without realm-roles protocol mapper. Alice JWT has no roles claim. Platform rejects her session immediately."
+        "description": "The SwiftRoute workspace login is blocked. The onboarding saga creates the bpm-platform-api Keycloak client in the tenant realm without an audience protocol mapper. Alice's JWT has aud='account' instead of aud='bpm-platform-api'. Backend returns HTTP 401 invalid token audience. Alice sees 'Redirecting to login...' in a loop and cannot access her workspace."
       },
       {
-        "id": "ISS-UAT-V6-002",
-        "severity": "BLOCKER",
-        "description": "Backend auth middleware only accepts bpm-default realm JWTs. Swiftroute realm JWTs rejected with 401 invalid token issuer. OidcCallbackPage triggers auth session-expired loop - Alice cannot reach her workspace."
-      },
-      {
-        "id": "ISS-UAT-V6-003",
-        "severity": "MAJOR",
-        "description": "Onboarding saga creates Keycloak client with single restrictive redirect URI from the form instead of the platform wildcard. Platform login callbacks are rejected until manually patched."
+        "id": "ISS-UAT-V7-002",
+        "severity": "MINOR",
+        "description": "Onboarding pipeline Playwright test timeout (120s) is shorter than saga execution time (~130s). test.setTimeout should be increased to >=200s to allow saga to complete and result screen to be observed."
       }
     ],
-    "next_action": "Route ISS-UAT-V6-001, ISS-UAT-V6-002, ISS-UAT-V6-003 to BACKEND-DEV via WF-03. Re-run WF-05 after fixes."
+    "next_action": "Route ISS-UAT-V7-001 to BACKEND-DEV via WF-03: add audience protocol mapper to onboarding saga's bpm-platform-api client creation. Re-run WF-05 v8 after fix. ISS-UAT-V7-002 route to TEST-DESIGNER."
   },
-  "rework_count": 0,
+  "rework_count": 1,
   "max_rework": 2,
-  "completed_at": "2026-06-16T08:52:43Z"
+  "completed_at": "2026-06-16T09:24:07Z"
 }

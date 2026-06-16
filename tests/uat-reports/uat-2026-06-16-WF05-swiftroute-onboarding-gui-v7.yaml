@@ -1,0 +1,181 @@
+---
+run_id: WF05-swiftroute-onboarding-gui-v7-20260616
+report_date: "2026-06-16"
+scenario_id: swiftroute-tenant-onboarding-happy
+scenario_version: "2.0"
+uat_runner_version: v7
+fix_stack:
+  - ISS-0069 (navigateSpa page.goto fix)
+  - ISS-0070 (saga schema-qualification fix)
+  - ISS-0071-A+B (pipeline slug injection + realm-existence guard)
+  - ISS-0072 (?realm= override in tenant-config + workspace link)
+  - ISS-0073 (realm embedded in OIDC redirect_uri)
+  - ISS-UAT-V6-001 fix via PR#112 (realm-roles protocol mapper)
+  - ISS-UAT-V6-002 fix via PR#112 (tenant issuer validation)
+  - ISS-UAT-V6-003 fix via PR#112 (wildcard redirect URI)
+  - TD-UI-01/02/03 (per-tenant dashboard + TenantHeader)
+
+overall_verdict: FAIL
+overall_verdict_reason: >
+  The tenant provisioning saga completed successfully and Alice Bauer's account
+  was created in the SwiftRoute workspace. However, Alice cannot log in to her
+  workspace. After completing the sign-in flow through the SwiftRoute login page,
+  the platform immediately rejects her session and redirects her back to the
+  login screen. The root cause is that the SwiftRoute client configuration lacks
+  an audience claim for the platform API, so the platform does not recognise
+  Alice's identity token as valid.
+
+pre_flight_checks:
+  - check: "Backend health (GET /health/ready)"
+    result: PASS
+    detail: "HTTP 200 — backend running"
+  - check: "Keycloak health (GET /health/ready)"
+    result: PASS
+    detail: "HTTP 200 — Keycloak running"
+  - check: "swiftroute tenant count = 0 in dev database"
+    result: PASS
+    detail: "SELECT count(*) FROM public.tenant WHERE slug='swiftroute' → 0"
+  - check: "tenant-config oidc_authority contains 'swiftroute'"
+    result: "DEFERRED (verified post-onboarding)"
+    detail: >
+      Pre-onboarding: endpoint returns bpm-default config (expected — tenant does not yet exist).
+      Post-onboarding: GET /api/tenant-config?realm=swiftroute returns
+      {"oidc_authority":"http://localhost:8081/realms/swiftroute","client_id":"bpm-platform-api"}.
+      Confirmed PASS after saga completed.
+
+expected_outcomes:
+  - id: EO-001
+    title: "Onboarding wizard result screen confirms SwiftRoute workspace created"
+    verdict: PARTIAL
+    severity: MINOR
+    business_summary: >
+      The SwiftRoute workspace was provisioned successfully. The database confirms
+      SwiftRoute Ltd is an active tenant and the swiftroute identity realm exists
+      with Alice Bauer's account ready. However, the automated browser test that
+      was watching the wizard screen timed out just before the completion screen
+      appeared — the provisioning took slightly longer than the test's allowed
+      window. The result screen itself was not photographed by the test.
+    evidence:
+      supplementary:
+        - "Database: tenant table row — slug=swiftroute, display_name='SwiftRoute Ltd', status=ACTIVE, created_at=2026-06-16T09:14:50Z"
+        - "Keycloak: swiftroute realm exists with alice.bauer user (id: b6c4e6c8-377f-45a2-b645-4d1f081d047d)"
+        - "Backend polled onboarding ID bbdf98fe923f4c9bb9a5abac690b7197 returning HTTP 200 throughout the saga"
+        - "POST /api/v1/onboarding → 201 Created at 09:14:47Z"
+    screenshot_primary: null
+    note: >
+      MINOR issue: Playwright pipeline test timeout (120 s) is shorter than the saga
+      execution time (~130 s). The test timed out waiting for navigation to /result.
+      The saga backend completed correctly. Test configuration should increase
+      test.setTimeout to ≥200 s to match the 150 s saga waitForURL budget.
+
+  - id: EO-002
+    title: "Progress screen shows spinner while workspace is being prepared"
+    verdict: PASS
+    business_summary: >
+      Immediately after the platform administrator submitted the registration form,
+      the screen switched to a progress indicator confirming that the workspace
+      setup was underway. The spinner was visible on screen exactly as expected.
+    evidence:
+      pipeline_step: "Step 03 in onboarding pipeline test passed (status: spinner with role='status' visible)"
+      note: "Playwright step 03 passed before the test timeout at step 04"
+    screenshot_primary: "scratch/pipeline-onboarding-wizard-02-form-filled.png"
+
+  - id: EO-003
+    title: "Alice Bauer can log in to the SwiftRoute identity portal"
+    verdict: PASS
+    business_summary: >
+      Alice Bauer successfully logged in to her SwiftRoute identity account.
+      The screen showed her personal profile — username alice.bauer, first name Alice,
+      last name Bauer — confirming that her account was created correctly in the
+      SwiftRoute workspace during provisioning.
+    evidence:
+      url_after_login: "http://localhost:8081/realms/swiftroute/account"
+      page_content_excerpt: "Alice Bauer — Personal info — username: alice.bauer, First name: Alice, Last name: Bauer"
+    screenshot_primary: "scratch/uat-v5-eo-003-03-after-login.png"
+    screenshot_secondary: "scratch/uat-v5-eo-003-01-kc-account.png"
+
+  - id: EO-004
+    title: "Alice Bauer can access the SwiftRoute workspace and see the SwiftRoute Ltd dashboard"
+    verdict: FAIL
+    severity: BLOCKER
+    business_summary: >
+      Alice cannot access her SwiftRoute workspace. After arriving at the SwiftRoute
+      sign-in page and entering her credentials, the login completes at the identity
+      provider side, but the platform immediately rejects her session. The screen
+      shows "Redirecting to login..." in a loop — Alice is never shown her workspace.
+      The SwiftRoute sign-in screen branded as "SWIFTROUTE LTD" appeared correctly,
+      and the login flow reached the platform callback page (confirming the ISS-0073
+      fix for the realm-aware redirect address is working). The rejection happens
+      at the next step when the platform validates Alice's identity token.
+    root_cause: >
+      The SwiftRoute bpm-platform-api Keycloak client was created by the onboarding
+      saga without an audience protocol mapper. Alice's identity token carries
+      aud="account" instead of aud="bpm-platform-api". The platform backend
+      requires the audience claim to match "bpm-platform-api" and rejects the
+      token with "invalid token audience" (HTTP 401), triggering an authentication
+      loop.
+    jwt_evidence:
+      iss: "http://localhost:8081/realms/swiftroute"
+      aud: "account"
+      azp: "bpm-platform-api"
+      realm_access_roles:
+        - offline_access
+        - default-roles-swiftroute
+        - uma_authorization
+        - PLATFORM_ADMIN
+      backend_rejection: "HTTP 401 — invalid token audience"
+    screenshot_primary: "scratch/uat-v5-eo-004-05-final.png"
+    screenshot_supporting:
+      - "scratch/uat-v5-eo-004-02-kc-login.png"
+      - "scratch/uat-v5-eo-004-04-after-callback.png"
+
+issues:
+  - id: ISS-UAT-V7-001
+    severity: BLOCKER
+    description: >
+      The SwiftRoute workspace login is blocked. After Alice completes her sign-in
+      at the SwiftRoute identity page, the platform rejects her session because the
+      identity token lacks the correct audience claim. The onboarding process does
+      not configure the audience protocol mapper on the SwiftRoute client during
+      provisioning, so Alice's token identifies itself as being for the account
+      service rather than the platform API. Alice cannot reach her workspace.
+    affected_step: EO-004
+    fix_required: >
+      The onboarding saga must add an audience protocol mapper to the bpm-platform-api
+      client in the newly created tenant realm. The mapper should add "bpm-platform-api"
+      to the aud claim in all access tokens issued by that client. This is the same
+      pattern as required for the realm-roles mapper (ISS-UAT-V6-001).
+
+  - id: ISS-UAT-V7-002
+    severity: MINOR
+    description: >
+      The onboarding progress observation window in the automated test is too short.
+      The workspace provisioning completed correctly but the automated test timed out
+      before the completion screen appeared. The test allows 120 seconds total, but
+      the provisioning took approximately 130 seconds. The result screen evidence
+      could not be captured.
+    affected_step: EO-001
+    fix_required: >
+      Increase the test.setTimeout to at least 200 seconds in the onboarding wizard
+      pipeline test to accommodate the maximum saga execution time.
+
+playwright_evidence:
+  pipeline_test:
+    file: "scratch/playwright-onboarding-v7.json"
+    exit_code: 1
+    duration_ms: 248424
+    failure_reason: "Test timeout of 120000ms exceeded waiting for saga completion"
+    steps_completed: "01, 02, 03 (spinner verified)"
+    steps_failed: "04 (waitForURL /result timed out)"
+  eo_003_004_test:
+    file: "scratch/playwright-eo-003-004-v7.json"
+    exit_code: 1
+    duration_ms: 21828
+    tests:
+      - name: "EO-003: Alice logs into swiftroute Keycloak account page"
+        status: PASS
+        duration_ms: 1834
+      - name: "EO-004: Alice logs into BPM platform via ?realm=swiftroute and sees SwiftRoute Ltd dashboard"
+        status: FAIL
+        duration_ms: 17602
+        error: "Expected page body to contain 'SwiftRoute' — body was empty (authentication loop)"

@@ -329,6 +329,21 @@ fn provisionRealm(raw_ctx: *anyopaque, allocator: std.mem.Allocator, input: prov
         return mapStatus(roles_mapper_resp.status, .provision_realm);
     }
 
+    // Step 11: Add audience mapper so JWT aud claim includes 'bpm-platform-api' (ISS-UAT-V7-001).
+    // 201 = created, 409 = already exists — both are acceptable (idempotent).
+    const audience_mapper_resp = try sendRequest(self, allocator, .{
+        .method = .POST,
+        .url = mappers_url,
+        .bearer_token = fresh_bearer,
+        .content_type = "application/json",
+        .body =
+        \\{"name":"bpm-platform-api audience","protocol":"openid-connect","protocolMapper":"oidc-audience-mapper","config":{"included.client.audience":"bpm-platform-api","access.token.claim":"true","id.token.claim":"false"}}
+        ,
+    });
+    if (audience_mapper_resp.status != 201 and audience_mapper_resp.status != 204 and audience_mapper_resp.status != 409) {
+        return mapStatus(audience_mapper_resp.status, .provision_realm);
+    }
+
     return .{
         .realm_id = allocator.dupe(u8, realm_id) catch return error.OutOfMemory,
         .created = true,
