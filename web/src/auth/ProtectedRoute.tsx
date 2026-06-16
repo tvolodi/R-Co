@@ -4,13 +4,7 @@ import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { useAuth } from './AuthContext'
 import { getOidcManager } from './OidcManager'
-import { resolveRealmFromUrl } from './tenantConfig'
-
-function buildRedirectArgs(): { redirect_uri: string } | undefined {
-  const slug = resolveRealmFromUrl()
-  if (!slug) return undefined
-  return { redirect_uri: window.location.origin + '/auth/callback?realm=' + encodeURIComponent(slug) }
-}
+import { buildRedirectArgs } from './oidcRedirectArgs'
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
