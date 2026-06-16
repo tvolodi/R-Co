@@ -30,6 +30,7 @@ pub fn asIdentityProvider(ctx: *StubContext) provider_interface.IdentityProvider
         .deleteRealmFn = deleteRealmStub,
         .updateClientFn = updateClientStub,
         .updateRealmFrontendUrlFn = updateRealmFrontendUrlStub,
+        .checkRealmExistsFn = checkRealmExistsStub,
     };
 }
 
@@ -133,4 +134,8 @@ fn updateClientStub(_: *anyopaque, _: std.mem.Allocator, _: provider_types.Updat
 
 fn updateRealmFrontendUrlStub(_: *anyopaque, _: std.mem.Allocator, _: provider_types.UpdateRealmFrontendUrlInput) provider_errors.ProviderError!void {
     return error.NotImplemented;
+}
+
+fn checkRealmExistsStub(_: *anyopaque, _: std.mem.Allocator, _: provider_types.CheckRealmExistsInput) provider_errors.ProviderError!bool {
+    return true;
 }

@@ -1,0 +1,234 @@
+---
+run_id: WF05-swiftroute-onboarding-gui-20260616
+scenario_id: swiftroute-tenant-onboarding-happy
+scenario_version: "2.0"
+company_id: swiftroute
+executed_at: "2026-06-15T21:29:35Z"
+executed_by: UAT-RUNNER
+pipeline_test: web/tests/e2e/pipelines/onboarding-wizard.pipeline.e2e.spec.ts
+pipeline_test_result: PASSED
+pipeline_test_duration_seconds: 92
+
+overall_verdict: FAIL
+
+# PRECONDITION NOTES
+# Pre-flight checks:
+#   backend (http://127.0.0.1:8080/health/ready): PASS (HTTP 200)
+#   Keycloak (http://localhost:8081/health/ready): PASS (HTTP 200)
+#   DB check (swiftroute count in bpm_dev): WARN — count was 1, not 0
+#
+# The 'swiftroute' tenant record already existed in the database from a prior
+# onboarding run. The exact business scenario (fresh registration of SwiftRoute Ltd
+# using the slug 'swiftroute') could therefore not be re-executed.
+#
+# Additionally, the Keycloak realm 'swiftroute' does not exist in the identity
+# provider, despite the database record being present. This is an inconsistent
+# state left over from the prior session's cleanup of the realm without removing
+# the database record.
+#
+# The pipeline test (onboarding-wizard.pipeline.e2e.spec.ts) was executed in full
+# using a randomly generated slug (pl-f8db07e7) as it does by design, which allowed
+# the UI mechanics to be verified independently of the swiftroute name conflict.
+
+scenarios:
+  - scenario_id: swiftroute-tenant-onboarding-happy
+    title: SwiftRoute Ltd onboards successfully and Alice Bauer gains immediate access
+    verdict: FAIL
+    business_summary: >
+      The onboarding wizard itself works correctly — when the platform operator
+      fills in the form and clicks Register Tenant, the system shows a progress
+      screen immediately and then a success screen confirming the new workspace
+      was set up, complete with the company slug and the login authority URL for
+      the new workspace. A tenant administrator can log into their newly created
+      workspace immediately after the result screen confirms completion, without
+      any additional setup or password reset.
+
+      However, the specific SwiftRoute business scenario could not be executed in
+      full because a previous test run already registered 'swiftroute' in the
+      database and the Keycloak identity realm for SwiftRoute is missing, leaving
+      the workspace in an inconsistent state. Additionally, the BPM platform
+      application does not yet have a per-tenant branded dashboard — the screen
+      Alice would see after logging into the platform shows generic BPM Platform
+      navigation with no SwiftRoute-specific branding or isolation indicators.
+
+    expected_outcomes:
+      - id: EO-001
+        description: >
+          The result screen confirms that the workspace was set up successfully,
+          showing a clear success message, the company slug, and the identity
+          authority URL.
+        verdict: PASS
+        business_description: >
+          After the registration form was submitted, the platform automatically
+          navigated to the result screen, which displayed the banner "Tenant
+          onboarding completed successfully." The screen listed the registered
+          slug (pl-f8db07e7 in this run), the OIDC Authority URL
+          (http://keycloak:8081/realms/pl-f8db07e7), and the hostname. No error
+          message or failure banner was present. The operator's screen confirmed
+          the workspace was ready.
+        screenshots:
+          - path: web/tests/screenshots/pipelines/onboarding-wizard-04--saga-completes---result-screen-shows-slug.png
+            taken_at: step 4 of pipeline (saga completes)
+            what_screen_showed: >
+              Success banner ("Tenant onboarding completed successfully."), tenant slug,
+              OIDC Authority URL as a clickable link, hostname, and a "Back to Admin" button.
+              No error or warning was visible.
+        note: >
+          Test executed with proxy slug 'pl-f8db07e7' because the swiftroute slug
+          was already taken in the database. The UI mechanism is confirmed to work
+          correctly for any slug.
+
+      - id: EO-002
+        description: >
+          The progress screen appears immediately after the form is submitted,
+          showing the operator that the workspace is being prepared.
+        verdict: PASS
+        business_description: >
+          Immediately after the operator clicked the Register Tenant button, the
+          browser navigated to the progress screen. The screen displayed the heading
+          "Onboarding in Progress", a spinning loading indicator, and the message
+          "Setting up tenant — this may take a moment..." along with the onboarding
+          reference ID. The operator was kept informed throughout the provisioning
+          wait; there was no blank screen or error page.
+        screenshots:
+          - path: web/tests/screenshots/pipelines/onboarding-wizard-03--progress-screen-shows-spinner.png
+            taken_at: step 3 of pipeline (progress screen)
+            what_screen_showed: >
+              "Onboarding in Progress" heading with a circular spinner/loading
+              indicator and a message confirming setup was underway. The onboarding
+              ID was visible for reference.
+        note: >
+          Test executed with proxy slug 'pl-f8db07e7'. The mechanism is confirmed.
+
+      - id: EO-003
+        description: >
+          Alice Bauer can log in to the SwiftRoute workspace immediately after
+          onboarding completes, without a password reset or additional setup.
+        verdict: PARTIAL
+        business_description: >
+          The tenant admin login mechanism was verified using the tenant workspace
+          that was created during this UAT run (the proxy tenant 'pl-f8db07e7').
+          The tenant administrator for that workspace ('PL Admin f8db07e7') was
+          able to log into the tenant's Keycloak account page immediately after
+          onboarding completed, without any additional configuration. The Keycloak
+          account page loaded successfully, displaying the administrator's username,
+          email address, and personal information — confirming they were fully
+          logged in with no error.
+
+          The specific SwiftRoute / alice.bauer login could not be tested because
+          the SwiftRoute Keycloak realm does not exist (see precondition note above).
+          Alice Bauer cannot currently log into a SwiftRoute workspace.
+        screenshots:
+          - path: web/scratch/uat-step4-03-after-login.png
+            taken_at: after login to proxy tenant realm (EO-003 proxy test)
+            what_screen_showed: >
+              Keycloak account management page for "PL Admin f8db07e7" showing
+              the Personal info section with username (pl-admin-f8db07e7), email,
+              first name, and last name. No error message. Logged-in state confirmed.
+          - path: web/scratch/uat-step4-01-login-page.png
+            taken_at: before login (Keycloak login form)
+            what_screen_showed: >
+              Standard Keycloak login page for the pl-f8db07e7 realm with
+              username and password fields.
+        issues:
+          - id: ISSUE-EO003-SWIFTROUTE-REALM-MISSING
+            severity: BLOCKER
+            business_description: >
+              The SwiftRoute workspace identity realm does not exist in the platform's
+              identity provider. Although the database shows SwiftRoute was registered,
+              the identity realm — the system that manages SwiftRoute user accounts and
+              login credentials — is absent. Alice Bauer has no workspace to log into.
+              A user who completed the onboarding wizard expecting to gain access would
+              find their account does not exist.
+            suggested_action: route_to_wf03
+            detail: >
+              Keycloak GET /admin/realms/swiftroute returned 404 (Realm not found).
+              Database public.tenant has count=1 for slug='swiftroute'.
+              Inconsistent state requires cleanup and re-onboarding.
+
+      - id: EO-004
+        description: >
+          Alice's dashboard shows only SwiftRoute's workspace — no content from
+          other companies is visible.
+        verdict: FAIL
+        business_description: >
+          The BPM platform application does not have a per-tenant branded dashboard.
+          When a tenant administrator navigates to the platform after logging in, they
+          see the same generic BPM Platform interface shown to all users — with the
+          "BPM Platform" logo and standard navigation items — rather than a workspace
+          branded with SwiftRoute's name or limited to SwiftRoute's content. There is
+          no visual indication that Alice is in a SwiftRoute-only workspace, and no
+          per-company filtering of the navigation or process list is shown.
+        screenshots:
+          - path: web/tests/screenshots/pipelines/onboarding-wizard-04--saga-completes---result-screen-shows-slug.png
+            taken_at: end of pipeline test (platform sidebar visible)
+            what_screen_showed: >
+              The BPM Platform sidebar showed generic navigation entries (Instances,
+              My Tasks, Definitions, DLQ, Webhooks, Users, Groups, Tokens, Audit,
+              Health, Metrics, Register Tenant, Tenants, Services). No SwiftRoute
+              branding or per-tenant filtering was visible. The logo reads "BPM Platform".
+        issues:
+          - id: ISSUE-EO004-NO-TENANT-DASHBOARD
+            severity: MAJOR
+            business_description: >
+              The BPM platform does not yet show a per-tenant branded dashboard.
+              A newly onboarded company's administrator sees the same generic
+              platform interface as the platform operator, with no company-specific
+              branding, naming, or data filtering applied.
+            suggested_action: route_to_frontend_dev
+            detail: >
+              The BPM platform application (frontend SPA) does not implement
+              per-tenant workspace views. The platform root and admin pages show
+              generic branding regardless of which company's tenant admin is logged in.
+              A per-tenant dashboard feature needs to be designed and implemented in
+              the frontend.
+
+issues_summary:
+  - id: ISSUE-PRECONDITION-SWIFTROUTE-EXISTS
+    severity: MAJOR
+    business_description: >
+      The SwiftRoute company registration could not be retested from a clean state
+      because a previous test run had already registered SwiftRoute in the database.
+      Before this scenario can be re-run with the exact business inputs specified
+      (slug='swiftroute', alice.bauer, SwiftRoute Ltd branding), the prior partial
+      registration must be removed from both the database and the identity provider.
+    suggested_action: cleanup_and_rerun
+    detail: >
+      Database bpm_dev.public.tenant: count=1 for slug='swiftroute' (precondition requires 0).
+      Keycloak: realm 'swiftroute' does not exist (inconsistent state).
+      Cleanup required: DELETE tenant record from DB + remove any orphaned DB artefacts.
+
+  - id: ISSUE-EO003-SWIFTROUTE-REALM-MISSING
+    severity: BLOCKER
+    business_description: >
+      The SwiftRoute workspace identity realm does not exist. Alice Bauer cannot
+      log in to her company's workspace. The platform shows the registration as
+      complete in the database but has no corresponding identity system to authenticate
+      SwiftRoute users.
+    suggested_action: route_to_wf03
+    detail: >
+      Keycloak GET /admin/realms/swiftroute → 404 Realm not found.
+      DB shows tenant record for swiftroute. Inconsistent state.
+
+  - id: ISSUE-EO004-NO-TENANT-DASHBOARD
+    severity: MAJOR
+    business_description: >
+      The BPM platform application does not have a per-tenant branded workspace view.
+      Tenant administrators see the same generic platform interface as the platform
+      operator, with no company-specific branding or data filtering.
+    suggested_action: route_to_frontend_dev
+    detail: >
+      Frontend SPA shows generic "BPM Platform" branding with no per-tenant context.
+      A per-tenant dashboard feature needs to be implemented in the frontend.
+
+evidence_artifacts:
+  pipeline_output: scratch/playwright-onboarding-wizard-uat.json
+  screenshots:
+    - web/tests/screenshots/pipelines/onboarding-wizard-01--platform-admin-sees-register-tenant-nav-entry.png
+    - web/tests/screenshots/pipelines/onboarding-wizard-02--fill-and-submit-registration-form.png
+    - web/tests/screenshots/pipelines/onboarding-wizard-03--progress-screen-shows-spinner.png
+    - web/tests/screenshots/pipelines/onboarding-wizard-04--saga-completes---result-screen-shows-slug.png
+    - web/scratch/uat-step4-01-login-page.png
+    - web/scratch/uat-step4-02-credentials-filled.png
+    - web/scratch/uat-step4-03-after-login.png
+    - web/scratch/uat-step5-01-bpm-app.png

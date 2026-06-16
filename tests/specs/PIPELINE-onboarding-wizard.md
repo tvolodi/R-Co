@@ -73,6 +73,32 @@ All verdicts are visual observations, not absence-of-error assertions.
 lives in the Keycloak test realm. When a `DELETE /api/v1/admin/tenants/:slug` endpoint
 is added, the cleanup function must be updated to call it.
 
+## Env var injection (ISS-0071 Fix A)
+
+The pipeline supports scenario-controlled tenant slugs via two optional environment
+variables. Both are read **once at module load time** as top-level constants, so they
+remain stable for the lifetime of a single test run.
+
+| Variable | Type | Required | Semantics |
+|---|---|---|---|
+| `ONBOARDING_PIPELINE_SLUG` | `string` | No | Exact slug for the new tenant; must be lowercase alphanumeric + hyphens. When unset the pipeline falls back to the existing `pl-<uid>` random generation. |
+| `ONBOARDING_PIPELINE_ADMIN_USERNAME` | `string` | No | Exact Keycloak admin username created inside the new realm. When unset falls back to `pl-admin-<uid>`. |
+
+**Fallback contract (backward compatible):** When neither env var is set the test
+generates `pl-<uid>` and `pl-admin-<uid>` as before. All other fields
+(`admin_email`, `display_name`, `admin_display_name`, `hostname`) continue to use
+the `uid` suffix for uniqueness, so concurrent pipeline runs remain safe.
+
+**UAT usage:** The UAT-RUNNER sets these vars before launching the pipeline test
+so that onboarding scenario assertions can reference deterministic tenant identifiers
+(e.g. SwiftRoute's slug `swiftroute`).
+
+| Scenario | `ONBOARDING_PIPELINE_SLUG` | `ONBOARDING_PIPELINE_ADMIN_USERNAME` |
+|---|---|---|
+| swiftroute-tenant-onboarding-happy | `swiftroute` | `alice.bauer` |
+| vortex-tenant-onboarding-happy | `vortex` | `dirk.haas` |
+| meridian-tenant-onboarding-happy | `meridian` | `eva.kremer` |
+
 ## Known gaps
 
 - No DELETE endpoint for tenants in this version. Cleanup logs the slug but cannot

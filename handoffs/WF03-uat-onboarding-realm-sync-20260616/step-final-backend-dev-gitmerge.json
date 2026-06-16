@@ -1,0 +1,29 @@
+{
+  "handoff_id": "a8b9c0d1-e2f3-4567-a8b9-c0d1e2f34567",
+  "run_id": "WF03-uat-onboarding-realm-sync-20260616",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-16T03:15:35Z",
+  "started_at": "2026-06-16T03:15:35Z",
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Step Final — git-merge ISS-0071 fixes",
+    "requirement_ids": [],
+    "related_handoff_ids": ["e6f7a8b9-c0d1-2345-e6f7-a8b9c0d12345"],
+    "artifacts_in": ["tests/reports/report-2026-06-16-WF03-uat-onboarding-realm-sync-20260616-step-05.yaml"]
+  },
+  "task": {
+    "description": "WF-03 Step Final (fn:git-merge): Create PR and merge feature/WF03-uat-onboarding-realm-sync-20260616 into main.\n\nfn:git-merge:\n  git fetch origin main\n  git rebase origin/main  (resolve conflicts if any)\n  git push origin feature/WF03-uat-onboarding-realm-sync-20260616\n  gh pr create --base main --title 'fix(WF03): onboarding realm-sync guard + pipeline slug injection (ISS-0071)' --body 'Fixes two root causes identified in UAT run WF05-swiftroute-onboarding-gui-20260616 ISSUE-EO003:\\n\\n**Fix A** — Pipeline test slug injection: env vars ONBOARDING_PIPELINE_SLUG and ONBOARDING_PIPELINE_ADMIN_USERNAME allow UAT-RUNNER to inject scenario canonical values into the onboarding wizard Playwright test.\\n\\n**Fix B** — Realm-existence guard: GET /api/v1/onboarding/:id now probes Keycloak when state=completed. If the realm is missing, the record is transitioned to state=failed (error=realm_missing) preventing Alice from seeing a false success screen.\\n\\n3/3 integration tests pass. All unit tests pass.'\n  gh pr merge --squash --delete-branch\n  git checkout main\n  git pull --ff-only origin main\n\nReturn: PR URL, merge commit SHA, branch status.",
+    "acceptance_criteria": [
+      "PR merged to main",
+      "feature/WF03-uat-onboarding-realm-sync-20260616 deleted from GitHub",
+      "Local repo on main with clean state"
+    ],
+    "functions_to_call": ["fn:git-merge"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1
+}

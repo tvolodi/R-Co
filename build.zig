@@ -947,6 +947,19 @@ pub fn build(b: *std.Build) void {
     run_spt01_iss0068_integration_tests.setCwd(b.path("."));
     run_spt01_iss0068_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-0071: Onboarding realm-existence guard integration tests.
+    const iss0071_realm_guard_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/onboarding_realm_guard_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0071_realm_guard_integration_tests = b.addRunArtifact(iss0071_realm_guard_integration_tests);
+    run_iss0071_realm_guard_integration_tests.setCwd(b.path("."));
+    run_iss0071_realm_guard_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     const tnt_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/tnt_schema_isolation_test.zig"),
@@ -1151,6 +1164,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_integration_tests.step);
     test_integration_step.dependOn(&run_adm_ui_09_integration_tests.step);
     test_integration_step.dependOn(&run_spt01_iss0068_integration_tests.step);
+    test_integration_step.dependOn(&run_iss0071_realm_guard_integration_tests.step);
     test_integration_step.dependOn(&run_tnt_integration_tests.step);
     test_integration_step.dependOn(&run_tnt_backfill_integration_tests.step);
     test_integration_step.dependOn(&run_iss101_integration_tests.step);
@@ -1201,6 +1215,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_spt01_iss68_step = b.step("test-integration-spt01-iss68", "Run SPT-01 ISS-0068 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_spt01_iss68_step.dependOn(&clean_test_db.step);
     test_integration_spt01_iss68_step.dependOn(&run_spt01_iss0068_integration_tests.step);
+
+    const test_integration_iss0071_step = b.step("test-integration-iss0071", "Run ISS-0071 onboarding realm guard integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0071_step.dependOn(&clean_test_db.step);
+    test_integration_iss0071_step.dependOn(&run_iss0071_realm_guard_integration_tests.step);
 
     const test_integration_tnt_step = b.step("test-integration-tnt", "Run TNT-01..04 schema isolation tests only (requires BPM_TEST_DB_URL)");
     test_integration_tnt_step.dependOn(&clean_test_db.step);

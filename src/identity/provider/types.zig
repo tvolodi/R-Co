@@ -269,3 +269,9 @@ pub const AuditEventPage = struct {
         if (self.next_cursor) |v| allocator.free(v);
     }
 };
+
+// --- ISS-0071: Realm-existence guard ---
+
+pub const CheckRealmExistsInput = struct {
+    realm_id: []const u8,
+};
