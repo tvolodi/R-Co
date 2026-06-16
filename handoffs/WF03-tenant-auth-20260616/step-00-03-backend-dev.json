@@ -1,0 +1,41 @@
+{
+  "handoff_id": "0bc1d2e3-f4a5-6789-0bc1-d2e3f4a56789",
+  "run_id": "WF03-tenant-auth-20260616",
+  "step": "00-03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-06-16T08:54:44Z",
+  "started_at": "2026-06-16T08:54:44Z",
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 FAST-TRACK \u2014 3 backend auth issues from UAT v6",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "tests/uat-reports/uat-2026-06-16-WF05-swiftroute-onboarding-gui-v6.yaml",
+      "src/identity/onboarding.zig",
+      "src/identity/provider/adapters/keycloak/provider.zig",
+      "src/api/middleware/auth.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 FAST-TRACK: Fix three backend issues blocking Alice's post-onboarding workspace login.\n\nBranch: feature/WF03-tenant-auth-20260616\nfn:git-setup first, then implement all three fixes.\n\n## Fix 1 \u2014 ISS-UAT-V6-001: Add realm-roles mapper to provisioned Keycloak client\n\nIn src/identity/onboarding.zig OR src/identity/provider/adapters/keycloak/provider.zig (provisionClient):\nAfter creating the Keycloak client for a new tenant realm, add a protocol mapper of type 'oidc-usermodel-realm-role-mapper' to embed realm roles in the JWT.\n\nThe mapper payload to POST to /admin/realms/{realm}/clients/{clientId}/protocol-mappers/models:\n  {\n    \"name\": \"realm roles\",\n    \"protocol\": \"openid-connect\",\n    \"protocolMapper\": \"oidc-usermodel-realm-role-mapper\",\n    \"config\": {\n      \"claim.name\": \"realm_access.roles\",\n      \"jsonType.label\": \"String\",\n      \"access.token.claim\": \"true\",\n      \"id.token.claim\": \"false\",\n      \"multivalued\": \"true\"\n    }\n  }\n\nCheck: does createStandardRoles (or similar) in provider.zig already add mappers? Read the code first.\n\n## Fix 2 \u2014 ISS-UAT-V6-002: Backend must accept tokens from tenant realms\n\nThe backend has BPM_IDP_EXPECTED_ISSUER=http://localhost:8081/realms/bpm-default. Alice's swiftroute token has iss=http://localhost:8081/realms/swiftroute \u2192 rejected.\n\nIn src/api/middleware/auth.zig, look for where the issuer is validated.\nOption A: When BPM_IDP_EXPECTED_ISSUER is set, only validate it for platform-admin tokens (bpm-default realm). For tenant-realm tokens, validate the issuer dynamically against the tenant's registered oidc_authority (from public.tenant table).\nOption B (simpler): If the token's iss matches any registered tenant realm (SELECT idp_realm_id FROM public.tenant WHERE iss = tenant_oidc_authority), accept it.\n\nRead auth.zig to understand the current validation flow. Implement the simplest correct approach that doesn't break existing tests.\n\nSecurity rule: NEVER skip issuer validation entirely. Always validate iss against either the expected issuer or a registered tenant realm. No SQL string interpolation.\n\n## Fix 3 \u2014 ISS-UAT-V6-003: Add platform callback URL to Keycloak client redirect_uris\n\nIn the onboarding saga (src/identity/onboarding.zig OR provider.zig provisionClient):\nWhen creating the Keycloak client for a tenant, add the platform's own base URL patterns to redirect_uris alongside the tenant-specified ones:\n  - http://127.0.0.1:8080/* (or BPM_BASE_URL/* from env)\n  - http://127.0.0.1:4173/* (Vite preview port)\n  - http://localhost:8080/*\n  - http://localhost:4173/*\n\nThese are dev-mode URLs. In production, BPM_BASE_URL would be set to the real platform URL.\n\nAlternatively: read BPM_BASE_URL or BPM_PORT from environment and construct the platform callback URL dynamically.\n\nAfter implementation:\n  zig build 2>&1 | grep -i 'error set' \u2192 must be empty\n  zig build \u2192 exits 0\n  zig build test \u2192 exits 0\n\nCommit and push:\n  git commit -m 'fix(WF03): realm-roles mapper + tenant issuer validation + platform redirect_uri (ISS-UAT-V6)'\n  git push origin feature/WF03-tenant-auth-20260616\n\nThen git-merge (PR + squash merge + delete branch):\n  PR title: 'fix(WF03): realm-roles mapper, tenant token issuer validation, platform redirect_uri (ISS-UAT-V6-001/002/003)'\n  gh pr merge --squash --delete-branch\n  git checkout main ; git pull --ff-only origin main",
+    "acceptance_criteria": [
+      "Realm-roles mapper added to provisionClient",
+      "Backend accepts tokens from registered tenant realms",
+      "Platform callback URL in Keycloak client redirect_uris",
+      "zig build exits 0, zig build test exits 0",
+      "PR merged to main"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:read-backend-conventions",
+      "fn:check-zig-build",
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 2
+}
