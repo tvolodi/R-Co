@@ -1,0 +1,16 @@
+{
+  "colors": {
+    "background": "#FFFFFF",
+    "surface": "#F5F5F5",
+    "border": "#D4D4D4",
+    "text-primary": "#111111",
+    "text-secondary": "#555555",
+    "primary": "#2563EB",
+    "success": "#16A34A",
+    "warning": "#D97706",
+    "danger": "#DC2626"
+  },
+  "fonts": {
+    "sans": { "family": "Inter", "weights": ["400", "500", "600", "700"] }
+  }
+}

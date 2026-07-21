@@ -63,7 +63,7 @@ export function AppShell() {
         }}
       >
         <div style={{ padding: '0 1.25rem', marginBottom: '1.5rem', fontWeight: 700, fontSize: '1.1rem', color: '#f1f5f9' }}>
-          BPM Platform
+          R-Co
         </div>
 
         <TenantHeader />

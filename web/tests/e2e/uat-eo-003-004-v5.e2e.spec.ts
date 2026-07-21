@@ -83,7 +83,8 @@ test('EO-004: Alice logs into BPM platform via ?realm=swiftroute and sees SwiftR
   if (hasTenantDisplay) {
     const tenantText = await page.locator('[data-testid="tenant-display-name"]').innerText().catch(() => '');
     console.log('EO-004 tenant display text:', tenantText);
-    expect(tenantText).toContain('SwiftRoute');
+    // innerText() returns CSS-rendered text (may be uppercased by text-transform); compare case-insensitively
+    expect(tenantText.toLowerCase()).toContain('swiftroute');
   } else {
     // Take full-page screenshot for diagnosis
     await page.screenshot({ path: path.join(SCREENSHOT_DIR, 'uat-v5-eo-004-06-debug.png'), fullPage: true });
@@ -91,6 +92,6 @@ test('EO-004: Alice logs into BPM platform via ?realm=swiftroute and sees SwiftR
     console.log('EO-004 page title:', pageTitle);
     // Non-blocking: assertion on tenant name but allow the test to complete for screenshot evidence
     const pageContent = await page.locator('body').innerText().catch(() => '');
-    expect(pageContent).toContain('SwiftRoute');
+    expect(pageContent.toLowerCase()).toContain('swiftroute');
   }
 });
