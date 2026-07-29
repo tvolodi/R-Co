@@ -1,0 +1,213 @@
+---
+id: platform-attachment-cross-tenant-probe
+company_id: platform
+platform_workflow: PW-09
+process_id: sys-file-attachment-lifecycle
+title: One company's documents cannot be found, opened, or even proven to exist by another company
+version: "1.0"
+tags: [isolation, attachment, regression]
+
+description: >
+  Companies attach real business documents to their tasks: signed delivery notes,
+  photographs of damaged cargo, inspection certificates. A user of one company must
+  never be able to open another company's document, and must not even be able to
+  work out that it exists. This scenario has a Vortex user, holding a reference to a
+  SwiftRoute document, try to reach it through the browser, and checks that what he
+  sees is indistinguishable from asking for a document that has never existed.
+
+pipeline_test: web/tests/e2e/pipelines/attachment-cross-tenant.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for all steps. If this file does
+# not exist or the test cannot run, that is a BLOCKER (missing UI) and must be
+# routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  swiftroute_dispatcher: actor-swiftroute-lena
+  swiftroute_ops:        actor-swiftroute-marco
+  vortex_user:           actor-vortex-karl
+
+preconditions:
+  - description: Both SwiftRoute and Vortex are set up with their own users and workspaces
+    check: system_seeded
+  - description: An open shipment approval task exists for SwiftRoute
+    check: custom
+    detail: >
+      The dispatcher needs a real task to attach the delivery note to. Confirm one
+      open shipment approval task is available before the scenario starts.
+
+steps:
+  - step: 1
+    actor: swiftroute_dispatcher
+    action: >
+      Logs into SwiftRoute, opens the shipment approval task, attaches the signed
+      delivery note, and notes the reference the screen shows for that document.
+    via: gui
+    input:
+      document_kind: signed delivery note
+      document_name: delivery-note-hamburg.pdf
+    produces:
+      document_reference: the reference shown on screen for the attached delivery note
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: vortex_user
+    action: >
+      Logs into Vortex, and using the reference he was given for SwiftRoute's
+      delivery note, navigates directly to the address at which that document would
+      be shown. He captures exactly what the screen tells him.
+    via: gui
+    input:
+      document_reference: the reference noted in step 1
+    produces:
+      foreign_document_screen: what the screen showed for another company's document
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: vortex_user
+    action: >
+      Still logged into Vortex, navigates to the address of a document reference
+      that has never belonged to anyone, and captures exactly what the screen tells
+      him this time.
+    via: gui
+    input:
+      document_reference: a reference that has never been issued
+    produces:
+      unknown_document_screen: what the screen showed for a document that never existed
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: swiftroute_ops
+    action: >
+      Logs into SwiftRoute, opens the same shipment approval task, opens the
+      delivery note, and reads it. He then keeps the link the screen used, waits
+      until it is older than the platform allows, and tries it again.
+    via: gui
+    input:
+      document_reference: the reference noted in step 1
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: swiftroute_ops
+    action: >
+      Returns to the task and asks for the delivery note again, receiving a fresh
+      link, and reads the document without any further steps.
+    via: gui
+    input:
+      document_reference: the reference noted in step 1
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      What the Vortex user sees when he asks for SwiftRoute's delivery note is
+      exactly what he sees when he asks for a document that has never existed. The
+      wording, the layout, and the time taken give him no way to tell the two apart.
+    verification:
+      method: gui_screen
+      detail: >
+        The screen captured at step 2 and the screen captured at step 3 are the
+        same: same message, same layout, no additional detail on either.
+      evidence: >
+        Screenshots of both screens, captured at steps 2 and 3, compared directly.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A competitor sharing the platform could confirm which of our documents
+        exist simply by trying references and watching how the answers differ. Even
+        without opening a single file, that discloses that a shipment, a claim, or
+        a supplier relationship exists.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      At no point is the Vortex user shown any part of SwiftRoute's document: not
+      its contents, not its file name, not its size, not who attached it, and not
+      which task it belongs to.
+    verification:
+      method: gui_screen
+      detail: >
+        The screen at step 2 contains none of the document's name, size, owner,
+        task, or contents, and no partial preview of it.
+      evidence: >
+        Screenshot of the step 2 screen, reviewed for any trace of the document's
+        details.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Confidential commercial documents belonging to one customer would be
+        readable by another. This is the single failure most likely to end a
+        customer relationship and trigger a data protection notification.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      The link that opens a document stops working after a short time. When the
+      operations manager reuses an old link, he is told plainly that it has expired
+      and that he should ask for the document again, and the document is not shown.
+    verification:
+      method: gui_screen
+      detail: >
+        Following the expired link at step 4 shows an expiry message and no
+        document content.
+      evidence: >
+        Screenshot taken at step 4 after the expired link is followed.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        A link copied into an email or a chat message would keep working
+        indefinitely, so anyone who ever received it could read the document long
+        after they should have lost access.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      The people who are supposed to read the document can read it without
+      difficulty: the operations manager opens the delivery note from the task and
+      sees the document itself, both on his first attempt and after asking for a
+      fresh link.
+    verification:
+      method: gui_screen
+      detail: >
+        The delivery note is displayed to the operations manager at step 4 on his
+        first attempt, and again at step 5 after a fresh link is issued.
+      evidence: >
+        Screenshots of the document open on screen, captured at steps 4 and 5.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Nobody could read the documents attached to their own work. Shipment
+        approvals would stall because the approver cannot see the delivery note he
+        is being asked to approve against.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      Although the Vortex user was told nothing, his attempts to reach another
+      company's document are recorded so that the platform operator can see that
+      somebody went looking.
+    verification:
+      method: audit_event
+      detail: >
+        The activity history available to the platform operator shows the attempts
+        made at steps 2 and 3, naming the person who made them and when.
+      evidence: >
+        The operator activity history for the period of the scenario, showing both
+        attempts.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Somebody could probe repeatedly for other companies' documents and leave no
+        trace. We would have no way to detect a determined attempt, and no evidence
+        to show a customer or a regulator after the fact.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Remove the delivery note attached in step 1 and cancel the shipment approval
+    task created for the scenario. The recorded history of the attempts made in
+    steps 2 and 3 is deliberately left in place.

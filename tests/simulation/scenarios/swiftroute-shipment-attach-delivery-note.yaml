@@ -1,0 +1,217 @@
+---
+id: swiftroute-shipment-attach-delivery-note
+company_id: swiftroute
+platform_workflow: PW-09
+process_id: proc-swiftroute-shipment-approval
+title: A dispatcher attaches the signed delivery note and the operations manager approves against it
+version: "1.0"
+tags: [happy_path, attachment]
+
+description: >
+  SwiftRoute's drivers come back with signed delivery notes, and the operations
+  manager will not approve a shipment without seeing the signature. Until now there
+  was nowhere on the shipment task to put the document, so it travelled by email
+  and got lost. This scenario has Lena attach the signed delivery note to the
+  shipment approval task, correct it when she attaches the wrong one, and Marco
+  read it and approve the shipment against the document he actually saw.
+
+pipeline_test: web/tests/e2e/pipelines/shipment-attach-delivery-note.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for all steps. If this file does
+# not exist or the test cannot run, that is a BLOCKER (missing UI) and must be
+# routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  dispatcher:  actor-swiftroute-lena
+  ops_manager: actor-swiftroute-marco
+
+preconditions:
+  - description: The shipment approval process is active for SwiftRoute
+    check: process_definition_active
+  - description: SwiftRoute has storage allowance remaining
+    check: custom
+    detail: >
+      The company must have room left in its storage allowance, otherwise the
+      upload would be refused for the wrong reason and the scenario would not test
+      what it is meant to test.
+
+steps:
+  - step: 1
+    actor: dispatcher
+    action: >
+      Submits a shipment request for 8 packages to Hamburg, declared value 320
+      euros, cargo type standard, which creates a review task for the operations
+      manager.
+    via: gui
+    input:
+      destination: Hamburg
+      declared_value: 320
+      cargo_type: standard
+    produces:
+      instance_id: the shipment reference shown on the confirmation screen
+    sla_context:
+      expected_within_hours: 4
+
+  - step: 2
+    actor: dispatcher
+    action: >
+      Opens the shipment and attaches the scan of the delivery note the driver
+      signed. The document appears on the shipment with its name and its size.
+    via: gui
+    input:
+      document_name: delivery-note-hamburg-signed.pdf
+      document_kind: signed delivery note
+    produces:
+      attached_document: the delivery note now listed on the shipment
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: dispatcher
+    action: >
+      Realises she also has a short video of the loading and tries to attach that
+      as well, and then tries to attach a scan far larger than the company is
+      allowed to store in one piece. She reads what the screen tells her each time.
+    via: gui
+    input:
+      rejected_kind: a video file
+      rejected_size: a scan larger than the company's single-document limit
+    produces:
+      refusal_messages: what the screen said about each document it would not accept
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: dispatcher
+    action: >
+      Notices the delivery note she attached is for the wrong shipment, removes it,
+      and attaches the correct signed note in its place.
+    via: gui
+    input:
+      document_name: delivery-note-hamburg-signed-corrected.pdf
+    produces:
+      corrected_document: the corrected delivery note now listed on the shipment
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: ops_manager
+    action: >
+      Opens his review task, sees the delivery note listed on the shipment, opens
+      it and reads the signature, then approves the shipment.
+    via: gui
+    input:
+      ops_decision: approve
+      ops_notes: "Signed delivery note checked, signature present, approved."
+    sla_context:
+      expected_within_hours: 4
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The delivery note Lena attached is listed on the shipment, and Marco can open
+      and read it from his own review task without asking her for it separately.
+    verification:
+      method: gui_screen
+      detail: >
+        The shipment shown to Marco at step 5 lists the corrected delivery note, and
+        opening it displays the document itself.
+      evidence: >
+        Screenshots of the shipment with the document listed and of the document
+        open on screen at step 5.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Marco cannot see the signed proof of delivery he is required to check before
+        approving. Shipment approvals go back to travelling by email, which is
+        exactly the practice that lost documents and delayed customer invoicing.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      A document SwiftRoute is not allowed to attach - a video, or a scan bigger
+      than the single-document limit - is refused with a plain explanation of the
+      limit, and nothing half-attached is left on the shipment afterwards.
+    verification:
+      method: gui_screen
+      detail: >
+        Both attempts at step 3 are refused with a readable explanation naming the
+        limit, and afterwards the shipment lists only the documents that were
+        accepted.
+      evidence: >
+        Screenshots of both refusal messages and of the shipment's document list
+        immediately afterwards.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Dispatchers see an unexplained failure and try repeatedly, or worse a broken
+        half-attached document appears on the shipment and Marco approves believing
+        he has seen proof of delivery when he has not.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      The space each attached document takes up counts against SwiftRoute's storage
+      allowance from the moment it is accepted, and the figure goes back down once a
+      document is removed - so what the company is told it has used is always right.
+    verification:
+      method: gui_screen
+      detail: >
+        The storage figure shown for SwiftRoute increases when the delivery note is
+        accepted at step 2 and reflects the removal made at step 4.
+      evidence: >
+        Screenshots of SwiftRoute's storage usage before step 2, after step 2, and
+        after step 4.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        SwiftRoute is told it has used more or less storage than it really has.
+        Either they are cut off while they still have room, or they keep uploading
+        past their limit and we absorb the cost without noticing.
+      suggested_action: route_to_backend_dev
+
+  - id: EO-004
+    description: >
+      When Lena removes the wrong delivery note it stops being listed on the
+      shipment, and the shipment's history still shows that a document was attached
+      and then removed, and by whom.
+    verification:
+      method: gui_screen
+      detail: >
+        After step 4 the shipment lists only the corrected note, and the shipment
+        history shows the original attachment and its removal with Lena named.
+      evidence: >
+        Screenshots of the shipment's document list and its history after step 4.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Either the wrong delivery note stays visible and Marco approves against the
+        wrong document, or a document disappears with no record that it ever
+        existed. Both make it impossible to reconstruct a disputed delivery.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      The approval record shows which delivery note Marco actually reviewed, so a
+      later dispute can be settled by pointing at the exact document that was in
+      front of him.
+    verification:
+      method: audit_event
+      detail: >
+        The shipment history after step 5 shows the approval and names the delivery
+        note that was attached at the time it was given.
+      evidence: >
+        Screenshot of the shipment history after approval.
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        In a delivery dispute we can show that a note was attached, but not which
+        one Marco saw. It rarely matters, but when a customer disputes a
+        high-value consignment it is the only evidence that counts.
+      suggested_action: none
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Cancel the Hamburg shipment created in step 1 if it is not already completed,
+    and remove the delivery notes attached during the scenario so SwiftRoute's
+    storage usage returns to where it started.

@@ -1,4 +1,4 @@
-# BPM Platform
+# BPM Platform R-Co (Robotized Company)
 
 A business process management platform built with Zig (backend) and React/TypeScript (frontend).
 

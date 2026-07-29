@@ -1,0 +1,211 @@
+---
+id: platform-unsafe-migration-rejected
+company_id: platform
+platform_workflow: PW-05
+process_id: sys-platform-ddl-safety
+title: A platform change that would freeze every company's workspace is refused before any workspace is opened
+version: "1.0"
+tags: [migration, regression]
+
+description: >
+  A change that pauses one company's workspace for a few minutes is an
+  inconvenience. The same change applied to every company at once is a
+  platform-wide outage. This scenario checks that the platform reviews a proposed
+  set of changes in full before it opens a single company's workspace, refuses
+  anything that would hold a workspace frozen for an unbounded period or that
+  would demand information nobody has supplied yet, reaches the same verdict
+  every time, and keeps its own reserved names out of reach of companies.
+
+actors:
+  operator:          actor-platform-admin
+  change_checker:    actor-system-change-checker
+  tenant_automation: actor-system-tenant-automation
+
+preconditions:
+  - description: At least three companies are active on the platform
+    check: custom
+    detail: >
+      Confirm three or more company workspaces are active, so the cost of a
+      platform-wide freeze would be real if a change were wrongly accepted.
+  - description: No platform-wide change is currently being rolled out
+    check: custom
+    detail: >
+      Confirm the rollout status screen shows no change in progress, so a
+      refusal in this scenario cannot be confused with an ongoing run.
+
+steps:
+  - step: 1
+    actor: operator
+    action: >
+      Submits a set of platform-wide changes for review. One of them would hold
+      every company's workspace frozen for as long as it takes to rework the
+      stored history - a period that grows with how much history a company has.
+    via: system
+    produces:
+      first_verdict: the platform's decision on the submitted set
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: change_checker
+    action: >
+      Reviews the whole set before any company workspace is opened, and refuses
+      it, naming the offending change and why it cannot be accepted.
+    via: system
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: operator
+    action: >
+      Submits a second set. This one would make a new piece of information
+      compulsory before that information has been added to existing records and
+      filled in.
+    via: system
+    produces:
+      second_verdict: the platform's decision on the second set
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: change_checker
+    action: >
+      Refuses the second set as well, naming both the rule that would be
+      enforced and the preparation that is missing.
+    via: system
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: operator
+    action: >
+      Submits a corrected set that first adds the new piece of information as
+      optional, then fills it in for existing records in small batches, and only
+      then makes it compulsory. The set is accepted and applied.
+    via: system
+    produces:
+      accepted_plan: the accepted set and the stages it will be carried out in
+    sla_context:
+      expected_within_hours: null
+
+  - step: 6
+    actor: tenant_automation
+    action: >
+      On behalf of a company, attempts to create something of the company's own
+      using a name the platform reserves for itself.
+    via: system
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The change that would freeze every company's workspace is refused, and not
+      one company workspace is opened or altered in the process. The refusal
+      names the offending change.
+    verification:
+      method: system_state
+      detail: >
+        The submitted set is refused, no company workspace is opened, and the
+        refusal identifies which change was the problem.
+      evidence: >
+        The refusal record shown on the operator console, together with the
+        rollout status screen showing no company touched by this submission.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A single careless change would take every company on the platform
+        offline at once, for a length of time nobody can predict in advance.
+        That is the worst outage the platform can suffer and it would be
+        self-inflicted.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      A change that would make a piece of information compulsory before it exists
+      and has been filled in is refused, naming both the rule and the missing
+      preparation.
+    verification:
+      method: system_state
+      detail: >
+        The second set is refused and the refusal identifies both the compulsory
+        rule and the preparation step that should have come first.
+      evidence: >
+        The refusal record shown on the operator console for the second
+        submission.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Existing records would fail a rule they were never given a chance to
+        satisfy. Companies would find historic work suddenly unusable and the
+        only way back would be to undo the change everywhere.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      The same set of changes always receives the same verdict, on any machine
+      and at any time. A set refused on one platform cannot slip through on
+      another because of local conditions.
+    verification:
+      method: system_state
+      detail: >
+        Submitting the same set a second time, and on a second platform host,
+        produces an identical verdict naming the same offending change.
+      evidence: >
+        The two refusal records placed side by side, showing identical verdicts
+        for identical submissions.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        The safety check would be unreliable, so a change refused in testing
+        could be accepted in production. Nobody could trust a passing verdict.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      The corrected set is accepted and carried out in three separate stages -
+      add, fill in, then enforce - none of which holds any company's workspace
+      for more than a moment.
+    verification:
+      method: system_state
+      detail: >
+        The accepted set is applied in three distinct stages, and each company's
+        workspace stays available to its users throughout.
+      evidence: >
+        The accepted plan shown on the operator console listing its three stages,
+        together with the platform health screen captured across the rollout.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Safe changes would be refused along with unsafe ones, so necessary
+        improvements could not be delivered at all and the safety check would be
+        turned off under pressure.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      A company cannot create anything of its own using a name the platform
+      reserves for itself, and the refusal names the offending name so the
+      company can choose another.
+    verification:
+      method: system_state
+      detail: >
+        The attempt at step 6 is refused before anything is created, and the
+        refusal states which name is reserved.
+      evidence: >
+        The refusal returned for the company's request, plus a check that nothing
+        was created in that company's workspace.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        A company could occupy a name the platform depends on, and the next
+        platform update would collide with it - breaking that one company in a
+        way that looks like a platform fault and is hard to diagnose.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    The two refused sets leave nothing to clean up by design; if anything was
+    created by them, that is itself the failure described in EO-001. The
+    corrected set from step 5 remains applied, which is the intended end state.

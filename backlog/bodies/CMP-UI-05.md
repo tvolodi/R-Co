@@ -1,0 +1,10 @@
+> `web/src/components/forms/FieldRegistry.ts` SHALL expose `registerField(typeKey, component)` and `resolveField(typeKey)`, where `typeKey` is the JSON Schema `type` and `format` pair, for example `string:date` or `string:iban`. `FieldFactory.tsx` SHALL resolve every field through `resolveField`, and its existing switch SHALL survive only as the seed that registers the seven built-in mappings specified in `docs/guides/frontend_design_system.md` §7.6. A second registration of the same `typeKey` SHALL throw `DuplicateFieldTypeError` at module load. An unregistered `typeKey` SHALL render `<UnsupportedFieldNotice>` naming the key rather than throwing. Adding a field type SHALL be one `registerField` call and SHALL change no file under `web/src/pages/`.
+
+**Acceptance Criteria:**
+- GIVEN the seven §7.6 mappings, WHEN the registry module loads, THEN `resolveField` returns a component for each of `string:text`, `string:date`, `string:date-time`, `string:enum`, `number`, `boolean` and `string:long-text`; this is a pure static module check with no HTTP.
+- GIVEN a commit that adds a new field type, WHEN the diff is scanned, THEN it touches `FieldRegistry` registrations and a new component file and touches no file under `web/src/pages/`; a changed page file fails the check.
+- GIVEN `registerField` is called twice with `string:iban`, WHEN the module loads, THEN `DuplicateFieldTypeError` is thrown before the first render and the error names the duplicated key.
+- GIVEN a Playwright E2E opens a human task on the real backend whose `form_schema` carries a property with an unregistered `typeKey`, WHEN the form renders, THEN `UnsupportedFieldNotice` is shown naming that key and the remaining fields stay submittable; the task is completed through the real API in the same test.
+- GIVEN a field type registered after bootstrap, WHEN a Playwright E2E opens a task whose schema uses it, THEN the registered component renders and carries the full GRD-UI-07 ARIA attribute set without a per-screen edit.
+
+**See:** CMP-UI-06, CMP-UI-03, GRD-UI-07, TK-UI-01, PD-UI-07

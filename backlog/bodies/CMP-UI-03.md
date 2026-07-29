@@ -1,0 +1,11 @@
+> `web/src/components/ui/` SHALL contain `Button`, `DataTable`, `ConfirmDialog`, `Toast`, `JsonEditor`, `StatusBadge`, `PageLayout`, `FilterBar` and `PaginationControls`, each with the prop names and enum values specified in `docs/guides/frontend_design_system.md` §5.4 and §7.1 through §7.6. `StatusBadge` SHALL cover every status in the §5.1, §5.2 and §5.3 tables across the domains `definition`, `instance`, `task`, `timer` and `dlq`. Canvas node geometry SHALL follow the §6.1 dimensions and the §6.2 runtime states. Every destructive action - cancel instance, delete definition, revoke token, discard DLQ item - SHALL route through `ConfirmDialog` with `confirmVariant="danger"`; `window.confirm` and `window.alert` SHALL NOT appear in `web/src/`.
+
+**Acceptance Criteria:**
+- GIVEN the exported prop types of the nine components, WHEN they are compared against the §5.4 and §7.1 to §7.6 signatures, THEN every prop name and every enum member matches character for character; a renamed or dropped prop fails the pure static signature check.
+- GIVEN a call to `window.confirm` or `window.alert` anywhere under `web/src/`, WHEN the GRD-UI-02 source scan runs, THEN the scan fails with pattern name `native-confirm` and the file path; this is a pure static scan with no HTTP.
+- GIVEN a Playwright E2E opens a running instance on the real backend and presses Cancel Instance, WHEN the frame is inspected, THEN `ConfirmDialog` is mounted with a danger-variant confirm control and the cancel request has not yet been issued in the page network log.
+- GIVEN that E2E dismisses the dialog, WHEN the network log is read, THEN no cancel request was issued and the instance remains `ACTIVE` when re-read from the real API.
+- GIVEN a Playwright E2E renders one `StatusBadge` per status in the §5.1 to §5.3 tables, WHEN each computed background, text colour and dot colour is read, THEN each equals the token named for that row.
+- GIVEN a canvas node of each type in §6.1, WHEN its bounding box is measured in a Playwright E2E of the Process Designer against a real definition, THEN width and minimum height equal the values in that table.
+
+**See:** CMP-UI-01, CMP-UI-02, RND-UI-02, IN-UI-05, DLQ-UI-01, TK-UI-01, PD-UI-07

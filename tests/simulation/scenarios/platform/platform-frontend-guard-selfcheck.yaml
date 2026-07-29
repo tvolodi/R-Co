@@ -1,0 +1,218 @@
+---
+id: platform-frontend-guard-selfcheck
+company_id: platform
+platform_workflow: PW-16
+process_id: sys-frontend-guards
+title: The automatic checks that protect the platform are themselves proven to still work
+version: "1.0"
+tags: [regression, accessibility]
+
+description: >
+  A set of automatic checks stands between our developers and the screens our
+  customers use. They stop practices we have decided are unsafe, and they stop
+  screens that people using assistive technology could not operate. The risk this
+  scenario tests is not a check that fails - it is a check that has quietly stopped
+  detecting anything and passes everything. Every check is therefore run against a
+  deliberately faulty sample it must catch and an innocent sample it must ignore,
+  before any of its verdicts are trusted.
+
+actors:
+  build_gate:       actor-system-build-gate
+  frontend_builder: actor-system-frontend-agent
+
+preconditions:
+  - description: A deliberately faulty sample and an innocent sample exist for every check
+    check: custom
+    detail: >
+      Each check must have a sample it is supposed to catch and a similar-looking
+      sample it must not catch. A check without both cannot be proven and this
+      scenario treats that as a failure.
+  - description: The platform services the screen checks depend on are running and healthy
+    check: custom
+    detail: >
+      The accessibility checks drive real screens against the real platform, so the
+      platform must be available before the scenario starts.
+
+steps:
+  - step: 1
+    actor: build_gate
+    action: >
+      Runs every check against the deliberately faulty sample it exists to catch,
+      before running any check against the real application.
+    via: system
+    produces:
+      offender_results: which checks caught their faulty sample and which did not
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: build_gate
+    action: >
+      Runs every check against the innocent sample - work that looks similar but
+      breaks no rule - to see whether any check reports it.
+    via: system
+    produces:
+      bystander_results: which checks wrongly reported the innocent sample
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: build_gate
+    action: >
+      Examines the whole of the application's written work for every practice we
+      have banned, and reports where each one appears.
+    via: system
+    produces:
+      source_findings: the list of banned practices found in the written work
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: build_gate
+    action: >
+      Discards any previously built package, builds the shipped package again from
+      scratch, and examines the finished package for the same banned practices, so
+      that nothing arriving through an outside component can slip past unnoticed.
+    via: system
+    produces:
+      package_findings: the list of banned practices found in the shipped package
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: build_gate
+    action: >
+      Opens each of the platform's main screens in a real browser and checks each
+      one against the accessibility rules, recording anything that would seriously
+      prevent somebody using assistive technology from doing their work.
+    via: system
+    input:
+      screens: task inbox, running process list, process detail, definition list, process designer, sign-in
+    produces:
+      accessibility_findings: what was found on each main screen
+    sla_context:
+      expected_within_hours: null
+
+  - step: 6
+    actor: frontend_builder
+    action: >
+      Publishes the combined results, naming for each finding where it is and which
+      rule it breaks, without repeating the offending text itself.
+    via: system
+    produces:
+      published_results: the published record of everything found
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      Every check catches the faulty sample it exists to catch. A check that no
+      longer detects anything is reported and stops the release, rather than being
+      taken as evidence that everything is fine.
+    verification:
+      method: system_state
+      detail: >
+        Each check reports its own faulty sample at step 1. Any check that does not
+        is named, and the release does not proceed.
+      evidence: >
+        The results from step 1, listing each check and whether it caught its
+        faulty sample.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        We would believe the platform is protected when it is not. Practices we
+        deliberately banned - including the ones protecting one customer's data from
+        another - would flow into the product unchecked, and the first sign of it
+        would be an incident in front of a customer.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      No check reports the innocent sample. A check that is too eager and blocks
+      correct work is caught here rather than after it has stopped a release.
+    verification:
+      method: system_state
+      detail: >
+        No check reports the innocent sample at step 2. Any that does is named and
+        narrowed before its verdicts are trusted.
+      evidence: >
+        The results from step 2, listing each check and whether it wrongly reported
+        the innocent sample.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Correct work would be blocked by a check that cannot tell the difference.
+        Delivery slows, and worse, people start ignoring or switching off the checks
+        because they no longer believe them.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      The shipped package is examined after being rebuilt from scratch, not a
+      leftover copy, and finding nothing to examine is treated as a failure rather
+      than as a clean result.
+    verification:
+      method: system_state
+      detail: >
+        Step 4 discards the previous package, rebuilds it, and examines the result.
+        If the rebuild produces nothing to examine, the check reports a failure.
+      evidence: >
+        The record from step 4 showing the previous package discarded, the rebuild
+        completed, and what was examined.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        We would be checking yesterday's package, or an empty one, and reporting it
+        as clean. Something banned could arrive through an outside component and
+        reach customers with a green result recorded against it.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      Each main screen is checked in a real browser. Anything that would seriously
+      stop somebody using assistive technology from working stops the release, and
+      lesser findings are recorded for later without blocking.
+    verification:
+      method: system_state
+      detail: >
+        Every main screen listed at step 5 is checked. Serious findings stop the
+        release; lesser ones appear in the published results only.
+      evidence: >
+        The findings from step 5, per screen, separated into those that stop the
+        release and those recorded only.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Staff who rely on assistive technology could not do their jobs on our
+        screens. Several of our customers are contractually required to provide
+        accessible systems to their employees, so this becomes their problem and
+        then ours.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      The published results say where each problem is and which rule it breaks, and
+      never repeat the offending text itself, so nothing sensitive that a rule
+      happened to catch is copied into a record many people can read.
+    verification:
+      method: system_state
+      detail: >
+        The published results at step 6 name the place and the rule for each
+        finding, and contain none of the offending text.
+      evidence: >
+        The published results from step 6, reviewed for any repeated offending
+        text.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        A credential or key that one of these rules caught would be copied straight
+        into a widely readable record. The check meant to protect us would be the
+        thing that exposed the secret.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    No process instances are created by this scenario. The rebuilt package and the
+    published results are left in place as the evidence for this run.

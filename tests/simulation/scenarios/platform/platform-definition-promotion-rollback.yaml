@@ -1,0 +1,194 @@
+---
+id: platform-definition-promotion-rollback
+company_id: platform
+platform_workflow: PW-01
+process_id: sys-definition-promotion
+title: A released process change can be taken back immediately without disturbing work in progress
+version: "1.0"
+tags: [compensation, regression]
+
+description: >
+  Sometimes a change looks right at review and turns out to be wrong the moment
+  real work runs through it. The business needs to be able to put the previous
+  version back straight away, without a rebuild, a maintenance window, or any
+  effect on the other companies on the platform. This scenario checks that
+  taking a change back is immediate, that work already in progress carries on
+  undisturbed, and that a version that never ran here cannot be selected.
+
+pipeline_test: web/tests/e2e/pipelines/platform-definition-promotion-rollback.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for the operator's steps.
+# If this file does not exist or the test cannot run, that is a BLOCKER
+# (missing UI) and must be routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  operator: actor-platform-admin
+
+preconditions:
+  - description: >
+      A newly released version of the approvals process is live, and the version
+      that preceded it is still recorded as having been live
+    check: custom
+    detail: >
+      Confirm the live workspace shows a current version and at least one earlier
+      version in its history, so there is something to go back to.
+  - description: The approvals process definition is active in the live workspace
+    check: process_definition_active
+
+steps:
+  - step: 1
+    actor: operator
+    action: >
+      Opens the process detail screen on the operator console and confirms which
+      version the live workspace is currently running after the recent release.
+    via: gui
+    input:
+      expected_screen: process detail with version history
+    produces:
+      released_version: the version currently live
+      previous_version: the version that was live before the release
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: operator
+    action: >
+      Starts one case of the process so that there is work genuinely in progress
+      on the newly released version, and leaves it part-way through.
+    via: gui
+    input:
+      leave_in_progress: true
+    produces:
+      in_flight_case: the case left running on the newly released version
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: operator
+    action: >
+      Takes the change back, returning the live workspace to the version that
+      was running before the release, and records the reason for doing so.
+    via: gui
+    input:
+      target_version: the version that was live before the release
+      reason: "Released version routes high-value requests to the wrong reviewer."
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: operator
+    action: >
+      Starts a further case and confirms on screen that it is running on the
+      restored version, then reopens the case left in progress at step 2 and
+      confirms it is still running normally.
+    via: gui
+    input:
+      expected_new_case_version: the restored version
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: operator
+    action: >
+      Attempts to go back to a version that has never been live in this
+      workspace, and reads the platform's response.
+    via: gui
+    input:
+      target_version: a version that has never run in this workspace
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      Taking the change back takes effect immediately, and every case started
+      afterwards runs on the restored version.
+    verification:
+      method: gui_screen
+      detail: >
+        The process detail screen shows the restored version as live, and a case
+        started after step 3 shows that same version.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A change discovered to be wrong could not be withdrawn. Every request
+        submitted until a corrected version could be built and approved would be
+        handled under rules the business has already rejected.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      The case that was already in progress keeps running on the version it
+      started with. It is not moved, restarted, cancelled, or left stuck.
+    verification:
+      method: gui_screen
+      detail: >
+        Reopening the case from step 2 shows it still in progress on the version
+        it started with, with its history intact and its next step available.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Withdrawing a change would break every request already in flight. Staff
+        would lose part-completed work and the business would have to choose
+        between fixing the process and protecting work in progress.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      Going back is a small, immediate operation. It does not rebuild anything,
+      does not require the platform to be taken offline, and does not affect any
+      other company using the platform.
+    verification:
+      method: system_state
+      detail: >
+        The platform continues to serve every other company throughout, and the
+        change takes effect without any maintenance pause.
+      evidence: >
+        The platform health screen captured across the withdrawal, plus the
+        change history entry showing the operation and its duration.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Withdrawing a change would become a scheduled event needing a
+        maintenance window, so the business would live with a bad process for
+        hours or days rather than minutes.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      An attempt to go back to a version that has never been live in this
+      workspace is refused with a clear explanation, rather than quietly putting
+      an untested process into service.
+    verification:
+      method: gui_screen
+      detail: >
+        The screen shows a refusal naming the requested version and stating that
+        it has never been live here; the live version is unchanged.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        An operator under pressure could put a version into service that has
+        never been reviewed or run in this workspace, bypassing the approval gate
+        entirely through the withdrawal screen.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      The withdrawal is recorded with who did it, when, which version was
+      restored, and the reason given.
+    verification:
+      method: audit_event
+      detail: >
+        The change history shows the withdrawal entry with actor, timestamp,
+        restored version and reason.
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        There would be no record of why a process was withdrawn, so the same
+        mistake could be re-released later by someone who never learned of it.
+      suggested_action: none
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Cancel the case left in progress at step 2 and any case started at step 4.
+    The live workspace is intentionally left on the restored version.

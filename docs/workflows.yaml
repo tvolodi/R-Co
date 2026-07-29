@@ -1,0 +1,502 @@
+schema_version: '1.0'
+description: |
+  Canonical catalogue of PLATFORM WORKFLOWS (PW-nn) for the BPM Platform.
+
+  A platform workflow is an end-to-end capability the platform itself executes,
+  expressed as a business process map under docs/processes/system/. It is the
+  unit of work ABOVE the functional requirement: a workflow is delivered by a
+  set of requirements in docs/requirements.yaml, and is signed off as a whole by
+  a UAT run (WF-05) against the scenarios listed here.
+
+  Two-level model:
+
+    PW-nn  (this file)          -> docs/processes/system/<slug>.md   (process map)
+      |
+      +-- requirements[]        -> docs/requirements.yaml            (reqctl)
+      |
+      +-- uat_scenarios[]       -> tests/simulation/scenarios/...    (UAT-RUNNER)
+
+  Naming: PW-nn is deliberately distinct from WF-0n. WF-0n are DEVELOPMENT
+  workflows run by the agent pipeline (docs/agents/workflows/). PW-nn are
+  PRODUCT workflows executed by the running platform.
+
+  Write path: tools/wfctl.py. Do not hand-edit the derived fields
+  (requirement_status, uat_status, generated_at) -- run `wfctl render`.
+
+  Provenance: this catalogue was derived from
+  docs/Audit-Reports/Borrowing_From_ASCOA-GO.20260729.md. Each workflow records
+  the report section it came from in `borrow_source`.
+
+generated_at: null
+
+# ---------------------------------------------------------------------------
+# Vocabulary
+# ---------------------------------------------------------------------------
+# status          DRAFT | READY | IN_PROGRESS | IMPLEMENTED | UAT_PASSED | RELEASED
+#                 DRAFT      -- map not yet validated by REQ-VALIDATOR
+#                 READY      -- map validated, all requirements exist, WF-02 may start
+#                 IN_PROGRESS-- at least one requirement is IN_PROGRESS
+#                 IMPLEMENTED-- every MUST requirement is TESTED or RELEASED
+#                 UAT_PASSED -- WF-05 returned PASS for every uat_scenario
+#                 RELEASED   -- release decision recorded in docs/status/
+#
+# uat_surface     gui       -- every step is performable in the browser
+#                 mixed     -- operator UI plus headless platform steps
+#                 system    -- headless; no business user performs any step
+#
+# tenant_context  platform  -- exercised against the platform itself
+#                 <company> -- exercised inside a simulated tenant company
+# ---------------------------------------------------------------------------
+
+workflows:
+
+  PW-01:
+    id: PW-01
+    title: Definition promotion with an approval gate
+    process_id: sys-definition-promotion
+    process_map: docs/processes/system/definition-promotion.md
+    goal: >
+      A definition change cannot reach a production tenant without a recorded,
+      diff-bound human approval and a passing pre-promotion assertion re-run,
+      and can be reverted by moving a version pointer.
+    rationale: >
+      The SDLC is agent-driven with no human gate mid-workflow, so nothing
+      structurally separates agent output from a live production definition.
+      Event sourcing makes this cheaper here than in the reference platform:
+      promotion carries no DDL, so rollback is a pointer move.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.1, §2.10 (FR-TPL-3, FR-TPL-5)'
+    stage: 16
+    priority: MUST
+    status: DRAFT
+    uat_surface: mixed
+    tenant_context: platform
+    depends_on: []
+    requirements: [PRM-01, PRM-02, PRM-03, PRM-04, PRM-05, PRM-06, PRM-07, PRM-08, PRM-09]
+    uat_scenarios:
+      - platform-definition-promotion-approved
+      - platform-definition-promotion-conflict-rejected
+      - platform-definition-promotion-rollback
+      - platform-template-update-conflict-resolution
+
+  PW-02:
+    id: PW-02
+    title: Definition semantic validation before promotion
+    process_id: sys-definition-semantic-validation
+    process_map: docs/processes/system/definition-semantic-validation.md
+    goal: >
+      Every expression in a definition is compiled against a typed environment
+      built from that definition's own variable context, so a type error or an
+      unknown variable reference fails at authoring or promotion time rather
+      than at runtime.
+    rationale: >
+      PD-06 validates CEL syntax only and explicitly defers semantics to
+      runtime (EE-05). The cheapest correctness win available.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.10 (FR-VAL-4)'
+    stage: 16
+    priority: MUST
+    status: DRAFT
+    uat_surface: gui
+    tenant_context: platform
+    depends_on: []
+    requirements: [VLD-01, VLD-02, VLD-03, VLD-04]
+    uat_scenarios:
+      - platform-definition-type-error-blocked
+
+  PW-03:
+    id: PW-03
+    title: Instance version pinning for non-graph definition kinds
+    process_id: sys-instance-version-pinning
+    process_map: docs/processes/system/instance-version-pinning.md
+    goal: >
+      Every versioned artefact an instance depends on -- service catalog entry,
+      variable schema, referenced module -- is resolved once at instance start
+      and recorded, so a long-running instance never silently picks up a newer
+      version mid-flight.
+    rationale: >
+      PD-08 pins the process graph via definition_snapshot, but service catalog
+      entries (REPO-07, SVC-01..04), variable schemas and Stage 15 module_ref
+      resolutions (PLC-01) still resolve at execution time. Latent correctness
+      bug in already-specified work.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.2'
+    stage: 16
+    priority: MUST
+    status: DRAFT
+    uat_surface: mixed
+    tenant_context: platform
+    depends_on: []
+    requirements: [PIN-01, PIN-02, PIN-03, PIN-04, PIN-05]
+    uat_scenarios:
+      - platform-instance-pin-survives-catalog-change
+
+  PW-04:
+    id: PW-04
+    title: Tenant migration fanout and resume
+    process_id: sys-tenant-migration-fanout
+    process_map: docs/processes/system/tenant-migration-fanout.md
+    goal: >
+      A platform migration is applied across every tenant schema with per-tenant
+      state, tolerates partial failure without blocking later tenants, and can
+      be resumed for exactly the tenants that did not complete.
+    rationale: >
+      runForSchema applies migrations per schema behind a startup advisory lock
+      with no cross-tenant control table, no partial-failure tolerance, no
+      resume and no status surface. Unblocks the SPT dual-path audit finding
+      open since 2026-06-11.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.4'
+    stage: 16
+    priority: MUST
+    status: DRAFT
+    uat_surface: mixed
+    tenant_context: platform
+    depends_on: []
+    requirements: [MIG-01, MIG-02, MIG-03, MIG-04, MIG-05, MIG-06]
+    uat_scenarios:
+      - platform-migration-partial-failure-resume
+
+  PW-05:
+    id: PW-05
+    title: Platform DDL safety and namespace reservation
+    process_id: sys-platform-ddl-safety
+    process_map: docs/processes/system/platform-ddl-safety.md
+    goal: >
+      A migration that would take an unbounded exclusive lock, or that would
+      constrain a column before expanding it, is rejected before any tenant
+      schema is touched; and tenant-authored DDL cannot occupy the platform's
+      reserved object namespace.
+    rationale: >
+      One unbounded exclusive lock multiplied across N tenant schemas is a
+      whole-platform outage. The validator is a pure function -- among the
+      smallest changes on the whole backlog.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.5, §2.6'
+    stage: 16
+    priority: MUST
+    status: DRAFT
+    uat_surface: system
+    tenant_context: platform
+    depends_on: []
+    requirements: [DDL-01, DDL-02, DDL-03, DDL-04, DDL-05]
+    uat_scenarios:
+      - platform-unsafe-migration-rejected
+
+  PW-06:
+    id: PW-06
+    title: Event log partition lifecycle
+    process_id: sys-event-log-partitioning
+    process_map: docs/processes/system/event-log-partitioning.md
+    goal: >
+      Append-only tables are range-partitioned by time, future partitions are
+      created ahead of need, and retention is a partition drop rather than a
+      row-by-row move, while replay and reconstruction remain transparent
+      across partitions.
+    rationale: >
+      ES-07 archives expired events by moving rows in one transaction, and
+      ADP-11 forbids hard deletion of most event kinds. The event log is the
+      single unbounded table in an event-sourced system; O(n) archival under a
+      long transaction is the clearest scalability defect in the spec.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.3'
+    stage: 16
+    priority: MUST
+    status: DRAFT
+    uat_surface: system
+    tenant_context: platform
+    depends_on: [PW-05]
+    requirements: [PAR-01, PAR-02, PAR-03, PAR-04, PAR-05, PAR-06]
+    uat_scenarios:
+      - platform-partition-retention-drop
+
+  PW-07:
+    id: PW-07
+    title: Correlated effect re-entry ordering
+    process_id: sys-effect-reentry-ordering
+    process_map: docs/processes/system/effect-reentry-ordering.md
+    goal: >
+      Effect completions belonging to one correlation are applied strictly in
+      order and singly in flight, while completions across different
+      correlations continue to be applied in parallel.
+    rationale: >
+      A single drainer guarantees dispatch order, not per-consumer apply order.
+      Two effects for one correlation completing out of order will drive
+      catch-event matching wrong.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.7'
+    stage: 16
+    priority: MUST
+    status: DRAFT
+    uat_surface: system
+    tenant_context: platform
+    depends_on: []
+    requirements: [ORD-01, ORD-02, ORD-03, ORD-04]
+    uat_scenarios:
+      - platform-out-of-order-effect-completion
+
+  PW-08:
+    id: PW-08
+    title: Outbox backpressure
+    process_id: sys-outbox-backpressure
+    process_map: docs/processes/system/outbox-backpressure.md
+    goal: >
+      When the outbox exceeds its depth cap, external ingress is refused before
+      any transaction opens and without consuming an idempotency key, while an
+      internal emit fails its own step into the existing retry and dead-letter
+      path so a runaway producer throttles itself.
+    rationale: >
+      Two distinct backpressure paths are needed because an internal emit
+      cannot be refused with a status code mid-transaction.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.10 (FR-GRO-4)'
+    stage: 16
+    priority: SHOULD
+    status: DRAFT
+    uat_surface: system
+    tenant_context: platform
+    depends_on: []
+    requirements: [OBP-01, OBP-02, OBP-03, OBP-04]
+    uat_scenarios:
+      - platform-outbox-cap-backpressure
+
+  PW-09:
+    id: PW-09
+    title: File attachment lifecycle
+    process_id: sys-file-attachment-lifecycle
+    process_map: docs/processes/system/file-attachment-lifecycle.md
+    goal: >
+      A business user can attach a document to a human task, download it through
+      a time-limited signed URL, and have it deleted on a defined grace period,
+      with storage consumption counted against the tenant's quota in the same
+      transaction as the upload.
+    rationale: >
+      The platform has no attachment capability at all. Human tasks with a
+      form_schema are not usable for real business processes without documents.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.10 (FR-FILE-1/2/3)'
+    stage: 17
+    priority: MUST
+    status: DRAFT
+    uat_surface: gui
+    tenant_context: swiftroute
+    depends_on: []
+    requirements: [FIL-01, FIL-02, FIL-03, FIL-04, FIL-05, FIL-06, FIL-07, FIL-08]
+    uat_scenarios:
+      - swiftroute-shipment-attach-delivery-note
+      - platform-attachment-cross-tenant-probe
+
+  PW-10:
+    id: PW-10
+    title: Entity record query
+    process_id: sys-entity-record-query
+    process_map: docs/processes/system/entity-record-query.md
+    goal: >
+      Tenant-defined entity records can be listed, filtered and sorted through
+      one structured, permission-aware query surface bounded by an explicit
+      allowlist of filterable fields.
+    rationale: >
+      Cursor pagination (API-06) exists on fixed endpoints, but there is no
+      generic query over src/entities projections -- so tenant-defined entities
+      are effectively write-only to an application builder.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.10 (FR-QRY-1/2/3)'
+    stage: 17
+    priority: MUST
+    status: DRAFT
+    uat_surface: gui
+    tenant_context: vortex
+    depends_on: []
+    requirements: [QRY-01, QRY-02, QRY-03, QRY-04, QRY-05]
+    uat_scenarios:
+      - vortex-entity-list-filter-and-page
+
+  PW-11:
+    id: PW-11
+    title: Agent artifact submission and retention
+    process_id: sys-agent-artifact-lifecycle
+    process_map: docs/processes/system/agent-artifact-lifecycle.md
+    goal: >
+      An authoring agent submits its work as an immutable, deterministically
+      identified artifact into a non-production environment, resubmission is
+      idempotent, and retention keeps verified artifacts for as long as
+      anything still pins them.
+    rationale: >
+      The entire SDLC (WF-02..WF-06) is agent-driven, so this matters more here
+      than in the reference platform. Only primitives exist today (repository/
+      content-addressed artifacts, simulation/scenario_runner).
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.8'
+    stage: 17
+    priority: MUST
+    status: DRAFT
+    uat_surface: mixed
+    tenant_context: platform
+    depends_on: [PW-03]
+    requirements: [AGT-01, AGT-02, AGT-03, AGT-04, AGT-05, AGT-06, AGT-07]
+    uat_scenarios:
+      - platform-agent-artifact-resubmit-idempotent
+
+  PW-12:
+    id: PW-12
+    title: Agent sandbox ownership and role separation
+    process_id: sys-agent-sandbox-ownership
+    process_map: docs/processes/system/agent-sandbox-ownership.md
+    goal: >
+      The orchestrating agent and the implementing agent are separated at the
+      API layer, a sandbox is owned by exactly one implementer, and no response
+      code can be used to probe whether another tenant's sandbox exists.
+    rationale: >
+      Agent identities exist (src/oidc) and the threat model covers role
+      simulation well, but there is no ownership binding, no orchestrator and
+      implementer split, and no probe-safe sentinel.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §2.9'
+    stage: 17
+    priority: MUST
+    status: DRAFT
+    uat_surface: system
+    tenant_context: platform
+    depends_on: [PW-11]
+    requirements: [SBX-01, SBX-02, SBX-03, SBX-04, SBX-05, SBX-06]
+    uat_scenarios:
+      - platform-sandbox-cross-tenant-probe
+
+  PW-13:
+    id: PW-13
+    title: Renderer state and error contract
+    process_id: sys-renderer-state-contract
+    process_map: docs/processes/system/renderer-state-contract.md
+    goal: >
+      Every data-bearing screen resolves into exactly one of a fixed set of
+      states -- loading, success, fetch failure, permission denied, stale
+      version, rate limited -- and a write conflict is always offered for
+      resolution rather than silently overwritten.
+    rationale: >
+      Around fifteen pages across twelve API domains each invent their own
+      loading and error handling. components/ui/ holds a single file.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §3.1, §3.6'
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    uat_surface: gui
+    tenant_context: swiftroute
+    depends_on: []
+    requirements: [RND-UI-01, RND-UI-02, RND-UI-03, RND-UI-04, RND-UI-05, RND-UI-06]
+    uat_scenarios:
+      - platform-renderer-permission-denied-surface
+
+  PW-14:
+    id: PW-14
+    title: Shared UI component layer and field registry
+    process_id: sys-shared-ui-component-layer
+    process_map: docs/processes/system/shared-ui-component-layer.md
+    goal: >
+      The documented design system exists as running code: tokens as CSS custom
+      properties, a shared component library, a tenant brand override applied at
+      bootstrap, and a field registry that lets a new field type be added
+      without touching any screen.
+    rationale: >
+      docs/guides/frontend_design_system.md is complete and unimplemented.
+      design-tokens/r-co.tokens.json is 377 bytes; components/ui/ has one file.
+      The gap is implementation, not specification.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §3.2, §3.3'
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    uat_surface: gui
+    tenant_context: swiftroute
+    depends_on: [PW-13]
+    requirements: [CMP-UI-01, CMP-UI-02, CMP-UI-03, CMP-UI-04, CMP-UI-05, CMP-UI-06]
+    uat_scenarios:
+      - platform-tenant-branding-applied
+
+  PW-15:
+    id: PW-15
+    title: Tenant-scoped client cache
+    process_id: sys-tenant-scoped-client-cache
+    process_map: docs/processes/system/tenant-scoped-client-cache.md
+    goal: >
+      No cached client-side response can be served across a tenant boundary,
+      and any version-pinned interaction fetches the pinned version rather than
+      the active one.
+    rationale: >
+      web/src/api/queryKeys.ts carries no tenant segment despite per-tenant
+      sessions established by auth/tenantConfig and TenantHeader. Small change,
+      security relevant.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §3.2 (query keys)'
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    uat_surface: gui
+    tenant_context: platform
+    depends_on: []
+    requirements: [CAC-UI-01, CAC-UI-02, CAC-UI-03, CAC-UI-04]
+    uat_scenarios:
+      - platform-tenant-switch-cache-isolation
+
+  PW-16:
+    id: PW-16
+    title: Frontend architecture and accessibility guards
+    process_id: sys-frontend-guards
+    process_map: docs/processes/system/frontend-guards.md
+    goal: >
+      The frontend rules that matter are enforced by executable guards -- a
+      source scan, a post-build bundle scan, and an accessibility gate per
+      canonical surface -- each with a control asserting the guard itself still
+      detects a violation.
+    rationale: >
+      lint_frontend_conventions.py has the right instinct but sits outside the
+      test suite with no self-check. A validator gate cannot be argued with,
+      which suits an agent pipeline.
+    borrow_source: 'Borrowing_From_ASCOA-GO.20260729.md §3.4, §3.5'
+    stage: F8
+    priority: MUST
+    status: DRAFT
+    uat_surface: system
+    tenant_context: platform
+    depends_on: [PW-14]
+    requirements: [GRD-UI-01, GRD-UI-02, GRD-UI-03, GRD-UI-04, GRD-UI-05, GRD-UI-06, GRD-UI-07]
+    uat_scenarios:
+      - platform-frontend-guard-selfcheck
+
+# ---------------------------------------------------------------------------
+# Work that is deliberately NOT modelled as a platform workflow
+# ---------------------------------------------------------------------------
+# Recorded here so the borrow report has no unrouted items. wfctl does not
+# track these; they are listed for traceability only.
+excluded:
+  defects:
+    - id: ISS-BRW-01
+      severity: BLOCKER
+      title: secrets/crypto.zig stores plaintext behind AES-256-GCM envelope metadata
+      route: WF-03
+      source: 'Borrowing_From_ASCOA-GO.20260729.md §5.1'
+      note: >
+        encrypt() discards master_key, generates an unused nonce, auth tag and
+        data key, and sets ciphertext = dupe(plaintext); decrypt() returns
+        dupe(ciphertext). Envelope declares aes_256_gcm / aes_kw_256. Verified
+        by direct source read on 2026-07-29. Fix with
+        std.crypto.aead.aes_gcm.Aes256Gcm and add a test asserting
+        ciphertext != plaintext.
+    - id: ISS-BRW-02
+      severity: MINOR
+      title: .env.example omits Keycloak, BPM_UAT_TOKEN and BPM_API_URL
+      route: WF-03
+      source: 'Borrowing_From_ASCOA-GO.20260729.md §5.2'
+      note: >
+        README requires Keycloak on :8081 and the UAT-RUNNER agent section
+        invokes BPM_UAT_TOKEN and BPM_API_URL directly, none of which appear in
+        .env.example. Document each variable's consuming file and its
+        empty-value behaviour.
+  development_process:
+    route: 'ADHOC handoffs, not WF-02 -- these change the pipeline, not the product'
+    source: 'Borrowing_From_ASCOA-GO.20260729.md §4'
+    items:
+      - Split CLAUDE.md into glob-scoped instruction files with one canonical source
+      - Numbered security invariants with verification steps, plus a security-reviewer agent
+      - A committed Zig lint gate (zig fmt --check, error-set check as a build step)
+      - A single command surface (Makefile or one .ps1) with a service-readiness wait
+      - Scored test-tier rubric and the fail-first rule
+      - Test helpers apply real migration files rather than handcoded DDL
+      - Gate tiering, flakiness policy, pre-commit contract, CI path filters
+      - Bounded in-branch cascading fixes instead of a spawned workflow per issue
+      - An operations runbook with a fail-fast startup assertion
+  not_borrowed:
+    source: 'Borrowing_From_ASCOA-GO.20260729.md §6'
+    items:
+      - entity placement / expand-contract / dual_write / hot-field monitor (event sourcing removes the hazard)
+      - failure log written in a separate transaction after rollback (violates in-transaction audit invariant)
+      - warm schema pool (simulation/{time_source,uuid_source,mock_catalog} already covers determinism)
+      - role simulation confinement (EXP-701 threat model already specifies it, better reasoned)
+      - graph static validation (PD-02 is equal or stricter)
+      - user groups (IDN-02 is complete)
+      - staging subdomain routing (ENV-01/03 solves the same problem differently)

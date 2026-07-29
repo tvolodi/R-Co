@@ -1,0 +1,189 @@
+---
+id: platform-template-update-conflict-resolution
+company_id: platform
+platform_workflow: PW-01
+process_id: sys-definition-promotion
+title: A company's own changes are never overwritten by a newer version of a supplied process pack
+version: "1.0"
+tags: [regression, approval]
+
+description: >
+  Companies receive ready-made process packs from the platform and then adapt
+  them to how they actually work. When a newer version of a pack is offered,
+  those local adaptations are at risk: a careless update would replace weeks of
+  a company's own configuration without anyone noticing. This scenario checks
+  that the platform shows exactly what a company changed, what the new version
+  changes, and where the two collide, and that nothing is replaced until
+  somebody at the company has decided what to keep.
+
+pipeline_test: web/tests/e2e/pipelines/template-update-conflict.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this pipeline test for every step performed in the browser.
+# If the file does not exist or the test cannot run, that is a BLOCKER
+# (missing UI) and must be routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  tenant_admin: actor-platform-admin
+  publisher:    actor-system-pack-publisher
+
+preconditions:
+  - description: >
+      A company has an earlier version of a supplied process pack installed,
+      and the platform recorded how that pack looked at the moment it was
+      installed
+    check: custom
+    detail: >
+      Confirm on the company's pack screen that an installed version is listed
+      together with its installation date. Without that record the platform
+      cannot tell later what the company changed.
+  - description: >
+      The company has since adapted two of the supplied processes, and left the
+      others exactly as delivered
+    check: custom
+    detail: >
+      Confirm both adapted processes show as modified on the company's process
+      list, and that at least one supplied process is untouched.
+
+steps:
+  - step: 1
+    actor: publisher
+    action: >
+      Publishes a newer version of the pack. The newer version changes one of
+      the two processes the company already adapted, and one it left alone.
+    via: system
+    produces:
+      offered_version: the newer pack version now available to the company
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: tenant_admin
+    action: >
+      Opens the company's pack screen, sees that a newer version is available,
+      and asks to review what it would change.
+    via: gui
+    input:
+      pack: the supplied process pack already installed
+    produces:
+      update_review: the on-screen summary of what the newer version would change
+
+  - step: 3
+    actor: tenant_admin
+    action: >
+      Reads the summary. Each supplied process is shown in one of four groups:
+      unchanged, safe to update, the company's own change with nothing coming
+      from the pack, and changed on both sides.
+    via: gui
+    produces:
+      conflict_list: the processes changed on both sides
+
+  - step: 4
+    actor: tenant_admin
+    action: >
+      Attempts to apply the update while one of the both-sides processes still
+      has no decision recorded against it.
+    via: gui
+
+  - step: 5
+    actor: tenant_admin
+    action: >
+      Chooses to keep the company's own version of the process they adapted,
+      accepts the new version of the process they had not touched, and applies
+      the update.
+    via: gui
+    input:
+      decision_on_adapted_process: keep our version
+      decision_on_untouched_process: take the new version
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      Before anything is applied, the company can see exactly which supplied
+      processes it has changed itself, which the newer version changes, and
+      which are changed on both sides.
+    verification:
+      method: gui_screen
+      detail: >
+        The update review screen lists each supplied process under one of the
+        four groups, and the process the company adapted appears under
+        "changed on both sides".
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        The company would have to decide whether to accept an update without
+        being able to see what it would cost them. In practice they would
+        refuse every update and fall permanently behind.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      The update cannot be applied while any process changed on both sides is
+      still undecided. The platform names the process waiting for a decision.
+    verification:
+      method: gui_screen
+      detail: >
+        Applying with an outstanding decision leaves the update unapplied and
+        shows a message naming the process that still needs one.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A company's own configuration would be replaced silently by an update
+        nobody reviewed. This is the exact loss the review exists to prevent,
+        and it is not recoverable without restoring from a backup.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      Where the company chose to keep its own version, that process is left
+      exactly as it was, and the record shows who made that decision and when.
+    verification:
+      method: gui_screen
+      detail: >
+        After the update, the adapted process is unchanged on screen, and the
+        pack history entry names the person who chose to keep it.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A decision to keep local configuration would not be honoured, or would
+        not be attributable to anyone. Neither the company nor an auditor could
+        establish who agreed to what.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      A process the company never adapted is left untouched by the update when
+      the newer version does not change it either.
+    verification:
+      method: gui_screen
+      detail: >
+        The untouched supplied process shows the same content and the same
+        version after the update as before it.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Updates would churn parts of a company's setup that nobody asked to
+        change, forcing a full re-check of the whole configuration every time.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      A second update offered afterwards compares against what the company has
+      now, not against the original delivery, so the same decision is not
+      requested twice.
+    verification:
+      method: gui_screen
+      detail: >
+        Offering a further version shows the previously resolved process as
+        unchanged rather than presenting the same collision again.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Every future update would re-open decisions the company already made,
+        so the review becomes noise and people stop reading it.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    The scenario leaves the company on the newer pack version with its own
+    adaptation retained. Reset the company's pack state before re-running, or
+    run against a test environment where the pack can be reinstalled.

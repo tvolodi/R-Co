@@ -1,0 +1,181 @@
+FIL-01:
+  title: Human task attachment upload
+  stage: 17
+  priority: MUST
+  workflow: PW-09
+  implemented_in: []
+
+FIL-02:
+  title: Tenant-prefixed storage object keys
+  stage: 17
+  priority: MUST
+  workflow: PW-09
+  implemented_in: []
+
+FIL-03:
+  title: Transactional attachment quota accounting
+  stage: 17
+  priority: MUST
+  workflow: PW-09
+  implemented_in: []
+
+FIL-04:
+  title: Per-tier single-upload size cap
+  stage: 17
+  priority: MUST
+  workflow: PW-09
+  implemented_in: []
+
+FIL-05:
+  title: Signed time-limited attachment download URL
+  stage: 17
+  priority: MUST
+  workflow: PW-09
+  implemented_in: []
+
+FIL-06:
+  title: Probe-safe cross-tenant attachment reads
+  stage: 17
+  priority: MUST
+  workflow: PW-09
+  implemented_in: []
+
+FIL-07:
+  title: Attachment delete grace period and reaper sweeps
+  stage: 17
+  priority: MUST
+  workflow: PW-09
+  implemented_in: []
+
+FIL-08:
+  title: Reaper ordering and predicate idempotency
+  stage: 17
+  priority: SHOULD
+  workflow: PW-09
+  implemented_in: []
+
+QRY-01:
+  title: Structured entity query surface
+  stage: 17
+  priority: MUST
+  workflow: PW-10
+  implemented_in: []
+
+QRY-02:
+  title: Declared filterable field allowlist
+  stage: 17
+  priority: MUST
+  workflow: PW-10
+  implemented_in: []
+
+QRY-03:
+  title: Keyset pagination with a bounded page size
+  stage: 17
+  priority: MUST
+  workflow: PW-10
+  implemented_in: []
+
+QRY-04:
+  title: Empty envelope for unauthorised entity types
+  stage: 17
+  priority: MUST
+  workflow: PW-10
+  implemented_in: []
+
+QRY-05:
+  title: Server-side field stripping on query results
+  stage: 17
+  priority: MUST
+  workflow: PW-10
+  implemented_in: []
+
+AGT-01:
+  title: Agent artifact envelope with kind discrimination
+  stage: 17
+  priority: MUST
+  workflow: PW-11
+  implemented_in: []
+
+AGT-02:
+  title: Non-production artifact environment enforcement
+  stage: 17
+  priority: MUST
+  workflow: PW-11
+  implemented_in: []
+
+AGT-03:
+  title: Artifact submission idempotency per attempt
+  stage: 17
+  priority: MUST
+  workflow: PW-11
+  implemented_in: []
+
+AGT-04:
+  title: Immutable task specs bound by spec hash
+  stage: 17
+  priority: MUST
+  workflow: PW-11
+  implemented_in: []
+
+AGT-05:
+  title: Non-zero RNG seed folded into spec identity
+  stage: 17
+  priority: MUST
+  workflow: PW-11
+  implemented_in: []
+
+AGT-06:
+  title: Dual-sweep artifact retention
+  stage: 17
+  priority: MUST
+  workflow: PW-11
+  implemented_in: []
+
+AGT-07:
+  title: Deprecated envelope field names rejected
+  stage: 17
+  priority: SHOULD
+  workflow: PW-11
+  implemented_in: []
+
+SBX-01:
+  title: Orchestrator role gate on task-spec submission
+  stage: 17
+  priority: MUST
+  workflow: PW-12
+  implemented_in: []
+
+SBX-02:
+  title: Server-authoritative orchestrator principal
+  stage: 17
+  priority: MUST
+  workflow: PW-12
+  implemented_in: []
+
+SBX-03:
+  title: Orchestrator excluded from sandbox claim
+  stage: 17
+  priority: MUST
+  workflow: PW-12
+  implemented_in: []
+
+SBX-04:
+  title: Sandbox ownership binding at claim
+  stage: 17
+  priority: MUST
+  workflow: PW-12
+  implemented_in: []
+
+SBX-05:
+  title: Single sentinel for inaccessible sandboxes
+  stage: 17
+  priority: MUST
+  workflow: PW-12
+  implemented_in: []
+
+SBX-06:
+  title: Sandbox release, reclaim, and claim audit
+  stage: 17
+  priority: MUST
+  workflow: PW-12
+  implemented_in: []

@@ -1,0 +1,216 @@
+---
+id: platform-outbox-cap-backpressure
+company_id: platform
+platform_workflow: PW-08
+process_id: sys-outbox-backpressure
+title: A full outgoing message queue turns work away politely instead of falling over
+version: "1.0"
+tags: [backpressure, regression]
+
+description: >
+  Everything the platform sends to the outside world waits briefly in a queue of
+  outgoing messages. If that queue fills faster than it empties, the platform must
+  stop accepting new work rather than accept it and lose it. This scenario checks
+  that a partner system sending work in is turned away politely, told when to come
+  back, and can safely send the same piece of work again afterwards, and that work
+  already running inside the platform slows itself down instead of piling on. It
+  also checks that one company filling its own queue never turns away another
+  company's work.
+
+actors:
+  drainer:        actor-system-outbox-drainer
+  partner_system: actor-system-partner-integration
+  engine:         actor-system-process-engine
+
+preconditions:
+  - description: The platform is running with an agreed safe limit for the outgoing queue
+    check: custom
+    detail: >
+      Confirm that a safe limit and a lower reopen level have been set for the
+      outgoing message queue before the scenario begins. Without them there is
+      nothing to test.
+  - description: A second company is active on the platform and is doing ordinary work
+    check: custom
+    detail: >
+      The scenario checks that a full queue in one company does not affect the
+      other, so a second active company must be present and sending work.
+
+steps:
+  - step: 1
+    actor: partner_system
+    action: >
+      Sends work into the platform steadily until the queue of outgoing messages
+      reaches the agreed safe limit for this company.
+    via: system
+    input:
+      target_company: swiftroute
+    produces:
+      queue_state: the record showing the queue has reached its safe limit
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: partner_system
+    action: >
+      Sends one more piece of work while the queue is at its limit, attaching the
+      one-time reference it always attaches so the platform can recognise a repeat.
+    via: system
+    input:
+      sender_reference: a fresh one-time reference for this piece of work
+    produces:
+      refusal_record: the record of the platform turning this piece of work away
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: partner_system
+    action: >
+      Waits for the period the platform asked it to wait, then sends exactly the
+      same piece of work again, quoting the same one-time reference as before.
+    via: system
+    input:
+      sender_reference: the same reference used in step 2
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: engine
+    action: >
+      Runs a business step that needs to place a message on the same full queue.
+      The step cannot be turned away the way an outside caller can, so it must
+      fail cleanly and wait before trying again.
+    via: system
+    produces:
+      failed_step_record: the record of the step failing and being scheduled to retry
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: drainer
+    action: >
+      Continues clearing the queue while new work is being refused, until the
+      queue has fallen comfortably below the safe limit and the platform starts
+      accepting work again.
+    via: system
+    produces:
+      reopen_record: the record of the platform accepting work again
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The piece of work that was turned away in step 2 leaves no trace behind. When
+      the partner sends it again in step 3 the platform treats it as a genuinely
+      new piece of work and processes it, rather than dismissing it as something it
+      has already seen.
+    verification:
+      method: system_state
+      detail: >
+        The work sent in step 3 is accepted and carried out, even though it carries
+        the same one-time reference as the work refused in step 2.
+      evidence: >
+        The refusal record from step 2 and the acceptance record from step 3, shown
+        side by side with the same sender reference.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Work a partner sent us would be silently thrown away. The partner would
+        believe it had been delivered, we would have no record of it, and nobody
+        would find out until a customer complained.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      When the platform turns work away it always tells the sender how long to wait
+      before trying again, so partners back off in an orderly way instead of
+      retrying immediately and making the congestion worse.
+    verification:
+      method: system_state
+      detail: >
+        Every refusal carries a stated waiting period. A refusal without one is a
+        failure of this outcome.
+      evidence: >
+        The refusal record from step 2, including the waiting period given to the
+        sender.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Partners would retry immediately and repeatedly against an already
+        overloaded platform, turning a short period of congestion into a prolonged
+        outage for everyone.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      Work already running inside the platform slows itself down when the queue is
+      full. The step that could not send its message fails cleanly, leaves nothing
+      half-done behind it, waits, and tries again; if it never succeeds it ends up
+      in the list of work needing attention with a plain reason recorded.
+    verification:
+      method: system_state
+      detail: >
+        The step is recorded as failed and scheduled to retry. Nothing it was doing
+        is left partly recorded. After its attempts are used up it appears in the
+        list of work needing attention with the congestion recorded as the reason.
+      evidence: >
+        The failed step record from step 4 and the corresponding entry in the list
+        of work needing attention, showing the reason and the queue level at each
+        attempt.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        A runaway process would keep pushing work into an already full queue
+        instead of easing off, and half-finished work would be left recorded as if
+        it had completed. Operations staff would have no clear signal of what
+        failed or why.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      While one company's queue is full and its work is being refused, the second
+      company continues to send and receive work entirely normally.
+    verification:
+      method: system_state
+      detail: >
+        The second company's work is accepted throughout the period in which the
+        first company's work is being refused.
+      evidence: >
+        The second company's accepted work records, timestamped inside the window
+        during which the first company was being refused.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        One busy customer would be able to stop every other customer from working.
+        A single company's traffic spike would become a platform-wide outage, which
+        is exactly the failure a shared platform must never allow.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      Once the queue has drained, the platform starts accepting work again, and it
+      waits until the queue is comfortably clear rather than reopening the moment
+      it dips below the limit. It does not flicker between accepting and refusing.
+    verification:
+      method: system_state
+      detail: >
+        Work is accepted again only after the queue has fallen well below the safe
+        limit, and there is a single clean change from refusing to accepting rather
+        than a rapid series of them.
+      evidence: >
+        The reopen record from step 5, together with the history of accepting and
+        refusing over the period, showing one clean transition.
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        Partners would see work accepted and refused in quick alternation, making
+        their own retry behaviour unpredictable and our congestion reports hard to
+        interpret. Traffic still flows, but the pattern is confusing to operate.
+      suggested_action: none
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Cancel any process instances created to fill the queue, and allow the queue to
+    drain fully before the next scenario runs. Run this scenario only against a
+    test environment; it deliberately congests the platform.

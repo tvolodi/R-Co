@@ -1,0 +1,166 @@
+PRM-01:
+  title: Promotion plan and diff report
+  stage: 16
+  priority: MUST
+  workflow: PW-01
+  implemented_in: []
+
+PRM-02:
+  title: Conflict pre-flight rejection
+  stage: 16
+  priority: MUST
+  workflow: PW-01
+  implemented_in: []
+
+PRM-03:
+  title: Plan digest binds approval to a diff
+  stage: 16
+  priority: MUST
+  workflow: PW-01
+  implemented_in: []
+
+PRM-04:
+  title: Promotion review state machine
+  stage: 16
+  priority: MUST
+  workflow: PW-01
+  implemented_in: []
+
+PRM-05:
+  title: Non-skippable human approval gate
+  stage: 16
+  priority: MUST
+  workflow: PW-01
+  implemented_in: []
+
+PRM-06:
+  title: Pre-promotion assertion re-run
+  stage: 16
+  priority: MUST
+  workflow: PW-01
+  implemented_in: []
+
+PRM-07:
+  title: Sandbox teardown does not block promotion
+  stage: 16
+  priority: MUST
+  workflow: PW-01
+  implemented_in: []
+
+PRM-08:
+  title: Promotion rollback by version pointer move
+  stage: 16
+  priority: SHOULD
+  workflow: PW-01
+  implemented_in: []
+PRM-09:
+  title: Solution pack update conflict resolution
+  stage: 16
+  priority: SHOULD
+  workflow: PW-01
+  implemented_in: []
+
+VLD-01:
+  title: Typed environment from definition context
+  stage: 16
+  priority: MUST
+  workflow: PW-02
+  implemented_in: []
+
+VLD-02:
+  title: Expression compile and type check
+  stage: 16
+  priority: MUST
+  workflow: PW-02
+  implemented_in: []
+
+VLD-03:
+  title: Aggregated validation diagnostics
+  stage: 16
+  priority: MUST
+  workflow: PW-02
+  implemented_in: []
+
+VLD-04:
+  title: Validation gate at authoring and promotion
+  stage: 16
+  priority: SHOULD
+  workflow: PW-02
+  implemented_in: []
+
+PIN-01:
+  title: Dependency version resolution at instance start
+  stage: 16
+  priority: MUST
+  workflow: PW-03
+  implemented_in: []
+
+PIN-02:
+  title: Pin set recorded in INSTANCE_STARTED
+  stage: 16
+  priority: MUST
+  workflow: PW-03
+  implemented_in: []
+
+PIN-03:
+  title: No fallback to latest version
+  stage: 16
+  priority: MUST
+  workflow: PW-03
+  implemented_in: []
+
+PIN-04:
+  title: Pin resolution on replay and in sub-processes
+  stage: 16
+  priority: MUST
+  workflow: PW-03
+  implemented_in: []
+
+PIN-05:
+  title: Explicit instance pin rebind
+  stage: 16
+  priority: SHOULD
+  workflow: PW-03
+  implemented_in: []
+
+MIG-01:
+  title: Platform migration control table
+  stage: 16
+  priority: MUST
+  workflow: PW-04
+  implemented_in: []
+
+MIG-02:
+  title: Control row commits with the DDL
+  stage: 16
+  priority: MUST
+  workflow: PW-04
+  implemented_in: []
+
+MIG-03:
+  title: Tenant migration fanout with continue on failure
+  stage: 16
+  priority: MUST
+  workflow: PW-04
+  implemented_in: []
+
+MIG-04:
+  title: Migration resume for pending and failed tenants
+  stage: 16
+  priority: MUST
+  workflow: PW-04
+  implemented_in: []
+
+MIG-05:
+  title: Idempotent migration re-run
+  stage: 16
+  priority: MUST
+  workflow: PW-04
+  implemented_in: []
+
+MIG-06:
+  title: Migration admin surface and fix-forward policy
+  stage: 16
+  priority: MUST
+  workflow: PW-04
+  implemented_in: []

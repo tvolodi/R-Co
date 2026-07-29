@@ -1,0 +1,219 @@
+---
+id: platform-tenant-branding-applied
+company_id: platform
+platform_workflow: PW-14
+process_id: sys-shared-ui-component-layer
+title: A company sees the platform in its own colours, and cannot change what colours mean
+version: "1.0"
+tags: [branding, accessibility, happy_path]
+
+description: >
+  Each company should see the platform in its own colours from the first moment a
+  page appears, so it feels like their system rather than a shared tool. What a
+  company must not be able to change is what colours mean: a warning has to look
+  like a warning and a failure has to look like a failure in every company, because
+  staff move between screens quickly and read status by colour. This scenario
+  applies SwiftRoute's own colours, checks they appear immediately, and checks that
+  everything beyond the company's own colours is left alone.
+
+pipeline_test: web/tests/e2e/pipelines/tenant-branding.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for all steps. If this file does
+# not exist or the test cannot run, that is a BLOCKER (missing UI) and must be
+# routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  tenant_admin:  actor-swiftroute-alice
+  business_user: actor-swiftroute-marco
+
+preconditions:
+  - description: SwiftRoute is set up and has not yet had its own colours applied
+    check: system_seeded
+  - description: At least one shipment is in each of an approved, a waiting and a failed state
+    check: custom
+    detail: >
+      The scenario reads status by colour, so examples of each status must exist for
+      the operations manager to look at.
+
+steps:
+  - step: 1
+    actor: tenant_admin
+    action: >
+      Opens the company appearance settings and applies SwiftRoute's own corporate
+      colours, then saves.
+    via: gui
+    input:
+      company_colours: SwiftRoute's corporate palette
+    produces:
+      branding_confirmation: the confirmation shown after the colours are saved
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: business_user
+    action: >
+      Signs in fresh in a new browser session and opens his task list, watching the
+      screen from the very first moment it appears.
+    via: gui
+    produces:
+      first_paint: what the screen looked like the first moment it was drawn
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: business_user
+    action: >
+      Opens the shipment list, which shows approved, waiting and failed shipments
+      side by side, and checks how each status reads.
+    via: gui
+    produces:
+      status_screen: the shipment list showing the three statuses together
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: tenant_admin
+    action: >
+      Returns to the appearance settings and submits a change that, alongside the
+      company's own colours, also tries to change the colour used for warnings and
+      the size of the text across the platform.
+    via: gui
+    input:
+      company_colours: a further adjustment to SwiftRoute's palette
+      out_of_scope_changes: the warning colour and the platform text size
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: tenant_admin
+    action: >
+      Submits one more change, this time choosing a colour so pale that text placed
+      on it would be hard to read, and checks what the platform does with it.
+    via: gui
+    input:
+      company_colours: a colour that cannot be read against the page background
+    sla_context:
+      expected_within_hours: null
+
+  - step: 6
+    actor: business_user
+    action: >
+      Cancels a shipment request, which is an action that cannot be undone, and
+      observes what the platform asks him before anything happens.
+    via: gui
+    input:
+      action: cancel a shipment request
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      A company can change its own colours and nothing else. The attempt to change
+      the warning colour and the platform text size is ignored, those keep their
+      platform values, and the rejected part of the request is recorded for the
+      platform operator.
+    verification:
+      method: gui_screen
+      detail: >
+        After step 4 the company's own colours have changed, the warning colour and
+        the text size are unchanged, and the rejected part of the request appears in
+        the operator's activity record.
+      evidence: >
+        Screenshots before and after step 4, plus the operator activity record for
+        that change.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A single company could change what colours mean, or make text unreadable,
+        for its own staff and potentially beyond. Staff would misread a failure as a
+        success on a screen they use to release shipments.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      Approved, waiting and failed shipments are shown in the platform's standard
+      status colours, identical to every other company, regardless of what colours
+      SwiftRoute has chosen for itself.
+    verification:
+      method: gui_screen
+      detail: >
+        The three statuses on the screen at step 3 use the platform's standard
+        status colours and are clearly distinguishable from each other and from the
+        company's own colours.
+      evidence: >
+        Screenshot of the shipment list at step 3 showing the three statuses
+        together.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Status would mean something different in each company. A dispatcher moving
+        between customer workspaces, or a support agent helping one, would read a
+        failed shipment as a successful one.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      A colour the company chooses that would leave text hard to read is refused
+      rather than applied, and the company is told why.
+    verification:
+      method: gui_screen
+      detail: >
+        The colour submitted at step 5 is not applied, the previous colour remains,
+        and a plain explanation is shown.
+      evidence: >
+        Screenshot taken at step 5 after the unreadable colour is submitted.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        A company could make its own platform unusable for staff with weaker
+        eyesight, and we would only find out through complaints. It also puts us on
+        the wrong side of accessibility expectations that some of our customers are
+        contractually bound by.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      An action that cannot be undone always asks for confirmation first, and
+      nothing happens until the person confirms. The confirmation is clearly marked
+      as serious rather than looking like an ordinary prompt.
+    verification:
+      method: gui_screen
+      detail: >
+        At step 6 a clearly marked confirmation appears before the cancellation, and
+        the shipment request is unchanged until it is confirmed.
+      evidence: >
+        Screenshots of the confirmation and of the shipment request before
+        confirming.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Staff would cancel live shipments with a single misplaced click and no way
+        back. Every occurrence is a customer delivery that does not happen.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      The company's colours are there the very first time the page is drawn. Staff
+      never see the page appear in the platform's default colours and then change
+      under them.
+    verification:
+      method: gui_screen
+      detail: >
+        The screen captured at the first drawn frame in step 2 already carries the
+        company's colours, and no later frame shows a change of colour.
+      evidence: >
+        Screenshots of the first drawn frame and of the settled page at step 2.
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        Every page load flickers from platform colours to company colours. It looks
+        unfinished on a screen customers see during demonstrations, but nothing is
+        lost and no work is blocked.
+      suggested_action: none
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Cancel the shipment request used for the confirmation check in step 6 if it was
+    not already cancelled, and restore SwiftRoute's appearance settings to the
+    values they held before the scenario.

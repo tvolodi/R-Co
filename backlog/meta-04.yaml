@@ -1,0 +1,160 @@
+RND-UI-01:
+  title: Six-state renderer union and single error classifier
+  stage: "F8"
+  priority: MUST
+  workflow: PW-13
+  implemented_in: []
+
+RND-UI-02:
+  title: Loading state with skeleton layout
+  stage: "F8"
+  priority: MUST
+  workflow: PW-13
+  implemented_in: []
+
+RND-UI-03:
+  title: Fetch failure state with explicit retry
+  stage: "F8"
+  priority: MUST
+  workflow: PW-13
+  implemented_in: []
+
+RND-UI-04:
+  title: Leak-free permission denied surface
+  stage: "F8"
+  priority: MUST
+  workflow: PW-13
+  implemented_in: []
+
+RND-UI-05:
+  title: Rate limit backpressure with retry countdown
+  stage: "F8"
+  priority: MUST
+  workflow: PW-13
+  implemented_in: []
+
+RND-UI-06:
+  title: Three-action write conflict resolution
+  stage: "F8"
+  priority: SHOULD
+  workflow: PW-13
+  implemented_in: []
+
+CMP-UI-01:
+  title: Generated design token stylesheet
+  stage: "F8"
+  priority: MUST
+  workflow: PW-14
+  implemented_in: []
+
+CMP-UI-02:
+  title: No literal colour values in component code
+  stage: "F8"
+  priority: MUST
+  workflow: PW-14
+  implemented_in: []
+
+CMP-UI-03:
+  title: Shared UI component library
+  stage: "F8"
+  priority: SHOULD
+  workflow: PW-14
+  implemented_in: []
+
+CMP-UI-04:
+  title: Tenant brand override at bootstrap
+  stage: "F8"
+  priority: MUST
+  workflow: PW-14
+  implemented_in: []
+
+CMP-UI-05:
+  title: Field registry extension point
+  stage: "F8"
+  priority: SHOULD
+  workflow: PW-14
+  implemented_in: []
+
+CMP-UI-06:
+  title: Generic interpreter architecture rule
+  stage: "F8"
+  priority: MUST
+  workflow: PW-14
+  implemented_in: []
+
+CAC-UI-01:
+  title: Tenant segment in every query key
+  stage: "F8"
+  priority: MUST
+  workflow: PW-15
+  implemented_in: []
+
+CAC-UI-02:
+  title: Cache disposal on tenant switch and sign-out
+  stage: "F8"
+  priority: MUST
+  workflow: PW-15
+  implemented_in: []
+
+CAC-UI-03:
+  title: Cache lifetime tiers by data class
+  stage: "F8"
+  priority: SHOULD
+  workflow: PW-15
+  implemented_in: []
+
+CAC-UI-04:
+  title: Version-pinned task payload fetch
+  stage: "F8"
+  priority: MUST
+  workflow: PW-15
+  implemented_in: []
+
+GRD-UI-01:
+  title: Forbidlist as single guard source of truth
+  stage: "F8"
+  priority: MUST
+  workflow: PW-16
+  implemented_in: []
+
+GRD-UI-02:
+  title: Frontend source scan gate
+  stage: "F8"
+  priority: MUST
+  workflow: PW-16
+  implemented_in: []
+
+GRD-UI-03:
+  title: Post-build bundle scan gate
+  stage: "F8"
+  priority: MUST
+  workflow: PW-16
+  implemented_in: []
+
+GRD-UI-04:
+  title: Two-sided META control per guard pattern
+  stage: "F8"
+  priority: MUST
+  workflow: PW-16
+  implemented_in: []
+
+GRD-UI-05:
+  title: Redacted guard violation reporting
+  stage: "F8"
+  priority: MUST
+  workflow: PW-16
+  implemented_in: []
+
+GRD-UI-06:
+  title: Accessibility gate per canonical surface
+  stage: "F8"
+  priority: MUST
+  workflow: PW-16
+  implemented_in: []
+
+GRD-UI-07:
+  title: Generated per-field ARIA wiring
+  stage: "F8"
+  priority: MUST
+  workflow: PW-16
+  implemented_in: []

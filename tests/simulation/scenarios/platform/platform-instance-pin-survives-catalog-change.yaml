@@ -1,0 +1,201 @@
+---
+id: platform-instance-pin-survives-catalog-change
+company_id: platform
+platform_workflow: PW-03
+process_id: sys-instance-version-pinning
+title: Work already in progress keeps the versions it started with, even when newer ones are published
+version: "1.0"
+tags: [regression]
+
+description: >
+  A single case can run for months. During that time the shared building blocks
+  it relies on - the connections to other systems, the shape of the information
+  it carries, the reusable sub-processes - will be improved and republished. This
+  scenario checks that a case in progress keeps using exactly the versions it
+  started with, that a case started later picks up the newer ones, that retiring
+  an old version never strands a case still using it, and that moving a running
+  case onto different versions happens only when someone deliberately asks.
+
+pipeline_test: web/tests/e2e/pipelines/platform-instance-pin-survives-catalog-change.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for the operator's steps.
+# If this file does not exist or the test cannot run, that is a BLOCKER
+# (missing UI) and must be routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  operator: actor-platform-admin
+  engine:   actor-system-engine
+
+preconditions:
+  - description: >
+      A process is live that relies on a shared connection to an external system
+      and on a reusable sub-process, each of which has a published version
+    check: process_definition_active
+  - description: >
+      A newer version of that shared connection is prepared but not yet published
+    check: custom
+    detail: >
+      Confirm a second version of the shared connection is ready to publish, so
+      the scenario can publish it part-way through a running case.
+
+steps:
+  - step: 1
+    actor: operator
+    action: >
+      Starts one case of the process and leaves it part-way through, before it
+      has reached the step that uses the shared connection.
+    via: gui
+    input:
+      leave_before: the step that uses the shared connection
+    produces:
+      long_running_case: the case left in progress
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: operator
+    action: >
+      Publishes the newer version of the shared connection and retires the
+      version the running case is using, so no new case can choose it.
+    via: gui
+    input:
+      publish: newer version of the shared connection
+      retire: the version the running case is using
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: engine
+    action: >
+      The case left in progress reaches the step that uses the shared connection
+      and carries on, using the version it was given when it started.
+    via: system
+    produces:
+      step_outcome: the result of the step that used the shared connection
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: operator
+    action: >
+      Starts a second case of the same process, then opens both cases and reads
+      the list of versions each one is using and where each version came from.
+    via: gui
+    input:
+      expected_screen: case detail showing the versions the case is using
+    produces:
+      new_case: the case started after the newer version was published
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: operator
+    action: >
+      Deliberately moves the long-running case onto the newer version of the
+      shared connection, giving a reason for the change.
+    via: gui
+    input:
+      reason: "External system retires the old endpoint at month end."
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The case that was already in progress uses the version of the shared
+      connection it was given at the start, even though a newer one has since
+      been published.
+    verification:
+      method: system_state
+      detail: >
+        The step performed at step 3 uses the version recorded when the case
+        started, not the version published at step 2.
+      evidence: >
+        The case detail screen listing the versions in use, captured before and
+        after the publication, together with the case history entry for the step
+        performed at step 3.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A case could change behaviour half-way through because something
+        unrelated was published elsewhere. Two halves of one request would be
+        handled under different rules, and nobody would be able to say which
+        rules applied to the outcome.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      A case started after the publication uses the newer version, so
+      improvements do reach new work promptly.
+    verification:
+      method: gui_screen
+      detail: >
+        The case started at step 4 shows the newly published version in its list
+        of versions in use.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Improvements to shared building blocks would never reach live work, so
+        fixes would have to be applied by editing every process by hand.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      An operator can see, for any case, exactly which version of every shared
+      building block it is using and whether that version was chosen
+      automatically, requested explicitly, or inherited from a parent case.
+    verification:
+      method: gui_screen
+      detail: >
+        The case detail screen lists each shared building block, its version, and
+        how that version came to be chosen.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        When a case behaves unexpectedly nobody could establish what it was
+        actually running, so every investigation would start with guesswork.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      Retiring a version stops new cases from choosing it, but a case already
+      using it runs through to completion unaffected.
+    verification:
+      method: system_state
+      detail: >
+        The long-running case completes the step that uses the retired version
+        without error, while new cases are given the newer version instead.
+      evidence: >
+        The case history entry for the step performed at step 3, together with
+        the case detail screen for the case started at step 4.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Every retirement would strand the cases still relying on the retired
+        version. Long-running work would fail part-way through as a side effect
+        of routine housekeeping.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      A running case moves onto a different version only when an operator asks
+      for it, and the change is recorded with who asked, what changed, and why.
+    verification:
+      method: gui_screen
+      detail: >
+        The case history shows the change with the operator's name, the previous
+        and new version, and the reason given.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Either running cases would drift onto new versions with no record, or
+        there would be no way to move a case forward when an external system is
+        withdrawn - one of the two situations the business must be able to
+        control.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Cancel both cases created by this scenario. The published version of the
+    shared connection is left in place; restore the retirement state of the
+    earlier version if the test environment is reused.

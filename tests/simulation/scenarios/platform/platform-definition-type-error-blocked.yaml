@@ -1,0 +1,193 @@
+---
+id: platform-definition-type-error-blocked
+company_id: platform
+platform_workflow: PW-02
+process_id: sys-definition-semantic-validation
+title: A process with broken decision rules is caught while it is being written, not when it runs
+version: "1.0"
+tags: [regression]
+
+description: >
+  A process is full of small written rules - who a task goes to, when a reminder
+  fires, whether a request needs a second signature. If one of those rules refers
+  to information the process does not hold, or compares two things that cannot
+  sensibly be compared, the platform must say so while the author is still at the
+  screen. This scenario checks that every problem is reported at once against the
+  step it belongs to, that a broken process cannot be saved as ready, and that
+  the same checks run again before the process is allowed to go live.
+
+pipeline_test: web/tests/e2e/pipelines/platform-definition-type-error-blocked.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for every step of this
+# scenario. If this file does not exist or the test cannot run, that is a
+# BLOCKER (missing UI) and must be routed to FRONTEND-DEV before UAT proceeds.
+
+actors:
+  author: actor-platform-admin
+
+preconditions:
+  - description: >
+      A draft process exists in the practice workspace holding a declared set of
+      information fields, including a money amount and a customer name
+    check: custom
+    detail: >
+      Confirm the draft can be opened in the process editor and that its declared
+      information fields are visible to the author.
+  - description: No change review is open for this draft
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: author
+    action: >
+      Opens the draft in the process editor and adds two broken rules. The first
+      decides which reviewer a request goes to using a field the process does not
+      hold - the author typed a slightly wrong name for it. The second decides
+      whether a second signature is needed by comparing the money amount against
+      the customer's name. The author then saves the draft.
+    via: gui
+    input:
+      routing_rule_field: a field name that does not exist on this process
+      signature_rule: compares the money amount against the customer name
+    produces:
+      problem_list: the problems the platform reports on saving
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: author
+    action: >
+      Reads the problems shown on screen, checking that both are listed together
+      and that each is marked against the step of the process it belongs to,
+      with the offending rule shown as written.
+    via: gui
+    input:
+      expected_screen: process editor showing rule problems on the canvas
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: author
+    action: >
+      Corrects only the misspelled field name, leaves the second rule broken, and
+      saves again.
+    via: gui
+    input:
+      routing_rule_field: the correctly spelled field name
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: author
+    action: >
+      Corrects the remaining rule so that it compares the money amount against a
+      threshold amount, and saves. The editor confirms the draft is now clean.
+    via: gui
+    input:
+      signature_rule: compares the money amount against a threshold amount
+      expected_status: no remaining problems
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: author
+    action: >
+      Submits the corrected process for release to the live workspace and
+      observes that the platform checks every rule again before accepting it,
+      rather than relying on the earlier clean result.
+    via: gui
+    input:
+      expected_screen: release submission confirming a fresh check of every rule
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      Both broken rules are reported together in one pass, each shown against the
+      step of the process it belongs to, with the rule as the author wrote it.
+      The author is not made to fix one problem to discover the next.
+    verification:
+      method: gui_screen
+      detail: >
+        The editor shows two separate problems after the save at step 1, each
+        attached to its own step on the canvas, each showing the offending rule.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Authors would fix problems one at a time with a full save cycle between
+        each, so building a realistic process becomes slow enough that people
+        avoid changing it - and stale processes are the ones that cause errors.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      A process holding a broken rule cannot be saved as ready for use. It stays
+      a draft until every problem is resolved.
+    verification:
+      method: gui_screen
+      detail: >
+        After step 1 and again after step 3, the editor shows the process as not
+        yet valid and offers no route to release it.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A broken rule would only be discovered when a real request hit it. The
+        request would stall or take the wrong path, and the failure would surface
+        as a stuck case rather than as an obvious authoring mistake.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      The problem reported for the misspelled field names the field the author
+      actually typed and suggests the closest field the process really holds.
+    verification:
+      method: gui_screen
+      detail: >
+        The problem text shows the typed field name and names the nearest
+        existing field as a suggestion.
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        Authors would have to search the field list by hand to find a typo,
+        which is slow but not blocking.
+      suggested_action: none
+
+  - id: EO-004
+    description: >
+      Once both rules are corrected the process saves cleanly, with no remaining
+      problems shown anywhere on the canvas or in the form editor.
+    verification:
+      method: gui_screen
+      detail: >
+        After step 4 the editor shows the draft as valid and no problem markers
+        remain on any step.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        A process that is actually correct would be reported as broken, so
+        authors would learn to ignore the warnings - and then miss the real ones.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      Every rule is checked again when the process is submitted for release, so a
+      process that passed earlier under different surrounding conditions is never
+      released without a fresh check.
+    verification:
+      method: gui_screen
+      detail: >
+        The release submission screen shows that the rules were re-checked at
+        submission and reports the fresh result, not the result stored at step 4.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A process could go live carrying a rule that has since been invalidated
+        by a change elsewhere, and the breakage would surface in the live
+        workspace on a real request.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    Return the draft to its original state by discarding the rules added during
+    this scenario. No cases are created, so nothing needs cancelling.

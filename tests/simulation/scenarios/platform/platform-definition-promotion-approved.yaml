@@ -1,0 +1,180 @@
+---
+id: platform-definition-promotion-approved
+company_id: platform
+platform_workflow: PW-01
+process_id: sys-definition-promotion
+title: A process change reaches the live workspace only after a named person approves the exact change list
+version: "1.0"
+tags: [happy_path, approval]
+
+description: >
+  Process definitions are built and refined in a practice workspace before they
+  govern real work. This scenario checks that moving one into the live workspace
+  is a deliberate, recorded act rather than a silent hand-off: a person reads the
+  full list of what would change, approves that list, and the platform re-runs the
+  change's own checks on a disposable copy before anything goes live. It also
+  checks that work already underway is not disturbed by the switch.
+
+pipeline_test: web/tests/e2e/pipelines/platform-definition-promotion-approved.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for the reviewer's steps.
+# If this file does not exist or the test cannot run, that is a BLOCKER
+# (missing UI) and must be routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  authoring_agent: actor-system-authoring-agent
+  reviewer:        actor-platform-admin
+  rehearsal:       actor-system-sandbox-runner
+
+preconditions:
+  - description: >
+      The practice workspace holds a finished version of the approvals process
+      that differs from the version currently live
+    check: custom
+    detail: >
+      Confirm that the practice workspace and the live workspace hold different
+      versions of the same process, so there is a real change to review.
+  - description: No change review is already open for this process
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: authoring_agent
+    action: >
+      Proposes moving the finished approvals process from the practice workspace
+      into the live workspace, submitting it together with the checks the change
+      must satisfy and the fixed sample data those checks run against.
+    via: system
+    produces:
+      review_id: the change review the platform opens for this proposal
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: reviewer
+    action: >
+      Opens the pending change reviews on the operator console and reads the
+      full list of what this change would alter in the live workspace - every
+      step, rule, form field and connection that differs from what is live now.
+    via: gui
+    input:
+      expected_screen: pending change review detail
+    produces:
+      change_list: the list of differences shown on the review screen
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: reviewer
+    action: >
+      Approves the change list shown on screen, recording the approval against
+      that exact set of differences.
+    via: gui
+    input:
+      decision: approve
+      reviewer_note: "Reviewed the change list in full; approved for release."
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: rehearsal
+    action: >
+      Takes a disposable copy of the platform, loads only the fixed sample data
+      carried with the change, and re-runs every check the change brought with
+      it. Nothing from the practice workspace's real working data is copied in.
+    via: system
+    produces:
+      rehearsal_outcome: the result of re-running the checks on the disposable copy
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: reviewer
+    action: >
+      Releases the approved change. The screen confirms that the live workspace
+      is now running the new version of the process.
+    via: gui
+    input:
+      expected_status: released
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      Before approving, the reviewer sees the complete list of what would change,
+      and the approval is recorded against that same list. An approval recorded
+      against one set of changes cannot later be used to release a different set.
+    verification:
+      method: gui_screen
+      detail: >
+        The review screen shows every difference between the live version and the
+        proposed version, and the approval confirmation names the same set.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        People would be approving changes they have not seen. A change could
+        reach the live workspace carrying alterations nobody agreed to, and the
+        approval record would prove nothing.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      The change is not released until its own checks have been re-run and
+      passed on a disposable copy, using only the sample data carried with the
+      change rather than anything from the practice workspace.
+    verification:
+      method: system_state
+      detail: >
+        The release does not take effect until the re-run has completed and
+        passed, and the re-run used only the sample data supplied with the change.
+      evidence: >
+        The rehearsal record shown on the change review screen, naming the checks
+        that ran, their result, and the sample data set they used.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A change could go live without anyone confirming it still behaves as
+        intended, so the first real case to run through it becomes the test.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      After release, new work starts on the new version of the process, while
+      work that was already underway continues on the version it started with
+      and is not disturbed.
+    verification:
+      method: gui_screen
+      detail: >
+        A case started after the release shows the new version. A case started
+        beforehand still shows the earlier version and continues normally.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Cases in progress would change their rules underneath the people working
+        on them - a request approved under one policy could complete under
+        another, with no record of the switch.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      The whole release is recorded end to end: who proposed the change, who
+      approved it, what was approved, and when it went live.
+    verification:
+      method: audit_event
+      detail: >
+        The change history for this process shows the proposal, the approval with
+        the approver's name, and the release, in that order with timestamps.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        There would be no way to answer who authorised a change to a live
+        business process, which is the first question asked after any incident
+        or audit.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Cancel any cases started by this scenario. The released version is left in
+    place; the rollback scenario covers returning the live workspace to its
+    previous version. Run only against a test environment.

@@ -1,0 +1,220 @@
+---
+id: platform-sandbox-cross-tenant-probe
+company_id: platform
+platform_workflow: PW-12
+process_id: sys-agent-sandbox-ownership
+title: The worker who assigns work cannot do the work, and nobody can discover another company's workspaces
+version: "1.0"
+tags: [isolation, regression]
+
+description: >
+  The platform's automated work is split deliberately: one worker hands out
+  assignments, another carries them out in its own private workspace. That
+  separation only means anything if the platform enforces it, so this scenario has
+  the assigning worker try to take a workspace and carry out work itself. It also
+  has a worker belonging to one company ask for another company's workspace, and
+  checks the answer is identical to asking for a workspace that has never existed,
+  so the platform cannot be used to map out what other companies are doing.
+
+actors:
+  coordinator:    actor-system-orchestrator
+  worker_a:       actor-system-implementer-a
+  worker_b:       actor-system-implementer-b
+  foreign_worker: actor-system-implementer-other-company
+
+preconditions:
+  - description: Two companies are active on the platform, each with its own automated workers
+    check: system_seeded
+  - description: At least one free workspace exists in each company
+    check: custom
+    detail: >
+      The scenario needs a workspace to be taken in the first company and a second
+      company with its own workspaces that must remain invisible from outside.
+
+steps:
+  - step: 1
+    actor: coordinator
+    action: >
+      Hands out an assignment. It also claims in the submission that somebody else
+      authored the assignment, to check whether the platform believes what it is
+      told or what it can verify.
+    via: system
+    input:
+      claimed_author: a different worker than the one actually submitting
+    produces:
+      assignment_reference: the reference for the recorded assignment
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: coordinator
+    action: >
+      Attempts to take a workspace for itself so it can carry out the assignment
+      directly rather than handing it to a worker.
+    via: system
+    produces:
+      coordinator_refusal: the record of the platform refusing the coordinator
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: worker_a
+    action: >
+      Takes a free workspace for that assignment and begins working in it.
+    via: system
+    input:
+      assignment_reference: the reference from step 1
+    produces:
+      workspace_reference: the reference for the workspace now held by this worker
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: worker_b
+    action: >
+      Attempts to take the same workspace, and then attempts to carry out work
+      inside it.
+    via: system
+    input:
+      workspace_reference: the reference from step 3
+    produces:
+      second_worker_refusal: the record of both attempts being refused
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: foreign_worker
+    action: >
+      Belonging to the second company, asks for the first company's workspace, and
+      then separately asks for a workspace reference that has never been issued to
+      anybody. It compares the two answers.
+    via: system
+    input:
+      workspace_reference: the reference from step 3
+      unknown_reference: a reference that has never been issued
+    produces:
+      probe_comparison: the two answers received, recorded side by side
+    sla_context:
+      expected_within_hours: null
+
+  - step: 6
+    actor: coordinator
+    action: >
+      Reviews the state of every workspace within its own company, to see which
+      assignments are under way and who is carrying them out.
+    via: system
+    produces:
+      supervisory_view: the coordinator's view of its own company's workspaces
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The answer the second company's worker receives for the first company's
+      workspace is identical to the answer it receives for a workspace that has
+      never existed. Nothing in either answer distinguishes them.
+    verification:
+      method: system_state
+      detail: >
+        Both answers recorded at step 5 are the same in wording and in every detail
+        returned.
+      evidence: >
+        The two answers recorded at step 5, compared directly.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Anybody with access to one company could work out how much automated work
+        another company is running, and when, simply by asking and watching how the
+        answers differ. That leaks commercial activity between customers who are
+        supposed to be invisible to each other.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      The coordinating worker cannot take a workspace and cannot carry out work in
+      one. It can see the state of its own company's workspaces, but it has no way
+      to act inside any of them.
+    verification:
+      method: system_state
+      detail: >
+        The attempt at step 2 is refused and the workspace remains unheld. The
+        review at step 6 shows status only, with no means of acting on any
+        workspace.
+      evidence: >
+        The refusal record from step 2 and the coordinator's view from step 6.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        The separation between deciding what work to do and actually doing it would
+        collapse into a single all-powerful worker. Nothing would then stand between
+        an instruction and a change to a customer's system, which is the whole point
+        of splitting the two roles.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      A workspace is held by exactly one worker. The second worker is refused, is
+      not told who currently holds it, and cannot carry out work inside it.
+    verification:
+      method: system_state
+      detail: >
+        Both attempts at step 4 are refused, and the refusal does not name the
+        current holder.
+      evidence: >
+        The refusal record from step 4, checked for any mention of the current
+        holder.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Two workers could act inside the same workspace at once and overwrite each
+        other's results, so nobody could say which result was produced by which
+        piece of work.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      The assignment is recorded as having been handed out by the worker that
+      actually submitted it, regardless of what the submission claimed.
+    verification:
+      method: system_state
+      detail: >
+        The recorded author of the assignment from step 1 is the worker that
+        submitted it, not the one it claimed.
+      evidence: >
+        The recorded assignment from step 1, showing its author.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Automated work could be attributed to the wrong worker, so our record of who
+        instructed a change would be wrong. After an incident we would be
+        investigating the wrong part of the system.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      Every attempt, whether allowed or refused, is recorded for the platform
+      operator, and a worker that keeps asking for workspaces it cannot have is
+      slowed down.
+    verification:
+      method: system_state
+      detail: >
+        The refused attempts from steps 2, 4 and 5 all appear in the operator's
+        activity record, and repeated attempts from one worker begin to be
+        throttled.
+      evidence: >
+        The operator activity record covering the scenario period, including the
+        refused attempts and any throttling applied.
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        Repeated probing would leave no visible trail and could continue unchecked.
+        Nothing is exposed by this alone, but we would lose the early warning that
+        somebody is testing the boundaries.
+      suggested_action: none
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Release the workspace taken in step 3 and close the assignment created in step
+    1. Leave the recorded attempts in place as evidence.

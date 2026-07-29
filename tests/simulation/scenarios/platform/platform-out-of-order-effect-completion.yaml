@@ -1,0 +1,215 @@
+---
+id: platform-out-of-order-effect-completion
+company_id: platform
+platform_workflow: PW-07
+process_id: sys-effect-reentry-ordering
+title: Answers from outside systems are applied to a case in the order they were asked for
+version: "1.0"
+tags: [parallel, regression]
+
+description: >
+  When a process asks an outside system to do two things for the same case - book
+  a slot, then confirm the booking - the answers can come back in either order,
+  and there is no guarantee the first one asked for arrives first. This scenario
+  checks that the platform applies answers to a case strictly in the order they
+  were requested, never applies two answers for one case at the same moment,
+  keeps handling other cases side by side at full speed, and, if an answer never
+  arrives, sets the whole set for that case aside for a person rather than
+  applying half of it.
+
+actors:
+  requester: actor-system-effects-worker
+  applier:   actor-system-apply-worker
+  scheduler: actor-system-scheduler
+  operator:  actor-platform-admin
+
+preconditions:
+  - description: >
+      A live process exists that makes two related requests to an outside system
+      for the same case, one after the other
+    check: process_definition_active
+  - description: >
+      Several cases of that process can run at the same time, so parallel
+      handling can be observed
+    check: custom
+    detail: >
+      Confirm the platform is configured with more than one worker applying
+      answers, so answers for different cases can be applied concurrently.
+  - description: No answers are outstanding from a previous run
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: requester
+    action: >
+      Records the answer to the second request for one case before the answer to
+      the first request has arrived, so the answers are deliberately out of order.
+    via: system
+    produces:
+      early_answer: the second answer, recorded first
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: applier
+    action: >
+      Picks up the early answer, sees that the answer before it has not yet been
+      applied, and puts it back untouched. Nothing is recorded as a failure and
+      nobody is alerted.
+    via: system
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: requester
+    action: >
+      Records the answer to the first request for the same case.
+    via: system
+    produces:
+      first_answer: the answer to the first request
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: applier
+    action: >
+      Applies the first answer to the case, then the second, in the order the
+      requests were made, and the case advances accordingly.
+    via: system
+    produces:
+      applied_order: the order in which the two answers reached the case
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: requester
+    action: >
+      Records answers for a number of other cases at the same time, and several
+      workers apply them concurrently while the case above is being put in order.
+    via: system
+    produces:
+      parallel_result: the outcome for the other cases handled at the same time
+    sla_context:
+      expected_within_hours: null
+
+  - step: 6
+    actor: scheduler
+    action: >
+      For a further case whose first answer never arrives at all, waits out the
+      agreed grace period, then sets aside the whole set of answers for that case
+      together and alerts the operator.
+    via: system
+    produces:
+      set_aside: the case whose answers were set aside as one unit
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The second answer is never applied before the first. The case advances in
+      the order the requests were made, whatever order the answers arrived in.
+    verification:
+      method: system_state
+      detail: >
+        The case history shows the first answer applied before the second, even
+        though the second was received first.
+      evidence: >
+        The case history on the instance detail screen, showing both answers with
+        the time each was received and the time each was applied.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A case would react to a confirmation before the thing being confirmed had
+        been recorded. The case could take a branch that contradicts what
+        actually happened, and the resulting decision would be wrong with no
+        obvious sign that anything went astray.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      An answer that arrives ahead of its turn is treated as normal, not as a
+      failure. It is simply held until its turn comes, with no failure recorded,
+      no retry counted against it, and no alert raised.
+    verification:
+      method: system_state
+      detail: >
+        The early answer is held and later applied successfully, with no failure
+        entry and no alert generated between step 1 and step 4.
+      evidence: >
+        The case history covering steps 1 to 4, together with the platform alert
+        list for the same period showing no entry for this case.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Everyday timing differences would fill the alert list with false alarms,
+        and the real problems buried among them would be missed.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      Two answers for the same case are never applied at the same moment, so the
+      case cannot end up in a state that matches neither answer.
+    verification:
+      method: system_state
+      detail: >
+        Only one answer for a given case is being applied at any moment, and each
+        answer is applied exactly once.
+      evidence: >
+        The case history showing each answer applied once, with no overlap
+        between the applying periods of the two answers.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A case could be left in a state that reflects neither of the two answers
+        it received - not recoverable by retrying, and only discoverable when
+        somebody notices the case behaving impossibly.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      Answers for different cases continue to be applied side by side. Keeping
+      one case in order does not slow down any other case.
+    verification:
+      method: system_state
+      detail: >
+        Answers belonging to different cases are applied concurrently during the
+        same period in which the out-of-order case is being sorted out.
+      evidence: >
+        The applied-answer timeline for the cases in step 5, showing overlapping
+        application periods across different cases.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Every case would wait behind every other case. Under load the platform
+        would fall progressively further behind, and answers from outside systems
+        would take hours instead of seconds to reach the people waiting on them.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      When an answer never arrives, the whole set of answers for that case is set
+      aside together for a person to deal with. The case is never left with some
+      answers applied and others abandoned.
+    verification:
+      method: system_state
+      detail: >
+        After the grace period, every outstanding answer for that case is set
+        aside as one unit, none of them is applied, and the operator is alerted.
+      evidence: >
+        The set-aside list showing the case with all of its outstanding answers,
+        plus the alert raised to the operator naming that case.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A case would be left half-finished with no alert - part of the work
+        recorded as done and part silently dropped. Nobody would find out until a
+        customer asked why nothing happened.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Cancel every case created by this scenario, including the case whose answers
+    were set aside at step 6, and clear its entry from the set-aside list so the
+    next run starts from a clean state.

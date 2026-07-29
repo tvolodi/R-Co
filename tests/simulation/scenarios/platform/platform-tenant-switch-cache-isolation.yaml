@@ -1,0 +1,213 @@
+---
+id: platform-tenant-switch-cache-isolation
+company_id: platform
+platform_workflow: PW-15
+process_id: sys-tenant-scoped-client-cache
+title: Switching to a second company never shows anything left over from the first
+version: "1.0"
+tags: [isolation, regression]
+
+description: >
+  Some people work for more than one company on the platform - a consultant, an
+  operator, a shared services team - and switch between them without closing the
+  browser. Everything the browser is still holding from the first company must be
+  let go before the second company's screens appear, so that not one row, not for a
+  single moment, carries over. This scenario switches between SwiftRoute and Vortex
+  in one session and checks that nothing crosses, that signing out leaves nothing
+  behind, and that a task always shows the form it was created against.
+
+pipeline_test: web/tests/e2e/pipelines/tenant-cache.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for all steps. If this file does
+# not exist or the test cannot run, that is a BLOCKER (missing UI) and must be
+# routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  dual_company_user: actor-platform-admin
+  vortex_only_user:  actor-vortex-karl
+
+preconditions:
+  - description: SwiftRoute and Vortex are both active and each has running processes
+    check: system_seeded
+  - description: The operator holds membership in both SwiftRoute and Vortex
+    check: custom
+    detail: >
+      The scenario depends on one person being able to switch between the two
+      companies within a single browser session.
+  - description: >
+      At least one open task exists that was created against an earlier published
+      version of its process, while a newer version is now in use
+    check: custom
+    detail: >
+      The scenario checks that the task still shows the form it was created
+      against, which requires a task older than the current version.
+
+steps:
+  - step: 1
+    actor: dual_company_user
+    action: >
+      Signs in, selects SwiftRoute, and opens the list of running processes. Notes
+      which entries are shown.
+    via: gui
+    input:
+      company: swiftroute
+    produces:
+      swiftroute_list: the entries shown for SwiftRoute
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: dual_company_user
+    action: >
+      Switches to Vortex using the company selector, without reloading the browser
+      or signing out, and opens the same list of running processes.
+    via: gui
+    input:
+      company: vortex
+    produces:
+      vortex_list: the entries shown for Vortex immediately after the switch
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: dual_company_user
+    action: >
+      Watches the screen closely through the switch, including the moment between
+      the old list disappearing and the new one appearing, to see whether any
+      SwiftRoute entry is visible at any point.
+    via: gui
+    produces:
+      transition_frames: what was on screen during the change between companies
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: dual_company_user
+    action: >
+      Opens a task that was created some time ago, while a newer version of its
+      process has since been published, and reads the form he is asked to fill in.
+    via: gui
+    produces:
+      task_form: the form shown for the older task
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: dual_company_user
+    action: >
+      Signs out. The Vortex-only user then signs in on the same browser and opens
+      the list of running processes and his task list.
+    via: gui
+    input:
+      company: vortex
+    produces:
+      post_signout_screens: what the next person saw on the same browser
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      After switching to Vortex, only Vortex entries are shown. No SwiftRoute entry
+      appears, not even for a single moment during the change - the screen shows a
+      placeholder in between rather than the previous company's rows.
+    verification:
+      method: gui_screen
+      detail: >
+        The list at step 2 contains only Vortex entries, and the frames captured at
+        step 3 contain no SwiftRoute entry at any point.
+      evidence: >
+        Screenshots of the settled Vortex list and of every frame captured during
+        the switch.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        One customer's live operational data would be displayed inside another
+        customer's workspace. Even a momentary appearance is a disclosure we would
+        have to report, and it destroys the guarantee of separation that customers
+        buy from us.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      Signing out leaves nothing behind. When the next person signs in on the same
+      browser, nothing from the previous session's companies is visible anywhere.
+    verification:
+      method: gui_screen
+      detail: >
+        The screens at step 5 contain no entry, name or figure belonging to
+        SwiftRoute or to the previous session.
+      evidence: >
+        Screenshots of the lists and task list shown to the next person at step 5.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A shared machine - a dispatch desk, a factory terminal, a hot desk - would
+        show the previous person's company data to whoever sits down next. Shared
+        machines are exactly where our customers use this platform.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      A task created some time ago shows the form it was created against, not the
+      one belonging to the newer published version of the process.
+    verification:
+      method: gui_screen
+      detail: >
+        The form shown at step 4 matches the version the task was created against,
+        including the fields that have since been added or removed.
+      evidence: >
+        Screenshot of the task form at step 4, compared with the fields defined by
+        the version the task was created against.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Somebody would be asked to complete a form that does not match the work they
+        were originally given. Answers would be captured against the wrong questions,
+        and long-running approvals would change shape halfway through.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      If the platform cannot confirm that what it returned is the version that was
+      asked for, the person is told the information is out of date rather than being
+      shown a form that may be wrong.
+    verification:
+      method: gui_screen
+      detail: >
+        When the version returned does not match the version requested, an
+        out-of-date message is shown and no form is opened.
+      evidence: >
+        Screenshot of the out-of-date message shown in place of the form.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        People would silently fill in the wrong form and never know. The mismatch
+        would only surface later, when the answers cannot be reconciled with the
+        decision that was recorded.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      Lists that change frequently - running processes, tasks, timers, work needing
+      attention - are read afresh each time they are opened, so nobody acts on a
+      list that is quietly out of date.
+    verification:
+      method: gui_screen
+      detail: >
+        Returning to the list of running processes shows changes made since it was
+        last viewed, without the person needing to reload the browser.
+      evidence: >
+        Screenshots of the list before and after a change is made elsewhere.
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        Staff occasionally act on a stale list and pick up work somebody else has
+        already taken. It causes duplicated effort rather than a wrong outcome, and
+        reloading the page corrects it.
+      suggested_action: none
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    No process instances are created by this scenario. Sign out of both companies
+    at the end so the browser session does not carry into the next scenario.

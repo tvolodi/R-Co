@@ -1,0 +1,133 @@
+DDL-01:
+  title: Pure platform DDL validator
+  stage: 16
+  priority: MUST
+  workflow: PW-05
+  implemented_in: []
+
+DDL-02:
+  title: Expand-then-constrain ordering check
+  stage: 16
+  priority: MUST
+  workflow: PW-05
+  implemented_in: []
+
+DDL-03:
+  title: Phased DDL generation
+  stage: 16
+  priority: SHOULD
+  workflow: PW-05
+  implemented_in: []
+
+DDL-04:
+  title: Idempotent batched backfill
+  stage: 16
+  priority: MUST
+  workflow: PW-05
+  implemented_in: []
+
+DDL-05:
+  title: Reserved plat_ object namespace
+  stage: 16
+  priority: MUST
+  workflow: PW-05
+  implemented_in: []
+
+PAR-01:
+  title: Monthly range partitioning of the event log
+  stage: 16
+  priority: MUST
+  workflow: PW-06
+  implemented_in: []
+
+PAR-02:
+  title: Proactive future partition creation
+  stage: 16
+  priority: MUST
+  workflow: PW-06
+  implemented_in: []
+
+PAR-03:
+  title: Partition-scoped retention and archival
+  stage: 16
+  priority: MUST
+  workflow: PW-06
+  implemented_in: []
+
+PAR-04:
+  title: Partition constraints declared before attach
+  stage: 16
+  priority: MUST
+  workflow: PW-06
+  implemented_in: []
+
+PAR-05:
+  title: Online conversion to a partitioned event log
+  stage: 16
+  priority: MUST
+  workflow: PW-06
+  implemented_in: []
+
+PAR-06:
+  title: Time-bounded instance reconstruction queries
+  stage: 16
+  priority: MUST
+  workflow: PW-06
+  implemented_in: []
+
+ORD-01:
+  title: Effect completion claim guard
+  stage: 16
+  priority: MUST
+  workflow: PW-07
+  implemented_in: []
+
+ORD-02:
+  title: Per-correlation execute guard
+  stage: 16
+  priority: MUST
+  workflow: PW-07
+  implemented_in: []
+
+ORD-03:
+  title: Sequence order guard and gap sweeping
+  stage: 16
+  priority: SHOULD
+  workflow: PW-07
+  implemented_in: []
+
+ORD-04:
+  title: Cross-correlation parallelism and lag metrics
+  stage: 16
+  priority: MUST
+  workflow: PW-07
+  implemented_in: []
+
+OBP-01:
+  title: Outbox depth cap and cached depth counter
+  stage: 16
+  priority: SHOULD
+  workflow: PW-08
+  implemented_in: []
+
+OBP-02:
+  title: External ingress refusal before transaction
+  stage: 16
+  priority: SHOULD
+  workflow: PW-08
+  implemented_in: []
+
+OBP-03:
+  title: Typed outbox overflow on internal emit
+  stage: 16
+  priority: SHOULD
+  workflow: PW-08
+  implemented_in: []
+
+OBP-04:
+  title: Outbox gate hysteresis and escalation
+  stage: 16
+  priority: SHOULD
+  workflow: PW-08
+  implemented_in: []
+

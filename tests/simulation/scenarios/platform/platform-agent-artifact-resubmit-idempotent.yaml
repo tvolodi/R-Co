@@ -1,0 +1,220 @@
+---
+id: platform-agent-artifact-resubmit-idempotent
+company_id: platform
+platform_workflow: PW-11
+process_id: sys-agent-artifact-lifecycle
+title: Work delivered twice is stored once, and never quietly replaced
+version: "1.0"
+tags: [regression]
+
+description: >
+  The platform's own automated workers hand in finished work - test results, design
+  documents, proposed changes - for a reviewer to accept. Connections drop, so the
+  same delivery is sometimes handed in twice. The platform must recognise the repeat
+  and keep exactly one copy, must refuse a repeat that actually describes different
+  work rather than quietly replacing what was already stored, and must never accept
+  any of this into the live environment. This scenario checks all three, and that the
+  reviewer sees one clean entry to accept.
+
+actors:
+  coordinating_agent: actor-system-orchestrator
+  authoring_agent:    actor-system-authoring-agent
+  sweeper:            actor-system-scheduler
+  reviewer:           actor-platform-admin
+
+preconditions:
+  - description: The platform is running as a non-production environment
+    check: custom
+    detail: >
+      This process may only ever run outside the live environment. Confirm the
+      environment under test is not the live one before the scenario starts.
+  - description: No work is currently held for review under the instruction used by this scenario
+    check: no_pending_instances
+
+steps:
+  - step: 1
+    actor: coordinating_agent
+    action: >
+      Registers the instruction that the work will be produced from, including the
+      setting that makes the work repeatable. Once registered, the instruction can
+      never be edited - a changed instruction is a new instruction.
+    via: system
+    input:
+      instruction_kind: test results
+      repeatability_setting: set to a real value, not left at zero
+    produces:
+      instruction_reference: the reference for the registered instruction
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: authoring_agent
+    action: >
+      Hands in the finished work for its first attempt against that instruction.
+      The work is accepted and held for review.
+    via: system
+    input:
+      attempt_number: 1
+    produces:
+      delivery_reference: the reference the platform gave the delivered work
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: authoring_agent
+    action: >
+      Loses its connection before it knows whether the delivery arrived, and hands
+      in exactly the same work for exactly the same attempt again.
+    via: system
+    input:
+      attempt_number: 1
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: authoring_agent
+    action: >
+      Hands in work for the same attempt number again, but this time the work was
+      produced from a different instruction than the one already recorded against
+      that attempt.
+    via: system
+    input:
+      attempt_number: 1
+    produces:
+      refusal_record: the record of the platform refusing this delivery
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: reviewer
+    action: >
+      Opens the list of work waiting for review on the operator console, confirms
+      there is exactly one entry for that attempt with the content that was
+      originally handed in, and accepts it.
+    via: gui
+    input:
+      instruction_reference: the reference from step 1
+    sla_context:
+      expected_within_hours: null
+
+  - step: 6
+    actor: sweeper
+    action: >
+      Runs the routine tidy-up that retires work nobody reviewed within the holding
+      period, and keeps accepted work for as long as anything still depends on the
+      versions it was produced against.
+    via: system
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      After the same delivery is handed in twice, exactly one copy is held, and its
+      content is the content that was handed in the first time - untouched by the
+      repeat.
+    verification:
+      method: system_state
+      detail: >
+        One entry exists for that attempt after step 3, and its content is
+        identical to what was delivered at step 2.
+      evidence: >
+        The list of work held for review, captured after step 2 and again after
+        step 3, showing one entry with unchanged content.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Evidence of what our automated workers actually produced would be
+        duplicated or quietly overwritten by a retry. Reviewers would be signing
+        off work that is not the work that was originally delivered, and our record
+        of what was checked would be untrustworthy.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      A delivery that reuses the same attempt number but describes different work is
+      refused with a clear explanation, and what was already held is left exactly as
+      it was.
+    verification:
+      method: system_state
+      detail: >
+        The delivery at step 4 is refused, the reason is stated plainly, and the
+        held content is unchanged afterwards.
+      evidence: >
+        The refusal record from step 4, plus the held entry captured before and
+        after that step.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        One piece of delivered work could be silently swapped for another under the
+        same attempt number. Nobody would be able to say afterwards which version a
+        reviewer actually accepted.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      None of this work can be handed into the live environment. A delivery aimed at
+      the live environment is refused before its content is even read.
+    verification:
+      method: system_state
+      detail: >
+        A delivery attempted against the live environment is refused, and nothing is
+        stored and no content is read.
+      evidence: >
+        The refusal record for the live-environment attempt, showing that no entry
+        was created.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Unreviewed automated output could land in the live environment that
+        customers depend on. Work that no human has checked would be sitting where
+        it can affect real business processes.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      The reviewer sees exactly one entry for the attempt on screen and can accept
+      it. Once accepted, the record shows which versions of the instruction and the
+      process the work was produced against.
+    verification:
+      method: gui_screen
+      detail: >
+        The review screen at step 5 lists one entry for that attempt. After
+        acceptance it is shown as accepted, together with the versions it was
+        produced against.
+      evidence: >
+        Screenshot of the review screen before and after acceptance.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Reviewers would see duplicated or missing entries and could not tell what
+        they are being asked to accept, or what version of our own product the work
+        was produced against.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      The routine tidy-up retires work nobody reviewed within the holding period,
+      and never removes accepted work while anything still depends on the versions
+      it was produced against.
+    verification:
+      method: system_state
+      detail: >
+        After the tidy-up, unreviewed work past its holding period is gone, and
+        accepted work whose versions are still in use is still present.
+      evidence: >
+        The list of held work captured before and after the tidy-up in step 6.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Either the holding area grows without limit until it becomes unusable, or
+        evidence we still rely on is deleted while it is still needed to explain a
+        past release.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    Leave the accepted entry in place so the retention behaviour can be observed on
+    a later run. Remove the instruction registered in step 1 only when the test
+    environment is reset.

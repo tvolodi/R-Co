@@ -1,0 +1,192 @@
+---
+id: platform-definition-promotion-conflict-rejected
+company_id: platform
+platform_workflow: PW-01
+process_id: sys-definition-promotion
+title: A change built on an out-of-date starting point is refused before anything live is touched
+version: "1.0"
+tags: [regression, approval]
+
+description: >
+  Two people can be improving the same process at the same time. If one of them
+  releases first, the other's work is now built on a starting point that no
+  longer exists, and releasing it would quietly undo the first change. This
+  scenario checks that the platform refuses such a proposal up front, names
+  exactly what clashed, leaves the live workspace untouched, and that an approval
+  already given cannot be carried over onto a changed proposal.
+
+pipeline_test: web/tests/e2e/pipelines/platform-definition-promotion-conflict-rejected.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for the reviewer's steps.
+# If this file does not exist or the test cannot run, that is a BLOCKER
+# (missing UI) and must be routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  authoring_agent: actor-system-authoring-agent
+  reviewer:        actor-platform-admin
+
+preconditions:
+  - description: >
+      The live workspace has already moved on to a newer version of the
+      approvals process than the one the pending proposal was built from
+    check: custom
+    detail: >
+      Confirm the live workspace is running a version released after the
+      starting point the proposal in this scenario branched from.
+  - description: The approvals process definition is active in the live workspace
+    check: process_definition_active
+
+steps:
+  - step: 1
+    actor: authoring_agent
+    action: >
+      Proposes moving a version of the approvals process into the live workspace.
+      The proposal was built from the version that was live yesterday, not the
+      one live now.
+    via: system
+    produces:
+      refusal: the platform's response to the out-of-date proposal
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: reviewer
+    action: >
+      Opens the change review queue on the operator console and reads the
+      refusal, which names each part of the process that has been altered by
+      someone else since this proposal was built.
+    via: gui
+    input:
+      expected_screen: refused change review detail
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: authoring_agent
+    action: >
+      Rebuilds the proposal on top of the version that is live now, keeping the
+      same intended improvement, and submits it again.
+    via: system
+    produces:
+      review_id: the change review opened for the rebuilt proposal
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: reviewer
+    action: >
+      Reads the rebuilt change list and approves it.
+    via: gui
+    input:
+      decision: approve
+      reviewer_note: "Rebuilt on the current live version; change list reviewed."
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: authoring_agent
+    action: >
+      Amends the proposal after the approval was given - adding one further
+      alteration that the reviewer never saw - and attempts to release it using
+      the approval already recorded.
+    via: system
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The out-of-date proposal is refused, and the refusal names every part of
+      the process that someone else has changed in the meantime, so the author
+      knows precisely what to reconcile.
+    verification:
+      method: gui_screen
+      detail: >
+        The change review screen shows the proposal as refused and lists each
+        clashing part of the process by name.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        One person's improvements would silently erase another's. A control that
+        was deliberately added to a live process could disappear with nobody
+        noticing until it failed to apply.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      Nothing in the live workspace is altered by the refused proposal. The
+      version people are working against is exactly the one that was live before.
+    verification:
+      method: system_state
+      detail: >
+        The live workspace runs the same version of the process before and after
+        the refused proposal, and no case is interrupted.
+      evidence: >
+        The operator console process detail screen showing the live version,
+        captured before and after step 1.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A rejected change would still leave traces in the live workspace, so a
+        refusal could not be trusted and every rejection would need manual
+        inspection to confirm nothing leaked through.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      Once rebuilt on the version that is live now, the same improvement is
+      accepted for review and can be approved normally.
+    verification:
+      method: gui_screen
+      detail: >
+        The rebuilt proposal appears in the review queue awaiting approval, and
+        the approval is accepted.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Authors would have no way to recover from a clash. Improvements would
+        pile up unreleased and people would work around the platform instead.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      An approval recorded against one set of changes cannot be reused to
+      release a different set. The amended proposal is refused and has to go
+      back for review.
+    verification:
+      method: system_state
+      detail: >
+        The release of the amended proposal does not take effect, and the
+        proposal returns to awaiting review rather than going live.
+      evidence: >
+        The change review screen showing the amended proposal awaiting review
+        again, together with the record of the refused release attempt.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Anyone able to submit a change could obtain approval for something
+        harmless and then release something else entirely under that approval.
+        The review gate would be decorative.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      Every refusal is recorded, so an operator asking later why a change never
+      went live can see when it was refused and on what grounds.
+    verification:
+      method: audit_event
+      detail: >
+        The change history for this process shows both refusals with their
+        timestamps and reasons.
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        Refusals would leave no trace, so repeated failed attempts to release the
+        same change would go unnoticed until someone asked in person.
+      suggested_action: none
+
+cleanup:
+  cancel_open_instances: true
+  description: >
+    Close the refused and amended change reviews created by this scenario.
+    Nothing in the live workspace should require cleanup; if anything did change,
+    that is itself the failure described in EO-002.

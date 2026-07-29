@@ -1,0 +1,237 @@
+---
+id: vortex-entity-list-filter-and-page
+company_id: vortex
+platform_workflow: PW-10
+process_id: proc-vortex-quality-deviation
+title: The quality manager filters the batch list to find every quarantined batch from one supplier
+version: "1.0"
+tags: [happy_path, regression]
+
+description: >
+  When a supplier problem is suspected, Karl Fischer has to find every production
+  batch from that supplier that is currently quarantined, oldest first, and work
+  through them. Vortex keeps thousands of batches, so this only works if he can
+  narrow the list himself and page through the result without losing his place.
+  This scenario also checks that Karl never sees the cost figures he is not
+  cleared for, and that a record type he is not permitted to see gives him nothing
+  to go on.
+
+pipeline_test: web/tests/e2e/pipelines/entity-list-query.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for all steps. If this file does
+# not exist or the test cannot run, that is a BLOCKER (missing UI) and must be
+# routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  quality_manager: actor-vortex-karl
+  cost_approver:   actor-vortex-anna
+
+preconditions:
+  - description: Vortex is seeded with production batches from several suppliers in several states
+    check: system_seeded
+  - description: >
+      Enough quarantined batches from the supplier Nordmetall exist to fill more
+      than one page of results
+    check: custom
+    detail: >
+      Paging can only be checked if the filtered result does not fit on one page.
+  - description: >
+      The quality manager is not cleared to see batch cost figures, and the cost
+      approver is
+    check: custom
+    detail: >
+      The scenario compares what the two of them see, so their permissions must
+      differ before it starts.
+
+steps:
+  - step: 1
+    actor: quality_manager
+    action: >
+      Opens the production batch list and narrows it to batches that are
+      quarantined and were supplied by Nordmetall.
+    via: gui
+    input:
+      status: quarantined
+      supplier: Nordmetall
+    produces:
+      filtered_list: the narrowed list of quarantined Nordmetall batches
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: quality_manager
+    action: >
+      Sorts the narrowed list by the date the deviation was raised, oldest first,
+      then pages forward through every page to the end, noting the batches on each
+      page.
+    via: gui
+    input:
+      sort_by: date the deviation was raised
+      sort_direction: oldest first
+    produces:
+      paged_batches: every batch seen across all pages, in the order shown
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: quality_manager
+    action: >
+      Tries to narrow the list further by a detail Vortex records on each batch but
+      has never made searchable, and reads what the screen tells him.
+    via: gui
+    input:
+      attempted_filter: a batch detail that has not been made searchable
+    produces:
+      filter_refusal: what the screen said about the detail he tried to filter on
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: quality_manager
+    action: >
+      Asks for more results on a single page than Vortex permits, and reads what
+      the screen tells him.
+    via: gui
+    input:
+      requested_page_size: more rows per page than the platform permits
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: quality_manager
+    action: >
+      Opens the list of a record type he is not permitted to see, and notes exactly
+      what he is shown.
+    via: gui
+    input:
+      record_type: a type Karl has no permission for
+    produces:
+      unauthorised_list: what the screen showed for the record type he cannot see
+    sla_context:
+      expected_within_hours: null
+
+  - step: 6
+    actor: cost_approver
+    action: >
+      Opens the same narrowed and sorted list of quarantined Nordmetall batches and
+      compares what she sees with what Karl saw.
+    via: gui
+    input:
+      status: quarantined
+      supplier: Nordmetall
+      sort_by: date the deviation was raised
+    produces:
+      approver_list: the same list as seen by somebody cleared for cost figures
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The narrowed list contains exactly the quarantined Nordmetall batches - every
+      one of them and nothing else - and paging forward to the end shows each batch
+      once, in the order Karl asked for, without repeating or skipping any.
+    verification:
+      method: gui_screen
+      detail: >
+        The batches seen across every page at step 2 match the quarantined
+        Nordmetall batches exactly, appear in the requested order, and no batch
+        appears twice or is missing.
+      evidence: >
+        Screenshots of each page in sequence at step 2, and the list of seeded
+        quarantined Nordmetall batches for comparison.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Karl cannot reliably find every affected batch during a supplier
+        investigation. A missed batch is suspect material that stays in production
+        and reaches a customer, which is the exact failure our quality certification
+        exists to prevent.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      Karl never sees the batch cost figures he is not cleared for. They are absent
+      from what he is shown, not merely blanked out or hidden on the screen.
+    verification:
+      method: gui_screen
+      detail: >
+        No cost figure appears anywhere in what Karl is shown at steps 1, 2 and 6's
+        comparison, including anything held behind the visible screen.
+      evidence: >
+        Screenshots of Karl's list, together with a check that no cost figure was
+        delivered to his screen at all.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Supplier pricing would be visible to staff who are deliberately not cleared
+        for it. Purchase terms are commercially sensitive and in some cases
+        contractually confidential to the supplier.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      When Karl filters on something Vortex has not made searchable, he is told
+      plainly which detail it was, so his administrator knows exactly what to enable
+      rather than having to guess.
+    verification:
+      method: gui_screen
+      detail: >
+        The message at step 3 names the specific detail that cannot be searched, and
+        the list is not silently returned unfiltered.
+      evidence: >
+        Screenshot of the message shown at step 3.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Karl either believes he has filtered when he has not and works through the
+        wrong batches, or he gets an unexplained failure and raises a support call
+        for something his own administrator could have enabled in a minute.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      A record type Karl is not permitted to see looks exactly like one that holds
+      no records at all, so the list cannot be used to work out what kinds of
+      information Vortex holds.
+    verification:
+      method: gui_screen
+      detail: >
+        The screen at step 5 shows an empty list, identical to what an empty record
+        type shows, with nothing indicating whether the type exists.
+      evidence: >
+        Screenshots of the screen at step 5 and of a genuinely empty record type,
+        compared directly.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Staff could map out what information the company holds and who is permitted
+        to see it, simply by trying. For a company handling supplier and customer
+        quality data, that is a confidentiality problem in itself.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      Asking for more results on one page than the platform permits is refused with
+      a clear message, rather than being quietly cut short so Karl believes he has
+      seen everything.
+    verification:
+      method: gui_screen
+      detail: >
+        The request at step 4 is refused with a readable message stating the limit,
+        and no partial list is shown as though it were complete.
+      evidence: >
+        Screenshot of the message shown at step 4.
+    on_fail:
+      severity: MINOR
+      business_impact: >
+        Karl asks for a large page, silently receives a shorter one, and believes he
+        has seen the whole list. Paging normally corrects this, so it is an
+        occasional confusion rather than a routine failure.
+      suggested_action: none
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    This scenario only reads existing batch records and creates no process
+    instances, so nothing needs to be cancelled. The seeded batches are left in
+    place for later scenarios.

@@ -1,0 +1,120 @@
+---
+id: platform-partition-retention-drop
+company_id: platform
+platform_workflow: PW-06
+process_id: sys-event-log-partitioning
+title: Aged event history is retired without a long-running database operation
+version: "1.0"
+tags: [retention, regression]
+
+description: >
+  The platform keeps a complete history of everything that happened in every
+  process. That history has to be retired on a schedule, and until now retiring
+  it meant moving records one at a time, which locks the history table for as
+  long as it takes. This scenario checks that a month of expired history is
+  retired in a single step, that protected records are never removed, and that
+  older process instances can still be replayed afterwards.
+
+pipeline_test: web/tests/e2e/pipelines/platform-partition-retention-drop.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for the operator's steps.
+# If this file does not exist or the test cannot run, that is a BLOCKER
+# (missing UI) and must be routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  operator:  actor-platform-admin
+  scheduler: actor-system-scheduler
+
+preconditions:
+  - description: The platform holds event history spanning at least three months
+    check: custom
+    detail: >
+      Confirm that history exists for the current month and the two months
+      before it, so there is something old enough to retire.
+  - description: At least one completed process instance exists in the oldest month
+    check: custom
+    detail: >
+      The scenario replays this instance after retirement to prove history
+      remains usable.
+
+steps:
+  - step: 1
+    actor: scheduler
+    action: >
+      Creates the storage area for next month's history ahead of time, so no
+      process ever waits for storage to be prepared while it is running.
+    via: system
+    produces:
+      next_period: the storage area prepared for the coming month
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: operator
+    action: >
+      Retires the oldest month of expired history from the operator console.
+    via: gui
+    input:
+      period: the oldest month held
+    produces:
+      retirement_id: the record of this retirement shown on screen
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      The month of expired history is retired in one step rather than record by
+      record, and the platform stays responsive to other work throughout.
+    verification:
+      method: system_state
+      detail: >
+        The retirement completes as a single operation and the platform
+        continues to accept new work while it runs.
+      evidence: >
+        The operator console retirement record, plus the platform health screen
+        showing the service responsive for the duration.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Retiring old history would slow or stall the whole platform for every
+        company at once, on a schedule.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      No protected record is removed. Everything the platform is required to
+      keep for audit is still there after the retirement.
+    verification:
+      method: system_state
+      detail: >
+        The count of protected records is identical before and after.
+      evidence: >
+        The operator console retention summary, captured before and after.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Records the platform is obliged to retain for audit would be destroyed.
+        This is a compliance failure that cannot be undone.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      A process that ran in an older month can still be opened and its full
+      history reviewed after the retirement.
+    verification:
+      method: gui_screen
+      detail: >
+        Opening that process instance shows its complete step history on screen,
+        with no gap and no error.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Historical processes would become unreadable, so nobody could review
+        what happened or why a decision was taken.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    Retirement is not reversible. Run this scenario only against a test
+    environment holding disposable history.

@@ -1,0 +1,222 @@
+---
+id: platform-migration-partial-failure-resume
+company_id: platform
+platform_workflow: PW-04
+process_id: sys-tenant-migration-fanout
+title: One company failing a platform-wide change does not stop the others, and the rollout can be resumed
+version: "1.0"
+tags: [migration, regression]
+
+description: >
+  Some platform improvements have to be applied separately inside every company's
+  own workspace. If one company's workspace cannot take the change, the remaining
+  companies must still receive it, that one company must be left completely
+  unchanged rather than half-changed, and an operator must be able to see who has
+  the change and who does not. This scenario checks that, and checks that
+  resuming the rollout touches only the companies still outstanding.
+
+pipeline_test: web/tests/e2e/pipelines/platform-migration-partial-failure-resume.pipeline.e2e.spec.ts
+# UAT-RUNNER drives this Playwright pipeline test for the operator's steps.
+# If this file does not exist or the test cannot run, that is a BLOCKER
+# (missing UI) and must be routed to FRONTEND-DEV before UAT can proceed.
+
+actors:
+  operator: actor-platform-admin
+  rollout:  actor-system-rollout-runner
+
+preconditions:
+  - description: At least three companies are active on the platform
+    check: custom
+    detail: >
+      Confirm three or more company workspaces are active, so a failure in one
+      leaves others to continue with.
+  - description: >
+      One company's workspace is arranged so that the change under test cannot
+      be applied to it
+    check: custom
+    detail: >
+      Confirm one workspace is in a state that will refuse the change, so the
+      scenario exercises a genuine partial failure rather than a simulated one.
+  - description: The change under test has not been applied to any company yet
+    check: custom
+    detail: >
+      Confirm the rollout status screen shows the change as outstanding for
+      every company before the scenario begins.
+
+steps:
+  - step: 1
+    actor: operator
+    action: >
+      Starts the platform-wide change from the operator console, targeting every
+      active company workspace.
+    via: gui
+    input:
+      scope: every active company
+    produces:
+      rollout_id: the rollout shown on the operator console
+    sla_context:
+      expected_within_hours: null
+
+  - step: 2
+    actor: rollout
+    action: >
+      Applies the change to each company workspace in turn. One company cannot
+      take it; that company is recorded as not changed, with the reason, and the
+      rollout continues with the remaining companies.
+    via: system
+    produces:
+      first_pass_result: the companies that received the change and those that did not
+    sla_context:
+      expected_within_hours: null
+
+  - step: 3
+    actor: operator
+    action: >
+      Opens the rollout status screen and reads, company by company, which
+      workspaces now hold the change, which do not, and the plain reason recorded
+      against each one that does not.
+    via: gui
+    input:
+      expected_screen: rollout status by company
+    sla_context:
+      expected_within_hours: null
+
+  - step: 4
+    actor: operator
+    action: >
+      Corrects the condition in the company that could not take the change, then
+      resumes the rollout from the operator console.
+    via: gui
+    input:
+      action: resume
+    sla_context:
+      expected_within_hours: null
+
+  - step: 5
+    actor: rollout
+    action: >
+      Applies the change to exactly the companies that did not receive it on the
+      first pass. Companies that already have it are not opened again.
+    via: system
+    produces:
+      resume_result: the companies changed during the resume
+    sla_context:
+      expected_within_hours: null
+
+  - step: 6
+    actor: operator
+    action: >
+      Starts the same rollout once more, now that every company holds the change,
+      and reads the result on screen.
+    via: gui
+    input:
+      scope: every active company
+    sla_context:
+      expected_within_hours: null
+
+expected_outcomes:
+  - id: EO-001
+    description: >
+      One company being unable to take the change does not stop the rollout. The
+      remaining companies receive it in the same run.
+    verification:
+      method: system_state
+      detail: >
+        After the first pass every company except the failing one holds the
+        change, and the run reached the end of the company list.
+      evidence: >
+        The rollout status screen after step 2, listing each company and whether
+        it received the change.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A single company's local problem would hold up an improvement for every
+        other company on the platform, and each rollout would become an
+        all-or-nothing event nobody wants to start.
+      suggested_action: route_to_wf03
+
+  - id: EO-002
+    description: >
+      The company that could not take the change is left exactly as it was. It is
+      never left partly changed, and its people can keep working normally
+      throughout.
+    verification:
+      method: system_state
+      detail: >
+        The failing company's workspace holds none of the change, and work in
+        that company continues without interruption during and after the rollout.
+      evidence: >
+        The rollout status screen entry for that company, together with a check
+        that cases in that company can still be opened and progressed.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        A company could be left in a half-changed state where some work behaves
+        one way and some another. Untangling that by hand, under time pressure,
+        is exactly the situation the rollout is meant to prevent.
+      suggested_action: route_to_wf03
+
+  - id: EO-003
+    description: >
+      The operator can see, company by company, whether the change arrived, when
+      it arrived, and - where it did not - a reason stated plainly enough to act
+      on.
+    verification:
+      method: gui_screen
+      detail: >
+        The rollout status screen shows one row per company with its outcome, the
+        time it completed, and a readable reason for each company that did not
+        receive the change.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Nobody could tell which companies are running which version of the
+        platform, so support would be answering every question from first
+        principles and improvements would be assumed live when they are not.
+      suggested_action: route_to_wf03
+
+  - id: EO-004
+    description: >
+      Resuming applies the change only to the companies that did not receive it.
+      A company that already holds it is not touched a second time.
+    verification:
+      method: system_state
+      detail: >
+        The resume acts on exactly the outstanding companies, and the companies
+        that succeeded on the first pass show no second application.
+      evidence: >
+        The rollout status screen after step 5, showing the completion time for
+        each company unchanged from the first pass except for the resumed one.
+    on_fail:
+      severity: BLOCKER
+      business_impact: >
+        Resuming would re-apply the change to companies that already have it,
+        risking damage to workspaces that were perfectly healthy and turning a
+        recovery step into a second incident.
+      suggested_action: route_to_wf03
+
+  - id: EO-005
+    description: >
+      Starting the same rollout again once every company holds the change does
+      nothing at all, so an operator who is unsure can safely re-run it.
+    verification:
+      method: system_state
+      detail: >
+        The repeat run at step 6 reports every company as already holding the
+        change and alters nothing.
+      evidence: >
+        The rollout status screen after step 6, compared against the same screen
+        after step 5.
+    on_fail:
+      severity: MAJOR
+      business_impact: >
+        Operators would be afraid to re-run a rollout they were unsure about, so
+        outstanding companies would be left outstanding rather than risk a repeat.
+      suggested_action: route_to_wf03
+
+cleanup:
+  cancel_open_instances: false
+  description: >
+    The change remains applied to every company; that is the intended end state.
+    Restore the failing company's workspace to its original condition if the
+    test environment is to be reused for a further run of this scenario.
