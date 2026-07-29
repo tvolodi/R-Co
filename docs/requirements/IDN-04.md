@@ -3,7 +3,7 @@ id: IDN-04
 title: API token management
 stage: 5
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # IDN-04 — API token management `[MUST]`

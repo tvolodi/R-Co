@@ -3,7 +3,7 @@ id: API-09
 title: Request tracing
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-09 — Request tracing `[MUST]`

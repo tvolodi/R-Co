@@ -4,7 +4,7 @@ title: Backfill migration moves existing tenant data out of public schema
 stage: 12
 status: RELEASED
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # TNT-05 — Backfill migration moves existing tenant data out of public schema `[MUST]`

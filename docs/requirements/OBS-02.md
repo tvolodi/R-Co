@@ -3,7 +3,7 @@ id: OBS-02
 title: Prometheus metrics
 stage: 6
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # OBS-02 — Prometheus metrics `[MUST]`

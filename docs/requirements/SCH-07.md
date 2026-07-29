@@ -3,7 +3,7 @@ id: SCH-07
 title: Recurring timers
 stage: 5
 priority: SHOULD
-status: VALIDATED
+status: RELEASED
 ---
 
 # SCH-07 — Recurring timers `[SHOULD]`

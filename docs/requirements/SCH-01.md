@@ -3,7 +3,7 @@ id: SCH-01
 title: Durable timer creation
 stage: 5
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # SCH-01 — Durable timer creation `[MUST]`

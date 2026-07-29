@@ -4,7 +4,7 @@ title: Connection pool sets search_path per tenant on checkout
 stage: 12
 status: RELEASED
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # TNT-03 — Connection pool sets search_path per tenant on checkout `[MUST]`

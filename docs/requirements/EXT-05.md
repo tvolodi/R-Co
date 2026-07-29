@@ -3,7 +3,7 @@ id: EXT-05
 title: Sub-process support
 stage: 6
 priority: SHOULD
-status: VALIDATED
+status: RELEASED
 ---
 
 # EXT-05 — Sub-process support `[SHOULD]`

@@ -3,7 +3,7 @@ id: SVC-02
 title: Plugin handlers declare scope and optional owner tenant at registration
 stage: 13
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # SVC-02 — Plugin handlers declare scope and optional owner tenant at registration `[MUST]`

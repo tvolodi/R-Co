@@ -4,7 +4,7 @@ title: Migration runner enforces schema-path isolation
 stage: 12
 status: RELEASED
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # TNT-02 — Migration runner enforces schema-path isolation `[MUST]`

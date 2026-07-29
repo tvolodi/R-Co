@@ -3,7 +3,7 @@ id: EXT-04
 title: Variable transformer
 stage: 6
 priority: SHOULD
-status: VALIDATED
+status: RELEASED
 ---
 
 # EXT-04 — Variable transformer `[SHOULD]`

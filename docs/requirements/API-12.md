@@ -3,7 +3,7 @@ id: API-12
 title: Health endpoints
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-12 — Health endpoints `[MUST]`

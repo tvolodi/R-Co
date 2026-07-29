@@ -3,7 +3,7 @@ id: SVC-03
 title: Definition activation validates service and plugin availability for the activating tenant
 stage: 13
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # SVC-03 — Definition activation validates service and plugin availability for the activating tenant `[MUST]`

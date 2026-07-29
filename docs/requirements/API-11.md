@@ -3,7 +3,7 @@ id: API-11
 title: OpenAPI specification
 stage: 4
 priority: SHOULD
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-11 — OpenAPI specification `[SHOULD]`

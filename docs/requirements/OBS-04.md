@@ -3,7 +3,7 @@ id: OBS-04
 title: Instance timeline view
 stage: 6
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # OBS-04 — Instance timeline view `[MUST]`

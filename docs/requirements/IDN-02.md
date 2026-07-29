@@ -3,7 +3,7 @@ id: IDN-02
 title: Group management
 stage: 5
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # IDN-02 — Group management `[MUST]`

@@ -3,7 +3,7 @@ id: SVC-04
 title: Admin UI and API for service catalog scope management
 stage: 13
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # SVC-04 — Admin UI and API for service catalog scope management `[MUST]`

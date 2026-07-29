@@ -3,7 +3,7 @@ id: API-07
 title: Input validation
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-07 — Input validation `[MUST]`

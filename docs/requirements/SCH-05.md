@@ -3,7 +3,7 @@ id: SCH-05
 title: Missed timer recovery
 stage: 5
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # SCH-05 — Missed timer recovery `[MUST]`

@@ -30,6 +30,10 @@ This document specifies the functional requirements for the BPM Platform — a l
 | **Dead letter store (DLQ)** | A durable store for events or timer firings that have exhausted their retry budget. |
 | **Service task** | A node type that invokes an external HTTP endpoint as part of process execution. |
 | **Sub-process** | A node type that starts a child process instance from a referenced definition, with the parent waiting for child completion. |
+| **Sub-process interface (contract)** | An optional declared set of named, schema-validated input and output variables on a SUB_PROCESS node, restricting variable exchange with the child to exactly those names instead of the full parent/child variable map (SPC-01). |
+| **Process module** | A reusable sub-process definition published to the process module catalog under a stable `module_id` and semver `version`, referenceable by other definitions via `module_ref` instead of a tenant-local `child_definition_id` (PLC-01). |
+| **Solution pack** | A self-contained, versioned bundle of one or more process definitions plus their dependency closure (referenced modules, service catalog entries, variable schemas) and a manifest of required role names, exportable from one tenant and installable into another (SOL-01). |
+| **Named role (business role)** | A per-tenant, admin-defined name bound to a group, used to resolve a HUMAN_TASK node's `assignee_ref` when `assignee_type = ROLE` (IDN-05). Distinct from the fixed platform RBAC roles (PLATFORM_ADMIN, PROCESS_DESIGNER, TASK_WORKER, PROCESS_OPERATOR) enforced by IDN-03. |
 
 ---
 
@@ -1210,6 +1214,29 @@ Roles are additive: a user may hold multiple roles; their effective permissions 
 **Edge cases:**
 - Creating a token with `expires_at` in the past: rejected with HTTP 422.
 - Revoking a token mid-request: the in-flight request completes (token was valid at request start); subsequent requests are rejected.
+
+---
+
+### IDN-05 — Named role registry and ROLE assignee resolution `[MUST]`
+
+<!-- CHANGE: Added 2026-07-21. Discovered as a prerequisite gap during REQ-VALIDATOR review of Stage 15 (SOL-01, SOL-03): PD-05 declares HUMAN_TASK assignee_type = ROLE as valid syntax, but no released requirement specifies how a ROLE assignee_ref is registered or resolved to actual users. IDN-03 covers only the fixed 3-tier platform RBAC (PLATFORM_ADMIN / PROCESS_DESIGNER / TASK_WORKER / PROCESS_OPERATOR), a different concept from an open-ended, tenant-defined business role name. Without this requirement, SOL-01's "role the pack expects the tenant to provide" and SOL-03's "role mapping" gate are not testable. -->
+
+**Extends:** IDN-02 (groups), PD-05 (HUMAN_TASK `assignee_type = ROLE`).
+
+> The platform SHALL maintain a per-tenant registry mapping named business roles — distinct from the fixed platform RBAC roles of IDN-03 — to a group. A HUMAN_TASK node's `assignee_ref` for `assignee_type = ROLE` names a role in this registry. At task activation (EE-03), the platform resolves the named role to its bound group and creates the Task with GROUP semantics (any ACTIVE member of the bound group may claim and complete it, per IDN-02).
+
+**Acceptance Criteria:**
+- GIVEN a PLATFORM_ADMIN or a tenant admin holding PROCESS_DESIGNER registers a role name bound to an existing `group_id` in a tenant, WHEN a HUMAN_TASK node with `assignee_type = ROLE` and matching `assignee_ref` activates in that tenant, THEN the Task is created and any ACTIVE member of the bound group may claim and complete it.
+- GIVEN a HUMAN_TASK node's `assignee_ref` (ROLE type) has no binding in the current tenant's role registry, WHEN the node activates, THEN the Task is still created in PENDING status, mirroring EE-03's existing "group with no current members" edge case; the instance does NOT transition to ERROR.
+- Role names are scoped per tenant: the same role name string MAY be bound to different groups in different tenants. This is the mechanism a solution pack manifest (SOL-01) relies on — a pack lists role names, and each installing tenant independently binds them.
+- `GET /roles` lists registered role names and their bound `group_id` for the calling tenant.
+- `POST /roles` with `{ "name": "...", "group_id": "..." }` creates or updates a binding; a non-existent `group_id` MUST cause HTTP 404.
+
+**See:** IDN-02 (groups), IDN-03 (distinguishes the fixed platform RBAC roles from these named business roles — same word, different concept), PD-05 (`assignee_type = ROLE`), EE-03 (task activation and the existing no-members edge case), SOL-01 (manifest lists role names), SOL-03 (activation gate checks bindings against this registry)
+
+**Edge cases:**
+- A role name registered in one tenant has no effect in any other tenant (scoping mirrors IDN-02 group scoping).
+- Re-binding a role name to a different group: existing PENDING tasks already created under the old binding are unaffected (mirrors IDN-02's "removing a user from a group does not affect already-assigned tasks").
 
 ---
 
@@ -3351,8 +3378,163 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 
 ---
 
+## Stage 15 — Process Library & Solution Packaging
+
+**Goal:** Close the gap between the execution kernel (Stages 1–12, SPT) and multi-tenant business content reuse. Three capabilities, each building on an existing mechanism: (A) a declared input/output contract for SUB_PROCESS composition, so reusable modules stop depending on implicit full-variable-map coupling; (B) a catalog for reusable sub-process modules, mirroring the existing REPO-07 service catalog pattern one layer up; (C) a "solution pack" bundle format that generalizes PD-09 export/import and ENV-03 promotion from a single definition / fixed tenant pairing into an installable unit for any target tenant.
+
+**Background:** EXT-05 (sub-process support), REPO-07/ADP-08 (service catalog), PD-09 (definition import/export), and ENV-03 (test→production promotion) already provide the primitives this stage composes. Nothing in this stage changes kernel behaviour for existing definitions that do not opt in; all three sub-areas are additive and backward compatible.
+
+---
+
+### A. Sub-Process Contracts (SPC)
+
+### SPC-01 — Declared input/output contract for SUB_PROCESS nodes `[SHOULD]`
+
+> **Extends:** EXT-05. **Preserves:** existing SUB_PROCESS behaviour (full parent variable map copied to child; full child variable map merged back) for any node that omits the contract — fully backward compatible.
+
+> A SUB_PROCESS node MAY declare an `interface` object with `inputs` (array of `{name, json_schema, required}`) and `outputs` (array of `{name, json_schema, required}`). When declared, only the input variables named in `inputs` are copied into the child instance's initial variable map (instead of the full parent map), each validated against its `json_schema` before the child is created. On child completion, only the variables named in `outputs` are merged into the parent's variable map per EE-09; any other variable the child produced is discarded. If `interface` is omitted, EXT-05 behaviour applies unchanged.
+
+**Acceptance Criteria:**
+- GIVEN a SUB_PROCESS node with a declared `interface.inputs` list, WHEN the node activates, THEN only the named variables are copied into the child instance's initial variable map; other parent variables are not visible to the child.
+- GIVEN a required input variable declared in `interface.inputs` is absent from the parent's variable map at activation time, WHEN the node activates, THEN the parent instance transitions to ERROR status per EE-10 with a structured reason identifying the missing input, and no child instance is created.
+- GIVEN an input variable present but failing its declared `json_schema`, WHEN the node activates, THEN the parent instance transitions to ERROR status per EE-10 before any child instance is created (no orphaned child).
+- GIVEN a SUB_PROCESS node with a declared `interface.outputs` list, WHEN the child instance reaches COMPLETED, THEN only the named output variables are merged into the parent's variable map per EE-09; variables produced by the child that are not named in `outputs` are discarded, not merged.
+- GIVEN a required output variable declared in `interface.outputs` is absent from the child's final variable state, WHEN the child completes, THEN the parent instance transitions to ERROR status per EE-10.
+- GIVEN a SUB_PROCESS node with no `interface` object, WHEN activated, THEN behaviour is identical to EXT-05 (full parent variable map copied to child; full child variable map merged back).
+
+**Edge cases:**
+- `interface.inputs` is an empty array: the child starts with an empty initial variable map regardless of parent state.
+- A required output is renamed in a later version of the child definition: this is a cross-definition compatibility concern, not a runtime validation concern — see PLC-03.
+
+**See:** EXT-05, EE-09, EE-10, PD-05, SPC-02, PLC-01
+
+---
+
+### SPC-02 — Contract validated at definition-time `[SHOULD]`
+
+> On creation or update of a definition containing a SUB_PROCESS node with a declared `interface`, the platform SHALL validate that every `json_schema` under `inputs`/`outputs` is itself a well-formed JSON Schema, rejecting the definition with HTTP 422 otherwise. The platform does not validate at this point that the referenced child definition actually produces the declared outputs — parent and child may be authored and versioned independently; that cross-definition check is addressed by PLC-03.
+
+**Acceptance Criteria:**
+- GIVEN a SUB_PROCESS node whose `interface.inputs` or `interface.outputs` contains a malformed `json_schema`, WHEN the definition is created or updated, THEN HTTP 422 is returned identifying the offending schema and its node.
+- GIVEN a SUB_PROCESS node with a well-formed `interface` on all entries, WHEN the definition is created, THEN validation succeeds under the existing PD-02 graph validation rules and the interface is persisted as part of the node's attributes.
+
+**See:** PD-02, PD-05
+
+---
+
+### B. Process Library Catalog (PLC)
+
+### PLC-01 — Process module catalog `[SHOULD]`
+
+> **Extends:** the REPO-07 service catalog pattern, applied to reusable sub-process definitions instead of external services.
+
+> The platform SHALL maintain a process module catalog registering reusable sub-process definitions with: `module_id` (stable name, unique per publishing tenant), `version` (semver string), `owning_definition_id` (the definition this version resolves to), `interface_schema` (the SPC-01 contract declared at the module's entry point), `exportable` (boolean, default true — governs whether SOL-01 may inline this module's content into a solution pack), and `status` (DRAFT | ACTIVE | DEPRECATED). A SUB_PROCESS node MAY reference a catalog entry via `module_ref: {module_id, version_constraint}` instead of a tenant-local `child_definition_id`.
+
+**Acceptance Criteria:**
+- GIVEN a SUB_PROCESS node using `module_ref`, WHEN the node activates, THEN the platform resolves the highest ACTIVE version satisfying `version_constraint` that is visible to the tenant the parent instance is running in, and uses that version's `owning_definition_id` as the child definition.
+- GIVEN no ACTIVE catalog version satisfies the constraint visible to the current tenant, WHEN the node activates, THEN the parent instance transitions to ERROR status per EE-10, identifying the unresolved module reference (mirrors ADP-08's service-not-found handling).
+- GIVEN both `child_definition_id` and `module_ref` are present on the same node, WHEN the definition is created or updated, THEN it is rejected with HTTP 422 — the two mechanisms have different resolution scopes (tenant-local vs. catalog-resolved) so silent precedence, unlike ADP-08's url/service_id coexistence, is not safe to apply here.
+- GIVEN a SUB_PROCESS node with neither `child_definition_id` nor `module_ref` present, WHEN the definition is created or updated, THEN it is rejected with HTTP 422 (this extends the existing `SUB_PROCESS_MISSING_CHILD_DEFINITION_ID` validation rule to require at least one of the two forms, rather than mandating `child_definition_id` unconditionally).
+- Legacy SUB_PROCESS nodes using `child_definition_id` directly continue to work unchanged.
+
+**See:** REPO-07, ADP-08, EXT-05, SPC-01, PLC-02, PLC-04, SOL-01 (`exportable` flag consumed on pack export)
+
+---
+
+### PLC-02 — Catalog entry publication requires a declared interface `[SHOULD]`
+
+> A process module MAY be published to the catalog (status DRAFT → ACTIVE) only if the SUB_PROCESS entry point it exposes has a fully declared SPC-01 interface. A module without a declared interface cannot be published as a catalog entry; it remains usable only as an ordinary tenant-local sub-process via direct `child_definition_id`.
+
+**Acceptance Criteria:**
+- GIVEN a module whose designated entry point has no declared `interface`, WHEN publication (DRAFT → ACTIVE) is attempted, THEN HTTP 422 is returned identifying the missing interface.
+- GIVEN a module with a fully declared interface, WHEN publication is attempted by a caller holding PROCESS_DESIGNER or above, THEN status transitions to ACTIVE and the module becomes resolvable via `module_ref`.
+
+**See:** SPC-01, PLC-01
+
+---
+
+### PLC-03 — Cross-version compatibility check on publish `[SHOULD]`
+
+> When a new version of an already-cataloged module is published, the platform SHOULD compare its declared interface against the immediately preceding ACTIVE version and flag — without blocking — breaking changes: an input that was optional and is now required, or an output that was previously required and has been removed.
+
+**Acceptance Criteria:**
+- GIVEN version 1.1.0 of a module removes a previously optional input, WHEN published, THEN publication succeeds and a `COMPATIBILITY_WARNING` is recorded and returned in the response body.
+- GIVEN version 2.0.0 removes a previously-required output, WHEN published, THEN the same warning is recorded; publication is not blocked (SHOULD, not MUST — a major version bump may be an intentional breaking change).
+
+**See:** PLC-01, PLC-02
+
+---
+
+### PLC-04 — Cross-tenant module distribution `[SHOULD]`
+
+> A process module published to the catalog by one tenant (the "publishing tenant") MAY be shared to other tenants ("subscribing tenants") via an explicit platform-admin-authorised sharing grant. A subscribing tenant sees only modules explicitly granted to it; by default, no tenant's catalog is visible to any other tenant. `module_ref` resolution (PLC-01) only considers versions visible to the resolving tenant.
+
+**Acceptance Criteria:**
+- GIVEN no sharing grant exists between tenant A's catalog and tenant B, WHEN tenant B's SUB_PROCESS node references a `module_id` owned by tenant A, THEN resolution fails via PLC-01's not-found path — indistinguishable from a nonexistent module, so no information about tenant A's catalog is leaked.
+- GIVEN a PLATFORM_ADMIN grants tenant B visibility into a specific `module_id` owned by tenant A, WHEN tenant B references that `module_id`, THEN resolution succeeds using tenant A's ACTIVE versions.
+- GIVEN a sharing grant is revoked, WHEN a subscribing tenant already has a running instance with an active child instantiated from the revoked module, THEN that running instance is unaffected — grants govern new activations only, never retroactive termination.
+
+**See:** PLC-01, Stage SPT (tenant isolation model)
+
+---
+
+### C. Solution Packs (SOL)
+
+### SOL-01 — Solution pack manifest `[MUST]`
+
+> **Extends:** PD-09, generalized from a single definition to a dependency-closure bundle.
+
+> The platform SHALL support exporting a "solution pack": a self-contained JSON document listing one or more process definitions, their transitive `module_ref` dependencies (PLC-01), the service catalog entries (REPO-07) referenced by any SERVICE_TASK in the set, and the variable schemas referenced by any variable key used in the set — together with a manifest listing every distinct ROLE name found in any HUMAN_TASK `assignee_ref` across the set (the roles the pack expects the installing tenant to provide). Each pack carries a `pack_id`, `version` (semver), and `bpm_export_schema_version`.
+
+**Acceptance Criteria:**
+- GIVEN a set of definitions selected for packaging, WHEN exported, THEN the resulting JSON includes every definition's full graph, every referenced service catalog entry, every referenced variable schema, and every distinct ROLE name from HUMAN_TASK `assignee_type = ROLE` nodes across the set.
+- GIVEN a definition in the pack references a `module_ref` owned by a different tenant with no PLC-04 sharing grant to the installing tenant, WHEN exported, THEN the module's own definition content is inlined into the pack rather than left as an unresolved reference, unless the publishing tenant has marked the module non-exportable, in which case export fails with a structured error naming the blocking module.
+- The manifest lists required roles in a form readable by a non-technical stakeholder without parsing the full graph JSON (a flat list of role names, not embedded in node attribute trees).
+
+**See:** PD-09, REPO-07, PLC-01, PLC-04, IDN-05 (role registry each installing tenant binds these names into)
+
+---
+
+### SOL-02 — Solution pack installation into a target tenant `[MUST]`
+
+> **Extends:** ENV-03, generalized from a fixed test-tenant → linked-production-tenant pairing to installation into any target tenant by ID.
+
+> An authorised caller (PLATFORM_ADMIN, or PROCESS_DESIGNER holding install rights on the target tenant) SHALL be able to install a solution pack into any target tenant. Installation creates all bundled definitions as DRAFT, registers all bundled service catalog entries and variable schemas — reusing any existing entry with an identical name and schema, and rejecting the installation on conflict where an existing entry shares a name but not a schema — and returns a role-mapping checklist listing every manifest ROLE name with no binding yet registered in the target tenant's IDN-05 role registry.
+
+**Acceptance Criteria:**
+- GIVEN a valid solution pack and a target tenant with status ACTIVE, WHEN installation is requested, THEN all bundled definitions are created with status DRAFT, all service catalog and variable schema entries are registered or matched, and the response includes an explicit list of unresolved ROLE names.
+- GIVEN a target tenant already has a service catalog entry with the same `service_id` but a different request/response schema than the pack's, WHEN installation is attempted, THEN it is rejected with HTTP 409 identifying the conflicting entry — no silent overwrite of tenant-owned catalog data.
+- GIVEN a target tenant already has an identically-named, identically-schemaed service catalog entry, WHEN installation is attempted, THEN that entry is reused rather than duplicated.
+- GIVEN installation completes, WHEN the installing caller lists definitions on the target tenant, THEN all bundled definitions appear with status DRAFT — an explicit activation step (REPO-08) is required before any of them run live; installation never auto-activates.
+- GIVEN a target tenant not in ACTIVE status, WHEN installation is attempted, THEN HTTP 409 is returned (mirrors ENV-03's `ProductionTenantInactive` check).
+
+**Edge cases:**
+- Re-installing the same pack version into a tenant that already has it: idempotent — existing DRAFT definitions matching `pack_id` + `version` are left untouched; a warning, not an error, is returned.
+- Installing pack version 2.0.0 over an existing 1.x installation: new DRAFT definitions are created alongside the 1.x definitions under existing PD-03 versioning rules; 1.x definitions are not deleted or auto-deactivated.
+
+**See:** ENV-03, PD-09, PD-03, REPO-08, IDN-05, SOL-01, SOL-03
+
+---
+
+### SOL-03 — Role-mapping completion gate before activation `[MUST]`
+
+**Extends:** IDN-05 (role registry), adding an activation-time completeness check specific to solution-pack-installed definitions.
+
+> A definition installed via SOL-02 MUST NOT be activatable (status DRAFT → ACTIVE) while any ROLE name from its solution pack's manifest has no binding in the target tenant's IDN-05 role registry. Activation attempts against an incomplete role mapping SHALL fail with HTTP 422 listing the unbound roles.
+
+**Acceptance Criteria:**
+- GIVEN a solution-pack-installed definition with 2 of 3 manifest roles still unbound in the target tenant's IDN-05 role registry, WHEN activation is attempted, THEN HTTP 422 is returned listing the 2 unbound role names.
+- GIVEN all manifest roles are bound to a group in the target tenant's IDN-05 role registry, WHEN activation is attempted by an authorised caller, THEN normal REPO-08 atomic activation proceeds.
+- This gate applies only to definitions created via SOL-02 installation; definitions created directly via PD-01 have no manifest and are unaffected.
+
+**See:** SOL-01, SOL-02, REPO-08, IDN-05
+
+---
+
 ## Appendix A — Requirement Count Summary
 
+<!-- CHANGE: REQ-VALIDATOR pass on Stage 15 (2026-07-21): added IDN-05 to Stage 5 (prerequisite role-registry gap found while validating SOL-01/SOL-03 testability); downgraded SPC-01, SPC-02, PLC-01, PLC-02, PLC-04 from MUST to SHOULD (they extend EXT-05, itself SHOULD — a MUST cannot meaningfully mandate hardening of an optional base feature); SOL-01..03 remain MUST (no dependency on EXT-05). Stage 15 total unchanged at 9; net +1 MUST elsewhere (IDN-05). Grand Total updated 2026-07-21 -->
+<!-- CHANGE: Added Stage 15 — Process Library & Solution Packaging (SPC-01..02, PLC-01..04, SOL-01..03 = 8 MUST + 1 SHOULD = 9); note: this doc's own numbering had reached Stage 12/F7/F8/SPT, but Stage 13 (SVC) and Stage 14 (ENV) already exist in docs/requirements/ and docs/status/requirement_status.yaml ahead of this consolidated doc, so the next stage is numbered 15 to stay consistent with the canonical tracker; Grand Total updated 2026-07-21 -->
 <!-- CHANGE: Added Stage SPT (SPT-01..SPT-04 = 4 MUST); Grand Total updated 2026-06-05 -->
 <!-- CHANGE: Corrected Stage 6.5 (31/3→ was 30/4), Stage 8 (16 → was 14), Stage 9 (12 MUST/2 SHOULD → was 13/1), ADP (14 entries including ADP-04a and ADP-04b → was 12); Grand Total recalculated accordingly, 2026-05-26 -->
 | Stage | MUST | SHOULD | COULD | Total |
@@ -3361,9 +3543,9 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 | Stage 2 — Process Definition Model | **8** | 1 | 1 | **10** |
 | Stage 3 — Execution Engine | **12** | 0 | 0 | **12** |
 | Stage 4 — REST API & Authentication | **10** | 2 | 0 | **12** |
-| Stage 5 — Scheduler & Identity | **9** | 2 | 0 | **11** |
+| Stage 5 — Scheduler & Identity (incl. IDN-05) | **10** | 2 | 0 | **12** |
 | Stage 6 — Observability & Extensions | **7** | 4 | 0 | **11** |
-| **Subtotal (Stages 1–6)** | **58** | **11** | **1** | **70** |
+| **Subtotal (Stages 1–6)** | **59** | **11** | **1** | **71** |
 | Stage 6.5 — Identity Provider Integration | **31** | 3 | 0 | **34** |
 | Stage 7 — Expression DSL | **11** | 2 | 0 | **13** |
 | Stage 8 — Lua Script Execution | **16** | 0 | 0 | **16** |
@@ -3376,7 +3558,8 @@ EXT-02 specifies outbound webhook dispatch on platform events. The extension add
 | Stage F7 — Tenant Onboarding GUI (ONB-UI-01..04) | **4** | 0 | 0 | **4** |
 | Stage F8 — Tenant Management Lifecycle Batch 2 (TM-04..05) | **2** | 0 | 0 | **2** |
 | Stage SPT — Schema-Per-Tenant Migration (SPT-01..SPT-04) | **4** | 0 | 0 | **4** |
-| **Grand Total** | **179** | **21** | **1** | **201** |
+| Stage 15 — Process Library & Solution Packaging (SPC-01..02, PLC-01..04, SOL-01..03) | **3** | 6 | 0 | **9** |
+| **Grand Total** | **183** | **27** | **1** | **211** |
 
 NFRs and constraints are not counted in the table above as they are cross-cutting.
 

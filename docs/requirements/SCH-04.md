@@ -3,7 +3,7 @@ id: SCH-04
 title: Escalation timer
 stage: 5
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # SCH-04 — Escalation timer `[MUST]`

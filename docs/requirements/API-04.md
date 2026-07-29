@@ -3,7 +3,7 @@ id: API-04
 title: Task operations
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-04 — Task operations `[MUST]`

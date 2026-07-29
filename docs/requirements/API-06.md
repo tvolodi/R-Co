@@ -3,7 +3,7 @@ id: API-06
 title: Pagination
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-06 — Pagination `[MUST]`

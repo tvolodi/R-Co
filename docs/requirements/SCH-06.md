@@ -3,7 +3,7 @@ id: SCH-06
 title: Timer jitter
 stage: 5
 priority: SHOULD
-status: VALIDATED
+status: RELEASED
 ---
 
 # SCH-06 — Timer jitter `[SHOULD]`

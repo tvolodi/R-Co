@@ -3,7 +3,7 @@ id: API-01
 title: REST conventions
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-01 — REST conventions `[MUST]`

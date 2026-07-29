@@ -4,7 +4,7 @@ title: Tenant schema export and import for server migration
 stage: 12
 status: RELEASED
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # TNT-06 — Tenant schema export and import for server migration `[MUST]`

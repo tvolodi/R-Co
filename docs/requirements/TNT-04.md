@@ -4,7 +4,7 @@ title: Public schema contains only routing and registry tables
 stage: 12
 status: RELEASED
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # TNT-04 — Public schema contains only routing and registry tables `[MUST]`

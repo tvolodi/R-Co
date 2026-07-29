@@ -3,7 +3,7 @@ id: EXT-01
 title: Service task node type
 stage: 6
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # EXT-01 — Service task node type `[MUST]`

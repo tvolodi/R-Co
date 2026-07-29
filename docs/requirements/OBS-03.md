@@ -3,7 +3,7 @@ id: OBS-03
 title: Audit log
 stage: 6
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # OBS-03 — Audit log `[MUST]`

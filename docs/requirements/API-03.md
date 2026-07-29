@@ -3,7 +3,7 @@ id: API-03
 title: Instance management
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-03 — Instance management `[MUST]`

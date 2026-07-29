@@ -3,7 +3,7 @@ id: SCH-02
 title: Timer polling
 stage: 5
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # SCH-02 — Timer polling `[MUST]`

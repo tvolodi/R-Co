@@ -3,7 +3,7 @@ id: API-10
 title: Rate limiting
 stage: 4
 priority: SHOULD
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-10 — Rate limiting `[SHOULD]`

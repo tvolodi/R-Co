@@ -3,7 +3,7 @@ id: OBS-01
 title: Structured logging
 stage: 6
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # OBS-01 — Structured logging `[MUST]`

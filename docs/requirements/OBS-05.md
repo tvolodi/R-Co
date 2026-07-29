@@ -3,7 +3,7 @@ id: OBS-05
 title: Dead letter queue
 stage: 6
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # OBS-05 — Dead letter queue `[MUST]`

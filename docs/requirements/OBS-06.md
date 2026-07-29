@@ -3,7 +3,7 @@ id: OBS-06
 title: Alerting hooks
 stage: 6
 priority: SHOULD
-status: VALIDATED
+status: RELEASED
 ---
 
 # OBS-06 — Alerting hooks `[SHOULD]`

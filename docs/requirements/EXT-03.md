@@ -3,7 +3,7 @@ id: EXT-03
 title: Plugin interface
 stage: 6
 priority: SHOULD
-status: VALIDATED
+status: RELEASED
 ---
 
 # EXT-03 — Plugin interface `[SHOULD]`

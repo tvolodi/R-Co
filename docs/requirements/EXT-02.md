@@ -3,7 +3,7 @@ id: EXT-02
 title: Webhook event dispatch
 stage: 6
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # EXT-02 — Webhook event dispatch `[MUST]`

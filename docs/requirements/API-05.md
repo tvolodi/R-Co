@@ -3,7 +3,7 @@ id: API-05
 title: History endpoint
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-05 — History endpoint `[MUST]`

@@ -3,7 +3,7 @@ id: SVC-01
 title: Service catalog entries carry a scope and owner tenant
 stage: 13
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # SVC-01 — Service catalog entries carry a scope and owner tenant `[MUST]`

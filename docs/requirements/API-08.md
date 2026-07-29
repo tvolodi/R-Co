@@ -3,7 +3,7 @@ id: API-08
 title: Bearer token auth
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-08 — Bearer token auth `[MUST]`

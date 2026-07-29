@@ -1053,7 +1053,7 @@ Also read:
 cat docs/agents/workflows/WF-01_requirement_development.md
 ```
 
-Draft requirement entries in `docs/BPM_Platform_Functional_Requirements.md` per the format in WF-01 Step 1. Complete your handoff.
+**Requirements now live in one place: `docs/requirements.yaml`.** As of 2026-07-22, `docs/BPM_Platform_Functional_Requirements.md`, `docs/BPM_Platform_Frontend_Requirements.md`, and the ~150 individual files under `docs/requirements/` are frozen historical references — do not write to them. Draft new or changed requirement entries into `docs/requirements.yaml` using `python3 tools/reqctl.py add <ID> --title "..." --stage <N> --priority MUST|SHOULD|COULD --body-file <path>` (write the prose — statement + acceptance criteria in the same GIVEN/WHEN/THEN style the existing entries use — to a temp file first, then pass it via `--body-file`). Run `python3 tools/reqctl.py show <ID>` to confirm. Complete your handoff.
 
 ---
 
@@ -1068,7 +1068,7 @@ Also read:
 cat docs/agents/workflows/WF-01_requirement_development.md
 ```
 
-Run the completeness and consistency checks from WF-01 Step 2 against the drafted requirements. Complete your handoff with a PASS/FAIL result and issue list.
+Run `python3 tools/reqctl.py validate` first — it automates the cross-reference resolution, vague-language, and status/priority checks from WF-01 Step 2 against every entry in `docs/requirements.yaml`. Treat any BLOCKER it reports as an automatic FAIL. Then apply the remaining WF-01 Step 2 checks (consistency against VALIDATED/RELEASED requirements, stage fit) by hand for the specific IDs in scope. Complete your handoff with a PASS/FAIL result and issue list.
 
 ---
 
@@ -1093,7 +1093,7 @@ Run NFR benchmarks and perform the release decision procedure from WF-04 Steps 6
 AGENT_ID: DOC-UPDATER
 ```
 
-Find your handoff. Update `CHANGELOG.md` and requirement status in `docs/status/requirement_status.yaml` per `task.description`. Use `fn:update-changelog` and `fn:update-requirement-status` as described in `docs/agents/FUNCTIONS.md`.
+Find your handoff. Update `CHANGELOG.md` per `task.description`. For requirement status, do NOT hand-edit `docs/status/requirement_status.yaml` — it is generated. Instead run `python3 tools/reqctl.py set-status <ID> <STATUS> --implemented-in <file> [<file> ...]` for each requirement ID in scope (this stamps `last_updated`/`released_at` from the real clock automatically, never invent these), then run `python3 tools/reqctl.py render-status` to regenerate `docs/status/requirement_status.yaml` from `docs/requirements.yaml`. Use `fn:update-changelog` as described in `docs/agents/FUNCTIONS.md`.
 
 ### Retrospective (WF-02 and WF-04 runs only)
 

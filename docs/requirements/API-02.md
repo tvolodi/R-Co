@@ -3,7 +3,7 @@ id: API-02
 title: Process definition CRUD
 stage: 4
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # API-02 — Process definition CRUD `[MUST]`

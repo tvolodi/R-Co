@@ -4,7 +4,7 @@ title: Remove RLS policies and tenant_id columns from public business tables
 stage: 12
 status: RELEASED
 priority: MUST
-status: DRAFT
+status: RELEASED
 ---
 
 # TNT-07 — Remove RLS policies and tenant_id columns from public business tables `[MUST]`

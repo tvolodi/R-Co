@@ -3,7 +3,7 @@ id: SCH-03
 title: Timer cancellation
 stage: 5
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # SCH-03 — Timer cancellation `[MUST]`

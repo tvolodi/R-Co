@@ -3,7 +3,7 @@ id: IDN-03
 title: Role-based access
 stage: 5
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # IDN-03 — Role-based access `[MUST]`

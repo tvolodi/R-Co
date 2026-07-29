@@ -3,7 +3,7 @@ id: IDN-01
 title: User registry
 stage: 5
 priority: MUST
-status: VALIDATED
+status: RELEASED
 ---
 
 # IDN-01 — User registry `[MUST]`
