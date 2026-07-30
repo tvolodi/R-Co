@@ -94,10 +94,21 @@ The app uses **Keycloak OIDC** for authentication. When you open the web UI, you
 
 ## Environment variables (backend)
 
+See `.env.example` for the full, documented list (consuming file and unset-behaviour
+for every variable). Summary of the required ones:
+
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `BPM_DB_URL` | Yes | — | PostgreSQL connection string |
 | `BPM_PORT` | No | `8080` | HTTP listen port |
+| `BPM_IDP_PROVIDER_TYPE` | Yes | — | Identity provider backend (`keycloak` or `stub`) |
+| `BPM_IDP_BASE_URL` | Yes | — | Keycloak base URL, e.g. `http://localhost:8081` |
+| `BPM_IDP_ADMIN_CREDENTIALS_REF` | Yes | — | `env:<VAR>` pointer to the Keycloak secret var |
+| `BPM_KEYCLOAK_SECRET` | Yes | — | Keycloak admin/client secret (matches `docker-compose.yml`) |
+| `BPM_IDP_DEFAULT_REALM_OR_TENANT` | Yes | — | Default Keycloak realm, e.g. `bpm-default` |
+| `BPM_API_URL` | Yes (UAT-RUNNER) | — | BPM API base URL used by UAT-RUNNER evidence collection |
+| `BPM_UAT_TOKEN` | Yes (UAT-RUNNER) | — | Bearer token UAT-RUNNER uses against `BPM_API_URL` |
+| `BPM_E2E_ADMIN_USERNAME` / `BPM_E2E_ADMIN_PASSWORD` | No | `admin-user` / `admin-pass` | Playwright E2E login credentials |
 
 ---
 
