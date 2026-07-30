@@ -5,7 +5,7 @@
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-07-30T04:31:36Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "EPIC-5 / ISS-502 (blocker unblock)",
@@ -36,9 +36,18 @@
       "fn:check-zig-build"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 complete. Removed \"webhook_deliveries\" from SPT_BUSINESS_TABLES in src/admin/tenant_migration.zig (22 -> 21 entries), matching the authoritative TNT-01 design doc (src/design/tnt-01-04-schema-isolation.md) exactly. Updated the mirrored fixture list in tests/integration/iss502_spt_cutover_test.zig to match (removed webhook_deliveries fixture creation; comment updated 22->21, with a note explaining the exclusion). While re-running the corrected test suite, discovered and fixed a second, genuine ISS-502 bug in executeSptCutover() (Unblock-Everything): the Step 3b schema_migrations copy is documented as best-effort/non-fatal (tenant schemas without the full per-tenant migration set applied have no schema_migrations table), but the code had no SAVEPOINT around it, so a failed copy left the whole transaction aborted (Postgres 'current transaction is aborted') and cascaded into SptCutoverError.PersistenceFailed on every subsequent Step 4 row-count query -- which is exactly why 3/4 tests were failing. Wrapped that step in SAVEPOINT spt_copy_schema_migrations / ROLLBACK TO SAVEPOINT / RELEASE SAVEPOINT so a missing schema_migrations table is truly non-fatal as the pre-existing comment already promised, without weakening any other error path. zig build: clean, exit 0, zero 'error set' warnings. zig build test-integration-iss502: ran the compiled test binary directly (zig build's own progress-tree renderer printed a misleading 'failed command' line with exit code 0 on this Zig 0.16.0 dev build under Git Bash/PowerShell -- verified by running the produced test.exe directly, twice, with different --seed values, on a fully fresh .zig-cache): All 4 tests passed (TC-ISS502-01, TC-ISS502-02, TC-ISS502-03, TC-ISS502-04 all OK). Also ran zig build test-integration-tm as a regression check on the related fresh-DB-bootstrap fix from the prior handoff step: 14/14 passed, no regression. Committed and pushed to feature/WF02-iss502-continuation-20260730 (commit c6b5e19).",
+    "artifacts_out": [
+      "src/admin/tenant_migration.zig",
+      "tests/integration/iss502_spt_cutover_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b) then TEST-RUNNER (Step 4) for ISS-502"
+  },
   "rework_count": 1,
   "max_rework": 3,
-  "started_at": null,
-  "completed_at": "2026-07-30T05:07:41Z"
+  "started_at": "2026-07-30T04:31:36Z",
+  "completed_at": "2026-07-30T05:22:22Z"
 }
