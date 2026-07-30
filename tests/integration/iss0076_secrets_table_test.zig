@@ -99,6 +99,20 @@ test "TC-ISS-0076-02: Store.putSecret + resolveSecret round-trip against the rea
         .actor_id = "iss0076-test",
     });
     defer put_result.deinit(allocator);
+    // Store.putSecret() commits via its own pooled connection, outside
+    // TestHarness's rolled-back transaction — delete explicitly (via a
+    // fresh pooled connection, since h.conn's transaction never commits)
+    // so this test doesn't leak rows into the shared test database.
+    defer {
+        if (pool.acquire()) |cleanup_conn| {
+            defer pool.release(cleanup_conn);
+            _ = cleanup_conn.exec("DELETE FROM public.secrets WHERE tenant_id = $1 AND namespace = $2 AND name = $3", &.{
+                "00000000-0000-0000-0000-000000000000",
+                "webhook",
+                name,
+            }) catch {};
+        } else |_| {}
+    }
 
     const resolved = try store.resolveSecret(allocator, .{
         .tenant_id = "00000000-0000-0000-0000-000000000000",
