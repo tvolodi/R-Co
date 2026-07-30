@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-07-30T11:13:26Z'
+last_updated: '2026-07-30T17:16:46Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1751,13 +1751,16 @@ requirements:
     test_spec: tests/specs/ISS-503.md
     released_at: '2026-07-30T11:13:21Z'
   ISS-504:
-    status: IMPLEMENTED
+    status: TESTED
     stage: Epic 5
     title: Reconcile schema + per-tenant migration tracking (SPT-04)
     implemented_in:
     - src/db/provisioning.zig
     - src/db/migrations.zig
+    - tests/integration/test_iss504_migration_tracking.zig
     test_spec: tests/specs/ISS-504.md
+    note: Verified per-schema migration tracking (public.schema_migrations keyed by schema_name); added
+      TC-ISS504-01..04 integration tests; existing ADP-12 suite re-confirmed passing. See src/design/iss504_migration_tracking.md.
   ISS-601:
     status: UNTRACKED
     title: State snapshots for large-instance reconstruction
