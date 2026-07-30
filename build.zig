@@ -1366,13 +1366,40 @@ pub fn build(b: *std.Build) void {
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner
     // ---------------------------------------------------------------------------
+    // provisioning_mod_migrate: src/db/provisioning.zig wired to pool_root_mod so
+    // that migrate.zig (ISS-502 fresh-bootstrap fix) can call provisionTenantSchema
+    // for the default tenant after the public-schema pass, mirroring runApiServer()
+    // in main.zig. Named-module import (not a relative "../db/provisioning.zig")
+    // because migrate.zig's module root does not include src/db/ in its reachable
+    // file tree — same reasoning as provisioning_mod_api08 above.
+    const provisioning_mod_migrate = b.createModule(.{
+        .root_source_file = b.path("src/db/provisioning.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    const migrate_imports: []const std.Build.Module.Import = &.{
+        .{ .name = "pg", .module = pg_mod },
+        .{ .name = "http", .module = http_mod },
+        .{ .name = "expr", .module = expr_mod },
+        .{ .name = "pool", .module = pool_root_mod },
+        .{ .name = "transition", .module = transition_mod },
+        .{ .name = "build_options", .module = build_options_mod },
+        .{ .name = "identity_provider", .module = identity_provider_mod },
+        .{ .name = "tenant_context", .module = tenant_context_mod },
+        .{ .name = "pipeline_context", .module = pipeline_context_mod },
+        .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        .{ .name = "db_provisioning", .module = provisioning_mod_migrate },
+    };
     const migrate_exe = b.addExecutable(.{
         .name = "migrate",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tools/migrate.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = vendor_imports,
+            .imports = migrate_imports,
         }),
     });
     const run_migrate = b.addRunArtifact(migrate_exe);

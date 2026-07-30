@@ -474,11 +474,20 @@ pub fn executeSptCutover(
     var tables_copied: usize = 0;
 
     for (SPT_BUSINESS_TABLES) |table_name| {
-        // Build: INSERT INTO tenant_{slug}.{table} SELECT * FROM {table} WHERE tenant_id = $1
+        // Build: INSERT INTO tenant_{slug}.{table} SELECT * FROM public.{table} WHERE tenant_id = $1
+        // Source table is explicitly schema-qualified to public (per
+        // src/design/iss502_spt_cutover.md Step 3) rather than relying on the
+        // connection's search_path. An unqualified source name would silently
+        // resolve against tenant_default instead of public whenever the
+        // caller's connection has search_path = tenant_default,public (e.g.
+        // TestHarness-based integration tests, and any pooled connection
+        // routed via applyRequestTenantContext) — reading the wrong table
+        // entirely once tenant_default carries real, differently-shaped
+        // business tables (ISS-502 fresh-bootstrap fix, src/tools/migrate.zig).
         var copy_sql_buf: [512]u8 = undefined;
         const copy_sql = std.fmt.bufPrint(
             &copy_sql_buf,
-            "INSERT INTO {s}.{s} SELECT * FROM {s} WHERE tenant_id = $1::uuid",
+            "INSERT INTO {s}.{s} SELECT * FROM public.{s} WHERE tenant_id = $1::uuid",
             .{ tenant_schema, table_name, table_name },
         ) catch {
             conn.rollback() catch {};
@@ -522,12 +531,14 @@ pub fn executeSptCutover(
     }
 
     // Step 3b: Copy schema_migrations entries for this tenant.
+    // Source explicitly qualified to public.schema_migrations — see the Step 3
+    // copy loop above for why relying on search_path is unsafe here.
     {
         var copy_mig_sql_buf: [512]u8 = undefined;
         const copy_mig_sql = std.fmt.bufPrint(
             &copy_mig_sql_buf,
             "INSERT INTO {s}.schema_migrations (version, applied_at) " ++
-                "SELECT version, applied_at FROM schema_migrations " ++
+                "SELECT version, applied_at FROM public.schema_migrations " ++
                 "WHERE schema_name = $1",
             .{tenant_schema},
         ) catch {
@@ -543,10 +554,13 @@ pub fn executeSptCutover(
 
     // Step 4: Verify row count parity for each table.
     for (SPT_BUSINESS_TABLES) |table_name| {
+        // Explicitly qualified to public — see the Step 3 copy loop above for
+        // why relying on search_path here is unsafe once tenant_default has
+        // real business tables.
         var pub_count_sql_buf: [256]u8 = undefined;
         const pub_count_sql = std.fmt.bufPrint(
             &pub_count_sql_buf,
-            "SELECT count(*) FROM {s} WHERE tenant_id = $1::uuid",
+            "SELECT count(*) FROM public.{s} WHERE tenant_id = $1::uuid",
             .{table_name},
         ) catch {
             conn.rollback() catch {};

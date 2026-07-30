@@ -152,6 +152,40 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
 }
 
 fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, schema: []const u8) !void {
+    // ISS-502 fresh-bootstrap fix follow-up: `zig build migrate` now calls the
+    // real Zig-side provisionTenantSchema()/runForSchema() for the default
+    // tenant so gated migrations (GBL-077/TNT-07, GBL-084/ISS-503) can pass
+    // their pre-flight checks (see src/tools/migrate.zig). That real path
+    // tracks completion in public.schema_migrations using the composite key
+    // (schema_name, version) and marks public.tenant_schemas.migrations_applied_at.
+    //
+    // This test-harness bootstrapper predates that and keeps its own
+    // independent, version-only `schema_migrations` tracking table local to
+    // the tenant schema — it has no knowledge of what the real migrator
+    // already applied. If the real migrator has already fully migrated this
+    // schema (migrations_applied_at IS NOT NULL), re-running this harness's
+    // from-scratch pass would re-issue CREATE TABLE/CREATE INDEX/ADD
+    // CONSTRAINT statements the real tables already have (unqualified names
+    // are not idempotent for constraint names, unlike IF NOT EXISTS forms),
+    // causing spurious "already exists" failures. Skip entirely in that case
+    // — the schema is already correctly and fully migrated.
+    {
+        var already_migrated = conn.query(
+            allocator,
+            "SELECT migrations_applied_at FROM public.tenant_schemas WHERE schema_name = $1 AND migrations_applied_at IS NOT NULL",
+            &.{schema},
+        ) catch null;
+        if (already_migrated) |*result| {
+            defer result.deinit();
+            if (result.rows.len > 0) {
+                const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
+                defer allocator.free(set_path_sql);
+                try conn.exec(set_path_sql, &.{});
+                return;
+            }
+        }
+    }
+
     const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
     defer allocator.free(set_path_sql);
     try conn.exec(set_path_sql, &.{});

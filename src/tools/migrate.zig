@@ -1,5 +1,8 @@
 const std = @import("std");
 const pg = @import("pg");
+const pool_mod = @import("pool");
+const db_provisioning = @import("db_provisioning");
+const build_options = @import("build_options");
 
 pub fn main(init: std.process.Init) !void {
     const allocator = init.gpa;
@@ -100,7 +103,49 @@ pub fn main(init: std.process.Init) !void {
     }
 
     var applied_count: u32 = 0;
+    var provisioned_default_tenant = false;
     for (names.items) |filename| {
+        // ISS-502 fresh-bootstrap fix: provision (or re-verify) the default
+        // tenant's schema-per-tenant schema before the FIRST GBL-prefixed
+        // migration runs. GBL- migrations include gated pre-flight checks
+        // (e.g. GBL-077/TNT-07, GBL-084/ISS-503) that require every tenant in
+        // public.tenant to already be fully cut over — specifically
+        // public.tenant_schemas.migrations_applied_at IS NOT NULL and (for
+        // GBL-077) a COMPLETED public.tnt05_progress row per business table.
+        //
+        // On a from-scratch database the default tenant
+        // (00000000-0000-0000-0000-000000000000) is seeded by migration 031
+        // via raw INSERT, bypassing provisionTenantSchema() entirely, so
+        // without this step migrations_applied_at stays NULL forever on a
+        // migrate-only bootstrap. In production this is normally set the
+        // first time the API server starts (see the identical call in
+        // runApiServer() / main.zig) — but GBL- gated migrations run during
+        // `zig build migrate`, before the server ever starts, so a
+        // migrate-only bootstrap must perform this step too.
+        //
+        // Placed here (immediately before the first GBL- file, rather than
+        // after the whole loop) because the loop aborts the process on the
+        // first migration failure — running this only at the very end would
+        // never be reached once GBL-077/GBL-084 fail. Runs at most once per
+        // invocation. Idempotent and non-fatal by design, same as main.zig:
+        // a provisioning failure here must not turn an otherwise-successful
+        // public-schema migration run into a hard CLI failure — the gated
+        // migration below will simply re-report the real unready-tenant
+        // reason if this step did not succeed.
+        if (!provisioned_default_tenant and std.mem.startsWith(u8, filename, "GBL-")) {
+            provisioned_default_tenant = true;
+            var provision_pool = pool_mod.Pool.init(init.io, allocator, .{ .url = url, .pool_size = 2 }) catch |err| {
+                std.log.warn("default tenant schema provisioning skipped: could not open pool: {}", .{err});
+                return;
+            };
+            defer provision_pool.deinit();
+
+            const default_tenant_id = "00000000-0000-0000-0000-000000000000";
+            db_provisioning.provisionTenantSchema(allocator, &provision_pool, default_tenant_id, build_options.migrations_dir) catch |err| {
+                std.log.warn("default tenant schema provisioning failed: {} (tenant_id={s})", .{ err, default_tenant_id });
+            };
+        }
+
         if (applied.contains(filename)) {
             std.log.info("  skip  {s}", .{filename});
             continue;
@@ -155,6 +200,25 @@ pub fn main(init: std.process.Init) !void {
         std.log.info("No new migrations to apply.", .{});
     } else {
         std.log.info("{d} migration(s) applied successfully.", .{applied_count});
+    }
+
+    // Fallback: if no GBL- migration was pending this run (e.g. all GBL-
+    // migrations were already applied in a prior invocation), the in-loop
+    // provisioning hook above never fired. Run it once here too so a
+    // migrate-only bootstrap that resumes from a partially-migrated database
+    // still ends up with the default tenant provisioned. Idempotent — see
+    // the detailed rationale in the in-loop hook above.
+    if (!provisioned_default_tenant) {
+        var provision_pool = pool_mod.Pool.init(init.io, allocator, .{ .url = url, .pool_size = 2 }) catch |err| {
+            std.log.warn("default tenant schema provisioning skipped: could not open pool: {}", .{err});
+            return;
+        };
+        defer provision_pool.deinit();
+
+        const default_tenant_id = "00000000-0000-0000-0000-000000000000";
+        db_provisioning.provisionTenantSchema(allocator, &provision_pool, default_tenant_id, build_options.migrations_dir) catch |err| {
+            std.log.warn("default tenant schema provisioning failed: {} (tenant_id={s})", .{ err, default_tenant_id });
+        };
     }
 }
 
