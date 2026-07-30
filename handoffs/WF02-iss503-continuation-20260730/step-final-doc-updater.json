@@ -35,23 +35,25 @@
   },
   "result": {
     "status": "PASS",
-    "summary": "Pushed feature/ADHOC-iss503-infra-20260730 (commit d7aa615) to origin. Set ISS-503 to RELEASED via reqctl.py (implemented_in: migrations/GBL-084_rls_removal.sql, src/db/pool.zig, tests/integration/test_iss503_rls_removal.zig) and regenerated docs/status/requirement_status.yaml (released_at 2026-07-30T11:13:21Z, real tool timestamp). Verified the actual diff vs origin/main before writing anything: GBL-084_rls_removal.sql was already merged to main (PR #95/#99, commit 01cf924); this branch's real contribution is the new tests/integration/test_iss503_rls_removal.zig (4 cases), 55 unrelated Zig 0.16 compile-drift fixes across the test-integration suite, a genuine hang fix in concurrent_instances_test.zig, and build.zig/.gitignore wiring for the new test target (docker-compose.override.yml correctly excluded, git-ignored). Updated CHANGELOG.md with a new dated entry describing the test-coverage completion, the compile-drift fixes, and the hang fix. Wrote the retrospective per docs/agents/metrics.md §6 to docs/metrics/retrospectives/WF02-iss503-continuation-20260730.yaml, following the WF02-iss502-continuation-20260730 template: no valid prior same-scope estimation.json exists in this lineage (rules_version 'n/a'), so actual step durations are reported directly rather than computing estimation_rules.json adjustments from a non-comparable batch estimate. rule_adjustments left empty, consistent with that precedent. Created PR #<PR_NUMBER>, squash-merged, deleted the remote feature branch, verified deletion, and returned the local repo to a clean main.",
+    "summary": "Pushed feature/ADHOC-iss503-infra-20260730 (commit d7aa615) to origin. Set ISS-503 to RELEASED via reqctl.py (implemented_in: migrations/GBL-084_rls_removal.sql, src/db/pool.zig, tests/integration/test_iss503_rls_removal.zig) and regenerated docs/status/requirement_status.yaml (released_at 2026-07-30T11:13:21Z, real tool timestamp). Verified the actual diff vs origin/main before writing anything: GBL-084_rls_removal.sql was already merged to main (PR #95/#99, commit 01cf924); this branch's real contribution is the new tests/integration/test_iss503_rls_removal.zig (4 cases), 55 unrelated Zig 0.16 compile-drift fixes across the test-integration suite, a genuine hang fix in concurrent_instances_test.zig, and build.zig/.gitignore wiring for the new test target (docker-compose.override.yml correctly excluded, git-ignored). Updated CHANGELOG.md with a new dated entry describing the test-coverage completion, the compile-drift fixes, and the hang fix. Wrote the retrospective per docs/agents/metrics.md §6 to docs/metrics/retrospectives/WF02-iss503-continuation-20260730.yaml, following the WF02-iss502-continuation-20260730 template: no valid prior same-scope estimation.json exists in this lineage (rules_version 'n/a'), so actual step durations are reported directly rather than computing estimation_rules.json adjustments from a non-comparable batch estimate. rule_adjustments left empty, consistent with that precedent. Created PR #333, squash-merged (merge commit 47b9e87d55d62a1d376719e90dc55d90b4d5f8b4), deleted the remote feature branch, verified deletion via git fetch --prune (showed [deleted]) and the GitHub API (404 Branch not found), and returned the local repo to a clean main (git branch --show-current -> main, git status clean, HEAD == merge commit).",
     "artifacts_out": [
       "CHANGELOG.md",
       "docs/status/requirement_status.yaml",
       "docs/metrics/retrospectives/WF02-iss503-continuation-20260730.yaml",
-      "PR #<PR_NUMBER>",
-      "merge_commit_sha:<MERGE_SHA>"
+      "PR #333",
+      "merge_commit_sha:47b9e87d55d62a1d376719e90dc55d90b4d5f8b4"
     ],
     "issues": [],
     "git_evidence": {
       "branch_name": "feature/ADHOC-iss503-infra-20260730",
       "commit_sha_list": [
-        "d7aa615"
+        "d7aa615",
+        "fc8ae5e",
+        "47b9e87"
       ],
       "remote_branch": "origin/feature/ADHOC-iss503-infra-20260730",
       "push_status": "ok",
-      "pr_url": null,
+      "pr_url": "https://github.com/tvolodi/R-Co/pull/333",
       "pr_create_error": null
     },
     "next_action": "ISS-503 RELEASED. ORCH to close GitHub issue #203 separately. ISS-503-TESTISO-01 already resolved (REWORK 2). ISS-503-INFRA-01 (MINOR, test-integration umbrella parallel-run isolation) remains open for a future dedicated test-infra workflow."
@@ -59,5 +61,5 @@
   "rework_count": 0,
   "max_rework": 3,
   "started_at": "2026-07-30T11:11:13Z",
-  "completed_at": "2026-07-30T11:16:11Z"
+  "completed_at": "2026-07-30T11:18:32Z"
 }
