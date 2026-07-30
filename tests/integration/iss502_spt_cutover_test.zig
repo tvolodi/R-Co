@@ -43,10 +43,14 @@ const SptCutoverError = tenant_migration.SptCutoverError;
 const CutoverResult = tenant_migration.CutoverResult;
 
 // ---------------------------------------------------------------------------
-// The 22 business tables executeSptCutover() iterates over, mirrored from
+// The 21 business tables executeSptCutover() iterates over, mirrored from
 // SPT_BUSINESS_TABLES in src/admin/tenant_migration.zig. Every one of these
 // must exist (even if empty) in both public and the tenant schema, or the
 // copy loop fails with CopyFailed on the missing relation.
+//
+// webhook_deliveries is intentionally excluded — per the TNT-01 design doc
+// (src/design/tnt-01-04-schema-isolation.md, 21-table list), it was never
+// migrated out of public and is not a TNT-01 business table.
 // ---------------------------------------------------------------------------
 const SPT_BUSINESS_TABLES = [_][]const u8{
     "process_definitions",
@@ -65,7 +69,6 @@ const SPT_BUSINESS_TABLES = [_][]const u8{
     "user_roles",
     "api_tokens",
     "webhook_subscriptions",
-    "webhook_deliveries",
     "dead_letter_items",
     "instance_sequence",
     "event_type_registry",

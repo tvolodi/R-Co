@@ -380,7 +380,6 @@ const SPT_BUSINESS_TABLES = [_][]const u8{
     "user_roles",
     "api_tokens",
     "webhook_subscriptions",
-    "webhook_deliveries",
     "dead_letter_items",
     "instance_sequence",
     "event_type_registry",
@@ -533,7 +532,22 @@ pub fn executeSptCutover(
     // Step 3b: Copy schema_migrations entries for this tenant.
     // Source explicitly qualified to public.schema_migrations — see the Step 3
     // copy loop above for why relying on search_path is unsafe here.
+    //
+    // This step is genuinely optional/non-fatal: a tenant schema created
+    // without the full per-tenant migration set applied (e.g. a minimal
+    // fixture, or a schema provisioned but not yet migrated) may not have a
+    // schema_migrations table at all. Wrapping it in its own SAVEPOINT is
+    // required — without one, a failed statement leaves the *whole*
+    // transaction aborted ("current transaction is aborted, commands ignored
+    // until end of transaction block"), silently turning every subsequent
+    // Step 4 query into a cascading PersistenceFailed even though this copy
+    // was only ever meant to be best-effort.
     {
+        conn.exec("SAVEPOINT spt_copy_schema_migrations", &.{}) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.PersistenceFailed;
+        };
+
         var copy_mig_sql_buf: [512]u8 = undefined;
         const copy_mig_sql = std.fmt.bufPrint(
             &copy_mig_sql_buf,
@@ -548,7 +562,17 @@ pub fn executeSptCutover(
 
         conn.exec(copy_mig_sql, &.{tenant_schema}) catch {
             // schema_migrations might not exist in tenant schema if no per-tenant
-            // migrations have been applied.  This is non-fatal; continue.
+            // migrations have been applied.  This is non-fatal; roll back to the
+            // savepoint so the outer transaction stays usable and continue.
+            conn.exec("ROLLBACK TO SAVEPOINT spt_copy_schema_migrations", &.{}) catch {
+                conn.rollback() catch {};
+                return SptCutoverError.PersistenceFailed;
+            };
+        };
+
+        conn.exec("RELEASE SAVEPOINT spt_copy_schema_migrations", &.{}) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.PersistenceFailed;
         };
     }
 
