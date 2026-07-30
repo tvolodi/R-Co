@@ -7230,6 +7230,32 @@
       "created_at": "2026-07-30T05:40:00Z",
       "status": "COMPLETED",
       "stage": "EPIC-5 / ISS-502"
+    },
+    {
+      "handoff_id": "ab4af65f-7a6b-4b6f-b3b9-d1873648bb2a",
+      "file": "handoffs/WF02-iss503-continuation-20260730/step-03-test-designer.json",
+      "run_id": "WF02-iss503-continuation-20260730",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-07-30T08:17:04Z",
+      "status": "COMPLETED",
+      "stage": "Epic 5 continuation \u2014 ISS-503",
+      "completed_at": "2026-07-30T08:25:13Z",
+      "started_at": "2026-07-30T08:17:04Z"
+    },
+    {
+      "handoff_id": "806fe147-3ed0-4fd8-85d2-ea617ffc68b0",
+      "file": "handoffs/ADHOC-iss503-infra-20260730/step-00-backend-dev.json",
+      "run_id": "ADHOC-iss503-infra-20260730",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-07-30T08:26:56Z",
+      "status": "COMPLETED",
+      "stage": "ADHOC infra unblock -- ISS-503",
+      "completed_at": "2026-07-30T10:18:11Z"
     }
-  ]
+  ],
+  "last_updated": "2026-07-30T10:18:11Z"
 }
