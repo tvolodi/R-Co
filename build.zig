@@ -1213,9 +1213,18 @@ pub fn build(b: *std.Build) void {
     run_iss0076_integration_tests.setCwd(b.path("."));
     run_iss0076_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-0088: verify clean_test_db.py / helpers.zig resetTestData() only
+    // reference table names that currently exist, so a future migration
+    // rename/drop can't silently desync them again.
+    const lint_test_table_refs = b.addSystemCommand(&.{ "python", "tools/lint_test_table_refs.py" });
+    lint_test_table_refs.setCwd(b.path("."));
+    const lint_test_table_refs_step = b.step("lint-test-table-refs", "Verify test cleanup tooling references only current table names");
+    lint_test_table_refs_step.dependOn(&lint_test_table_refs.step);
+
     // Pre-cleanup: delete all rows from test DB tables before running tests.
     const clean_test_db = b.addSystemCommand(&.{ "python", "tools/clean_test_db.py" });
     clean_test_db.setCwd(b.path("."));
+    clean_test_db.step.dependOn(&lint_test_table_refs.step);
     const clean_test_db_step = b.step("clean-test-db", "Delete all test data (requires docker-compose)");
     clean_test_db_step.dependOn(&clean_test_db.step);
 

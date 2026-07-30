@@ -172,7 +172,7 @@ fn cleanupInstance(pool: *Pool, instance_id_hex: []const u8) void {
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
     conn.exec("DELETE FROM tasks WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
-    conn.exec("DELETE FROM process_events WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
+    conn.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
 }
