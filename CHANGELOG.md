@@ -2,6 +2,21 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-504 / per-tenant migration tracking verified and covered] — 2026-07-30
+
+### Verified
+- **ISS-504 (SPT-04, P2)**: confirmed the schema-per-tenant migration ledger design (recorded in `src/design/iss504_migration_tracking.md`, already implemented by SPT-01) behaves correctly: `public.schema_migrations` (keyed by `(schema_name, version)`) is the single source of truth; `GBL-`-prefixed migrations are recorded only under `schema_name = 'public'` (the GBL-prefix guard in `Migrations.runForSchema()`, `src/db/migrations.zig`, skips them for any other schema); non-GBL migrations applied via `provisionTenantSchema()` (`src/db/provisioning.zig`) are recorded under the tenant's own `schema_name = 'tenant_{slug}'`; and independently-provisioned tenants have disjoint ledger rows with no cross-tenant leakage. No source changes were needed — the design doc's "what already works" analysis held up under test.
+
+### Added
+- `tests/integration/test_iss504_migration_tracking.zig` (4 new integration tests: TC-ISS504-01..04, wired into `zig build test-integration` via `tests/integration/main_test.zig`), closing the gap where `tests/specs/ISS-504.md` referenced this file but it had never been created. Covers: GBL- migrations never recorded under a tenant schema; per-tenant migrations never bleed into `'public'`; provisioning records both the migration ledger row and `tenant_schemas.migrations_applied_at`; two independently-provisioned tenants get disjoint ledgers.
+
+### Verified (regression)
+- `zig build`: clean, no `error set` output.
+- `zig build test-integration -j1`: the 4 new TC-ISS504 tests pass (module logs zero failures, same clean signature as the adjacent `test_iss503_rls_removal.zig`). Pre-existing `tests/integration/adp12_default_tenant_regression_test.zig` (ADP-12 default-tenant regression) re-confirmed unaffected.
+- Did **not** attempt to fix the ~94 pre-existing integration-test failures surfaced by this run (deadlocks and non-idempotent-DDL collisions from concurrent Zig test-runner threads sharing one long-lived `bpm_test` container) — these are the already-filed, separately-scoped [ISS-0090](https://github.com/tvolodi/R-Co/issues/339).
+
+GitHub issue [#204](https://github.com/tvolodi/R-Co/issues/204) closed.
+
 ## [ISS-0075 / .env.example documents Keycloak, BPM_UAT_TOKEN and BPM_API_URL] — 2026-07-30
 
 ### Fixed

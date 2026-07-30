@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-07-30T11:13:21Z'
+generated_at: '2026-07-30T17:16:37Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -4551,7 +4551,7 @@ requirements:
     id: ISS-504
     title: Reconcile schema + per-tenant migration tracking (SPT-04)
     stage: Epic 5
-    status: IMPLEMENTED
+    status: TESTED
     body: |-
       - **Epic:** EPIC-5 · **Priority:** P2 · **Estimate:** M · **Labels:** multi-tenancy, docs, tests
       - **Depends on:** ISS-503
@@ -4572,10 +4572,13 @@ requirements:
     implemented_in:
     - src/db/provisioning.zig
     - src/db/migrations.zig
+    - tests/integration/test_iss504_migration_tracking.zig
     test_spec: tests/specs/ISS-504.md
-    last_updated: '2026-06-12T12:54:02Z'
+    last_updated: '2026-07-30T17:16:37Z'
     type: requirement
     backlog_tier: P2
+    note: Verified per-schema migration tracking (public.schema_migrations keyed by schema_name); added
+      TC-ISS504-01..04 integration tests; existing ADP-12 suite re-confirmed passing. See src/design/iss504_migration_tracking.md.
   ISS-601:
     id: ISS-601
     title: State snapshots for large-instance reconstruction
