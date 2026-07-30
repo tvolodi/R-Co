@@ -447,17 +447,15 @@ fn resetTestData(conn: *pg.Conn) !void {
     // Keep migration/seed/config tables intact and only clear transient test data.
     // Truncate tables one-by-one so one missing legacy table does not skip cleanup.
     try truncateTableBestEffort(conn, "instance_definition_snapshots");
-    try truncateTableBestEffort(conn, "process_events");
     try truncateTableBestEffort(conn, "tasks");
     try truncateTableBestEffort(conn, "timers");
     try truncateTableBestEffort(conn, "instance_projections");
     try truncateTableBestEffort(conn, "variable_schemas");
     try truncateTableBestEffort(conn, "process_definitions");
     try truncateTableBestEffort(conn, "events");
-    try truncateTableBestEffort(conn, "event_store");
     try truncateTableBestEffort(conn, "audit_log");
     try truncateTableBestEffort(conn, "audit_entries");
-    try truncateTableBestEffort(conn, "dlq");
+    try truncateTableBestEffort(conn, "dead_letter_items");
     try truncateTableBestEffort(conn, "webhook_subscriptions");
     // SVC-04 uses the service catalog; truncate so LIMIT-50 page-1 tests stay deterministic.
     try truncateTableBestEffort(conn, "service_catalog");
@@ -570,7 +568,7 @@ pub const TestHarness = struct {
         };
 
         // Provision and migrate tenant_default so tenant-scoped business tables
-        // (process_events, entity_record_latest, dlq, etc.) always exist.
+        // (events, entity_record_latest, dead_letter_items, etc.) always exist.
         _ = conn.exec("SELECT bpm_provision_tenant_schema($1::uuid)", &.{bpm.api_tenant_context.DEFAULT_TENANT_ID}) catch {};
         runMigrationsForSchema(std.testing.io, allocator, &conn, "tenant_default") catch |err| {
             std.debug.print("runMigrationsForSchema (tenant_default) failed: {}\n", .{err});

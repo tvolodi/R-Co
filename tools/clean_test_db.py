@@ -17,17 +17,15 @@ USER = "bpm"
 # TestHarness.init() will see which migrations have already run and skip them.
 TABLES = [
     "instance_definition_snapshots",
-    "process_events",
     "tasks",
     "timers",
     "instance_projections",
     "variable_schemas",
     "process_definitions",
     "events",
-    "event_store",
     "audit_log",
     "audit_entries",
-    "dlq",
+    "dead_letter_items",
     "webhook_subscriptions",
 ]
 
@@ -80,14 +78,12 @@ def main() -> None:
     TENANT_SCHEMAS = ["tenant_default"]
     TENANT_TABLES = [
         "instance_definition_snapshots",
-        "process_events",
         "tasks",
         "timers",
         "instance_projections",
         "variable_schemas",
         "process_definitions",
         "events",
-        "event_store",
     ]
     for schema in TENANT_SCHEMAS:
         tenant_tables_str = ", ".join(TENANT_TABLES)
