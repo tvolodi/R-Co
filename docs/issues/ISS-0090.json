@@ -1,5 +1,5 @@
 {
-  "issue_id": "ISS-0079",
+  "issue_id": "ISS-0090",
   "title": "Long-lived shared bpm_test container accumulates non-idempotent DDL failures and orphaned tenant schemas across sessions (ISS-503-INFRA-01, never formally registered/filed)",
   "status": "OPEN",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/339",

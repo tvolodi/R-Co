@@ -1,5 +1,5 @@
 {
-  "issue_id": "ISS-0077",
+  "issue_id": "ISS-0088",
   "title": "tools/clean_test_db.py and tests/integration/helpers.zig resetTestData() reference table names dropped/renamed years ago (process_events, event_store, dlq)",
   "status": "OPEN",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/337",

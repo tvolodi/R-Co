@@ -1,5 +1,5 @@
 {
-  "issue_id": "ISS-0078",
+  "issue_id": "ISS-0089",
   "title": "svc01_service_catalog_scope_test.zig (and likely sibling GBL-migration-verifying tests) write unqualified SQL that resolves against tenant_default instead of public, hitting columns/behavior that only exist in public",
   "status": "OPEN",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/338",
