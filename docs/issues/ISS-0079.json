@@ -1,0 +1,46 @@
+{
+  "issue_id": "ISS-0079",
+  "title": "Long-lived shared bpm_test container accumulates non-idempotent DDL failures and orphaned tenant schemas across sessions (ISS-503-INFRA-01, never formally registered/filed)",
+  "status": "OPEN",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/339",
+  "severity": "MINOR",
+  "category": "test-environment lifecycle / non-idempotent DDL",
+  "run_id": "ADHOC-20260730-integration-triage",
+  "workflow_id": "WF-03",
+  "handoff_id": null,
+  "requirement_ids": [],
+  "summary": "Discovered while triaging the ~109 pre-existing zig build test-integration failures found during the ISS-0076 (GitHub #335) fix verification. This is the formal GitHub/registry filing of a gap first flagged as 'ISS-503-INFRA-01' during the 2026-07-30 WF02-iss503-continuation-20260730 run (see CHANGELOG.md and handoffs/WF02-iss503-continuation-20260730/step-final-doc-updater.json) -- that ID was referenced by name across four handoff/retrospective files and CHANGELOG.md but was NEVER actually created as a docs/issues/ISS-NNNN.json registry entry nor filed on GitHub, in violation of the 'No Issue Left Local-Only' project directive. Two independent, compounding problems live under this umbrella: (1) the local bpm_test Docker container has accumulated 78 per-tenant schemas and a correspondingly long migration-application history across many months of manual test runs, and some CREATE FUNCTION / CREATE TRIGGER statements in the migration set are not idempotent (they error 'already exists' -- e.g. pg_proc_proname_args_nsp_index duplicate key, trigger trg_bpm_test_events_compat_defaults already exists -- instead of using CREATE OR REPLACE FUNCTION or a DROP-IF-EXISTS/existence-check guard before CREATE TRIGGER); (2) parallel/repeated test execution against this one shared, never-reset database causes cross-run and cross-test contention that does not reproduce when tests are run individually (originally observed as ~120 failures during ISS-503 work, now ~109, both counts approximate since exact totals depend on how much drift a given container has accumulated at run time).",
+  "root_cause": {
+    "type": "shared-mutable-test-environment-non-idempotent-ddl",
+    "details": "The project's integration test suite runs against a single long-lived docker-compose db_test container rather than a fresh database per CI run. Two things compound: first, some migration DDL (function/trigger creation for compatibility shims like bpm_test_events_compat_defaults) is not written idempotently, so re-running it against a container that already has it errors instead of silently succeeding; second, because the container is never rebuilt, tenant schemas from every prior test run (78 counted at time of triage) remain, so per-tenant migration state, fixture data, and DDL side effects accumulate indefinitely rather than resetting to a known baseline."
+  },
+  "files_to_change": [
+    "CI/dev-environment tooling (docker-compose test-db lifecycle) -- needs a decision on ephemeral-per-run vs. periodic-reset strategy",
+    "Migration files with non-idempotent CREATE FUNCTION/CREATE TRIGGER statements -- needs a full audit, not yet enumerated",
+    "docs/agents/workflows/WF-04_full_test_run.md or equivalent -- should document the reset procedure"
+  ],
+  "resolution": null,
+  "occurrences": [
+    {
+      "occurred_at": "2026-07-30T00:00:00Z",
+      "run_id": "WF02-iss503-continuation-20260730",
+      "handoff_id": null,
+      "trigger": "original-observation",
+      "context": "First flagged during ISS-503 (EPIC-5) test-coverage work as 'ISS-503-INFRA-01' (~120 failures) but only ever referenced by name in handoff/retrospective/CHANGELOG prose -- never registered as a docs/issues/ISS-NNNN.json file, never filed on GitHub. Left as a dangling reference across handoffs/WF02-iss503-continuation-20260730/step-00-backend-dev.json, handoffs/WF02-iss503-continuation-20260730/step-final-doc-updater.json, docs/metrics/retrospectives/WF02-iss503-continuation-20260730.yaml, and tests/reports/report-20260730-WF02-iss503-continuation-20260730.yaml."
+    },
+    {
+      "occurred_at": "2026-07-30T12:09:49Z",
+      "run_id": "WF03-iss0076-20260730",
+      "handoff_id": null,
+      "trigger": "regression",
+      "context": "Re-confirmed (~109 failures, same signature class) while running a git-stash baseline comparison of zig build test-integration to confirm the ISS-0076 fix introduced no regressions."
+    }
+  ],
+  "files_changed": [],
+  "created_at": "2026-07-30T12:43:17Z",
+  "resolved_at": null,
+  "prevention": [
+    "Formally register any issue referenced by an ISS-like identifier in handoff/retrospective/CHANGELOG prose as a real docs/issues/ISS-NNNN.json file AND a GitHub issue at the moment it is first flagged, not deferred to 'a future dedicated workflow' that never gets scheduled -- this is exactly the gap the project's 'No Issue Left Local-Only' directive exists to prevent, and this issue is itself an instance of that gap going unnoticed for a full day across five separate files.",
+    "Decide and document a test-database lifecycle policy (ephemeral-per-CI-run, or a scheduled/scripted full reset) so accumulated drift has a bounded lifetime instead of growing indefinitely."
+  ]
+}
