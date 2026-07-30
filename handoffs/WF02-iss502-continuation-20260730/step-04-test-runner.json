@@ -5,7 +5,7 @@
   "from_agent": "ORCH",
   "to_agent": "TEST-RUNNER",
   "created_at": "2026-07-30T05:30:00Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "EPIC-5 / ISS-502",
@@ -31,9 +31,26 @@
     ],
     "functions_to_call": ["fn:check-services", "fn:run-integration-tests"]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Resolved the flagged BPM_TEST_DB_URL port drift (docker-compose.yml declares db_test on 5433, but the live r-co-db_test-1 container maps host port 5434) by exporting the corrected URL in the same shell invocation as each build/test command, without editing docker-compose.yml/.env or cherry-picking from feature/registry-consolidation. zig build: exit 0, no 'error set' output. zig build test (full unit suite): first run with the stale ambient port failed 21 tests, all PgError.AuthenticationFailed/PoolError.ConnectionFailed against port 5433; re-run with corrected port fixed all 21 with zero source changes — 574/658 passed, 0 failed, 84 pre-existing skips, exit 0. ISS-502 integration test verified three independent ways: (1) zig build test-integration-iss502 --summary all showed 'Build Summary: 5/5 steps succeeded; 4/4 tests passed' despite interleaved POSTGRES ERROR noise (expected idempotent-setup probing + the deliberate PK-conflict scenario that IS TC-ISS502-03) and a misleading 'failed command' line from the Zig 0.16.0-dev progress-tree renderer quirk; (2) isolated re-run redirecting all output to a log file with explicit exit-code capture in the same statement confirmed REAL_EXIT_CODE:0; (3) located and ran the compiled test.exe directly with BPM_TEST_DB_URL/BPM_MIGRATIONS_DIR set explicitly — unambiguous stdout '1/4 TC-ISS502-01 ... OK', '2/4 TC-ISS502-02 ... OK', '3/4 TC-ISS502-03 ... OK', '4/4 TC-ISS502-04 ... OK', 'All 4 tests passed.', BINARY_EXIT:0. test-integration-tm regression check: 14/14 passed, 0 failed, exit 0 — no regression from the earlier fresh-DB-bootstrap fix in this run. Benchmark env precheck (zig build bench) was clean: all 5 NFR checks passed, no BPM_DB_URL/setup errors. Keycloak health check on localhost:8081/health/ready was unreachable (container has no host port mapping in current docker state) — noted as MINOR per standard precheck, not a blocker since ISS-502 has no auth/Keycloak dependency.",
+    "artifacts_out": [
+      "tests/reports/report-20260730-WF02-iss502-continuation-20260730.yaml"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "Ambient BPM_TEST_DB_URL / docker-compose.yml's declared db_test port (5433) does not match the real host port (5434) of the running r-co-db_test-1 container. Resolved for this test run only by exporting a corrected URL per invocation, per explicit handoff instruction not to edit docker-compose.yml/.env or cherry-pick the unrelated fix from feature/registry-consolidation (commit 8eb85ba). Recommend a follow-up to recreate r-co-db_test-1 to match docker-compose.yml, or merge that branch's port-collision fix, so future sessions don't need manual reconciliation."
+      },
+      {
+        "severity": "MINOR",
+        "description": "Keycloak (r-co-keycloak-1) has no host port mapping in the current docker state, so localhost:8081/health/ready is unreachable. Not a blocker for ISS-502 (no Keycloak dependency in this test); noted per standard TEST-RUNNER pre-check procedure only."
+      }
+    ],
+    "next_action": "Route to DOC-UPDATER to mark ISS-502 TESTED/RELEASED"
+  },
   "rework_count": 0,
   "max_rework": 3,
-  "started_at": null,
-  "completed_at": null
+  "started_at": "2026-07-30T05:30:00Z",
+  "completed_at": "2026-07-30T05:36:44Z"
 }
