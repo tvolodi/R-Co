@@ -1,0 +1,53 @@
+{
+  "handoff_id": "c2a7b3d4-1e5f-4a6b-9c8d-2b3c4d5e6f02",
+  "run_id": "WF02-iss502-continuation-20260730",
+  "step": "00b",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-07-30T04:31:36Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "EPIC-5 / ISS-502 (blocker unblock)",
+    "requirement_ids": [
+      "ISS-502"
+    ],
+    "related_handoff_ids": [
+      "b1f6a1a2-9e2c-4c1a-8b0a-1a2b3c4d5e01"
+    ],
+    "artifacts_in": [
+      "migrations/GBL-084_rls_removal.sql",
+      "migrations/GBL-073_tnt01_drop_legacy_public_business_tables.sql",
+      "migrations/031_adp04b_tenant_realm_binding.sql",
+      "migrations/086_iss107_tenant_storage_mode.sql",
+      "migrations/069_retroactive_tenant_schema_provision.sql"
+    ]
+  },
+  "task": {
+    "description": "TEST-DESIGNER (Step 03 of this run) discovered a suite-wide, pre-existing migration-bootstrap defect while writing the ISS-502 integration test, unrelated to ISS-502 itself but blocking ANY fresh database bootstrap (confirmed via DROP DATABASE + CREATE DATABASE + full migrate, and independently reproduced by running the already-merged zig build test-integration-tm target against the same fresh DB \u2014 it also fails 12/14 with 'relation \"public.tenant\" does not exist').\n\nRoot cause: migration 031_adp04b_tenant_realm_binding.sql seeds the default tenant (id=00000000-0000-0000-0000-000000000000) via raw INSERT, bypassing the Zig-side provisionTenantSchema() function. Migration 086_iss107_tenant_storage_mode.sql adds the storage_mode column with DEFAULT 'LEGACY_RLS' and its own comment states newly-provisioned tenants should default to SCHEMA via provisionTenantSchema() \u2014 but the seed tenant never goes through that path, so it is permanently stuck at LEGACY_RLS on a from-scratch database. Migration 069_retroactive_tenant_schema_provision.sql does retroactively provision the tenant_default SCHEMA (via bpm_provision_tenant_schema) for any tenant missing a tenant_schemas row, so by the time later migrations run, the default tenant DOES have a provisioned tenant_default schema \u2014 it just never gets storage_mode flipped to SCHEMA. GBL-084_rls_removal.sql then correctly (by its own design) refuses to proceed while any tenant is LEGACY_RLS, and aborts the whole migration run.\n\nThis is NOT a flaw in GBL-084's safety check \u2014 that check is intentionally strict per ISS-503. The gap is that nothing in the migration chain ever cuts the seed tenant over from LEGACY_RLS to SCHEMA on a fresh install.\n\nFix: add a new migration 087_default_tenant_storage_mode_cutover.sql (next free number after 086; 087 is unused) that runs after 086 (which adds the column) and before GBL-084 (which requires it) in migration order. It should flip storage_mode='SCHEMA' for the default tenant (00000000-0000-0000-0000-000000000000) ONLY if a tenant_schemas row already exists for it (i.e. only if migration 069's retroactive provisioning already ran and tenant_default schema exists) \u2014 do not create the schema yourself in this migration, just verify tenant_schemas has a row for that tenant_id before flipping. If no tenant_schemas row exists yet (shouldn't happen given migration order, but guard anyway), leave storage_mode unchanged and RAISE NOTICE rather than fail. Idempotent: safe to re-run.\n\nDo not touch GBL-084's pre-flight logic itself \u2014 it is correct and must stay strict. Do not use a migration_window_active-style bypass flag for GBL-084; that flag has a different purpose (TNT-04 live-migration windows, defaults FALSE) and repurposing it here would weaken a real safety gate.\n\nAfter adding the migration: run zig build migrate against a FRESH database (DROP DATABASE bpm_test / CREATE DATABASE bpm_test, then full migrate \u2014 do not reuse the existing db_test container's accumulated state, since that's what masked this bug) and confirm all migrations apply cleanly through GBL-084 with zero errors. Then run zig build test-integration-tm and zig build test-integration-iss502 against that freshly-migrated database and confirm they no longer fail with 'relation \"public.tenant\" does not exist' (they may still have other pre-existing failures unrelated to this fix \u2014 only confirm THIS specific blocker is resolved, do not chase unrelated failures under this handoff).\n\nREWORK 1 (ORCH, 2026-07-30T05:00:00Z):\nFix the webhook_deliveries defect you flagged as ISS-INFO-ISS502-WEBHOOK-DELIVERIES. Confirmed against src/design/tnt-01-04-schema-isolation.md: the authoritative TNT-01 business-table list is 21 tables and explicitly includes webhook_subscriptions but NOT webhook_deliveries (see the CI linter regex at line 482 of that doc, and the table list at lines 495-511). webhook_deliveries was intentionally never migrated out of public and is not a TNT-01 business table.\n\nAction: remove the \"webhook_deliveries\" entry from SPT_BUSINESS_TABLES in src/admin/tenant_migration.zig (currently line 383, 22 entries -> 21 entries, matching the design doc exactly). Do NOT add webhook_deliveries to GBL-073 or the design doc -- the design doc is authoritative and correct as-is; the code was wrong.\n\nThe test file tests/integration/iss502_spt_cutover_test.zig mirrors SPT_BUSINESS_TABLES for its fixture list (per TEST-DESIGNER handoff step-03) -- update its fixture list to match (remove webhook_deliveries fixture creation/cleanup there too) so the test fixture set stays in sync with the real constant it is testing against.\n\nRe-run zig build test-integration-iss502 against a freshly migrated database (reuse your existing fresh bpm_test setup if still available, otherwise fresh DROP+CREATE) and confirm all 4 test cases (TC-ISS502-01..04) now PASS -- not just \"blocker string absent\", an actual 4/4 pass. This is the final gate before this requirement can be marked TESTED.\n",
+    "acceptance_criteria": [
+      "New migration file added between 086 and GBL-084 in application order that flips the seed tenant's storage_mode to SCHEMA once tenant_schemas confirms its schema is provisioned",
+      "zig build migrate exits 0 against a freshly created (DROP+CREATE) database, reaching GBL-084 without the ISS-503 pre-flight exception",
+      "Migration is idempotent and guarded (no unconditional flip if tenant_schemas row is missing)",
+      "GBL-084's pre-flight check logic is unmodified",
+      "zig build (full project) exits 0"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 complete. Removed \"webhook_deliveries\" from SPT_BUSINESS_TABLES in src/admin/tenant_migration.zig (22 -> 21 entries), matching the authoritative TNT-01 design doc (src/design/tnt-01-04-schema-isolation.md) exactly. Updated the mirrored fixture list in tests/integration/iss502_spt_cutover_test.zig to match (removed webhook_deliveries fixture creation; comment updated 22->21, with a note explaining the exclusion). While re-running the corrected test suite, discovered and fixed a second, genuine ISS-502 bug in executeSptCutover() (Unblock-Everything): the Step 3b schema_migrations copy is documented as best-effort/non-fatal (tenant schemas without the full per-tenant migration set applied have no schema_migrations table), but the code had no SAVEPOINT around it, so a failed copy left the whole transaction aborted (Postgres 'current transaction is aborted') and cascaded into SptCutoverError.PersistenceFailed on every subsequent Step 4 row-count query -- which is exactly why 3/4 tests were failing. Wrapped that step in SAVEPOINT spt_copy_schema_migrations / ROLLBACK TO SAVEPOINT / RELEASE SAVEPOINT so a missing schema_migrations table is truly non-fatal as the pre-existing comment already promised, without weakening any other error path. zig build: clean, exit 0, zero 'error set' warnings. zig build test-integration-iss502: ran the compiled test binary directly (zig build's own progress-tree renderer printed a misleading 'failed command' line with exit code 0 on this Zig 0.16.0 dev build under Git Bash/PowerShell -- verified by running the produced test.exe directly, twice, with different --seed values, on a fully fresh .zig-cache): All 4 tests passed (TC-ISS502-01, TC-ISS502-02, TC-ISS502-03, TC-ISS502-04 all OK). Also ran zig build test-integration-tm as a regression check on the related fresh-DB-bootstrap fix from the prior handoff step: 14/14 passed, no regression. Committed and pushed to feature/WF02-iss502-continuation-20260730 (commit c6b5e19).",
+    "artifacts_out": [
+      "src/admin/tenant_migration.zig",
+      "tests/integration/iss502_spt_cutover_test.zig"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b) then TEST-RUNNER (Step 4) for ISS-502"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-07-30T04:31:36Z",
+  "completed_at": "2026-07-30T05:22:22Z"
+}

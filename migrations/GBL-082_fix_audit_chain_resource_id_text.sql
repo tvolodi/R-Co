@@ -93,6 +93,8 @@ $$;
 
 -- 3. Update bpm_audit_resource_info to handle dead_letter_items (renamed from dead_letter_queue)
 --    Must DROP first because return type is changing (was already changed by GBL-081)
+DROP FUNCTION IF EXISTS bpm_audit_resource_info(TEXT, JSONB, JSONB);
+
 CREATE OR REPLACE FUNCTION bpm_audit_resource_info(
     table_name TEXT,
     old_row JSONB,

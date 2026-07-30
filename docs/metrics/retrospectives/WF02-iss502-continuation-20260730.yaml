@@ -1,0 +1,145 @@
+run_id: WF02-iss502-continuation-20260730
+run_date: '2026-07-30'
+completed_date: '2026-07-30'
+requirement_ids:
+  - ISS-502
+workflow_type: WF-02 continuation (resumed stalled prior run WF02-iss501-504-epic5-20260612)
+
+summary: >
+  This run resumed WF02-iss501-504-epic5-20260612, a prior WF-02 batch that
+  implemented ISS-501..504 but left ISS-502's test-designer/test-runner steps
+  at result=null (executeSptCutover() existed and was documented, but no
+  integration test had ever been written or run). This run's only assigned
+  scope was: write the missing tests/integration/iss502_spt_cutover_test.zig,
+  validate it, and get a real TEST-RUNNER pass.
+
+  Scope grew substantially beyond that during execution because of the
+  Unblock-Everything directive. TEST-DESIGNER (step 03) discovered that ANY
+  fresh-database bootstrap was broken (GBL-084's ISS-503 pre-flight check
+  unconditionally failing because the seeded default tenant never gets
+  promoted from LEGACY_RLS to SCHEMA on a from-scratch install) -- a
+  pre-existing, unrelated infrastructure defect blocking the whole
+  integration suite, not just ISS-502. BACKEND-DEV (step 00b) fixed that with
+  a new migration (087_default_tenant_storage_mode_cutover.sql), then went
+  through one rework round to fix a second pre-existing bug it surfaced along
+  the way (SPT_BUSINESS_TABLES incorrectly including webhook_deliveries, plus
+  a related missing-SAVEPOINT bug in executeSptCutover()'s best-effort
+  schema_migrations copy step that was silently aborting the whole
+  transaction on 3 of 4 test cases).
+
+estimation_note: >
+  handoffs/WF02-iss502-continuation-20260730/estimation.json does not exist
+  in this run's own directory -- there is no fresh D-level/surcharge estimate
+  scoped to "finish ISS-502's missing tests" specifically. The only
+  estimation.json in this lineage is
+  handoffs/WF02-iss501-504-epic5-20260612/estimation.json, which sized the
+  ENTIRE four-requirement EPIC-5 batch (ISS-501..504, difficulty=5,
+  integration_surface=high, estimated total 458 minutes across all 8
+  pipeline steps) -- not this narrower continuation. Forcing a variance_pct
+  calculation against that number would compare apples to oranges: this run
+  did not repeat code-designer, code-design-validator, backend-dev's original
+  implementation, release-validator, or three of the four requirements. Per
+  the handoff instructions, this retrospective reports actual elapsed time
+  per step directly instead of a misleading variance percentage.
+
+actual_step_durations:
+  - step: test-designer (step-03)
+    started_at: '2026-07-30T04:31:36Z'
+    completed_at: '2026-07-30T04:44:53Z'
+    actual_minutes: 13.3
+    rework_count: 0
+    notes: >
+      Wrote the missing integration test (4 cases) plus fixed two latent
+      compile/bootstrap blockers found along the way (a Zig 0.16
+      error-set-discarded compile error in executeSptCutover(), and a missing
+      DROP FUNCTION in GBL-082). Returned PARTIAL, not PASS/FAIL: test
+      artefact complete and compiling, but full pass/fail execution was
+      blocked by the fresh-DB-bootstrap defect (GBL-084 pre-flight), which it
+      correctly declined to fix itself and routed to BACKEND-DEV instead.
+
+  - step: backend-dev (step-00b, ADHOC unblock)
+    started_at: '2026-07-30T04:31:36Z'
+    completed_at: '2026-07-30T05:22:22Z'
+    actual_minutes: 50.8
+    rework_count: 1
+    notes: >
+      Round 1: added migrations/087_default_tenant_storage_mode_cutover.sql
+      to fix the fresh-bootstrap gap. Round 2 (REWORK 1, dispatched by ORCH
+      after review flagged the webhook_deliveries table-list defect): removed
+      webhook_deliveries from SPT_BUSINESS_TABLES (22->21 entries, matching
+      the TNT-01 design doc), updated the test's mirrored fixture list to
+      match, and fixed a real ISS-502 bug uncovered while re-testing (missing
+      SAVEPOINT around the best-effort schema_migrations copy step, which was
+      aborting the whole cutover transaction and causing 3/4 test failures).
+      This step's wall-clock duration overlaps with test-designer's (both
+      started at the same dispatch timestamp; backend-dev's fix depended on
+      test-designer's findings, so real sequential work is understated by
+      simple started_at/completed_at subtraction here).
+
+  - step: test-design-validator (step-03b)
+    started_at: '2026-07-30T05:15:00Z'
+    completed_at: '2026-07-30T05:26:50Z'
+    actual_minutes: 11.8
+    rework_count: 0
+    notes: >
+      Re-validated the test file after both backend-dev rework rounds patched
+      it. All 5 hard-gate checks PASS. Independently corroborated a 4/4 pass
+      by running the compiled test binary directly, and flagged the
+      BPM_TEST_DB_URL port-drift (5433 declared vs 5434 actual) as MINOR for
+      TEST-RUNNER to reconcile.
+
+  - step: test-runner (step-04)
+    started_at: '2026-07-30T05:30:00Z'
+    completed_at: '2026-07-30T05:36:44Z'
+    actual_minutes: 6.7
+    rework_count: 0
+    notes: >
+      Official pass. Resolved the port drift for the session, ran full unit
+      suite (574/658 pass, 0 fail, 84 pre-existing skips), verified 4/4
+      ISS-502 integration tests three independent ways (build summary line,
+      isolated exit-code capture, direct binary stdout), and confirmed no
+      regression via test-integration-tm (14/14).
+
+wall_clock_span:
+  from: '2026-07-30T04:31:36Z'
+  to: '2026-07-30T05:36:44Z'
+  total_minutes: 65.1
+  note: >
+    Wall-clock span from step-03/step-00b dispatch to step-04 completion.
+    Lower than the sum of individual step minutes (82.6) because
+    test-designer and backend-dev's first round ran over the same dispatch
+    window before the rework was identified.
+
+rework_steps:
+  - step: backend-dev (step-00b)
+    rework_count: 1
+    reason: >
+      Round 1 fixed the fresh-bootstrap blocker but missed a second,
+      independently-discovered defect (webhook_deliveries in
+      SPT_BUSINESS_TABLES) that ORCH routed back as REWORK 1 before allowing
+      the pipeline to proceed to TEST-DESIGN-VALIDATOR.
+
+rule_adjustments: []
+
+prevention_notes:
+  - >
+    Continuation runs that resume a stalled prior WF-02 batch should get
+    their own scoped estimation.json at dispatch time (even a rough one),
+    rather than relying on the original batch estimate -- the two are not
+    comparable once the scope has narrowed to "finish what's missing."
+  - >
+    Fresh-database bootstrap (DROP DATABASE + CREATE DATABASE + full migrate)
+    is not exercised by the normal TEST-RUNNER pre-check, which reuses a
+    long-lived db_test container. This let the GBL-084 pre-flight gap go
+    undetected since GBL-084 was merged. Consider adding a periodic
+    fresh-bootstrap CI check so this class of defect surfaces before it
+    blocks a requirement's test step.
+  - >
+    docker-compose.yml declares db_test on host port 5433, but the actually
+    running container in this environment was mapped to 5434 -- flagged as
+    MINOR by both test-design-validator and test-runner in this run.
+    feature/registry-consolidation (commit 8eb85ba) has an unrelated,
+    not-yet-merged fix for this; out of scope here per explicit handoff
+    instruction not to cherry-pick it.
+
+next_action: ISS-502 / GitHub issue #202 complete.

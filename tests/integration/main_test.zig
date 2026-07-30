@@ -158,6 +158,8 @@ const iss202_merge_atomicity_integration = @import("iss202_merge_atomicity_test.
 const sch303_timer_dlq_integration = @import("sch303_timer_dlq_test.zig");
 // EPIC-4 (EXP-401, EXP-402) — compensation metadata validation and restore reconciliation
 const exp401_exp402_comp_restore_integration = @import("exp401_exp402_comp_restore_test.zig");
+// ISS-502 — SPT cutover transaction (copy + verify + atomic storage_mode flip)
+const iss502_spt_cutover_integration = @import("iss502_spt_cutover_test.zig");
 
 comptime {
     _ = std;
@@ -232,6 +234,7 @@ comptime {
     _ = iss202_merge_atomicity_integration;
     _ = sch303_timer_dlq_integration;
     _ = exp401_exp402_comp_restore_integration;
+    _ = iss502_spt_cutover_integration;
 }
 
 test "integration placeholder" {

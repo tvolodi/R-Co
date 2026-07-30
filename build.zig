@@ -1056,6 +1056,19 @@ pub fn build(b: *std.Build) void {
     run_iss105_integration_tests.setCwd(b.path("."));
     run_iss105_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-502: SPT cutover transaction integration tests.
+    const iss502_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss502_spt_cutover_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss502_integration_tests = b.addRunArtifact(iss502_integration_tests);
+    run_iss502_integration_tests.setCwd(b.path("."));
+    run_iss502_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     const iss202_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/iss202_merge_atomicity_test.zig"),
@@ -1172,6 +1185,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_iss103_integration_tests.step);
     test_integration_step.dependOn(&run_iss106_integration_tests.step);
     test_integration_step.dependOn(&run_iss107_integration_tests.step);
+    test_integration_step.dependOn(&run_iss502_integration_tests.step);
     test_integration_step.dependOn(&run_iss202_integration_tests.step);
     test_integration_step.dependOn(&run_iss203_integration_tests.step);
     test_integration_step.dependOn(&run_iss207_integration_tests.step);
@@ -1207,6 +1221,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_tm_step = b.step("test-integration-tm", "Run TM integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_tm_step.dependOn(&clean_test_db.step);
     test_integration_tm_step.dependOn(&run_tm_integration_tests.step);
+
+    const test_integration_iss502_step = b.step("test-integration-iss502", "Run ISS-502 SPT cutover integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_iss502_step.dependOn(&clean_test_db.step);
+    test_integration_iss502_step.dependOn(&run_iss502_integration_tests.step);
 
     const test_integration_exp_step = b.step("test-integration-exp", "Run Entity Subsystem integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_exp_step.dependOn(&clean_test_db.step);
@@ -1348,13 +1366,40 @@ pub fn build(b: *std.Build) void {
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner
     // ---------------------------------------------------------------------------
+    // provisioning_mod_migrate: src/db/provisioning.zig wired to pool_root_mod so
+    // that migrate.zig (ISS-502 fresh-bootstrap fix) can call provisionTenantSchema
+    // for the default tenant after the public-schema pass, mirroring runApiServer()
+    // in main.zig. Named-module import (not a relative "../db/provisioning.zig")
+    // because migrate.zig's module root does not include src/db/ in its reachable
+    // file tree — same reasoning as provisioning_mod_api08 above.
+    const provisioning_mod_migrate = b.createModule(.{
+        .root_source_file = b.path("src/db/provisioning.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "pool", .module = pool_root_mod },
+        },
+    });
+    const migrate_imports: []const std.Build.Module.Import = &.{
+        .{ .name = "pg", .module = pg_mod },
+        .{ .name = "http", .module = http_mod },
+        .{ .name = "expr", .module = expr_mod },
+        .{ .name = "pool", .module = pool_root_mod },
+        .{ .name = "transition", .module = transition_mod },
+        .{ .name = "build_options", .module = build_options_mod },
+        .{ .name = "identity_provider", .module = identity_provider_mod },
+        .{ .name = "tenant_context", .module = tenant_context_mod },
+        .{ .name = "pipeline_context", .module = pipeline_context_mod },
+        .{ .name = "obs_metrics", .module = obs_metrics_mod },
+        .{ .name = "db_provisioning", .module = provisioning_mod_migrate },
+    };
     const migrate_exe = b.addExecutable(.{
         .name = "migrate",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/tools/migrate.zig"),
             .target = target,
             .optimize = optimize,
-            .imports = vendor_imports,
+            .imports = migrate_imports,
         }),
     });
     const run_migrate = b.addRunArtifact(migrate_exe);

@@ -380,7 +380,6 @@ const SPT_BUSINESS_TABLES = [_][]const u8{
     "user_roles",
     "api_tokens",
     "webhook_subscriptions",
-    "webhook_deliveries",
     "dead_letter_items",
     "instance_sequence",
     "event_type_registry",
@@ -474,21 +473,30 @@ pub fn executeSptCutover(
     var tables_copied: usize = 0;
 
     for (SPT_BUSINESS_TABLES) |table_name| {
-        // Build: INSERT INTO tenant_{slug}.{table} SELECT * FROM {table} WHERE tenant_id = $1
+        // Build: INSERT INTO tenant_{slug}.{table} SELECT * FROM public.{table} WHERE tenant_id = $1
+        // Source table is explicitly schema-qualified to public (per
+        // src/design/iss502_spt_cutover.md Step 3) rather than relying on the
+        // connection's search_path. An unqualified source name would silently
+        // resolve against tenant_default instead of public whenever the
+        // caller's connection has search_path = tenant_default,public (e.g.
+        // TestHarness-based integration tests, and any pooled connection
+        // routed via applyRequestTenantContext) — reading the wrong table
+        // entirely once tenant_default carries real, differently-shaped
+        // business tables (ISS-502 fresh-bootstrap fix, src/tools/migrate.zig).
         var copy_sql_buf: [512]u8 = undefined;
         const copy_sql = std.fmt.bufPrint(
             &copy_sql_buf,
-            "INSERT INTO {s}.{s} SELECT * FROM {s} WHERE tenant_id = $1::uuid",
+            "INSERT INTO {s}.{s} SELECT * FROM public.{s} WHERE tenant_id = $1::uuid",
             .{ tenant_schema, table_name, table_name },
         ) catch {
             conn.rollback() catch {};
             return SptCutoverError.CopyFailed;
         };
 
-        conn.exec(copy_sql, &.{tenant_id_str}) catch |err| {
+        conn.exec(copy_sql, &.{tenant_id_str}) catch {
             // If the table doesn't exist in the tenant schema yet (migration gap),
-            // that's a setup error, not a copy error.  Rollback.
-            _ = err;
+            // or the copy hits a constraint violation (e.g. PK conflict from a
+            // prior failed cutover), that's a setup/copy error.  Rollback.
             conn.rollback() catch {};
             return SptCutoverError.CopyFailed;
         };
@@ -522,12 +530,29 @@ pub fn executeSptCutover(
     }
 
     // Step 3b: Copy schema_migrations entries for this tenant.
+    // Source explicitly qualified to public.schema_migrations — see the Step 3
+    // copy loop above for why relying on search_path is unsafe here.
+    //
+    // This step is genuinely optional/non-fatal: a tenant schema created
+    // without the full per-tenant migration set applied (e.g. a minimal
+    // fixture, or a schema provisioned but not yet migrated) may not have a
+    // schema_migrations table at all. Wrapping it in its own SAVEPOINT is
+    // required — without one, a failed statement leaves the *whole*
+    // transaction aborted ("current transaction is aborted, commands ignored
+    // until end of transaction block"), silently turning every subsequent
+    // Step 4 query into a cascading PersistenceFailed even though this copy
+    // was only ever meant to be best-effort.
     {
+        conn.exec("SAVEPOINT spt_copy_schema_migrations", &.{}) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.PersistenceFailed;
+        };
+
         var copy_mig_sql_buf: [512]u8 = undefined;
         const copy_mig_sql = std.fmt.bufPrint(
             &copy_mig_sql_buf,
             "INSERT INTO {s}.schema_migrations (version, applied_at) " ++
-                "SELECT version, applied_at FROM schema_migrations " ++
+                "SELECT version, applied_at FROM public.schema_migrations " ++
                 "WHERE schema_name = $1",
             .{tenant_schema},
         ) catch {
@@ -537,16 +562,29 @@ pub fn executeSptCutover(
 
         conn.exec(copy_mig_sql, &.{tenant_schema}) catch {
             // schema_migrations might not exist in tenant schema if no per-tenant
-            // migrations have been applied.  This is non-fatal; continue.
+            // migrations have been applied.  This is non-fatal; roll back to the
+            // savepoint so the outer transaction stays usable and continue.
+            conn.exec("ROLLBACK TO SAVEPOINT spt_copy_schema_migrations", &.{}) catch {
+                conn.rollback() catch {};
+                return SptCutoverError.PersistenceFailed;
+            };
+        };
+
+        conn.exec("RELEASE SAVEPOINT spt_copy_schema_migrations", &.{}) catch {
+            conn.rollback() catch {};
+            return SptCutoverError.PersistenceFailed;
         };
     }
 
     // Step 4: Verify row count parity for each table.
     for (SPT_BUSINESS_TABLES) |table_name| {
+        // Explicitly qualified to public — see the Step 3 copy loop above for
+        // why relying on search_path here is unsafe once tenant_default has
+        // real business tables.
         var pub_count_sql_buf: [256]u8 = undefined;
         const pub_count_sql = std.fmt.bufPrint(
             &pub_count_sql_buf,
-            "SELECT count(*) FROM {s} WHERE tenant_id = $1::uuid",
+            "SELECT count(*) FROM public.{s} WHERE tenant_id = $1::uuid",
             .{table_name},
         ) catch {
             conn.rollback() catch {};
