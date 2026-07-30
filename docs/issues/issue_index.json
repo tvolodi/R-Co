@@ -961,6 +961,20 @@
       ],
       "created_at": "2026-06-06T17:22:25Z",
       "resolved_at": "2026-06-06T17:22:25Z"
+    },
+    {
+      "id": "ISS-0075",
+      "title": ".env.example omits Keycloak, BPM_UAT_TOKEN and BPM_API_URL",
+      "status": "RESOLVED",
+      "severity": "MINOR",
+      "run_id": "WF03-iss0075-env-example-20260730",
+      "handoff_id": null,
+      "affected_areas": [
+        ".env.example",
+        "README.md"
+      ],
+      "created_at": "2026-07-30T00:00:00Z",
+      "resolved_at": "2026-07-30T00:00:00Z"
     }
   ]
 }

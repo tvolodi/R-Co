@@ -2,6 +2,17 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0075 / .env.example documents Keycloak, BPM_UAT_TOKEN and BPM_API_URL] — 2026-07-30
+
+### Fixed
+- **ISS-0075 / ISS-BRW-02 (MINOR)**: `.env.example` only ever documented database/server/bootstrap variables, so a fresh clone could not derive the full environment needed to run the platform or the UAT agents from `.env.example` alone. `README.md` requires Keycloak on `:8081` and documents seeded test-account credentials, and `CLAUDE.md`'s `UAT-RUNNER` agent section invokes `BPM_UAT_TOKEN`/`BPM_API_URL` directly in `curl` commands, but none of `BPM_IDP_PROVIDER_TYPE`, `BPM_IDP_BASE_URL`, `BPM_IDP_ADMIN_CREDENTIALS_REF`, `BPM_KEYCLOAK_SECRET`, `BPM_IDP_DEFAULT_REALM_OR_TENANT`, `BPM_API_URL`, or `BPM_UAT_TOKEN` appeared in `.env.example`. Added an `IDENTITY PROVIDER / KEYCLOAK` section documenting the variables `src/config/identity_provider.zig`'s `loadIdentityProviderConfig()` requires at server startup (all fail-fast with a typed `ConfigLoadError` if unset), plus commented-out optional overrides with their code-level defaults. Added a `FRONTEND E2E / UAT` section documenting `BPM_API_URL`/`BPM_UAT_TOKEN` (consumed by UAT-RUNNER's evidence-collection `curl` calls, per `docs/agents/functions/fn-run-uat-scenarios.md`) and `BPM_E2E_ADMIN_USERNAME`/`BPM_E2E_ADMIN_PASSWORD` (consumed by `web/tests/e2e/*.e2e.spec.ts`). Every added entry documents its consuming file and its behaviour when unset. GitHub issue [#290](https://github.com/tvolodi/R-Co/issues/290) closed.
+
+### Changed
+- `README.md`'s "Environment variables (backend)" table now lists the identity-provider and UAT variables and points to `.env.example` as the authoritative full list, instead of only listing `BPM_DB_URL`/`BPM_PORT`.
+
+### Notes
+- Scoped to variables needed for the documented fresh-clone setup path (server startup, UAT-RUNNER agent, Playwright E2E login) per the issue's own citation of `README.md` and `CLAUDE.md`. Did not add internal test-only variables (e.g. per-role `BPM_TEST_TOKEN_*` used only inside `zig build test-integration`) — those aren't part of the fresh-clone path and adding them would reintroduce the same drift risk this fix addresses.
+
 ## [ISS-0088 / stale table names in test cleanup tooling fixed] — 2026-07-30
 
 ### Fixed
