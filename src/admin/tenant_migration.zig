@@ -485,10 +485,10 @@ pub fn executeSptCutover(
             return SptCutoverError.CopyFailed;
         };
 
-        conn.exec(copy_sql, &.{tenant_id_str}) catch |err| {
+        conn.exec(copy_sql, &.{tenant_id_str}) catch {
             // If the table doesn't exist in the tenant schema yet (migration gap),
-            // that's a setup error, not a copy error.  Rollback.
-            _ = err;
+            // or the copy hits a constraint violation (e.g. PK conflict from a
+            // prior failed cutover), that's a setup/copy error.  Rollback.
             conn.rollback() catch {};
             return SptCutoverError.CopyFailed;
         };
