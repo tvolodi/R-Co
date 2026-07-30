@@ -17,7 +17,7 @@ All notable changes to the BPM Platform are documented here.
 - Test evidence: `tests/reports/report-20260730-WF03-iss0074-20260730-step05-verify.yaml`.
 
 ### Notes
-- While verifying this fix, discovered that `migrations/GBL-100_exp501_secrets.sql` never actually creates the `secrets` table in the current dev/test databases — its creation guard checks `to_regclass('instance_projections')`, which only resolves under the `tenant_default` schema, not `public`, at migration-apply time. Confirmed via direct query that no `secrets` table exists in any schema in either database, meaning (a) there is no pre-existing plaintext-era data to migrate as a result of this fix, and (b) the EXP-501 module is currently non-functional end-to-end pending a separate fix. Tracked as a MAJOR follow-up, out of scope for ISS-0074.
+- While verifying this fix, discovered that `migrations/GBL-100_exp501_secrets.sql` never actually creates the `secrets` table in the current dev/test databases — its creation guard checks `to_regclass('instance_projections')`, which only resolves under the `tenant_default` schema, not `public`, at migration-apply time. Confirmed via direct query that no `secrets` table exists in any schema in either database, meaning (a) there is no pre-existing plaintext-era data to migrate as a result of this fix, and (b) the EXP-501 module is currently non-functional end-to-end pending a separate fix. Filed as GitHub issue [#335](https://github.com/tvolodi/R-Co/issues/335) (ISS-0076, MAJOR), out of scope for ISS-0074.
 
 ## [EPIC-5 / ISS-503 test coverage completed] — 2026-07-30
 

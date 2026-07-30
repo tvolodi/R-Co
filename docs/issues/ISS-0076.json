@@ -1,5 +1,5 @@
 {
-  "issue_id": "ISS-0075",
+  "issue_id": "ISS-0076",
   "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table in this environment",
   "status": "OPEN",
   "severity": "MAJOR",
@@ -7,6 +7,7 @@
   "run_id": "WF03-iss0074-20260730",
   "workflow_id": "WF-03",
   "handoff_id": "gh-289-WF03-iss0074-20260730-followup",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/335",
   "requirement_ids": ["EXP-501"],
   "summary": "Discovered during RELEASE-VALIDATOR Step 6 of the ISS-0074 fix run. migrations/GBL-100_exp501_secrets.sql wraps its CREATE TABLE secrets in a DO block guarded by `IF to_regclass('instance_projections') IS NULL THEN RETURN`. Direct psql inspection of both r-co-db-1 (bpm_dev) and r-co-db_test-1 (bpm_test) shows no `secrets` table exists in any schema (public or tenant_default), even though `instance_projections` and `webhook_subscriptions` both exist under the `tenant_default` schema. zig build migrate reports the migration file as already applied (skip). The guard's to_regclass() call appears to resolve against a search_path that does not include tenant_default at migration-apply time, so the guard condition is met (returns NULL, treated as instance_projections missing) and the migration body silently no-ops without ever creating the table it is meant to create.",
   "root_cause": {

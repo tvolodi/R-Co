@@ -29,11 +29,11 @@
   },
   "result": {
     "status": "PASS",
-    "summary": "CHANGELOG.md updated with a new top entry documenting the ISS-0074 fix, new tests, regression evidence, and the out-of-scope ISS-0075 finding. docs/issues/ISS-0074.json set to status=RESOLVED with resolution and 3 prevention notes filled in. docs/issues/issue_index.json updated (ISS-0074 RESOLVED, new ISS-0075 registered as OPEN/MAJOR for the migration-guard defect found during release validation). docs/anti-patterns.md updated with a new Database/Migrations row documenting the to_regclass search_path guard pitfall that caused ISS-0075.",
+    "summary": "CHANGELOG.md updated with a new top entry documenting the ISS-0074 fix, new tests, regression evidence, and the out-of-scope ISS-0076 (GitHub #335) finding. docs/issues/ISS-0074.json set to status=RESOLVED with resolution and 3 prevention notes filled in. docs/issues/issue_index.json updated (ISS-0074 RESOLVED, new ISS-0076 (GitHub #335) registered as OPEN/MAJOR for the migration-guard defect found during release validation). docs/anti-patterns.md updated with a new Database/Migrations row documenting the to_regclass search_path guard pitfall that caused ISS-0076 (GitHub #335).",
     "artifacts_out": [
       "CHANGELOG.md",
       "docs/issues/ISS-0074.json",
-      "docs/issues/ISS-0075.json",
+      "docs/issues/ISS-0076.json",
       "docs/issues/issue_index.json",
       "docs/anti-patterns.md"
     ],
