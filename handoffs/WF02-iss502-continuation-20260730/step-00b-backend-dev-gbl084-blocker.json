@@ -30,9 +30,36 @@
     ],
     "functions_to_call": ["fn:check-zig-build"]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Added migrations/087_default_tenant_storage_mode_cutover.sql (applies after 086, before any GBL- file, per confirmed lexicographic filename ordering in src/db/migrations.zig) which flips the default tenant's storage_mode to SCHEMA only when a public.tenant_schemas row already exists for it, guarded and idempotent, leaving GBL-084's own pre-flight logic untouched. While validating against a truly fresh (DROP DATABASE + CREATE DATABASE) bpm_test, discovered that 087 alone was insufficient: a second, deeper pre-existing gap in the same bootstrap path meant GBL-077 (TNT-07 RLS cleanup)'s own pre-flight gate — one migration before GBL-084 in this run's actual chain — also failed on a from-scratch DB, because `zig build migrate` never provisions the default tenant's schema-per-tenant schema (tenant_default) the way the API server does on first boot (runApiServer() -> provisionTenantSchema() in src/main.zig). Fixed under Unblock-Everything by having src/tools/migrate.zig call that same provisionTenantSchema() right before the first GBL- migration runs (build.zig wires src/db/provisioning.zig into the migrate executable as a new named module, provisioning_mod_migrate, mirroring the existing provisioning_mod_api08 precedent). This surfaced two more latent, previously-unexercised defects (tenant_default had always been empty until now): tests/integration/helpers.zig's independent per-schema test migration bootstrapper had no awareness of the real migrator's state and would re-issue non-idempotent DDL against an already-migrated tenant_default (fixed: skips when public.tenant_schemas.migrations_applied_at is already set for that schema); and src/admin/tenant_migration.zig's executeSptCutover() read its public-schema source tables unqualified relying on search_path, contrary to its own design doc src/design/iss502_spt_cutover.md (fixed: explicitly qualified to public.<table> in the copy, schema_migrations-copy, and row-count-verification steps).",
+    "artifacts_out": [
+      "migrations/087_default_tenant_storage_mode_cutover.sql",
+      "src/tools/migrate.zig",
+      "build.zig",
+      "tests/integration/helpers.zig",
+      "src/admin/tenant_migration.zig"
+    ],
+    "issues": [
+      {
+        "id": "ISS-INFO-ISS502-WEBHOOK-DELIVERIES",
+        "severity": "MINOR",
+        "description": "zig build test-integration-iss502 is 1/4 pass, 3/4 fail on a fully fresh, fully migrated database — but none of the 3 failures are the original 'relation \"public.tenant\" does not exist' blocker this handoff targets (confirmed absent via grep on the full test output). Root cause is a pre-existing, unrelated test/implementation inconsistency that had never been exercised to a pass/fail verdict before (TEST-DESIGNER's own handoff only confirmed compile-cleanliness, never ran the suite): src/admin/tenant_migration.zig's SPT_BUSINESS_TABLES constant (used by both executeSptCutover() and the test's mirrored fixture list) includes 'webhook_deliveries' (22 entries), but src/design/tnt-01-04-schema-isolation.md's authoritative TNT-01 business-table list is exactly 21 tables and does NOT include webhook_deliveries — so migrations/GBL-073_tnt01_drop_legacy_public_business_tables.sql correctly never drops it from public, and it survives as the real, richer-shaped production table there. The test's `CREATE TABLE IF NOT EXISTS public.webhook_deliveries` fixture is therefore a silent no-op against the real 21-column table (no tenant_id column), breaking the INSERT ... SELECT * copy step for TC-ISS502-01/02/04. Recommend routing to ISSUE-FIXER/CODE-DESIGNER to decide: either remove webhook_deliveries from SPT_BUSINESS_TABLES (align with the 21-table TNT-01 design), or add it to GBL-073's drop list and TNT-01's design doc (extend the design to 22 tables) — this is an architecture call outside BACKEND-DEV's remit for this handoff. Did not modify GBL-073, tenant_migration.zig's SPT_BUSINESS_TABLES, or the design doc.",
+        "affected_requirement": "ISS-502"
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF02-iss502-continuation-20260730",
+      "commit_sha_list": ["962410b"],
+      "remote_branch": "origin/feature/WF02-iss502-continuation-20260730",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-RUNNER for ISS-502 (Step 04)"
+  },
   "rework_count": 0,
   "max_rework": 3,
   "started_at": null,
-  "completed_at": null
+  "completed_at": "2026-07-30T05:07:41Z"
 }
