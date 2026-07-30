@@ -81,6 +81,7 @@ fn adminActor(tenant_hex: []const u8) AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "test-token",
+        .principal = "test-token",
     };
     @memcpy(&ctx.tenant_id, tenant_hex[0..36]);
     return ctx;
@@ -93,6 +94,7 @@ fn tenantActor(tenant_hex: []const u8) AuthContext {
         .role = .PROCESS_DESIGNER,
         .is_bootstrap = false,
         .token_id = "test-token-user",
+        .principal = "test-token-user",
     };
     @memcpy(&ctx.tenant_id, tenant_hex[0..36]);
     return ctx;

@@ -547,16 +547,18 @@ test "TC-SCH-02-02: scheduler skips locked timers and does not fire CANCELLED ti
 
     const timer_id_hex = try timerIdForInstance(allocator, &pool, inst_id_hex);
     defer allocator.free(timer_id_hex);
-    const timer_uuid = try parseUuid(timer_id_hex);
-    const lock_key = bpm.scheduler_poller.advisoryLockKey(timer_uuid);
-    const lock_key_text = try std.fmt.allocPrint(allocator, "{}", .{lock_key});
-    defer allocator.free(lock_key_text);
 
+    // ISS-301: per-timer advisory locking was removed in favour of a plain
+    // row-level `SELECT ... FOR UPDATE SKIP LOCKED` (see scheduler.zig
+    // pollDueTimers). To reproduce "timer is locked by another worker" here,
+    // hold a real row lock on the timer's own row in an open transaction —
+    // the poller's SKIP LOCKED clause will then skip it, same as it would
+    // skip a row locked by a concurrent poll.
     const lock_conn = try pool.acquire();
     defer pool.release(lock_conn);
     try lock_conn.begin();
     defer lock_conn.rollback() catch {};
-    try lock_conn.exec("SELECT pg_advisory_xact_lock($1::bigint)", &.{lock_key_text});
+    try lock_conn.exec("SELECT id FROM timers WHERE id = $1::uuid FOR UPDATE", &.{timer_id_hex});
 
     var scheduler = Scheduler.init(&pool, .{});
     const skipped_summary = try scheduler.pollDueTimers(allocator);

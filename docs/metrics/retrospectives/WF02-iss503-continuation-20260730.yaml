@@ -1,0 +1,228 @@
+run_id: WF02-iss503-continuation-20260730
+run_date: '2026-07-30'
+completed_date: '2026-07-30'
+requirement_ids:
+  - ISS-503
+workflow_type: WF-02 continuation (resumed stalled prior run WF02-iss501-504-epic5-20260612)
+
+summary: >
+  This run resumed WF02-iss501-504-epic5-20260612, a prior WF-02 batch that
+  implemented ISS-503 (migrations/GBL-084_rls_removal.sql + src/db/pool.zig,
+  commit 5a86a34, already merged to main via PR #95/#99, commit 01cf924) but
+  left ISS-503's test-designer/test-runner/release-validator/doc-updater
+  steps at result=null. tests/specs/ISS-503.md already existed (4 test cases)
+  but tests/integration/test_iss503_rls_removal.zig had never been written.
+  This run's assigned scope was: write the missing test file, validate it,
+  and get a real TEST-RUNNER + RELEASE-VALIDATOR pass -- the same pattern as
+  the immediately preceding WF02-iss502-continuation-20260730 run.
+
+  Scope grew during execution under Unblock-Everything: TEST-DESIGNER first
+  hit Docker Desktop being stopped (ADHOC-iss503-infra-20260730 dispatched to
+  start services), and once services were up, discovered the whole
+  test-integration umbrella suite failed to compile with 52 (later 55)
+  unrelated pre-existing Zig-0.16 API-drift errors across
+  src/entities/validator.zig, src/engine/reconstruction.zig, and a dozen
+  integration test files -- fixed by the same ADHOC BACKEND-DEV handoff,
+  which also found and fixed a genuine (non-Zig-version) hang in
+  concurrent_instances_test.zig (worker thread never called
+  TestHarness.init() / set tenant context). TEST-DESIGNER then went through
+  two rework rounds of its own: REWORK 1 fixed two bugs in the new test file
+  itself (an unscoped pg_proc schema filter in countEffectiveTenantIdFunction(),
+  and a stale process_definitions column list in TC-ISS503-04). REWORK 2, an
+  hour later, fixed a 1-in-8 flake in TC-ISS503-02/03 caused by the classic
+  shared-mutable-tenant-fixture anti-pattern (docs/anti-patterns.md), by
+  rewriting both cases to run inside a single unconditionally-rolled-back
+  transaction. TEST-DESIGN-VALIDATOR ran twice (once before, once after the
+  flake fix) to independently confirm each state.
+
+estimation_note: >
+  handoffs/WF02-iss503-continuation-20260730/estimation.json exists but is
+  explicitly marked rules_version "n/a -- narrow continuation" and its own
+  estimation_note cross-references WF02-iss502-continuation-20260730 as the
+  same situation: no scoped D-level/surcharge estimate exists in
+  docs/metrics/estimation_rules.json for "finish one requirement's missing
+  test coverage after a stalled batch." The estimate used here (difficulty=2,
+  integration_surface=low, 60 minutes total across 5 steps) was sized fresh
+  for this slice and explicitly excluded code-designer, code-design-validator,
+  and backend-dev's original ISS-503 implementation (all done in the prior
+  batch). It did NOT anticipate the two infra blockers (Docker down, 55
+  unrelated compile errors) or two rounds of test-file rework, so the large
+  variance below reflects scope growth under Unblock-Everything, not a
+  miscalibrated per-step baseline for the "clean path" case. As with the
+  ISS-502 precedent, this retrospective reports actual elapsed time per step
+  directly and does not treat the variance_pct as evidence for adjusting
+  docs/metrics/estimation_rules.json -- there is still no second comparable
+  run at this scope to confirm a pattern (see rule_adjustments below).
+
+actual_step_durations:
+  - step: test-designer (step-03, spans REWORK 1 and REWORK 2)
+    started_at: '2026-07-30T08:17:04Z'
+    completed_at: '2026-07-30T11:02:15Z'
+    actual_minutes: 165.2
+    estimated_minutes: 20
+    rework_count: 2
+    notes: >
+      Initial dispatch found Docker Desktop stopped and routed to ADHOC
+      BACKEND-DEV rather than fixing it itself (correct per capability
+      matrix). REWORK 1 (after ADHOC infra unblock) fixed two test-file bugs
+      that were causing TC-02/03/04 to fail against a real, correctly-behaving
+      GBL-084. REWORK 2 (dispatched after RELEASE-VALIDATOR's independent
+      8-run loop surfaced a 1-in-8 flake) rewrote TC-ISS503-02/03 to use
+      unconditional transactional rollback instead of manual shared-fixture
+      snapshot/restore, then confirmed 10/10 clean before reporting PASS.
+      Wall-clock duration overlaps with the ADHOC backend-dev step below
+      (both dispatched at the same nominal start; the two rounds of rework
+      happened after the ADHOC unblock completed, so this step's *effective*
+      working time is overstated by simple start/end subtraction, same
+      caveat as the ISS-502 precedent).
+
+  - step: backend-dev (ADHOC-iss503-infra-20260730, step-00, infra unblock)
+    started_at: '2026-07-30T08:26:56Z'
+    completed_at: '2026-07-30T10:18:11Z'
+    actual_minutes: 111.2
+    estimated_minutes: null
+    rework_count: 0
+    notes: >
+      Not part of the original 5-step estimate (infra unblock was
+      unanticipated). Started Docker Desktop + all backend services; fixed
+      55 unrelated pre-existing Zig-0.16 compile errors across the
+      test-integration umbrella suite (mechanical API-drift fixes: ArrayList
+      .init()->.empty, std.json.Array vs unmanaged default, const->var for
+      *Self-receiver .deinit() calls, std.crypto.random removal, AuthContext
+      principal field, removed scheduler.advisoryLockKey, missing
+      join_counters field); fixed a genuine hang in
+      concurrent_instances_test.zig (missing TestHarness.init() + tenant
+      context on the worker thread). Explicitly did not touch
+      test_iss503_rls_removal.zig itself per handoff scope, instead routing
+      the two test-file bugs it found back to TEST-DESIGNER as REWORK 1.
+      Returned PARTIAL (not PASS) because the ISS-503 test file itself was
+      not yet green -- correct self-assessment, not a shortfall.
+
+  - step: test-design-validator (step-03b, first pass, post-REWORK-1)
+    started_at: '2026-07-30T10:34:17Z'
+    completed_at: '2026-07-30T10:37:22Z'
+    actual_minutes: 3.1
+    estimated_minutes: 10
+    rework_count: 0
+    notes: >
+      Independently re-ran test-integration-iss503 twice (4/4 both times)
+      and test-integration-tm once (14/14), and independently sanity-checked
+      the three fixed assertions live against the schema rather than trusting
+      TEST-DESIGNER's claims. PASS, routed to TEST-RUNNER.
+
+  - step: test-runner (step-04)
+    started_at: '2026-07-30T10:38:53Z'
+    completed_at: '2026-07-30T10:45:45Z'
+    actual_minutes: 6.9
+    estimated_minutes: 10
+    rework_count: 0
+    notes: >
+      Full official pass: zig build, zig build test (574/658, 0 fail, 84
+      pre-existing skips), zig build migrate, zig build test-integration-iss503
+      (4/4), zig build test-integration-tm (14/14), zig build bench (all
+      NFR targets met). Report:
+      tests/reports/report-20260730-WF02-iss503-continuation-20260730.yaml.
+
+  - step: release-validator (step-05)
+    started_at: '2026-07-30T10:47:44Z'
+    completed_at: '2026-07-30T10:52:36Z'
+    actual_minutes: 4.9
+    estimated_minutes: 10
+    rework_count: 0
+    notes: >
+      Independently re-ran test-integration-iss503 8 times (7/8 clean,
+      confirming the flake before it was fixed), re-ran test-integration-tm
+      and zig build migrate, confirmed the GBL-084 migration file is
+      byte-identical between origin/main and this feature branch (already
+      merged in an earlier run), and wrote
+      docs/status/release-iss503-20260730.yaml with decision RELEASED. Raised
+      ISS-503-TESTISO-01 (MAJOR, non-blocking) for the flake, which
+      TEST-DESIGNER then fixed as REWORK 2 before this run's DOC-UPDATER step.
+
+  - step: test-design-validator (step-03b-r2, re-validation after flake fix)
+    started_at: '2026-07-30T11:04:33Z'
+    completed_at: '2026-07-30T11:09:46Z'
+    actual_minutes: 5.2
+    estimated_minutes: null
+    rework_count: 0
+    notes: >
+      Not part of the original 5-step estimate (second TEST-DESIGN-VALIDATOR
+      pass was triggered by REWORK 2, dispatched after step-05 had already
+      run). Independently read the rewritten TC-ISS503-02/03 transactional-
+      rollback logic to confirm it is real (not just claimed), ran a fresh
+      10-iteration loop of test-integration-iss503 (10/10 clean), and
+      re-confirmed test-integration-tm (14/14).
+
+wall_clock_span:
+  from: '2026-07-30T08:17:04Z'
+  to: '2026-07-30T11:09:46Z'
+  total_minutes: 172.7
+  note: >
+    Wall-clock span from step-03/ADHOC-step-00 dispatch to the second
+    test-design-validator pass (last step before this DOC-UPDATER handoff).
+    Lower than the sum of individual step minutes (296.5) because
+    test-designer and the ADHOC backend-dev infra unblock ran over
+    substantially the same window, and because step-05 (release-validator)
+    ran concurrently with -- and triggered -- test-designer's REWORK 2,
+    rather than strictly after it.
+
+rework_steps:
+  - step: test-designer (step-03)
+    rework_count: 2
+    reason: >
+      REWORK 1: two bugs in the newly-written test file itself (unscoped
+      pg_proc namespace filter; stale process_definitions column list),
+      found once ADHOC infra unblock produced the suite's first live run.
+      REWORK 2: a 1-in-8 test-isolation flake (shared-mutable public.tenant
+      fixture) found independently by RELEASE-VALIDATOR's 8-run loop after
+      the pipeline had already reached Step 05 -- ORCH routed this back to
+      TEST-DESIGNER rather than accepting the flake as acceptable, per the
+      "no deferred MUST coverage" and test-isolation anti-pattern rules.
+
+rule_adjustments: []
+
+prevention_notes:
+  - >
+    Same finding as WF02-iss502-continuation-20260730: continuation runs that
+    resume a stalled prior WF-02 batch should get their own scoped
+    estimation.json (this run did), but the estimate still cannot anticipate
+    infra blockers or multi-round rework discovered mid-flight. Consider a
+    convention where ORCH adds an explicit "infra-risk" contingency line to
+    continuation-run estimates rather than treating ADHOC infra unblocks as
+    pure overhead outside the estimate.
+  - >
+    This is the second consecutive continuation run (after
+    WF02-iss502-continuation-20260730, same day) to discover that the
+    test-integration umbrella suite had accumulated unrelated build breakage
+    since it was last compiled end-to-end. Recommend a periodic (e.g. nightly
+    or pre-release) `zig build test-integration` compile-only CI check so
+    Zig-version API drift is caught immediately rather than surfacing as an
+    ADHOC blocker on whichever unrelated requirement happens to touch the
+    umbrella suite next.
+  - >
+    ISS-503-INFRA-01 (MINOR, from ADHOC-iss503-infra-20260730): running the
+    full test-integration umbrella suite with default build-system
+    parallelism against one shared bpm_test database produces ~120 spurious
+    runtime failures (deadlocks, duplicate-key errors, cross-test tenant-row
+    pollution) that do not reproduce when test binaries run individually or
+    serially. Not fixed here (systemic, cross-cutting redesign, out of this
+    run's scope) -- tracked for a future dedicated test-infra workflow.
+  - >
+    Both rework rounds in this run were the same class of defect the
+    ISS-502 continuation run's prevention_notes already flagged: shared
+    mutable public.tenant / public.tenant_id state leaking across test
+    blocks. The docs/anti-patterns.md entry exists and was correctly applied
+    once the flake was found, but it was not caught by TEST-DESIGNER's first
+    draft or by TEST-DESIGN-VALIDATOR's first pass. Consider adding an
+    explicit check to tools/lint_test_isolation.py for direct
+    INSERT/UPDATE against public.tenant (or any shared, non-per-test-UUID
+    table) outside of a transaction that is unconditionally rolled back or
+    scoped to a per-test-UUID row, so this class of flake is caught before
+    TEST-DESIGN-VALIDATOR rather than by RELEASE-VALIDATOR's repeated-run
+    heuristic.
+
+next_action: >
+  ISS-503 / GitHub issue #203 test-coverage gap complete; RELEASED.
+  ISS-503-INFRA-01 (MINOR) remains open for a future dedicated test-infra
+  workflow. Issue closure is handled by ORCH separately, not by this
+  DOC-UPDATER handoff.

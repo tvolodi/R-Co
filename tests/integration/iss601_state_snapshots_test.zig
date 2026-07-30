@@ -242,12 +242,13 @@ test "TC-ISS-601-03: SnapshotWriter.takeSnapshot inserts a valid state_blob" {
     defer cleanupSnapshots(&pool, inst_hex);
 
     // Build a minimal InstanceState
+    var tokens_buf = [_]transition_mod.Token{
+        .{ .node_id = "T", .branch_id = "branch-1", .token_id = null, .waiting_child_instance_id = null },
+    };
     var state = transition_mod.InstanceState{
         .instance_id = inst_uuid,
         .status = .ACTIVE,
-        .tokens = &[_]transition_mod.Token{
-            .{ .node_id = "T", .branch_id = "branch-1", .token_id = null, .waiting_child_instance_id = null },
-        },
+        .tokens = &tokens_buf,
         .variables = std.json.ObjectMap{},
         .join_counters = std.json.ObjectMap{},
         .pending_task_nodes = &[_][]const u8{},
@@ -557,7 +558,9 @@ test "TC-ISS-601-09: corrupt state_blob causes fallback to full replay" {
 
     // Either InstanceNotFound (no events for full replay) or successful with
     // fallback is acceptable -- the key invariant is it does NOT panic/crash.
-    _ = reconst_result;
+    if (reconst_result) |_| {} else |err| {
+        try std.testing.expect(err == reconstruction_mod.ReconstructionError.InstanceNotFound);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -660,7 +663,7 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
     }
 
     // Get state at seq 25 via point-in-time reconstruction.
-    const state_at_25 = reconstruction_mod.reconstructInstancePointInTime(
+    var state_at_25 = reconstruction_mod.reconstructInstancePointInTime(
         alloc,
         &pool,
         &snap_store,
@@ -708,7 +711,7 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
     }
 
     // Reconstruct with snapshot-assisted path.
-    const snap_reconstructed = reconstruction_mod.reconstructInstanceWithSnapshot(
+    var snap_reconstructed = reconstruction_mod.reconstructInstanceWithSnapshot(
         alloc,
         &pool,
         &snap_store,
@@ -736,7 +739,7 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
     }
 
     // Also reconstruct with full replay for comparison.
-    const full_reconstructed = reconstruction_mod.reconstructInstance(
+    var full_reconstructed = reconstruction_mod.reconstructInstance(
         alloc,
         &pool,
         &snap_store,
@@ -883,12 +886,13 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
     var writer = snapshot_writer_mod.SnapshotWriter.init(&pool);
     defer writer.deinit();
 
+    var tokens_buf_at_1 = [_]transition_mod.Token{
+        .{ .node_id = "T", .branch_id = "branch-1", .token_id = null, .waiting_child_instance_id = null },
+    };
     var state_at_1 = transition_mod.InstanceState{
         .instance_id = inst.instance_id,
         .status = .ACTIVE,
-        .tokens = &[_]transition_mod.Token{
-            .{ .node_id = "T", .branch_id = "branch-1", .token_id = null, .waiting_child_instance_id = null },
-        },
+        .tokens = &tokens_buf_at_1,
         .variables = std.json.ObjectMap{},
         .join_counters = std.json.ObjectMap{},
         .pending_task_nodes = &[_][]const u8{},
@@ -899,7 +903,7 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
 
     // Reconstruct with snapshot-assisted path — this joins event_payloads_overflow
     // via COALESCE(epo.payload, e.payload).
-    const reconst_state = reconstruction_mod.reconstructInstanceWithSnapshot(
+    var reconst_state = reconstruction_mod.reconstructInstanceWithSnapshot(
         alloc,
         &pool,
         &snap_store,
@@ -1036,12 +1040,13 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
     const conn2 = try pool.acquire();
     defer pool.release(conn2);
     // For simplicity, create a minimal valid state and snapshot it.
+    var tokens_buf_snap = [_]transition_mod.Token{
+        .{ .node_id = "T", .branch_id = "branch-snap", .token_id = null, .waiting_child_instance_id = null },
+    };
     var base_state = transition_mod.InstanceState{
         .instance_id = inst.instance_id,
         .status = .ACTIVE,
-        .tokens = &[_]transition_mod.Token{
-            .{ .node_id = "T", .branch_id = "branch-snap", .token_id = null, .waiting_child_instance_id = null },
-        },
+        .tokens = &tokens_buf_snap,
         .variables = std.json.ObjectMap{},
         .join_counters = std.json.ObjectMap{},
         .pending_task_nodes = &[_][]const u8{},
@@ -1061,7 +1066,7 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
     try testing.expectEqual(@as(usize, 2), snap_chk.rows.len);
 
     // Reconstruct with snapshot-assisted path — should use snapshot at seq 2000.
-    const reconst_state = reconstruction_mod.reconstructInstanceWithSnapshot(
+    var reconst_state = reconstruction_mod.reconstructInstanceWithSnapshot(
         alloc,
         &pool,
         &snap_store,

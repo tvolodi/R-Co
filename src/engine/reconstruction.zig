@@ -240,7 +240,7 @@ pub fn rearmWaitsFromDescriptorsInTx(
 
     const inst_id_hex = uuidToHex(a, instance_id) catch return ReconstructionError.OutOfMemory;
 
-    const rows = conn.query(
+    var rows = conn.query(
         a,
         \\SELECT kind, ref_id::text
         \\FROM instance_waits
@@ -333,7 +333,7 @@ pub fn restoreTenantWithWaitReconciliation(
     };
     defer pool.release(conn);
 
-    const rows = conn.query(
+    var rows = conn.query(
         a,
         \\SELECT instance_id::text
         \\FROM instance_projections
@@ -455,6 +455,7 @@ pub fn reconstructInstancePointInTime(
         .status = .ACTIVE,
         .tokens = &[_]Token{},
         .variables = std.json.ObjectMap{},
+        .join_counters = std.json.ObjectMap{},
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
         .cancelled_branch_ids = &[_][]const u8{},
@@ -865,17 +866,17 @@ fn cloneJsonValue(allocator: std.mem.Allocator, value: std.json.Value) error{Out
             return std.json.Value{ .string = duped };
         },
         .array => |arr| {
-            var new_arr = std.ArrayList(std.json.Value).empty;
+            var new_arr = std.json.Array.init(allocator);
             for (arr.items) |item| {
                 const cloned = cloneJsonValue(allocator, item) catch {
                     for (new_arr.items) |prev| freeJsonValue(allocator, prev);
-                    new_arr.deinit(allocator);
+                    new_arr.deinit();
                     return error.OutOfMemory;
                 };
-                new_arr.append(allocator, cloned) catch {
+                new_arr.append(cloned) catch {
                     freeJsonValue(allocator, cloned);
                     for (new_arr.items) |prev| freeJsonValue(allocator, prev);
-                    new_arr.deinit(allocator);
+                    new_arr.deinit();
                     return error.OutOfMemory;
                 };
             }
@@ -908,14 +909,15 @@ fn cloneJsonValue(allocator: std.mem.Allocator, value: std.json.Value) error{Out
 }
 
 fn freeJsonValue(allocator: std.mem.Allocator, value: std.json.Value) void {
-    switch (value) {
+    var mutable_value = value;
+    switch (mutable_value) {
         .string => |s| allocator.free(s),
         .number_string => |s| allocator.free(s),
-        .array => |arr| {
+        .array => |*arr| {
             for (arr.items) |item| freeJsonValue(allocator, item);
-            arr.deinit(allocator);
+            arr.deinit();
         },
-        .object => |obj| {
+        .object => |*obj| {
             var it = obj.iterator();
             while (it.next()) |entry| freeJsonValue(allocator, entry.value_ptr.*);
             obj.deinit(allocator);

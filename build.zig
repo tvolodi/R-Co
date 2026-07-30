@@ -1069,6 +1069,19 @@ pub fn build(b: *std.Build) void {
     run_iss502_integration_tests.setCwd(b.path("."));
     run_iss502_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-503: GBL-084 RLS removal migration integration tests.
+    const iss503_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/test_iss503_rls_removal.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss503_integration_tests = b.addRunArtifact(iss503_integration_tests);
+    run_iss503_integration_tests.setCwd(b.path("."));
+    run_iss503_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     const iss202_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/iss202_merge_atomicity_test.zig"),
@@ -1186,6 +1199,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_iss106_integration_tests.step);
     test_integration_step.dependOn(&run_iss107_integration_tests.step);
     test_integration_step.dependOn(&run_iss502_integration_tests.step);
+    test_integration_step.dependOn(&run_iss503_integration_tests.step);
     test_integration_step.dependOn(&run_iss202_integration_tests.step);
     test_integration_step.dependOn(&run_iss203_integration_tests.step);
     test_integration_step.dependOn(&run_iss207_integration_tests.step);
@@ -1225,6 +1239,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss502_step = b.step("test-integration-iss502", "Run ISS-502 SPT cutover integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_iss502_step.dependOn(&clean_test_db.step);
     test_integration_iss502_step.dependOn(&run_iss502_integration_tests.step);
+
+    const test_integration_iss503_step = b.step("test-integration-iss503", "Run ISS-503 GBL-084 RLS removal integration tests only (requires BPM_TEST_DB_URL)");
+    test_integration_iss503_step.dependOn(&clean_test_db.step);
+    test_integration_iss503_step.dependOn(&run_iss503_integration_tests.step);
 
     const test_integration_exp_step = b.step("test-integration-exp", "Run Entity Subsystem integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_exp_step.dependOn(&clean_test_db.step);

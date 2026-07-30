@@ -16,12 +16,12 @@ const event_registry = bpm.registry;
 const uuid_mod = bpm.uuid;
 
 const TestFixture = struct {
-    tenant_id: []u8,
-    actor_id: []u8,
-    entity_type: []u8,
-    idempotency_create: []u8,
-    idempotency_update: []u8,
-    idempotency_delete: []u8,
+    tenant_id: []const u8,
+    actor_id: []const u8,
+    entity_type: []const u8,
+    idempotency_create: []const u8,
+    idempotency_update: []const u8,
+    idempotency_delete: []const u8,
 
     fn deinit(self: *TestFixture, allocator: std.mem.Allocator) void {
         allocator.free(self.tenant_id);

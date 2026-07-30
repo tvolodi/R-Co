@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-07-30T05:40:24Z'
+last_updated: '2026-07-30T11:13:26Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1741,13 +1741,15 @@ requirements:
       for this continuation run (no BLOCKER-severity issues; TEST-RUNNER PASS with verified 4/4 + no regressions).
       Advancing per CLAUDE.md WF-02 pipeline. GitHub issue #202 closed via PR.'
   ISS-503:
-    status: IMPLEMENTED
+    status: RELEASED
     stage: Epic 5
     title: Remove legacy tenant_id/RLS predicates (SPT-03)
     implemented_in:
     - migrations/GBL-084_rls_removal.sql
     - src/db/pool.zig
+    - tests/integration/test_iss503_rls_removal.zig
     test_spec: tests/specs/ISS-503.md
+    released_at: '2026-07-30T11:13:21Z'
   ISS-504:
     status: IMPLEMENTED
     stage: Epic 5
