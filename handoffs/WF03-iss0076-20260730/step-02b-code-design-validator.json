@@ -1,0 +1,38 @@
+{
+  "handoff_id": "b2e5a6f1-6a3d-4e2a-9c7a-1d4f8a9e0c12",
+  "run_id": "WF03-iss0076-20260730",
+  "step": "02b",
+  "from_agent": "CODE-DESIGNER",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-07-30T12:11:56Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving - ISS-0076",
+    "requirement_ids": ["EXP-501"],
+    "related_handoff_ids": ["123f788f-02c7-4ef4-860e-f0cb64a2e3c0"],
+    "artifacts_in": ["src/design/iss-0076-secrets-table-migration-fix.md"]
+  },
+  "task": {
+    "description": "Validate the ISS-0076 fix design (GitHub #335): GBL-100_exp501_secrets.sql's to_regclass('instance_projections') guard always fires because GBL migrations only run against public and instance_projections was dropped from public by GBL-073, so the secrets table has never been created. Verify acceptance-criteria coverage, absence of implementation code, migration-number collision, root-cause accuracy against source, and necessity of a corrective migration.",
+    "acceptance_criteria": [
+      "Every AC in the GitHub issue has a corresponding design element",
+      "No implementation code present in the design",
+      "Proposed GBL-101 filename does not collide with existing migrations",
+      "Root-cause explanation verified accurate against src/db/migrations.zig and GBL-073",
+      "Design correctly identifies that a corrective migration is required, not optional"
+    ],
+    "functions_to_call": ["fn:validate-design-artefact"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/iss-0076-secrets-table-migration-fix.md validated against migrations/GBL-100_exp501_secrets.sql, migrations/GBL-073_tnt01_drop_legacy_public_business_tables.sql, src/db/migrations.zig (lines 196-207, 258-273), and docs/anti-patterns.md line 48. All factual claims confirmed accurate: GBL- migrations skip non-public schemas (migrations.zig:203-207); GBL-073 drops both instance_projections (line 69) and webhook_subscriptions (line 59) from public via CASCADE. Acceptance-criteria table covers all 4 GitHub issue ACs with concrete design elements. No implementation code present beyond short illustrative fragments used for explanation. GBL-101_exp501_secrets_corrective.sql does not collide with any existing file (highest existing is GBL-100) and fits the GBL-NNN_slug convention. Design correctly explains that schema_migrations already marks GBL-100 applied, so in-place edits will not re-run and a corrective migration is genuinely necessary.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 03) to implement the fix per design"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-07-30T12:11:56Z",
+  "completed_at": "2026-07-30T12:11:56Z"
+}

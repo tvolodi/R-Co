@@ -2,6 +2,26 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0076 / secrets table now actually created] — 2026-07-30
+
+### Fixed
+- **ISS-0076 (MAJOR)**: `migrations/GBL-100_exp501_secrets.sql` guarded its entire body — including `CREATE TABLE secrets` — on `to_regclass('instance_projections') IS NOT NULL`. GBL-prefixed migrations run only against the `public` schema (`src/db/migrations.zig`), and `instance_projections` was permanently dropped from `public` by `migrations/GBL-073_tnt01_drop_legacy_public_business_tables.sql` (TNT-01) — it now lives only in per-tenant schemas. The guard therefore always evaluated false, so the `secrets` table was never created in any environment (confirmed empirically: absent from both `bpm_dev` and `bpm_test`, including a 63-tenant-schema representative `bpm_test` instance, despite `schema_migrations` recording the file as applied). `Store.putSecret()`/`resolveSecret()` (`src/secrets/store.zig`) would fail with a relation-does-not-exist error at the DB layer for the entire EXP-501 secrets module. Removed the incorrect guard from GBL-100 (the table creation itself needs no prerequisite — `secrets` is a global table); re-scoped the `webhook_subscriptions` backfill in the same file to guard on the table it actually touches rather than the unrelated `instance_projections`. Added `migrations/GBL-101_exp501_secrets_corrective.sql` as a corrective migration, since `schema_migrations` already marks GBL-100 as applied and editing it in place would never cause a re-run. GitHub issue [#335](https://github.com/tvolodi/R-Co/issues/335) closed. Fix design: `src/design/iss-0076-secrets-table-migration-fix.md`.
+
+### Added
+- `tests/integration/iss0076_secrets_table_test.zig` (2 new integration tests, wired into `zig build test-integration` and standalone via `zig build test-integration-iss0076`): confirms `secrets` exists in the `public` schema via direct `pg_tables` query, and exercises the actual previously-broken failure mode end-to-end (`Store.putSecret()` → `resolveSecret()` round-trip against the real table).
+
+### Verified (regression)
+- `zig build`: clean, no `error set` output.
+- `zig build test`: all unit tests passed (`BPM_TEST_DB_URL` pointed at the live `bpm_test` container).
+- `zig build migrate` against both `bpm_dev` and `bpm_test`: `GBL-101_exp501_secrets_corrective.sql` applied once, then a clean idempotent no-op on re-run.
+- `zig build test-integration-iss0076`: 2/2 passed.
+- Manual verification: `secrets` table confirmed present (correct columns, indexes, constraints) in both `bpm_dev` and `bpm_test` via direct `psql`/`pg_tables` query post-fix; confirmed absent pre-fix via a `git stash` baseline comparison (same two-database check with the fix reverted).
+- Test evidence: `tests/reports/report-20260730-WF03-iss0076.yaml`.
+
+### Notes
+- The full `zig build test-integration` umbrella suite has ~109 pre-existing failures unrelated to this fix (webhook outbox, RLS removal, OIDC realm config, timer/DLQ, etc. — see `ISS-503-INFRA-01`, tracked separately). Confirmed via the same `git stash` baseline comparison that this count is present (in fact slightly higher, 109 vs. 21) without this fix applied, i.e. this fix strictly reduces integration failures and introduces none. Full triage of that pre-existing gap is out of scope for this single-migration bug fix.
+- `docs/requirements.yaml` currently has `EXP-501` at `status: UNTRACKED` (never onboarded into the post-2026-07-22 requirements system) — pre-existing and unrelated to this fix; flagged here for a future REQ-ANALYST pass rather than silently invented in-line.
+
 ## [ISS-0074 / secrets crypto fixed] — 2026-07-30
 
 ### Fixed
