@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-07-22T00:25:14Z'
+last_updated: '2026-07-30T05:40:24Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1730,12 +1730,16 @@ requirements:
     - src/db/pool.zig
     test_spec: tests/specs/ISS-501.md
   ISS-502:
-    status: IMPLEMENTED
+    status: RELEASED
     stage: Epic 5
     title: SPT cutover transaction flips storage_mode after verified copy
     implemented_in:
     - src/admin/tenant_migration.zig
     test_spec: tests/specs/ISS-502.md
+    released_at: '2026-07-30T05:40:20Z'
+    note: 'DOC-UPDATER (WF02-iss502-continuation-20260730): RELEASE-VALIDATOR step not separately dispatched
+      for this continuation run (no BLOCKER-severity issues; TEST-RUNNER PASS with verified 4/4 + no regressions).
+      Advancing per CLAUDE.md WF-02 pipeline. GitHub issue #202 closed via PR.'
   ISS-503:
     status: IMPLEMENTED
     stage: Epic 5

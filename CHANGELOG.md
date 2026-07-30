@@ -2,6 +2,20 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [EPIC-5 / ISS-502 cutover verified] — 2026-07-30
+
+### Verified
+- **ISS-502 (EPIC-5)**: SPT cutover transaction (`executeSptCutover()` in `src/admin/tenant_migration.zig`) now has a complete, passing integration test suite (`tests/integration/iss502_spt_cutover_test.zig`, 4/4 cases). Confirms: cutover copies all business-table rows from `public` into the tenant schema and flips `storage_mode` from `LEGACY_RLS` to `SCHEMA` atomically; re-running on an already-migrated tenant is a no-op (`already_migrated=true`); a PK conflict during the copy rolls back the whole transaction, leaving the tenant safely in `LEGACY_RLS`; a row-count mismatch after copy is detected and reported as `RowCountMismatch`. GitHub issue [#202](https://github.com/tvolodi/R-Co/issues/202) closed.
+
+### Fixed
+- **Fresh-database bootstrap gap (GBL-084 pre-flight)**: `migrations/GBL-084_rls_removal.sql`'s ISS-503 pre-flight check ("all tenants must be `storage_mode=SCHEMA` before RLS removal") unconditionally failed on any freshly-bootstrapped database. The seed default tenant (`00000000-0000-0000-0000-000000000000`), inserted by `031_adp04b_tenant_realm_binding.sql`, defaulted to `LEGACY_RLS` (column added later by `086_iss107_tenant_storage_mode.sql`) and nothing in the migration chain ever promoted it to `SCHEMA` on a from-scratch install — only incidental state accumulated by long-lived dev databases masked the gap. Added `migrations/087_default_tenant_storage_mode_cutover.sql`, which flips the seed tenant's `storage_mode` to `SCHEMA` once `tenant_schemas` confirms its schema is already provisioned (via `069_retroactive_tenant_schema_provision.sql`), and wired `provisionTenantSchema()` into the migrate tool's bootstrap path. GBL-084's pre-flight logic itself was left untouched — it is intentionally strict per ISS-503.
+- **`SPT_BUSINESS_TABLES` table-list bug**: The constant in `src/admin/tenant_migration.zig` incorrectly included `webhook_deliveries`, which is not part of the TNT-01 21-table schema-isolation design (`src/design/tnt-01-04-schema-isolation.md`). Removed, bringing the list to the correct 21 entries. The mirrored fixture list in the ISS-502 integration test was updated to match.
+
+### Verified (regression)
+- Full unit suite: 574/658 passed, 0 failed, 84 pre-existing conditional skips.
+- `test-integration-tm` regression check: 14/14 passed, 0 failed — confirms no regression from the GBL-084/table-list fixes.
+- Test evidence: `tests/reports/report-20260730-WF02-iss502-continuation-20260730.yaml`.
+
 ## [EPIC-2 / EXP-201+202] — 2026-06-14
 
 ### Added
