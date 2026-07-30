@@ -5,7 +5,7 @@
   "from_agent": "ORCH",
   "to_agent": "TEST-DESIGN-VALIDATOR",
   "created_at": "2026-07-30T05:15:00Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "EPIC-5 / ISS-502",
@@ -31,9 +31,20 @@
     ],
     "functions_to_call": []
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "tests/integration/iss502_spt_cutover_test.zig validated against tests/specs/ISS-502.md. All 4 MUST test cases (TC-ISS502-01..04) present as runnable, non-stubbed Zig test blocks matching their documented steps/expectations. Zero error.SkipZigTest occurrences. Fixtures use per-test randomUuidStr() v4 UUIDs (tenant_id + derived schema name), not shared constants. Every test registers `defer cleanupTenant(...)` immediately after fixture-ID generation, before setupFixture() runs, so cleanup fires on all exit paths including the assertion-failure paths in TC-03/TC-04. testDbUrl()/helpers.TestHarness.init() both explicitly check EnvironmentVariableMissing and return a clear MissingTestDatabaseUrl error (not a skip) if BPM_TEST_DB_URL is absent. SPT_BUSINESS_TABLES in the test file is byte-for-byte identical (21 tables, same order) to src/admin/tenant_migration.zig's list, and the webhook_deliveries exclusion is correctly documented against the TNT-01 21-table design. Pipeline-test checks (6)-(10) are N/A: ISS-502 is a backend data-migration transaction, no web/tests/e2e/pipelines/ involvement. Corroborating live run: discovered BPM_TEST_DB_URL (postgres://bpm:bpm@localhost:5433/bpm_test) pointed at a stale port — the actually-running r-co-db_test-1 container maps 5432 to host port 5434, not 5433 as declared in docker-compose.yml (environment drift, out of scope for this gate). Running the compiled test binary directly (bypassing the zig build wrapper's misleading progress-tree renderer) with the corrected port produced 'All 4 tests passed.' at real exit code 0, and a post-run DB check confirmed zero leaked tenant schemas/rows, empirically confirming the cleanup-on-all-paths check.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "BPM_TEST_DB_URL in the current shell environment (postgres://bpm:bpm@localhost:5433/...) does not match the actual host port (5434) of the running r-co-db_test-1 container per `docker port`; docker-compose.yml declares 5433:5432 but the live container was evidently started with a different mapping. This caused AuthenticationFailed against port 5433 (nothing was listening as bpm/bpm there) when run with the ambient env var. Not a defect in the ISS-502 test file or design — noted for TEST-RUNNER/infrastructure to reconcile the env var or restart the container to match docker-compose.yml before Step 4."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 4) for ISS-502"
+  },
   "rework_count": 0,
   "max_rework": 3,
   "started_at": null,
-  "completed_at": null
+  "completed_at": "2026-07-30T05:26:50Z"
 }
