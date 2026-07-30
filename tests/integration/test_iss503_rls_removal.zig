@@ -195,10 +195,16 @@ fn countTenantIdColumns(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
     return std.fmt.parseInt(usize, raw, 10) catch 0;
 }
 
+/// Counts only the `public` schema's copy of bpm_effective_tenant_id().
+/// GBL-084 drops the public-schema function; SCHEMA-mode tenant schemas
+/// (e.g. tenant_default) legitimately keep their own per-schema copy, so
+/// this MUST filter by namespace like its siblings countRlsPolicies() and
+/// countTenantIdColumns() do, or it over-counts once any tenant schema
+/// exists (see ISS-503-TESTBUG-01).
 fn countEffectiveTenantIdFunction(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
     var result = try conn.query(
         allocator,
-        "SELECT count(*) FROM pg_proc WHERE proname = 'bpm_effective_tenant_id'",
+        "SELECT count(*) FROM pg_proc WHERE proname = 'bpm_effective_tenant_id' AND pronamespace = 'public'::regnamespace",
         &.{},
     );
     defer result.deinit();
@@ -492,15 +498,22 @@ test "TC-ISS503-04: SCHEMA-path CRUD requests work after RLS removal with no bpm
     try testing.expectEqual(bpm.api_tenant_context.StorageMode.SCHEMA, bpm.api_tenant_context.getStorageMode());
 
     // CRUD: create a process definition row through the tenant schema (a
-    // real business table previously RLS-protected and previously carrying
-    // tenant_id before GBL-084). No tenant_id column or predicate is
-    // supplied — the SCHEMA path scopes by search_path alone.
+    // real business table). tenant_default.process_definitions still has a
+    // NOT NULL tenant_id column backed by tenant_default's own
+    // bpm_effective_tenant_id() (GBL-084 only drops the public-schema
+    // copy — see countEffectiveTenantIdFunction's doc comment), so we
+    // populate it via that function exactly like the other integration
+    // tests in this suite do (see adp02/adp03/env02/env03/env05 tests).
+    // The important assertion is not that tenant_id is absent from this
+    // schema, but that no bpm.tenant_id RLS predicate appears in the query
+    // plan below, and that the tenant scoping is enforced by the SCHEMA
+    // path (search_path), not by a public-schema RLS policy GBL-084 removed.
     const def_id = try randomUuidStr(alloc);
     defer alloc.free(def_id);
 
     try conn.exec(
-        \\INSERT INTO process_definitions (id, key, name, version, status, bpmn_xml)
-        \\VALUES ($1::uuid, $2, 'ISS-503 CRUD Test', 1, 'DRAFT', '<definitions/>')
+        \\INSERT INTO process_definitions (id, tenant_id, name, version, status, graph, created_by)
+        \\VALUES ($1::uuid, bpm_effective_tenant_id(), $2, '1', 'DRAFT', '{"nodes":[],"edges":[]}'::jsonb, '00000000-0000-0000-0000-000000000099'::uuid)
     ,
         &.{ def_id, def_id[0..8] },
     );
@@ -570,11 +583,21 @@ test "TC-ISS503-04: SCHEMA-path CRUD requests work after RLS removal with no bpm
         try testing.expectEqual(@as(usize, 0), rows.rows.len);
     }
 
-    // Confirm the process_definitions table itself has no tenant_id column
-    // left in the tenant schema either (GBL-084 only targets `public`, but
-    // TNT-01's schema-per-tenant tables were created without tenant_id from
-    // the start — this assertion guards against a regression reintroducing
-    // it in either location).
+    // NOTE: unlike `public`, tenant_default.process_definitions DOES keep a
+    // NOT NULL tenant_id column backed by its own per-schema
+    // bpm_effective_tenant_id() default (confirmed live via `\d
+    // tenant_default.process_definitions`) — GBL-084 only removes the
+    // public-schema copies of the tenant_id columns and the RLS helper
+    // function; per-tenant schemas provisioned by TNT-01/GBL-077 retain
+    // their own tenant_id + RLS policy by design, scoped to that one schema.
+    // So the correct regression guard here is NOT "tenant_id is absent from
+    // tenant_default" (it isn't, and never was) — it is that the
+    // *public*-schema copy stays gone, which countTenantIdColumns() and
+    // countEffectiveTenantIdFunction() already assert against `public`
+    // earlier in this suite (TC-ISS503-02/03). This block instead confirms
+    // the per-tenant column that IS expected to remain is still exactly
+    // one column (i.e. GBL-084 did not accidentally cascade into
+    // tenant_default and drop it too).
     {
         var rows = try conn.query(
             alloc,
@@ -589,7 +612,7 @@ test "TC-ISS503-04: SCHEMA-path CRUD requests work after RLS removal with no bpm
         try testing.expectEqual(@as(usize, 1), rows.rows.len);
         const count_str = rows.rows[0][0] orelse "0";
         const count = std.fmt.parseInt(usize, count_str, 10) catch 0;
-        try testing.expectEqual(@as(usize, 0), count);
+        try testing.expectEqual(@as(usize, 1), count);
     }
 }
 
