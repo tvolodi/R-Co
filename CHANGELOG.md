@@ -2,6 +2,21 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0088 / stale table names in test cleanup tooling fixed] — 2026-07-30
+
+### Fixed
+- **ISS-0088 (MINOR)**: `tools/clean_test_db.py`'s `TABLES`/`TENANT_TABLES` lists and `tests/integration/helpers.zig`'s `resetTestData()` hard-coded table names `process_events`, `event_store`, and `dlq` for best-effort TRUNCATE cleanup before/between test runs. None of these three names exist in the current schema: `process_events` never corresponded to any table, `event_store` was never a real table name (only a module/file-naming convention), and `dlq` was renamed to `dead_letter_items` by `migrations/072_tnt01_rename_legacy_tables.sql` (TNT-01). The best-effort error handling that exists to tolerate partial migration states silently swallowed the resulting `relation does not exist` errors on every single integration test run, and meant the real `events`/`dead_letter_items` tables never actually got the CASCADE truncation these calls were meant to perform. Replaced the stale names with the current ones (`events`, `dead_letter_items`; `process_events` dropped outright, no current equivalent). While verifying the fix, found and fixed the identical stale `process_events` reference in `tests/integration/api03_instance_read_test.zig`'s `cleanupInstance()` (not in the original issue's file list — same bug pattern, same root cause). GitHub issue [#337](https://github.com/tvolodi/R-Co/issues/337) closed.
+
+### Added
+- `tools/lint_test_table_refs.py`, wired into `zig build` as a new `lint-test-table-refs` step that runs before `clean-test-db`: checks every string-literal table name in `tools/clean_test_db.py` and `tests/integration/helpers.zig`'s `resetTestData()` against the canonical current-table list in `tools/lint_migration_schema.py`, so a future migration rename/drop can't silently desync these cleanup call sites again.
+- `__pycache__/`, `*.pyc` added to `.gitignore` (an already-committed stale `.pyc` was removed from tracking as part of this fix).
+
+### Verified (regression)
+- `zig build`: clean, no `error set` output.
+- `zig build lint-test-table-refs`: passes.
+- `zig build test`: all unit tests passed.
+- `zig build test-integration`: ran full suite before and after the fix; the three `relation "process_events"/"event_store"/"dlq" does not exist` errors are gone (0 occurrences post-fix, confirmed via full-log search). Diffed failing-test names between the two runs — remaining ~108 pre-existing integration failures (test-isolation/FK-ordering flakiness, tracked separately) show no overlap attributable to table-name errors, confirming this fix introduces no regressions.
+
 ## [ISS-0076 / secrets table now actually created] — 2026-07-30
 
 ### Fixed
