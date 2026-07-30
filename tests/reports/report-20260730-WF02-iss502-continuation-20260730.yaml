@@ -1,0 +1,185 @@
+run_id: WF02-iss502-continuation-20260730
+workflow_id: WF-02
+timestamp: 2026-07-30T05:35:34Z
+requirement_ids:
+  - ISS-502
+
+infra_note: >
+  BPM_TEST_DB_URL in the ambient shell environment pointed at port 5433
+  (postgres://bpm:bpm@localhost:5433/bpm_test), matching docker-compose.yml's
+  declared "5433:5432" mapping for db_test. The actually-running r-co-db_test-1
+  container had drifted and was mapped to host port 5434 instead (confirmed via
+  `docker ps` / `docker port r-co-db_test-1`); port 5433 on this host is occupied
+  by an unrelated container (aiqadam-postgres) which likely caused the original
+  drift when db_test was recreated. Per the handoff's instructions, this was
+  resolved for the session only by exporting a corrected
+  BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test in the same shell
+  invocation as each build/test command (Windows Bash tool resets env between
+  calls, so the export had to be chained with `&&` into every test command).
+  docker-compose.yml and .env files were NOT modified, and no cherry-pick from
+  feature/registry-consolidation was performed, per explicit instruction.
+  This same port drift was also the root cause of 21 unit test failures
+  (test_api08_auth.zig, all PgError.AuthenticationFailed / PoolError.ConnectionFailed)
+  seen on the first zig build test attempt with the stale ambient env var;
+  re-running with the corrected port fixed all 21 with no source changes needed.
+
+services_precheck:
+  db_test_container: r-co-db_test-1
+  db_test_real_port: 5434
+  db_test_declared_port_compose: 5433
+  db_test_reachable: true
+  keycloak_health_endpoint: http://localhost:8081/health/ready
+  keycloak_reachable: false
+  keycloak_note: >
+    r-co-keycloak-1 container is running (healthy per docker ps) but has no
+    host port mapping in the current docker-compose state (only internal
+    8080/8443/9000), so localhost:8081/health/ready is unreachable (curl exit 7,
+    connection refused). ISS-502 (SPT cutover transaction) does not exercise
+    Keycloak/auth in its integration test, so this does not block this run.
+    Noted per standard pre-check procedure only.
+
+benchmark_env_precheck:
+  command: zig build bench
+  status: CLEAN
+  exit_code: 0
+  nfr_results:
+    - nfr_id: NFR-01
+      metric: p99_read_ms
+      target: "<=200"
+      actual: 1.019
+      passed: true
+    - nfr_id: NFR-01
+      metric: p99_write_ms
+      target: "<=500"
+      actual: 2.467
+      passed: true
+    - nfr_id: NFR-02
+      metric: append_throughput_eps
+      target: ">=1000"
+      actual: 76506.727
+      passed: true
+    - nfr_id: NFR-04
+      metric: replay_10000_ms
+      target: "<=5000"
+      actual: 31.938
+      passed: true
+    - nfr_id: NFR-04
+      metric: replay_snapshot_100000_ms
+      target: "<=1000"
+      actual: 7.035
+      passed: true
+  overall_passed: true
+
+build_results:
+  - command: zig build
+    exit_code: 0
+    status: PASS
+  - command: "zig build 2>&1 | grep -i \"error set\""
+    output_lines: 0
+    status: PASS
+    note: No error-set warnings — all function return types cover propagated errors.
+  - command: zig build test
+    exit_code: 0
+    status: PASS
+    total: 658
+    passed: 574
+    failed: 0
+    skipped: 84
+    note: >
+      First attempt (before exporting corrected BPM_TEST_DB_URL in the same
+      shell call) showed 21 failures, all AuthenticationFailed/ConnectionFailed
+      against the stale port-5433 DB URL. Re-run with corrected port in the
+      same invocation: 574/658 passed, 0 failed, 84 skipped (pre-existing
+      conditional skips, unrelated to ISS-502), exit 0.
+
+test_cases:
+  - id: TC-ISS502-01
+    name: "cutover copies all rows and flips storage_mode to SCHEMA"
+    layer: integration
+    file: tests/integration/iss502_spt_cutover_test.zig
+    status: PASS
+    verification: "Binary stdout: '1/4 iss502_spt_cutover_test.test.TC-ISS502-01: ... OK'"
+  - id: TC-ISS502-02
+    name: "cutover is idempotent on an already-SCHEMA tenant"
+    layer: integration
+    file: tests/integration/iss502_spt_cutover_test.zig
+    status: PASS
+    verification: "Binary stdout: '2/4 iss502_spt_cutover_test.test.TC-ISS502-02: ... OK'"
+  - id: TC-ISS502-03
+    name: "PK conflict in tenant schema rolls back and keeps LEGACY_RLS"
+    layer: integration
+    file: tests/integration/iss502_spt_cutover_test.zig
+    status: PASS
+    verification: "Binary stdout: '3/4 iss502_spt_cutover_test.test.TC-ISS502-03: ... OK'"
+  - id: TC-ISS502-04
+    name: "row count mismatch after copy is detected as RowCountMismatch"
+    layer: integration
+    file: tests/integration/iss502_spt_cutover_test.zig
+    status: PASS
+    verification: "Binary stdout: '4/4 iss502_spt_cutover_test.test.TC-ISS502-04: ... OK'"
+
+verification_methodology: >
+  Ran `zig build test-integration-iss502` twice with corrected BPM_TEST_DB_URL:
+  (1) via `zig build test-integration-iss502 --summary all` — wrapper printed
+  interleaved POSTGRES ERROR lines (expected: idempotent setup probing for
+  not-yet-created tables, plus a deliberately-triggered PK-conflict duplicate-key
+  error that IS the TC-ISS502-03 test scenario) followed by "failed command: ..."
+  in its progress-tree renderer despite the underlying step succeeding — this is
+  the known Zig 0.16.0-dev display quirk. Verified the TRUE result via the
+  "Build Summary: 5/5 steps succeeded; 4/4 tests passed" line and explicit
+  `$?`/PIPESTATUS[0]` capture = 0.
+  (2) Isolated re-run redirecting all output to a log file and checking the
+  real exit code in the same statement: exit code 0, confirmed independent of
+  the wrapper's renderer.
+  (3) Located and ran the compiled test binary directly
+  (.zig-cache/o/a2b73a7cf9a32daa92c20a89764abc56/test.exe) with
+  BPM_TEST_DB_URL and BPM_MIGRATIONS_DIR set explicitly — unambiguous stdout:
+  "1/4 ... OK", "2/4 ... OK", "3/4 ... OK", "4/4 ... OK", "All 4 tests passed."
+  and BINARY_EXIT:0. All three methods agree: 4/4 real, verified PASS.
+
+regression_check:
+  command: zig build test-integration-tm --summary all
+  exit_code: 0
+  status: PASS
+  total: 14
+  passed: 14
+  failed: 0
+  note: >
+    Confirms no regression from the fresh-DB-bootstrap fix applied earlier in
+    this run (step-00b-backend-dev-gbl084-blocker). Matches the 14/14 expected
+    count from prior handoff steps.
+
+summary:
+  total: 676
+  passed: 592
+  failed: 0
+  skipped: 84
+  breakdown:
+    unit_suite: "574/658 passed, 0 failed, 84 skipped"
+    iss502_integration: "4/4 passed, 0 failed"
+    tm_integration_regression: "14/14 passed, 0 failed"
+  overall_status: PASS
+
+issues:
+  - severity: MINOR
+    description: >
+      Ambient BPM_TEST_DB_URL in the environment (and docker-compose.yml's
+      declared db_test port mapping, 5433:5432) does not match the real host
+      port (5434) of the currently-running r-co-db_test-1 container. This is
+      an infrastructure/environment drift issue, not a defect in ISS-502 code
+      or tests — resolved for this test run only by exporting a corrected
+      BPM_TEST_DB_URL in the same shell invocation as each build/test command,
+      per explicit handoff instruction not to edit docker-compose.yml/.env or
+      cherry-pick the unrelated fix from feature/registry-consolidation
+      (commit 8eb85ba). Recommend a follow-up (out of scope for this handoff)
+      to either recreate r-co-db_test-1 to match docker-compose.yml, or merge
+      the port-collision fix from feature/registry-consolidation once that
+      branch is ready, so future sessions don't need this manual reconciliation.
+  - severity: MINOR
+    description: >
+      Keycloak (r-co-keycloak-1) has no host port mapping in the current
+      docker state, so the standard localhost:8081/health/ready pre-check is
+      unreachable. Not a blocker for ISS-502 (no auth/Keycloak dependency in
+      this test), noted per standard TEST-RUNNER pre-check procedure only.
+
+next_action: "Route to DOC-UPDATER to mark ISS-502 TESTED/RELEASED"
