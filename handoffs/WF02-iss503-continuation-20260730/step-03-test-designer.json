@@ -1,0 +1,77 @@
+{
+  "handoff_id": "ab4af65f-7a6b-4b6f-b3b9-d1873648bb2a",
+  "run_id": "WF02-iss503-continuation-20260730",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-DESIGNER",
+  "created_at": "2026-07-30T08:17:04Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Epic 5 continuation \u2014 ISS-503",
+    "requirement_ids": [
+      "ISS-503"
+    ],
+    "related_handoff_ids": [
+      "handoffs/WF02-iss501-504-epic5-20260612/step-02a-backend-dev.json"
+    ],
+    "artifacts_in": [
+      "migrations/GBL-084_rls_removal.sql",
+      "src/db/pool.zig",
+      "tests/specs/ISS-503.md"
+    ]
+  },
+  "task": {
+    "description": "ISS-503 (GitHub issue #203) was implemented in WF02-iss501-504-epic5-20260612 (migrations/GBL-084_rls_removal.sql + src/db/pool.zig, commit 5a86a34, already merged to main), but that run stalled after step-02a: test-designer/validator/test-runner/release-validator/doc-updater were never dispatched for ISS-503 (all still PENDING/null in that run directory). A test spec already exists at tests/specs/ISS-503.md listing 4 test cases (TC-ISS503-01..04) and references tests/integration/test_iss503_rls_removal.zig, but that test file does not exist on disk \u2014 it was never written. This run's scope: write the missing integration test file tests/integration/test_iss503_rls_removal.zig covering all 4 test cases in the spec: (1) GBL-084 pre-flight blocks when a LEGACY_RLS tenant exists, (2) GBL-084 succeeds when zero LEGACY_RLS tenants remain, (3) GBL-084 is idempotent on re-apply, (4) SCHEMA-path CRUD requests work after RLS removal with no bpm.tenant_id references left. Per Unblock-Everything: if you discover the spec itself needs adjustment to match actual GBL-084 behavior (e.g. exact exception message/table list), update tests/specs/ISS-503.md to match reality rather than blocking. If you find pre-existing infra blockers (e.g. fresh-DB bootstrap issues like the one ISS-502 continuation hit today), route an ADHOC BACKEND-DEV handoff for those rather than fixing them yourself.\n\nREWORK 1 (dispatched after ADHOC-iss503-infra-20260730 unblocked Docker/services and got a live run against tenant_default): the umbrella suite now compiles and services are healthy, but tests/integration/test_iss503_rls_removal.zig only passed TC-ISS503-01; TC-02/03/04 failed due to two bugs IN THE TEST FILE ITSELF (confirmed not to be GBL-084/pool.zig defects):\n- [MAJOR] ISS-503-TESTBUG-01: countEffectiveTenantIdFunction() (~line 198) queries pg_proc with no pronamespace/schema filter, unlike its siblings countRlsPolicies() and countTenantIdColumns() which both filter to schema='public'. SCHEMA-mode tenant schemas (e.g. tenant_default) legitimately retain their own per-schema copy of bpm_effective_tenant_id() after GBL-084 removes only the public-schema copy, so this unscoped count returns >0 once any tenant schema exists -- which is always true once any other test has run TestHarness.init(). Causes TC-ISS503-02 and TC-ISS503-03 to fail with 'expected 0, found 1' even though GBL-084 behaved correctly. Fix: add AND pronamespace = 'public'::regnamespace (or join pg_namespace and filter nspname='public').\n- [MAJOR] ISS-503-TESTBUG-02: TC-ISS503-04 (~line 501) inserts into process_definitions using columns (id, key, name, version, status, bpmn_xml), but the real tenant_default.process_definitions schema has no key or bpmn_xml columns -- it uses name (text), graph (jsonb), created_by, stage, etc. Confirmed via \\d tenant_default.process_definitions against the live schema. Fix: update the INSERT to use the actual column set (id, name, version, status, graph, created_by).\n\nFix both in tests/integration/test_iss503_rls_removal.zig, then re-run zig build test-integration-iss503 against the now-healthy db_test until all 4 cases pass. Do not touch GBL-084_rls_removal.sql or pool.zig -- confirmed not at fault.",
+    "acceptance_criteria": [
+      "tests/integration/test_iss503_rls_removal.zig exists and compiles",
+      "All 4 TC-ISS503 cases from tests/specs/ISS-503.md are implemented as real integration tests against BPM_TEST_DB_URL",
+      "No mocks/stubs \u2014 real PostgreSQL, per-test UUID fixtures",
+      "zig build test-integration compiles with zero errors"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Fixed both test-file bugs from REWORK 1. Bug 1 (ISS-503-TESTBUG-01): countEffectiveTenantIdFunction() now filters pg_proc by pronamespace = 'public'::regnamespace, matching its sibling helpers countRlsPolicies() and countTenantIdColumns(). Confirmed live (SELECT n.nspname, p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE p.proname = ...) that bpm_effective_tenant_id() exists only in the tenant_default schema, not public -- the unscoped count was the root cause of TC-02/03 false failures. Bug 2 (ISS-503-TESTBUG-02): TC-ISS503-04 INSERT into process_definitions corrected to the real live column set (id, tenant_id, name, version, status, graph, created_by), verified via psql \\d tenant_default.process_definitions against the live db_test database (not trusted secondhand), matching the pattern already used by adp02/adp03/env02/env03/env05 integration tests (tenant_id populated via bpm_effective_tenant_id(), created_by via a fixed literal UUID, no FK enforced on it). Also found and fixed a third latent defect in the same test case, not flagged in the REWORK dispatch but blocking on the same false premise: the trailing assertion claimed tenant_default.process_definitions has zero tenant_id columns, but the live schema shows a real, NOT NULL tenant_id column backed by tenant_default's own bpm_effective_tenant_id() default -- GBL-084 only removes the public-schema copy; per-tenant schemas provisioned by TNT-01/GBL-077 keep their own tenant_id + RLS policy by design, scoped to that one schema. Corrected the expected count from 0 to 1 and rewrote the surrounding comment to explain why, so a future reader does not reintroduce the same false assumption. Verified against live db_test (docker-compose services already healthy from the prior ADHOC-iss503-infra-20260730 run -- db, db_test, keycloak, keycloak_gateway all healthy, no restart needed): zig build test-integration-iss503 -> 4/4 tests pass, exit 0, run twice for stability (both runs clean). zig build test-integration-tm regression gate -> 14/14 pass, exit 0, zero regressions. zig build error-set validation (zig build 2>&1 | grep -i \"error set\") produced no output. Also ran the full zig build test-integration umbrella suite for extra confidence: it still shows the same pre-existing ~99 failures BACKEND-DEV already root-caused and logged as ISS-503-INFRA-01 in handoffs/ADHOC-iss503-infra-20260730/step-00-backend-dev.json (cross-test DB contention/isolation gap under the umbrella suite's default parallelism against one shared database -- confirmed by BACKEND-DEV not to reproduce when binaries are run individually, which is exactly how test-integration-iss503 and test-integration-tm were run here). That issue is out of this handoff's scope (already recommended by BACKEND-DEV as a separate WF-03/test-infra epic) and does not affect the ISS-503 acceptance criteria, which require only test-integration-iss503 and test-integration-tm, both of which pass cleanly standalone. Did not touch migrations/GBL-084_rls_removal.sql or src/db/pool.zig, per instruction -- both confirmed correct. Committed fix as e387b74 on feature/ADHOC-iss503-infra-20260730 (the branch already carrying the infra-unblock and test-file baseline commits) and pushed to origin.",
+    "artifacts_out": [
+      "tests/integration/test_iss503_rls_removal.zig"
+    ],
+    "issues": [],
+    "branch_state": {
+      "branch": "feature/ADHOC-iss503-infra-20260730",
+      "commit": "e387b74",
+      "pushed_to_origin": true,
+      "note": "Reused the existing feature/ADHOC-iss503-infra-20260730 branch rather than creating feature/WF02-iss503-continuation-20260730, since that branch already carries the infra-unblock (cc1dff7), the ADHOC handoff finalization (77fbe80), and the original test_iss503_rls_removal.zig baseline this fix builds on -- splitting ISS-503 work across two branches would fragment the same continuation effort. Commit history on this branch: cc1dff7 (zig 0.16 compile drift fix, 55 unrelated pre-existing errors), 77fbe80 (ADHOC handoff finalization), e387b74 (this fix). Not yet merged to main -- ORCH should target this branch at Step Final (git-merge) for ISS-503."
+    },
+    "test_results": {
+      "test_integration_iss503": {
+        "passed": 4,
+        "total": 4,
+        "exit_code": 0,
+        "runs_verified": 2
+      },
+      "test_integration_tm_regression_gate": {
+        "passed": 14,
+        "total": 14,
+        "exit_code": 0
+      },
+      "zig_build": {
+        "exit_code": 0,
+        "error_set_output": "none"
+      },
+      "test_integration_umbrella_full_suite": {
+        "exit_code": 1,
+        "note": "Pre-existing ~99 failures, all already root-caused and logged as ISS-503-INFRA-01 (cross-test isolation/contention under umbrella-suite parallelism) by BACKEND-DEV in the prior ADHOC run. Out of this handoff's scope; does not affect ISS-503 acceptance criteria."
+      }
+    },
+    "next_action": "Route to TEST-DESIGN-VALIDATOR (Step 3b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-07-30T08:17:04Z",
+  "completed_at": "2026-07-30T10:30:39Z"
+}
