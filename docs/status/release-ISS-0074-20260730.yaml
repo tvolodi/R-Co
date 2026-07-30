@@ -1,0 +1,53 @@
+issue_id: ISS-0074
+github_issue: "https://github.com/tvolodi/R-Co/issues/289"
+run_id: WF03-iss0074-20260730
+workflow_id: WF-03
+timestamp: "2026-07-30T11:28:33Z"
+severity: BLOCKER
+decision: RELEASE
+blockers: []
+major_issues: []
+minor_notes:
+  - "wrapped_key_algorithm enum tag (.aes_kw_256) is kept as opaque wire metadata though the real construction is a second AEAD layer, not RFC 3394 AES-KW; documented via source comment in src/secrets/crypto.zig."
+new_finding_out_of_scope:
+  title: "migrations/GBL-100_exp501_secrets.sql never actually creates the secrets table in dev/test DBs"
+  detail: >
+    Verified via direct psql query against both r-co-db-1 (bpm_dev) and
+    r-co-db_test-1 (bpm_test): no `secrets` table exists in any schema,
+    including tenant_default. The migration's DO block guards CREATE TABLE
+    on `to_regclass('instance_projections') IS NOT NULL`, but
+    instance_projections only exists under the tenant_default schema, not
+    public -- the guard appears to evaluate against the wrong search_path
+    at migration-apply time. `zig build migrate` reports this migration as
+    already "skip"ped (recorded applied) with the table never created.
+    Consequence: the entire EXP-501 secrets module is currently non-functional
+    in this environment (putSecret would fail with a relation-does-not-exist
+    error at the DB layer). This is unrelated to the ISS-0074 plaintext-crypto
+    defect (which is now fixed) and does not block this release, but should be
+    filed as a new issue and routed through WF-03 separately.
+  recommendation: "ORCH should register a new issue for this migration-scoping defect after this run completes."
+nfr_results:
+  - nfr_id: NFR-01
+    target: "p99 <= 200ms reads / <= 500ms writes"
+    actual: "0.792ms / 2.045ms"
+    passed: true
+  - nfr_id: NFR-02
+    target: ">= 1000 events/sec append throughput"
+    actual: "65358.874 events/sec"
+    passed: true
+  - nfr_id: NFR-04
+    target: "10000-event replay <= 5000ms"
+    actual: "38.736ms"
+    passed: true
+test_evidence: tests/reports/report-20260730-WF03-iss0074-20260730-step05-verify.yaml
+acceptance_criteria_verified:
+  - "encrypt() performs real AEAD using std.crypto.aead.aes_gcm.Aes256Gcm with the supplied master_key: VERIFIED (src/secrets/crypto.zig)"
+  - "decrypt() authenticates and decrypts; a tampered ciphertext or auth tag fails with a typed error rather than returning data: VERIFIED (TC-ISS-0074-04/05/06/09, all pass)"
+  - "A test asserts ciphertext != plaintext for a non-empty plaintext: VERIFIED (TC-ISS-0074-01)"
+  - "A round-trip test asserts decrypt(encrypt(x)) == x: VERIFIED (TC-ISS-0074-02, short/medium/long secrets + TC-03 empty case)"
+  - "Existing stored secrets are migrated or re-wrapped; no reader silently treats a plaintext-era row as decrypted: N/A -- verified directly against the running dev and test databases (docker exec psql \\dt / pg_tables query): the `secrets` table does not exist in ANY schema in either database. Root cause: migrations/GBL-100_exp501_secrets.sql guards table creation on to_regclass('instance_projections') being non-null under the migration runner's search_path; instance_projections only exists under the tenant_default schema, not public, so the guard likely never fired with the right search_path and the secrets table was never created. This means zero rows have ever been persisted through this module in this environment -- no plaintext-era data exists to migrate or re-wrap. This is a separate, pre-existing migration-scoping defect, not part of ISS-0074's scope; logging it as a new finding (see minor_notes) rather than blocking this fix on it."
+recommendation: >
+  Release immediately. This is a BLOCKER security defect (plaintext secrets
+  stored behind fabricated encryption metadata) with a minimal, verified fix
+  (1 file changed, 9 new passing unit tests, zero regressions across 667
+  tests, full NFR compliance). No reason to delay merge.

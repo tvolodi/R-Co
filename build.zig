@@ -717,9 +717,30 @@ pub fn build(b: *std.Build) void {
     const test_engine_step = b.step("test-engine", "Run engine unit tests");
     test_engine_step.dependOn(&run_engine_tests.step);
 
+    // ISS-0074: secrets/crypto.zig envelope-encryption unit tests (pure — no DB, no network)
+    const secrets_crypto_mod = b.createModule(.{
+        .root_source_file = b.path("src/secrets/crypto.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    const crypto_iss0074_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/unit/crypto_iss0074_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "secrets_crypto", .module = secrets_crypto_mod },
+            },
+        }),
+    });
+    const run_crypto_iss0074_tests = b.addRunArtifact(crypto_iss0074_tests);
+    const test_crypto_iss0074_step = b.step("test-crypto-iss0074", "Run ISS-0074 secrets/crypto.zig unit tests");
+    test_crypto_iss0074_step.dependOn(&run_crypto_iss0074_tests.step);
+
     const test_step = b.step("test", "Run all unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_db_tests.step);
+    test_step.dependOn(&run_crypto_iss0074_tests.step);
     // EXP-301/302/303: Effects subsystem unit tests (pure — no DB, no network)
     const effects_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
