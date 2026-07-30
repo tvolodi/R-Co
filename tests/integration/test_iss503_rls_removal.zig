@@ -304,44 +304,32 @@ test "TC-ISS503-02: GBL-084 succeeds when zero LEGACY_RLS tenants remain" {
     var conn = try pg.Conn.connectUrl(std.testing.io, alloc, url);
     defer conn.close();
 
-    // Precondition: flip every existing tenant to SCHEMA for the duration of
-    // this test so the pre-flight guard's zero-LEGACY_RLS condition holds,
-    // then restore original modes on the way out. This is a shared-table
-    // mutation, but it is the only way to exercise GBL-084's actual guard
-    // condition ("zero tenants in LEGACY_RLS mode") end-to-end against the
-    // real public.tenant table; per-test UUID fixtures alone cannot force
-    // that global precondition. Restoration happens unconditionally in the
-    // defer block, including on test failure.
-    var saved_modes = std.ArrayList(struct { id: []u8, mode: []u8 }).empty;
-    defer {
-        for (saved_modes.items) |entry| {
-            alloc.free(entry.id);
-            alloc.free(entry.mode);
-        }
-        saved_modes.deinit(alloc);
-    }
-
-    {
-        var existing = try conn.query(alloc, "SELECT id::text, storage_mode FROM public.tenant WHERE storage_mode = 'LEGACY_RLS'", &.{});
-        defer existing.deinit();
-        for (existing.rows) |row| {
-            const id_copy = try alloc.dupe(u8, row[0] orelse continue);
-            errdefer alloc.free(id_copy);
-            const mode_copy = try alloc.dupe(u8, row[1] orelse "LEGACY_RLS");
-            errdefer alloc.free(mode_copy);
-            try saved_modes.append(alloc, .{ .id = id_copy, .mode = mode_copy });
-        }
-    }
-    defer {
-        for (saved_modes.items) |entry| {
-            conn.exec(
-                "UPDATE public.tenant SET storage_mode = $2 WHERE id = $1::uuid",
-                &.{ entry.id, entry.mode },
-            ) catch |err| {
-                std.debug.print("cleanup: restore storage_mode for {s} failed: {}\n", .{ entry.id, err });
-            };
-        }
-    }
+    // ISS-503-TESTISO-01 fix: this test used to snapshot/mutate/restore
+    // whichever rows happened to be LEGACY_RLS in public.tenant (including
+    // the shared default tenant row) directly on the connection, then
+    // COMMIT the migration's DDL for real. That is the documented "shared
+    // mutable tenant fixture" anti-pattern (docs/anti-patterns.md): a
+    // restore-via-defer that silently swallows an UPDATE failure
+    // (`catch |err| { std.debug.print(...) }`) can leave the shared default
+    // tenant's storage_mode corrupted for whichever test — in this run or
+    // the *next* invocation of this binary, since clean_test_db.py never
+    // resets storage_mode — depends on it next (TC-ISS503-03's idempotent
+    // re-apply case observed exactly this once in 8 runs).
+    //
+    // Fix: do everything — the temporary flip-to-SCHEMA, the migration DDL,
+    // and every assertion — inside ONE transaction that is always rolled
+    // back at the end, regardless of pass or fail. Every statement GBL-084
+    // runs is ordinary transactional DDL (ALTER TABLE / DROP POLICY / DROP
+    // COLUMN / DROP FUNCTION — see migrations/GBL-084_rls_removal.sql), so
+    // Postgres guarantees the ROLLBACK fully undoes both the temporary mode
+    // flip and the migration's DDL. This still exercises the pre-flight
+    // guard's real global condition (zero LEGACY_RLS tenants table-wide)
+    // end-to-end against the real public.tenant table, but leaves provably
+    // zero residue for the next test in this file or the next invocation of
+    // this binary — no defer-based manual restore, no swallowed errors, no
+    // dependency on a fixture this test doesn't own.
+    try conn.exec("BEGIN", &.{});
+    errdefer conn.exec("ROLLBACK", &.{}) catch {};
 
     try conn.exec("UPDATE public.tenant SET storage_mode = 'SCHEMA' WHERE storage_mode = 'LEGACY_RLS'", &.{});
 
@@ -351,17 +339,10 @@ test "TC-ISS503-02: GBL-084 succeeds when zero LEGACY_RLS tenants remain" {
     const sql_bytes = try readGbl084Sql(std.testing.io, alloc);
     defer alloc.free(sql_bytes);
 
-    // Run the migration's DDL for real (not inside a transaction we roll
-    // back) — that is the only way to observe its actual, committed effect,
-    // matching how the real migration runner applies it (BEGIN; simpleQuery;
-    // COMMIT). It is idempotent (IF EXISTS everywhere), so applying it here
-    // even if a prior global run already applied it once is always safe.
-    try conn.exec("BEGIN", &.{});
-    conn.simpleQuery(sql_bytes) catch |err| {
-        conn.exec("ROLLBACK", &.{}) catch {};
-        return err;
-    };
-    try conn.exec("COMMIT", &.{});
+    // Run the migration's DDL inside this same transaction. It is idempotent
+    // (IF EXISTS everywhere), so applying it here even if a prior global run
+    // already applied it once is always safe.
+    try conn.simpleQuery(sql_bytes);
 
     // All RLS policies on the six RLS-protected business tables are gone.
     const policies_after = try countRlsPolicies(alloc, &conn);
@@ -374,6 +355,11 @@ test "TC-ISS503-02: GBL-084 succeeds when zero LEGACY_RLS tenants remain" {
     // bpm_effective_tenant_id() function dropped.
     const function_count_after = try countEffectiveTenantIdFunction(alloc, &conn);
     try testing.expectEqual(@as(usize, 0), function_count_after);
+
+    // Always roll back: this test must leave zero trace in public.tenant or
+    // on any business table for the next test in this file, or the next
+    // invocation of this binary, to observe.
+    try conn.exec("ROLLBACK", &.{});
 }
 
 // ---------------------------------------------------------------------------
@@ -389,50 +375,26 @@ test "TC-ISS503-03: GBL-084 is idempotent on re-apply" {
     var conn = try pg.Conn.connectUrl(std.testing.io, alloc, url);
     defer conn.close();
 
-    // Precondition: GBL-084 already applied (drive the real DDL at least
-    // once first, regardless of whatever global schema_migrations state
-    // exists, exactly like TC-ISS503-02 does).
-    var saved_modes = std.ArrayList(struct { id: []u8, mode: []u8 }).empty;
-    defer {
-        for (saved_modes.items) |entry| {
-            alloc.free(entry.id);
-            alloc.free(entry.mode);
-        }
-        saved_modes.deinit(alloc);
-    }
-    {
-        var existing = try conn.query(alloc, "SELECT id::text, storage_mode FROM public.tenant WHERE storage_mode = 'LEGACY_RLS'", &.{});
-        defer existing.deinit();
-        for (existing.rows) |row| {
-            const id_copy = try alloc.dupe(u8, row[0] orelse continue);
-            errdefer alloc.free(id_copy);
-            const mode_copy = try alloc.dupe(u8, row[1] orelse "LEGACY_RLS");
-            errdefer alloc.free(mode_copy);
-            try saved_modes.append(alloc, .{ .id = id_copy, .mode = mode_copy });
-        }
-    }
-    defer {
-        for (saved_modes.items) |entry| {
-            conn.exec(
-                "UPDATE public.tenant SET storage_mode = $2 WHERE id = $1::uuid",
-                &.{ entry.id, entry.mode },
-            ) catch |err| {
-                std.debug.print("cleanup: restore storage_mode for {s} failed: {}\n", .{ entry.id, err });
-            };
-        }
-    }
+    // ISS-503-TESTISO-01 fix: same shared-mutable-tenant-fixture anti-pattern
+    // as TC-ISS503-02 (see its comment above for the full root-cause trace —
+    // a silently-swallowed restore-via-defer UPDATE on the shared default
+    // tenant row could leave storage_mode corrupted for a later test or the
+    // next invocation of this binary). Fix is identical: run the temporary
+    // flip-to-SCHEMA precondition, BOTH migration applies, and every
+    // assertion inside one transaction, rolled back unconditionally at the
+    // end. GBL-084's DDL is ordinary transactional DDL, so ROLLBACK fully
+    // undoes both applies and the mode flip — this test owns nothing beyond
+    // its own transaction and leaves zero residue either way.
+    try conn.exec("BEGIN", &.{});
+    errdefer conn.exec("ROLLBACK", &.{}) catch {};
+
     try conn.exec("UPDATE public.tenant SET storage_mode = 'SCHEMA' WHERE storage_mode = 'LEGACY_RLS'", &.{});
 
     const sql_bytes = try readGbl084Sql(std.testing.io, alloc);
     defer alloc.free(sql_bytes);
 
     // First apply (establishes the "already applied" precondition for this test).
-    try conn.exec("BEGIN", &.{});
-    conn.simpleQuery(sql_bytes) catch |err| {
-        conn.exec("ROLLBACK", &.{}) catch {};
-        return err;
-    };
-    try conn.exec("COMMIT", &.{});
+    try conn.simpleQuery(sql_bytes);
 
     const policies_after_first = try countRlsPolicies(alloc, &conn);
     const tenant_id_cols_after_first = try countTenantIdColumns(alloc, &conn);
@@ -442,14 +404,10 @@ test "TC-ISS503-03: GBL-084 is idempotent on re-apply" {
     try testing.expectEqual(@as(usize, 0), function_count_after_first);
 
     // Re-apply must succeed with no errors (IF EXISTS everywhere no-ops).
-    try conn.exec("BEGIN", &.{});
-    const second_apply_result = conn.simpleQuery(sql_bytes);
-    if (second_apply_result) |_| {
-        try conn.exec("COMMIT", &.{});
-    } else |err| {
-        conn.exec("ROLLBACK", &.{}) catch {};
-        return err;
-    }
+    // Same transaction, no nested BEGIN/COMMIT — a second failed statement
+    // here would abort the (single) enclosing transaction, which the
+    // errdefer above rolls back exactly like any other failure path.
+    try conn.simpleQuery(sql_bytes);
 
     // State is unchanged and still fully torn down after the second apply.
     const policies_after_second = try countRlsPolicies(alloc, &conn);
@@ -458,6 +416,11 @@ test "TC-ISS503-03: GBL-084 is idempotent on re-apply" {
     try testing.expectEqual(@as(usize, 0), policies_after_second);
     try testing.expectEqual(@as(usize, 0), tenant_id_cols_after_second);
     try testing.expectEqual(@as(usize, 0), function_count_after_second);
+
+    // Always roll back: this test must leave zero trace in public.tenant or
+    // on any business table for the next test in this file, or the next
+    // invocation of this binary, to observe.
+    try conn.exec("ROLLBACK", &.{});
 }
 
 // ---------------------------------------------------------------------------
