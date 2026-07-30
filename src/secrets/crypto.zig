@@ -1,8 +1,14 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const Aes256Gcm = std.crypto.aead.aes_gcm.Aes256Gcm;
 
 pub const SecretAlgorithm = enum { aes_256_gcm };
 pub const WrappedKeyAlgorithm = enum { aes_kw_256 };
+
+const WRAP_NONCE_LEN = Aes256Gcm.nonce_length;
+const WRAP_TAG_LEN = Aes256Gcm.tag_length;
+const DEK_LEN = 32;
+const WRAPPED_DEK_LEN = WRAP_NONCE_LEN + DEK_LEN + WRAP_TAG_LEN;
 
 pub const SecretEnvelope = struct {
     algorithm: SecretAlgorithm,
@@ -55,58 +61,44 @@ pub fn encrypt(
     wrapping_key_version: []const u8,
     master_key: [32]u8,
 ) CryptoError!SecretEnvelope {
-    _ = master_key;
-    // Wave-1 envelope model: store an authenticated opaque payload without exposing plaintext.
-    // We keep algorithm/key metadata explicit and reserve true AEAD wrapping for a follow-up hardening step.
-    var nonce: [12]u8 = undefined;
+    // Envelope encryption per src/design/exp-05-secrets-module.md: a fresh
+    // per-secret data encryption key (DEK) encrypts the plaintext via
+    // AES-256-GCM; the DEK itself is wrapped (encrypted) with the host
+    // master key via a second, independently-nonced AES-256-GCM operation
+    // (Zig stdlib has no dedicated AES-KW primitive, so a second AEAD layer
+    // is used instead; wrapped_data_key = wrap_nonce || enc(DEK) || wrap_tag).
+    var nonce: [Aes256Gcm.nonce_length]u8 = undefined;
     fillRandom(&nonce);
 
-    var auth_tag: [16]u8 = undefined;
-    fillRandom(&auth_tag);
-
-    var data_key: [32]u8 = undefined;
+    var data_key: [DEK_LEN]u8 = undefined;
     fillRandom(&data_key);
+    defer std.crypto.secureZero(u8, &data_key);
 
-    const ciphertext = allocator.dupe(u8, plaintext) catch return error.OutOfMemory;
-    const wrapped_data_key = allocator.dupe(u8, &data_key) catch {
-        allocator.free(ciphertext);
-        return error.OutOfMemory;
-    };
-    const nonce_copy = allocator.dupe(u8, &nonce) catch {
-        allocator.free(ciphertext);
-        allocator.free(wrapped_data_key);
-        return error.OutOfMemory;
-    };
-    const tag_copy = allocator.dupe(u8, &auth_tag) catch {
-        allocator.free(ciphertext);
-        allocator.free(wrapped_data_key);
-        allocator.free(nonce_copy);
-        return error.OutOfMemory;
-    };
-    const aad_copy = allocator.dupe(u8, aad) catch {
-        allocator.free(ciphertext);
-        allocator.free(wrapped_data_key);
-        allocator.free(nonce_copy);
-        allocator.free(tag_copy);
-        return error.OutOfMemory;
-    };
-    const key_ref = allocator.dupe(u8, wrapping_key_ref) catch {
-        allocator.free(ciphertext);
-        allocator.free(wrapped_data_key);
-        allocator.free(nonce_copy);
-        allocator.free(tag_copy);
-        allocator.free(aad_copy);
-        return error.OutOfMemory;
-    };
-    const key_ver = allocator.dupe(u8, wrapping_key_version) catch {
-        allocator.free(ciphertext);
-        allocator.free(wrapped_data_key);
-        allocator.free(nonce_copy);
-        allocator.free(tag_copy);
-        allocator.free(aad_copy);
-        allocator.free(key_ref);
-        return error.OutOfMemory;
-    };
+    const ciphertext = allocator.alloc(u8, plaintext.len) catch return error.OutOfMemory;
+    errdefer allocator.free(ciphertext);
+    var auth_tag: [Aes256Gcm.tag_length]u8 = undefined;
+    Aes256Gcm.encrypt(ciphertext, &auth_tag, plaintext, aad, nonce, data_key);
+
+    var wrap_nonce: [WRAP_NONCE_LEN]u8 = undefined;
+    fillRandom(&wrap_nonce);
+
+    const wrapped_data_key = allocator.alloc(u8, WRAPPED_DEK_LEN) catch return error.OutOfMemory;
+    errdefer allocator.free(wrapped_data_key);
+    var wrap_tag: [WRAP_TAG_LEN]u8 = undefined;
+    Aes256Gcm.encrypt(wrapped_data_key[WRAP_NONCE_LEN..][0..DEK_LEN], &wrap_tag, &data_key, wrapping_key_ref, wrap_nonce, master_key);
+    wrapped_data_key[0..WRAP_NONCE_LEN].* = wrap_nonce;
+    wrapped_data_key[WRAP_NONCE_LEN + DEK_LEN ..][0..WRAP_TAG_LEN].* = wrap_tag;
+
+    const nonce_copy = allocator.dupe(u8, &nonce) catch return error.OutOfMemory;
+    errdefer allocator.free(nonce_copy);
+    const tag_copy = allocator.dupe(u8, &auth_tag) catch return error.OutOfMemory;
+    errdefer allocator.free(tag_copy);
+    const aad_copy = allocator.dupe(u8, aad) catch return error.OutOfMemory;
+    errdefer allocator.free(aad_copy);
+    const key_ref = allocator.dupe(u8, wrapping_key_ref) catch return error.OutOfMemory;
+    errdefer allocator.free(key_ref);
+    const key_ver = allocator.dupe(u8, wrapping_key_version) catch return error.OutOfMemory;
+    errdefer allocator.free(key_ver);
 
     return .{
         .algorithm = .aes_256_gcm,
@@ -126,8 +118,26 @@ pub fn decrypt(
     envelope: SecretEnvelope,
     master_key: [32]u8,
 ) CryptoError![]u8 {
-    _ = master_key;
-    return allocator.dupe(u8, envelope.ciphertext) catch return error.OutOfMemory;
+    if (envelope.wrapped_data_key.len != WRAPPED_DEK_LEN) return error.DecryptionFailed;
+    if (envelope.nonce.len != Aes256Gcm.nonce_length) return error.DecryptionFailed;
+    if (envelope.auth_tag.len != Aes256Gcm.tag_length) return error.DecryptionFailed;
+
+    const wrap_nonce: [WRAP_NONCE_LEN]u8 = envelope.wrapped_data_key[0..WRAP_NONCE_LEN].*;
+    const wrapped_dek = envelope.wrapped_data_key[WRAP_NONCE_LEN..][0..DEK_LEN];
+    const wrap_tag: [WRAP_TAG_LEN]u8 = envelope.wrapped_data_key[WRAP_NONCE_LEN + DEK_LEN ..][0..WRAP_TAG_LEN].*;
+
+    var data_key: [DEK_LEN]u8 = undefined;
+    defer std.crypto.secureZero(u8, &data_key);
+    Aes256Gcm.decrypt(&data_key, wrapped_dek, wrap_tag, envelope.wrapping_key_ref, wrap_nonce, master_key) catch return error.DecryptionFailed;
+
+    const nonce: [Aes256Gcm.nonce_length]u8 = envelope.nonce[0..Aes256Gcm.nonce_length].*;
+    const auth_tag: [Aes256Gcm.tag_length]u8 = envelope.auth_tag[0..Aes256Gcm.tag_length].*;
+
+    const plaintext = allocator.alloc(u8, envelope.ciphertext.len) catch return error.OutOfMemory;
+    errdefer allocator.free(plaintext);
+    Aes256Gcm.decrypt(plaintext, envelope.ciphertext, auth_tag, envelope.aad, nonce, data_key) catch return error.DecryptionFailed;
+
+    return plaintext;
 }
 
 pub fn parseMasterKeyHex(value: []const u8) CryptoError![32]u8 {

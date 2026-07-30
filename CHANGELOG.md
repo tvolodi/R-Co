@@ -2,6 +2,23 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0074 / secrets crypto fixed] — 2026-07-30
+
+### Fixed
+- **ISS-0074 (BLOCKER security defect, also tracked as ISS-BRW-01)**: `encrypt()` and `decrypt()` in `src/secrets/crypto.zig` discarded the `master_key` parameter and copied plaintext verbatim into the `ciphertext` field, while the persisted envelope metadata falsely claimed `aes_256_gcm` / `aes_kw_256` protection — every secret written through the EXP-501 secrets module (`src/secrets/store.zig`) was stored as plaintext. Replaced both functions with real two-layer envelope encryption using `std.crypto.aead.aes_gcm.Aes256Gcm`: a fresh per-secret data encryption key (DEK) encrypts the plaintext; the DEK itself is wrapped by the host master key via a second, independently-nonced AEAD layer (Zig 0.16 stdlib has no dedicated AES-KW primitive). DEK material is zeroized via `std.crypto.secureZero` after use in both directions. No public function signatures changed and no caller (`src/secrets/store.zig`) required edits — both already treat envelope fields as opaque byte blobs. GitHub issue [#289](https://github.com/tvolodi/R-Co/issues/289) closed. Fix design: `src/design/fix-ISS-0074.md`. Release decision: `docs/status/release-ISS-0074-20260730.yaml`.
+
+### Added
+- `tests/unit/crypto_iss0074_test.zig` (9 new unit tests, wired into `zig build test` via the new `test-crypto-iss0074` step): asserts ciphertext ≠ plaintext, round-trip correctness across short/medium/long/empty secrets, tamper detection on ciphertext/auth_tag/wrapped_data_key/aad (all correctly return `error.DecryptionFailed`), wrong-master-key rejection, and non-deterministic output across repeated encryptions of the same plaintext.
+
+### Verified (regression)
+- Full unit suite: 583/667 passed, 0 failed, 84 pre-existing conditional skips.
+- `zig build migrate`: no pending migrations.
+- `zig build bench`: all NFR targets passed (NFR-01 p99 read 0.792ms / write 2.045ms; NFR-02 append throughput 65,358 events/sec; NFR-04 10k-event replay 38.7ms).
+- Test evidence: `tests/reports/report-20260730-WF03-iss0074-20260730-step05-verify.yaml`.
+
+### Notes
+- While verifying this fix, discovered that `migrations/GBL-100_exp501_secrets.sql` never actually creates the `secrets` table in the current dev/test databases — its creation guard checks `to_regclass('instance_projections')`, which only resolves under the `tenant_default` schema, not `public`, at migration-apply time. Confirmed via direct query that no `secrets` table exists in any schema in either database, meaning (a) there is no pre-existing plaintext-era data to migrate as a result of this fix, and (b) the EXP-501 module is currently non-functional end-to-end pending a separate fix. Tracked as a MAJOR follow-up, out of scope for ISS-0074.
+
 ## [EPIC-5 / ISS-503 test coverage completed] — 2026-07-30
 
 ### Verified

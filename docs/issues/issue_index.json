@@ -1,14 +1,43 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-06-16T05:47:49Z",
-  "next_issue_id": 74,
+  "last_updated": "2026-07-30T11:28:33Z",
+  "next_issue_id": 76,
   "issues": [
     {
+      "id": "ISS-0075",
+      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table \u2014 creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "migration scoping / search_path defect",
+      "run_id": "WF03-iss0074-20260730",
+      "handoff_id": "gh-289-WF03-iss0074-20260730-followup",
+      "affected_areas": [
+        "migrations/GBL-100_exp501_secrets.sql"
+      ],
+      "created_at": "2026-07-30T11:28:33Z",
+      "resolved_at": null
+    },
+    {
+      "id": "ISS-0074",
+      "title": "secrets/crypto.zig stores plaintext behind AES-256-GCM envelope metadata",
+      "status": "RESOLVED",
+      "severity": "BLOCKER",
+      "category": "security - fake encryption (plaintext stored, envelope metadata is fabricated)",
+      "run_id": "WF03-iss0074-20260730",
+      "handoff_id": "gh-289-WF03-iss0074-20260730",
+      "affected_areas": [
+        "src/secrets/crypto.zig",
+        "src/secrets/store.zig"
+      ],
+      "created_at": "2026-07-30T11:28:33Z",
+      "resolved_at": "2026-07-30T11:28:33Z"
+    },
+    {
       "id": "ISS-0073",
-      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm — signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
+      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm \u2014 signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
       "status": "OPEN",
       "severity": "BLOCKER",
-      "category": "logic error — singleton cache bypasses realm resolution at callback time",
+      "category": "logic error \u2014 singleton cache bypasses realm resolution at callback time",
       "run_id": "WF03-oidc-callback-realm-20260616",
       "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
       "affected_areas": [
@@ -21,7 +50,7 @@
     },
     {
       "id": "ISS-0072",
-      "title": "Tenant admin login fails after onboarding — GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
+      "title": "Tenant admin login fails after onboarding \u2014 GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "logic error / design gap",
@@ -38,7 +67,7 @@
     },
     {
       "id": "ISS-0071",
-      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
+      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input \u2014 swiftroute realm-missing inconsistent state compounds scenario unverifiability",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "test harness error + backend state inconsistency",
@@ -84,7 +113,7 @@
     },
     {
       "id": "ISS-0068",
-      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",
+      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() \u2014 tenant schemas missing for all tenants",
       "status": "RESOLVED",
       "severity": "BLOCKER",
       "run_id": "WF03-spt01-onboarding-schema-missing-20260607",

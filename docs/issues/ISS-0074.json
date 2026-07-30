@@ -1,0 +1,41 @@
+{
+  "issue_id": "ISS-0074",
+  "title": "secrets/crypto.zig stores plaintext behind AES-256-GCM envelope metadata",
+  "status": "RESOLVED",
+  "severity": "BLOCKER",
+  "category": "security - fake encryption (plaintext stored, envelope metadata is fabricated)",
+  "run_id": "WF03-iss0074-20260730",
+  "workflow_id": "WF-03",
+  "handoff_id": "gh-289-WF03-iss0074-20260730",
+  "requirement_ids": ["EXP-501"],
+  "summary": "GitHub issue #289 (also known as ISS-BRW-01 in docs/workflows.yaml and docs/agents/PIPELINE_BACKLOG.md, source: Borrowing_From_ASCOA-GO.20260729.md §5.1). encrypt() in src/secrets/crypto.zig takes a master_key parameter and discards it (`_ = master_key;`). It generates a nonce, auth tag, and data key that are never used cryptographically, then sets ciphertext = allocator.dupe(u8, plaintext) - a verbatim copy, not real ciphertext. decrypt() mirrors this: discards master_key and returns dupe(envelope.ciphertext). The envelope struct is populated with .aes_256_gcm / .aes_kw_256 algorithm tags regardless, so every persisted secret in the `secrets` table is stored as plaintext while its metadata falsely claims AEAD protection.",
+  "root_cause": {
+    "type": "stubbed-crypto-boundary",
+    "details": "src/secrets/crypto.zig encrypt()/decrypt() were implemented as Wave-1 placeholders (source comment: 'Wave-1 envelope model... reserve true AEAD wrapping for a follow-up hardening step') but the envelope metadata (algorithm=aes_256_gcm, wrapped_key_algorithm=aes_kw_256) was written as if real encryption were in place, and no test ever asserted ciphertext != plaintext, so the gap went undetected through store.zig integration. The design doc (src/design/exp-05-secrets-module.md) specifies real envelope encryption: a per-secret DEK encrypts the plaintext via AEAD, and the DEK itself is wrapped by the host master key. Neither layer was implemented - the DEK is generated but discarded, and the master key is discarded."
+  },
+  "files_to_change": [
+    "src/secrets/crypto.zig"
+  ],
+  "resolution": "Rewrote encrypt()/decrypt() in src/secrets/crypto.zig to perform real two-layer envelope encryption via std.crypto.aead.aes_gcm.Aes256Gcm: a per-secret DEK encrypts the plaintext (random nonce, authenticated with AAD), and the DEK is wrapped by master_key via a second AEAD layer with its own nonce (wrapped_data_key = wrap_nonce || enc(DEK) || wrap_tag, 60 bytes). decrypt() unwraps the DEK first (authenticated) then decrypts the payload (authenticated); any AEAD failure at either layer returns error.DecryptionFailed rather than partial/garbage plaintext. DEK buffers are zeroized via std.crypto.secureZero after use. No public signatures or callers changed. Verified via 9 new unit tests in tests/unit/crypto_iss0074_test.zig covering all 4 issue acceptance criteria (ciphertext != plaintext, round-trip, tamper detection, non-determinism) plus wrong-key rejection and AAD-tamper detection. Full regression suite (667 tests) shows zero new failures; NFR benchmarks pass.",
+  "occurrences": [
+    {
+      "occurred_at": "2026-07-30T11:28:33Z",
+      "run_id": "WF03-iss0074-20260730",
+      "handoff_id": "gh-289-WF03-iss0074-20260730",
+      "trigger": "user_report",
+      "context": "User asked to resolve GitHub issue #289, which documents this defect (cross-referenced as ISS-BRW-01 / ISS-0074 in prior audit docs, verified by direct source read on 2026-07-29 per Borrowing_From_ASCOA-GO.20260729.md)."
+    }
+  ],
+  "files_changed": [
+    "src/secrets/crypto.zig",
+    "build.zig",
+    "tests/unit/crypto_iss0074_test.zig"
+  ],
+  "created_at": "2026-07-30T11:28:33Z",
+  "resolved_at": "2026-07-30T11:28:33Z",
+  "prevention": [
+    "Any function that accepts key material or other security-sensitive input MUST NOT discard it with `_ = param;` without an explicit, reviewed justification comment — this is exactly the pattern that hid ISS-0074 through code review.",
+    "Any module implementing encryption MUST have a test asserting ciphertext != plaintext before it is considered done — this single assertion would have caught ISS-0074 immediately and is now the first test case in tests/unit/crypto_iss0074_test.zig.",
+    "CODE-DESIGN-VALIDATOR and TEST-DESIGN-VALIDATOR should treat 'Wave-1 placeholder' / 'follow-up hardening step' comments in security-boundary code as a BLOCKER-severity flag requiring either immediate real implementation or an explicit, tracked follow-up issue filed at design time — not silent acceptance."
+  ]
+}
