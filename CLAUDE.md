@@ -55,6 +55,16 @@ When running as **ORCH**, the Zero Manual Work directive is fulfilled by running
 
 **Only exception:** a destructive or irreversible change to unrelated functionality (e.g. dropping a production table). Flag those for Orchestrator escalation instead.
 
+### ⛔ No Issue Left Local-Only
+
+**A defect that lives only in `docs/issues/*.json` is invisible to the user.** That registry is a working file for the pipeline (search-issues, rework tracking) — it is not where a human would ever think to look for "what's broken."
+
+Any NEW issue discovered by any agent — whether it is the task the user asked for, or an incidental finding surfaced while doing something else (a RELEASE-VALIDATOR note, a TEST-RUNNER regression, an ISSUE-FIXER diagnosis) — MUST be filed as a real GitHub issue via `gh issue create`, not just registered locally. This is not optional and is not limited to BLOCKER severity.
+
+Before filing, check for an ID collision: local `ISS-NNNN` numbering and GitHub issue numbering are different sequences, and a local ID can coincide with an unrelated existing GitHub issue. Search first (`gh issue list --search "<keywords>" --state all`); renumber the local entry if the ID is already spoken for on GitHub.
+
+"Out of scope for the current fix" is a reason to file the finding as its own issue — never a reason to leave it undocumented outside `docs/issues/`. See the ISSUE-FIXER section (`Step 0.5`) below for the exact procedure.
+
 ### ⛔ No Speculation
 
 Never report something as working without verifying it yourself. Run the build, run the tests, read the output — then report. If you cannot verify, say so explicitly.
@@ -1010,6 +1020,16 @@ keywords = []  # extract from the failure: module names, error type, etc.
 # fn:register-issue — always register, even if resolved quickly
 # fn:update-issue — mark RESOLVED with resolution + prevention text
 ```
+
+**5. File it on GitHub — mandatory for every NEW issue (Step 0.5 "no matching issue found" case):**
+
+`docs/issues/*.json` is an internal working registry, not a visible record. A defect that exists only there is invisible to the human unless they already know to look. Before completing Step 0.5, if this is a newly-registered issue (not a recurrence of an existing one):
+
+1. Check for an ID collision first — search existing GitHub issues by keyword (`gh issue list --search "<keywords>" --state all`) before assuming the local `ISS-NNNN` number is free on GitHub. Local and GitHub numbering are not the same sequence; a local ID can collide with an unrelated GitHub issue that happens to reference the same string. If a collision is found, renumber the local entry before filing.
+2. Run `gh issue create` with a title and body mirroring the local ISS file (symptom, root cause, acceptance criteria, severity), tagged `<!-- rco-sync-ref: ISS-NNNN -->` at the top of the body per the existing convention used elsewhere in this repo.
+3. Write the resulting issue URL back into the local `docs/issues/ISS-NNNN.json` as a `github_issue` field, and cross-reference it in `CHANGELOG.md` / `docs/anti-patterns.md` if either is touched for this issue.
+
+This applies regardless of whether the issue was the original task or discovered incidentally as a byproduct of other work (e.g. a RELEASE-VALIDATOR finding during Step 6 of an unrelated fix). "Out of scope for the current fix" is not a reason to skip filing — it is a reason to file it as its own issue rather than folding it into the current one.
 
 ---
 
