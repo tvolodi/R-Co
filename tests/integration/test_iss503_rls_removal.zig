@@ -1,0 +1,601 @@
+//! Integration tests for ISS-503 — GBL-084 RLS removal migration.
+//!
+//! migrations/GBL-084_rls_removal.sql drops legacy RLS policies, tenant_id
+//! columns on public business tables, and the bpm_effective_tenant_id()
+//! helper function — but only after a pre-flight guard confirms zero tenants
+//! remain in storage_mode = 'LEGACY_RLS'. The guard is a single `DO $$ ... $$`
+//! block: if the pre-flight RAISE EXCEPTION fires, the whole block (guard +
+//! every DDL statement after it) aborts atomically — nothing after the guard
+//! ever executes, so no DROP POLICY/COLUMN/FUNCTION happens, and the caller
+//! (the migration runner in src/tools/migrate.zig) never records the file in
+//! public.schema_migrations because it rolls back its own wrapping
+//! transaction on error.
+//!
+//! Requires a real PostgreSQL database reachable at BPM_TEST_DB_URL.
+//! Every test creates its own fixtures with per-test UUIDs and cleans up via
+//! defer (even on failure paths) — no cross-test shared state.
+//!
+//! IMPORTANT — shared `public` schema semantics:
+//! GBL-084 is a GBL-prefixed (global/public-schema) migration. The regular
+//! test harness (tests/integration/helpers.zig runMigrations()) applies it
+//! unconditionally to the shared test database's `public` schema and records
+//! it in `public.schema_migrations`, so by the time these tests run it has
+//! almost certainly already been applied once, globally, and re-applying it
+//! via the real migration runner would be a permanent no-op (`applied.contains`
+//! short-circuits it). That real-runner behaviour is NOT what TC-ISS503-01/02
+//! need to exercise — they need to observe the *migration SQL's own*
+//! pre-flight guard and DDL behaviour directly, independent of whichever
+//! global schema_migrations bookkeeping row already exists.
+//!
+//! To do that, every test here opens its own **direct pg.Conn** (bypassing
+//! the pool and the TestHarness rollback-per-test convention) and executes
+//! the GBL-084 SQL file's contents via simpleQuery() inside an explicit
+//! BEGIN/COMMIT or BEGIN/ROLLBACK it manages itself — mirroring the exact
+//! pattern used to validate migrations 1:1 against a live database elsewhere
+//! in this codebase (see the GBL-077 smoke-test precedent). All assertions
+//! are relative (before vs. after snapshots of pg_policies /
+//! information_schema.columns / pg_proc), so the tests are correct regardless
+//! of whether GBL-084 already ran once, globally, before this suite started.
+//!
+//! Requirement traceability:
+//!   ISS-503 → TC-ISS503-01 .. TC-ISS503-04
+
+const std = @import("std");
+const testing = std.testing;
+const pg = @import("pg");
+const helpers = @import("helpers.zig");
+const build_options = @import("build_options");
+
+const bpm = @import("bpm");
+const Pool = bpm.pool.Pool;
+const PoolConfig = bpm.pool.PoolConfig;
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
+    const env: std.process.Environ = .{ .block = .global };
+    return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => {
+            std.debug.print("BPM_TEST_DB_URL is required for ISS-503 integration tests\n", .{});
+            return error.MissingTestDatabaseUrl;
+        },
+        else => return err,
+    };
+}
+
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
+    raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
+    return std.fmt.allocPrint(allocator,
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}",
+        .{
+            raw[0],  raw[1],  raw[2],  raw[3],
+            raw[4],  raw[5],
+            raw[6],  raw[7],
+            raw[8],  raw[9],
+            raw[10], raw[11], raw[12], raw[13], raw[14], raw[15],
+        });
+}
+
+/// Reads migrations/GBL-084_rls_removal.sql from disk. Tries several relative
+/// paths so the test works whether the test binary's cwd is the repo root
+/// (normal `zig build test-integration` invocation, cwd set via setCwd in
+/// build.zig) or a nested test-runner cwd.
+fn readGbl084Sql(io: std.Io, allocator: std.mem.Allocator) ![]u8 {
+    const candidates = [_][]const u8{
+        "migrations",
+        "../migrations",
+        "../../migrations",
+        "../../../migrations",
+    };
+
+    var dir: std.Io.Dir = std.Io.Dir.cwd().openDir(io, "migrations", .{ .iterate = true }) catch blk: {
+        for (candidates[1..]) |candidate| {
+            const opened = std.Io.Dir.cwd().openDir(io, candidate, .{ .iterate = true }) catch |err| {
+                if (err == error.FileNotFound) continue;
+                return err;
+            };
+            break :blk opened;
+        }
+        return error.FileNotFound;
+    };
+    defer dir.close(io);
+
+    return dir.readFileAlloc(io, "GBL-084_rls_removal.sql", allocator, std.Io.Limit.limited(16 * 1024 * 1024));
+}
+
+/// Insert a temporary tenant row with the given storage_mode and a unique
+/// slug/realm so it cannot collide with any pre-existing tenant row.
+fn createTenantRow(
+    allocator: std.mem.Allocator,
+    conn: *pg.Conn,
+    tenant_id_str: []const u8,
+    slug_suffix: []const u8,
+    storage_mode: []const u8,
+) !void {
+    const slug = try std.fmt.allocPrint(allocator, "iss503-{s}", .{slug_suffix[0..8]});
+    defer allocator.free(slug);
+    const realm = try std.fmt.allocPrint(allocator, "realm-iss503-{s}", .{slug_suffix[0..8]});
+    defer allocator.free(realm);
+
+    try conn.exec(
+        "INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, storage_mode) VALUES ($1::uuid, $2, 'ISS-503 Test Tenant', 'ACTIVE', $3, $4)",
+        &.{ tenant_id_str, slug, realm, storage_mode },
+    );
+}
+
+fn deleteTenantRow(conn: *pg.Conn, tenant_id_str: []const u8) void {
+    conn.exec(
+        "DELETE FROM public.tenant WHERE id = $1::uuid",
+        &.{tenant_id_str},
+    ) catch |err| {
+        std.debug.print("cleanup: DELETE tenant {s} failed: {}\n", .{ tenant_id_str, err });
+    };
+}
+
+fn countLegacyRlsTenants(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
+    var result = try conn.query(
+        allocator,
+        "SELECT count(*) FROM public.tenant WHERE storage_mode = 'LEGACY_RLS'",
+        &.{},
+    );
+    defer result.deinit();
+    if (result.rows.len == 0) return 0;
+    const raw = result.rows[0][0] orelse return 0;
+    return std.fmt.parseInt(usize, raw, 10) catch 0;
+}
+
+/// Count RLS policies on public business tables that GBL-084 is responsible
+/// for removing (the six RLS-protected tables from Group 1).
+fn countRlsPolicies(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
+    var result = try conn.query(
+        allocator,
+        \\SELECT count(*) FROM pg_policies
+        \\WHERE schemaname = 'public'
+        \\  AND tablename IN ('process_definitions', 'instance_projections', 'tasks', 'tokens', 'audit_entries', 'audit_log')
+    ,
+        &.{},
+    );
+    defer result.deinit();
+    if (result.rows.len == 0) return 0;
+    const raw = result.rows[0][0] orelse return 0;
+    return std.fmt.parseInt(usize, raw, 10) catch 0;
+}
+
+/// Count tenant_id columns remaining across every business table GBL-084
+/// touches (Group 1 + Group 2 from the migration file).
+fn countTenantIdColumns(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
+    var result = try conn.query(
+        allocator,
+        \\SELECT count(*) FROM information_schema.columns
+        \\WHERE table_schema = 'public'
+        \\  AND column_name = 'tenant_id'
+        \\  AND table_name IN (
+        \\    'process_definitions', 'instance_projections', 'tasks', 'tokens',
+        \\    'audit_entries', 'audit_log', 'events', 'events_archive',
+        \\    'instance_sequence', 'event_type_registry', 'event_retention_policies',
+        \\    'timers', 'users', 'groups', 'group_members', 'roles', 'user_roles',
+        \\    'api_tokens', 'webhook_subscriptions', 'webhook_deliveries',
+        \\    'dead_letter_items', 'repository_form_schemas'
+        \\  )
+    ,
+        &.{},
+    );
+    defer result.deinit();
+    if (result.rows.len == 0) return 0;
+    const raw = result.rows[0][0] orelse return 0;
+    return std.fmt.parseInt(usize, raw, 10) catch 0;
+}
+
+fn countEffectiveTenantIdFunction(allocator: std.mem.Allocator, conn: *pg.Conn) !usize {
+    var result = try conn.query(
+        allocator,
+        "SELECT count(*) FROM pg_proc WHERE proname = 'bpm_effective_tenant_id'",
+        &.{},
+    );
+    defer result.deinit();
+    if (result.rows.len == 0) return 0;
+    const raw = result.rows[0][0] orelse return 0;
+    return std.fmt.parseInt(usize, raw, 10) catch 0;
+}
+
+fn countSchemaMigrationsRows(allocator: std.mem.Allocator, conn: *pg.Conn, version: []const u8) !usize {
+    var result = try conn.query(
+        allocator,
+        "SELECT count(*) FROM public.schema_migrations WHERE version = $1",
+        &.{version},
+    );
+    defer result.deinit();
+    if (result.rows.len == 0) return 0;
+    const raw = result.rows[0][0] orelse return 0;
+    return std.fmt.parseInt(usize, raw, 10) catch 0;
+}
+
+const GBL084_FILENAME = "GBL-084_rls_removal.sql";
+
+// ---------------------------------------------------------------------------
+// TC-ISS503-01: GBL-084 pre-flight blocks when a LEGACY_RLS tenant exists
+// ---------------------------------------------------------------------------
+
+test "TC-ISS503-01: GBL-084 pre-flight blocks when LEGACY_RLS tenants exist" {
+    const alloc = testing.allocator;
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var conn = try pg.Conn.connectUrl(std.testing.io, alloc, url);
+    defer conn.close();
+
+    const tenant_id = try randomUuidStr(alloc);
+    defer alloc.free(tenant_id);
+
+    // Precondition: at least one tenant with storage_mode = 'LEGACY_RLS'.
+    try createTenantRow(alloc, &conn, tenant_id, tenant_id, "LEGACY_RLS");
+    defer deleteTenantRow(&conn, tenant_id);
+
+    const legacy_count = try countLegacyRlsTenants(alloc, &conn);
+    try testing.expect(legacy_count > 0);
+
+    // Snapshot DDL-relevant state before attempting the migration.
+    const policies_before = try countRlsPolicies(alloc, &conn);
+    const tenant_id_cols_before = try countTenantIdColumns(alloc, &conn);
+    const function_count_before = try countEffectiveTenantIdFunction(alloc, &conn);
+    const recorded_before = try countSchemaMigrationsRows(alloc, &conn, GBL084_FILENAME);
+
+    const sql_bytes = try readGbl084Sql(std.testing.io, alloc);
+    defer alloc.free(sql_bytes);
+
+    // Run the migration's own SQL text directly (not through the migration
+    // runner) inside a transaction we control, so we can assert on the
+    // exact failure and guarantee no side effects survive regardless of
+    // outcome.
+    try conn.exec("BEGIN", &.{});
+    const migration_result = conn.simpleQuery(sql_bytes);
+
+    // Expected: the pre-flight RAISE EXCEPTION aborts the DO $$ ... $$ block.
+    // pg.zig surfaces this as error.ServerError (message text is printed to
+    // stderr by pg.zig's readUntilReady(), not returned structurally).
+    try testing.expectError(pg.PgError.ServerError, migration_result);
+
+    // A failed statement inside a transaction leaves it aborted; ROLLBACK is
+    // required before the connection can run further statements. This also
+    // guarantees zero DDL from this attempt is ever committed, regardless of
+    // whether the pre-flight guard did its job.
+    try conn.exec("ROLLBACK", &.{});
+
+    // No DDL changes applied: RLS-policy count, tenant_id column count, and
+    // the helper function count must all be unchanged.
+    const policies_after = try countRlsPolicies(alloc, &conn);
+    const tenant_id_cols_after = try countTenantIdColumns(alloc, &conn);
+    const function_count_after = try countEffectiveTenantIdFunction(alloc, &conn);
+    try testing.expectEqual(policies_before, policies_after);
+    try testing.expectEqual(tenant_id_cols_before, tenant_id_cols_after);
+    try testing.expectEqual(function_count_before, function_count_after);
+
+    // Not recorded in schema_migrations as a NEW row from this attempt.
+    const recorded_after = try countSchemaMigrationsRows(alloc, &conn, GBL084_FILENAME);
+    try testing.expectEqual(recorded_before, recorded_after);
+}
+
+// ---------------------------------------------------------------------------
+// TC-ISS503-02: GBL-084 succeeds when zero LEGACY_RLS tenants remain
+// ---------------------------------------------------------------------------
+
+test "TC-ISS503-02: GBL-084 succeeds when zero LEGACY_RLS tenants remain" {
+    const alloc = testing.allocator;
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var conn = try pg.Conn.connectUrl(std.testing.io, alloc, url);
+    defer conn.close();
+
+    // Precondition: flip every existing tenant to SCHEMA for the duration of
+    // this test so the pre-flight guard's zero-LEGACY_RLS condition holds,
+    // then restore original modes on the way out. This is a shared-table
+    // mutation, but it is the only way to exercise GBL-084's actual guard
+    // condition ("zero tenants in LEGACY_RLS mode") end-to-end against the
+    // real public.tenant table; per-test UUID fixtures alone cannot force
+    // that global precondition. Restoration happens unconditionally in the
+    // defer block, including on test failure.
+    var saved_modes = std.ArrayList(struct { id: []u8, mode: []u8 }).empty;
+    defer {
+        for (saved_modes.items) |entry| {
+            alloc.free(entry.id);
+            alloc.free(entry.mode);
+        }
+        saved_modes.deinit(alloc);
+    }
+
+    {
+        var existing = try conn.query(alloc, "SELECT id::text, storage_mode FROM public.tenant WHERE storage_mode = 'LEGACY_RLS'", &.{});
+        defer existing.deinit();
+        for (existing.rows) |row| {
+            const id_copy = try alloc.dupe(u8, row[0] orelse continue);
+            errdefer alloc.free(id_copy);
+            const mode_copy = try alloc.dupe(u8, row[1] orelse "LEGACY_RLS");
+            errdefer alloc.free(mode_copy);
+            try saved_modes.append(alloc, .{ .id = id_copy, .mode = mode_copy });
+        }
+    }
+    defer {
+        for (saved_modes.items) |entry| {
+            conn.exec(
+                "UPDATE public.tenant SET storage_mode = $2 WHERE id = $1::uuid",
+                &.{ entry.id, entry.mode },
+            ) catch |err| {
+                std.debug.print("cleanup: restore storage_mode for {s} failed: {}\n", .{ entry.id, err });
+            };
+        }
+    }
+
+    try conn.exec("UPDATE public.tenant SET storage_mode = 'SCHEMA' WHERE storage_mode = 'LEGACY_RLS'", &.{});
+
+    const legacy_count = try countLegacyRlsTenants(alloc, &conn);
+    try testing.expectEqual(@as(usize, 0), legacy_count);
+
+    const sql_bytes = try readGbl084Sql(std.testing.io, alloc);
+    defer alloc.free(sql_bytes);
+
+    // Run the migration's DDL for real (not inside a transaction we roll
+    // back) — that is the only way to observe its actual, committed effect,
+    // matching how the real migration runner applies it (BEGIN; simpleQuery;
+    // COMMIT). It is idempotent (IF EXISTS everywhere), so applying it here
+    // even if a prior global run already applied it once is always safe.
+    try conn.exec("BEGIN", &.{});
+    conn.simpleQuery(sql_bytes) catch |err| {
+        conn.exec("ROLLBACK", &.{}) catch {};
+        return err;
+    };
+    try conn.exec("COMMIT", &.{});
+
+    // All RLS policies on the six RLS-protected business tables are gone.
+    const policies_after = try countRlsPolicies(alloc, &conn);
+    try testing.expectEqual(@as(usize, 0), policies_after);
+
+    // All tenant_id columns dropped from every business table in scope.
+    const tenant_id_cols_after = try countTenantIdColumns(alloc, &conn);
+    try testing.expectEqual(@as(usize, 0), tenant_id_cols_after);
+
+    // bpm_effective_tenant_id() function dropped.
+    const function_count_after = try countEffectiveTenantIdFunction(alloc, &conn);
+    try testing.expectEqual(@as(usize, 0), function_count_after);
+}
+
+// ---------------------------------------------------------------------------
+// TC-ISS503-03: GBL-084 is idempotent on re-apply
+// ---------------------------------------------------------------------------
+
+test "TC-ISS503-03: GBL-084 is idempotent on re-apply" {
+    const alloc = testing.allocator;
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var conn = try pg.Conn.connectUrl(std.testing.io, alloc, url);
+    defer conn.close();
+
+    // Precondition: GBL-084 already applied (drive the real DDL at least
+    // once first, regardless of whatever global schema_migrations state
+    // exists, exactly like TC-ISS503-02 does).
+    var saved_modes = std.ArrayList(struct { id: []u8, mode: []u8 }).empty;
+    defer {
+        for (saved_modes.items) |entry| {
+            alloc.free(entry.id);
+            alloc.free(entry.mode);
+        }
+        saved_modes.deinit(alloc);
+    }
+    {
+        var existing = try conn.query(alloc, "SELECT id::text, storage_mode FROM public.tenant WHERE storage_mode = 'LEGACY_RLS'", &.{});
+        defer existing.deinit();
+        for (existing.rows) |row| {
+            const id_copy = try alloc.dupe(u8, row[0] orelse continue);
+            errdefer alloc.free(id_copy);
+            const mode_copy = try alloc.dupe(u8, row[1] orelse "LEGACY_RLS");
+            errdefer alloc.free(mode_copy);
+            try saved_modes.append(alloc, .{ .id = id_copy, .mode = mode_copy });
+        }
+    }
+    defer {
+        for (saved_modes.items) |entry| {
+            conn.exec(
+                "UPDATE public.tenant SET storage_mode = $2 WHERE id = $1::uuid",
+                &.{ entry.id, entry.mode },
+            ) catch |err| {
+                std.debug.print("cleanup: restore storage_mode for {s} failed: {}\n", .{ entry.id, err });
+            };
+        }
+    }
+    try conn.exec("UPDATE public.tenant SET storage_mode = 'SCHEMA' WHERE storage_mode = 'LEGACY_RLS'", &.{});
+
+    const sql_bytes = try readGbl084Sql(std.testing.io, alloc);
+    defer alloc.free(sql_bytes);
+
+    // First apply (establishes the "already applied" precondition for this test).
+    try conn.exec("BEGIN", &.{});
+    conn.simpleQuery(sql_bytes) catch |err| {
+        conn.exec("ROLLBACK", &.{}) catch {};
+        return err;
+    };
+    try conn.exec("COMMIT", &.{});
+
+    const policies_after_first = try countRlsPolicies(alloc, &conn);
+    const tenant_id_cols_after_first = try countTenantIdColumns(alloc, &conn);
+    const function_count_after_first = try countEffectiveTenantIdFunction(alloc, &conn);
+    try testing.expectEqual(@as(usize, 0), policies_after_first);
+    try testing.expectEqual(@as(usize, 0), tenant_id_cols_after_first);
+    try testing.expectEqual(@as(usize, 0), function_count_after_first);
+
+    // Re-apply must succeed with no errors (IF EXISTS everywhere no-ops).
+    try conn.exec("BEGIN", &.{});
+    const second_apply_result = conn.simpleQuery(sql_bytes);
+    if (second_apply_result) |_| {
+        try conn.exec("COMMIT", &.{});
+    } else |err| {
+        conn.exec("ROLLBACK", &.{}) catch {};
+        return err;
+    }
+
+    // State is unchanged and still fully torn down after the second apply.
+    const policies_after_second = try countRlsPolicies(alloc, &conn);
+    const tenant_id_cols_after_second = try countTenantIdColumns(alloc, &conn);
+    const function_count_after_second = try countEffectiveTenantIdFunction(alloc, &conn);
+    try testing.expectEqual(@as(usize, 0), policies_after_second);
+    try testing.expectEqual(@as(usize, 0), tenant_id_cols_after_second);
+    try testing.expectEqual(@as(usize, 0), function_count_after_second);
+}
+
+// ---------------------------------------------------------------------------
+// TC-ISS503-04: SCHEMA-path CRUD requests work after RLS removal, with no
+// remaining references to bpm.tenant_id in query plans.
+// ---------------------------------------------------------------------------
+
+test "TC-ISS503-04: SCHEMA-path CRUD requests work after RLS removal with no bpm.tenant_id in query plans" {
+    const alloc = testing.allocator;
+
+    // TestHarness provisions and migrates tenant_default (a real SCHEMA-mode
+    // per-tenant schema) via the same code path production uses, then sets
+    // the pool's request tenant context to the default tenant for the
+    // duration of the test. This exercises the exact SCHEMA branch of
+    // applyRequestStorageRouting() in src/db/pool.zig.
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
+    const url = try testDbUrl(alloc);
+    defer alloc.free(url);
+
+    var pool = try makePool(alloc, url);
+    defer pool.deinit();
+
+    // Force storage-mode resolution to be re-done on this pool's first
+    // acquire (a fresh Pool has its own connections; the thread-local
+    // storage-mode cache from a previous test could otherwise leak across
+    // tests since it's keyed per-thread, not per-pool).
+    bpm.api_tenant_context.clear();
+    bpm.api_tenant_context.set(bpm.api_tenant_context.DEFAULT_TENANT_ID);
+
+    const conn = try pool.acquire();
+    defer pool.release(conn);
+
+    // storage_mode must have resolved to SCHEMA for the default tenant
+    // (provisionTenantSchema/TestHarness sets this during setup — see
+    // helpers.zig and src/db/provisioning.zig).
+    try testing.expectEqual(bpm.api_tenant_context.StorageMode.SCHEMA, bpm.api_tenant_context.getStorageMode());
+
+    // CRUD: create a process definition row through the tenant schema (a
+    // real business table previously RLS-protected and previously carrying
+    // tenant_id before GBL-084). No tenant_id column or predicate is
+    // supplied — the SCHEMA path scopes by search_path alone.
+    const def_id = try randomUuidStr(alloc);
+    defer alloc.free(def_id);
+
+    try conn.exec(
+        \\INSERT INTO process_definitions (id, key, name, version, status, bpmn_xml)
+        \\VALUES ($1::uuid, $2, 'ISS-503 CRUD Test', 1, 'DRAFT', '<definitions/>')
+    ,
+        &.{ def_id, def_id[0..8] },
+    );
+
+    // Read it back (SELECT — CRUD "R").
+    {
+        var rows = try conn.query(
+            alloc,
+            "SELECT id::text, status FROM process_definitions WHERE id = $1::uuid",
+            &.{def_id},
+        );
+        defer rows.deinit();
+        try testing.expectEqual(@as(usize, 1), rows.rows.len);
+        const status = rows.rows[0][1] orelse "";
+        try testing.expectEqualStrings("DRAFT", status);
+    }
+
+    // Update it (CRUD "U").
+    try conn.exec(
+        "UPDATE process_definitions SET status = 'ACTIVE' WHERE id = $1::uuid",
+        &.{def_id},
+    );
+    {
+        var rows = try conn.query(
+            alloc,
+            "SELECT status FROM process_definitions WHERE id = $1::uuid",
+            &.{def_id},
+        );
+        defer rows.deinit();
+        try testing.expectEqual(@as(usize, 1), rows.rows.len);
+        const status = rows.rows[0][0] orelse "";
+        try testing.expectEqualStrings("ACTIVE", status);
+    }
+
+    // No references to bpm.tenant_id in the query plan: EXPLAIN the same
+    // SELECT and scan the plan text for the RLS session-variable expression
+    // that LEGACY_RLS policies used to inject
+    // (current_setting('bpm.tenant_id', ...)). A SCHEMA-mode connection with
+    // RLS policies/columns dropped must show no trace of it.
+    {
+        var plan_rows = try conn.query(
+            alloc,
+            "EXPLAIN SELECT id, status FROM process_definitions WHERE id = $1::uuid",
+            &.{def_id},
+        );
+        defer plan_rows.deinit();
+
+        for (plan_rows.rows) |row| {
+            const line = row[0] orelse continue;
+            try testing.expect(std.mem.indexOf(u8, line, "bpm.tenant_id") == null);
+            try testing.expect(std.mem.indexOf(u8, line, "tenant_id") == null);
+        }
+    }
+
+    // Delete it (CRUD "D").
+    try conn.exec(
+        "DELETE FROM process_definitions WHERE id = $1::uuid",
+        &.{def_id},
+    );
+    {
+        var rows = try conn.query(
+            alloc,
+            "SELECT id FROM process_definitions WHERE id = $1::uuid",
+            &.{def_id},
+        );
+        defer rows.deinit();
+        try testing.expectEqual(@as(usize, 0), rows.rows.len);
+    }
+
+    // Confirm the process_definitions table itself has no tenant_id column
+    // left in the tenant schema either (GBL-084 only targets `public`, but
+    // TNT-01's schema-per-tenant tables were created without tenant_id from
+    // the start — this assertion guards against a regression reintroducing
+    // it in either location).
+    {
+        var rows = try conn.query(
+            alloc,
+            \\SELECT count(*) FROM information_schema.columns
+            \\WHERE table_schema = 'tenant_default'
+            \\  AND table_name = 'process_definitions'
+            \\  AND column_name = 'tenant_id'
+        ,
+            &.{},
+        );
+        defer rows.deinit();
+        try testing.expectEqual(@as(usize, 1), rows.rows.len);
+        const count_str = rows.rows[0][0] orelse "0";
+        const count = std.fmt.parseInt(usize, count_str, 10) catch 0;
+        try testing.expectEqual(@as(usize, 0), count);
+    }
+}
+
+fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
+    return Pool.init(std.testing.io, allocator, PoolConfig{
+        .url = url,
+        .pool_size = 3,
+    });
+}

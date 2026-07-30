@@ -19,6 +19,18 @@ const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 
+const helpers = @import("helpers.zig");
+const TestHarness = helpers.TestHarness;
+
+// Root-level exports required by TestHarness.init() to set the pool's tenant context.
+// Without these, pool connections use search_path=public and cannot find tenant-schema
+// tables (process_definitions, instance_projections, tasks, etc.) — see
+// GBL-073 (legacy public business tables dropped) and Stage 12 schema isolation.
+pub const api_tenant_context = bpm.api_tenant_context;
+pub const api_pipeline_context = bpm.api_pipeline_context;
+
+const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
+
 const DefinitionStore = bpm.definition.Store;
 const CreateParams = bpm.definition.CreateParams;
 const GraphNode = bpm.definition.GraphNode;
@@ -67,6 +79,10 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8, pool_size: u32) !Pool {
+    // Set the tenant context BEFORE Pool.init so that every pool.acquire()
+    // applies SET search_path TO tenant_default,public (Stage 12 schema
+    // isolation) on the main thread's connections.
+    bpm.api_tenant_context.set(DEFAULT_TENANT_ID);
     return Pool.init(std.testing.io, allocator, PoolConfig{
         .url = url,
         .pool_size = @intCast(pool_size),
@@ -224,6 +240,10 @@ fn completionThread(ctx: *CompletionCtx) void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
+    // Set tenant context for this worker thread so pool.acquire() sets
+    // search_path = tenant_default,public (threadlocal is per-thread).
+    bpm.api_tenant_context.set(DEFAULT_TENANT_ID);
+
     var attempts: u32 = 0;
     while (attempts < 10_000) : (attempts += 1) {
         _ = ctx.inst_store.completeTask(
@@ -247,6 +267,9 @@ fn completionThread(ctx: *CompletionCtx) void {
 
 test "TC-EE-12-01/03: 100 concurrent task completions on distinct instances all succeed" {
     const allocator = std.testing.allocator;
+
+    var h = try TestHarness.init(allocator);
+    defer h.deinit();
 
     const url = try testDbUrl(allocator);
     defer allocator.free(url);
@@ -344,6 +367,10 @@ fn contentionThread(ctx: *ContentionCtx) void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
 
+    // Set tenant context for this worker thread so pool.acquire() sets
+    // search_path = tenant_default,public (threadlocal is per-thread).
+    bpm.api_tenant_context.set(DEFAULT_TENANT_ID);
+
     _ = ctx.inst_store.completeTask(
         arena.allocator(),
         ctx.task_store,
@@ -360,6 +387,9 @@ fn contentionThread(ctx: *ContentionCtx) void {
 
 test "TC-EE-12-02/04: same-instance contention returns ConcurrentModification then succeeds" {
     const allocator = std.testing.allocator;
+
+    var h = try TestHarness.init(allocator);
+    defer h.deinit();
 
     const url = try testDbUrl(allocator);
     defer allocator.free(url);

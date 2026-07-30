@@ -11,12 +11,29 @@
 //! - No mocks/stubs
 //! - Per-test UUID isolation
 const std = @import("std");
+const builtin = @import("builtin");
 const testing = std.testing;
 const bpm = @import("bpm");
 
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const tenant_context = bpm.api_tenant_context;
+
+/// Fill buf with cryptographically secure random bytes.
+/// Replaces std.crypto.random removed in Zig 0.16.
+fn fillRandom(buf: []u8) void {
+    switch (comptime builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
+        else => @compileError("fillRandom: unsupported OS — add a platform branch"),
+    }
+}
 
 const DefinitionStore = bpm.definition.Store;
 const CreateParams = bpm.definition.CreateParams;
@@ -87,7 +104,7 @@ fn makeCreatorUuid() ![16]u8 {
 
 fn makeFixtureUuidString(allocator: std.mem.Allocator) ![]u8 {
     var raw: [16]u8 = undefined;
-    std.crypto.random.bytes(&raw);
+    fillRandom(&raw);
     // RFC-4122 variant/version shaping keeps generated IDs UUID-compatible.
     raw[6] = (raw[6] & 0x0f) | 0x40;
     raw[8] = (raw[8] & 0x3f) | 0x80;

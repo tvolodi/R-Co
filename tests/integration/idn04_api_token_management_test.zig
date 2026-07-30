@@ -31,6 +31,7 @@ fn adminActor() auth_mod.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "integration-idn04-admin",
+        .principal = "integration-idn04-admin",
     };
 }
 
@@ -40,6 +41,7 @@ fn workerActor() auth_mod.AuthContext {
         .role = .TASK_WORKER,
         .is_bootstrap = false,
         .token_id = "integration-idn04-worker",
+        .principal = "integration-idn04-worker",
     };
 }
 

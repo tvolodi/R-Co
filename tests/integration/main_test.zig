@@ -160,6 +160,8 @@ const sch303_timer_dlq_integration = @import("sch303_timer_dlq_test.zig");
 const exp401_exp402_comp_restore_integration = @import("exp401_exp402_comp_restore_test.zig");
 // ISS-502 — SPT cutover transaction (copy + verify + atomic storage_mode flip)
 const iss502_spt_cutover_integration = @import("iss502_spt_cutover_test.zig");
+// ISS-503 — GBL-084 RLS removal migration (pre-flight guard, DDL teardown, idempotency)
+const iss503_rls_removal_integration = @import("test_iss503_rls_removal.zig");
 
 comptime {
     _ = std;
@@ -235,6 +237,7 @@ comptime {
     _ = sch303_timer_dlq_integration;
     _ = exp401_exp402_comp_restore_integration;
     _ = iss502_spt_cutover_integration;
+    _ = iss503_rls_removal_integration;
 }
 
 test "integration placeholder" {

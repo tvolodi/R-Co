@@ -15,6 +15,7 @@ web/.vite/
 
 # ── Docker volumes & generated files ─────────────────────────────────────────
 postgres-data/
+docker-compose.override.yml
 
 # ── OS ───────────────────────────────────────────────────────────────────────
 .DS_Store

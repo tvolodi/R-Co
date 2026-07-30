@@ -114,7 +114,7 @@ pub const Validator = struct {
 
     pub fn init(allocator: std.mem.Allocator) Validator {
         return Validator{
-            .errors = std.ArrayList(ValidationError).init(allocator),
+            .errors = std.ArrayList(ValidationError).empty,
             .allocator = allocator,
         };
     }
@@ -125,7 +125,7 @@ pub const Validator = struct {
             self.allocator.free(e.constraint);
             self.allocator.free(e.message);
         }
-        self.errors.deinit();
+        self.errors.deinit(self.allocator);
     }
 
     pub fn lastErrors(self: *const Validator) []const ValidationError {
@@ -136,7 +136,7 @@ pub const Validator = struct {
         const fp = try self.allocator.dupe(u8, field_path);
         const ct = try self.allocator.dupe(u8, constraint);
         const msg = try self.allocator.dupe(u8, message);
-        try self.errors.append(.{
+        try self.errors.append(self.allocator, .{
             .field_path = fp,
             .constraint = ct,
             .message = msg,
@@ -603,16 +603,19 @@ test "validateDefinition rejects invalid decimal spec" {
 }
 
 test "validateDefinition rejects too many fields" {
-    var buf = std.ArrayList(u8).init(std.testing.allocator);
-    defer buf.deinit();
-    try buf.appendSlice(
+    const allocator = std.testing.allocator;
+    var buf = std.ArrayList(u8).empty;
+    defer buf.deinit(allocator);
+    try buf.appendSlice(allocator,
         \\{"name":"big","display_name":"Big","version":1,"fields":[
     );
     for (0..65) |i| {
-        if (i > 0) try buf.append(',');
-        try std.fmt.format(buf.writer(), "{{\"name\":\"f{d}\",\"display_name\":\"F{d}\",\"type\":\"text\"}}", .{ i, i });
+        if (i > 0) try buf.append(allocator, ',');
+        const field_json = try std.fmt.allocPrint(allocator, "{{\"name\":\"f{d}\",\"display_name\":\"F{d}\",\"type\":\"text\"}}", .{ i, i });
+        defer allocator.free(field_json);
+        try buf.appendSlice(allocator, field_json);
     }
-    try buf.appendSlice("]}");
+    try buf.appendSlice(allocator, "]}");
 
     var v = Validator.init(std.testing.allocator);
     defer v.deinit();

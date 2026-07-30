@@ -38,6 +38,7 @@ fn adminActor() auth_mod.AuthContext {
         .role = .PLATFORM_ADMIN,
         .is_bootstrap = false,
         .token_id = "integration-idn02-admin",
+        .principal = "integration-idn02-admin",
     };
 }
 
