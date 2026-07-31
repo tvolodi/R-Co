@@ -86,13 +86,13 @@ test "TC-OIDC-12-01: resolveTenantByRealm returns correct tenant" {
         defer pool.release(conn);
 
         try conn.exec(
-            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
-            \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3)
+            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+            \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3, 'test', $4::uuid)
             \\ON CONFLICT (slug) DO UPDATE
             \\SET idp_realm_id = EXCLUDED.idp_realm_id,
             \\    display_name = EXCLUDED.display_name,
             \\    updated_at = NOW()
-        , &[_][]const u8{ tenant_slug, "OIDC12 Tenant 01", realm_id });
+        , &[_][]const u8{ tenant_slug, "OIDC12 Tenant 01", realm_id, "00000000-0000-0000-0000-000000000000" });
     }
 
     // Look up by realm ID.
@@ -169,12 +169,12 @@ test "TC-OIDC-12-04: resolveRealmByTenant returns correct realm ID" {
         defer pool.release(conn);
 
         try conn.exec(
-            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
-            \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3)
+            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+            \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3, 'test', $4::uuid)
             \\ON CONFLICT (slug) DO UPDATE
             \\SET idp_realm_id = EXCLUDED.idp_realm_id,
             \\    updated_at = NOW()
-        , &[_][]const u8{ tenant_slug, "OIDC12 Tenant 04", realm_id });
+        , &[_][]const u8{ tenant_slug, "OIDC12 Tenant 04", realm_id, "00000000-0000-0000-0000-000000000000" });
     }
 
     // Get the tenant_id first.

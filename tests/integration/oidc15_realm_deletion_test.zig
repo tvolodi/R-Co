@@ -224,12 +224,12 @@ test "TC-OIDC-15-05: releaseTenantBinding clears idp_realm_id" {
         defer pool.release(conn);
 
         try conn.exec(
-            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
-            \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3)
+            \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+            \\VALUES (gen_random_uuid(), $1, $2, 'ACTIVE', $3, 'test', $4::uuid)
             \\ON CONFLICT (slug) DO UPDATE
             \\SET idp_realm_id = EXCLUDED.idp_realm_id,
             \\    updated_at = NOW()
-        , &[_][]const u8{ tenant_slug, "OIDC15 Tenant 05", realm_id });
+        , &[_][]const u8{ tenant_slug, "OIDC15 Tenant 05", realm_id, "00000000-0000-0000-0000-000000000000" });
     }
 
     // Release the binding.
