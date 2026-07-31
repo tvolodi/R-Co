@@ -1,8 +1,42 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-07-31T07:35:00Z",
-  "next_issue_id": 78,
+  "last_updated": "2026-07-31T20:56:33Z",
+  "next_issue_id": 109,
   "issues": [
+    {
+      "id": "ISS-0108",
+      "title": "db_integration_test.zig TC-DB-01-01/02 use unqualified `schema_migrations` reference, which silently resolves to a stray legacy tenant_default.schema_migrations shadow table under the tenant_default,public search_path instead of public.schema_migrations",
+      "status": "OPEN",
+      "severity": "MINOR",
+      "category": "test-isolation / unqualified-table-reference-resolves-to-shadow-schema",
+      "run_id": "WF03-iss0107-20260731",
+      "handoff_id": "aef0e7e1-4757-4d1e-aff3-8e0bc729ca2f",
+      "affected_areas": [
+        "tests/integration/db_integration_test.zig"
+      ],
+      "created_at": "2026-07-31T19:43:19Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/368"
+    },
+    {
+      "id": "ISS-0107",
+      "title": "test-integration-others-internal barrier group (the ~19+ non-ISS-503 test-integration binaries) still deadlock (40P01) against each other under full concurrent `zig build test-integration`, independent of ISS-0106's ISS-503 fix",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "category": "test-isolation / postgres-lock-contention-under-concurrent-DDL",
+      "run_id": "WF03-iss0107-20260731",
+      "handoff_id": "90c64911-e9e3-45fe-bf11-e7863f24230a",
+      "affected_areas": [
+        "tests/integration/db_integration_test.zig",
+        "tests/integration/exp103_instance_waits_test.zig",
+        "tests/integration/tnt_schema_isolation_test.zig",
+        "tests/integration/iss205_webhook_outbox_test.zig",
+        "tests/integration/helpers.zig"
+      ],
+      "created_at": "2026-07-31T17:57:28Z",
+      "resolved_at": "2026-07-31T20:56:33Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/366"
+    },
     {
       "id": "ISS-0106",
       "title": "db_integration_test.zig TC-DB-01-01/TC-DB-01-02 fail under full concurrent zig build test-integration: SELECT COUNT(*) FROM schema_migrations returns 0 amid Postgres 'deadlock detected' (C40P01) errors across concurrently-running DDL/migration test binaries",
@@ -72,7 +106,7 @@
     },
     {
       "id": "ISS-0076",
-      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table — creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
+      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table \u2014 creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
       "status": "OPEN",
       "severity": "MAJOR",
       "category": "migration scoping / search_path defect",
@@ -102,10 +136,10 @@
     },
     {
       "id": "ISS-0073",
-      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm — signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
+      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm \u2014 signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
       "status": "OPEN",
       "severity": "BLOCKER",
-      "category": "logic error — singleton cache bypasses realm resolution at callback time",
+      "category": "logic error \u2014 singleton cache bypasses realm resolution at callback time",
       "run_id": "WF03-oidc-callback-realm-20260616",
       "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
       "affected_areas": [
@@ -118,7 +152,7 @@
     },
     {
       "id": "ISS-0072",
-      "title": "Tenant admin login fails after onboarding — GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
+      "title": "Tenant admin login fails after onboarding \u2014 GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "logic error / design gap",
@@ -135,7 +169,7 @@
     },
     {
       "id": "ISS-0071",
-      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
+      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input \u2014 swiftroute realm-missing inconsistent state compounds scenario unverifiability",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "test harness error + backend state inconsistency",
@@ -181,7 +215,7 @@
     },
     {
       "id": "ISS-0068",
-      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",
+      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() \u2014 tenant schemas missing for all tenants",
       "status": "RESOLVED",
       "severity": "BLOCKER",
       "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
@@ -534,7 +568,7 @@
     },
     {
       "id": "ISS-0044",
-      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
+      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails \u2014 unique index not upgraded to named constraint",
       "status": "RESOLVED",
       "severity": "CRITICAL",
       "run_id": "WF03-def-store-regression-20260528",

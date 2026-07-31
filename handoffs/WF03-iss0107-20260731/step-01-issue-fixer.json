@@ -1,0 +1,60 @@
+{
+  "handoff_id": "abbf2b08-b4af-4674-9262-8f8ac4244620",
+  "run_id": "WF03-iss0107-20260731",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-iss0107-20260731/step-01-issue-fixer.json",
+  "created_at": "2026-07-31T18:47:43Z",
+  "started_at": "2026-07-31T18:48:28Z",
+  "completed_at": "2026-07-31T18:54:58Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "2d608583-b731-4a5c-a513-4f03e1eb0863"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0107.json",
+      "docs/issues/ISS-0106.json",
+      "tests/integration/helpers.zig",
+      "build.zig",
+      "tests/integration/exp103_instance_waits_test.zig",
+      "tests/integration/tnt_schema_isolation_test.zig",
+      "tests/integration/iss205_webhook_outbox_test.zig",
+      "tests/integration/db_integration_test.zig"
+    ],
+    "branch_name": "feature/WF03-iss0107-20260731"
+  },
+  "task": {
+    "description": "Combined Step 0.5 (Issue Registry) + Step 1 (Diagnose) for GitHub issue #366 / ISS-0107. Already registered at docs/issues/ISS-0107.json (filed by BACKEND-DEV during ISS-0106 validation) with root_cause: \"NOT YET DIAGNOSED to the same source-verified depth as ISS-0106\" -- working evidence only: 3 full zig build test-integration runs consistently showed Postgres deadlock (40P01) reports naming relation OIDs 17709/17770/17827/17878 (public-schema tables), AccessExclusiveLock vs. RowShareLock/AccessShareLock conflicts between processes belonging to different concurrently-running test-integration binaries (named examples: exp103_instance_waits_test.zig, tnt_schema_isolation_test.zig, iss205_webhook_outbox_test.zig, and db_integration_test.zig's own TestHarness.init()). Candidate resolutions already sketched (non-exclusive, none yet chosen): (a) extend the bpm_test_migrations_public advisory-lock pattern from tests/integration/helpers.zig to ALL public-schema-touching binaries doing DDL, not just the migration bootstrap path; (b) apply a similar barrier/serialization strategy to ISS-0106's (build.zig dependency-graph restructuring), but for a curated sub-group of the ~19+ binaries proven to deadlock against each other; (c) increase Postgres deadlock_timeout or add a bounded client-side retry-on-40P01 wrapper -- flagged in the issue file itself as likely needing explicit sign-off since it cuts against the \"fix root cause not symptom\" principle used for ISS-0106, so treat this as disfavored unless (a) and (b) are proven insufficient. YOUR JOB: identify the ACTUAL relations (map OIDs 17709/17770/17827/17878 to table names via a live DB query: SELECT oid, relname FROM pg_class WHERE oid IN (17709,17770,17827,17878);), determine which specific binary-pairs collide and why (does each of the 3+ named binaries call TestHarness.init() -> Migrations.run()/runForSchema() concurrently, meaning multiple binaries are independently re-running/re-checking the same migration set against the same public schema at the same time? Or is it DML-vs-DDL contention, e.g. one binary doing normal inserts/updates against a table another binary is mid-ALTER on?), and choose ONE definitive resolution direction so CODE-DESIGNER can produce an unambiguous design. This may require reproducing the deadlock locally (docker-compose up -d db db_test keycloak; zig build migrate; zig build test-integration) and reading the Postgres deadlock log detail (which shows the two blocked queries and their lock types) rather than just grepping binary names from build output.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0107.json has a definitive root_cause (not \"NOT YET DIAGNOSED\") identifying the actual table names (not just OIDs) and the specific mechanism (which operations from which binaries collide)",
+      "A single chosen_resolution is selected among (a)/(b)/(c) or a combination, with rationale for rejecting the alternatives",
+      "files_to_change is populated for CODE-DESIGNER",
+      "category confirmed (likely B -- Integration/DB error, matching ISS-0106)",
+      "severity confirmed as MAJOR (already set) or escalated to BLOCKER with justification if warranted",
+      "Fix size estimate: if the fix implies >5 files, flag this explicitly per the Fix Scope Rule so ORCH can consider escalating to a WF-02 architectural fix instead"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:load-handoff",
+      "fn:check-zig-build",
+      "fn:run-unit-tests"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root-caused via a fresh live reproduction (full `zig build test-integration` run against db_test on port 5434). Live query mapped the currently-contended relation OIDs (304530/304591/304609/304648 -- the OIDs in the issue file had shifted since filing because the DB was recreated) to tenant_default.instance_projections, tenant_default.process_definitions, tenant_default.instance_definition_snapshots, and tenant_default.tasks -- exactly the four tables TRUNCATEd by resetTestData() in tests/integration/helpers.zig. TestHarness.init() (called by every one of the ~19+ test-integration binaries) runs resetTestData() and applyCompatibilityShims() (which issues DROP/CREATE TRIGGER and DROP/CREATE FUNCTION DDL) completely OUTSIDE the existing 'bpm_test_migrations_public'/per-schema advisory locks, which are released immediately after the migration check-and-apply passes complete. 21+ genuine Postgres deadlocks (40P01) were captured in the reproduction log, every one naming these same four relations in 3-process AccessExclusiveLock circular-wait chains, corroborated by co-occurring 'trigger already exists' (C42710) and pg_proc unique-constraint (C23505) errors from the unsynchronized DROP/CREATE DDL in applyCompatibilityShims(). This is DDL-vs-DDL contention (TRUNCATE-vs-TRUNCATE, DROP/CREATE-TRIGGER-vs-same) across the shared bootstrap path, not DDL-vs-DML. Chosen resolution: widen the existing, already-proven-correct advisory lock in tests/integration/helpers.zig's TestHarness.init() to also cover resetTestData()/applyCompatibilityShims(), not just the migration passes -- a single-file fix (helpers.zig only), rejecting a build.zig barrier sub-group (candidate b) because every binary is symmetrically both offender and victim here (no minority to carve out, unlike ISS-0106's single-binary ISS-503 case) and rejecting retry/timeout workarounds (candidate c) because the root cause is structurally eliminable with the same primitive already battle-tested for steps 1-2 of init(). Category B (Integration/DB error) and severity MAJOR both confirmed.",
+    "artifacts_out": [
+      "docs/issues/ISS-0107.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER Step 2"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
