@@ -1,8 +1,23 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-07-30T11:28:33Z",
+  "last_updated": "2026-07-31T07:35:00Z",
   "next_issue_id": 78,
   "issues": [
+    {
+      "id": "ISS-0100",
+      "title": "Integration test fixtures insert public.tenant rows without tenant_type='test', so clean_test_db.py's cleanup never removes them (leaked production-typed tenants)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test-fixture-hygiene / shared-test-db-state-leak",
+      "run_id": "WF03-iss0099-20260731",
+      "handoff_id": "wf03-iss0099-step-verify",
+      "affected_areas": [
+        "tests/integration/helpers.zig",
+        "tools/clean_test_db.py"
+      ],
+      "created_at": "2026-07-31T07:35:00Z",
+      "resolved_at": null
+    },
     {
       "id": "ISS-0098",
       "title": "spt01_provisioning_test.zig TC-SPT-01-07 expects empty tenant context to resolve search_path to tenant_default, but src/db/pool.zig intentionally implements empty-context-means-public",
@@ -23,7 +38,7 @@
     {
       "id": "ISS-0099",
       "title": "TC-SPT-01-06 fails: applyRequestStorageRouting() falls back to LEGACY_RLS/public for an unprovisioned tenant ID instead of routing to the SCHEMA path",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "test-vs-implementation-drift (ISS-501 storage_mode resolution)",
       "run_id": "WF03-iss0098-20260731",
@@ -33,7 +48,8 @@
         "src/db/pool.zig"
       ],
       "created_at": "2026-07-31T06:27:43Z",
-      "resolved_at": null
+      "resolved_at": "2026-07-31T08:10:00Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/355"
     },
     {
       "id": "ISS-0076",

@@ -1,0 +1,26 @@
+{
+  "id": "ISS-0100",
+  "title": "Integration test fixtures insert public.tenant rows without tenant_type='test', so clean_test_db.py's tenant_type-filtered cleanup never removes them — leaked production-typed tenants accumulate across test runs and cause downstream failures (e.g. ISS-503 pre-flight LEGACY_RLS count)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "test-fixture-hygiene / shared-test-db-state-leak",
+  "run_id": "WF03-iss0099-20260731",
+  "handoff_id": "wf03-iss0099-step-verify",
+  "affected_areas": [
+    "tests/integration/helpers.zig (ensureDefaultOidcSeeds)",
+    "tests/integration/svc01_service_catalog_scope_test.zig",
+    "tests/integration/svc04_admin_api_test.zig",
+    "tests/integration/tm_integration_tests (tc-tm-01-*, tc-tm-03-*)",
+    "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+    "tests/integration/tenant_config_realm_test.zig",
+    "tests/integration/iss107_tenant_storage_mode_test.zig",
+    "tests/integration/oidc09/10/11/12/15/35 onboarding/realm tests",
+    "tests/integration/adp04a_external_identity_linkage_test.zig",
+    "tools/clean_test_db.py"
+  ],
+  "created_at": "2026-07-31T07:35:00Z",
+  "resolved_at": null,
+  "notes": "Discovered while verifying the ISS-0099 fix (#355). migrations/GBL-080_env01_tenant_type_field.sql adds tenant.tenant_type TEXT NOT NULL DEFAULT 'production'. Every INSERT INTO public.tenant across the majority of integration test files (helpers.zig's shared harness seed included) omits tenant_type, so every one of those rows is created as tenant_type='production'. tools/clean_test_db.py only deletes rows where tenant_type = 'test' (preserving slug='default'); production-typed disposable fixture tenants are never swept. Observed impact: after running the full test-integration-svc suite once, `SELECT tenant_type, storage_mode, count(*) FROM public.tenant GROUP BY 1,2` showed 15 leaked production/LEGACY_RLS rows; a subsequent migrations-related test (db_integration_test TC-DB-01-01/02) failed because an ISS-503 pre-flight check raised 'N tenant(s) still in LEGACY_RLS mode', counting these leaked fixture rows as real production tenants. Manually deleting the leaked rows (`DELETE FROM public.tenant WHERE tenant_type='production' AND slug != 'default'`) restored a clean baseline (74 pre-existing unrelated failures, confirmed identical before/after the ISS-0099 fix — see PR for #355). This is NOT introduced by the ISS-0099 fix; TC-SPT-01-06's own inserted row is self-cleaning via an unconditional defer regardless of tenant_type and does not require this fix.",
+  "candidate_resolution": "Either (a) tools/clean_test_db.py should also sweep production-typed tenants whose slug is not 'default' and not in an explicit allowlist of persistent seed tenants (e.g. by tracking which slugs the harness itself seeds vs which are ephemeral per-test), or (b) every test-fixture tenant INSERT (starting with helpers.zig's ensureDefaultOidcSeeds, which runs on every TestHarness.init()) should set tenant_type='test' with a production_tenant_id pointing at the default tenant to satisfy ck_tenant_type_fk_coherence. Option (b) is more correct long-term but touches 12+ files; needs its own WF-03/WF-02 scoping decision.",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/357"
+}

@@ -2,6 +2,20 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0099 / TC-SPT-01-06 now provisions a real SCHEMA-mode tenant to exercise ISS-501 routing] — 2026-07-31
+
+### Fixed
+- **ISS-0099 (MAJOR)**: `tests/integration/spt01_provisioning_test.zig`'s `TC-SPT-01-06` ("pool checkout sets search_path to tenant schema for non-default tenant") set tenant context to a fixed, never-provisioned UUID (`a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5`) and expected `search_path` to resolve to that tenant's dedicated schema. `src/db/pool.zig`'s `applyRequestStorageRouting()` (ISS-501) resolves `storage_mode` via `SELECT storage_mode FROM public.tenant WHERE id = $1::uuid`; for an unprovisioned UUID the query returns no row and the function correctly falls back to `LEGACY_RLS`/`public` — a documented, intentional behavior, not a bug. Unlike ISS-0098, the test's *stated intent* (exercising the `SCHEMA` routing branch) is still a valid SPT-01 acceptance criterion, and weakening the assertion to match the fallback would have left the `SCHEMA` branch (`pool.zig` lines 228-243) with no integration coverage at all — `TC-SPT-01-07` already covers the fallback path. Fixed by provisioning a real `public.tenant` row with `storage_mode='SCHEMA'` for a freshly generated UUID before acquiring the connection, mirroring the established pattern in `iss107_tenant_storage_mode_test.zig` and `test_iss503_rls_removal.zig`; the row is removed via an unconditional `defer` regardless of test outcome. No production code changed. See `src/design/fix-iss-0099.md`.
+
+### Verified
+- `zig build`: clean, no `error set` output.
+- `zig build test-integration-svc` (isolated `main_test.zig` aggregate, 543 tests): `TC-SPT-01-06` passes. Diffed the full failing-test set before and after the fix: identical except for `TC-SPT-01-06` itself — the 74 other failures are pre-existing and unrelated (traced to leaked `tenant_type='production'` fixture rows accumulated by unrelated tests across prior runs; cleared manually to establish a clean baseline for this comparison, see ISS-0100 below).
+
+### Found while verifying (filed separately, not fixed here)
+- **ISS-0100 / GitHub [#357](https://github.com/tvolodi/R-Co/issues/357) (MAJOR)**: The majority of `public.tenant`-inserting integration tests, including the shared harness seed `tests/integration/helpers.zig::ensureDefaultOidcSeeds()`, omit `tenant_type`, so every fixture tenant defaults to `tenant_type='production'` (`migrations/GBL-080_env01_tenant_type_field.sql`). `tools/clean_test_db.py` only sweeps `tenant_type='test'` rows, so these fixtures accumulate in the shared test database across runs and get miscounted as real production tenants by downstream checks — observed causing `db_integration_test.TC-DB-01-01`/`02` to fail via an ISS-503 pre-flight error ("16 tenant(s) still in LEGACY_RLS mode"). Likely root cause of a broad swath of unrelated integration-suite failures. Not introduced by this fix — `TC-SPT-01-06`'s own inserted row is self-cleaning via `defer` regardless of `tenant_type`.
+
+GitHub issue [#355](https://github.com/tvolodi/R-Co/issues/355) closed.
+
 ## [ISS-0098 / TC-SPT-01-07 corrected to match ISS-501 no-tenant routing design] — 2026-07-31
 
 ### Fixed
