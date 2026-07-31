@@ -1,0 +1,52 @@
+{
+  "handoff_id": "043f933e-7c71-4f65-86be-39f09b12bf8a",
+  "run_id": "WF03-iss0106-20260731",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-iss0106-20260731/step-00-backend-dev.json",
+  "created_at": "2026-07-31T16:26:47Z",
+  "started_at": "2026-07-31T16:27:27Z",
+  "completed_at": "2026-07-31T16:29:45Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0106.json"
+    ],
+    "branch_name": "feature/WF03-iss0106-20260731"
+  },
+  "task": {
+    "description": "Git setup for WF-03 fix run targeting ISS-0106 / GitHub issue #364 (TC-DB-01-01/02 fail under concurrent zig build test-integration due to Postgres deadlocks). Create and push feature branch per docs/agents/protocols/GIT_SETUP.md.",
+    "acceptance_criteria": [
+      "git pull --ff-only origin main exits 0",
+      "git branch --show-current outputs feature/WF03-iss0106-20260731",
+      "git push -u origin feature/WF03-iss0106-20260731 exits 0"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Git setup completed for WF-03 fix run targeting ISS-0106 / GitHub issue #364 (TC-DB-01-01/02 deadlocks under concurrent zig build test-integration). Checked out main, pulled fast-forward (already up to date), created feature/WF03-iss0106-20260731 from main, verified current branch, and pushed to origin with upstream tracking. Pre-existing unrelated workspace changes (.claude/scheduled_tasks.lock, .vscode/settings.json, CLAUDE.md, handoffs/orchestrator.log, handoffs/registry.json, untracked handoffs/WF03-iss0091-20260731/) were left untouched per workspace rules — they carried over harmlessly onto the new branch.",
+    "artifacts_out": ["branch: feature/WF03-iss0106-20260731"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-iss0106-20260731",
+      "base_branch": "main",
+      "pull_status": "ff-only, already up to date",
+      "branch_created_from_prior_run": false,
+      "push_status": "success — new branch pushed, upstream tracking set to origin/feature/WF03-iss0106-20260731",
+      "remote_verification": "git fetch origin; git branch -r shows origin/feature/WF03-iss0106-20260731",
+      "note": "Remote responded with a repository-moved notice (tvolodi/My-Fab -> https://github.com/tvolodi/R-Co.git) but the push completed successfully (exit 0, new branch ref created) against the currently configured origin URL."
+    },
+    "next_action": "Route to ISSUE-FIXER Step 0.5"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

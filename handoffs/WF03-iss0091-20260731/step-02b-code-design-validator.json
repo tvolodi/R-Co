@@ -1,0 +1,71 @@
+{
+  "handoff_id": "a1e6c0f4-2b1e-4b0a-9c3a-000000000002",
+  "run_id": "WF03-iss0091-20260731",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-iss0091-20260731/step-02b-code-design-validator.json",
+  "created_at": "2026-07-31T00:53:39Z",
+  "started_at": "2026-07-31T00:53:39Z",
+  "completed_at": "2026-07-31T00:53:39Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": ["ISS-504"],
+    "related_handoff_ids": ["a1e6c0f4-2b1e-4b0a-9c3a-000000000001"],
+    "artifacts_in": [
+      "src/design/iss0091_harness_migration_tracker_unification.md",
+      "docs/issues/ISS-0091.json",
+      "tests/integration/helpers.zig",
+      "src/db/migrations.zig",
+      "src/db/pool.zig",
+      "src/design/iss504_migration_tracking.md"
+    ]
+  },
+  "task": {
+    "description": "Validate the ISS-0091 fix design (WF-03 Step 2b) before BACKEND-DEV implementation begins: unify tests/integration/helpers.zig's legacy schema-local schema_migrations tracker with the canonical public.schema_migrations tracker used by src/db/migrations.zig::Migrations.runForSchema().",
+    "acceptance_criteria": [
+      "Every acceptance criterion in ISS-0091 has a corresponding design element",
+      "No implementation code beyond illustrative Type E snippets",
+      "Public function signature changes (url param) are listed and consistent with real call sites",
+      "Error taxonomy addressed",
+      "Dependencies documented",
+      "Classification as Type E is correct per templates/lego-catalog.md",
+      "Technical claims verified against real source (Pool requirement, migrations_dir absoluteness, GBL- skip guard, advisory-lock preservation)",
+      "Hidden dependents on the removed schema-local table are checked"
+    ],
+    "functions_to_call": ["fn:validate-design-artefact"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "src/design/iss0091_harness_migration_tracker_unification.md validated against docs/issues/ISS-0091.json and the real source of tests/integration/helpers.zig, src/db/migrations.zig, src/db/pool.zig, and src/design/iss504_migration_tracking.md. All four ISS-0091 acceptance-criterion options are covered by named design sections. Type E classification is correct (cross-cutting test-infrastructure refactor). All independently-verified technical claims are accurate: Migrations.runForSchema() requires *Pool not *pg.Conn; build_options.migrations_dir and BPM_MIGRATIONS_DIR are always absolute (confirmed build.zig:11,13 and all setEnvironmentVariable call sites); Migrations.runForSchema() already skips GBL-prefixed files for non-public schemas (src/db/migrations.zig:203-207); the advisory-lock-then-fast-path-check logic is preserved as described. Public signature changes (url: []const u8 parameter) are consistent with actual call sites at tests/integration/helpers.zig:589,597. Error taxonomy and dependencies are both addressed. Two MINOR issues noted for BACKEND-DEV's attention during implementation (not rework-blocking): (1) the design's dependency audit for 'does removing the harness's local schema_migrations bootstrap break any other reader?' only reasoned about iss102_claim_test.zig's direct makePool() pattern, but missed that tests/integration/db_integration_test.zig (TC-DB-01-01, TC-DB-01-02), tests/integration/xc06_backwards_compatibility_test.zig (TC-XC-06-01), and tests/integration/adp12_default_tenant_regression_test.zig (TC-ADP-12-03) all query bare unqualified schema_migrations on harness.conn under a tenant_default,public search_path; tracing actual search_path sequencing confirms their assertions (COUNT>0, rows.len==1, EXISTS) will still hold once only public.schema_migrations remains, so this is not a functional break, but BACKEND-DEV must re-run these three files to confirm and should update their stale in-code comments describing single-schema row counts; (2) the code snippets use an unqualified 'pool_mod' identifier without showing its import -- trivially resolvable as bpm.pool per sibling test files' existing pattern, but should be made explicit.",
+    "artifacts_out": [],
+    "issues": [
+      {
+        "id": "ISS-0091-DESIGN-REVIEW-1",
+        "severity": "MINOR",
+        "description": "Design's checklist item 'other code paths relying on the schema-local table' only audited iss102_claim_test.zig; missed db_integration_test.zig (TC-DB-01-01/02), xc06_backwards_compatibility_test.zig (TC-XC-06-01), and adp12_default_tenant_regression_test.zig (TC-ADP-12-03), all of which query bare unqualified schema_migrations on harness.conn. Verified their assertions still pass post-fix (count/rows.len/EXISTS checks are shape-tolerant), so not a functional break, but BACKEND-DEV should re-run these three test files explicitly and refresh their now-stale single-schema-count comments.",
+        "affected_requirement": "ISS-504"
+      },
+      {
+        "id": "ISS-0091-DESIGN-REVIEW-2",
+        "severity": "MINOR",
+        "description": "Design's illustrative Zig snippets reference 'pool_mod.Pool.init(...)' without showing the import; sibling test files alias this as 'bpm.pool.Pool' (e.g. iss102_claim_test.zig, db_integration_test.zig). Trivially resolvable but should be made explicit in the design.",
+        "affected_requirement": "ISS-504"
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF03-iss0091-20260731",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-iss0091-20260731",
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to BACKEND-DEV (Step 3) to implement per design, addressing the two MINOR notes during implementation"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

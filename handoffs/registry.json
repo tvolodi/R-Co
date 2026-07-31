@@ -12,7 +12,7 @@
       "started_at": "2026-07-31T15:15:19Z",
       "completed_at": "2026-07-31T15:23:16Z",
       "status": "COMPLETED",
-      "stage": "WF-03 issue resolving — Step Final (changelog + branch management)"
+      "stage": "WF-03 issue resolving \u2014 Step Final (changelog + branch management)"
     },
     {
       "handoff_id": "wf03-f8-b1-edit-save-hang-20260606-001",
@@ -7773,7 +7773,77 @@
       "created_at": "2026-07-31T14:09:26Z",
       "status": "COMPLETED",
       "stage": "WF-03 issue resolving \u2014 implement validated ISS-0105 fix (single file)"
+    },
+    {
+      "handoff_id": "043f933e-7c71-4f65-86be-39f09b12bf8a",
+      "file": "handoffs/WF03-iss0106-20260731/step-00-backend-dev.json",
+      "run_id": "WF03-iss0106-20260731",
+      "workflow_id": "WF-03",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-07-31T16:26:47Z",
+      "started_at": "2026-07-31T16:27:27Z",
+      "completed_at": "2026-07-31T16:29:45Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "0cb88614-b72f-40c2-b0a7-942264031622",
+      "file": "handoffs/WF03-iss0106-20260731/step-01-issue-fixer.json",
+      "run_id": "WF03-iss0106-20260731",
+      "workflow_id": "WF-03",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-07-31T16:31:22Z",
+      "started_at": "2026-07-31T16:32:00Z",
+      "completed_at": "2026-07-31T16:36:02Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "f8484beb-b69b-42f2-aab0-5999bc27b07c",
+      "file": "handoffs/WF03-iss0106-20260731/step-02-code-designer.json",
+      "run_id": "WF03-iss0106-20260731",
+      "workflow_id": "WF-03",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-07-31T16:37:15Z",
+      "started_at": "2026-07-31T16:39:03Z",
+      "completed_at": null,
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "39085668-ebac-4bcd-81a9-9cdabc7d4389",
+      "file": "handoffs/WF03-iss0106-20260731/step-02b-code-design-validator.json",
+      "run_id": "WF03-iss0106-20260731",
+      "workflow_id": "WF-03",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-07-31T16:44:15Z",
+      "started_at": "2026-07-31T16:44:53Z",
+      "completed_at": "2026-07-31T16:48:09Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "90c64911-e9e3-45fe-bf11-e7863f24230a",
+      "file": "handoffs/WF03-iss0106-20260731/step-03-backend-dev.json",
+      "run_id": "WF03-iss0106-20260731",
+      "workflow_id": "WF-03",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-07-31T16:49:26Z",
+      "started_at": "2026-07-31T16:50:03Z",
+      "completed_at": null,
+      "status": "IN_PROGRESS",
+      "stage": null
     }
   ],
-  "last_updated": "2026-07-31T11:26:53Z"
+  "last_updated": "2026-07-31T16:49:26Z"
 }

@@ -1242,28 +1242,64 @@ pub fn build(b: *std.Build) void {
 
     const test_integration_step = b.step("test-integration", "Run integration tests (requires BPM_TEST_DB_URL)");
     test_integration_step.dependOn(&clean_test_db.step);
-    test_integration_step.dependOn(&run_integration_tests.step);
-    test_integration_step.dependOn(&run_adm_ui_09_integration_tests.step);
-    test_integration_step.dependOn(&run_spt01_iss0068_integration_tests.step);
-    test_integration_step.dependOn(&run_iss0071_realm_guard_integration_tests.step);
-    test_integration_step.dependOn(&run_tnt_integration_tests.step);
-    test_integration_step.dependOn(&run_tnt_backfill_integration_tests.step);
-    test_integration_step.dependOn(&run_iss101_integration_tests.step);
-    test_integration_step.dependOn(&run_iss102_integration_tests.step);
-    test_integration_step.dependOn(&run_iss0091_integration_tests.step);
-    test_integration_step.dependOn(&run_iss103_integration_tests.step);
-    test_integration_step.dependOn(&run_iss106_integration_tests.step);
-    test_integration_step.dependOn(&run_iss107_integration_tests.step);
-    test_integration_step.dependOn(&run_iss502_integration_tests.step);
-    test_integration_step.dependOn(&run_iss503_integration_tests.step);
-    test_integration_step.dependOn(&run_iss202_integration_tests.step);
-    test_integration_step.dependOn(&run_iss203_integration_tests.step);
-    test_integration_step.dependOn(&run_iss207_integration_tests.step);
-    test_integration_step.dependOn(&run_iss208_integration_tests.step);
-    test_integration_step.dependOn(&run_iss205_integration_tests.step);
-    test_integration_step.dependOn(&run_iss601_integration_tests.step);
-    test_integration_step.dependOn(&run_sch303_integration_tests.step);
-    test_integration_step.dependOn(&run_iss0076_integration_tests.step);
+
+    // ISS-0106 (GitHub #364): barrier step aggregating every test-integration
+    // sibling binary EXCEPT ISS-503 (tests/integration/test_iss503_rls_removal.zig).
+    // ISS-503 opens its own raw pg.Conn and runs GBL-084's full DDL body
+    // (AccessExclusiveLock-holding ALTER TABLE / DROP POLICY / DROP FUNCTION
+    // statements) outside helpers.zig's advisory-lock machinery, so it must
+    // never execute concurrently with any other DDL/migration-touching binary
+    // in this group. This barrier has no action of its own — it is satisfied
+    // once every other test-integration member below has finished — and
+    // run_iss503_integration_tests.step is chained behind it (see below), so
+    // the build runner can never start ISS-503 before the rest of the group
+    // completes. See src/design/fix-ISS-0106.md for the full design.
+    const test_integration_others_step = b.step("test-integration-others-internal", "Internal barrier — not intended for direct invocation");
+    test_integration_others_step.dependOn(&run_integration_tests.step);
+    test_integration_others_step.dependOn(&run_adm_ui_09_integration_tests.step);
+    test_integration_others_step.dependOn(&run_spt01_iss0068_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0071_realm_guard_integration_tests.step);
+    test_integration_others_step.dependOn(&run_tnt_integration_tests.step);
+    test_integration_others_step.dependOn(&run_tnt_backfill_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss101_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss102_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0091_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss103_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss106_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss107_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss502_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss202_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss203_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss207_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss208_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss205_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss601_integration_tests.step);
+    test_integration_others_step.dependOn(&run_sch303_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
+
+    // ISS-0106: force ISS-503 to run only after the barrier above (i.e. after
+    // every other test-integration sibling has finished), then re-attach it
+    // to the umbrella step so `zig build test-integration` still runs it and
+    // still surfaces its own pass/fail.
+    //
+    // IMPORTANT: a second, dedicated Step.Run artifact
+    // (run_iss503_integration_tests_after_others) — NOT the shared
+    // run_iss503_integration_tests used by test_integration_iss503_step (the
+    // pre-existing narrow "zig build test-integration-iss503" step) — carries
+    // the barrier ordering edge. run_iss503_integration_tests.step is shared
+    // with that narrow step, and dependOn edges are a global property of a
+    // Step in Zig's build graph: adding the barrier dependency straight onto
+    // run_iss503_integration_tests.step would have made the narrow step
+    // transitively pull in all ~19 other test-integration binaries too,
+    // which violates this design's explicit non-goal of leaving
+    // test-integration-iss503 unaffected. Running the same test binary a
+    // second time via its own Run step keeps that edge scoped to
+    // test_integration_step's own path only.
+    const run_iss503_integration_tests_after_others = b.addRunArtifact(iss503_integration_tests);
+    run_iss503_integration_tests_after_others.setCwd(b.path("."));
+    run_iss503_integration_tests_after_others.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+    run_iss503_integration_tests_after_others.step.dependOn(test_integration_others_step);
+    test_integration_step.dependOn(&run_iss503_integration_tests_after_others.step);
 
     const test_integration_xc04_step = b.step("test-integration-xc04", "Run XC-04 integration tests only (requires BPM_TEST_DB_URL)");
     test_integration_xc04_step.dependOn(&clean_test_db.step);
@@ -1393,7 +1429,7 @@ pub fn build(b: *std.Build) void {
     const test_integration_exp103_step = b.step("test-integration-exp103", "Run EXP-103 instance_waits persistence layer integration tests (requires BPM_TEST_DB_URL)");
     test_integration_exp103_step.dependOn(&clean_test_db.step);
     test_integration_exp103_step.dependOn(&run_exp103_integration_tests.step);
-    test_integration_step.dependOn(&run_exp103_integration_tests.step);
+    test_integration_others_step.dependOn(&run_exp103_integration_tests.step); // ISS-0106: routed via barrier, not directly onto test_integration_step
 
     const svc_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1443,7 +1479,7 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss0072_step = b.step("test-integration-iss0072", "Run ISS-0072 tenant-config realm override integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0072_step.dependOn(&clean_test_db.step);
     test_integration_iss0072_step.dependOn(&run_iss0072_integration_tests.step);
-    test_integration_step.dependOn(&run_iss0072_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0072_integration_tests.step); // ISS-0106: routed via barrier, not directly onto test_integration_step
 
     // ---------------------------------------------------------------------------
     // `zig build migrate` — migration runner

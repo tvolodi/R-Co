@@ -1,0 +1,46 @@
+{
+  "handoff_id": "90c64911-e9e3-45fe-bf11-e7863f24230a",
+  "run_id": "WF03-iss0106-20260731",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-iss0106-20260731/step-03-backend-dev.json",
+  "created_at": "2026-07-31T16:49:26Z",
+  "started_at": "2026-07-31T16:50:03Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "39085668-ebac-4bcd-81a9-9cdabc7d4389"
+    ],
+    "artifacts_in": [
+      "src/design/fix-ISS-0106.md",
+      "docs/issues/ISS-0106.json",
+      "build.zig",
+      "tests/integration/test_iss503_rls_removal.zig"
+    ],
+    "branch_name": "feature/WF03-iss0106-20260731"
+  },
+  "task": {
+    "description": "Implement the fix design at src/design/fix-ISS-0106.md (validated PASS in Step 2b) for ISS-0106 / GitHub #364. Restructure build.zig test-integration step dependency graph: introduce a barrier Step that aggregates all non-ISS-503 test-integration binaries, remove run_iss503_integration_tests.step as a direct sibling of test_integration_step (currently line ~1258), give run_iss503_integration_tests.step a dependOn edge on the new barrier, then re-attach run_iss503_integration_tests.step to test_integration_step so the umbrella step still surfaces its pass/fail. Also add a short doc comment (documentation only, no behavioral change) near the top of tests/integration/test_iss503_rls_removal.zig explaining that build.zig now serializes this binary out of the concurrent group, cross-referencing ISS-0106/#364. Do NOT touch test_integration_iss503_step (the already-isolated zig build test-integration-iss503 narrow step) or the concurrency of the other ~19+ binaries relative to each other. Do NOT add retry/sleep/lock-timeout workarounds. Do NOT add advisory-lock hardening (explicitly deferred per the design).",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0 (unit tests unaffected)",
+      "The new barrier Step correctly gates run_iss503_integration_tests.step behind all other test-integration sibling Run steps",
+      "zig build test-integration-iss503 still works standalone (unaffected)",
+      "zig build test-integration runs to completion; ISS-503 binary observably starts only after the rest of the group finishes (verify via timestamps/log ordering in a real run)",
+      "TC-DB-01-01 and TC-DB-01-02 in db_integration_test.zig pass under a full concurrent zig build test-integration run (the original acceptance bar from #357), with no new deadlock (40P01) errors involving test_iss503_rls_removal.zig in the log",
+      "No unrelated test regressions introduced"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
