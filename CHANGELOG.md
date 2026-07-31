@@ -2,6 +2,20 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0098 / TC-SPT-01-07 corrected to match ISS-501 no-tenant routing design] — 2026-07-31
+
+### Fixed
+- **ISS-0098 (MINOR)**: `tests/integration/spt01_provisioning_test.zig`'s `TC-SPT-01-07` asserted that an empty tenant context resolves `search_path` to `tenant_default`, while `src/db/pool.zig`'s `applyRequestStorageRouting()` intentionally short-circuits empty tenant context to `SET search_path TO public`. Investigated via git history and design-doc cross-reference: the test was written against the original SPT-01 design (`src/design/spt-01-schema-per-tenant-provisioning.md`, commit `398e613`), which specified empty tenant_id → `tenant_default`. That routing function was deliberately superseded by the ISS-501 design (`src/design/iss501_storage_mode_routing.md`, commit `01cf924`), whose "No-tenant path" explicitly defines `SET search_path TO public` for backward compatibility — and no later commit reversed this. `src/db/pool.zig` was therefore correct; the test was the stale artifact, never updated when the routing function was renamed/refactored from `applyRequestTenantContext` to `applyRequestStorageRouting`. Corrected `TC-SPT-01-07`'s name, comment, and assertion to expect `public`. Clarified `schemaNameForTenant()`'s doc comment to note its empty-string branch is unreachable from the no-tenant routing path (dead-code-path documentation that could mislead future readers into re-deriving the same stale assumption). Also corrected the identical stale expectation and pre-ISS-501 function name in `tests/specs/SPT-01.md` (an independent copy of the same drift, found by CODE-DESIGN-VALIDATOR during design review — not caught by compilation or test execution since spec docs are prose).
+
+### Verified
+- `zig build`: clean, no `error set` output.
+- `zig build test-integration` (full aggregate): `TC-SPT-01-07` passes. 126 pre-existing, unrelated failures observed — consistent with the 107 pre-existing failures documented one commit earlier in the ISS-0095 verification report (dominated by PostgreSQL deadlocks from concurrent connection-pool contention on one long-lived, never-reset `db_test` container, plus already-tracked stale-table-name defects). None touch the 3 files changed by this fix.
+
+### Found while verifying (filed separately, not fixed here)
+- **ISS-0099 / GitHub [#355](https://github.com/tvolodi/R-Co/issues/355) (MAJOR)**: `spt01_provisioning_test.zig`'s `TC-SPT-01-06` fails — it sets tenant context to a fixed, never-provisioned UUID and expects `search_path` to resolve to that tenant's dedicated schema, but `applyRequestStorageRouting()`'s `storage_mode` lookup finds no matching `public.tenant` row and falls back to `LEGACY_RLS`/`public`. Confirmed pre-existing and unrelated to ISS-0098 (test file byte-identical to its state before the ISS-0098 fix branch, unchanged since commit `9e37825`). Same class of pre-ISS-501-vs-post-ISS-501 test drift as ISS-0098, but a distinct root cause (storage_mode resolution precondition, not no-tenant short-circuit) affecting a different test case.
+
+GitHub issue [#353](https://github.com/tvolodi/R-Co/issues/353) closed.
+
 ## [ISS-0095 / 20 integration test files now set tenant context before Pool.init()] — 2026-07-31
 
 ### Fixed

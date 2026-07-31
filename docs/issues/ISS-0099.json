@@ -1,0 +1,36 @@
+{
+  "issue_id": "ISS-0099",
+  "title": "TC-SPT-01-06 fails: applyRequestStorageRouting() falls back to LEGACY_RLS/public for an unprovisioned tenant ID instead of routing to the SCHEMA path",
+  "status": "OPEN",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/355",
+  "severity": "MAJOR",
+  "category": "test-vs-implementation-drift (ISS-501 storage_mode resolution)",
+  "run_id": "WF03-iss0098-20260731",
+  "workflow_id": "WF-03",
+  "handoff_id": "wf03-iss0098-step05-verify",
+  "requirement_ids": ["SPT-01"],
+  "summary": "Discovered while running the full integration suite (zig build test-integration) to verify the ISS-0098 fix. tests/integration/spt01_provisioning_test.zig's TC-SPT-01-06 ('pool checkout sets search_path to tenant schema for non-default tenant') fails: it sets tenant context to a fixed, never-provisioned test UUID (a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5) and expects search_path to resolve to that tenant's schema. Instead it resolves to 'public'. This test is unmodified by the ISS-0098 fix (identical since commit 9e37825, predates the ISS-0098 fix branch) -- confirmed pre-existing and unrelated to the ISS-0098 change.",
+  "root_cause": {
+    "type": "storage-mode-lookup-fallback-not-accounted-for-by-test",
+    "details": "src/db/pool.zig's applyRequestStorageRouting() (lines 171-237) resolves storage_mode by querying 'SELECT storage_mode FROM public.tenant WHERE id = $1::uuid' for the given tenant_id (lines 184-191). When the query returns no row (as it does for TC-SPT-01-06's fixed, never-provisioned UUID) or the mode is not 'SCHEMA', the code defaults to LEGACY_RLS (line 206: 'Default: LEGACY_RLS (tenant not found, null mode, or any non-SCHEMA value)'), which routes to 'SET search_path TO public' (line 215), not the tenant's dedicated schema. TC-SPT-01-06 was written pre-ISS-501, when routing did not depend on a resolved storage_mode row existing in public.tenant -- it only depended on tenant_context being set to a non-empty UUID. The ISS-501 refactor added the storage_mode gate but this test was never updated to either (a) provision a real public.tenant row with storage_mode='SCHEMA' for its test UUID, or (b) assert against the LEGACY_RLS/public fallback that now correctly occurs for an unresolvable tenant. This is the same class of drift as ISS-0098 (test written against pre-ISS-501 SPT-01 semantics, never reconciled with the ISS-501 refactor) but affects a different test case and needs its own investigation into which correction is intended: either provision the fixture tenant with storage_mode=SCHEMA, or change the assertion to expect the LEGACY_RLS/public fallback for unresolvable tenants."
+  },
+  "files_to_change": [
+    "tests/integration/spt01_provisioning_test.zig -- TC-SPT-01-06: needs either a real public.tenant fixture row with storage_mode='SCHEMA' for the test UUID, or an updated assertion matching the documented LEGACY_RLS fallback for unresolvable tenants. Needs design decision analogous to ISS-0098's investigation before either side is changed."
+  ],
+  "resolution": null,
+  "occurrences": [
+    {
+      "occurred_at": "2026-07-31T06:27:43Z",
+      "run_id": "WF03-iss0098-20260731",
+      "handoff_id": "wf03-iss0098-step05-verify",
+      "trigger": "test_failure",
+      "context": "Surfaced during full zig build test-integration run while verifying the ISS-0098 fix (TC-SPT-01-07). Confirmed unrelated: TC-SPT-01-06 is byte-identical to its state before the ISS-0098 branch was created."
+    }
+  ],
+  "files_changed": [],
+  "created_at": "2026-07-31T06:27:43Z",
+  "resolved_at": null,
+  "prevention": [
+    "When a design doc (e.g. ISS-501) changes the preconditions a routing function depends on (here: requiring a resolvable public.tenant row for SCHEMA routing), audit existing tests that exercise that function with synthetic/unprovisioned fixture data -- they may silently start exercising a different code path (fallback) than the one they were written to test."
+  ]
+}
