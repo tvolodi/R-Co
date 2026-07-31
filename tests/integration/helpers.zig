@@ -21,6 +21,20 @@ const bpm = @import("bpm");
 // ---------------------------------------------------------------------------
 
 fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void {
+    // ISS-0090: every integration test binary calls TestHarness.init() ->
+    // runMigrations() independently and concurrently against the same shared
+    // `public` schema. Without serialization, two processes can both pass the
+    // "not yet applied" check for the same migration and both attempt to
+    // apply it; some migrations use inline named constraints/indexes that a
+    // bare `CREATE TABLE IF NOT EXISTS` cannot deduplicate under a true race,
+    // so one loses with "already exists" — and because the failure rolls
+    // back before the schema_migrations row commits, every subsequent run
+    // retries forever. Hold a session-level advisory lock for the whole
+    // check-and-apply pass so only one process migrates `public` at a time;
+    // the rest wait, then see the migration already recorded and skip it.
+    try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
+    defer conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
+
     // Bootstrap table.
     try conn.exec(
         \\CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -169,6 +183,16 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
     // are not idempotent for constraint names, unlike IF NOT EXISTS forms),
     // causing spurious "already exists" failures. Skip entirely in that case
     // — the schema is already correctly and fully migrated.
+    //
+    // ISS-0090: also serialize the check-and-apply pass with a session-level
+    // advisory lock keyed by schema name, for the same reason as runMigrations
+    // above — concurrent test binaries calling TestHarness.init() otherwise
+    // race on this schema's non-idempotent inline CONSTRAINT/index DDL, and a
+    // failed racer's rolled-back transaction means the migration is retried
+    // (and re-raced) by every subsequent test run indefinitely.
+    try conn.exec("SELECT pg_advisory_lock(hashtext($1))", &.{schema});
+    defer conn.exec("SELECT pg_advisory_unlock(hashtext($1))", &.{schema}) catch {};
+
     {
         var already_migrated = conn.query(
             allocator,

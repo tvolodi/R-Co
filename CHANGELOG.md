@@ -2,6 +2,28 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0090 / non-idempotent audit-trigger DDL and orphaned tenant-schema cleanup fixed] — 2026-07-31
+
+### Fixed
+- **ISS-0090 (MINOR)**: `migrations/051_xc02_audit_immutability.sql`'s `trg_bpm_audit_prevent_update` and `trg_bpm_audit_prevent_delete` triggers had no `DROP TRIGGER IF EXISTS` guard (unlike every other trigger in the same migration set), so re-applying the migration against a database where they were already created failed with `trigger ... already exists` — exactly the class of failure this issue described accumulating on the long-lived, never-reset `bpm_test` container. Added the missing guards, and reordered the shared function's `DROP FUNCTION IF EXISTS` to run *after* both trigger drops instead of before — the original order meant a second application failed on `cannot drop function ... other objects depend on it` before ever reaching the (now-fixed) trigger guards, because the still-existing first-run triggers depended on the function being dropped. Verified idempotent across 3 consecutive re-applications directly against a live `tenant_default` schema with zero errors.
+- `tools/clean_test_db.py` did not clean up per-tenant Postgres schemas at all, only known tables and `tenant`/`test` rows — so a test that crashes, times out, or is killed before its `defer cleanupTenant()` runs (e.g. `tests/integration/iss502_spt_cutover_test.zig`) leaks a real schema forever. Added a sweep that drops every tenant schema found in `public.tenant_schemas` (except `tenant_default`) plus any unregistered stray `tenant_<uuid>` schema found directly via `information_schema.schemata` (schema names are validated against the fixed 32-hex-digit naming convention before being interpolated into `DROP SCHEMA`). Verified against the actual long-lived `bpm_test` container referenced by this issue, which had accumulated 30 registered orphaned schemas plus 2 unregistered ones (32 total); the fix dropped all 32, and a second run confirmed zero remaining.
+- `tests/integration/helpers.zig`'s `runMigrations()`/`runMigrationsForSchema()` had no serialization, so concurrent integration-test binaries applying a not-yet-recorded migration to the same shared, never-reset schema could race — one loses with "already exists" and, because the failed transaction rolls back before its `schema_migrations` row commits, every later run retries and re-races indefinitely. Added a `pg_advisory_lock`/`unlock` around the whole check-and-apply pass in both functions (keyed by schema name for the per-schema case), matching the serialization pattern `bpm_provision_tenant_schema` (migration 060) already used.
+
+### Added
+- Documented the test-database lifecycle policy in `docs/agents/workflows/WF-04_full_test_run.md` (new section after Step 3): scripted reset via `tools/clean_test_db.py` before every integration run (already wired as a `zig build` dependency of every `test_integration_*` step), not a full container rebuild; `docker-compose down -v db_test && up -d db_test && zig build migrate` remains available as a manual escape hatch, not part of the automated flow.
+- `docs/anti-patterns.md`: two new entries — the non-idempotent-trigger pattern this issue fixed, and (from a related finding surfaced while verifying this fix) the "two subsystems tracking the same state independently" pattern.
+
+### Found while verifying (filed separately, not fixed here)
+- **ISS-0091 / GitHub [#343](https://github.com/tvolodi/R-Co/issues/343) (MAJOR)**: `tests/integration/helpers.zig`'s own migration-tracking table (schema-local, physically inside each tenant schema) diverges from the canonical `public.schema_migrations(schema_name, version)` tracker that `src/db/migrations.zig::Migrations.runForSchema()` uses per ISS-504's explicit design decision (`src/design/iss504_migration_tracking.md`) — causing deterministic "already exists" failures on migration 047/072's renamed table+constraint, reproducible even on a byte-fresh container with zero concurrency. This is architecturally distinct from ISS-0090 (it is not about DDL idempotency or long-lived-container drift) and affects most integration test files project-wide, so it was filed as its own issue rather than folded into this fix, per the project's "No Issue Left Local-Only" directive.
+
+### Verified
+- `zig build`: clean, no `error set` output.
+- `migrations/051` re-applied 3 consecutive times directly against `tenant_default` via `docker-compose exec psql`: zero errors on runs 2 and 3.
+- `tools/clean_test_db.py` run twice consecutively against the live `bpm_test` container: first run dropped 32 orphaned tenant schemas, second run confirmed 0 remaining.
+- A full `zig build test-integration` run is separately blocked by ISS-0091 for any test file whose own `makePool()` calls `Migrations.runForSchema()` directly (most integration test files) — out of scope for this fix; direct-SQL verification above confirms ISS-0090's own fixes work correctly.
+
+GitHub issue [#339](https://github.com/tvolodi/R-Co/issues/339) closed.
+
 ## [ISS-504 / per-tenant migration tracking verified and covered] — 2026-07-30
 
 ### Verified

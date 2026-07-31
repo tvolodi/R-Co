@@ -152,6 +152,15 @@ PRE-CONDITION: Test PostgreSQL database running; migrations applied
    On FAIL: ORCH spawns WF-03
 ```
 
+### Test-database lifecycle policy (ISS-0090)
+
+`db_test` (the `bpm_test` Postgres container) is **long-lived, not ephemeral-per-run** — it is not torn down between sessions, and its data volume survives ordinary `docker-compose down`/`up` cycles. The chosen policy is a **scripted reset before every integration run**, not a full container rebuild:
+
+- `zig build test-integration` (and every other `test_integration_*` build step) depends on the `clean-test-db` step, which runs `tools/clean_test_db.py` automatically before tests execute — no manual step is required in the normal case.
+- `clean_test_db.py` truncates transient business tables (both `public` and `tenant_default`), deletes test/non-default tenant rows, and — as of ISS-0090 — sweeps `public.tenant_schemas` to `DROP SCHEMA ... CASCADE` every per-test tenant schema except `tenant_default`, clearing their `tenant_schemas`/`schema_migrations` rows too. This closes the orphaned-schema leak where a killed/timed-out test skips its `defer cleanupTenant()`.
+- `schema_migrations` (and `tenant_default`'s own per-schema tracking) is deliberately **not** wiped by the reset — this is what lets migrations stay skip-on-already-applied instead of re-running non-idempotent DDL against a container that already has it.
+- A full destructive rebuild (`docker-compose down -v db_test && docker-compose up -d db_test && zig build migrate`) remains available as a manual escape hatch for drift that the scripted reset cannot fix (e.g. a corrupted volume), but is not part of the standard per-run flow and is not automated — TEST-RUNNER must not invoke `down -v` itself.
+
 ---
 
 ## Step 4 — Frontend Unit Tests
