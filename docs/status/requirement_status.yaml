@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-07-30T17:16:46Z'
+last_updated: '2026-07-31T04:04:02Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1561,8 +1561,17 @@ requirements:
     release_run: WF02-iss102-20260611
     release_decision: docs/status/release-iss102-20260611.yaml
   ISS-103:
-    status: UNTRACKED
+    status: TESTED
     title: Change `audit_log.resource_id` to `TEXT`
+    implemented_in:
+    - migrations/GBL-081_iss103_audit_resource_id_text.sql
+    - migrations/GBL-082_fix_audit_chain_resource_id_text.sql
+    - tests/integration/audit_iss103_test.zig
+    note: 'Test coverage restored by ISS-0093 fix (removal of stale GBL-081 compatibility shim in tests/integration/helpers.zig
+      that was disabling audit triggers). TC-ISS-103-INT-01..04 in tests/integration/audit_iss103_test.zig
+      now pass 4/4, covering all three acceptance criteria: migration converts resource_id to TEXT NOT
+      NULL, audit writes for text-keyed and uuid-keyed resources succeed, idx_audit_resource remains valid
+      for point lookups.'
   ISS-104:
     status: UNTRACKED
     title: Add `instances.artifact_hash` and populate at start

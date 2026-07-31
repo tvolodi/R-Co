@@ -2,6 +2,22 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0093 / stale GBL-081 compatibility shim removed, unblocking ISS-103 audit-chain test coverage] — 2026-07-31
+
+### Fixed
+- **ISS-0093 (MINOR)**: `tests/integration/helpers.zig`'s `applyCompatibilityShims()` unconditionally ran `ALTER TABLE ... DISABLE TRIGGER ALL` against six tenant_default tables (`process_definitions`, `instance_projections`, `tasks`, `dead_letter_items`, `webhook_subscriptions`, `webhook_deliveries`) on every `TestHarness.init()` call, as a workaround for a GBL-081 type mismatch (`bpm_audit_compute_chain_hash`/`bpm_audit_chain_canonical_payload` expecting a UUID-typed `resource_id` after `audit_entries.resource_id` was converted to TEXT). `migrations/GBL-082_fix_audit_chain_resource_id_text.sql` already corrected both function signatures to TEXT, but the shim disabling the triggers was never removed afterward — so no `audit_entries` row was ever written for any test going through the harness, silently masking `tests/integration/audit_iss103_test.zig`'s own coverage of that behavior (`TC-ISS-103-INT-02` point-lookup via `idx_audit_resource`, `TC-ISS-103-INT-03` mixed-resource-type TEXT queries, `TC-ISS-103-INT-04` audit-entry cleanup). Removed the stale shim from `applyCompatibilityShims()`, and fixed `audit_iss103_test.zig`'s own cleanup helper to disable/enable `USER` triggers (not all triggers) around its `DELETE`, matching the established audit-log-immutability-respecting pattern already used in `xc02_audit_immutability_test.zig`. All four targeted ISS-103 tests (`TC-ISS-103-INT-01..04`) moved from 0/4 to 4/4 passing, confirmed both in isolation and inside the full aggregate `zig build test-integration` suite.
+
+### Verified
+- `zig build`: clean, no `error set` output.
+- `zig build test-integration-iss103`: 4/4 pass (was 0/4 on baseline `main`).
+- `zig build test-integration` (full aggregate, 669 tests): 536/669 passing, 134 pre-existing failing cases — RELEASE-VALIDATOR independently confirmed (via direct `git diff main...HEAD --stat` and source spot-checks, not by trusting the TEST-RUNNER report alone) that zero of the 134 failures are attributable to this change; every failure traces to one of two pre-existing, already-filed, unrelated defects (below) or to the known pre-existing shared-container aggregate-contention pattern (`ISS-0090`, RESOLVED). The one plausible mechanism specific to this diff — newly-enabled triggers on the six tables adding lock contention — was checked directly against the failure symptoms and ruled out.
+
+### Found while verifying (filed separately, not fixed here)
+- **ISS-0094 / GitHub [#348](https://github.com/tvolodi/R-Co/issues/348) (MAJOR)**: `src/db/migrations.zig`'s `Migrations.runForSchema()` blanket-skips every `GBL-`-prefixed migration file for non-`public` schemas, so `GBL-081`/`GBL-082` (the `audit_entries.resource_id` UUID→TEXT conversion and the audit-chain function signature fix) never actually apply to `tenant_default` or any real per-tenant schema — a production-impacting migration-dispatch defect. Confirmed pre-existing and unrelated to ISS-0093 (it was invisible only because ISS-0093's now-removed shim disabled the audit trigger entirely, so the mismatched INSERT never ran).
+- **ISS-0095 / GitHub [#349](https://github.com/tvolodi/R-Co/issues/349) (MINOR)**: 21 integration test files' `makePool()` helpers never call `bpm.api_tenant_context.set(...)` before `Pool.init()`, leaving connections on `search_path=public` where post-`GBL-073` business tables no longer exist. Originally scoped to 4 files during isolated verification; widened to 21 after the full aggregate `zig build test-integration` run in this run's TEST-RUNNER step (Step 05) surfaced the same signature across more files. Confirmed pre-existing and unrelated to ISS-0093.
+
+GitHub issue [#346](https://github.com/tvolodi/R-Co/issues/346) closed.
+
 ## [ISS-0091 / harness and canonical migration trackers unified] — 2026-07-31
 
 ### Fixed

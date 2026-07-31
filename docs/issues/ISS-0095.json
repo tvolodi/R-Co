@@ -19,7 +19,7 @@
     "tests/integration/ext02_webhook_dispatch_test.zig -- same fix",
     "tests/integration/obs05_dlq_test.zig -- same fix",
     "tests/integration/adp06_pipeline_run_correlation_test.zig -- same fix for its own makePool()-based test cases (TC-ADP-06-01/02/03); the TestHarness-based cases in the same file are unaffected and already correct",
-    "Consider a broader sweep of tests/integration/*.zig for any other file using the same bare makePool() pattern without tenant-context setup, since this appears to be a copy-pasted helper that predates the GBL-073 schema-per-tenant cutover and was not updated everywhere it was used"
+    "SCOPE UPDATE (2026-07-31, WF03-iss0093-20260731 Step 05 full-suite run): the same bare-makePool()-without-tenant-context pattern additionally affects 17 more files, confirmed via a full zig build test-integration run rather than isolated per-file runs: tests/integration/adp02_tenant_scope_test.zig, adp07_agent_role_reserved_usernames_test.zig, adp10_agent_io_capture_audit_test.zig, env03_test.zig, exp201_202_entities_test.zig, ext01_service_task_test.zig, instance_error_test.zig, iss203_idempotency_keys_test.zig, iss207_error_retry_test.zig, obs06_alerts_test.zig, sch02_timer_polling_test.zig, svc01_service_catalog_scope_test.zig, svc03_definition_activation_scope_test.zig, svc04_admin_api_test.zig, tnt_backfill_export_cleanup_test.zig, tnt_schema_isolation_test.zig, spt01_provisioning_test.zig -- all need the same makePool() fix. Total affected file count is now 21, not 4. See prevention note below: this strongly supports moving the fix into a shared tests/integration/helpers.zig export rather than patching 21 files individually."
   ],
   "resolution": null,
   "occurrences": [
@@ -29,6 +29,13 @@
       "handoff_id": "2167d9df-c432-4543-bba8-2d3f6c341c39",
       "trigger": "wf03-step03-backend-dev-risk-survey-verification",
       "context": "While verifying ISS-0093's design-doc risk survey (which predicted obs03_audit_log_test.zig, ext02_webhook_dispatch_test.zig TC-EXT-02-INT-08, obs05_dlq_test.zig, and adp06_pipeline_run_correlation_test.zig would flip from FAIL to PASS once the stale GBL-081 shim was removed), ran zig build test-integration-obs03 (dedicated target) and the aggregate zig build test-integration (no dedicated targets exist for the other three files) and found all four files still failing, but with a different error signature than the design doc predicted (relation does not exist, not an audit-row-count assertion failure). Re-ran test-integration-obs03 in complete isolation (immediately after a fresh zig build test-integration-iss103 pass, with no other test run in between) and got the identical 6/6 failure with the same relation-does-not-exist signature, confirming this is not aggregate-suite test pollution. Traced to src/db/pool.zig's tenant-context fallback logic and confirmed by grep that none of the four files re-export/set bpm.api_tenant_context, unlike tests/integration/audit_iss103_test.zig which explicitly does (with a comment describing exactly this failure mode as the reason)."
+    },
+    {
+      "occurred_at": "2026-07-31T03:52:47Z",
+      "run_id": "WF03-iss0093-20260731",
+      "handoff_id": null,
+      "trigger": "wf03-step05-test-runner-full-suite-verification",
+      "context": "TEST-RUNNER ran the full zig build test-integration aggregate suite (~52 sub-steps, 669 tests) to verify the ISS-0093 fix caused no regressions. 41 of the 134 failing test cases in that run matched this issue's root-cause signature, spanning 21 distinct files (17 beyond the original 4). Confirmed via tests/reports/report-2026-07-31-WF03-iss0093-20260731.yaml (local, gitignored) and posted as a scope-correction comment to GitHub issue #349. None of these are a regression from ISS-0093 -- all pre-exist that fix and share the identical missing-tenant-context root cause already diagnosed above."
     }
   ],
   "files_changed": [],

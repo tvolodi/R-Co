@@ -7561,7 +7561,7 @@
       "from_agent": "ORCH",
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-07-31T02:38:40Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "WF-03 issue resolving"
     },
     {
@@ -7572,7 +7572,7 @@
       "from_agent": "ORCH",
       "to_agent": "RELEASE-VALIDATOR",
       "created_at": "2026-07-31T02:38:40Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "WF-03 issue resolving"
     },
     {
@@ -7583,7 +7583,7 @@
       "from_agent": "ORCH",
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-07-31T02:38:40Z",
-      "status": "PENDING",
+      "status": "IN_PROGRESS",
       "stage": "WF-03 issue resolving"
     }
   ],
