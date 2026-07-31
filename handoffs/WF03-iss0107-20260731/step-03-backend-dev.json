@@ -1,0 +1,45 @@
+{
+  "handoff_id": "aef0e7e1-4757-4d1e-aff3-8e0bc729ca2f",
+  "run_id": "WF03-iss0107-20260731",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-iss0107-20260731/step-03-backend-dev.json",
+  "created_at": "2026-07-31T19:06:13Z",
+  "started_at": "2026-07-31T19:06:54Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "480ddbbe-2a49-476c-bbdd-dfcf060ceea1"
+    ],
+    "artifacts_in": [
+      "src/design/fix-ISS-0107.md",
+      "docs/issues/ISS-0107.json",
+      "tests/integration/helpers.zig"
+    ],
+    "branch_name": "feature/WF03-iss0107-20260731"
+  },
+  "task": {
+    "description": "Implement the fix design at src/design/fix-ISS-0107.md (validated PASS in Step 2b) for ISS-0107 / GitHub #366. Widen the existing bpm_test_migrations_public advisory-lock critical section in tests/integration/helpers.zig TestHarness.init() (currently acquired around line 99, released via defer immediately after runMigrationsForSchema() returns around line 448) so it ALSO covers resetTestData() (lines ~306-322) and applyCompatibilityShims() (lines ~208-296), which currently run completely unlocked after the original defer-release. Move the release point (the defer, or restructure as needed) so the SAME lock key stays held until after applyCompatibilityShims() completes. Reuse the exact same lock key as currently used for the migration passes (per the design's justification -- do NOT introduce a distinct key). Do not touch the separate per-schema advisory lock at ~144-145 (different key, different purpose, confirmed unaffected by CODE-DESIGN-VALIDATOR). Do not add retry/sleep/timeout workarounds. This is a single-file change: tests/integration/helpers.zig only.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0 (unit tests unaffected)",
+      "The advisory lock is held across runMigrationsForSchema() + resetTestData() + applyCompatibilityShims() as one critical section, using the same lock key as before",
+      "No self-deadlock: confirm the lock is acquired exactly once per TestHarness.init() call (not re-acquired for a key already held in the same session, which is safe for Postgres advisory locks but should still be structurally single-acquire for clarity)",
+      "zig build test-integration (full concurrent suite) shows zero NEW deadlocks (40P01) among the previously-colliding binaries (exp103_instance_waits_test.zig, tnt_schema_isolation_test.zig, iss205_webhook_outbox_test.zig, db_integration_test.zig, and others)",
+      "TC-DB-01-01 and TC-DB-01-02 in db_integration_test.zig PASS under a full concurrent zig build test-integration run -- this is the original #357 acceptance bar, and with ISS-0106 already fixed and merged, this fix should be the one that finally makes it green end-to-end",
+      "No unrelated test regressions introduced"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

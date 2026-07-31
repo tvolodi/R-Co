@@ -450,6 +450,28 @@ pub const TestHarness = struct {
             return err;
         };
 
+        // ISS-0107 (GitHub #366): configureTestSearchPath(), resetTestData(), and
+        // applyCompatibilityShims() below all run against the shared, per-process
+        // `tenant_default` schema that every one of the ~19+ test-integration
+        // binaries provisions and writes into. resetTestData() issues eleven
+        // sequential TRUNCATE ... RESTART IDENTITY CASCADE statements (always
+        // promoted to AccessExclusiveLock by Postgres) and applyCompatibilityShims()
+        // issues DROP/CREATE TRIGGER/FUNCTION DDL against shared tables — with no
+        // cross-process ordering, concurrently-running binaries produced genuine
+        // N-way circular AccessExclusiveLock waits (40P01 "deadlock detected"),
+        // corroborated by 42710 ("already exists") and 23505 (unique-violation)
+        // errors from the unprotected DROP/CREATE-trigger race.
+        //
+        // Widen the same, already-correct, already-battle-tested
+        // 'bpm_test_migrations_public' advisory lock (see runMigrations() above)
+        // to also cover this section, rather than introducing a second lock key:
+        // the actual correctness requirement is mutual exclusion of the *entire*
+        // TestHarness.init() pipeline across binaries, not just the migration
+        // passes. See src/design/fix-ISS-0107.md for the full analysis of why a
+        // distinct key would reopen the same race (two keys only provide mutual
+        // exclusion within each key's own critical section, never across them).
+        try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
+
         // Set search_path to tenant_default so resetTestData and all subsequent
         // operations on this direct connection resolve tenant-schema tables
         // (process_definitions, instance_projections, etc.) which no longer exist
@@ -474,6 +496,13 @@ pub const TestHarness = struct {
             std.debug.print("applyCompatibilityShims failed: {}\n", .{err});
             return err;
         };
+
+        // Release the widened bpm_test_migrations_public advisory lock now that
+        // resetTestData()/applyCompatibilityShims() have completed. Explicit
+        // unlock (rather than defer) matches the fix design's required release
+        // point: after applyCompatibilityShims() but before tenant context is
+        // set and the per-test transaction begins.
+        conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
 
         // Initialize test tenant context for all pool connections.
         // Pool.acquire() calls applyRequestTenantContext() which reads this thread-local.
