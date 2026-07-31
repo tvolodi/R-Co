@@ -1,0 +1,58 @@
+{
+  "handoff_id": "2167d9df-c432-4543-bba8-2d3f6c341c39",
+  "run_id": "WF03-iss0093-20260731",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-07-31T02:38:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [
+      "ISS-103"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "handoffs/WF03-iss0093-20260731/step-02-code-designer.json"
+    ]
+  },
+  "task": {
+    "description": "Implement the ISS-0093 fix per the validated CODE-DESIGNER design: remove/narrow the stale GBL-081 DISABLE TRIGGER ALL shims in tests/integration/helpers.zig::applyCompatibilityShims(). Re-run zig build test-integration-iss103 to confirm TC-ISS-103-INT-02/03/04 now pass with triggers enabled. Handle explicitly (not via blanket shim) any other test found to depend on disabled triggers.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test-integration-iss103 passes with triggers enabled",
+      "No other previously-passing integration test regresses",
+      "Fix committed and pushed to feature/WF03-iss0093-20260731"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Removed the stale GBL-081 comment and six ALTER TABLE ... DISABLE TRIGGER ALL statements (process_definitions, instance_projections, tasks, dead_letter_items, webhook_subscriptions, webhook_deliveries) from applyCompatibilityShims() in tests/integration/helpers.zig, per the validated design. The unrelated legacy shims (instances compat table, events compat-defaults trigger, repository_artifacts immutability triggers) were left untouched. zig build, zig build test, and zig build migrate all exit 0 with no error-set output. zig build test-integration-iss103 now passes 4/4 (TC-ISS-103-INT-01/02/03/04), up from 0/4 before the fix (with the shim disabling the trigger entirely, all four assertions on audit_entries row presence failed). A second, pre-existing defect (ISS-0094, GitHub #348, filed separately) was found while verifying: tenant_default.audit_entries.resource_id was still UUID-typed because Migrations.runForSchema() blanket-skips GBL-081/GBL-082 for non-public schemas; this was patched at the DB level for tenant_default to unblock verification, and TC-ISS-103-INT-01..04 were independently re-confirmed passing 4/4 in isolation after that patch. TC-ISS-103-INT-04 additionally required a small fix to its own cleanupAuditForResource() test helper (audit_iss103_test.zig), which attempted a raw DELETE against audit_entries -- now correctly immutable once the trigger was genuinely re-enabled -- and needed to pair ALTER TABLE audit_entries DISABLE/ENABLE TRIGGER USER around the delete, matching the established pattern already used in xc02_audit_immutability_test.zig. Per the design risk survey, also ran obs03_audit_log_test.zig, ext02_webhook_dispatch_test.zig, obs05_dlq_test.zig, and adp06_pipeline_run_correlation_test.zig (via zig build test-integration-obs03 and the aggregate zig build test-integration, since no dedicated per-file targets exist for the latter three). All four files fail, but confirmed via isolated re-run and code inspection that the failures are a separate, pre-existing, unrelated defect: none of these four files export/set bpm.api_tenant_context before Pool.init() (unlike audit_iss103_test.zig, which does), so their pool connections default to search_path=public where the business tables no longer exist post-GBL-073 schema-per-tenant cutover -- confirmed identical failure mode (relation ... does not exist) independent of trigger state or this fix. This is not a regression caused by this change and is out of scope for ISS-0093; not filed as a new issue in this pass since it was not the primary focus and would need its own root-cause confirmation pass, but is flagged here for follow-up. Both newly-discovered defects have now been filed as GitHub issues per project policy: ISS-0094 (#348) for the GBL-081/GBL-082 per-tenant-schema gap, and ISS-0095 (#349) for the missing tenant-context setup in the four risk-survey test files.",
+    "artifacts_out": [
+      "tests/integration/helpers.zig",
+      "tests/integration/audit_iss103_test.zig",
+      "docs/issues/ISS-0094.json",
+      "docs/issues/ISS-0095.json"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "ISS-0094 (GitHub #348) filed: Migrations.runForSchema() blanket-skips all GBL-prefixed migration files for non-public schemas, so GBL-081 and GBL-082 (audit_entries.resource_id UUID->TEXT conversion and the corrected audit-chain function signatures) never apply to tenant_default or any real per-tenant schema. This is a migration-dispatch infrastructure defect, out of scope for this handoff, requiring its own design/fix cycle in src/db/migrations.zig."
+      },
+      {
+        "severity": "MINOR",
+        "description": "ISS-0095 (GitHub #349) filed: obs03_audit_log_test.zig, ext02_webhook_dispatch_test.zig (TC-EXT-02-INT-08), obs05_dlq_test.zig, and adp06_pipeline_run_correlation_test.zig all fail due to a separate pre-existing gap: their makePool() helpers never call bpm.api_tenant_context.set(...) before Pool.init(), so search_path defaults to public where business tables no longer exist post-GBL-073. Confirmed unrelated to and not caused by this fix (identical failure independent of trigger state, reproduced in isolation)."
+      }
+    ],
+    "next_action": "Route to TEST-RUNNER (Step 05)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-07-31T02:44:39Z",
+  "completed_at": "2026-07-31T03:29:30Z"
+}

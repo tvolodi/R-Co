@@ -1,0 +1,48 @@
+{
+  "issue_id": "ISS-0095",
+  "title": "obs03_audit_log_test.zig, ext02_webhook_dispatch_test.zig, obs05_dlq_test.zig, and adp06_pipeline_run_correlation_test.zig fail because their makePool() never sets bpm.api_tenant_context, leaving connections on search_path=public where post-GBL-073 business tables no longer exist",
+  "status": "OPEN",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/349",
+  "severity": "MINOR",
+  "category": "test-environment / tenant-context setup gap",
+  "run_id": "WF03-iss0093-20260731",
+  "workflow_id": "WF-03",
+  "handoff_id": "2167d9df-c432-4543-bba8-2d3f6c341c39",
+  "requirement_ids": ["OBS-03", "EXT-02", "OBS-05", "ADP-06"],
+  "summary": "Discovered while running the broader risk-survey test files flagged by ISS-0093's validated design (src/design/iss-0093-audit-trigger-shim-removal.md) after removing the stale GBL-081 DISABLE TRIGGER ALL shim. tests/integration/obs03_audit_log_test.zig (5 of 6 test cases), tests/integration/ext02_webhook_dispatch_test.zig (TC-EXT-02-INT-08), tests/integration/obs05_dlq_test.zig (all 3 test cases), and tests/integration/adp06_pipeline_run_correlation_test.zig (all 3 test cases) all fail with 'relation \"audit_entries\"/\"process_definitions\"/\"users\"/\"api_tokens\" does not exist'. Root cause: each file's own makePool() helper calls bpm.pool.Pool.init() directly without first calling bpm.api_tenant_context.set(<tenant-uuid>). src/db/pool.zig's connection-acquire path (see applyRequestTenantContext-equivalent logic around lines 150-230) checks tenant_context_mod.get(): if no tenant has been set, it falls back to 'SET search_path TO public', and per migrations/GBL-073_tnt01_drop_legacy_public_business_tables.sql, the business tables (process_definitions, instance_projections, tasks, audit_entries, users, api_tokens, etc.) no longer exist in public -- they only exist per-tenant-schema (tenant_default and beyond) after the Stage-12 schema-per-tenant cutover. tests/integration/audit_iss103_test.zig already has the correct pattern (a `pub const api_tenant_context = bpm.api_tenant_context;` re-export plus `bpm.api_tenant_context.set(\"00000000-0000-0000-0000-000000000000\")` inside its own makePool(), with a comment explaining exactly why it's required), but this pattern was never propagated to the four files named here. Confirmed independent of and unrelated to ISS-0093/ISS-0094: reproduces identically in complete isolation (zig build test-integration-obs03 alone, with no other test having run first) and the failure signature (relation does not exist) is a schema-resolution problem, not a type-mismatch or trigger-state problem.",
+  "root_cause": {
+    "type": "missing-tenant-context-setup-in-test-harness / per-file-pattern-not-propagated",
+    "details": "tests/integration/obs03_audit_log_test.zig line 24-26, tests/integration/ext02_webhook_dispatch_test.zig line 23-25, tests/integration/obs05_dlq_test.zig line 21-23, and tests/integration/adp06_pipeline_run_correlation_test.zig line 28-30 all define `fn makePool(allocator, url) !Pool { return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 }); }` with no call to bpm.api_tenant_context.set(...) beforehand and no `pub const api_tenant_context = bpm.api_tenant_context;` root-level re-export (which src/db/pool.zig's tenant_context_mod.get() depends on being visible from the test binary's root module). Any query issued over a pool connection acquired this way runs with search_path=public, where the business tables named above no longer exist post-migration GBL-073. adp06_pipeline_run_correlation_test.zig additionally uses tests/integration/helpers.zig's TestHarness for some (but not all) of its test cases -- TestHarness.init() does correctly call configureTestSearchPath() -- but its own bare makePool() (used directly by at least TC-ADP-06-01/02/03 per this issue's test run) does not benefit from that."
+  },
+  "files_to_change": [
+    "tests/integration/obs03_audit_log_test.zig -- add `pub const api_tenant_context = bpm.api_tenant_context;` and call `bpm.api_tenant_context.set(\"00000000-0000-0000-0000-000000000000\")` inside makePool(), matching tests/integration/audit_iss103_test.zig's pattern exactly",
+    "tests/integration/ext02_webhook_dispatch_test.zig -- same fix",
+    "tests/integration/obs05_dlq_test.zig -- same fix",
+    "tests/integration/adp06_pipeline_run_correlation_test.zig -- same fix for its own makePool()-based test cases (TC-ADP-06-01/02/03); the TestHarness-based cases in the same file are unaffected and already correct",
+    "SCOPE UPDATE (2026-07-31, WF03-iss0093-20260731 Step 05 full-suite run): the same bare-makePool()-without-tenant-context pattern additionally affects 17 more files, confirmed via a full zig build test-integration run rather than isolated per-file runs: tests/integration/adp02_tenant_scope_test.zig, adp07_agent_role_reserved_usernames_test.zig, adp10_agent_io_capture_audit_test.zig, env03_test.zig, exp201_202_entities_test.zig, ext01_service_task_test.zig, instance_error_test.zig, iss203_idempotency_keys_test.zig, iss207_error_retry_test.zig, obs06_alerts_test.zig, sch02_timer_polling_test.zig, svc01_service_catalog_scope_test.zig, svc03_definition_activation_scope_test.zig, svc04_admin_api_test.zig, tnt_backfill_export_cleanup_test.zig, tnt_schema_isolation_test.zig, spt01_provisioning_test.zig -- all need the same makePool() fix. Total affected file count is now 21, not 4. See prevention note below: this strongly supports moving the fix into a shared tests/integration/helpers.zig export rather than patching 21 files individually."
+  ],
+  "resolution": null,
+  "occurrences": [
+    {
+      "occurred_at": "2026-07-31T03:15:00Z",
+      "run_id": "WF03-iss0093-20260731",
+      "handoff_id": "2167d9df-c432-4543-bba8-2d3f6c341c39",
+      "trigger": "wf03-step03-backend-dev-risk-survey-verification",
+      "context": "While verifying ISS-0093's design-doc risk survey (which predicted obs03_audit_log_test.zig, ext02_webhook_dispatch_test.zig TC-EXT-02-INT-08, obs05_dlq_test.zig, and adp06_pipeline_run_correlation_test.zig would flip from FAIL to PASS once the stale GBL-081 shim was removed), ran zig build test-integration-obs03 (dedicated target) and the aggregate zig build test-integration (no dedicated targets exist for the other three files) and found all four files still failing, but with a different error signature than the design doc predicted (relation does not exist, not an audit-row-count assertion failure). Re-ran test-integration-obs03 in complete isolation (immediately after a fresh zig build test-integration-iss103 pass, with no other test run in between) and got the identical 6/6 failure with the same relation-does-not-exist signature, confirming this is not aggregate-suite test pollution. Traced to src/db/pool.zig's tenant-context fallback logic and confirmed by grep that none of the four files re-export/set bpm.api_tenant_context, unlike tests/integration/audit_iss103_test.zig which explicitly does (with a comment describing exactly this failure mode as the reason)."
+    },
+    {
+      "occurred_at": "2026-07-31T03:52:47Z",
+      "run_id": "WF03-iss0093-20260731",
+      "handoff_id": null,
+      "trigger": "wf03-step05-test-runner-full-suite-verification",
+      "context": "TEST-RUNNER ran the full zig build test-integration aggregate suite (~52 sub-steps, 669 tests) to verify the ISS-0093 fix caused no regressions. 41 of the 134 failing test cases in that run matched this issue's root-cause signature, spanning 21 distinct files (17 beyond the original 4). Confirmed via tests/reports/report-2026-07-31-WF03-iss0093-20260731.yaml (local, gitignored) and posted as a scope-correction comment to GitHub issue #349. None of these are a regression from ISS-0093 -- all pre-exist that fix and share the identical missing-tenant-context root cause already diagnosed above."
+    }
+  ],
+  "files_changed": [],
+  "created_at": "2026-07-31T03:35:00Z",
+  "resolved_at": null,
+  "prevention": [
+    "When a shared test-harness pattern (like tenant-context setup before Pool.init()) is required for correctness after a schema migration (here: GBL-073's schema-per-tenant cutover), grep for every test file using the same underlying Pool.init()-based makePool() pattern and update them together, rather than fixing it ad hoc in whichever file happens to be under test at the time.",
+    "Consider moving the tenant-context-aware makePool() into tests/integration/helpers.zig as a shared exported helper, so future test files inherit the correct behavior by construction instead of by copy-paste."
+  ]
+}

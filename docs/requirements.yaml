@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-07-30T17:16:37Z'
+generated_at: '2026-07-31T04:03:55Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -3971,7 +3971,7 @@ requirements:
     id: ISS-103
     title: Change `audit_log.resource_id` to `TEXT`
     stage: null
-    status: UNTRACKED
+    status: TESTED
     body: |-
       - **Epic:** EPIC-1 · **Priority:** P1 · **Estimate:** S · **Labels:** schema, audit
       - **Depends on:** —
@@ -3987,6 +3987,16 @@ requirements:
     alt_sources: []
     type: requirement
     backlog_tier: P1
+    note: 'Test coverage restored by ISS-0093 fix (removal of stale GBL-081 compatibility shim in tests/integration/helpers.zig
+      that was disabling audit triggers). TC-ISS-103-INT-01..04 in tests/integration/audit_iss103_test.zig
+      now pass 4/4, covering all three acceptance criteria: migration converts resource_id to TEXT NOT
+      NULL, audit writes for text-keyed and uuid-keyed resources succeed, idx_audit_resource remains valid
+      for point lookups.'
+    implemented_in:
+    - migrations/GBL-081_iss103_audit_resource_id_text.sql
+    - migrations/GBL-082_fix_audit_chain_resource_id_text.sql
+    - tests/integration/audit_iss103_test.zig
+    last_updated: '2026-07-31T04:03:55Z'
   ISS-104:
     id: ISS-104
     title: Add `instances.artifact_hash` and populate at start

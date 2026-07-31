@@ -1,0 +1,40 @@
+{
+  "handoff_id": "405f131d-a81b-4448-adf0-f0855f913f87",
+  "run_id": "WF03-iss0093-20260731",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-07-31T02:38:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving",
+    "requirement_ids": [
+      "ISS-103"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "handoffs/WF03-iss0093-20260731/step-02-code-designer.json"
+    ]
+  },
+  "task": {
+    "description": "Validate the CODE-DESIGNER fix design for ISS-0093 (Step 2 output) before BACKEND-DEV implements it.",
+    "acceptance_criteria": [
+      "Design covers all ISS-0093 acceptance criteria",
+      "No implementation code present",
+      "Risk survey of dependent tests is complete"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated src/design/iss-0093-audit-trigger-shim-removal.md (Type E prose design). python tools/lint_design_artefact.py passed clean (0 issues). Independently re-read tests/integration/helpers.zig lines 190-329 and confirmed the proposed diff scope is exact: lines 208-230 contain precisely the GBL-081 stale comment (209-212) and the six DISABLE TRIGGER ALL statements (213-230, process_definitions/instance_projections/tasks/dead_letter_items/webhook_subscriptions/webhook_deliveries) and nothing else; lines 232-318 are structurally unrelated shims (instances compat table, bpm_test_events_compat_defaults trigger on events, bpm_repository_artifacts_immutable triggers on repository_artifacts) referencing different tables/root causes, correctly marked out-of-scope and preserved. Call site (TestHarness.init(), lines 481-484) and execCompatibilitySql() error handling (lines 321-327) match the design's claims verbatim. Spot-checked 3 of the 10 additionally-fixed tests by reading their actual assertions: TC-OBS-03-INT-01/03 (obs03_audit_log_test.zig:180,402) and TC-ADP-06-02 (adp06_pipeline_run_correlation_test.zig:115) each genuinely require one of the six tables' bpm_audit_on_mutation() trigger to fire for their audit_entries assertions to pass -- confirmed by reading the INSERT/query pairs directly, not just trusting the doc. Also confirmed TC-EXT-02-INT-08 (ext02_webhook_dispatch_test.zig:615) independently. Spot-checked 2 of the 4 confirmed-safe tests: TC-ADP-02-05 (adp02_tenant_scope_test.zig:437) inserts directly into audit_entries, no trigger dependency; xc02_audit_immutability_test.zig uses its own self-contained, properly deferred ALTER TABLE audit_entries DISABLE/ENABLE TRIGGER USER pair (lines 354-355) scoped to audit_entries itself, unrelated to applyCompatibilityShims(). Verified via migrations/020_obs03_audit_entries.sql, migrations/024_webhook_subscription_audit.sql, migrations/072_tnt01_rename_legacy_tables.sql, and migrations/GBL-082_fix_audit_chain_resource_id_text.sql that the trigger-attachment and rename claims are accurate. Design's only code-like block (lines 147-164) is explicitly labeled illustrative pseudocode, not literal Zig -- no implementation code present. Both files_to_change entries from docs/issues/ISS-0093.json (helpers.zig diff shape; audit_iss103_test.zig re-verification + broader risk sweep) are covered. No contradiction found between the design's claims and the actual source; all spot-checks confirmed.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 03)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-07-31T02:44:39Z",
+  "completed_at": "2026-07-31T02:57:46Z"
+}
