@@ -470,7 +470,22 @@ pub const TestHarness = struct {
         // passes. See src/design/fix-ISS-0107.md for the full analysis of why a
         // distinct key would reopen the same race (two keys only provide mutual
         // exclusion within each key's own critical section, never across them).
+        //
+        // ISS-0107 rework 1: widening this critical section means every one of
+        // the ~19+ binaries must now queue through it, which grows this specific
+        // acquire's worst-case wait well past the ambient 5s lock_timeout set by
+        // configureSessionTimeouts() above -- Postgres was cancelling the acquire
+        // itself with 55P03 once enough binaries queued behind it. Raise
+        // lock_timeout to a generously-bounded 90s for exactly this one acquire
+        // statement, then restore it to 5s immediately after (plain sequential
+        // SET, not defer/errdefer -- see src/design/fix-ISS-0107.md
+        // "Failure-path correctness" for why a deferred restore is both
+        // unnecessary, given errdefer conn.close() above already discards the
+        // whole connection on any error, and actively harmful, since a
+        // function-scope defer would not fire until after conn.begin() below).
+        try conn.exec("SET lock_timeout = '90s'", &.{});
         try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
+        try conn.exec("SET lock_timeout = '5s'", &.{});
 
         // Set search_path to tenant_default so resetTestData and all subsequent
         // operations on this direct connection resolve tenant-schema tables
