@@ -736,11 +736,11 @@ test "TC-OIDC-35-10: hostname binding enforces uniqueness" {
 
     // Create a real tenant first (FK requirement for tenant_hostnames).
     try harness.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
-        \\VALUES ($1::uuid, $2, 'TC-10 Tenant', 'ACTIVE', $2)
+        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, 'TC-10 Tenant', 'ACTIVE', $2, 'test', $3::uuid)
         \\ON CONFLICT (slug) DO NOTHING
     ,
-        &[_][]const u8{ tenant_id_1, tenant_slug },
+        &[_][]const u8{ tenant_id_1, tenant_slug, "00000000-0000-0000-0000-000000000000" },
     );
 
     // Create first hostname binding.
@@ -793,22 +793,22 @@ test "TC-OIDC-35-11: tenant slug enforces uniqueness" {
 
     // Create first tenant.
     try harness.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
-        \\VALUES ($1::uuid, $2, 'Test Tenant', 'ACTIVE', $2)
+        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, 'Test Tenant', 'ACTIVE', $2, 'test', $3::uuid)
         \\ON CONFLICT (slug) DO NOTHING
     ,
-        &[_][]const u8{ tenant_id_1, slug },
+        &[_][]const u8{ tenant_id_1, slug, "00000000-0000-0000-0000-000000000000" },
     );
 
     // Attempt duplicate slug.
     var q = try harness.conn.query(
         alloc,
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
-        \\VALUES ($1::uuid, $2, 'Duplicate Tenant', 'ACTIVE', $2)
+        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, 'Duplicate Tenant', 'ACTIVE', $2, 'test', $3::uuid)
         \\ON CONFLICT (slug) DO NOTHING
         \\RETURNING id::text
     ,
-        &[_][]const u8{ tenant_id_2, slug },
+        &[_][]const u8{ tenant_id_2, slug, "00000000-0000-0000-0000-000000000000" },
     );
     defer q.deinit();
     try testing.expectEqual(@as(usize, 0), q.rows.len);

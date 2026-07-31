@@ -193,6 +193,10 @@ test "iss107_tenant_storage_mode: check_constraint_rejects_invalid_mode" {
         "INSERT INTO tenant (id, slug, display_name, status, idp_realm_id) VALUES ($1::uuid, 'iss107-t4', 'ISS-107 Test Tenant 4', 'ACTIVE', 'realm-iss107-t4')",
         &.{tenant_id_uuid},
     );
+    defer h.conn.exec(
+        "DELETE FROM tenant WHERE id = $1::uuid",
+        &.{tenant_id_uuid},
+    ) catch {};
 
     // CUSTOM: assertions for this test case — handwritten by the implementer.
     // CUSTOM: assert error.CheckConstraintViolation; SELECT shows the original value.

@@ -331,8 +331,23 @@ fn truncateTableBestEffort(conn: *pg.Conn, comptime table_name: []const u8) !voi
 }
 
 fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
+    // ISS-0100 (GitHub #357): schema-qualify every reference to `tenant` in
+    // this function as `public.tenant`. By the time this function runs,
+    // TestHarness.init() has already set search_path to
+    // "tenant_default,public" (configureTestSearchPath()), and some
+    // long-lived test databases carry a stray, out-of-date `tenant` table
+    // inside the tenant_default schema (created by the historically
+    // unqualified `CREATE TABLE tenant` in migration
+    // 031_adp04b_tenant_realm_binding.sql, which — unlike GBL-prefixed
+    // migrations — is NOT skipped for non-public schemas). That shadow
+    // table never received later ALTER TABLE ADD COLUMN changes that are
+    // GBL-prefixed (e.g. tenant_type from GBL-080), so an unqualified
+    // `INSERT INTO tenant (...)` here can silently resolve against the
+    // shadow table instead of public.tenant and fail once a GBL-only
+    // column is referenced. Schema-qualifying eliminates the ambiguity
+    // regardless of search_path or shadow-table drift.
     try conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id)
         \\VALUES (
         \\  '00000000-0000-0000-0000-000000000000'::uuid,
         \\  'default',
@@ -344,7 +359,7 @@ fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
         \\SET slug = EXCLUDED.slug,
         \\    display_name = EXCLUDED.display_name,
         \\    status = EXCLUDED.status,
-        \\    idp_realm_id = COALESCE(tenant.idp_realm_id, EXCLUDED.idp_realm_id),
+        \\    idp_realm_id = COALESCE(public.tenant.idp_realm_id, EXCLUDED.idp_realm_id),
         \\    updated_at = NOW()
     , &.{});
 
@@ -361,17 +376,17 @@ fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
     // re-inserts them inside the harness transaction (ON CONFLICT DO NOTHING
     // makes those re-inserts no-ops) to keep the test SQL self-documenting.
     try conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, status, idp_realm_id)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
         \\VALUES
-        \\  ('eeeeeeee-0000-0000-0000-000000000001'::uuid, 'svc-t1',       'SVC Test Tenant 1',       'ACTIVE', 'svc-realm-t1'),
-        \\  ('eeeeeeee-0000-0000-0000-000000000002'::uuid, 'svc-t2',       'SVC Test Tenant 2',       'ACTIVE', 'svc-realm-t2'),
-        \\  ('b4200000-0000-0000-0000-000000000001'::uuid, 'svc04-upd-tn', 'SVC04 Update Tenant',     'ACTIVE', 'realm-svc04-upd'),
-        \\  ('c4300000-0000-0000-0000-000000000001'::uuid, 'svc04-cnf-ow', 'SVC04 Conflict Owner',    'ACTIVE', 'realm-svc04-cnf-ow'),
-        \\  ('c4300000-0000-0000-0000-000000000002'::uuid, 'svc04-cnf-ot', 'SVC04 Conflict Other',    'ACTIVE', 'realm-svc04-cnf-ot'),
-        \\  ('d4400000-0000-0000-0000-000000000001'::uuid, 'svc04-inuse-t','SVC04 InUse Tenant',      'ACTIVE', 'realm-svc04-inuse'),
-        \\  ('e4500000-0000-0000-0000-000000000001'::uuid, 'svc04-lst-ta', 'SVC04 List TA',           'ACTIVE', 'realm-svc04-ta'),
-        \\  ('e4500000-0000-0000-0000-000000000002'::uuid, 'svc04-lst-tb', 'SVC04 List TB',           'ACTIVE', 'realm-svc04-tb'),
-        \\  ('f4600000-0000-0000-0000-000000000001'::uuid, 'svc04-all-t',  'SVC04 All Tenant',        'ACTIVE', 'realm-svc04-all')
+        \\  ('eeeeeeee-0000-0000-0000-000000000001'::uuid, 'svc-t1',       'SVC Test Tenant 1',       'ACTIVE', 'svc-realm-t1',      'test', '00000000-0000-0000-0000-000000000000'::uuid),
+        \\  ('eeeeeeee-0000-0000-0000-000000000002'::uuid, 'svc-t2',       'SVC Test Tenant 2',       'ACTIVE', 'svc-realm-t2',      'test', '00000000-0000-0000-0000-000000000000'::uuid),
+        \\  ('b4200000-0000-0000-0000-000000000001'::uuid, 'svc04-upd-tn', 'SVC04 Update Tenant',     'ACTIVE', 'realm-svc04-upd',   'test', '00000000-0000-0000-0000-000000000000'::uuid),
+        \\  ('c4300000-0000-0000-0000-000000000001'::uuid, 'svc04-cnf-ow', 'SVC04 Conflict Owner',    'ACTIVE', 'realm-svc04-cnf-ow','test', '00000000-0000-0000-0000-000000000000'::uuid),
+        \\  ('c4300000-0000-0000-0000-000000000002'::uuid, 'svc04-cnf-ot', 'SVC04 Conflict Other',    'ACTIVE', 'realm-svc04-cnf-ot','test', '00000000-0000-0000-0000-000000000000'::uuid),
+        \\  ('d4400000-0000-0000-0000-000000000001'::uuid, 'svc04-inuse-t','SVC04 InUse Tenant',      'ACTIVE', 'realm-svc04-inuse', 'test', '00000000-0000-0000-0000-000000000000'::uuid),
+        \\  ('e4500000-0000-0000-0000-000000000001'::uuid, 'svc04-lst-ta', 'SVC04 List TA',           'ACTIVE', 'realm-svc04-ta',    'test', '00000000-0000-0000-0000-000000000000'::uuid),
+        \\  ('e4500000-0000-0000-0000-000000000002'::uuid, 'svc04-lst-tb', 'SVC04 List TB',           'ACTIVE', 'realm-svc04-tb',    'test', '00000000-0000-0000-0000-000000000000'::uuid),
+        \\  ('f4600000-0000-0000-0000-000000000001'::uuid, 'svc04-all-t',  'SVC04 All Tenant',        'ACTIVE', 'realm-svc04-all',   'test', '00000000-0000-0000-0000-000000000000'::uuid)
         \\ON CONFLICT (id) DO NOTHING
     , &.{});
 }

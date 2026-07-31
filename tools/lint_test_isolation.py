@@ -11,6 +11,13 @@ Anti-patterns this lint catches (see docs/anti-patterns.md):
         `// covers: <REQ>` or `// requirement: <REQ>` comments inside the same block).
   T050  Integration test file that does not reference `BPM_TEST_DB_URL`
         (every integration test must connect to a real Postgres).
+  T060  Production-defaulting tenant creation (`.createTenant(` call sites, or
+        raw `INSERT INTO tenant (...)` statements that omit `tenant_type`) whose
+        slug does not start with an allowlisted test-fixture prefix. Such rows
+        default to `tenant_type='production'` (GBL-080) and are only excluded
+        from the ISS-503 pre-flight guard's LEGACY_RLS scan by GBL-103's
+        `slug NOT LIKE 'tc-%'` clause — an un-prefixed slug defeats that
+        exclusion and reintroduces ISS-0100's leaked-fixture failure mode.
 
 Default target: tests/integration/. Pass paths to lint a subset.
 
@@ -43,6 +50,26 @@ DEFER_HINT = re.compile(r"\bdefer\b")
 COVERS_HINT = re.compile(r"//\s*(covers|requirement|requirements?)\s*[:\-]\s*([A-Z0-9\-,\s/]+)", re.IGNORECASE)
 DB_URL_HINT = re.compile(r"\bBPM_TEST_DB_URL\b")
 
+# T060: production-defaulting tenant-creation slug prefix allowlist.
+# See docs/anti-patterns.md's ISS-0100 entry and
+# src/design/iss0100-rework1-guard-slug-scoping.md §2.1/§3.3 — every current
+# call site that lets `tenant_type` default to 'production' uses a 'tc-'
+# prefixed slug. Add a new prefix here (not in the check logic) if a future
+# legitimate second convention is introduced.
+TENANT_FIXTURE_SLUG_PREFIXES = ("tc-",)
+
+CREATE_TENANT_CALL = re.compile(r"\b(?:service|registry|self\.\w+)?\.createTenant\s*\(")
+SLUG_CONST_ASSIGN = re.compile(
+    r'\bconst\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"([^"]*)"'
+)
+RUNTIME_FIXTURE_SLUG_ASSIGN = re.compile(
+    r'\bconst\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*try\s+runtimeFixtureSlug\s*\(\s*\w+\s*,\s*"([^"]*)"'
+)
+SLUG_FIELD_REF = re.compile(r'\b(?:slug|tenant_slug)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\b')
+INSERT_TENANT = re.compile(
+    r"INSERT INTO (?:public\.)?tenant\s*\(([^)]*)\)", re.IGNORECASE | re.MULTILINE
+)
+
 
 @dataclass
 class Issue:
@@ -68,6 +95,32 @@ class Report:
 
 def find_line(text: str, pos: int) -> int:
     return text[:pos].count("\n") + 1
+
+
+def _slug_has_allowlisted_prefix(slug: str) -> bool:
+    return any(slug.startswith(p) for p in TENANT_FIXTURE_SLUG_PREFIXES)
+
+
+def _resolve_slug_literal(block: str, ident: str) -> str | None:
+    """Best-effort, block-local resolution of a slug identifier back to its
+    string literal — mirrors the existing ALLOC_HINT/DEFER_HINT block-local
+    regex style (T030), not a full AST/dataflow analysis. Looks for the
+    nearest preceding `const <ident> = "..."` or
+    `const <ident> = try runtimeFixtureSlug(alloc, "...", ...)` in the block.
+    Returns None if the identifier's literal cannot be resolved locally
+    (e.g. it is a function parameter) — callers should treat an unresolved
+    slug as "cannot confirm violation" rather than flagging it."""
+    best: str | None = None
+    best_pos = -1
+    for m in RUNTIME_FIXTURE_SLUG_ASSIGN.finditer(block):
+        if m.group(1) == ident and m.start() > best_pos:
+            best = m.group(2)
+            best_pos = m.start()
+    for m in SLUG_CONST_ASSIGN.finditer(block):
+        if m.group(1) == ident and m.start() > best_pos:
+            best = m.group(2)
+            best_pos = m.start()
+    return best
 
 
 def find_test_blocks(text: str) -> list[tuple[str, int, int]]:
@@ -153,6 +206,71 @@ def lint_file(path: Path, report: Report) -> None:
                     "BLOCKER", "T040", rel, line_no,
                     f'test "{name}" uses error.SkipZigTest but covers requirement(s); skip is forbidden on MUST tests',
                 ))
+
+        # T060a: .createTenant( call sites with an un-prefixed resolved slug
+        for cm in CREATE_TENANT_CALL.finditer(block):
+            # Look ahead a bounded window for the struct-literal argument's
+            # `.slug = <ident>` field (call args typically follow within the
+            # same statement, a few lines below the call open-paren).
+            window = block[cm.end():cm.end() + 600]
+            field_m = SLUG_FIELD_REF.search(window)
+            if not field_m:
+                continue
+            ident = field_m.group(1)
+            slug = _resolve_slug_literal(block[:cm.end() + field_m.end()], ident)
+            if slug is None:
+                continue  # cannot resolve locally — do not flag (heuristic, avoid false positives)
+            if not _slug_has_allowlisted_prefix(slug):
+                call_line = find_line(text, start + cm.start())
+                report.issues.append(Issue(
+                    "MAJOR", "T060", rel, call_line,
+                    f'production-defaulting tenant creation with slug "{slug}" does not start with '
+                    f'an allowlisted test-fixture prefix {TENANT_FIXTURE_SLUG_PREFIXES} — will not be '
+                    f'excluded by the GBL-103 ISS-503 guard scope',
+                ))
+
+    # T060b: raw INSERT INTO tenant (...) statements that omit tenant_type
+    for m in INSERT_TENANT.finditer(text):
+        columns = [c.strip().strip('"') for c in m.group(1).split(",")]
+        if "tenant_type" in columns:
+            continue  # explicit tenant_type — never hits the 'production' default, out of scope
+        if "slug" not in columns:
+            continue  # can't locate the slug positionally without a column match
+        slug_idx = columns.index("slug")
+        # The VALUES(...) clause follows the column list; take a bounded window
+        # after the INSERT match to find the corresponding literal/placeholder.
+        window = text[m.end():m.end() + 400]
+        values_m = re.search(r"VALUES\s*\(([^)]*)\)", window, re.IGNORECASE)
+        if not values_m:
+            continue
+        values = [v.strip() for v in values_m.group(1).split(",")]
+        if "storage_mode" in columns:
+            # The guard only fires on storage_mode = 'LEGACY_RLS'. If this
+            # INSERT explicitly sets storage_mode to something else (e.g.
+            # 'SCHEMA'), the row can never match the guard's filter regardless
+            # of slug — out of scope (see design §3.5.1(b)#2,
+            # spt01_provisioning_test.zig's TC-SPT-01-06 fixture).
+            sm_idx = columns.index("storage_mode")
+            if sm_idx < len(values) and values[sm_idx].strip("'") != "LEGACY_RLS":
+                continue
+        if slug_idx >= len(values):
+            continue
+        value = values[slug_idx]
+        value_lit = re.match(r"^'([^']*)'$", value)
+        if value_lit:
+            slug = value_lit.group(1)
+        else:
+            # Not a plain string literal (e.g. a $n placeholder) — try to
+            # resolve it as a block-local identifier/const the same way T060a does.
+            continue
+        if not _slug_has_allowlisted_prefix(slug):
+            insert_line = find_line(text, m.start())
+            report.issues.append(Issue(
+                "MAJOR", "T060", rel, insert_line,
+                f'production-defaulting tenant creation with slug "{slug}" does not start with '
+                f'an allowlisted test-fixture prefix {TENANT_FIXTURE_SLUG_PREFIXES} — will not be '
+                f'excluded by the GBL-103 ISS-503 guard scope',
+            ))
 
 
 def iter_targets(paths: list[Path]) -> list[Path]:
