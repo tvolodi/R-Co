@@ -7843,7 +7843,63 @@
       "completed_at": "2026-07-31T17:59:52Z",
       "status": "COMPLETED",
       "stage": null
+    },
+    {
+      "handoff_id": "3d2d6747-a49f-4ce3-a4ec-e3e02d89b4cc",
+      "file": "handoffs/WF03-iss0106-20260731/step-05-test-runner.json",
+      "run_id": "WF03-iss0106-20260731",
+      "workflow_id": "WF-03",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-07-31T18:02:51Z",
+      "started_at": "2026-07-31T18:03:26Z",
+      "completed_at": "2026-07-31T18:20:33Z",
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "220aa512-38e4-41e4-8df5-3d0178d9751f",
+      "file": "handoffs/WF03-iss0106-20260731/step-06-release-validator.json",
+      "run_id": "WF03-iss0106-20260731",
+      "workflow_id": "WF-03",
+      "step": "06",
+      "from_agent": "ORCH",
+      "to_agent": "RELEASE-VALIDATOR",
+      "created_at": "2026-07-31T18:22:54Z",
+      "started_at": "2026-07-31T18:23:28Z",
+      "completed_at": null,
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "e7aeeb2d-4c90-425a-a139-42160b31dfc3",
+      "file": "handoffs/WF03-iss0106-20260731/step-07-doc-updater.json",
+      "run_id": "WF03-iss0106-20260731",
+      "workflow_id": "WF-03",
+      "step": "07",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-07-31T18:27:35Z",
+      "started_at": "2026-07-31T18:28:11Z",
+      "completed_at": null,
+      "status": "COMPLETED",
+      "stage": null
+    },
+    {
+      "handoff_id": "a32d897d-2466-40ea-bd28-35b208e306ce",
+      "file": "handoffs/WF03-iss0106-20260731/step-final-backend-dev.json",
+      "run_id": "WF03-iss0106-20260731",
+      "workflow_id": "WF-03",
+      "step": "final",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-07-31T18:34:53Z",
+      "started_at": "2026-07-31T18:35:22Z",
+      "completed_at": null,
+      "status": "IN_PROGRESS",
+      "stage": null
     }
   ],
-  "last_updated": "2026-07-31T16:49:26Z"
+  "last_updated": "2026-07-31T18:34:53Z"
 }
