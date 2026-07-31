@@ -1,0 +1,57 @@
+{
+  "handoff_id": "wf03-iss0100-step-03b",
+  "run_id": "WF03-iss0100-20260731",
+  "step": "03b",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-07-31T09:19:09Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 issue resolving — Step 3, Iteration 2 of 4",
+    "requirement_ids": ["ISS-0100"],
+    "related_handoff_ids": ["wf03-iss0100-step-01", "wf03-iss0100-step-02", "wf03-iss0100-step-02b", "wf03-iss0100-step-03a"],
+    "artifacts_in": [
+      "src/design/iss0100-tenant-fixture-hygiene.md"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/357"
+  },
+  "task": {
+    "description": "Implement ITERATION 2 ONLY (of 4) from src/design/iss0100-tenant-fixture-hygiene.md §8. Iteration 1 (migrations/GBL-102_iss503_guard_tenant_type_scope.sql — renumbered from the design's GBL-086 due to numbering drift, see handoffs/WF03-iss0100-20260731/step-03a-backend-dev.json for why — and tests/integration/helpers.zig) is already committed on this branch. IMPORTANT: BACKEND-DEV in Iteration 1 discovered that unqualified `INSERT INTO tenant` in test code can silently hit a pre-existing shadow `tenant_default.tenant` table instead of `public.tenant` due to search_path=tenant_default,public — filed as ISS-0101 (GitHub #359), not fixed as part of ISS-0100. When implementing the 5 files in this iteration, check whether each affected INSERT already schema-qualifies as `public.tenant` (per design doc's before/after snippets, most already do — e.g. §3.6 tenant_config_realm_test.zig already shows `INSERT INTO public.tenant`) or is unqualified `INSERT INTO tenant` (e.g. §3.2-§3.5 show unqualified `tenant`). Per the design, do NOT change qualification style — only add the tenant_type/production_tenant_id columns as specified. If an unqualified INSERT in one of THESE 5 files also turns out to hit the shadow-table problem (verify via the same test-run comparison method Iteration 1 used — run the affected suite before and after your change), that is the SAME ISS-0101 class of pre-existing bug — do not silently work around it by changing qualification without checking; if it recurs, apply the same schema-qualification fix Iteration 1 applied (add `public.` prefix) since that is a safe, minimal, already-precedented fix for this exact failure mode, and note it in your result issues (it doesn't need a NEW GitHub issue since ISS-0101 already covers this class of defect — just reference it in your commit/notes). Implement exactly §8 Iteration 2: (1) tests/integration/svc01_service_catalog_scope_test.zig per §3.2, (2) tests/integration/svc04_admin_api_test.zig per §3.3 (~7 occurrences — do NOT touch the schema-qualified tenant_<uuid>.process_definitions inserts at lines ~440/581, those are out of scope), (3) tests/integration/adp07_agent_role_reserved_usernames_test.zig per §3.4, (4) tests/integration/adp04a_external_identity_linkage_test.zig per §3.5, (5) tests/integration/tenant_config_realm_test.zig per §3.6.",
+    "acceptance_criteria": [
+      "Only the 5 files listed above are modified — no other file changes",
+      "zig build exits 0, no 'error set' output",
+      "Every affected INSERT INTO tenant statement in these 5 files gains tenant_type='test' + production_tenant_id='00000000-0000-0000-0000-000000000000' per the design's exact per-file before/after",
+      "svc04_admin_api_test.zig's schema-qualified tenant_<uuid>.process_definitions inserts are untouched",
+      "Run the narrowest relevant zig build test-integration-<suite> targets covering these 5 files (svc01, svc04, adp07/adp04a if a target exists, or the broader test-integration-adp/tnt targets — check build.zig for exact step names) and confirm pass, or confirm failures are pre-existing/unrelated the same way Iteration 1 did",
+      "If the ISS-0101 shadow-table failure mode recurs in any of these 5 files, apply the same public. qualification fix and note it — do not leave it broken"
+    ],
+    "functions_to_call": ["fn:check-zig-build"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented Iteration 2/4 of ISS-0100 tenant fixture hygiene per src/design/iss0100-tenant-fixture-hygiene.md SS8. Added tenant_type='test' + production_tenant_id (default tenant literal 00000000-0000-0000-0000-000000000000) to every disposable tenant fixture INSERT in 5 files: svc01_service_catalog_scope_test.zig (insertTenant helper + 1 direct call-site, 2 occurrences), svc04_admin_api_test.zig (7 inline INSERT occurrences; the 2 schema-qualified tenant_<uuid>.process_definitions inserts at lines ~440/581 were left untouched, out of scope), adp07_agent_role_reserved_usernames_test.zig (ensureTenantBinding helper, ON CONFLICT SET clause left unchanged per design), adp04a_external_identity_linkage_test.zig (ensureTenantBinding helper, identical pattern), tenant_config_realm_test.zig (insertTestTenant helper). ISS-0101 shadow-table failure mode (GitHub #359) recurred in this iteration: svc01/svc04/adp07/adp04a used unqualified 'INSERT INTO tenant', which resolved against the pre-existing shadow tenant_default.tenant table (missing tenant_type/production_tenant_id columns) under search_path=tenant_default,public, causing 'column tenant_type does not exist' errors on first test run. Applied the same precedented fix as Iteration 1: schema-qualified all affected INSERTs as 'public.tenant'. tenant_config_realm_test.zig already used public.tenant and needed no qualification change. Did not file a new GitHub issue per handoff instructions -- #359 already covers this defect class.",
+    "artifacts_out": [
+      "tests/integration/svc01_service_catalog_scope_test.zig",
+      "tests/integration/svc04_admin_api_test.zig",
+      "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+      "tests/integration/adp04a_external_identity_linkage_test.zig",
+      "tests/integration/tenant_config_realm_test.zig"
+    ],
+    "issues": [
+      {
+        "severity": "MINOR",
+        "description": "ISS-0101 shadow-table failure mode (GitHub #359) recurred in svc01/svc04/adp07/adp04a's unqualified 'INSERT INTO tenant' statements -- fixed by schema-qualifying as 'public.tenant', consistent with Iteration 1's precedent. No new issue filed; already tracked under #359."
+      },
+      {
+        "severity": "MINOR",
+        "description": "zig build test-integration-svc (aggregate main_test.zig binary covering svc01/svc04/adp07/adp04a plus ~60 unrelated suites) reports 476 pass / 7 skip / 60 fail out of 543 total. All 60 failures traced to pre-existing, unrelated causes (missing service_catalog.scope column, missing onboarding_registry.realm_id column, stale pg_indexes catalog lookups, incomplete migration application visible in TC-DB-01-01) -- none originate from the tenant_type/production_tenant_id column additions made in this iteration. Failure count (60) is consistent with Iteration 1's stated baseline of ~62 pre-existing unrelated failures."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV Iteration 3 (Step 3c)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-07-31T09:19:09Z",
+  "completed_at": "2026-07-31T09:46:29Z"
+}
