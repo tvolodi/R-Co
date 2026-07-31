@@ -79,6 +79,12 @@ CREATE TRIGGER trg_bpm_audit_apply_chain_hash
 BEFORE INSERT ON audit_entries
 FOR EACH ROW EXECUTE FUNCTION bpm_audit_apply_chain_hash();
 
+-- Drop the triggers first (they depend on the function) — must precede the
+-- DROP FUNCTION below, or re-running this migration against a DB that
+-- already has them fails with "cannot drop function ... other objects depend on it".
+DROP TRIGGER IF EXISTS trg_bpm_audit_prevent_update ON audit_entries;
+DROP TRIGGER IF EXISTS trg_bpm_audit_prevent_delete ON audit_entries;
+
 -- Function to enforce audit immutability (prevent UPDATE/DELETE)
 DROP FUNCTION IF EXISTS bpm_audit_enforce_immutability();
 CREATE FUNCTION bpm_audit_enforce_immutability()

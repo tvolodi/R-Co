@@ -1,25 +1,30 @@
 {
   "issue_id": "ISS-0090",
   "title": "Long-lived shared bpm_test container accumulates non-idempotent DDL failures and orphaned tenant schemas across sessions (ISS-503-INFRA-01, never formally registered/filed)",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/339",
   "severity": "MINOR",
   "category": "test-environment lifecycle / non-idempotent DDL",
-  "run_id": "ADHOC-20260730-integration-triage",
+  "run_id": "WF03-iss0090-20260731",
   "workflow_id": "WF-03",
   "handoff_id": null,
   "requirement_ids": [],
   "summary": "Discovered while triaging the ~109 pre-existing zig build test-integration failures found during the ISS-0076 (GitHub #335) fix verification. This is the formal GitHub/registry filing of a gap first flagged as 'ISS-503-INFRA-01' during the 2026-07-30 WF02-iss503-continuation-20260730 run (see CHANGELOG.md and handoffs/WF02-iss503-continuation-20260730/step-final-doc-updater.json) -- that ID was referenced by name across four handoff/retrospective files and CHANGELOG.md but was NEVER actually created as a docs/issues/ISS-NNNN.json registry entry nor filed on GitHub, in violation of the 'No Issue Left Local-Only' project directive. Two independent, compounding problems live under this umbrella: (1) the local bpm_test Docker container has accumulated 78 per-tenant schemas and a correspondingly long migration-application history across many months of manual test runs, and some CREATE FUNCTION / CREATE TRIGGER statements in the migration set are not idempotent (they error 'already exists' -- e.g. pg_proc_proname_args_nsp_index duplicate key, trigger trg_bpm_test_events_compat_defaults already exists -- instead of using CREATE OR REPLACE FUNCTION or a DROP-IF-EXISTS/existence-check guard before CREATE TRIGGER); (2) parallel/repeated test execution against this one shared, never-reset database causes cross-run and cross-test contention that does not reproduce when tests are run individually (originally observed as ~120 failures during ISS-503 work, now ~109, both counts approximate since exact totals depend on how much drift a given container has accumulated at run time).",
   "root_cause": {
     "type": "shared-mutable-test-environment-non-idempotent-ddl",
-    "details": "The project's integration test suite runs against a single long-lived docker-compose db_test container rather than a fresh database per CI run. Two things compound: first, some migration DDL (function/trigger creation for compatibility shims like bpm_test_events_compat_defaults) is not written idempotently, so re-running it against a container that already has it errors instead of silently succeeding; second, because the container is never rebuilt, tenant schemas from every prior test run (78 counted at time of triage) remain, so per-tenant migration state, fixture data, and DDL side effects accumulate indefinitely rather than resetting to a known baseline."
+    "details": "The project's integration test suite runs against a single long-lived docker-compose db_test container rather than a fresh database per CI run. Two things compound: first, some migration DDL (function/trigger creation for compatibility shims like bpm_test_events_compat_defaults) is not written idempotently, so re-running it against a container that already has it errors instead of silently succeeding; second, because the container is never rebuilt, tenant schemas from every prior test run (78 counted at time of triage, 30 confirmed live in this container at fix time) remain, so per-tenant migration state, fixture data, and DDL side effects accumulate indefinitely rather than resetting to a known baseline. On investigation, the only actually non-idempotent CREATE TRIGGER statements (verified across all 7 migration files containing CREATE FUNCTION/CREATE TRIGGER) were migrations/051_xc02_audit_immutability.sql's trg_bpm_audit_prevent_update and trg_bpm_audit_prevent_delete, which lacked the DROP TRIGGER IF EXISTS guard used everywhere else in the same file. The compatibility-shim trigger named in the issue title (trg_bpm_test_events_compat_defaults, tests/integration/helpers.zig) was already correctly guarded with DROP ... IF EXISTS and best-effort error swallowing; it was not itself broken, but the issue's overall framing (long-lived container + non-idempotent DDL) was correct and pointed at the right migration file. Orphaned tenant schemas accumulate because tests/integration/iss502_spt_cutover_test.zig's per-test cleanupTenant() is a Zig `defer`, which never runs if the test process is killed, times out, or its own pool.acquire() call fails -- and tools/clean_test_db.py never swept public.tenant_schemas or the underlying Postgres schemas, only truncating known tables and deleting tenant/test rows.",
+    "additional_related_finding": "While verifying this fix end-to-end, found a second, larger, architecturally distinct issue: tests/integration/helpers.zig's own migration-tracking table (schema-local, living inside each tenant schema) diverges from the canonical public.schema_migrations(schema_name, version) tracker that src/db/migrations.zig::Migrations.runForSchema() uses per ISS-504's explicit design decision. This causes deterministic (non-concurrency-related) 'already exists' failures on migration 047/072's renamed table+constraint, reproducible even on a byte-fresh container. This is NOT part of ISS-0090's root cause (it reproduces identically with zero concurrency and no container age) and has been filed separately as ISS-0091 / GitHub #343 per user instruction, since it is a substantially larger architectural fix (reconciling two competing migration trackers across the whole integration test suite) than ISS-0090's MINOR-severity DDL-idempotency and schema-cleanup scope."
   },
   "files_to_change": [
     "CI/dev-environment tooling (docker-compose test-db lifecycle) -- needs a decision on ephemeral-per-run vs. periodic-reset strategy",
     "Migration files with non-idempotent CREATE FUNCTION/CREATE TRIGGER statements -- needs a full audit, not yet enumerated",
     "docs/agents/workflows/WF-04_full_test_run.md or equivalent -- should document the reset procedure"
   ],
-  "resolution": null,
+  "resolution": {
+    "summary": "Fixed both compounding problems in ISS-0090's scope: (1) migrations/051_xc02_audit_immutability.sql's two unguarded CREATE TRIGGER statements (trg_bpm_audit_prevent_update, trg_bpm_audit_prevent_delete) now have DROP TRIGGER IF EXISTS guards, and the DROP FUNCTION IF EXISTS for their shared function was reordered to run AFTER both trigger drops (it previously ran before, so re-applying the migration against an already-migrated DB failed with 'cannot drop function ... other objects depend on it' before ever reaching the fix for the triggers themselves) -- verified idempotent across 3 consecutive re-applications directly against a live tenant_default schema with zero errors. (2) tools/clean_test_db.py now sweeps and drops every orphaned per-tenant Postgres schema (both those registered in public.tenant_schemas and any unregistered stray tenant_<uuid> schema found directly via information_schema.schemata, validated against the fixed tenant_<32-hex> naming convention before interpolation into DDL) and clears their tenant_schemas/schema_migrations rows -- verified against the live, real bpm_test container, which had accumulated 30 registered orphaned schemas plus 2 unregistered ones; all 32 were correctly dropped, and a second run confirmed zero remaining. (3) tests/integration/helpers.zig's runMigrations() and runMigrationsForSchema() now hold a Postgres session-level advisory lock (pg_advisory_lock/unlock, keyed by schema name) around the whole check-and-apply pass, closing a genuine race window where concurrent test binaries could both attempt to apply the same not-yet-recorded migration against a shared, never-reset schema. (4) Documented the chosen test-DB lifecycle policy (scripted reset via clean_test_db.py before every run, not full container rebuild) in docs/agents/workflows/WF-04_full_test_run.md. (5) The 'no issue left local-only' process fix is this filing itself, plus the separately-filed ISS-0091/#343 for the additional dual-migration-tracker defect found during verification -- demonstrating the corrected process working as intended.",
+    "verification": "zig build (clean, no errors); zig build 2>&1 | grep -i 'error set' (no output); migrations/051 re-applied 3 consecutive times directly against tenant_default via docker-compose exec psql with zero errors on runs 2 and 3 (run 1 succeeds from clean state as expected); tools/clean_test_db.py run twice consecutively against the live bpm_test container -- first run dropped 32 orphaned tenant schemas (30 registered + 2 unregistered), second run confirmed 0 remaining and completed without error. Full zig build test-integration run against a freshly recreated db_test container is separately blocked by ISS-0091 (unrelated dual-migration-tracker defect, reproduces even with zero concurrency and a byte-fresh container) for any test file whose own makePool() calls Migrations.runForSchema() directly -- this affects most integration test files project-wide and is out of scope for ISS-0090's fix.",
+    "github_issue_filed_for_gap": "https://github.com/tvolodi/R-Co/issues/343"
+  },
   "occurrences": [
     {
       "occurred_at": "2026-07-30T00:00:00Z",
@@ -34,13 +39,28 @@
       "handoff_id": null,
       "trigger": "regression",
       "context": "Re-confirmed (~109 failures, same signature class) while running a git-stash baseline comparison of zig build test-integration to confirm the ISS-0076 fix introduced no regressions."
+    },
+    {
+      "occurred_at": "2026-07-31T00:15:00Z",
+      "run_id": "WF03-iss0090-20260731",
+      "handoff_id": null,
+      "trigger": "fix-verification",
+      "context": "Confirmed live: 30 orphaned tenant schemas present in the running bpm_test container at fix time (matches the issue's described accumulation pattern); migration 051's two unguarded triggers reproduced the 'already exists' failure on a second manual re-application before the fix, and stopped reproducing after."
     }
   ],
-  "files_changed": [],
+  "files_changed": [
+    "migrations/051_xc02_audit_immutability.sql",
+    "tools/clean_test_db.py",
+    "tests/integration/helpers.zig",
+    "docs/agents/workflows/WF-04_full_test_run.md",
+    "docs/anti-patterns.md"
+  ],
   "created_at": "2026-07-30T12:43:17Z",
-  "resolved_at": null,
+  "resolved_at": "2026-07-31T00:45:00Z",
   "prevention": [
     "Formally register any issue referenced by an ISS-like identifier in handoff/retrospective/CHANGELOG prose as a real docs/issues/ISS-NNNN.json file AND a GitHub issue at the moment it is first flagged, not deferred to 'a future dedicated workflow' that never gets scheduled -- this is exactly the gap the project's 'No Issue Left Local-Only' directive exists to prevent, and this issue is itself an instance of that gap going unnoticed for a full day across five separate files.",
-    "Decide and document a test-database lifecycle policy (ephemeral-per-CI-run, or a scheduled/scripted full reset) so accumulated drift has a bounded lifetime instead of growing indefinitely."
+    "Decide and document a test-database lifecycle policy (ephemeral-per-CI-run, or a scheduled/scripted full reset) so accumulated drift has a bounded lifetime instead of growing indefinitely.",
+    "When a migration adds a CREATE TRIGGER, always pair it with a DROP TRIGGER IF EXISTS guard immediately before it, matching the CREATE OR REPLACE FUNCTION idempotency already expected of the function it invokes -- and when multiple triggers share one function, drop ALL dependent triggers before dropping the function, not after, or a second application of the migration fails on the function drop before it ever reaches the trigger fix.",
+    "A cleanup/reset script that only knows about tables it was told about (via a hardcoded TABLES list) will not catch orphaned schemas or other dynamically-named objects -- sweep information_schema/registry tables directly for anything matching the dynamic-object naming convention, not just a fixed list."
   ]
 }

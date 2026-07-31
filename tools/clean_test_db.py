@@ -4,6 +4,7 @@
 Uses docker-compose exec to run DELETE statements via psql inside the
 db_test container.  Tables are deleted in FK-safe order.
 """
+import re
 import subprocess
 import sys
 import os
@@ -59,6 +60,69 @@ def run_psql(sql: str) -> bool:
     return True
 
 
+def run_psql_query(sql: str) -> list[str]:
+    """Execute a SELECT via psql in tuples-only/unaligned mode and return the
+    rows as a list of raw strings. Returns [] on any failure (best-effort)."""
+    cmd = [
+        "docker-compose", "exec", "-T", "db_test",
+        "psql", "-U", USER, "-d", DB,
+        "-t", "-A", "-c", sql,
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        return []
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def drop_orphaned_tenant_schemas() -> None:
+    """Drop every provisioned tenant schema except tenant_default, and clear
+    their public.tenant_schemas / public.schema_migrations rows.
+
+    ISS-0090: per-test tenant schemas (tests/integration/*_test.zig call
+    bpm_provision_tenant_schema() with a fresh random UUID) are only cleaned
+    up via a Zig `defer`, which never runs if the test process is killed,
+    times out, or the cleanup's own pool.acquire() fails. Left unchecked this
+    accumulates one real Postgres schema per crashed/killed test run
+    indefinitely. This sweep makes every integration run start from a known
+    baseline regardless of how the previous run ended.
+
+    Checks both public.tenant_schemas (the normal registration path) and
+    information_schema.schemata directly, since a provisioning race or a
+    test that creates a schema without registering it can leak a schema
+    with no corresponding tenant_schemas row.
+    """
+    # Union two sources: schemas registered in tenant_schemas (the normal case)
+    # and schemas that exist in Postgres but were never registered there (a
+    # provisioning race, or a test that created the schema directly instead of
+    # calling bpm_provision_tenant_schema). Either source can leak.
+    registered = run_psql_query(
+        "SELECT schema_name FROM public.tenant_schemas WHERE schema_name != 'tenant_default'"
+    )
+    unregistered = run_psql_query(
+        "SELECT schema_name FROM information_schema.schemata "
+        "WHERE schema_name LIKE 'tenant\\_%' AND schema_name != 'tenant_default'"
+    )
+    schema_names = sorted(set(registered) | set(unregistered))
+    if not schema_names:
+        return
+
+    # Schema names are always the fixed 'tenant_' + 32-hex-digit convention
+    # (see bpm_provision_tenant_schema in migrations/060). Validate before
+    # interpolating into DDL so a corrupt row can never inject SQL.
+    valid_name = re.compile(r"^tenant_[0-9a-f]{32}$")
+    dropped = 0
+    for schema_name in schema_names:
+        if not valid_name.match(schema_name):
+            print(f"WARNING: skipping unexpected tenant schema name: {schema_name!r}", file=sys.stderr)
+            continue
+        if run_psql(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE"):
+            dropped += 1
+
+    run_psql("DELETE FROM public.tenant_schemas WHERE schema_name != 'tenant_default'")
+    run_psql("DELETE FROM public.schema_migrations WHERE schema_name != 'tenant_default' AND schema_name != 'public'")
+    print(f"Dropped {dropped} orphaned tenant schema(s).", flush=True)
+
+
 def main() -> None:
     print("Cleaning test database...", flush=True)
     # Use TRUNCATE with CASCADE to properly handle foreign key dependencies.
@@ -98,6 +162,12 @@ def main() -> None:
     # The default system tenant (slug = 'default') is preserved.
     run_psql("DELETE FROM public.tenant WHERE tenant_type = 'test' AND slug != 'default'")
     run_psql("DELETE FROM public.tenant WHERE tenant_type = 'production' AND slug != 'default'")
+
+    # ISS-0090: drop orphaned per-tenant schemas (tests that crash, time out, or
+    # get killed mid-run skip their `defer cleanupTenant()` and leak a real
+    # Postgres schema + a public.tenant_schemas row). Sweep every registered
+    # schema except tenant_default, which is the harness's persistent fixture.
+    drop_orphaned_tenant_schemas()
 
     for role_name, role_description in SYSTEM_ROLES:
         sql = (
