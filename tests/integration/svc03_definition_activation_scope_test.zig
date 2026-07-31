@@ -17,6 +17,10 @@ const std = @import("std");
 const bpm = @import("bpm");
 const helpers = @import("helpers.zig");
 
+// Root-level export required so pool connections apply tenant-schema search_path
+// instead of falling back to search_path=public (see audit_iss103_test.zig).
+pub const api_tenant_context = bpm.api_tenant_context;
+
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
@@ -163,6 +167,7 @@ test "svc03: activation passes for global service reference" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -214,6 +219,7 @@ test "svc03: activation passes for own-tenant scoped service" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -268,6 +274,7 @@ test "svc03: activation rejected for cross-tenant service reference" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -327,6 +334,7 @@ test "svc03: activation rejected for unregistered service reference" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -362,6 +370,7 @@ test "svc03: activation rejected for cross-tenant plugin_handler" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -412,6 +421,7 @@ test "svc03: activation passes for own-tenant plugin_handler" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -458,6 +468,7 @@ test "svc03: first scope violation stops validation atomically" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 

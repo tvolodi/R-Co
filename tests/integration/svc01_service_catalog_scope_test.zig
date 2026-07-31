@@ -12,6 +12,10 @@ const std = @import("std");
 const pg = @import("pg");
 const helpers = @import("helpers.zig");
 
+// Root-level export required so pool connections apply tenant-schema search_path
+// instead of falling back to search_path=public (see audit_iss103_test.zig).
+pub const api_tenant_context = @import("bpm").api_tenant_context;
+
 // ---------------------------------------------------------------------------
 // Setup / cleanup helpers
 // ---------------------------------------------------------------------------
@@ -292,6 +296,7 @@ test "svc01: listServicesForTenant filters correctly via store API" {
     };
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -408,6 +413,7 @@ test "svc01: getServiceForTenant returns ServiceNotFound for cross-tenant servic
     };
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -474,6 +480,7 @@ test "svc01: registerService stores scope and owner_tenant_id correctly" {
     };
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -541,6 +548,7 @@ test "svc01: registerService rejects scope=global with owner_tenant_id" {
     };
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -597,6 +605,7 @@ test "svc01: listServicesForTenant with nil tenant returns all entries" {
     };
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 

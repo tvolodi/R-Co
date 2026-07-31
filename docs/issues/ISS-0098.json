@@ -1,0 +1,36 @@
+{
+  "issue_id": "ISS-0098",
+  "title": "spt01_provisioning_test.zig TC-SPT-01-07 expects empty tenant context to resolve search_path to tenant_default, but src/db/pool.zig intentionally implements empty-context-means-public",
+  "status": "OPEN",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/353",
+  "severity": "MINOR",
+  "category": "test-environment / test-vs-implementation-contract-mismatch",
+  "run_id": "WF03-iss0095-20260731",
+  "workflow_id": "WF-03",
+  "handoff_id": "b2f7d1a5-3c2f-4c1b-ad4b-000000000003",
+  "requirement_ids": [],
+  "summary": "Discovered while implementing and verifying the ISS-0095 fix (GitHub #349). tests/integration/spt01_provisioning_test.zig's TC-SPT-01-07 explicitly clears tenant context to an empty string after makePool() has already run, then asserts that pool.acquire() resolves search_path to 'tenant_default'. src/db/pool.zig's connection-acquire routing logic (around lines 155-176, applyRequestStorageRouting-equivalent) documents and implements the opposite behavior on purpose: an empty/absent tenant id is treated as the 'no resolved tenant' branch, which sets search_path TO public, not to any tenant schema (including tenant_default). This is a pre-existing test/implementation contract mismatch, unrelated to the ISS-0095 fix (the test explicitly overrides tenant context back to empty after makePool()'s own correct .set() call runs, so ISS-0095's fix has no bearing on this test case either way).",
+  "root_cause": {
+    "type": "test-assertion-contradicts-documented-and-intentional-implementation-behavior",
+    "details": "Either TC-SPT-01-07's expected behavior is wrong (empty context should indeed map to public, and the test needs updating), or src/db/pool.zig's public-fallback-on-empty-context behavior is wrong for this specific caller pattern (and should default to tenant_default instead of public when no tenant is set) -- this needs a product/design decision, not a unilateral code change by whichever agent picks it up next. The two are currently in direct contradiction and only one can be correct."
+  },
+  "files_to_change": [
+    "Needs upstream design decision first: either tests/integration/spt01_provisioning_test.zig's TC-SPT-01-07 assertion (if the intended behavior is empty-context-means-public, matching pool.zig's current documented implementation), or src/db/pool.zig's applyRequestStorageRouting()-equivalent logic around lines 155-176 (if the intended behavior is empty-context-means-tenant_default, matching the test's expectation). Do not change both independently without confirming which one is the actual product requirement -- that would just make the two agree without knowing if the agreed-upon behavior is correct."
+  ],
+  "resolution": null,
+  "occurrences": [
+    {
+      "occurred_at": "2026-07-31T05:16:49Z",
+      "run_id": "WF03-iss0095-20260731",
+      "handoff_id": "b2f7d1a5-3c2f-4c1b-ad4b-000000000003",
+      "trigger": "wf03-step03-backend-dev-full-suite-verification",
+      "context": "Found by BACKEND-DEV while implementing the ISS-0095 fix, confirmed unrelated since the test explicitly re-clears tenant context after makePool()'s own (now-correct) .set() call, specifically to exercise the empty-context code path as its own test subject."
+    }
+  ],
+  "files_changed": [],
+  "created_at": "2026-07-31T05:16:49Z",
+  "resolved_at": null,
+  "prevention": [
+    "When a test explicitly asserts behavior for an edge case (like empty/absent tenant context), cross-check the assertion against the implementation's own doc comments before merging the test, not after it starts failing in an unrelated fix's full-suite run."
+  ]
+}

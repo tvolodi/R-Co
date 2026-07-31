@@ -1,0 +1,41 @@
+{
+  "issue_id": "ISS-0096",
+  "title": "6 integration test files still INSERT/SELECT against the stale table name 'dead_letter_queue', renamed to 'dead_letter_items' by migration 072_tnt01_rename_legacy_tables.sql",
+  "status": "OPEN",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/351",
+  "severity": "MINOR",
+  "category": "test-environment / stale-table-name-reference",
+  "run_id": "WF03-iss0095-20260731",
+  "workflow_id": "WF-03",
+  "handoff_id": "b2f7d1a5-3c2f-4c1b-ad4b-000000000003",
+  "requirement_ids": [],
+  "summary": "Discovered while implementing and verifying the ISS-0095 fix (GitHub #349). tests/integration/obs05_dlq_test.zig, obs06_alerts_test.zig, ext01_service_task_test.zig, ext02_webhook_dispatch_test.zig, iss207_error_retry_test.zig, and sch02_timer_polling_test.zig all issue queries against a table literally named 'dead_letter_queue' in their test bodies (INSERT/SELECT statements, not just cleanup helpers). migrations/072_tnt01_rename_legacy_tables.sql renamed this table to 'dead_letter_items' as part of the TNT-01 schema-per-tenant cutover; the old name does not exist in any schema (confirmed via direct psql query against bpm_test). Every test case in these 6 files that touches the DLQ table fails with 'relation \"dead_letter_queue\" does not exist', independent of and unrelated to ISS-0095's tenant-context routing fix -- ISS-0095's fix correctly routes these queries to the right tenant schema, but the table name itself inside the schema is wrong.",
+  "root_cause": {
+    "type": "stale-table-name-reference-in-test-assertions",
+    "details": "This is a sibling defect to the already-CLOSED ISS-0088/GitHub #337, which fixed the same rename-desync problem but only in tools/clean_test_db.py's TABLES list and tests/integration/helpers.zig's resetTestData() cleanup helper -- best-effort cleanup code, not test assertion bodies. The 6 files named here have their own direct SQL literals referencing 'dead_letter_queue' inside actual test-case logic (INSERT/SELECT used as test setup or assertions), which ISS-0088's fix did not touch and does not cover."
+  },
+  "files_to_change": [
+    "tests/integration/obs05_dlq_test.zig -- replace 'dead_letter_queue' with 'dead_letter_items' in all SQL literals",
+    "tests/integration/obs06_alerts_test.zig -- same",
+    "tests/integration/ext01_service_task_test.zig -- same",
+    "tests/integration/ext02_webhook_dispatch_test.zig -- same (also has an unrelated column-drift issue on webhook_subscriptions.secret_ref, noted separately if it persists after this fix)",
+    "tests/integration/iss207_error_retry_test.zig -- same",
+    "tests/integration/sch02_timer_polling_test.zig -- same"
+  ],
+  "resolution": null,
+  "occurrences": [
+    {
+      "occurred_at": "2026-07-31T05:16:49Z",
+      "run_id": "WF03-iss0095-20260731",
+      "handoff_id": "b2f7d1a5-3c2f-4c1b-ad4b-000000000003",
+      "trigger": "wf03-step03-backend-dev-full-suite-verification / wf03-step05-test-runner-verification",
+      "context": "Found during BACKEND-DEV's implementation and ORCH's independent TEST-RUNNER verification of the ISS-0095 fix (GitHub #349), while triaging full zig build test-integration failures remaining in the 20 files touched by that fix. BACKEND-DEV confirmed via git stash that this failure is pre-existing (present identically before and after the ISS-0095 fix), not a regression."
+    }
+  ],
+  "files_changed": [],
+  "created_at": "2026-07-31T05:16:49Z",
+  "resolved_at": null,
+  "prevention": [
+    "A CI check or zig build step that verifies string-literal table names in test files exist in the live schema would catch this class of defect at build time rather than at test-run time -- same prevention note as ISS-0088."
+  ]
+}

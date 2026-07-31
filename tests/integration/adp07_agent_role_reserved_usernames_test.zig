@@ -9,6 +9,10 @@ const auth_mod = bpm.api_auth;
 const identity_registry = bpm.identity_registry;
 const identity_service = bpm.identity_service;
 
+// Root-level export required so pool connections apply tenant-schema search_path
+// instead of falling back to search_path=public (see audit_iss103_test.zig).
+pub const api_tenant_context = bpm.api_tenant_context;
+
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
@@ -21,6 +25,9 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !pool_mod.Pool {
+    // Set the tenant context BEFORE Pool.init so that every pool.acquire()
+    // applies SET search_path TO tenant_default,public (schema isolation).
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return pool_mod.Pool.init(std.testing.io, allocator, .{ .url = url, .pool_size = 5 });
 }
 
