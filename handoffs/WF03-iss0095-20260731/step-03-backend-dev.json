@@ -1,0 +1,97 @@
+{
+  "handoff_id": "b2f7d1a5-3c2f-4c1b-ad4b-000000000003",
+  "run_id": "WF03-iss0095-20260731",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-iss0095-20260731/step-03-backend-dev.json",
+  "created_at": "2026-07-31T04:36:10Z",
+  "started_at": "2026-07-31T04:36:10Z",
+  "completed_at": "2026-07-31T05:03:35Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": ["OBS-03", "EXT-02", "OBS-05", "ADP-06"],
+    "related_handoff_ids": [
+      "b2f7d1a5-3c2f-4c1b-ad4b-000000000001",
+      "b2f7d1a5-3c2f-4c1b-ad4b-000000000002"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0095.json",
+      "src/design/iss0095_test_makepool_tenant_context.md"
+    ]
+  },
+  "task": {
+    "description": "Implement the PASS-validated design in src/design/iss0095_test_makepool_tenant_context.md (GitHub #349, ISS-0095). You are already on feature branch feature/WF03-iss0095-20260731 (created and pushed in Step 00). Fix 20 tests/integration/*_test.zig files whose Pool construction never calls bpm.api_tenant_context.set(...) before Pool.init(), causing queries to run against search_path=public where post-GBL-073 business tables no longer exist. Follow the design's two patterns exactly: Pattern A (17 files) — single makePool() helper, add api_tenant_context re-export + one .set() call inside it. Pattern B (3 files: svc01_service_catalog_scope_test.zig, svc03_definition_activation_scope_test.zig, svc04_admin_api_test.zig) — no makePool() helper; re-grep each file for Pool.init( to get current call sites and insert .set() before every one. adp06_pipeline_run_correlation_test.zig only needs its single makePool() fixed (covers TC-ADP-06-02/03); do not touch its TestHarness.init() calls or TC-ADP-06-01. Do NOT modify tests/integration/adp10_agent_io_capture_audit_test.zig (excluded — already correct, uses TestHarness only).",
+    "acceptance_criteria": [
+      "All 17 pattern-A files have api_tenant_context re-export + .set(\"00000000-0000-0000-0000-000000000000\") as first statement in makePool(), before Pool.init()",
+      "All 3 pattern-B files (svc01/svc03/svc04) have the .set() call inserted before every inline Pool.init() call site, with api_tenant_context re-exported once at file root",
+      "adp10_agent_io_capture_audit_test.zig is untouched",
+      "adp06_pipeline_run_correlation_test.zig's TestHarness.init() calls and TC-ADP-06-01 are untouched",
+      "zig build exits 0",
+      "zig build test-integration-obs03 exits 0 (was previously failing with 'relation does not exist')",
+      "zig build test-integration no longer shows 'relation \"...\" does not exist' / TenantNotFound-via-public-schema failures for any of the 20 fixed files (other pre-existing unrelated failures in the aggregate suite, if any, are out of scope for this fix)",
+      "Implementation committed and pushed to feature/WF03-iss0095-20260731 per CLAUDE.md BACKEND-DEV workflow step 6"
+    ],
+    "functions_to_call": ["fn:zig-build", "fn:zig-build-test", "fn:git-commit-push"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Implemented the ISS-0095 fix across all 20 in-scope tests/integration/*_test.zig files per src/design/iss0095_test_makepool_tenant_context.md: 17 pattern-A files (single makePool() helper) got the api_tenant_context re-export plus a bpm.api_tenant_context.set(\"00000000-0000-0000-0000-000000000000\") call as the first statement before Pool.init(); 3 pattern-B files (svc01/svc03/svc04, no makePool() helper) got the re-export once at file root plus .set() inserted before every one of their inline Pool.init() call sites (5 + 7 + 12 = 24 sites, re-confirmed by fresh grep at edit time, matching the design's design-time counts). adp10_agent_io_capture_audit_test.zig was left untouched (confirmed via git status). adp06's TestHarness.init() calls and TC-ADP-06-01 were left untouched (confirmed via targeted git diff showing only the makePool() function and the re-export changed). zig build exits 0 with no 'error set' output. The dedicated zig build test-integration-obs03 target passes 6/6 (was 0/6 before the fix, reproduced via git stash baseline). I ran the full zig build test-integration aggregate suite (and separately ORCH ran it too) and investigated every failure touching one of the 20 fixed files: none show the ISS-0095 bug signature (bare/unqualified business-table 'relation does not exist' from a pool that should have had tenant context set). The remaining failures in my files are pre-existing and unrelated: (1) dead_letter_queue was renamed to dead_letter_items by migration 072/GBL-073 but obs05/obs06/ext01/ext02/iss207/sch02 still reference the old name — same anti-pattern as ISS-0088/#337, confirmed by psql showing dead_letter_queue exists under neither name in any schema; (2) svc01's first 5 tests and adp02 run raw pg.Conn queries hardcoded to table_schema='public'/INSERT INTO public.X against tables whose columns/rows now live only under GBL-078/TNT-01 schema changes — unrelated to pool search_path; (3) env03 and tnt_schema_isolation intentionally call tenant_context.set() multiple times mid-test for multi-tenant promotion/isolation scenarios, independent of makePool()'s initial .set(); (4) instance_error_test's TC-EE-10-05 spawns worker OS threads that acquire from the pool without inheriting the main thread's threadlocal api_tenant_context (src/api/tenant_context.zig uses `threadlocal var`) — a distinct, separately-scoped architectural gap, not fixable by a makePool() edit, and not a regression since the pre-fix baseline failed identically (earlier, in fact) on the same test; (5) spt01's TC-SPT-01-07 deliberately clears tenant context to test the pool's own documented empty-context-means-public fallback (src/db/pool.zig lines 155-176), which is intentional pool behavior, not related to my change. I verified via git stash that iss207 (0/3) and obs03 (0/6) fail identically without my fix and iss207 still fails identically WITH the fix applied in isolation (same dead_letter_queue root cause pre- and post-fix), confirming no regression was introduced. Committed and pushed to feature/WF03-iss0095-20260731.",
+    "artifacts_out": [
+      "tests/integration/adp02_tenant_scope_test.zig",
+      "tests/integration/adp06_pipeline_run_correlation_test.zig",
+      "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+      "tests/integration/env03_test.zig",
+      "tests/integration/exp201_202_entities_test.zig",
+      "tests/integration/ext01_service_task_test.zig",
+      "tests/integration/ext02_webhook_dispatch_test.zig",
+      "tests/integration/instance_error_test.zig",
+      "tests/integration/iss203_idempotency_keys_test.zig",
+      "tests/integration/iss207_error_retry_test.zig",
+      "tests/integration/obs03_audit_log_test.zig",
+      "tests/integration/obs05_dlq_test.zig",
+      "tests/integration/obs06_alerts_test.zig",
+      "tests/integration/sch02_timer_polling_test.zig",
+      "tests/integration/spt01_provisioning_test.zig",
+      "tests/integration/svc01_service_catalog_scope_test.zig",
+      "tests/integration/svc03_definition_activation_scope_test.zig",
+      "tests/integration/svc04_admin_api_test.zig",
+      "tests/integration/tnt_backfill_export_cleanup_test.zig",
+      "tests/integration/tnt_schema_isolation_test.zig"
+    ],
+    "issues": [
+      {
+        "id": "ISS-NEW-dlq-rename",
+        "severity": "MINOR",
+        "description": "obs05_dlq_test.zig, obs06_alerts_test.zig, ext01_service_task_test.zig, ext02_webhook_dispatch_test.zig, iss207_error_retry_test.zig, and sch02_timer_polling_test.zig still reference the table name 'dead_letter_queue', which migration 072_tnt01_rename_legacy_tables.sql renamed to 'dead_letter_items' (later dropped from public entirely by GBL-073). The table does not exist under either name in any schema, so every INSERT/SELECT against it fails with 'relation \"dead_letter_queue\" does not exist'. Same root cause and pattern as the already-filed ISS-0088/GitHub #337 (stale table-name references surviving a rename). Pre-existing, unrelated to ISS-0095/#349 — out of scope for this handoff, needs its own fix (rename references to dead_letter_items) and its own GitHub issue per the No-Issue-Left-Local-Only directive.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISS-NEW-threadlocal-tenant-context",
+        "severity": "MINOR",
+        "description": "instance_error_test.zig TC-EE-10-05 spawns two std.Thread.spawn worker threads that each call pool.acquire(). src/api/tenant_context.zig stores tenant context in threadlocal vars, so a .set() call made on the spawning thread (whether inside makePool() or TestHarness.init()) is invisible to the worker threads' own thread-local storage, and their pool.acquire() calls fall back to search_path=public. This is a distinct architectural gap from ISS-0095 (which is about a missing .set() call on the calling thread) and is not fixable by editing makePool(). Confirmed pre-existing via git stash: the pre-fix baseline fails this same test even earlier (at def_store.create(), before the threads are even spawned), so this is not a regression introduced by this fix — my change gets the test further along but does not reach a passing state due to this separate gap. Needs its own GitHub issue.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISS-NEW-spt01-empty-context-expectation",
+        "severity": "MINOR",
+        "description": "spt01_provisioning_test.zig TC-SPT-01-07 asserts that pool.acquire() with an explicitly-cleared (empty-string) tenant context resolves search_path to 'tenant_default'. src/db/pool.zig's applyRequestStorageRouting() (lines 155-176) documents and implements the opposite: empty/absent tenant_id is the 'no resolved tenant' branch and intentionally sets search_path TO public. This is a pre-existing test-vs-implementation contract mismatch unrelated to my makePool() fix (the test explicitly overrides tenant context back to empty after makePool() runs). Needs product/design clarification on which behavior is correct, then either the test or pool.zig's routing logic should be updated — out of scope for ISS-0095.",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF03-iss0095-20260731",
+      "commit_sha_list": ["2994170d9cac26abfa2ddacc0a7480640f38c1a4"],
+      "remote_branch": "origin/feature/WF03-iss0095-20260731",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

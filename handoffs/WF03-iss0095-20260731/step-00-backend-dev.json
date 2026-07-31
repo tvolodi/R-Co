@@ -1,0 +1,46 @@
+{
+  "handoff_id": "b2f7d1a5-3c2f-4c1b-ad4b-000000000001",
+  "run_id": "WF03-iss0095-20260731",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-iss0095-20260731/step-00-backend-dev.json",
+  "created_at": "2026-07-31T04:25:49Z",
+  "started_at": "2026-07-31T04:25:49Z",
+  "completed_at": "2026-07-31T04:26:38Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": ["OBS-03", "EXT-02", "OBS-05", "ADP-06"],
+    "related_handoff_ids": [],
+    "artifacts_in": ["docs/issues/ISS-0095.json"]
+  },
+  "task": {
+    "description": "fn:git-setup — create and push feature branch feature/WF03-iss0095-20260731 for the ISS-0095 fix (GitHub #349: 21 integration test files' makePool() never set bpm.api_tenant_context before Pool.init(), leaving connections on search_path=public where post-GBL-073 business tables no longer exist).",
+    "acceptance_criteria": [
+      "git pull --ff-only origin main exited 0",
+      "git branch --show-current outputs feature/WF03-iss0095-20260731",
+      "git push -u origin feature/WF03-iss0095-20260731 exited 0"
+    ],
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created and pushed feature/WF03-iss0095-20260731 from up-to-date main.",
+    "artifacts_out": ["branch: feature/WF03-iss0095-20260731"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-iss0095-20260731",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-iss0095-20260731",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
