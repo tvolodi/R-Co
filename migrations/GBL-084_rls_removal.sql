@@ -1,8 +1,18 @@
 -- GBL-084: ISS-503 — Remove RLS policies and tenant_id columns from public
 -- business tables after all tenants have been cut over to SCHEMA mode.
 --
--- PRE-FLIGHT GATE: This migration aborts with RAISE EXCEPTION if any tenant
--- in public.tenant still has storage_mode = 'LEGACY_RLS'.
+-- PRE-FLIGHT GATE: This migration aborts with RAISE EXCEPTION if any
+-- *production, non-test-fixture* tenant in public.tenant still has
+-- storage_mode = 'LEGACY_RLS'. Scoped identically to GBL-102/GBL-103's
+-- narrowing of the gated migration-runner path's guard (tenant_type =
+-- 'production' AND slug NOT LIKE 'tc-%') — see ISS-0105 / GitHub #363 and
+-- src/design/iss0105-gbl084-raw-guard-scoping.md for why this file's own
+-- guard clause is edited in place (unlike GBL-102/103, which republish this
+-- file's body under new filenames): tests/integration/test_iss503_rls_removal.zig's
+-- TC-ISS503-01/02/03 read this file directly from disk and re-execute its raw
+-- SQL text on every run, bypassing schema_migrations' applied-filename
+-- tracking entirely for that purpose, so an in-place edit here takes effect
+-- immediately for those tests, and does not require a new migration number.
 --
 -- If the pre-flight fails: zero DDL changes are made.  The migration runner
 -- receives MigrationError.MigrationFailed and does NOT record this migration
@@ -18,20 +28,22 @@ DECLARE
     v_tenant_table_exists BOOLEAN;
 BEGIN
     -- -------------------------------------------------------------------------
-    -- Pre-flight check: zero tenants in LEGACY_RLS mode
+    -- Pre-flight check: zero PRODUCTION, non-test-fixture tenants in LEGACY_RLS
     -- -------------------------------------------------------------------------
 
     SELECT EXISTS (
-        SELECT 1 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
           AND table_name = 'tenant'
     ) INTO v_tenant_table_exists;
 
     IF v_tenant_table_exists THEN
         SELECT count(*) INTO v_legacy_count
         FROM public.tenant
-        WHERE storage_mode = 'LEGACY_RLS';
+        WHERE storage_mode = 'LEGACY_RLS'
+          AND tenant_type = 'production'
+          AND slug NOT LIKE 'tc-%';
 
         IF v_legacy_count > 0 THEN
             RAISE EXCEPTION 'ISS-503 pre-flight failed: % tenant(s) still in LEGACY_RLS mode. All tenants must be cut over to SCHEMA before RLS removal.', v_legacy_count;
