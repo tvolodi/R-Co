@@ -1041,6 +1041,18 @@ pub fn build(b: *std.Build) void {
     run_iss103_integration_tests.setCwd(b.path("."));
     run_iss103_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    const iss0091_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0091_harness_tracker_unification_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0091_integration_tests = b.addRunArtifact(iss0091_integration_tests);
+    run_iss0091_integration_tests.setCwd(b.path("."));
+    run_iss0091_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     const iss106_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("tests/integration/iss106_webhook_outbox_test.zig"),
@@ -1238,6 +1250,7 @@ pub fn build(b: *std.Build) void {
     test_integration_step.dependOn(&run_tnt_backfill_integration_tests.step);
     test_integration_step.dependOn(&run_iss101_integration_tests.step);
     test_integration_step.dependOn(&run_iss102_integration_tests.step);
+    test_integration_step.dependOn(&run_iss0091_integration_tests.step);
     test_integration_step.dependOn(&run_iss103_integration_tests.step);
     test_integration_step.dependOn(&run_iss106_integration_tests.step);
     test_integration_step.dependOn(&run_iss107_integration_tests.step);
@@ -1319,6 +1332,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss103_step = b.step("test-integration-iss103", "Run ISS-103 audit_entries.resource_id TEXT migration integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss103_step.dependOn(&clean_test_db.step);
     test_integration_iss103_step.dependOn(&run_iss103_integration_tests.step);
+
+    const test_integration_iss0091_step = b.step("test-integration-iss0091", "Run ISS-0091 harness/canonical migration-tracker unification regression tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0091_step.dependOn(&clean_test_db.step);
+    test_integration_iss0091_step.dependOn(&run_iss0091_integration_tests.step);
 
     const test_integration_iss106_step = b.step("test-integration-iss106", "Run ISS-106 webhook_deliveries outbox table-shape integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss106_step.dependOn(&clean_test_db.step);

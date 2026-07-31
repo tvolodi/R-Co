@@ -2,6 +2,31 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0091 / harness and canonical migration trackers unified] — 2026-07-31
+
+### Fixed
+- **ISS-0091 (MAJOR)**: `tests/integration/helpers.zig`'s `runMigrations()`/`runMigrationsForSchema()` maintained their own schema-local `schema_migrations` tracking table, entirely independent of the canonical `public.schema_migrations(schema_name, version)` table that `src/db/migrations.zig::Migrations.runForSchema()` uses per ISS-504's explicit "single source of truth" design decision. Because both trackers applied the same migration files to the same tenant schema but never consulted each other, a migration recorded "applied" by the harness's tracker was invisible to the canonical one — any test file whose own `makePool()` called `Migrations.runForSchema()` directly (bypassing the harness, e.g. `tests/integration/iss102_claim_test.zig`) would then re-attempt migration `047_repository_form_schemas.sql`, colliding with the `uq_form_schema_field` constraint that a later migration's table rename (`072_tnt01_rename_legacy_tables.sql`) had left attached to the renamed table. Rewrote both harness functions to delegate directly to the real `Migrations.run()`/`Migrations.runForSchema()` (via a short-lived connection pool scoped to the migration-apply pass), eliminating the second tracker entirely — there is now exactly one migration ledger for every caller, test or production. The three test-environment-only migrations that were previously skipped via a manual scan (`GBL-074`/`GBL-075`/`GBL-077`) are now pre-recorded as applied in `public.schema_migrations` before the canonical migrator runs, so no change to `Migrations.runForSchema()`'s production-facing signature was needed. Verified against the exact failing target named in the bug report (`zig build test-integration-iss102`): reproduces the reported `relation "uq_form_schema_field" already exists` error on baseline `main`; passes cleanly on the fix.
+
+### Added
+- `tests/integration/iss0091_harness_tracker_unification_test.zig` (build target `test-integration-iss0091`, wired into `zig build test-integration`): asserts `TestHarness.init()` and an independent direct `Migrations.runForSchema()` call agree on `tenant_default`'s applied-migration state (specifically checking migration 047), and that no schema-local `schema_migrations` table exists inside `tenant_default` anymore.
+- `src/design/iss0091_harness_migration_tracker_unification.md`: fix design artefact, reviewed and passed by CODE-DESIGN-VALIDATOR.
+- Addendum to `src/design/iss504_migration_tracking.md` noting that the test harness's bootstrapper predated and violated ISS-504's single-tracker decision, now fixed.
+- `scratch/iss0091_reconcile_local_test_db.sql`: idempotent one-off reconciliation script for other developers whose local `bpm_test` container already accumulated a diverged `tenant_default.schema_migrations` table from the pre-fix harness (found and dropped on the container used to verify this fix: 46 rows, vs. 76 in the canonical tracker for the same schema).
+
+### Found while verifying (filed separately, not fixed here)
+- **ISS-0092 / GitHub [#345](https://github.com/tvolodi/R-Co/issues/345) (MINOR)**: memory leak in `parseTimerConfig()`-derived `PendingEvent` fields (`src/engine/transition.zig`) when a `PARALLEL_GATEWAY` split emits multiple `TIMER`-created events in one `transition()` call. Confirmed pre-existing and unrelated to ISS-0091 — `transition.zig` was not touched by this fix, and the same leak trace reproduces identically on baseline `main`.
+- **ISS-0093 / GitHub [#346](https://github.com/tvolodi/R-Co/issues/346) (MINOR)**: `tests/integration/helpers.zig`'s `applyCompatibilityShims()` still unconditionally disables all triggers on audit-covered tables via a stale GBL-081 workaround, even though `migrations/GBL-082_fix_audit_chain_resource_id_text.sql` already fixed the underlying type mismatch that motivated the shim — masking `tests/integration/audit_iss103_test.zig`'s own coverage of that behavior. Confirmed pre-existing and unrelated to ISS-0091.
+
+### Verified
+- `zig build`: clean, no `error set` output.
+- `zig build test`: 667/667 unit tests pass (84 skipped as before, 0 failed).
+- `zig build test-integration-iss0091`: 2/2 new regression tests pass, 3 consecutive runs.
+- `zig build test-integration-iss102`: passes (was the exact deterministically-failing target in the bug report); fails on baseline `main` with the reported error, confirming both the reproduction and the fix.
+- `zig build test-integration-exp103`: passes.
+- `zig build test-integration-iss103`: fails identically on both baseline `main` and this fix — confirmed pre-existing and unrelated (ISS-0093 above), not a regression from this change.
+
+GitHub issue [#343](https://github.com/tvolodi/R-Co/issues/343) closed.
+
 ## [ISS-0090 / non-idempotent audit-trigger DDL and orphaned tenant-schema cleanup fixed] — 2026-07-31
 
 ### Fixed
