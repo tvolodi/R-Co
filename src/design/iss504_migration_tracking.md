@@ -120,3 +120,11 @@ Test-level assertions verify migration tracking correctness (e.g. wrong schema_n
 GBL- migrations are only applied to the `public` schema (skipped for per-tenant schemas per the GBL-prefix guard in `runForSchema()`).
 
 Non-GBL migrations are applied to BOTH `public` and per-tenant schemas (each has its own independent migration state).
+
+## Addendum (ISS-0091 / GitHub #343)
+
+`tests/integration/helpers.zig`'s `TestHarness.init()` bootstrapper predated this design and
+maintained its own schema-local `schema_migrations` tracking table, independent of
+`public.schema_migrations`. This was not covered by ISS-504's original verification scope. Fixed
+by ISS-0091: the harness now calls the real `Migrations.run()` / `Migrations.runForSchema()`
+directly, so there is exactly one migration tracker for every caller, test or production.

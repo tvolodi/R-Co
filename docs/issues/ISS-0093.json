@@ -1,0 +1,37 @@
+{
+  "issue_id": "ISS-0093",
+  "title": "audit_iss103_test.zig TC-ISS-103-INT-02/03/04 fail because the harness's GBL-081 compatibility shim disables ALL triggers on audit-covered tables, so no audit_entries rows are ever created",
+  "status": "OPEN",
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/346",
+  "severity": "MINOR",
+  "category": "test-environment / compatibility shim",
+  "run_id": "WF03-iss0091-20260731",
+  "workflow_id": "WF-03",
+  "handoff_id": null,
+  "requirement_ids": ["ISS-103"],
+  "summary": "Discovered incidentally while verifying the ISS-0091 (GitHub #343) migration-tracker-unification fix via zig build test-integration-iss103. Independent of ISS-0091 and not caused by it: tests/integration/helpers.zig::applyCompatibilityShims() (see helpers.zig ~lines 209-231) runs ALTER TABLE ... DISABLE TRIGGER ALL against tenant_default.process_definitions, instance_projections, tasks, dead_letter_items, webhook_subscriptions, and webhook_deliveries -- with a comment explaining this works around a GBL-081 type mismatch (audit_entries.resource_id changed from uuid to text, but the audit trigger function bpm_audit_compute_chain_hash still expects uuid for that parameter). Because DISABLE TRIGGER ALL disables every trigger on those tables including the audit-chain trigger, no audit_entries rows are ever inserted for any test that goes through TestHarness.init() -- so tests/integration/audit_iss103_test.zig's TC-ISS-103-INT-02 (idx_audit_resource index enables efficient point lookups), TC-ISS-103-INT-03 (mixed resource types are all queryable by TEXT resource_id), and TC-ISS-103-INT-04 (audit entries clean up without leftover data) all fail their `count/before_cleanup >= 1` assertions, because the very audit_entries rows they expect the system to have created were never created due to the trigger being disabled. Confirmed pre-existing and unrelated to ISS-0091: reproduces identically on baseline main (pre-ISS-0091-fix) and on the ISS-0091 fix branch (tests/integration/helpers.zig's migration-related functions were changed by ISS-0091, but applyCompatibilityShims() was not touched).",
+  "root_cause": {
+    "type": "stale-compatibility-shim-outlived-its-own-corrective-migration",
+    "details": "GBL-081 (audit_entries.resource_id uuid->text) left bpm_audit_compute_chain_hash()/bpm_audit_chain_canonical_payload() with stale uuid-typed parameters, causing type-mismatch errors on INSERT into any table with the audit trigger attached. migrations/GBL-082_fix_audit_chain_resource_id_text.sql already corrects both function signatures to TEXT (confirmed by inspection: CREATE OR REPLACE FUNCTION bpm_audit_chain_canonical_payload(..., p_resource_id TEXT, ...) and comment '1. Update bpm_audit_chain_canonical_payload to accept TEXT resource_id'). However, tests/integration/helpers.zig::applyCompatibilityShims() still unconditionally runs ALTER TABLE ... DISABLE TRIGGER ALL against tenant_default.process_definitions, instance_projections, tasks, dead_letter_items, webhook_subscriptions, and webhook_deliveries on every TestHarness.init() call, with a comment describing the now-already-fixed GBL-081 type mismatch as the reason. This shim was never removed after GBL-082 landed, so it continues to defeat audit-chain trigger behavior for every integration test, including the audit_iss103_test.zig suite that specifically exists to verify that behavior."
+  },
+  "files_to_change": [
+    "tests/integration/helpers.zig -- remove (or narrow to only the tables that still need it, if any) the ALTER TABLE ... DISABLE TRIGGER ALL shims in applyCompatibilityShims(), since GBL-082 already fixed the underlying type mismatch that motivated them",
+    "tests/integration/audit_iss103_test.zig -- re-verify TC-ISS-103-INT-02/03/04 pass once triggers are re-enabled; if any other currently-passing test relied on triggers being disabled (e.g. to avoid unrelated trigger side effects), that dependency must be identified and handled explicitly rather than via a blanket disable"
+  ],
+  "resolution": null,
+  "occurrences": [
+    {
+      "occurred_at": "2026-07-31T01:30:00Z",
+      "run_id": "WF03-iss0091-20260731",
+      "handoff_id": null,
+      "trigger": "discovered-while-verifying-iss0091-fix",
+      "context": "Found while running zig build test-integration-iss103 to verify the ISS-0091 migration-tracker-unification fix did not regress other direct-migration-caller test files. Confirmed identical failure on baseline main -- unrelated to and not caused by the ISS-0091 change. Confirmed by reading migrations/GBL-082_fix_audit_chain_resource_id_text.sql that the underlying type mismatch was already corrected; the compatibility shim in helpers.zig::applyCompatibilityShims() was simply never removed afterward."
+    }
+  ],
+  "files_changed": [],
+  "created_at": "2026-07-31T01:30:00Z",
+  "resolved_at": null,
+  "prevention": [
+    "When a compatibility shim is added to work around a bug (here: disabling triggers to avoid a type-mismatch error), track the shim itself as a follow-up issue at the time it is added, and re-verify the corresponding test suite specifically (not just 'tests pass overall') once the real fix believed to obsolete the shim has landed -- a shim that outlives its corrective migration silently defeats the very tests meant to verify that migration's effect."
+  ]
+}

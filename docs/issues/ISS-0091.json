@@ -1,7 +1,7 @@
 {
   "issue_id": "ISS-0091",
   "title": "Two independent, un-synchronized migration-tracking tables for tenant schemas cause spurious \"already exists\" DDL failures on fresh test DBs",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "github_issue": "https://github.com/tvolodi/R-Co/issues/343",
   "severity": "MAJOR",
   "category": "test-environment / migration-tracking architecture",
@@ -20,7 +20,7 @@
     "tests/integration/iss102_claim_test.zig -- and any other test file with its own makePool() calling Migrations.runForSchema() directly -- not yet fully enumerated",
     "src/design/iss504_migration_tracking.md -- note that the test harness's own bootstrapper violated the ISS-504 single-tracker decision and was not covered by ISS-504's verification scope"
   ],
-  "resolution": null,
+  "resolution": "Implemented acceptance-criterion option (a): tests/integration/helpers.zig's runMigrations()/runMigrationsForSchema() were rewritten to delegate to the real bpm.migrations.Migrations.run()/runForSchema() (via a short-lived bpm.pool.Pool scoped to the migration-apply pass) instead of maintaining an independent, schema-local schema_migrations tracking table. The GBL-074/075/077 test-environment skip-list (previously implemented as a manual scan-and-skip) is now implemented by pre-recording those three filenames as already-applied in public.schema_migrations(schema_name='public') via an idempotent INSERT ... ON CONFLICT DO NOTHING, so the canonical migrator itself treats them as done -- no change to Migrations.runForSchema()'s production-facing signature was needed. A stray, already-diverged tenant_default.schema_migrations table found on the local db_test container (46 rows vs. the canonical tracker's 76 for tenant_default) was dropped; a documented, idempotent reconciliation script (scratch/iss0091_reconcile_local_test_db.sql) was added for other developers with the same local divergence. A regression test (tests/integration/iss0091_harness_tracker_unification_test.zig, build target test-integration-iss0091) asserts TestHarness.init() and a direct Migrations.runForSchema() call agree on tenant_default's applied-migration state, and that no schema-local schema_migrations table exists. Verified against the real originally-failing target (zig build test-integration-iss102): fails on baseline main with the exact reported 'uq_form_schema_field already exists' error; passes on the fix branch. Two pre-existing, unrelated issues were discovered incidentally while verifying broader integration coverage and filed separately rather than folded into this fix: ISS-0092 (GitHub #345, memory leak in engine timer-config parsing) and ISS-0093 (GitHub #346, stale GBL-081 compatibility shim masking audit trigger test coverage).",
   "occurrences": [
     {
       "occurred_at": "2026-07-31T00:30:00Z",
@@ -30,9 +30,16 @@
       "context": "Found while running zig build test-integration-iss102 to verify the ISS-0090 migration-051-trigger-idempotency and orphaned-tenant-schema-cleanup fixes on a byte-fresh db_test container (docker-compose down -v && up -d). Failure reproduced identically with zero concurrency, ruling out both the long-lived-container theory and the concurrent-test-threads theory offered in PR #342's description when it attributed the same failure signature to ISS-0090/#339."
     }
   ],
-  "files_changed": [],
+  "files_changed": [
+    "tests/integration/helpers.zig",
+    "tests/integration/iss0091_harness_tracker_unification_test.zig",
+    "build.zig",
+    "src/design/iss0091_harness_migration_tracker_unification.md",
+    "src/design/iss504_migration_tracking.md",
+    "scratch/iss0091_reconcile_local_test_db.sql"
+  ],
   "created_at": "2026-07-31T00:34:30Z",
-  "resolved_at": null,
+  "resolved_at": "2026-07-31T01:30:00Z",
   "prevention": [
     "When two subsystems both claim to track the same piece of state (here: which migrations have been applied to a schema), verify at design time that only one of them is ever actually consulted -- ISS-504 made the right call in principle (public.schema_migrations as single source of truth) but did not audit for a pre-existing second tracker already in the codebase (tests/integration/helpers.zig predates ISS-504).",
     "Before attributing a newly-observed test failure to an existing open issue (as PR #342 did for ISS-0090), reproduce the failure under the conditions that would falsify the existing issue's stated root cause (e.g. single-threaded, freshly-recreated container) before writing the attribution into the PR description/CHANGELOG."

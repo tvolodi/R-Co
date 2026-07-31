@@ -16,11 +16,75 @@ const build_options = @import("build_options");
 const bpm = @import("bpm");
 
 // ---------------------------------------------------------------------------
-// Internal helper: ensure schema_migrations exists, then apply all .sql files
-// in the "migrations/" directory against the given connection.
+// Internal helper: apply all pending migrations against the given connection,
+// via the real bpm.migrations.Migrations.run()/runForSchema() — the same
+// canonical migrator every production caller uses.
+//
+// ISS-0091 (GitHub #343): this harness used to maintain its own schema-local
+// schema_migrations tracking table, entirely independent from the canonical
+// public.schema_migrations(schema_name, version) table that
+// Migrations.runForSchema() consults (the single source of truth per ISS-504,
+// src/design/iss504_migration_tracking.md). Because both trackers applied the
+// same migration files but never consulted each other, a migration recorded
+// "applied" by one was invisible to the other — any test file whose own
+// makePool() called Migrations.runForSchema() directly (bypassing this
+// harness, e.g. tests/integration/iss102_claim_test.zig) would then re-attempt
+// a migration whose non-idempotent inline named constraint had already been
+// claimed by a downstream rename, producing a deterministic "already exists"
+// failure. Delegating to the real migrator here eliminates the second
+// tracker entirely: there is now exactly one bookkeeping table for every
+// caller, test or production. See src/design/iss0091_harness_migration_tracker_unification.md.
 // ---------------------------------------------------------------------------
 
-fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void {
+fn resolveMigrationsDir(allocator: std.mem.Allocator) !struct { dir: []const u8, owned: ?[]u8 } {
+    const environ: std.process.Environ = .{ .block = .global };
+    const env_migrations_dir = environ.getAlloc(allocator, "BPM_MIGRATIONS_DIR") catch |err| switch (err) {
+        error.EnvironmentVariableMissing => null,
+        error.OutOfMemory => return error.OutOfMemory,
+        error.InvalidWtf8 => unreachable,
+    };
+    // BPM_MIGRATIONS_DIR (set by build.zig for every test target) and
+    // build_options.migrations_dir (b.path("migrations").getPath(b)) are both
+    // always absolute paths — no relative-candidate fallback is needed here,
+    // unlike the pre-ISS-0091 implementation. Migrations.runForSchema() opens
+    // this directory via std.Io.Dir.openDirAbsolute(), so an absolute path is
+    // required.
+    if (env_migrations_dir) |path| return .{ .dir = path, .owned = path };
+    return .{ .dir = build_options.migrations_dir, .owned = null };
+}
+
+/// ISS-0091: pre-record the given filenames as already-applied for
+/// schema_name='public' in public.schema_migrations, so the canonical
+/// migrator (which has no per-caller skip-list hook) silently treats them as
+/// done. These migrations have data pre-conditions in production that
+/// isolated integration test runs don't set up:
+///   - GBL-074/075: TNT-05 backfill tracking (requires pre-existing migration state)
+///   - GBL-077: TNT-07 RLS cleanup (requires schema-per-tenant state)
+/// Idempotent: ON CONFLICT DO NOTHING means re-running this is a no-op once
+/// the rows already exist.
+fn markPublicGlobalSkipsApplied(conn: *pg.Conn) !void {
+    try conn.exec(
+        \\CREATE TABLE IF NOT EXISTS public.schema_migrations (
+        \\  schema_name TEXT        NOT NULL DEFAULT 'public',
+        \\  version     TEXT        NOT NULL,
+        \\  applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        \\  PRIMARY KEY (schema_name, version)
+        \\)
+    , &.{});
+    const skip_files = [_][]const u8{
+        "GBL-074_tnt05_backfill_tracking.sql",
+        "GBL-075_tnt05_backfill_run.sql",
+        "GBL-077_tnt07_rls_cleanup.sql",
+    };
+    for (skip_files) |filename| {
+        try conn.exec(
+            \\INSERT INTO public.schema_migrations (schema_name, version) VALUES ('public', $1)
+            \\ON CONFLICT (schema_name, version) DO NOTHING
+        , &.{filename});
+    }
+}
+
+fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, url: []const u8) !void {
     // ISS-0090: every integration test binary calls TestHarness.init() ->
     // runMigrations() independently and concurrently against the same shared
     // `public` schema. Without serialization, two processes can both pass the
@@ -35,137 +99,21 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn) !void
     try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
     defer conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
 
-    // Bootstrap table.
-    try conn.exec(
-        \\CREATE TABLE IF NOT EXISTS schema_migrations (
-        \\  version    TEXT        PRIMARY KEY,
-        \\  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        \\)
-    ,
-        &.{},
-    );
+    try markPublicGlobalSkipsApplied(conn);
 
-    const environ: std.process.Environ = .{ .block = .global };
-    const env_migrations_dir = environ.getAlloc(allocator, "BPM_MIGRATIONS_DIR") catch |err| switch (err) {
-        error.EnvironmentVariableMissing => null,
-        error.OutOfMemory => return error.OutOfMemory,
-        error.InvalidWtf8 => unreachable,
-    };
-    defer if (env_migrations_dir) |path| allocator.free(path);
+    const resolved = try resolveMigrationsDir(allocator);
+    defer if (resolved.owned) |path| allocator.free(path);
 
-    const migrations_dir = if (env_migrations_dir) |path| path else build_options.migrations_dir;
-    const migration_candidates = [_][]const u8{
-        "migrations",
-        "../migrations",
-        "../../migrations",
-        "../../../migrations",
-        "../../../../migrations",
-    };
+    var mig_pool = try bpm.pool.Pool.init(io, allocator, bpm.pool.PoolConfig{
+        .url = url,
+        .pool_size = 2,
+    });
+    defer mig_pool.deinit();
 
-    const dir: std.Io.Dir = blk: {
-        const opened_absolute = std.Io.Dir.openDirAbsolute(io, migrations_dir, .{ .iterate = true }) catch {
-            const opened_relative = std.Io.Dir.cwd().openDir(io, migrations_dir, .{ .iterate = true }) catch {
-                for (migration_candidates) |candidate| {
-                    const opened_candidate = std.Io.Dir.cwd().openDir(io, candidate, .{ .iterate = true }) catch |candidate_open_err| {
-                        if (candidate_open_err == error.FileNotFound) continue;
-                        return candidate_open_err;
-                    };
-                    break :blk opened_candidate;
-                }
-                return error.FileNotFound;
-            };
-            break :blk opened_relative;
-        };
-        break :blk opened_absolute;
-    };
-    defer dir.close(io);
-
-    var names = std.ArrayList([]u8).empty;
-    defer {
-        for (names.items) |n| allocator.free(n);
-        names.deinit(allocator);
-    }
-
-    var it = dir.iterate();
-    while (try it.next(io)) |entry| {
-        if (entry.kind != .file) continue;
-        if (!std.mem.endsWith(u8, entry.name, ".sql")) continue;
-        const copy = try allocator.dupe(u8, entry.name);
-        errdefer allocator.free(copy);
-        try names.append(allocator, copy);
-    }
-
-    std.sort.block([]u8, names.items, {}, struct {
-        fn lt(_: void, a: []u8, b: []u8) bool {
-            return std.mem.lessThan(u8, a, b);
-        }
-    }.lt);
-
-    var applied = std.StringHashMap(void).init(allocator);
-    defer {
-        var key_iter = applied.keyIterator();
-        while (key_iter.next()) |key| allocator.free(key.*);
-        applied.deinit();
-    }
-
-    var existing = try conn.query(
-        allocator,
-        "SELECT version FROM schema_migrations ORDER BY version",
-        &.{},
-    );
-    defer existing.deinit();
-    for (existing.rows) |row| {
-        if (row.len > 0) {
-            if (row[0]) |ver| {
-                if (applied.contains(ver)) continue;
-                const ver_copy = try allocator.dupe(u8, ver);
-                errdefer allocator.free(ver_copy);
-                try applied.put(ver_copy, {});
-            }
-        }
-    }
-
-    for (names.items) |filename| {
-        if (applied.contains(filename)) continue;
-
-        // Skip GBL migrations that have data pre-conditions in production but
-        // are not needed for isolated integration test runs. These migrations require
-        // pre-existing tenant migration state that test harness doesn't set up.
-        // - GBL-074/075: TNT-05 backfill tracking (requires pre-existing migration state)
-        // - GBL-077: TNT-07 RLS cleanup (requires schema-per-tenant state)
-        if (std.mem.eql(u8, filename, "GBL-074_tnt05_backfill_tracking.sql") or
-            std.mem.eql(u8, filename, "GBL-075_tnt05_backfill_run.sql") or
-            std.mem.eql(u8, filename, "GBL-077_tnt07_rls_cleanup.sql"))
-        {
-            // Skip execution in isolated integration harness runs.
-            // Do not mark as applied; otherwise later runs can incorrectly
-            // skip required migrations when schema state has changed.
-            continue;
-        }
-
-        const sql_bytes = try dir.readFileAlloc(io, filename, allocator, std.Io.Limit.limited(16 * 1024 * 1024));
-        defer allocator.free(sql_bytes);
-
-        try conn.begin();
-        conn.simpleQuery(sql_bytes) catch |err| {
-            conn.rollback() catch {};
-            std.debug.print("MIGRATION FAILED: {s} ({})\n", .{ filename, err });
-            return err;
-        };
-        conn.exec(
-            "INSERT INTO schema_migrations(version) VALUES ($1)",
-            &.{filename},
-        ) catch |err| {
-            conn.rollback() catch {};
-            return err;
-        };
-        try conn.commit();
-    }
-
-    return;
+    try bpm.migrations.Migrations.run(allocator, &mig_pool, resolved.dir);
 }
 
-fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, schema: []const u8) !void {
+fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, schema: []const u8, url: []const u8) !void {
     // ISS-502 fresh-bootstrap fix follow-up: `zig build migrate` now calls the
     // real Zig-side provisionTenantSchema()/runForSchema() for the default
     // tenant so gated migrations (GBL-077/TNT-07, GBL-084/ISS-503) can pass
@@ -173,16 +121,19 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
     // tracks completion in public.schema_migrations using the composite key
     // (schema_name, version) and marks public.tenant_schemas.migrations_applied_at.
     //
-    // This test-harness bootstrapper predates that and keeps its own
-    // independent, version-only `schema_migrations` tracking table local to
-    // the tenant schema — it has no knowledge of what the real migrator
-    // already applied. If the real migrator has already fully migrated this
-    // schema (migrations_applied_at IS NOT NULL), re-running this harness's
-    // from-scratch pass would re-issue CREATE TABLE/CREATE INDEX/ADD
-    // CONSTRAINT statements the real tables already have (unqualified names
-    // are not idempotent for constraint names, unlike IF NOT EXISTS forms),
-    // causing spurious "already exists" failures. Skip entirely in that case
-    // — the schema is already correctly and fully migrated.
+    // ISS-0091 (GitHub #343): this test-harness bootstrapper used to predate
+    // that and keep its own independent, version-only `schema_migrations`
+    // tracking table local to the tenant schema, with no knowledge of what the
+    // real migrator already applied — see the runMigrations() doc comment
+    // above and src/design/iss0091_harness_migration_tracker_unification.md
+    // for the full root-cause writeup. It now delegates to the real
+    // Migrations.runForSchema(), which is the single source of truth for both
+    // this harness and every direct-pool test caller.
+    //
+    // The already-migrated fast path below queries public.tenant_schemas (the
+    // canonical provisioning-state table, unaffected by this fix) and is kept
+    // as-is: if the real migrator has already fully migrated this schema, we
+    // can skip straight to setting search_path.
     //
     // ISS-0090: also serialize the check-and-apply pass with a session-level
     // advisory lock keyed by schema name, for the same reason as runMigrations
@@ -210,121 +161,29 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
         }
     }
 
+    const resolved = try resolveMigrationsDir(allocator);
+    defer if (resolved.owned) |path| allocator.free(path);
+
+    // Migrations.runForSchema() already skips GBL-prefixed migrations for any
+    // schema_name != "public" (src/db/migrations.zig), and sets
+    // `SET search_path TO <schema_name>,public` on its own pool connection
+    // before applying migration SQL — so unqualified table references inside
+    // migration files still resolve correctly. It does NOT set search_path on
+    // `conn` (the harness's own connection), so we do that explicitly below
+    // for the rest of TestHarness.init() (compatibility shims, resetTestData,
+    // etc. operate on `conn`, not on the migration pool).
+    {
+        var mig_pool = try bpm.pool.Pool.init(io, allocator, bpm.pool.PoolConfig{
+            .url = url,
+            .pool_size = 2,
+        });
+        defer mig_pool.deinit();
+        try bpm.migrations.Migrations.runForSchema(allocator, &mig_pool, resolved.dir, schema);
+    }
+
     const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
     defer allocator.free(set_path_sql);
     try conn.exec(set_path_sql, &.{});
-
-    try conn.exec(
-        \\CREATE TABLE IF NOT EXISTS schema_migrations (
-        \\  version    TEXT        PRIMARY KEY,
-        \\  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        \\)
-    , &.{});
-
-    const environ: std.process.Environ = .{ .block = .global };
-    const env_migrations_dir = environ.getAlloc(allocator, "BPM_MIGRATIONS_DIR") catch |err| switch (err) {
-        error.EnvironmentVariableMissing => null,
-        error.OutOfMemory => return error.OutOfMemory,
-        error.InvalidWtf8 => unreachable,
-    };
-    defer if (env_migrations_dir) |path| allocator.free(path);
-
-    const migrations_dir = if (env_migrations_dir) |path| path else build_options.migrations_dir;
-    const migration_candidates = [_][]const u8{
-        "migrations",
-        "../migrations",
-        "../../migrations",
-        "../../../migrations",
-        "../../../../migrations",
-    };
-
-    const dir: std.Io.Dir = blk: {
-        const opened_absolute = std.Io.Dir.openDirAbsolute(io, migrations_dir, .{ .iterate = true }) catch {
-            const opened_relative = std.Io.Dir.cwd().openDir(io, migrations_dir, .{ .iterate = true }) catch {
-                for (migration_candidates) |candidate| {
-                    const opened_candidate = std.Io.Dir.cwd().openDir(io, candidate, .{ .iterate = true }) catch |candidate_open_err| {
-                        if (candidate_open_err == error.FileNotFound) continue;
-                        return candidate_open_err;
-                    };
-                    break :blk opened_candidate;
-                }
-                return error.FileNotFound;
-            };
-            break :blk opened_relative;
-        };
-        break :blk opened_absolute;
-    };
-    defer dir.close(io);
-
-    var names = std.ArrayList([]u8).empty;
-    defer {
-        for (names.items) |n| allocator.free(n);
-        names.deinit(allocator);
-    }
-
-    var it = dir.iterate();
-    while (try it.next(io)) |entry| {
-        if (entry.kind != .file) continue;
-        if (!std.mem.endsWith(u8, entry.name, ".sql")) continue;
-        const copy = try allocator.dupe(u8, entry.name);
-        errdefer allocator.free(copy);
-        try names.append(allocator, copy);
-    }
-
-    std.sort.block([]u8, names.items, {}, struct {
-        fn lt(_: void, a: []u8, b: []u8) bool {
-            return std.mem.lessThan(u8, a, b);
-        }
-    }.lt);
-
-    var applied = std.StringHashMap(void).init(allocator);
-    defer {
-        var key_iter = applied.keyIterator();
-        while (key_iter.next()) |key| allocator.free(key.*);
-        applied.deinit();
-    }
-
-    var existing = try conn.query(
-        allocator,
-        "SELECT version FROM schema_migrations ORDER BY version",
-        &.{},
-    );
-    defer existing.deinit();
-    for (existing.rows) |row| {
-        if (row.len > 0) {
-            if (row[0]) |ver| {
-                if (applied.contains(ver)) continue;
-                const ver_copy = try allocator.dupe(u8, ver);
-                errdefer allocator.free(ver_copy);
-                try applied.put(ver_copy, {});
-            }
-        }
-    }
-
-    for (names.items) |filename| {
-        if (applied.contains(filename)) continue;
-
-        // GBL migrations are public/global and must not run inside tenant schemas.
-        if (std.mem.startsWith(u8, filename, "GBL-")) continue;
-
-        const sql_bytes = try dir.readFileAlloc(io, filename, allocator, std.Io.Limit.limited(16 * 1024 * 1024));
-        defer allocator.free(sql_bytes);
-
-        try conn.begin();
-        conn.simpleQuery(sql_bytes) catch |err| {
-            conn.rollback() catch {};
-            std.debug.print("SCHEMA MIGRATION FAILED: {s}.{s} ({})\n", .{ schema, filename, err });
-            return err;
-        };
-        conn.exec(
-            "INSERT INTO schema_migrations(version) VALUES ($1)",
-            &.{filename},
-        ) catch |err| {
-            conn.rollback() catch {};
-            return err;
-        };
-        try conn.commit();
-    }
 }
 
 fn configureTestSearchPath(conn: *pg.Conn) !void {
@@ -586,7 +445,7 @@ pub const TestHarness = struct {
 
         // Run migrations against public first.
         // Must run BEFORE tenant search_path is set.
-        runMigrations(std.testing.io, allocator, &conn) catch |err| {
+        runMigrations(std.testing.io, allocator, &conn, url) catch |err| {
             std.debug.print("runMigrations failed: {}\n", .{err});
             return err;
         };
@@ -594,7 +453,7 @@ pub const TestHarness = struct {
         // Provision and migrate tenant_default so tenant-scoped business tables
         // (events, entity_record_latest, dead_letter_items, etc.) always exist.
         _ = conn.exec("SELECT bpm_provision_tenant_schema($1::uuid)", &.{bpm.api_tenant_context.DEFAULT_TENANT_ID}) catch {};
-        runMigrationsForSchema(std.testing.io, allocator, &conn, "tenant_default") catch |err| {
+        runMigrationsForSchema(std.testing.io, allocator, &conn, "tenant_default", url) catch |err| {
             std.debug.print("runMigrationsForSchema (tenant_default) failed: {}\n", .{err});
             return err;
         };
