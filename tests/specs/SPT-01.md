@@ -16,7 +16,7 @@
 | TC-SPT-01-04 | `public.schema_migrations` records `(schema_name, version)` per applied migration | integration | At least one row with correct `schema_name` in `public.schema_migrations` |
 | TC-SPT-01-05 | Default UUID maps to schema name `tenant_default` | integration | `tenant_schemas` row has `schema_name = 'tenant_default'`; schema exists |
 | TC-SPT-01-06 | Pool checkout sets `search_path` to `'<tenant_schema>,public'` for non-default tenant | integration | `SHOW search_path` on acquired connection contains the stripped UUID schema name |
-| TC-SPT-01-07 | Pool checkout for default tenant sets `search_path` to `'tenant_default,public'` | integration | `SHOW search_path` on acquired connection contains `tenant_default` |
+| TC-SPT-01-07 | Pool checkout with empty tenant context sets `search_path` to `'public'` (ISS-501 no-tenant path) | integration | `SHOW search_path` on acquired connection contains `public` |
 | TC-SPT-01-08 | Existing public-schema migrations are tracked with `schema_name='public'` after migration 060 | integration | `public.schema_migrations WHERE schema_name = 'public' AND version LIKE '001%'` returns at least one row |
 
 ---
@@ -81,13 +81,13 @@
 
 ---
 
-### TC-SPT-01-07: Pool checkout for default tenant sets `search_path` to `tenant_default`
+### TC-SPT-01-07: Pool checkout with empty tenant context sets `search_path` to `public`
 
-**Given:** The pool-level tenant context is set to empty string (default tenant).  
+**Given:** The pool-level tenant context is set to empty string (no resolved tenant / bootstrap path).  
 **When:** A pool connection is acquired and `SHOW search_path` is executed.  
-**Then:** The result contains `tenant_default`.  
+**Then:** The result contains `public`.  
 **Layer:** integration  
-**Acceptance criterion mapped:** `applyRequestTenantContext` uses `tenant_default` schema name when tenant is empty or the all-zeros UUID.
+**Acceptance criterion mapped:** `applyRequestStorageRouting` (ISS-501; supersedes the earlier `applyRequestTenantContext`) short-circuits to `SET search_path TO public` for the no-tenant path (empty or all-zeros-UUID tenant context), for backward compatibility. See `src/design/iss501_storage_mode_routing.md` §"No-tenant path".
 
 ---
 

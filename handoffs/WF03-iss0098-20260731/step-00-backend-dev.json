@@ -1,0 +1,43 @@
+{
+  "handoff_id": "wf03-iss0098-step00-gitsetup",
+  "run_id": "WF03-iss0098-20260731",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-iss0098-20260731/step-00-backend-dev.json",
+  "created_at": "2026-07-31T06:01:30Z",
+  "started_at": "2026-07-31T06:01:30Z",
+  "completed_at": "2026-07-31T06:02:15Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": ["docs/issues/ISS-0098.json"],
+    "branch_name": "feature/WF03-iss0098-20260731"
+  },
+  "task": {
+    "description": "Git setup for WF-03 fix of ISS-0098 (GitHub #353): resolve the test/implementation contract mismatch in TC-SPT-01-07 (tests/integration/spt01_provisioning_test.zig). Follow docs/agents/protocols/GIT_SETUP.md exactly: pull main, create feature/WF03-iss0098-20260731 branch, push it.",
+    "acceptance_criteria": ["Branch feature/WF03-iss0098-20260731 exists locally and on origin", "Local main is up to date before branching"],
+    "functions_to_call": ["fn:git-setup"]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Created and pushed feature/WF03-iss0098-20260731 from up-to-date main.",
+    "artifacts_out": ["branch: feature/WF03-iss0098-20260731"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-iss0098-20260731",
+      "commit_sha_list": [],
+      "remote_branch": "origin/feature/WF03-iss0098-20260731",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to ISSUE-FIXER Step 0.5"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -123,6 +123,14 @@ pub fn resolveDbHostForTenant(
 /// - All-zeros UUID → "tenant_default"
 /// - Any other UUID → "tenant_" + UUID with hyphens stripped
 ///
+/// NOTE (ISS-501 / ISS-0098): the empty-string branch above is unreachable
+/// from applyRequestStorageRouting()'s no-tenant path — that function
+/// short-circuits an empty tenant_id to `SET search_path TO public` and
+/// returns before ever calling this helper (see the no-tenant branch below).
+/// This function's empty-string case only matters if some other caller
+/// invokes it directly with an empty tenant_id; the SCHEMA-routing branch
+/// (non-empty resolved tenant IDs) is the only production caller today.
+///
 /// The result is written into buf (must be at least 40 bytes; 7 + 32 = 39 max).
 /// Returns a slice into buf.  The caller must consume it before the frame returns.
 /// This function is allocation-free and safe to call on the hot path.

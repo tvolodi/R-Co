@@ -434,10 +434,17 @@ test "TC-SPT-01-06: pool checkout sets search_path to tenant schema for non-defa
 
 // ---------------------------------------------------------------------------
 // TC-SPT-01-07
-// Verify that a pool connection checkout sets search_path to
-// 'tenant_default,public' when the tenant context is empty (default tenant).
+// Verify that a pool connection checkout sets search_path to 'public' when
+// the tenant context is empty (no resolved tenant / bootstrap path).
+//
+// ISS-501 (src/design/iss501_storage_mode_routing.md) defines the no-tenant
+// path as SET search_path TO public for backward compatibility, and
+// applyRequestStorageRouting() in pool.zig short-circuits to public before
+// ever resolving a schema name. This supersedes the earlier SPT-01-era
+// expectation that empty context routed to tenant_default (ISS-0098 /
+// GitHub #353).
 // ---------------------------------------------------------------------------
-test "TC-SPT-01-07: pool checkout for default tenant sets search_path to tenant_default" {
+test "TC-SPT-01-07: pool checkout with empty tenant context sets search_path to public" {
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -463,10 +470,10 @@ test "TC-SPT-01-07: pool checkout for default tenant sets search_path to tenant_
     try std.testing.expect(sp_result.rows.len > 0);
     const sp_val = sp_result.rows[0][0] orelse return error.TestUnexpectedResult;
 
-    const found = std.mem.indexOf(u8, sp_val, "tenant_default") != null;
+    const found = std.mem.indexOf(u8, sp_val, "public") != null;
     if (!found) {
         std.debug.print(
-            "TC-SPT-01-07: expected search_path to contain 'tenant_default', got: '{s}'\n",
+            "TC-SPT-01-07: expected search_path to contain 'public', got: '{s}'\n",
             .{sp_val},
         );
     }
