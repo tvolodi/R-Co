@@ -1,0 +1,40 @@
+{
+  "handoff_id": "a32d897d-2466-40ea-bd28-35b208e306ce",
+  "run_id": "WF03-iss0106-20260731",
+  "workflow_id": "WF-03",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-iss0106-20260731/step-final-backend-dev.json",
+  "created_at": "2026-07-31T18:34:53Z",
+  "started_at": "2026-07-31T18:35:22Z",
+  "completed_at": null,
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "e7aeeb2d-4c90-425a-a139-42160b31dfc3"
+    ],
+    "artifacts_in": [],
+    "branch_name": "feature/WF03-iss0106-20260731"
+  },
+  "task": {
+    "description": "WF-03 Step Final (Git Merge) for ISS-0106 / GitHub #364, same agent as Step 00 (BACKEND-DEV). Follow docs/agents/protocols/GIT_MERGE.md exactly. Commit any remaining uncommitted artefacts (DOC-UPDATER just left CHANGELOG.md, docs/issues/ISS-0106.json, docs/issues/issue_index.json, docs/anti-patterns.md, plus TEST-RUNNER and RELEASE-VALIDATOR outputs, uncommitted in the working tree). Use commit prefix \"fix\" (WF-03 convention). Rebase onto origin/main, push, create PR, squash-merge, verify branch deletion, return to a clean main.",
+    "acceptance_criteria": [
+      "gh pr merge exits 0",
+      "git branch --show-current outputs main",
+      "git pull --ff-only on main after merge exits 0",
+      "git branch -d feature/WF03-iss0106-20260731 exits 0 (or already deleted by --delete-branch)",
+      "git log --oneline -1 shows the squash-merge commit",
+      "git status shows clean working tree"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}

@@ -37,6 +37,25 @@
 //! information_schema.columns / pg_proc), so the tests are correct regardless
 //! of whether GBL-084 already ran once, globally, before this suite started.
 //!
+//! IMPORTANT — relies on build.zig serializing this binary out of the
+//! concurrent test-integration group (ISS-0106 / GitHub #364):
+//! Each test above opens its own raw pg.Conn and holds an
+//! AccessExclusiveLock-taking DDL transaction (BEGIN ... GBL-084's
+//! ALTER TABLE / DROP POLICY / DROP FUNCTION statements ... ROLLBACK) for the
+//! duration of the test body, entirely outside helpers.zig's
+//! `bpm_test_migrations_public` advisory-lock machinery. Running this binary
+//! concurrently with any other `public`-schema-touching test-integration
+//! binary (e.g. db_integration_test.zig's TestHarness.init() ->
+//! runMigrations()/runForSchema()) previously produced genuine cross-binary
+//! Postgres deadlocks (40P01). build.zig's `test-integration` step now
+//! chains `run_iss503_integration_tests.step` behind the
+//! `test_integration_others_step` barrier, which forces this binary to run
+//! only after every other test-integration sibling has finished — never
+//! concurrently with them. Do not reintroduce a direct sibling `dependOn`
+//! edge from `test_integration_step` onto `run_iss503_integration_tests.step`
+//! (bypassing the barrier); doing so reopens the deadlock this issue fixed.
+//! See src/design/fix-ISS-0106.md for the full design.
+//!
 //! Requirement traceability:
 //!   ISS-503 → TC-ISS503-01 .. TC-ISS503-04
 

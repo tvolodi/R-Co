@@ -1,0 +1,53 @@
+{
+  "handoff_id": "f8484beb-b69b-42f2-aab0-5999bc27b07c",
+  "run_id": "WF03-iss0106-20260731",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-iss0106-20260731/step-02-code-designer.json",
+  "created_at": "2026-07-31T16:37:15Z",
+  "started_at": "2026-07-31T16:39:03Z",
+  "completed_at": "2026-07-31T16:43:11Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": null,
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "0cb88614-b72f-40c2-b0a7-942264031622"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0106.json",
+      "build.zig",
+      "tests/integration/test_iss503_rls_removal.zig",
+      "tests/integration/helpers.zig"
+    ],
+    "branch_name": "feature/WF03-iss0106-20260731"
+  },
+  "task": {
+    "description": "Produce the fix design for ISS-0106 / GitHub #364 per ISSUE-FIXER diagnosis in docs/issues/ISS-0106.json (root_cause, chosen_resolution, files_to_change fields). Root cause: tests/integration/test_iss503_rls_removal.zig (TC-ISS503-01/02/03) opens its own raw pg.Conn, bypassing helpers.zig bpm_test_migrations_public advisory lock entirely, and holds AccessExclusiveLock on shared public-schema tables for the duration of an uncommitted transaction running GBL-084 DDL before rolling back. build.zig test-integration step (~line 1243) registers ~20 test binaries as unserialized concurrent dependencies, so this long lock-hold window collides with other binaries (including db_integration_test.zig), causing deadlocks (40P01) that abort db_integration_test.zig TC-DB-01-01/02 SELECT COUNT(*) FROM schema_migrations, silently returning 0. Chosen resolution: (b) serialize test_iss503_rls_removal.zig out of the concurrent test-integration group in build.zig so it runs alone, not concurrently with other DDL-heavy binaries; optionally also wrap its raw-connection schema_migrations-adjacent operations with the existing bpm_test_migrations_public advisory lock pattern from helpers.zig as defense-in-depth.",
+    "acceptance_criteria": [
+      "Design produces a Type E prose design at src/design/fix-ISS-0106.md",
+      "Design addresses the root_cause: DDL-heavy test_iss503_rls_removal.zig must not run concurrently with other test-integration binaries that touch public-schema tables",
+      "Design specifies exactly how build.zig test-integration step is restructured (e.g. dependency ordering / serial step) so that test_iss503_rls_removal.zig runs to completion before or after the rest of the concurrent group, without breaking other binaries or CI invocation of `zig build test-integration`",
+      "Design documents whether advisory-lock hardening inside test_iss503_rls_removal.zig is included and why",
+      "No implementation code (no function bodies, no actual build.zig diff) -- describe the change structurally",
+      "Fix scope <= 5 files, matching files_to_change in ISS-0106.json (build.zig, tests/integration/test_iss503_rls_removal.zig)"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Type E design at src/design/fix-ISS-0106.md restructures build.zig's test-integration umbrella step so test_iss503_rls_removal.zig's run step depends on a new intermediate barrier step that aggregates every other test-integration binary's Run step, then re-attaches ISS-503 to the umbrella step -- forcing the build graph to run ISS-503 only after all other DDL/migration-touching binaries have completed, removing the AccessExclusiveLock concurrency window that causes the 40P01 deadlocks. Advisory-lock hardening in test_iss503_rls_removal.zig was evaluated and explicitly deferred as redundant given the structural fix; only a doc comment is added to that file cross-referencing the new barrier step. No error-set changes; no CI workflow files exist to audit for timeout impact.",
+    "artifacts_out": [
+      "src/design/fix-ISS-0106.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR Step 2b"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

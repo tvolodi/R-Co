@@ -29,6 +29,8 @@ Do everything yourself. Ask the user only when you have no other choice AND ther
 1. Two or more genuinely equivalent options requiring a business/personal preference the agent cannot infer.
 2. **(ORCH only)** The orchestrator believes a standard workflow (WF-01 through WF-04) can be skipped to solve a problem faster. This requires explicit user confirmation — see §11 of `docs/agents/ORCHESTRATOR.md`.
 
+**Do not ask for confirmation before executing a step this file already marks MANDATORY/required/hard requirement.** If a section below says a step must always happen (e.g. "GitHub Branch Management (MANDATORY)": push the feature branch, open the PR, squash-merge, delete the branch, return to a clean `main`), that step is pre-authorized for every run — asking "should I push/merge/proceed?" is itself a Zero Manual Work violation, not a safe default. This holds even when the action feels consequential (touches `main`, closes an issue, merges a PR): "risky-sounding" is not on the list of valid reasons to ask above, and is not a third exception to it. Execute the mandated step, then report what was done.
+
 ### ⛔ Orchestrator Exception
 
 When running as **ORCH**, the Zero Manual Work directive is fulfilled by running the pipeline **autonomously through subagents** — not by editing files or running commands directly.
