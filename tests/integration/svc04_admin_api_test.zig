@@ -24,6 +24,10 @@ const std = @import("std");
 const bpm = @import("bpm");
 const helpers = @import("helpers.zig");
 
+// Root-level export required so pool connections apply tenant-schema search_path
+// instead of falling back to search_path=public (see audit_iss103_test.zig).
+pub const api_tenant_context = bpm.api_tenant_context;
+
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
@@ -151,6 +155,7 @@ test "svc04: admin register global service returns 201" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -189,6 +194,7 @@ test "svc04: admin register tenant-scoped service returns 201" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -229,6 +235,7 @@ test "svc04: admin register duplicate service_id returns 409" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -268,6 +275,7 @@ test "svc04: non-admin actor on register returns 403" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -300,6 +308,7 @@ test "svc04: admin update service scope returns 200" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -356,6 +365,7 @@ test "svc04: scope change to tenant with conflicting active definitions returns 
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -466,6 +476,7 @@ test "svc04: admin delete service returns success" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -504,6 +515,7 @@ test "svc04: delete service in use by active definition returns 409" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -599,6 +611,7 @@ test "svc04: GET services for tenant admin excludes other tenants scoped service
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -673,6 +686,7 @@ test "svc04: GET admin services returns all entries" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -729,6 +743,7 @@ test "svc04: GET admin services returns 403 for non-admin" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 
@@ -755,6 +770,7 @@ test "svc04: admin update unknown service returns 404" {
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     var pool = try Pool.init(std.testing.io, alloc, PoolConfig{ .url = url, .pool_size = 3 });
     defer pool.deinit();
 

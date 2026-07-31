@@ -4,6 +4,10 @@ const testing = std.testing;
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
+
+// Root-level export required so pool connections apply tenant-schema search_path
+// instead of falling back to search_path=public (see audit_iss103_test.zig).
+pub const api_tenant_context = bpm.api_tenant_context;
 const webhooks_routes = bpm.webhooks_routes;
 const webhook_store = bpm.webhook_subscription_store;
 const webhook_dispatcher = bpm.webhook_dispatcher;
@@ -21,6 +25,9 @@ fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
 }
 
 fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
+    // Set the tenant context BEFORE Pool.init so that every pool.acquire()
+    // applies SET search_path TO tenant_default,public (schema isolation).
+    bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000");
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 5 });
 }
 
