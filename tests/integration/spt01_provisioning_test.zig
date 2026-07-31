@@ -384,8 +384,16 @@ test "TC-SPT-01-05: default UUID maps to schema name tenant_default" {
 // Verify that a pool connection checkout sets search_path to
 // '<tenant_schema>,public' for a non-default tenant.
 //
-// We set the api_tenant_context to a test UUID, acquire a connection (which
-// calls applyRequestTenantContext internally), and issue SHOW search_path.
+// ISS-501 (src/design/iss501_storage_mode_routing.md) gates schema routing on
+// a resolved storage_mode='SCHEMA' row in public.tenant — applyRequestStorageRouting()
+// falls back to LEGACY_RLS/public for any tenant_id it cannot resolve to
+// storage_mode='SCHEMA'. To genuinely exercise the SCHEMA routing branch
+// (not the fallback, which TC-SPT-01-07 already covers), this test provisions
+// a real public.tenant row with storage_mode='SCHEMA' for a freshly generated
+// UUID before acquiring the connection (see ISS-0099 / GitHub #355).
+//
+// We set the api_tenant_context to the provisioned UUID, acquire a connection
+// (which calls applyRequestStorageRouting internally), and issue SHOW search_path.
 // ---------------------------------------------------------------------------
 test "TC-SPT-01-06: pool checkout sets search_path to tenant schema for non-default tenant" {
     const alloc = std.testing.allocator;
@@ -399,15 +407,42 @@ test "TC-SPT-01-06: pool checkout sets search_path to tenant schema for non-defa
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    // Use a fixed UUID to keep the test deterministic — no provisioning needed
-    // for this test since we are only verifying the search_path setting, not
-    // that the schema actually exists.
-    const test_uuid = "a1b2c3d4-e5f6-4a7b-8c9d-e0f1a2b3c4d5";
+    // Generate a fresh UUID per test run for isolation, then provision it as a
+    // SCHEMA-mode tenant so applyRequestStorageRouting() resolves storage_mode
+    // = 'SCHEMA' instead of falling back to LEGACY_RLS.
+    const test_uuid = try randomUuidStr(alloc);
+    defer alloc.free(test_uuid);
 
     var schema_buf: [80]u8 = undefined;
     const expected_schema = schemaName(test_uuid, &schema_buf);
 
-    // Set the pool-level tenant context so that applyRequestTenantContext reads it.
+    // Register tenant-row cleanup before acquiring the connection (defers run
+    // LIFO, so this runs AFTER the connection is released below).
+    defer {
+        if (pool.acquire()) |cleanup_conn| {
+            defer pool.release(cleanup_conn);
+            cleanup_conn.exec(
+                "DELETE FROM public.tenant WHERE id = $1::uuid",
+                &.{test_uuid},
+            ) catch |err| {
+                std.debug.print("cleanup: DELETE public.tenant for {s} failed: {}\n", .{ test_uuid, err });
+            };
+        } else |err| {
+            std.debug.print("cleanup: pool.acquire() for public.tenant DELETE ({s}) failed: {}\n", .{ test_uuid, err });
+        }
+    }
+
+    {
+        const setup_conn = try pool.acquire();
+        defer pool.release(setup_conn);
+        try setup_conn.exec(
+            "INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, storage_mode) " ++
+                "VALUES ($1::uuid, 'iss0099-spt0106', 'ISS-0099 TC-SPT-01-06 Test Tenant', 'ACTIVE', 'realm-iss0099-spt0106', 'SCHEMA')",
+            &.{test_uuid},
+        );
+    }
+
+    // Set the pool-level tenant context so that applyRequestStorageRouting reads it.
     // Use tenant_context directly (not root, which resolves to test_runner in unit tests).
     tenant_context.set(test_uuid);
     defer tenant_context.set("00000000-0000-0000-0000-000000000000");
