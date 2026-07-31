@@ -97,10 +97,10 @@ fn insertTestTenant(
     const conn = try pool.acquire();
     defer pool.release(conn);
     try conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id)
-        \\VALUES ($1::uuid, $2, $3, 'ACTIVE', $4)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, 'ACTIVE', $4, 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
-    , &[_][]const u8{ id, slug, slug, idp_realm_id });
+    , &[_][]const u8{ id, slug, slug, idp_realm_id, "00000000-0000-0000-0000-000000000000" });
 }
 
 /// Delete the test tenant row. Silent on failure so defer cleanup is safe.

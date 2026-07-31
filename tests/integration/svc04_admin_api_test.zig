@@ -317,11 +317,11 @@ test "svc04: admin update service scope returns 200" {
 
     const owner_hex = "b4200000-0000-0000-0000-000000000001";
     try h.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
-        \\VALUES ($1::uuid, $2, $3, $4, now())
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
     ,
-        &.{ owner_hex, "svc04-upd-tn", "SVC04 Update Tenant", "realm-svc04-upd" },
+        &.{ owner_hex, "svc04-upd-tn", "SVC04 Update Tenant", "realm-svc04-upd", "00000000-0000-0000-0000-000000000000" },
     );
 
     const svc_id = try randomServiceId(alloc, "svc04-upd");
@@ -375,18 +375,18 @@ test "svc04: scope change to tenant with conflicting active definitions returns 
     const owner_hex = "c4300000-0000-0000-0000-000000000001";
     const other_tenant_hex = "c4300000-0000-0000-0000-000000000002";
     try h.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
-        \\VALUES ($1::uuid, $2, $3, $4, now())
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
     ,
-        &.{ owner_hex, "svc04-cnf-ow", "SVC04 Conflict Owner", "realm-svc04-cnf-ow" },
+        &.{ owner_hex, "svc04-cnf-ow", "SVC04 Conflict Owner", "realm-svc04-cnf-ow", "00000000-0000-0000-0000-000000000000" },
     );
     try h.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
-        \\VALUES ($1::uuid, $2, $3, $4, now())
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
     ,
-        &.{ other_tenant_hex, "svc04-cnf-ot", "SVC04 Conflict Other", "realm-svc04-cnf-ot" },
+        &.{ other_tenant_hex, "svc04-cnf-ot", "SVC04 Conflict Other", "realm-svc04-cnf-ot", "00000000-0000-0000-0000-000000000000" },
     );
 
     const svc_id = try randomServiceId(alloc, "svc04-cnf");
@@ -524,11 +524,11 @@ test "svc04: delete service in use by active definition returns 409" {
 
     const tenant_hex = "d4400000-0000-0000-0000-000000000001";
     try h.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
-        \\VALUES ($1::uuid, $2, $3, $4, now())
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
     ,
-        &.{ tenant_hex, "svc04-inuse-t", "SVC04 InUse Tenant", "realm-svc04-inuse" },
+        &.{ tenant_hex, "svc04-inuse-t", "SVC04 InUse Tenant", "realm-svc04-inuse", "00000000-0000-0000-0000-000000000000" },
     );
 
     const svc_id = try randomServiceId(alloc, "svc04-inuse");
@@ -621,18 +621,18 @@ test "svc04: GET services for tenant admin excludes other tenants scoped service
     const tenant_a_hex = "e4500000-0000-0000-0000-000000000001";
     const tenant_b_hex = "e4500000-0000-0000-0000-000000000002";
     try h.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
-        \\VALUES ($1::uuid, $2, $3, $4, now())
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
     ,
-        &.{ tenant_a_hex, "svc04-lst-ta", "SVC04 List TA", "realm-svc04-ta" },
+        &.{ tenant_a_hex, "svc04-lst-ta", "SVC04 List TA", "realm-svc04-ta", "00000000-0000-0000-0000-000000000000" },
     );
     try h.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
-        \\VALUES ($1::uuid, $2, $3, $4, now())
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
     ,
-        &.{ tenant_b_hex, "svc04-lst-tb", "SVC04 List TB", "realm-svc04-tb" },
+        &.{ tenant_b_hex, "svc04-lst-tb", "SVC04 List TB", "realm-svc04-tb", "00000000-0000-0000-0000-000000000000" },
     );
 
     const svc_global = try randomServiceId(alloc, "svc04-lst-g");
@@ -695,11 +695,11 @@ test "svc04: GET admin services returns all entries" {
 
     const tenant_hex = "f4600000-0000-0000-0000-000000000001";
     try h.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
-        \\VALUES ($1::uuid, $2, $3, $4, now())
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
     ,
-        &.{ tenant_hex, "svc04-all-t", "SVC04 All Tenant", "realm-svc04-all" },
+        &.{ tenant_hex, "svc04-all-t", "SVC04 All Tenant", "realm-svc04-all", "00000000-0000-0000-0000-000000000000" },
     );
 
     const svc_global = try randomServiceId(alloc, "svc04-all-g");

@@ -22,11 +22,11 @@ pub const api_tenant_context = @import("bpm").api_tenant_context;
 
 fn insertTenant(conn: *pg.Conn, id_hex: []const u8, slug: []const u8) !void {
     try conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
-        \\VALUES ($1::uuid, $2, $3, $4, now())
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
     ,
-        &.{ id_hex, slug, slug, slug },
+        &.{ id_hex, slug, slug, slug, "00000000-0000-0000-0000-000000000000" },
     );
 }
 
@@ -199,11 +199,11 @@ test "svc01: on_delete_cascade removes scoped service when owner tenant deleted"
     const tenant_hex = "d1111111-0000-0000-0000-000000000001";
     // Insert tenant directly (NOT through the harness transaction so we can delete it).
     try h.conn.exec(
-        \\INSERT INTO tenant (id, slug, display_name, idp_realm_id, created_at)
-        \\VALUES ($1::uuid, $2, $3, $4, now())
+        \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
+        \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
         \\ON CONFLICT (id) DO NOTHING
     ,
-        &.{ tenant_hex, "svc01-cascade-test", "SVC01 Cascade Test", "realm-cascade" },
+        &.{ tenant_hex, "svc01-cascade-test", "SVC01 Cascade Test", "realm-cascade", "00000000-0000-0000-0000-000000000000" },
     );
 
     var id_buf: [8]u8 = undefined;
