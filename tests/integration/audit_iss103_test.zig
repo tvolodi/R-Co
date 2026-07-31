@@ -103,6 +103,12 @@ fn cleanupDefinition(pool: *Pool, name: []const u8, version: []const u8) void {
 fn cleanupAuditForResource(pool: *Pool, resource_id: []const u8) void {
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
+    // audit_entries is immutable by design (trg_audit_entries_no_delete /
+    // bpm_audit_immutable_guard, migration 020; reinforced by migration 051/059).
+    // Deleting test fixture rows requires temporarily disabling user triggers,
+    // matching the established pattern in xc02_audit_immutability_test.zig.
+    conn.exec("ALTER TABLE audit_entries DISABLE TRIGGER USER", &.{}) catch return;
+    defer conn.exec("ALTER TABLE audit_entries ENABLE TRIGGER USER", &.{}) catch {};
     // resource_id is now TEXT, not UUID, so we query it directly as TEXT
     conn.exec(
         "DELETE FROM audit_entries WHERE resource_id = $1",

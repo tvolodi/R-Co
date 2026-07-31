@@ -206,29 +206,6 @@ fn configureSessionTimeouts(conn: *pg.Conn) !void {
 }
 
 fn applyCompatibilityShims(conn: *pg.Conn) !void {
-    // GBL-081 changed audit_entries.resource_id from uuid to text, but the audit
-    // trigger function bpm_audit_compute_chain_hash still expects uuid for that
-    // parameter. Disable the audit triggers on business tables during integration
-    // tests to avoid type-mismatch failures on INSERT.
-    try execCompatibilitySql(conn,
-        \\ALTER TABLE IF EXISTS tenant_default.process_definitions DISABLE TRIGGER ALL
-    );
-    try execCompatibilitySql(conn,
-        \\ALTER TABLE IF EXISTS tenant_default.instance_projections DISABLE TRIGGER ALL
-    );
-    try execCompatibilitySql(conn,
-        \\ALTER TABLE IF EXISTS tenant_default.tasks DISABLE TRIGGER ALL
-    );
-    try execCompatibilitySql(conn,
-        \\ALTER TABLE IF EXISTS tenant_default.dead_letter_items DISABLE TRIGGER ALL
-    );
-    try execCompatibilitySql(conn,
-        \\ALTER TABLE IF EXISTS tenant_default.webhook_subscriptions DISABLE TRIGGER ALL
-    );
-    try execCompatibilitySql(conn,
-        \\ALTER TABLE IF EXISTS tenant_default.webhook_deliveries DISABLE TRIGGER ALL
-    );
-
     // Legacy XC integration fixtures still reference `instances` and omit
     // newer mandatory event fields. These shims preserve test intent while
     // keeping production schema unchanged.
