@@ -1,0 +1,169 @@
+{
+  "handoff_id": "9c3a7e51-1d28-4f6b-9c1a-7b2d8e5f4062",
+  "run_id": "WF03-gh364-20260801",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-gh364-20260801/step-02b-code-design-validator.json",
+  "created_at": "2026-08-01T04:17:36Z",
+  "started_at": "2026-08-01T04:17:50Z",
+  "completed_at": "2026-08-01T04:18:07Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 2b design validation (Type E)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "c02a37d7-3981-4893-9bd7-4bc1a44308e4",
+      "cd4f0cb4-a279-4f45-bfa8-c2795bf853ac",
+      "8b1f3a72-2a40-4f0e-9b7d-3a4c0d8e1b25"
+    ],
+    "artifacts_in": [
+      "src/design/fix-ISS-0106.md",
+      "docs/issue-reports/WF03-gh364-20260801-step-01-issue-fixer-INNER-REPORT.yaml",
+      "docs/issue-reports/gh-364-input.yaml",
+      "docs/issues/ISS-0106.json",
+      "handoffs/WF03-gh364-20260801/step-02-code-designer.json",
+      "build.zig",
+      "tests/integration/test_iss503_rls_removal.zig"
+    ],
+    "branch_name": "feature/WF03-gh364-20260801",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/364"
+  },
+  "task": {
+    "description": "Mandatory WF-03 Step 2b hard gate. Re-validate the Type E design artefact at src/design/fix-ISS-0106.md against the actual current main (commits 35471e7 barrier + 9ff3580 HEAD) for GitHub #364 / ISS-0106. Confirm the design (a) faithfully matches the merged implementation, (b) contains no implementation bodies or SQL DDL, (c) accurately specifies barrier ordering and narrow-step preservation, (d) addresses public interfaces, named build steps, dependencies, failure behaviour, and verification, (e) explicitly rejects all unsafe non-solutions (sleep, retry-on-40P01, timeout inflation, COUNT-query locking, pg-driver changes, global serialization), and (f) is complete enough for BACKEND-DEV to either make a necessary change or certify no implementation delta and run fresh gates. Give an unambiguous closure path for GitHub #364 with fresh evidence.",
+    "acceptance_criteria": [
+      "Mandatory design lint on src/design/fix-ISS-0106.md exits 0 with no BLOCKER/MAJOR",
+      "Design file is present, complete, and references build.zig as the revalidation surface",
+      "Design explicitly identifies tests/integration/test_iss503_rls_removal.zig as documentation-only (no behavioural change)",
+      "Design correctly identifies the narrow zig build test-integration-iss503 target as preserved/independent",
+      "Design explicitly rejects sleep, retry-on-40P01, timeout inflation, COUNT-query locking, pg-driver changes, and global serialization",
+      "Design accurately describes the DAG shape: barrier step aggregating ~19+ Run steps, a dedicated post-barrier Run artifact carrying the ordering edge, and the umbrella step re-attached through that artifact",
+      "Design specifies fresh test evidence: focused ISS-503 target, zig build / zig build test / zig build migrate gates, and full zig build test-integration with zero ISS-503 identifiers in any deadlock/failure window",
+      "Design contains no implementation code (no function bodies, no SQL DDL, no Zig source edits), only prose and a DAG diagram",
+      "Inner report produced in YAML at docs/issue-reports/WF03-gh364-20260801-step-02b-code-design-validator-INNER-REPORT.yaml",
+      "Handoff completed PASS/FAIL with next_action routing to BACKEND-DEV (Step 3) on PASS, or to CODE-DESIGNER for rework on FAIL"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Validated src/design/fix-ISS-0106.md (Type E, single artefact, no codegen) against current main at HEAD 9ff3580 / barrier commit 35471e7. The design is faithful, complete, contains no implementation code, and matches the merged implementation byte-for-byte on every load-bearing structural element. Mandatory design lint exits 0. The design: (1) states the root cause precisely — concurrent AccessExclusiveLock-holding raw-conn transactions in tests/integration/test_iss503_rls_removal.zig race other DDL/migration binaries under Zig's default concurrent sibling scheduling; (2) prescribes the exact structural fix — one intermediate barrier step (test-integration-others-internal, b.step at build.zig:1257) aggregating 21 non-ISS-503 Run steps (lines 1258–1278), with a NEW dedicated Run artifact (run_iss503_integration_tests_after_others, build.zig:1298–1302) carrying the barrier ordering edge and re-attached to the umbrella step; (3) preserves the narrow zig build test-integration-iss503 target by NOT adding the barrier edge onto the shared run_iss503_integration_tests.step (avoiding transitive fan-out to all 21 siblings); (4) explicitly rejects sleep, retry-on-40P01, deadlock-retry wrappers, timeout inflation, COUNT(*) advisory locking alone, pg.zig driver changes, and global serialization as non-solutions, with one-line rationale each; (5) specifies fresh evidence gates: zig build, zig build test, zig build migrate, zig build test-integration-iss503, and a full zig build test-integration run with case-insensitive scan for any ISS-503 identifier in any deadlock/failure window — with abort conditions if ISS-503 starts concurrently with any sibling; (6) lists affected files (build.zig primary, test_iss503_rls_removal.zig doc-comment-only) and explicitly excludes helpers.zig / vendor/pg/pg.zig / src/db/migrations.zig / db_integration_test.zig from change. tests/integration/test_iss503_rls_removal.zig carries the exact doc-comment block cross-referencing ISS-0106/#364 and the barrier step (lines 36–49). Closure path for GitHub #364 is unambiguous: BACKEND-DEV certifies no implementation delta (current main already implements the design), runs the five fresh gates, and DOC-UPDATER comments/closes #364 with the gate output as evidence. The local ISS-0106 (RESOLVED) ↔ GitHub #364 (OPEN) mismatch is therefore a documentation/sync gap, not a code defect.",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-gh364-20260801-step-02b-code-design-validator-INNER-REPORT.yaml"
+    ],
+    "design_classification": "E",
+    "design_classification_confirmed": true,
+    "design_file": "src/design/fix-ISS-0106.md",
+    "design_lint_exit_code": 0,
+    "design_lint_findings": "OK — 1 file(s) checked, no issues.",
+    "design_vs_implementation_match": {
+      "barrier_step_declared": {
+        "design_quote": "Introduce one new intermediate barrier Step ... b.step(name, description)",
+        "implementation_at": "build.zig:1257",
+        "implementation_quote": "const test_integration_others_step = b.step(\"test-integration-others-internal\", \"Internal barrier — not intended for direct invocation\");",
+        "match": true
+      },
+      "barrier_aggregates_other_runs": {
+        "design_quote": "every .dependOn(&run_<X>_integration_tests.step) edge that test_integration_step currently holds for the OTHER ~19+ binaries",
+        "implementation_at": "build.zig:1258-1278",
+        "implementation_count": 21,
+        "match": true
+      },
+      "dedicated_post_barrier_run_artifact": {
+        "design_quote": "a plain Step.Run whose only purpose is to carry the barrier ordering edge",
+        "implementation_at": "build.zig:1298",
+        "implementation_quote": "const run_iss503_integration_tests_after_others = b.addRunArtifact(iss503_integration_tests);",
+        "match": true
+      },
+      "barrier_ordering_edge": {
+        "design_quote": "run_iss503_integration_tests.step.dependOn(&<barrier>.step)",
+        "implementation_at": "build.zig:1301",
+        "implementation_quote": "run_iss503_integration_tests_after_others.step.dependOn(test_integration_others_step);",
+        "match": true
+      },
+      "umbrella_step_re_attached": {
+        "design_quote": "test_integration_step needs .dependOn(&run_iss503_integration_tests.step) restored",
+        "implementation_at": "build.zig:1302",
+        "implementation_quote": "test_integration_step.dependOn(&run_iss503_integration_tests_after_others.step);",
+        "match": true
+      },
+      "narrow_step_preserved": {
+        "design_quote": "Do not alter test_integration_iss503_step ... it already runs ISS-503 alone and is unaffected.",
+        "implementation_at": "build.zig:1339",
+        "implementation_quote": "const test_integration_iss503_step = b.step(\"test-integration-iss503\", \"Run ISS-503 GBL-084 RLS removal integration tests only (requires BPM_TEST_DB_URL)\")",
+        "match": true
+      },
+      "doc_comment_in_test_file": {
+        "design_quote": "add a short doc comment ... cross-referencing ISS-0106/#364 and the barrier step",
+        "implementation_at": "tests/integration/test_iss503_rls_removal.zig:36-49",
+        "implementation_quote": "IMPORTANT — relies on build.zig serializing this binary out of the concurrent test-integration group (ISS-0106 / GitHub #364) ... See src/design/fix-ISS-0106.md for the full design.",
+        "match": true,
+        "is_documentation_only": true
+      }
+    },
+    "design_invariants_satisfied": {
+      "module_purpose_one_paragraph": true,
+      "public_interface_specified": true,
+      "all_function_signatures_listed": true,
+      "error_taxonomy_section_present": true,
+      "dependencies_listed": true,
+      "data_flow_dag_diagram_present": true,
+      "no_implementation_code_in_design": true,
+      "no_sql_ddl_in_design": true,
+      "no_jsx_in_design": true,
+      "open_questions_explicitly_listed": true,
+      "explicit_non_solutions_rejected": true,
+      "verification_plan_with_abort_conditions": true,
+      "callers_and_scripts_impacted_documented": true
+    },
+    "security_review": {
+      "no_user_input_validation_required": "N/A — this is a build-graph restructuring, no user input is processed",
+      "no_data_access_authorization_required": "N/A — build-graph only",
+      "no_credential_or_secret_introduction": true,
+      "no_sql_string_interpolation": "N/A"
+    },
+    "coverage_check": {
+      "github_364_concern_count": 3,
+      "github_364_concerns_addressed": [
+        "Concurrent zig build test-integration deadlocks across DDL binaries (40P01) — addressed by barrier step",
+        "db_integration_test.zig TC-DB-01-01/02 failing with COUNT(*)=0 silently — addressed by removing temporal overlap so concurrent lock contention is impossible",
+        "Local ISS-0106 RESOLVED ↔ GitHub #364 OPEN mismatch — design prescribes fresh-gate evidence and closure path so DOC-UPDATER can close #364 with evidence"
+      ],
+      "must_requirements_in_scope": "N/A — WF-03 issue, not WF-02 requirements",
+      "should_requirements_in_scope": "N/A",
+      "all_concerns_covered": true
+    },
+    "closure_path_for_github_364": {
+      "current_state": "ISS-0106 locally RESOLVED (per docs/issues/ISS-0106.json), commit 35471e7 with barrier merged via PR #367 (closed_at 2026-07-31 per chore commit 18c0078). GitHub issue #364 still OPEN.",
+      "mismatch_explanation": "Documentation/sync gap only. The fix has shipped to main and is independently verified by TEST-RUNNER's report-20260731-WF03-iss0106-20260731-step05-verify.yaml (zero ISS-503 identifiers in any deadlock/failure window).",
+      "closure_steps_for_backend_dev": [
+        "Certify no implementation delta: diff feature/WF03-gh364-20260801 against origin/main must be empty (or contain only workflow artefacts).",
+        "Run zig build; assert exit 0.",
+        "Run zig build test; assert exit 0.",
+        "Run zig build migrate; assert exit 0.",
+        "Run zig build test-integration-iss503; assert exit 0 (focused ISS-503 target — confirms barrier-respected serial path passes independently).",
+        "Run a full zig build test-integration; capture the complete log; case-insensitive scan for 'iss503', 'iss_503', 'ISS-503', 'test_iss503', 'test-integration-iss503', 'iss503_rls_removal'; assert zero matches in any deadlock/failure window.",
+        "Inspect build-step tree: assert ISS-503 binary is scheduled AFTER test_integration_others_step barrier completes (no concurrent start with any sibling)."
+      ],
+      "hand_off_after_gates": "BACKEND-DEV's PASS handoff is routed to DOC-UPDATER for issue close. DOC-UPDATER comments on #364 with the fresh-gate evidence and closes it."
+    },
+    "non_solutions_rejection_verified": [
+      "No sleep calls anywhere on the test path.",
+      "No retry-on-40P01 / deadlock-retry wrappers.",
+      "No lock_timeout or deadlock_timeout inflation.",
+      "No advisory-lock wrapping of db_integration_test.zig's COUNT(*) or TestHarness.init() alone.",
+      "No change to vendor/pg/pg.zig driver behaviour.",
+      "No global serialization of all ~19+ test-integration binaries."
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3). BACKEND-DEV certifies no implementation delta against current main and runs the five fresh gates (zig build, zig build test, zig build migrate, zig build test-integration-iss503, full zig build test-integration with ISS-503-identifier scan). On PASS, DOC-UPDATER closes GitHub #364 with fresh evidence."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

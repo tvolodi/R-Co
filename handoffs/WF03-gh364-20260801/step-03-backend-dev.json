@@ -1,0 +1,109 @@
+﻿{
+    "handoff_id":  "3195ef19-1619-466f-be1c-5a0f8418014e",
+    "run_id":  "WF03-gh364-20260801",
+    "workflow_id":  "WF-03",
+    "step":  "03",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "file":  "handoffs/WF03-gh364-20260801/step-03-backend-dev.json",
+    "created_at":  "2026-08-01T04:22:12Z",
+    "started_at":  "2026-08-01T04:22:51Z",
+    "completed_at":  "2026-08-01T04:42:01Z",
+    "status":  "FAILED",
+    "priority":  "HIGH",
+    "context":  {
+                    "stage":  "WF-03 Issue Resolving — Step 3 implementation verification",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "cd4f0cb4-a279-4f45-bfa8-c2795bf853ac",
+                                                "8b1f3a72-2a40-4f0e-9b7d-3a4c0d8e1b25",
+                                                "9c3a7e51-1d28-4f6b-9c1a-7b2d8e5f4062"
+                                            ],
+                    "artifacts_in":  [
+                                         "src/design/fix-ISS-0106.md",
+                                         "docs/issues/ISS-0106.json",
+                                         "handoffs/WF03-gh364-20260801/step-01-issue-fixer.json",
+                                         "handoffs/WF03-gh364-20260801/step-02-code-designer.json",
+                                         "handoffs/WF03-gh364-20260801/step-02b-code-design-validator.json",
+                                         "build.zig",
+                                         "tests/integration/test_iss503_rls_removal.zig",
+                                         "tests/integration/db_integration_test.zig"
+                                     ],
+                    "branch_name":  "feature/WF03-gh364-20260801",
+                    "github_issue":  "https://github.com/tvolodi/R-Co/issues/364",
+                    "merged_pr":  "https://github.com/tvolodi/R-Co/pull/367",
+                    "merged_commit":  "35471e7"
+                },
+    "task":  {
+                 "description":  "Execute mandatory WF-03 Step 3 for GitHub #364 / ISS-0106. Compare current build.zig and tests/integration/test_iss503_rls_removal.zig against the approved Type E design and merged commit 35471e7. If the approved barrier and documentation-only test-file change are already present, make no behavioral source/test/build change and explicitly certify no implementation delta. Preserve unrelated workspace changes. Run fresh zig build, zig build test, zig build migrate, error-set validation, focused zig build test-integration-iss503 with BPM_TEST_DB_URL, and full zig build test-integration with BPM_TEST_DB_URL/BPM_TEST_URL/BPM_IDP_BASE_URL. Capture full integration output only under scratch/, scan it for deadlock/40P01/C40P01 and ISS-503 overlap evidence, and verify TC-DB-01-01 and TC-DB-01-02 from actual output. Produce the mandatory YAML inner report. Do not create a fake implementation commit when there is no implementation delta.",
+                 "acceptance_criteria":  [
+                                             "Approved barrier structure and narrow test-integration-iss503 target are certified against current build.zig and merged commit 35471e7",
+                                             "tests/integration/test_iss503_rls_removal.zig is certified as matching the approved documentation-only design with no behavioral delta",
+                                             "zig build exits 0 freshly",
+                                             "zig build test exits 0 freshly",
+                                             "zig build migrate exits 0 freshly",
+                                             "Error-set validation produces no error-set diagnostics",
+                                             "Focused zig build test-integration-iss503 exits 0 with BPM_TEST_DB_URL set",
+                                             "Full zig build test-integration exits 0 with required DB/API/IDP environment set and full output captured in scratch only",
+                                             "Full-suite evidence contains no deadlock/40P01/C40P01 and no ISS-503 overlap in any failure window",
+                                             "TC-DB-01-01 and TC-DB-01-02 pass under the standard concurrent suite based on actual test output",
+                                             "Any implementation files changed are justified, scoped, committed, and pushed; if no implementation delta exists, no fake code commit is created",
+                                             "Mandatory YAML inner report is written and handoff completes PASS/FAIL with correct next_action"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:check-zig-build",
+                                           "fn:run-unit-tests",
+                                           "fn:apply-migrations",
+                                           "fn:run-integration-tests",
+                                           "fn:validate-completeness",
+                                           "fn:register-inner-report",
+                                           "fn:complete-handoff"
+                                       ]
+             },
+    "result":  {
+                   "status":  "FAIL",
+                   "summary":  "No implementation delta: build.zig and tests/integration/test_iss503_rls_removal.zig are byte-identical to merged commit 35471e7 and origin/main, and the approved barrier/narrow target are intact. Fresh build, unit, migrate, error-set, and focused ISS-503 gates passed. The required full integration gate failed with non-ISS-503 40P01 deadlocks and 55P03 lock timeouts (recurring GH-366, reopened), plus Windows Python resolution failure GH-374. The captured log contains zero ISS-503 identifiers, but TC-DB-01-01/02 produced no actual passing output and cannot be certified.",
+                   "artifacts_out":  [
+                                         "docs/issue-reports/WF03-gh364-20260801-step-03-backend-dev-INNER-REPORT.yaml",
+                                         "scratch/WF03-gh364-20260801-step03-full-integration.log",
+                                         "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log",
+                                         "GitHub #366 reopened: https://github.com/tvolodi/R-Co/issues/366",
+                                         "GitHub #374 created: https://github.com/tvolodi/R-Co/issues/374"
+                                     ],
+                   "issues":  [
+                                  {
+                                      "id":  "GH-366",
+                                      "severity":  "BLOCKER",
+                                      "description":  "Standard concurrent full integration suite reproduced non-ISS-503 40P01 deadlocks and 44 55P03 lock-timeout occurrences despite fc5884b; issue #366 reopened with fresh evidence.",
+                                      "affected_requirement":  null
+                                  },
+                                  {
+                                      "id":  "GH-374",
+                                      "severity":  "MAJOR",
+                                      "description":  "TC-TNT-02-03/04 resolve bare python to the Windows Store alias and fail with exit code 49; new GitHub-visible issue filed.",
+                                      "affected_requirement":  null
+                                  },
+                                  {
+                                      "id":  "GH-359",
+                                      "severity":  "MAJOR",
+                                      "description":  "Existing open tenant schema/migration-state blocker also surfaced; no duplicate issue filed.",
+                                      "affected_requirement":  null
+                                  }
+                              ],
+                   "git_evidence":  {
+                                        "branch_name":  "feature/WF03-gh364-20260801",
+                                        "commit_sha_list":  [
+
+                                                            ],
+                                        "remote_branch":  "origin/feature/WF03-gh364-20260801",
+                                        "push_status":  "skipped",
+                                        "pr_url":  null,
+                                        "pr_create_error":  null
+                                    },
+                   "next_action":  "ORCH routes GH-366 and GH-374 through WF-03 blocker workflows, then redispatches Step 3 or TEST-RUNNER Step 5 for a green full suite and actual TC-DB-01-01/02 evidence."
+               },
+    "rework_count":  0,
+    "max_rework":  3
+}

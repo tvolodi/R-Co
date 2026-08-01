@@ -1,0 +1,132 @@
+﻿{
+    "handoff_id":  "f7c3b8e2-4a1d-4f8e-9b2c-1e5a7d3f6c8b",
+    "run_id":  "WF03-gh364-20260801",
+    "workflow_id":  "WF-03",
+    "step":  "03a",
+    "from_agent":  "ISSUE-FIXER",
+    "to_agent":  "ORCH",
+    "file":  "handoffs/WF03-gh364-20260801/step-03a-issue-fixer-blockers.json",
+    "created_at":  "2026-08-01T04:46:02Z",
+    "started_at":  "2026-08-01T04:46:02Z",
+    "completed_at":  "2026-08-01T04:50:27Z",
+    "status":  "COMPLETED",
+    "priority":  "HIGH",
+    "context":  {
+                    "stage":  "WF-03 Issue Resolving — Step 0.5/1 triage of the #364-blocker set surfaced during Step 3 verification",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "3195ef19-1619-466f-be1c-5a0f8418014e",
+                                                "cd4f0cb4-a279-4f45-bfa8-c2795bf853ac",
+                                                "8b1f3a72-2a40-4f0e-9b7d-3a4c0d8e1b25",
+                                                "9c3a7e51-1d28-4f6b-9c1a-7b2d8e5f4062"
+                                            ],
+                    "parent_run":  "WF03-gh364-20260801",
+                    "parent_github_issue":  "https://github.com/tvolodi/R-Co/issues/364",
+                    "parent_local_issue":  "ISS-0106",
+                    "blockers_in_scope":  [
+                                              {
+                                                  "id":  "GH-366",
+                                                  "alias":  "ISS-0107 (regression after fc5884b)",
+                                                  "severity":  "BLOCKER",
+                                                  "github_issue":  "https://github.com/tvolodi/R-Co/issues/366"
+                                              },
+                                              {
+                                                  "id":  "GH-374",
+                                                  "alias":  "WF03-gh364-20260801-PYTHON-PATH (new)",
+                                                  "severity":  "MAJOR",
+                                                  "github_issue":  "https://github.com/tvolodi/R-Co/issues/374"
+                                              },
+                                              {
+                                                  "id":  "GH-359",
+                                                  "alias":  "ISS-0101 (open)",
+                                                  "severity":  "MAJOR",
+                                                  "github_issue":  "https://github.com/tvolodi/R-Co/issues/359"
+                                              }
+                                          ],
+                    "branch_name":  "feature/WF03-gh364-20260801",
+                    "merged_pr":  "https://github.com/tvolodi/R-Co/pull/367",
+                    "merged_commit":  "35471e7",
+                    "current_head":  "9ff3580f17b4b23d5a9109f32bab08943b857dd4",
+                    "artifacts_in":  [
+                                         "docs/issue-reports/WF03-gh364-20260801-step-03-backend-dev-INNER-REPORT.yaml",
+                                         "scratch/WF03-gh364-20260801-step03-full-integration-utf8.log",
+                                         "scratch/WF03-gh364-20260801-step03-full-integration.log",
+                                         "docs/issues/ISS-0106.json",
+                                         "docs/issues/ISS-0107.json",
+                                         "docs/issues/ISS-0108.json",
+                                         "docs/issues/ISS-0109.json",
+                                         "tests/integration/helpers.zig",
+                                         "tests/integration/tnt_schema_isolation_test.zig",
+                                         "tests/integration/db_integration_test.zig",
+                                         "build.zig",
+                                         "tools/lint_migration_schema.py",
+                                         "docs/issue-reports/WF03-gh364-20260801-step-01-issue-fixer-INNER-REPORT.yaml"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Execute WF-03 Steps 0.5 and 1 ONLY for the blocker set surfaced by the #364 Step 3 verification (handoff 3195ef19). Map each blocker to its existing or new local ISS + GitHub issue without duplication. Determine exact root cause, minimally correct resolution strategy, affected files, environment-vs-code-defect classification, and a safe sequential remediation order that respects current branch ownership. Do NOT implement source changes. The triage must close the gap between \u0027no implementation delta was needed for #364 itself\u0027 (certified by Step 3) and \u0027full zig build test-integration is red because of three independent blockers, none of which were introduced by #364\u0027s merged PR #367\u0027.",
+                 "acceptance_criteria":  [
+                                             "Each of GH-366, GH-374, GH-359 is mapped to its existing or new local ISS + GitHub issue without duplication (no second gh issue create for GH-366, GH-359, or GH-374).",
+                                             "Exact root cause and minimally correct resolution strategy are provided for GH-366, GH-374, GH-359 with evidence citations (file paths, line numbers, log line numbers, PR/merge-commit SHAs) and explicit affected files.",
+                                             "Environment-vs-stale-DB-vs-code-defect classification is explicit for each blocker, including any docker-compose / docker-override / db_test container cleanup that can be done without source changes.",
+                                             "A safe sequential remediation order is provided that respects branch ownership (current branch = feature/WF03-gh364-20260801, current HEAD = 9ff3580, main = origin/main, no nested branches conflicting with this branch\u0027s #364 scope).",
+                                             "Recommendation on inline-vs-nested-branches is given for each blocker (do the blocker fixes land on this branch, a new sibling branch off origin/main, or a nested branch off this branch\u0027s HEAD).",
+                                             "Mandatory YAML inner report is produced at docs/issue-reports/WF03-gh364-20260801-step-03a-issue-fixer-blockers-INNER-REPORT.yaml.",
+                                             "Handoff completes with status COMPLETED and a single next_action that fans out to ORCH for one or more child WF-03 runs (one per blocker) so ORCH can route per-blocker without further triage."
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:search-issues",
+                                           "fn:validate-completeness",
+                                           "fn:register-inner-report",
+                                           "fn:complete-handoff"
+                                       ]
+             },
+    "result":  {
+                   "status":  "PASS",
+                   "summary":  "Triaged the three blockers surfaced by Step 3 verification: GH-366 (regression of ISS-0107 fix at helpers.zig:99; same root cause class as ISS-0107 rework-1, second acquire site not previously bracketed), GH-374 (Windows bare `python3` resolves to Microsoft Store AppExecutionAlias; new pure-environment defect, single-file test fix), GH-359 (pre-existing ISS-0101 latent landmine; long-lived db_test container still carries stray tenant_default.schema_migrations shadow table, env-only cleanup required, no source change). All three mapped to existing local ISS / GitHub issue without duplication (ISS-0107, new ISS-0111 recommended, ISS-0101). Recommended safe sequential order: GH-359 (env) → GH-374 (test fix) → GH-366 (helper fix), then redispatch Step 3 / TEST-RUNNER Step 5 for fresh full-suite green. All three should land inline on the current feature/WF03-gh364-20260801 branch (no nested branches) — files do not overlap, change surface is tiny per blocker, and the branch is already the canonical home for the #364 + blocker-fix chain. No source, build, test, or migration changes implemented by this triage handoff.",
+                   "artifacts_out":  [
+                                         "docs/issue-reports/WF03-gh364-20260801-step-03a-issue-fixer-blockers-INNER-REPORT.yaml",
+                                         "scratch\\WF03-gh364-20260801-triage-log-scan.txt",
+                                         "scratch\\WF03-gh364-20260801-triage-python-scan.txt",
+                                         "GitHub #366 already reopened: https://github.com/tvolodi/R-Co/issues/366#issuecomment-5149832990",
+                                         "GitHub #374 already filed: https://github.com/tvolodi/R-Co/issues/374",
+                                         "GitHub #359 already open: https://github.com/tvolodi/R-Co/issues/359"
+                                     ],
+                   "issues":  [
+                                  {
+                                      "id":  "GH-366",
+                                      "severity":  "BLOCKER",
+                                      "description":  "Recurrence of closed ISS-0107 fix fc5884b at a different acquire site (helpers.zig:99 `runMigrations` lock). 44 55P03 + 2 40P01 occurrences in fresh full-suite run. Recommended fix: bracket line-99 acquire with SET lock_timeout = `90s` / `5s` matching the proven ISS-0107 rework-1 pattern at line 487. Affected file: tests/integration/helpers.zig (1 file, ~4 lines).",
+                                      "affected_requirement":  null
+                                  },
+                                  {
+                                      "id":  "GH-374",
+                                      "severity":  "MAJOR",
+                                      "description":  "tests/integration/tnt_schema_isolation_test.zig TC-TNT-02-03/04 launch bare `python3` which resolves to Microsoft Store AppExecutionAlias on Windows (exit 49). Recommended fix: replace argv with helper-resolved interpreter (.venv\\Scripts\\python.exe with BPM_TEST_PYTHON override, fallback to bare python3 for non-Windows). Affected file: tests/integration/tnt_schema_isolation_test.zig (lines 591-593 and 659-661, 4-6 lines).",
+                                      "affected_requirement":  null
+                                  },
+                                  {
+                                      "id":  "GH-359",
+                                      "severity":  "MAJOR",
+                                      "description":  "Pre-existing ISS-0101 latent landmine: long-lived db_test container carries stray tenant_default.schema_migrations shadow table from before migration tracking consolidated onto public.schema_migrations. Symptom: 23505 on schema_migrations_schema_version_uq + `relation \"events\" does not exist` from shadow-table-resolution. Recommended fix: pure environment cleanup `DROP TABLE IF EXISTS tenant_default.schema_migrations;` against BPM_TEST_DB_URL, no source change. ISS-0101 already open on GitHub.",
+                                      "affected_requirement":  null
+                                  }
+                              ],
+                   "git_evidence":  {
+                                        "branch_name":  "feature/WF03-gh364-20260801",
+                                        "commit_sha_list":  [
+
+                                                            ],
+                                        "remote_branch":  "origin/feature/WF03-gh364-20260801",
+                                        "push_status":  "skipped",
+                                        "pr_url":  null,
+                                        "pr_create_error":  null,
+                                        "reason":  "Triage only — no source, build, test, or migration changes implemented."
+                                    },
+                   "next_action":  "ORCH runs three child WF-03 runs sequentially on the same feature/WF03-gh364-20260801 branch: (1) GH-359 = ad-hoc BACKEND-DEV env-cleanup (drop tenant_default.schema_migrations shadow table, verify by re-running full suite, TC-TNT-03-* symptoms disappear); (2) GH-374 = small WF-03 child run for the python interpreter fix in tnt_schema_isolation_test.zig (1 file, verify by focused TC-TNT-02-03/04 pass); (3) GH-366 = medium WF-03 child run for the helpers.zig:99 lock_timeout bracket (1 file, verify by full zig build test-integration with zero 40P01 + zero 55P03 + TC-DB-01-01/02 from actual passing output). After all three are green, ORCH redispatches BACKEND-DEV Step 3 (handoff 3195ef19) or TEST-RUNNER Step 5 for fresh full-suite evidence, then DOC-UPDATER Step Final merges the feature branch into main and deletes it per the GitHub Branch Management MANDATORY rule."
+               },
+    "rework_count":  0,
+    "max_rework":  3
+}
