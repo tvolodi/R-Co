@@ -226,7 +226,9 @@ test "TC-OIDC-22-01: bootstrap state is singleton and bootstrap audit event type
         \\SELECT COUNT(*)::text
         \\FROM pg_constraint c
         \\JOIN pg_class t ON t.oid = c.conrelid
+        \\JOIN pg_namespace n ON n.oid = t.relnamespace
         \\WHERE t.relname = 'agent_bootstrap_audit'
+        \\  AND n.nspname = 'public'
         \\  AND pg_get_constraintdef(c.oid) LIKE '%BOOTSTRAP_REENABLED%'
     , &[_][]const u8{});
     defer constraint_result.deinit();

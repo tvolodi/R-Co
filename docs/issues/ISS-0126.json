@@ -3,34 +3,43 @@
   "title": "TC-OIDC-22-01 bootstrap state singleton failure isolated from other OIDC regressions",
   "status": "OPEN",
   "severity": "MAJOR",
-  "category": "code-defect / oidc-bootstrap-lifecycle",
+  "category": "test-code-error / oidc-bootstrap-lifecycle",
   "run_id": "WF03-gh375-20260801",
   "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
   "affected_areas": [
     "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
-    "src/identity/oidc.zig",
-    "src/identity/bootstrap.zig",
-    "migrations/"
+    "tests/integration/helpers.zig"
   ],
   "created_at": "2026-08-01T12:09:25Z",
+  "updated_at": "2026-08-01T14:48:00Z",
   "resolved_at": null,
-  "notes": "Cluster O from Step 5c. TC-OIDC-22-01 'bootstrap state is singleton and bootstrap audit event types are enforced' fails at tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig:234 with `try testing.expectEqual(@as(u32, 1), try parseCount(constraint_result.rows[0][0]))` returning a value other than 1. Constraint-reported rows are stacked one per test (multiple expectEqual calls in the same test) \u2014 this indicates the constraint for bootstrap state singleton has multiple rows rather than 1. Observed 4 sequential failure lines in the same test, suggesting the bootstrap-state table contains more than one row due to a previous run leaving rows behind. Not covered by any existing ISS-0101..0120. Evidence: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log offset 2341760.",
+  "notes": "Cluster O from Step 5c. TC-OIDC-22-01 'bootstrap state is singleton and bootstrap audit event types are enforced' fails at tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig:234 with `try testing.expectEqual(@as(u32, 1), try parseCount(constraint_result.rows[0][0]))` returning 2 instead of 1. Confirmed via direct DB query against BPM_TEST_DB_URL: `SELECT COUNT(*) FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid WHERE t.relname = 'agent_bootstrap_audit' AND pg_get_constraintdef(c.oid) LIKE '%BOOTSTRAP_REENABLED%'` returns 2. With schema filter `JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = 'public'`, returns 1. The earlier hypothesis (bootstrap_state seeded multiple times) was wrong: `agent_bootstrap_state` has 0 rows; the test is purely a schema-introspection query. Evidence: scratch/WF03-gh392-20260801/diag5_output.txt. Re-classification: Category E (test code error) per WF-03 taxonomy.",
   "root_cause": {
-    "type": "code-defect",
-    "details": "TBD. Initial hypothesis: the bootstrap state table was seeded multiple times (once per test run that failed before cleanup) and the OIDC test's expectEqual(1) check is failing because the table now has multiple rows. The constraint that should enforce singleton cardinality is not unique enough, or the cleanup path is missing for this specific table."
+    "type": "test-code-error",
+    "details": "Category E: the test SQL query in TC-OIDC-22-01 is missing the pg_namespace filter. Migration 042 (042_oidc16_26_agent_lifecycle_foundations.sql) is non-GBL-prefixed and therefore applied to BOTH public schema AND every tenant_* schema (incl. tenant_default which the test harness uses via search_path). Each application creates an identical CHECK constraint on agent_bootstrap_audit, so the constraint exists in both schemas. The test query joins pg_constraint -> pg_class but never joins pg_namespace, so it counts both copies and observes 2 instead of 1. The very next test in the same file (TC-OIDC-23-01) follows the correct pattern using pg_indexes with `schemaname = 'public'`, confirming the test author's intent was to verify the public-schema constraint. agent_bootstrap_state already has PRIMARY KEY + CHECK singleton constraint (singleton_key='global'); no strengthening required."
   },
-  "candidate_resolution": "Add a TRUNCATE bootstrap_state in tests/integration/helpers.zig resetTestData(), strengthen the singleton constraint to enforce unique-index cardinality, and ensure each OIDC test cleans up after itself.",
+  "candidate_resolution": "Schema-qualify the pg_constraint query in TC-OIDC-22-01 by adding `JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = 'public'`. Optionally also add `agent_bootstrap_state` and `agent_bootstrap_audit` to resetTestData() in helpers.zig for future-proofing against test cross-contamination (separate from the bug itself).",
   "resolution": null,
   "files_to_change": [
     "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
-    "src/identity/oidc.zig",
-    "src/identity/bootstrap.zig",
-    "tests/integration/helpers.zig",
-    "migrations/"
+    "tests/integration/helpers.zig"
   ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/392",
   "prevention": [
-    "Add bootstrap_state to the standard cleanup set in resetTestData().",
-    "Use a unique partial index on bootstrap_state to enforce real singleton cardinality."
+    "Always JOIN pg_namespace when introspecting single-schema objects via system catalogs and filter by nspname.",
+    "System catalog queries for pg_constraint/pg_class/pg_index are schema-agnostic; require explicit schema filtering.",
+    "Keep agent bootstrap tables in test reset coverage for future isolation."
+  ],
+  "occurrences": [
+    {
+      "run_id": "WF03-gh375-20260801",
+      "step": "5c",
+      "description": "TC-OIDC-22-01 discovery: pg_constraint introspection counted identical constraints in public and tenant_default because the query omitted pg_namespace."
+    },
+    {
+      "run_id": "WF03-gh392-20260801",
+      "step": "0.5/1",
+      "description": "Confirmed ISS-0126 category, root cause, schema-aware prevention, and GitHub issue linkage during registry and diagnosis review."
+    }
   ]
 }

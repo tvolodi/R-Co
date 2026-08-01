@@ -1,0 +1,39 @@
+{
+  "handoff_id": "wf03-gh392-20260801-step-03",
+  "run_id": "WF03-gh392-20260801",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-01T15:01:00Z",
+  "started_at": null,
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "stage": "WF-03 Step 3 — Apply fix per design for ISS-0126",
+  "context": {
+    "stage": "Step 3 — fix implementation",
+    "branch_name": "feature/WF03-gh392-20260801",
+    "issue_id": "ISS-0126",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/392",
+    "related_handoff_ids": ["wf03-gh392-20260801-step-02", "wf03-gh392-20260801-step-02b"],
+    "artifacts_in": [
+      "src/design/fix-ISS-0126.md"
+    ]
+  },
+  "task": {
+    "description": "Apply the fix exactly per the validated design in src/design/fix-ISS-0126.md.\n\n**Change #1 (mandatory):** In tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig, inside the TC-OIDC-22-01 test block, modify the constraint_result query to add a JOIN pg_namespace filter:\n\nBefore (current lines ~224-227):\n```zig\nvar constraint_result = try conn.query(testing.allocator,\n    \\\\\n    SELECT COUNT(*)::text\n    \\\\\n    FROM pg_constraint c\n    \\\\\n    JOIN pg_class t ON t.oid = c.conrelid\n    \\\\\n    WHERE t.relname = 'agent_bootstrap_audit'\n    \\\\\n      AND pg_get_constraintdef(c.oid) LIKE '%BOOTSTRAP_REENABLED%'\n, &[_][]const u8{});\n```\n\nAfter:\n```zig\nvar constraint_result = try conn.query(testing.allocator,\n    \\\\\n    SELECT COUNT(*)::text\n    \\\\\n    FROM pg_constraint c\n    \\\\\n    JOIN pg_class t ON t.oid = c.conrelid\n    \\\\\n    JOIN pg_namespace n ON n.oid = t.relnamespace\n    \\\\\n    WHERE t.relname = 'agent_bootstrap_audit'\n    \\\\\n      AND n.nspname = 'public'\n    \\\\\n      AND pg_get_constraintdef(c.oid) LIKE '%BOOTSTRAP_REENABLED%'\n, &[_][]const u8{});\n```\n\n**Change #2 (optional, recommended hygiene):** In tests/integration/helpers.zig, inside resetTestData(), add two `truncateTableBestEffort` calls:\n```zig\ntry truncateTableBestEffort(conn, \"agent_bootstrap_state\");\ntry truncateTableBestEffort(conn, \"agent_bootstrap_audit\");\n```\nInsert them in the existing list of truncateTableBestEffort calls.\n\nValidation steps:\n1. git branch --show-current must output feature/WF03-gh392-20260801 (STOP if not)\n2. Make the edits to both files.\n3. Run `zig build` — must exit 0.\n4. Run `zig build test` — must exit 0.\n5. Run `zig build test-integration` (set BPM_TEST_DB_URL first) and verify TC-OIDC-22-01 now passes. Save the log to scratch/WF03-gh392-20260801/step-03-test-integration.log.\n6. If any other test fails that was previously passing, STOP and report FAIL with the regression list.\n7. Commit: `git add -A && git commit -m \"fix(WF03-gh392): schema-qualify TC-OIDC-22-01 pg_constraint query (ISS-0126 / GH #392)\"` then `git push origin feature/WF03-gh392-20260801`.\n\nSecurity rules:\n- No SQL string interpolation (use $1, $2 — but this is a SELECT, no params needed).\n- No secrets in source.\n- No mocks/stubs in tests.\n\nFix scope:\n- 2 source files max (test file + helpers.zig).\n- No migration changes.\n- No new files needed.\n\nReturn PASS when:\n- Both edits applied.\n- zig build, zig build test, zig build test-integration all exit 0 (or test-integration shows only pre-existing unrelated failures NOT introduced by this fix — see CLAUDE.md 'Unblock-Everything': if the failures are unrelated to this fix and not introduced by it, you may proceed but must note them).\n- TC-OIDC-22-01 passes.\n- Commit pushed to feature branch.\n\nReturn FAIL if:\n- Any BLOCKER from build/test.\n- A regression was introduced.\n\nUpdate the handoff:\n- status: COMPLETED\n- result.status: PASS or FAIL\n- result.summary: short paragraph\n- result.artifacts_out: list of changed files (commit SHA)\n- result.issues: [] or list\n- result.next_action: PASS → \"Route to TEST-RUNNER (Step 5) — pure test fix, no business logic changed; can skip Step 4 (test design) and Step 4b (test design validator) per WF-03 Step 3 'Fix scope rule' — Fix Scope Rule: 'Adds or modifies business logic? No — pure regression fix; tests already cover the behaviour. Skip to TEST-RUNNER directly (Step 5)'. This is a Category E fix (test code error) — there is no new business logic.\"\n- started_at, completed_at\n\nUpdate handoffs/registry.json: find entry handoff_id='wf03-gh392-20260801-step-03' and set status to COMPLETED.",
+    "acceptance_criteria": [
+      "git branch --show-current outputs feature/WF03-gh392-20260801",
+      "Both edits applied to source files",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "TC-OIDC-22-01 passes (verified via zig build test-integration)",
+      "Commit pushed to feature/WF03-gh392-20260801"
+    ],
+    "functions_to_call": ["fn:check-zig-build", "fn:run-unit-tests", "fn:run-integration-tests", "fn:register-inner-report"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
