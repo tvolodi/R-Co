@@ -12,7 +12,10 @@
 -- The schema_migrations table tracks which migrations have been applied.
 
 -- Verify core tables exist and are backward-compatible
-CREATE TABLE IF NOT EXISTS schema_migrations (
+-- Schema-qualified as public.schema_migrations — see 001_event_store.sql for
+-- why an unqualified reference here would create a stray per-tenant shadow
+-- copy (GitHub #368 / ISS-0108).
+CREATE TABLE IF NOT EXISTS public.schema_migrations (
     version    TEXT        PRIMARY KEY,
     applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

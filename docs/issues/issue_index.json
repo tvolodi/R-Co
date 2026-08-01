@@ -1,21 +1,40 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-07-31T20:56:33Z",
-  "next_issue_id": 109,
+  "last_updated": "2026-07-31T23:36:06Z",
+  "next_issue_id": 110,
   "issues": [
+    {
+      "id": "ISS-0109",
+      "title": "lint_migration_schema.py reports false-positive BLOCKER on public.<table> mentioned inside a -- prose comment (081_iss101_timers_failed_status.sql)",
+      "status": "OPEN",
+      "severity": "MINOR",
+      "category": "tooling / lint-false-positive-comment-text-scanned-as-sql",
+      "run_id": "WF03-iss0108-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tools/lint_migration_schema.py",
+        "migrations/081_iss101_timers_failed_status.sql"
+      ],
+      "created_at": "2026-07-31T23:36:06Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/370"
+    },
     {
       "id": "ISS-0108",
       "title": "db_integration_test.zig TC-DB-01-01/02 use unqualified `schema_migrations` reference, which silently resolves to a stray legacy tenant_default.schema_migrations shadow table under the tenant_default,public search_path instead of public.schema_migrations",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MINOR",
       "category": "test-isolation / unqualified-table-reference-resolves-to-shadow-schema",
-      "run_id": "WF03-iss0107-20260731",
+      "run_id": "WF03-iss0108-20260801",
       "handoff_id": "aef0e7e1-4757-4d1e-aff3-8e0bc729ca2f",
       "affected_areas": [
-        "tests/integration/db_integration_test.zig"
+        "tests/integration/db_integration_test.zig",
+        "migrations/001_event_store.sql",
+        "migrations/055_xc06_backwards_compatibility.sql",
+        "migrations/GBL-104_iss0108_drop_stray_tenant_schema_migrations.sql"
       ],
       "created_at": "2026-07-31T19:43:19Z",
-      "resolved_at": null,
+      "resolved_at": "2026-07-31T23:36:06Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/368"
     },
     {
