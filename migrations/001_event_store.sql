@@ -4,7 +4,14 @@
 
 -- ── Schema migrations tracker ─────────────────────────────────────────────────
 -- Idempotent: run this first on every migration pass.
-CREATE TABLE IF NOT EXISTS schema_migrations (
+-- Schema-qualified as public.schema_migrations: this file is non-GBL and is
+-- replayed once per tenant schema under a tenant_default,public search_path
+-- (see runForSchema() in src/db/migrations.zig). An unqualified reference
+-- here would create a permanently-empty shadow copy in the tenant schema on
+-- every fresh provision, since Migrations.runForSchema() already bootstraps
+-- the real tracker as public.schema_migrations before any migration file
+-- runs (see GitHub #368 / ISS-0108).
+CREATE TABLE IF NOT EXISTS public.schema_migrations (
     version     TEXT        PRIMARY KEY,
     applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

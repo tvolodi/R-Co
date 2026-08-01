@@ -10,11 +10,11 @@
 -- The migration is idempotent: the DO $$ block drops the old constraint before
 -- adding the new one, so the migration can safely be re-run.
 --
--- NOTE ON PUBLIC SCHEMA: timers lives in per-tenant schemas only (public.timers was
--- dropped by GBL-073). The migration runner applies every non-GBL migration to both
--- public and all tenant schemas. When run against public (where timers does not exist),
--- this block is a no-op thanks to the to_regclass() guard. When run against a tenant
--- schema where timers exists, it replaces the constraint.
+-- NOTE ON PUBLIC SCHEMA: timers lives in per-tenant schemas only (the public-schema
+-- copy was dropped by GBL-073). The migration runner applies every non-GBL migration
+-- to both public and all tenant schemas. When run against public (where timers does
+-- not exist), this block is a no-op thanks to the to_regclass() guard. When run
+-- against a tenant schema where timers exists, it replaces the constraint.
 
 DO $$
 DECLARE

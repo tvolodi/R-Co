@@ -59,10 +59,14 @@ test "TC-DB-01-01: migrations apply all schemas and populate schema_migrations" 
     var h = try TestHarness.init(alloc);
     defer h.deinit();
 
-    // schema_migrations must have at least one entry.
+    // schema_migrations must have at least one entry. Always schema-qualified
+    // as public.schema_migrations: TestHarness uses a tenant_default,public
+    // search_path, and an unqualified reference can silently resolve to a
+    // stray tenant_default.schema_migrations shadow table instead (see
+    // GitHub #368 / ISS-0108).
     var count_result = try h.conn.query(
         alloc,
-        "SELECT COUNT(*) FROM schema_migrations",
+        "SELECT COUNT(*) FROM public.schema_migrations",
         &.{},
     );
     defer count_result.deinit();
@@ -72,23 +76,42 @@ test "TC-DB-01-01: migrations apply all schemas and populate schema_migrations" 
         try std.testing.expect(n > 0);
     }
 
-    // Core Stage-1 tables must exist.
-    var tables_result = try h.conn.query(
+    // Core Stage-1 tables must exist. schema_migrations is the only one of
+    // these that still lives in public — GBL-073 (TNT-01 cleanup) dropped
+    // events/instance_projections/instance_sequence/event_type_registry/
+    // events_archive from public once schema-per-tenant provisioning made
+    // tenant_default the sole home for business tables.
+    var public_tables_result = try h.conn.query(
         alloc,
         \\SELECT COUNT(*) FROM information_schema.tables
         \\WHERE table_schema = 'public'
+        \\  AND table_name IN ('schema_migrations')
+    ,
+        &.{},
+    );
+    defer public_tables_result.deinit();
+    try std.testing.expect(public_tables_result.rows.len > 0);
+    if (public_tables_result.rows[0][0]) |s| {
+        const n = try std.fmt.parseInt(i64, s, 10);
+        try std.testing.expectEqual(@as(i64, 1), n);
+    }
+
+    var tenant_tables_result = try h.conn.query(
+        alloc,
+        \\SELECT COUNT(*) FROM information_schema.tables
+        \\WHERE table_schema = 'tenant_default'
         \\  AND table_name IN (
-        \\    'schema_migrations', 'events', 'instance_projections',
+        \\    'events', 'instance_projections',
         \\    'instance_sequence', 'event_type_registry', 'events_archive'
         \\  )
     ,
         &.{},
     );
-    defer tables_result.deinit();
-    try std.testing.expect(tables_result.rows.len > 0);
-    if (tables_result.rows[0][0]) |s| {
+    defer tenant_tables_result.deinit();
+    try std.testing.expect(tenant_tables_result.rows.len > 0);
+    if (tenant_tables_result.rows[0][0]) |s| {
         const n = try std.fmt.parseInt(i64, s, 10);
-        try std.testing.expectEqual(@as(i64, 6), n);
+        try std.testing.expectEqual(@as(i64, 5), n);
     }
 }
 
@@ -101,10 +124,11 @@ test "TC-DB-01-02: re-running migrations is idempotent" {
     // First init: apply all migrations.
     var h1 = try TestHarness.init(alloc);
 
-    // Snapshot count of applied migrations.
+    // Snapshot count of applied migrations. Schema-qualified — see rationale
+    // in TC-DB-01-01 above (GitHub #368 / ISS-0108).
     var before_result = try h1.conn.query(
         alloc,
-        "SELECT COUNT(*) FROM schema_migrations",
+        "SELECT COUNT(*) FROM public.schema_migrations",
         &.{},
     );
     defer before_result.deinit();
@@ -124,7 +148,7 @@ test "TC-DB-01-02: re-running migrations is idempotent" {
 
     var after_result = try h2.conn.query(
         alloc,
-        "SELECT COUNT(*) FROM schema_migrations",
+        "SELECT COUNT(*) FROM public.schema_migrations",
         &.{},
     );
     defer after_result.deinit();
