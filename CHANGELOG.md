@@ -2,6 +2,16 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [ISS-0109 / lint_migration_schema.py strips `--` comments before business-table scan] — 2026-08-01
+
+### Fixed
+- **ISS-0109 (GitHub [#370](https://github.com/tvolodi/R-Co/issues/370), MINOR)**: `tools/lint_migration_schema.py`'s `_BUSINESS_TABLE_PATTERN`/`_PERMITTED_TABLE_PATTERN` regexes scanned each migration file's raw line text, including plain `--`-prefixed prose comments, not just executable SQL. A documentation comment in `migrations/081_iss101_timers_failed_status.sql` mentioning `public.timers` in passing (already reworded as part of the ISS-0108 fix, PR #368/#371, which incidentally masked this symptom) tripped a false `[BLOCKER] M001` on an unmodified, correct migration — and the same false positive is reproducible on any future `--` comment mentioning a business table by name, since the underlying gap was never closed. Fixed by adding `_strip_line_comment()`, which strips a trailing `--` line comment from each line (honoring single-quoted string literals, so a `--` embedded inside a string is not mistaken for a comment start), and running the business-table/permitted-table regex matches and the `DO $$` block-boundary detector against the comment-stripped text instead of the raw line. The pre-existing `DO` block string-literal scan (a deliberate, separate check for embedded dynamic SQL) is untouched.
+
+### Verified
+- Confirmed the bug reproduces pre-fix via a synthetic file (`-- ... public.timers ...` comment → false BLOCKER, exit 1).
+- Post-fix: same synthetic comment-only file → clean, exit 0. A synthetic file with a genuine `SELECT * FROM public.timers` SQL reference still correctly flags `[BLOCKER] M001`, exit 1. A line with code followed by a trailing `--` comment still checks the code portion and ignores the comment. A `--` embedded inside a single-quoted string literal inside a `DO $$` block is still correctly flagged (not mistaken for a comment start).
+- Full `python tools/lint_migration_schema.py migrations` run: 97 files scanned, exit 0, same MINOR-count baseline as before the fix — no regression.
+
 ## [ISS-0107 / TestHarness advisory lock widened to cover resetTestData()/applyCompatibilityShims(), with scoped lock_timeout override] — 2026-08-01
 
 ### Fixed

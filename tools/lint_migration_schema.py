@@ -102,11 +102,34 @@ class Issue:
 # ---------------------------------------------------------------------------
 
 
+def _strip_line_comment(line: str) -> str:
+    """
+    Strip a trailing `--` SQL line comment, respecting single-quoted string
+    literals so a `--` inside a string (e.g. '...--...') is not mistaken for
+    a comment marker. Standard SQL comment semantics: `--` outside of a
+    string literal runs to end of line.
+    """
+    in_string = False
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if ch == "'":
+            in_string = not in_string
+        elif not in_string and line[i : i + 2] == "--":
+            return line[:i]
+        i += 1
+    return line
+
+
 def lint_file(path: str) -> list[Issue]:
     """
     Scan a single .sql file for public.<business_table> references.
 
     GBL-prefixed files are exempt (they operate on the global public schema).
+
+    Plain `--` line comments are stripped before matching, so prose that
+    merely mentions a business table by name is not flagged as executable
+    SQL (TNT-02 only cares about actual schema-qualified references).
 
     Also scans string literals inside DO $$ BEGIN ... END $$ blocks for
     embedded SQL that might reference business tables by schema-qualified name.
@@ -134,23 +157,26 @@ def lint_file(path: str) -> list[Issue]:
     do_block_depth = 0
 
     for lineno, line in enumerate(lines, start=1):
+        code = _strip_line_comment(line)
+
         # Detect DO $$ block boundaries (simple heuristic — handles common patterns).
-        stripped = line.strip().upper()
-        if re.search(r"\bDO\b.*\$\$", line, re.IGNORECASE):
+        # Uses the comment-stripped text so a `--` comment mentioning "DO $$" in
+        # prose cannot be mistaken for an actual block boundary.
+        if re.search(r"\bDO\b.*\$\$", code, re.IGNORECASE):
             in_do_block = True
             do_block_depth += 1
-        elif in_do_block and "$$" in line:
+        elif in_do_block and "$$" in code:
             do_block_depth -= 1
             if do_block_depth <= 0:
                 in_do_block = False
                 do_block_depth = 0
 
-        # Check for business table references on this line.
+        # Check for business table references on this line's code (comments excluded).
         # Inside a DO block: also check inside single-quoted string literals.
-        targets_to_check = [line]
+        targets_to_check = [code]
         if in_do_block:
             # Extract single-quoted string literals within the DO block.
-            string_literals = re.findall(r"'([^']*)'", line)
+            string_literals = re.findall(r"'([^']*)'", code)
             targets_to_check.extend(string_literals)
 
         for target in targets_to_check:
@@ -172,7 +198,7 @@ def lint_file(path: str) -> list[Issue]:
         # Check for permitted public references — emit MINOR informational note.
         # These are valid (e.g. public.schema_migrations in migration runner code)
         # and do NOT cause a non-zero exit.
-        for match in _PERMITTED_TABLE_PATTERN.finditer(line):
+        for match in _PERMITTED_TABLE_PATTERN.finditer(code):
             table = match.group(1)
             col = match.start() + 1
             issues.append(
