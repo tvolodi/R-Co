@@ -1,0 +1,71 @@
+{
+  "handoff_id": "f72648a5-4ff9-4234-acd3-952d98633a52",
+  "run_id": "WF03-gh375-20260801",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-01T10:03:19Z",
+  "started_at": "2026-08-01T10:03:38Z",
+  "completed_at": "2026-08-01T10:09:26Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 1 (root-cause diagnosis)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "555ec95e-342f-413e-aa50-ad90bc21fcfb",
+      "8cff840b-9d33-4d80-ae27-8a6c9c22842d"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0112.json",
+      "scratch/WF03-gh364-20260801-step03e/_integration_final.log",
+      "scratch/WF03-gh364-20260801-step03e/schema_probe.txt",
+      "scratch/WF03-gh364-20260801-step03e/tenant_rows.txt",
+      "scratch/WF03-gh364-20260801-step03e/_iss503_final.log",
+      "docs/agents/workflows/WF-03_issue_resolving.md"
+    ]
+  },
+  "task": {
+    "description": "Step 1 of WF-03: root-cause diagnosis for ISS-0112 / GH #375 (Migration/schema drift breaking 42 integration tests). Diagnose the root cause across the 42 failures, classify the failure category (see WF-03_issue_resolving.md \u00a7'Failure category' \u2014 likely Category F or A \u2014 environment/schema drift), update ISS-0112.json with diagnosis fields (category, severity, root_cause, files_to_change), and write the inner report. DO NOT implement any fix \u2014 that is Steps 2/3.",
+    "acceptance_criteria": [
+      "ISS-0112.json: category field set to one of {schema-drift, environment, integration-failures, etc.} \u2014 explain in root_cause.details",
+      "ISS-0112.json: severity set (BLOCKER | MAJOR | MINOR \u2014 preliminary; final is determined by Step 6 RELEASE-VALIDATOR for BLOCKER)",
+      "ISS-0112.json: root_cause populated with at least {type, details}",
+      "ISS-0112.json: files_to_change populated with concrete paths under migrations/, src/db/, tests/integration/, tools/",
+      "ISS-0112.json: requirement_ids populated with the requirement IDs the failing tests cover (search tests/integration/ for test IDs)",
+      "Inner report written to docs/issue-reports/ISS-0112-step-1-WF03-gh375-20260801.yaml per fn:register-inner-report format",
+      "Commit + push to feature/WF03-gh375-20260801",
+      "handoff result.status == 'PASS'"
+    ],
+    "functions_to_call": [
+      "fn:load-handoff",
+      "fn:load-requirements",
+      "fn:check-zig-build",
+      "fn:run-unit-tests",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed ISS-0112 as Category F test-infrastructure drift: the shared db_test migration ledger reports 1 row for 97 migration files, schema objects and tenant schemas do not match the recorded baseline, and production-defaulted LEGACY_RLS test tenants leak past cleanup. The 42 integration failures are clustered consequences of INV-TI-1/INV-TI-2 violations, so severity is BLOCKER under the Green-Main Gate.",
+    "artifacts_out": [
+      "docs/issues/ISS-0112.json",
+      "docs/issue-reports/ISS-0112-step-1-WF03-gh375-20260801.yaml"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh375-20260801",
+      "commit_sha_list": [
+        "085d8a4074517077e36f4795acb12923e675ddc3"
+      ],
+      "remote_branch": "origin/feature/WF03-gh375-20260801",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to CODE-DESIGNER Step 2 (fix design)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
