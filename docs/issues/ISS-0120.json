@@ -1,0 +1,23 @@
+{
+  "id": "ISS-0120",
+  "title": "EXP-402 orphan restore SQL leaves parameter $2 untyped",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "sql-parameter-typing",
+  "run_id": "WF03-gh364-20260801",
+  "handoff_id": null,
+  "affected_areas": [
+    "tests/integration/exp401_exp402_comp_restore_test.zig",
+    "src/restore/",
+    "src/export/"
+  ],
+  "created_at": "2026-08-01T08:52:13Z",
+  "resolved_at": null,
+  "notes": "Cluster I from the final integration run: TC-EXP-402-02 fails in markRestoredOrphanInTx with PostgreSQL 42P18, could not determine data type of parameter $2. Evidence: _integration_final.log lines 42498-42528.",
+  "root_cause": "Initial hypothesis: markRestoredOrphanInTx uses parameter $2 only in a context where PostgreSQL cannot infer its type, without an explicit SQL cast or typed comparison target.",
+  "candidate_resolution": "Add an explicit PostgreSQL cast for parameter $2 matching the destination/domain type, confirm all placeholders are used consistently, and retain prepared statements without interpolation.",
+  "resolution": null,
+  "files_to_change": [],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/383",
+  "prevention": []
+}

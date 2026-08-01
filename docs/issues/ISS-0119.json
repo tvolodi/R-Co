@@ -1,0 +1,24 @@
+{
+  "id": "ISS-0119",
+  "title": "Timer retry, pending, locking, and rollback semantics fail",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "timer-behavior",
+  "run_id": "WF03-gh364-20260801",
+  "handoff_id": null,
+  "affected_areas": [
+    "tests/integration/sch02_timer_polling_test.zig",
+    "tests/integration/sch303_timer_retry_test.zig",
+    "src/scheduler/",
+    "src/engine/"
+  ],
+  "created_at": "2026-08-01T08:52:13Z",
+  "resolved_at": null,
+  "notes": "Cluster H from the final integration run: TC-SCH-303-04, TC-SCH-02-02, and TC-SCH-02-03 fail on retry/pending semantics, rollback expectations, and one PostgreSQL 55P03 row-lock conflict on instance_projections. Evidence: _integration_final.log lines 8499-8545 and 16647-16874.",
+  "root_cause": "TBD. Initial hypothesis: timer polling and retry transactions lock/update instance projections in an inconsistent order and do not preserve the expected pending state after rollback or retry failure.",
+  "candidate_resolution": "Specify the timer state machine and transaction boundaries, use deterministic lock ordering or SKIP LOCKED semantics, and make retry/rollback transitions atomic with projection updates.",
+  "resolution": null,
+  "files_to_change": [],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/382",
+  "prevention": []
+}

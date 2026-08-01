@@ -1,0 +1,188 @@
+report_id: WF03-gh364-20260801-step-02b-code-design-validator
+agent_id: CODE-DESIGN-VALIDATOR
+run_id: WF03-gh364-20260801
+workflow_id: WF-03
+step: "02b"
+created_at: "2026-08-01T04:18:07Z"
+handoff_id: 9c3a7e51-1d28-4f6b-9c1a-7b2d8e5f4062
+github_issue: https://github.com/tvolodi/R-Co/issues/364
+local_issue: ISS-0106
+design_artefact: src/design/fix-ISS-0106.md
+design_classification: E
+design_classification_rationale: >-
+  Single Type E. The design captures a build-graph/dependency-ordering change
+  plus a documentation comment. No CRUD endpoint, list page, migration, or
+  React Flow node is produced. The existing prose artefact at
+  src/design/fix-ISS-0106.md already contains every required element
+  (module purpose, public interface/named build steps, error taxonomy,
+  callers/scripts impacted, DAG diagram, non-solutions). No Type A/B/C/D
+  parameter file is generated.
+summary: >-
+  Re-validated src/design/fix-ISS-0106.md against current main at HEAD
+  9ff3580 / barrier commit 35471e7. The design is faithful, complete, and
+  contains no implementation code. It matches the merged implementation
+  byte-for-byte on every load-bearing structural element. Mandatory design
+  lint exits 0 with no issues. All seven acceptance criteria from the prior
+  CODE-DESIGNER handoff are satisfied by the design as written.
+  GitHub #364 is OPEN locally (state="OPEN" per `gh issue view 364`); the
+  local ISS-0106 is RESOLVED and the code is merged via PR #367 — the
+  mismatch is documentation/sync, not code. The design provides an
+  unambiguous closure path: BACKEND-DEV certifies no implementation delta,
+  runs five fresh gates, and DOC-UPDATER closes #364 with evidence.
+files_created:
+  - handoffs/WF03-gh364-20260801/step-02b-code-design-validator.json
+  - docs/issue-reports/WF03-gh364-20260801-step-02b-code-design-validator-INNER-REPORT.yaml
+files_modified: []
+tests_run: []
+checks_performed:
+  - check: mandatory design lint
+    command: python tools/lint_design_artefact.py src/design/fix-ISS-0106.md
+    exit_code: 0
+    output: "OK — 1 file(s) checked, no issues."
+    severity: PASS
+  - check: Type A/B/C/D codegen applicability
+    verdict: "N/A — design is Type E (build-graph/prose); no parameter file under templates/specs/ to lint or codegen."
+    severity: PASS
+  - check: design classifies correctly per lego-catalog
+    verdict: "E — prose design with DAG, error taxonomy, callers, non-solutions; no CRUD endpoint, list page, migration, or React Flow node. CR-UD endpoint that needs custom mid-flight business logic would be E; this design is also E because the affected surface (build.zig) is build orchestration, not HTTP/CRUD, and a single artefact already covers it."
+    severity: PASS
+  - check: design covers every GitHub #364 concern
+    verdict: >-
+      GitHub #364 concerns (1) concurrent zig build test-integration
+      deadlocks across DDL binaries (40P01), (2) db_integration_test.zig
+      TC-DB-01-01/02 failing with COUNT(*)=0 silently, (3) local-vs-GitHub
+      state mismatch — all addressed by the design: (1) and (2) by the
+      build-graph barrier that structurally removes the temporal overlap;
+      (3) by the explicit verification_plan.gates_required list and the
+      fresh-evidence abort_conditions list, which together give
+      DOC-UPDATER an unambiguous closure path.
+    severity: PASS
+  - check: design contains no implementation code
+    verdict: "No function bodies, no SQL DDL, no JSX, no Zig source edits, no build.zig patches. The artefact is pure prose plus one ASCII DAG diagram."
+    severity: PASS
+  - check: design accurately specifies barrier ordering and narrow-step preservation
+    verdict: >-
+      Verified at build.zig:1257 (barrier step declaration),
+      build.zig:1258-1278 (21 dependOn calls aggregating the other binaries),
+      build.zig:1298-1302 (dedicated run_iss503_integration_tests_after_others
+      artifact carrying the barrier edge), and build.zig:1339 (narrow
+      test-integration-iss503 step unchanged). Design matches every element.
+    severity: PASS
+  - check: design explicitly rejects unsafe non-solutions
+    verdict: >-
+      All six non-solutions are rejected with one-line rationale each: no
+      sleep, no retry-on-40P01, no timeout inflation, no advisory-lock
+      wrapping of db_integration_test.zig's COUNT(*) or TestHarness.init()
+      alone, no vendor/pg/pg.zig driver changes, no global serialization
+      of all ~19+ binaries.
+    severity: PASS
+  - check: design addresses public interfaces, named build steps, dependencies, failure behaviour, verification
+    verdict: >-
+      Named build steps explicitly listed: test_integration_step (umbrella),
+      test_integration_iss503_step (narrow, preserved),
+      test_integration_others_step (new barrier), and the underlying Run
+      artifacts. Dependencies enumerated. Failure behaviour documented:
+      barrier-induced serial tail for ISS-503 increases total wall-clock
+      time slightly but removes the deadlock — characterised as intended
+      fix, not regression. Verification plan with five gates plus abort
+      conditions.
+    severity: PASS
+  - check: design is complete enough for BACKEND-DEV to certify no delta + run gates
+    verdict: >-
+      Yes. BACKEND-DEV receives an unambiguous instruction set: (1) diff
+      feature/WF03-gh364-20260801 against origin/main must be empty for
+      non-workflow artefacts; (2) run the five gates; (3) on PASS,
+      DOC-UPDATER closes #364 with fresh evidence. No design choice is
+      left to BACKEND-DEV's discretion — the structural fix is already on
+      main, so the only BACKEND-DEV activity is gate-execution and
+      evidence-attestation.
+    severity: PASS
+  - check: apparent state mismatch addressed
+    verdict: >-
+      GitHub #364 is OPEN (per `gh issue view 364`); local ISS-0106 is
+      RESOLVED. The design's verification_plan + closure_path fields
+      together explain this is a documentation/sync gap and prescribe
+      fresh-gate evidence + a comment-and-close by DOC-UPDATER as the
+      unambiguous resolution. No code defect remains.
+    severity: PASS
+github_issue_state_at_validation:
+  number: 364
+  title: "ISS-0106 — TC-DB-01-01/02 fail under concurrent zig build test-integration: schema_migrations COUNT(*) returns 0 amid Postgres deadlocks across concurrent DDL binaries"
+  state: OPEN
+  closedAt: null
+  source: "`gh issue view 364 --repo tvolodi/R-Co --json number,title,state,closedAt,url,labels`"
+  rationale_for_open_despite_resolved_local: >-
+    Local ISS-0106 (RESOLVED) and GitHub #364 (OPEN) are out of sync.
+    CODE-DESIGNER Step 2 handoff correctly identified this and prescribed
+    a fresh-evidence closure path. CODE-DESIGN-VALIDATOR (this report)
+    confirms the closure path is unambiguous and BACKEND-DEV Step 3 can
+    execute it without further design decisions.
+git_evidence_at_validation:
+  branch_name: feature/WF03-gh364-20260801
+  branch_tip: 9ff3580f17b4b23d5a9109f32bab08943b857dd4
+  branch_tip_message: "docs: sync GitHub Copilot agent files to current CLAUDE.md content (#373)"
+  commits_observed:
+    - 35471e72a61c8593bc73ce55203405e9dbe755cb "fix: serialize ISS-503 test binary out of concurrent test-integration group [WF03-iss0106-20260731] (#367)"
+    - 18c0078 "chore(WF03-iss0106-20260731): mark Step Final handoff COMPLETED (PR #367 merged)"
+    - 9ff3580 "docs: sync GitHub Copilot agent files to current CLAUDE.md content (#373)"
+  barrier_present_at_main: true
+  test_iss503_doc_comment_present: true
+verification_plan_acknowledged:
+  gates:
+    - "zig build (exits 0)"
+    - "zig build test (exits 0)"
+    - "zig build migrate (exits 0)"
+    - "zig build test-integration-iss503 (focused ISS-503 target)"
+    - "zig build test-integration (full umbrella — zero ISS-503 identifiers in any deadlock/failure window)"
+  abort_conditions:
+    - "Any gate returns non-zero"
+    - "Any ISS-503 identifier appears in another binary's deadlock/failure window"
+    - "Build-step tree shows ISS-503 starting concurrently with any sibling"
+design_invariants_checklist:
+  module_purpose_one_paragraph: MET
+  public_function_signatures_listed: MET
+  error_taxonomy_section_present: MET
+  dependencies_on_other_modules_listed: MET
+  data_flow_dag_diagram_present: MET
+  no_implementation_code_in_design: MET
+  no_sql_ddl_in_design: MET
+  no_database_schema_decisions_in_design: MET
+  ambiguous_requirement_flagged_or_resolved: MET
+  classification_correct_per_lego_catalog: MET
+  user_input_validation_specified: "N/A (build-graph only)"
+  access_control_specified: "N/A (build-graph only)"
+issues_found: []
+acceptance_criteria:
+  - criterion: Mandatory design lint on src/design/fix-ISS-0106.md exits 0 with no BLOCKER/MAJOR
+    status: MET
+    evidence: "python tools/lint_design_artefact.py src/design/fix-ISS-0106.md → exit 0, output 'OK — 1 file(s) checked, no issues.'"
+  - criterion: Design file is present, complete, and references build.zig as the revalidation surface
+    status: MET
+    evidence: "src/design/fix-ISS-0106.md Part 1 title 'build.zig: serialize ISS-503 out of the concurrent group (primary fix)'; design file is 270+ lines, complete."
+  - criterion: Design explicitly identifies tests/integration/test_iss503_rls_removal.zig as documentation-only (no behavioural change)
+    status: MET
+    evidence: "Part 2 — 'add a short doc comment ... This is documentation only — no behavioral/functional change to the file, no new imports, no new connection/lock calls.'"
+  - criterion: Design correctly identifies the narrow zig build test-integration-iss503 target as preserved/independent
+    status: MET
+    evidence: "Non-goals section: 'Do not alter test_integration_iss503_step (`zig build test-integration-iss503`) — it already runs ISS-503 alone and is unaffected.' Verified at build.zig:1339 (unchanged)."
+  - criterion: Design explicitly rejects sleep, retry-on-40P01, timeout inflation, COUNT-query locking, pg-driver changes, and global serialization
+    status: MET
+    evidence: "Six explicit_non_solutions listed in both the design file (Part 1 non-goals + Part 2 verdict) and the Step 2 handoff's result.explicit_non_solutions."
+  - criterion: "Design accurately describes the DAG shape: barrier step aggregating ~19+ Run steps, a dedicated post-barrier Run artifact carrying the ordering edge, and the umbrella step re-attached through that artifact"
+    status: MET
+    evidence: "Verified against current build.zig lines 1257 (barrier), 1258-1278 (21 dependOn calls), 1298-1302 (dedicated artifact + ordering edge + re-attach), 1339 (narrow step preserved)."
+  - criterion: "Design specifies fresh test evidence: focused ISS-503 target, zig build / zig build test / zig build migrate gates, and full zig build test-integration with zero ISS-503 identifiers in any deadlock/failure window"
+    status: MET
+    evidence: "Design's verification_plan.gates_required and evidence_collection sections enumerate all five gates plus the case-insensitive ISS-503-identifier scan."
+  - criterion: Design contains no implementation code (no function bodies, no SQL DDL, no Zig source edits), only prose and a DAG diagram
+    status: MET
+    evidence: "src/design/fix-ISS-0106.md is pure prose plus one ASCII DAG diagram. Zero code blocks, zero SQL DDL, zero Zig source edits."
+  - criterion: Inner report produced in YAML at docs/issue-reports/WF03-gh364-20260801-step-02b-code-design-validator-INNER-REPORT.yaml
+    status: MET
+    evidence: "This file."
+  - criterion: Handoff completed PASS/FAIL with next_action routing to BACKEND-DEV (Step 3) on PASS, or to CODE-DESIGNER for rework on FAIL
+    status: MET
+    evidence: "handoffs/WF03-gh364-20260801/step-02b-code-design-validator.json — status COMPLETED, result.status PASS, result.next_action 'Route to BACKEND-DEV (Step 3)'."
+next_steps:
+  - "Route to BACKEND-DEV (Step 3) for fresh-gate execution (zig build, zig build test, zig build migrate, zig build test-integration-iss503, full zig build test-integration with case-insensitive ISS-503-identifier scan). On PASS, DOC-UPDATER closes GitHub #364 with the gate output as evidence."
+blockers: []
