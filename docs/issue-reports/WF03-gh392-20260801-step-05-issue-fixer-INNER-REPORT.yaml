@@ -1,0 +1,23 @@
+report_id: WF03-gh392-20260801-step-05-issue-fixer
+agent_id: ISSUE-FIXER
+run_id: WF03-gh392-20260801
+step: "05"
+created_at: "2026-08-01T14:53:05Z"
+summary: >-
+  Confirmed ISS-0126 as a Category E test-code error caused by a schema-agnostic
+  pg_constraint query, verified the issue index and GitHub linkage, and added the
+  discovery and confirmation occurrence records plus explicit schema-aware prevention guidance.
+files_created:
+  - docs/issue-reports/WF03-gh392-20260801-step-05-issue-fixer-INNER-REPORT.yaml
+files_modified:
+  - docs/issues/ISS-0126.json
+  - handoffs/WF03-gh392-20260801/step-05-issue-fixer.json
+  - handoffs/registry.json
+tests_run:
+  - name: ISS-0126 JSON validation
+    status: pass
+    detail: Python json.load and json.dumps completed successfully.
+issues_found: []
+next_steps:
+  - Route to CODE-DESIGNER (Step 2) for fix design.
+blockers: []

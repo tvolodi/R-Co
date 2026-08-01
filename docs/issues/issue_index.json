@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-01T12:19:21Z",
+  "last_updated": "2026-08-01T14:48:00Z",
   "next_issue_id": 127,
   "issues": [
     {
@@ -1382,14 +1382,12 @@
       "title": "TC-OIDC-22-01 bootstrap state singleton failure isolated from other OIDC regressions",
       "status": "OPEN",
       "severity": "MAJOR",
-      "category": "code-defect / oidc-bootstrap-lifecycle",
+      "category": "test-code-error / oidc-bootstrap-lifecycle",
       "run_id": "WF03-gh375-20260801",
       "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
       "affected_areas": [
         "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
-        "src/identity/oidc.zig",
-        "src/identity/bootstrap.zig",
-        "migrations/"
+        "tests/integration/helpers.zig"
       ],
       "created_at": "2026-08-01T12:09:25Z",
       "resolved_at": null,

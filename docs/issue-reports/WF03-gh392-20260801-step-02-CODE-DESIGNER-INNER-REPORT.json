@@ -1,0 +1,33 @@
+﻿{
+    "blockers":  [
+
+                 ],
+    "summary":  "Produced the Type E design for ISS-0126. The design directly fixes TC-OIDC-22-01 by joining pg_namespace and filtering nspname to public, documents the before/after SQL, separately specifies optional bootstrap-table reset hygiene, and records the two-file test-only scope, unchanged errors, no migration, minimal risk, and integration verification plan. Design lint passed with zero BLOCKER/MAJOR findings and three MINOR naming notices.",
+    "next_steps":  [
+                       "Route design to CODE-DESIGN-VALIDATOR (Step 2b)."
+                   ],
+    "run_id":  "WF03-gh392-20260801",
+    "tests_run":  [
+                      {
+                          "detail":  "Exit 0; BLOCKER=0, MAJOR=0, MINOR=3.",
+                          "status":  "pass",
+                          "name":  "python tools/lint_design_artefact.py src/design/fix-ISS-0126.md"
+                      }
+                  ],
+    "created_at":  "2026-08-01T14:57:46Z",
+    "step":  "02",
+    "files_modified":  [
+
+                       ],
+    "issues_found":  [
+                         {
+                             "description":  "Lint reported three E030 notices for intentionally schema-qualified public.agent_bootstrap_audit references; no BLOCKER or MAJOR findings.",
+                             "severity":  "MINOR"
+                         }
+                     ],
+    "agent_id":  "CODE-DESIGNER",
+    "files_created":  [
+                          "src/design/fix-ISS-0126.md"
+                      ],
+    "report_id":  "WF03-gh392-20260801-step-02-CODE-DESIGNER"
+}

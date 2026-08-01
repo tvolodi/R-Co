@@ -1,0 +1,61 @@
+﻿{
+    "handoff_id":  "wf03-gh392-20260801-step-02",
+    "run_id":  "WF03-gh392-20260801",
+    "workflow_id":  "WF-03",
+    "step":  "02",
+    "from_agent":  "ORCH",
+    "to_agent":  "CODE-DESIGNER",
+    "created_at":  "2026-08-01T14:52:30Z",
+    "started_at":  "2026-08-01T14:56:26Z",
+    "completed_at":  "2026-08-01T14:58:31Z",
+    "status":  "COMPLETED",
+    "priority":  "NORMAL",
+    "stage":  "WF-03 Step 2 — Code design for ISS-0126 fix",
+    "context":  {
+                    "stage":  "Step 2 — fix design",
+                    "issue_id":  "ISS-0126",
+                    "github_issue":  "https://github.com/tvolodi/R-Co/issues/392",
+                    "related_handoff_ids":  [
+                                                "wf03-gh392-20260801-step-00",
+                                                "wf03-gh392-20260801-step-05-issue-fixer"
+                                            ],
+                    "artifacts_in":  [
+                                         "docs/issues/ISS-0126.json",
+                                         "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
+                                         "tests/integration/helpers.zig",
+                                         "migrations/042_oidc16_26_agent_lifecycle_foundations.sql"
+                                     ],
+                    "diagnosis_summary":  "Category E — test code error. TC-OIDC-22-01 SQL query (line 224) joins pg_constraint -\u003e pg_class but does not filter by schema. Migration 042 is non-GBL so it applies to public AND every tenant_* schema (incl. tenant_default), creating duplicate CHECK constraints. The test counts both copies (2) but expects 1. Adding `JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = \u0027public\u0027` makes it correctly return 1."
+                },
+    "task":  {
+                 "description":  "Produce a Type E prose design artefact at src/design/fix-ISS-0126.md following backend_developer_guide.md §6 conventions. The design must cover:\n\n1. Root cause (1 paragraph): test SQL is missing pg_namespace filter; migration 042 is non-GBL so it applies to public AND every tenant_* schema.\n2. Required change #1 (the actual fix): in tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig at the constraint_result query (around line 224), add `JOIN pg_namespace n ON n.oid = t.relnamespace` and `AND n.nspname = \u0027public\u0027`. Provide before/after SQL.\n3. Optional hygiene change #2: in tests/integration/helpers.zig resetTestData(), add `agent_bootstrap_state` and `agent_bootstrap_audit` to the truncateTableBestEffort() calls. This is independent of the failing test but improves test isolation hygiene.\n4. Files impacted: list both files with exact insertion points.\n5. Callers impacted: none — both changes are localized to integration test infrastructure.\n6. Error taxonomy changes: none.\n7. Migration plan: none.\n8. Risk assessment: minimal — these are test-only changes with no production impact.\n9. Verification plan: run `zig build test-integration` (or at minimum the specific test file) and confirm TC-OIDC-22-01 passes.\n\nConstraint: Do NOT write implementation code (no Zig function bodies). The design is the specification the BACKEND-DEV will implement in Step 3.\n\nConstraint: The design MUST address the root cause, not a workaround. Specifically: do NOT propose adding TRUNCATE bootstrap_state to clean up rows (rows aren\u0027t the issue), do NOT propose adding a new migration, do NOT propose strengthening the singleton constraint (it\u0027s already a PRIMARY KEY + CHECK).\n\nConstraint: Maximum scope is 2 source files (both test files). If you find a reason to touch more, flag it in the design and ORCH will decide.",
+                 "acceptance_criteria":  [
+                                             "src/design/fix-ISS-0126.md exists",
+                                             "design addresses the diagnosed root cause (test SQL missing pg_namespace)",
+                                             "no implementation code is present in the design",
+                                             "files_to_change matches the ISS file\u0027s files_to_change (≤ 2 files)",
+                                             "verification plan is concrete (specific zig build command to run)"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:read-backend-conventions",
+                                           "fn:lint-design-artefact",
+                                           "fn:register-inner-report"
+                                       ]
+             },
+    "result":  {
+                   "status":  "PASS",
+                   "summary":  "Type E design for ISS-0126 specifies the root-cause fix: schema-qualify TC-OIDC-22-01 catalog introspection with pg_namespace and nspname=public; it separately documents optional bootstrap-table reset hygiene, a two-file test-only scope, unchanged errors, no migration, minimal risk, and concrete integration verification.",
+                   "artifacts_out":  [
+                                         "src/design/fix-ISS-0126.md"
+                                     ],
+                   "issues":  [
+                                  {
+                                      "description":  "Design lint emitted three E030 notices for intentionally schema-qualified public.agent_bootstrap_audit references; BLOCKER=0 and MAJOR=0.",
+                                      "severity":  "MINOR"
+                                  }
+                              ],
+                   "next_action":  "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+               },
+    "rework_count":  0,
+    "max_rework":  3
+}
