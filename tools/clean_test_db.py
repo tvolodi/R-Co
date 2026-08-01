@@ -4,6 +4,7 @@
 Uses docker-compose exec to run DELETE statements via psql inside the
 db_test container.  Tables are deleted in FK-safe order.
 """
+import argparse
 import re
 import subprocess
 import sys
@@ -124,6 +125,19 @@ def drop_orphaned_tenant_schemas() -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Clean test database")
+    parser.add_argument(
+        "--include-fixtures",
+        action="store_true",
+        help=(
+            "Drop leaked LEGACY_RLS fixture tenant rows whose tenant_type "
+            "defaults to 'production' because the harness pre-dates GBL-080 "
+            "(or default-seeded without an explicit tenant_type). Off by "
+            "default — only set this on operator-initiated cleanup of a "
+            "contaminated db_test; do not set it in a baseline-clean CI run."
+        ),
+    )
+    args = parser.parse_args()
     print("Cleaning test database...", flush=True)
     # Use TRUNCATE with CASCADE to properly handle foreign key dependencies.
     # This is much faster than DELETE and guarantees all dependent rows are removed.
@@ -168,6 +182,26 @@ def main() -> None:
     # Postgres schema + a public.tenant_schemas row). Sweep every registered
     # schema except tenant_default, which is the harness's persistent fixture.
     drop_orphaned_tenant_schemas()
+
+    # ISS-0112 (GitHub #375): optional --include-fixtures sweep. Drops leaked
+    # LEGACY_RLS fixture tenant rows that pre-date GBL-080's tenant_type
+    # column (or were seeded without an explicit tenant_type), plus their
+    # dependent Postgres schemas. Off by default to preserve CI's baseline-
+    # clean default. Operator-initiated cleanup only.
+    if args.include_fixtures:
+        print("--include-fixtures: dropping leaked LEGACY_RLS fixture tenants...", flush=True)
+        run_psql(
+            "DELETE FROM public.tenant WHERE "
+            "slug LIKE 'tc-%' OR slug LIKE 'svc%' OR slug LIKE 'env%' OR "
+            "slug LIKE 'exp%' OR slug LIKE 'adp%' OR slug LIKE 'webhook%' OR "
+            "slug = 'legacy-fixture'"
+        )
+        run_psql(
+            "DELETE FROM public.tenant WHERE "
+            "storage_mode='LEGACY_RLS' AND tenant_type='test'"
+        )
+        # Re-sweep schemas the fixture rows left behind.
+        drop_orphaned_tenant_schemas()
 
     for role_name, role_description in SYSTEM_ROLES:
         sql = (

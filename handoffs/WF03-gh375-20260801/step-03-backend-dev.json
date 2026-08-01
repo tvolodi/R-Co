@@ -1,0 +1,57 @@
+{
+  "handoff_id": "67e35468-383a-4a31-a122-9cffa55c26b6",
+  "run_id": "WF03-gh375-20260801",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-01T10:17:44Z",
+  "started_at": "2026-08-01T10:18:05Z",
+  "completed_at": null,
+  "status": "PENDING",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 3 (implement fix)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "555ec95e-342f-413e-aa50-ad90bc21fcfb",
+      "8cff840b-9d33-4d80-ae27-8a6c9c22842d",
+      "f72648a5-4ff9-4234-acd3-952d98633a52",
+      "e53c8008-a98d-4689-ba64-028fee9df964",
+      "a43fdf2d-293e-42f8-96c9-9cc5a07151cf"
+    ],
+    "artifacts_in": [
+      "src/design/fix-iss0112.md",
+      "docs/issues/ISS-0112.json",
+      "docs/issue-reports/ISS-0112-step-1-WF03-gh375-20260801.yaml",
+      "docs/issue-reports/ISS-0112-step-2-WF03-gh375-20260801.yaml",
+      "docs/issue-reports/ISS-0112-step-2b-WF03-gh375-20260801.yaml"
+    ],
+    "branch_name": "feature/WF03-gh375-20260801"
+  },
+  "task": {
+    "description": "Step 3 of WF-03: implement the fix per design at src/design/fix-iss0112.md. The design prescribes 5 changes: (1) corrective migration GBL-105 (idempotent); (2) applier guard with force_reconcile param in src/db/migrations.zig; (3) per-test isolation refactor in tests/integration/helpers.zig; (4) tools/clean_test_db.py --include-fixtures flag; (5) tools/verify_schema_baseline.py (new). Implement, run fn:check-zig-build and fn:apply-migrations, then commit + push. This is the implementation step \u2014 touch only files listed in design. After zig build exits 0 and zig build migrate exits 0, run `python tools/verify_schema_baseline.py` (newly created tool) to confirm baseline matches.",
+    "acceptance_criteria": [
+      "migrations/GBL-105_iss0112_schema_ledger_reconcile.sql exists; idempotent (uses IF NOT EXISTS / ON CONFLICT DO NOTHING); reconciles public + tenant ledgers; adds missing webhook_subscriptions.secret_ref column, public.tenant_realm_binding table, tenant.entity_type_instances table, and constraint upgrades",
+      "src/db/migrations.zig::Migrations.runForSchema takes new force_reconcile: bool parameter; respects a per-migration `-- reapply_on_drift: true` header comment; zig build exits 0",
+      "tests/integration/helpers.zig::ensureDefaultOidcSeeds sets tenant_type='test' on the 'default' tenant; fixture SVC-* INSERTs are relocated to per-test defer cleanup()",
+      "tools/clean_test_db.py supports --include-fixtures flag (off by default); today's behavior unchanged without it",
+      "tools/verify_schema_baseline.py is a NEW file that mechanically enforces docs/guides/test_infrastructure_guide.md \u00a76 with --check-tenants strict mode and --auto-fix reconcile mode; exit codes 0/1/2",
+      "zig build exits 0 with no error-set warnings",
+      "zig build migrate exits 0",
+      "python3 tools/verify_schema_baseline.py --check-tenants exits 0 against the freshly-migrated db_test",
+      "ISS-0112.json files_changed field populated with concrete paths",
+      "Commit + push to feature/WF03-gh375-20260801",
+      "handoff result.status == 'PASS'",
+      "Determine next_action: 'Route to TEST-DESIGNER Step 4 (test design)' if business logic added/modified, OR 'Route to TEST-RUNNER Step 5 (verify)' if pure regression fix"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:apply-migrations",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3
+}
