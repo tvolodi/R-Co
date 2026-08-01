@@ -1,8 +1,31 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-01T00:14:08Z",
+  "last_updated": "2026-08-01T10:00:23Z",
   "next_issue_id": 110,
   "issues": [
+    {
+      "id": "ISS-0112",
+      "title": "Migration/schema drift and shared database state break 42 integration tests",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "schema/migration-drift",
+      "run_id": "WF03-gh375-20260801",
+      "handoff_id": "8cff840b-9d33-4d80-ae27-8a6c9c22842d",
+      "affected_areas": [
+        "migrations/",
+        "tests/integration/ext02_webhook_dispatch_test.zig",
+        "tests/integration/env01_test.zig",
+        "tests/integration/env02_test.zig",
+        "tests/integration/env03_test.zig",
+        "tests/integration/exp201_202_entities_test.zig",
+        "tests/integration/svc01_service_catalog_scope_test.zig",
+        "tests/integration/svc03_definition_activation_scope_test.zig",
+        "tests/integration/svc04_admin_api_test.zig"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/375"
+    },
     {
       "id": "ISS-0109",
       "title": "lint_migration_schema.py reports false-positive BLOCKER on public.<table> mentioned inside a -- prose comment (081_iss101_timers_failed_status.sql)",
