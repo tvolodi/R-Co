@@ -1,0 +1,90 @@
+{
+  "handoff_id": "1b016916-da09-4d2c-bbe1-5041802d0e9c",
+  "run_id": "WF03-gh375-20260801",
+  "workflow_id": "WF-03",
+  "step": "05b",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-01T10:57:11Z",
+  "started_at": "2026-08-01T10:57:43Z",
+  "completed_at": "2026-08-01T11:18:27Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 5 (re-verify after rework)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "555ec95e-342f-413e-aa50-ad90bc21fcfb",
+      "8cff840b-9d33-4d80-ae27-8a6c9c22842d",
+      "f72648a5-4ff9-4234-acd3-952d98633a52",
+      "e53c8008-a98d-4689-ba64-028fee9df964",
+      "a43fdf2d-293e-42f8-96c9-9cc5a07151cf",
+      "67e35468-383a-4a31-a122-9cffa55c26b6",
+      "866837a3-e1e2-44f6-9a37-9d88e6d090bc"
+    ],
+    "artifacts_in": [
+      "src/design/fix-iss0112.md",
+      "docs/issues/ISS-0112.json",
+      "docs/issue-reports/ISS-0112-step-3-WF03-gh375-20260801.yaml",
+      "scratch/WF03-gh375-20260801/test-runner/zig_test_integration_rework1.log"
+    ]
+  },
+  "task": {
+    "description": "Step 5 of WF-03 RE-RUN after Step 3 rework. The previous Step 5 found 19 integration binaries failing to compile because Migrations.runForSchema was given a new force_reconcile param without updating tests/integration/ call sites. Step 3 rework fixed 5 call sites (helpers.zig:181, audit_iss103_test.zig:44, exp103_instance_waits_test.zig:81, iss102_claim_test.zig:111, iss0091_harness_tracker_unification_test.zig:87). zig build test-integration now compiles all 501 binaries. Run the full suite and report verdicts per WF-03 Step 5 procedure.",
+    "acceptance_criteria": [
+      "Infrastructure Health Checklist passes (all 7 items)",
+      "python3 tools/verify_schema_baseline.py --check-tenants exits 0",
+      "zig build test exits 0",
+      "zig build test-integration compiles ALL binaries (compile must be clean) \u2014 runtime test failures from the original 42-cluster are acceptable but should be assessed individually",
+      "Report: pass/fail counts; previously-failing-cluster breakdown; regressions",
+      "handoff result.status == 'PASS' if no compile errors and no new regressions introduced by the rework",
+      "next_action = 'Route to DOC-UPDATER Step 7 (changelog + status)' if PASS"
+    ],
+    "functions_to_call": [
+      "fn:run-unit-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Re-verify after Step 3 rework: compile is CLEAN (all 501 integration binaries compile; the prior 19-binary compile failure is resolved). Unit tests: 583/667 pass, 0 fail, 84 skip. Infrastructure Health Checklist 7/7 PASS; verify_schema_baseline.py and verify_schema_baseline.py --check-tenants both exit 0. Integration tests: zig build test-integration exits 1 due to 461 runtime test failures, of which 877 error instances are the ck_tenant_type_fk_coherence constraint violation in tests/integration/helpers.zig:362 ensureDefaultOidcSeeds. The harness INSERT sets tenant_type='test' but omits production_tenant_id, violating the constraint ((tenant_type='test') -> (production_tenant_id IS NOT NULL)). This is a pre-existing code-vs-constraint mismatch (INV-TI-3) independent of the Step 3 rework. Of the 28 tests in the prior 42-cluster: 10 PASS, 18 STILL_FAILING. No regressions introduced by the rework. Verdict: FAIL \u2014 back to BACKEND-DEV Step 3 for a one-line harness fix.",
+    "artifacts_out": [
+      "tests/reports/report-20260801-WF03-gh375-20260801-step05b-verify.yaml",
+      "scratch/WF03-gh375-20260801/test-runner/zig_build_migrate_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/zig_build_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/lint_test_isolation_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/verify_schema_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/verify_schema_tenants_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/lock_check_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/zig_test_unit_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/zig_test_integration_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/zig_test_integration_iss503_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/zig_test_integration_tm_reverify.log",
+      "scratch/WF03-gh375-20260801/test-runner/git_push_reverify.log"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "id": "REGRESSION-CLUSTER-CONSTRAINT-COHERENCE",
+        "description": "461 integration test failures at TestHarness.init() due to ck_tenant_type_fk_coherence check constraint violation in tests/integration/helpers.zig:362 ensureDefaultOidcSeeds. The harness INSERT sets tenant_type='test' but does not supply production_tenant_id; the constraint requires (tenant_type='test') -> (production_tenant_id IS NOT NULL). Minimum-impact fix: change tenant_type='test' to tenant_type='production' (or include production_tenant_id in the INSERT) so the row satisfies the constraint. Expected to recover ~461 failing tests."
+      },
+      {
+        "severity": "BLOCKER",
+        "id": "ISS-503-PREFLIGHT-LEGACY-RLS-TENANT",
+        "description": "test_iss503_rls_removal pre-flight (TC-ISS503-04) detected 1 tenant still in LEGACY_RLS mode and refuses to proceed with RLS removal. The default tenant's storage_mode was not migrated to SCHEMA before the test ran. Likely secondary effect of the harness INSERT not committing storage_mode='SCHEMA' to the persistent default tenant row."
+      },
+      {
+        "severity": "MAJOR",
+        "id": "EXP-402-PARAM-TYPE-INFERENCE",
+        "description": "TC-EXP-402-02 fails with 'could not determine data type of parameter $2' at src/engine/reconstruction.zig:315 markRestoredOrphanInTx. SQL placeholder needs explicit type cast per INV-TI-3."
+      }
+    ],
+    "next_action": "Route back to BACKEND-DEV Step 3 (rework 2/3). Recommended fix: in tests/integration/helpers.zig:362, change tenant_type='test' to tenant_type='production' in the ON CONFLICT UPDATE clause (and remove 'tenant_type = ''test''' from the SET list), OR add production_tenant_id='00000000-0000-0000-0000-000000000000' to the INSERT. After the fix, re-run zig build test-integration to confirm.",
+    "compile_clean": true,
+    "regressions_introduced_by_rework": [],
+    "test_report_path": "tests/reports/report-20260801-WF03-gh375-20260801-step05b-verify.yaml"
+  },
+  "rework_count": 1,
+  "max_rework": 3
+}
