@@ -1,0 +1,52 @@
+{
+  "handoff_id": "WF03-gh391-step01",
+  "run_id": "WF03-gh391-20260801",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-01T16:48:12Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 1",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh391-step00",
+      "WF03-gh391-step05"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0125.json",
+      "https://github.com/tvolodi/R-Co/issues/391",
+      "scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log"
+    ],
+    "issue_ref": "ISS-0125 / GitHub tvolodi/R-Co#391"
+  },
+  "task": {
+    "description": "Step 1 \u2014 root-cause diagnosis for ISS-0125 / GitHub #391.\n\nUse `fn:search-issues` first to look for prior resolution strategies that may match. Then read the relevant source files and confirm the root-cause hypothesis already documented in docs/issues/ISS-0125.json is correct (and refine if not).\n\nSpecifically:\n1. Read migrations/GBL-085_state_snapshots.sql (or whatever introduced the instance_definition_snapshots table) to confirm the FK direction and whether ON DELETE CASCADE is present.\n2. Read tests/integration/helpers.zig for resetTestData() / cleanup logic \u2014 confirm the cleanup ordering vs FK direction.\n3. Read the four test files listed in ISS-0125: tests/integration/iss202_merge_atomicity_test.zig, iss203_idempotency_keys_test.zig, iss601_state_snapshots_test.zig, event_store_test.zig. Confirm they each have a cleanup path that respects the new FK direction.\n4. Cross-reference against scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log to confirm the C23503 errors are exactly as documented (offsets 1480582, 1480767).\n\nProduce a written diagnosis at docs/issue-reports/ISS-0125-root-cause.md (YAML format per CLAUDE.md output rules) with:\n- symptom (verbatim error from log)\n- root cause (file:line refs for both the FK constraint definition AND the cleanup-order violation)\n- candidate fix strategies (a: ON DELETE CASCADE migration; b: reorder cleanup in helpers.zig; c: both), with a recommendation.\n- acceptance criteria for the fix (concrete, testable)\n\nDo NOT implement the fix yet. Diagnosis only.\n\nAlso write/append to docs/issues/ISS-0125.json: set `root_cause` to your refined description, set `candidate_resolution` to the recommended strategy, and set `resolution` to null (still unresolved).",
+    "acceptance_criteria": [
+      "docs/issue-reports/ISS-0125-root-cause.md exists (YAML format)",
+      "docs/issues/ISS-0125.json root_cause refined with file:line refs",
+      "Recommendation stated: ON DELETE CASCADE migration GBL-106 + cleanup reorder in helpers.zig",
+      "Acceptance criteria for fix are concrete and testable"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:diagnose-root-cause"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed the FK source and cleanup fragility: migrations/004_definitions.sql defines NO ACTION on instance_definition_snapshots.definition_id, while bespoke cleanup swallows child-delete failures. Recommended GBL-106 ON DELETE CASCADE plus cleanup-order hardening.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0125-root-cause.md",
+      "docs/issues/ISS-0125.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-01T16:48:12Z",
+  "completed_at": "2026-08-01T16:56:26Z"
+}

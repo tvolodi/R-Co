@@ -127,26 +127,29 @@ fn freeInstance(allocator: std.mem.Allocator, inst: bpm.engine.Instance) void {
 }
 
 /// Delete all rows for one instance in FK order.
-fn cleanupInstance(pool: *Pool, instance_id_hex: []const u8) void {
-    const conn = pool.acquire() catch return;
+/// ISS-0125 / GitHub #391: propagate (do not swallow) the first SQL error
+/// from a child delete so a failed child surfaces visibly instead of
+/// letting the parent DELETE proceed and emit C23503.
+fn cleanupInstance(pool: *Pool, instance_id_hex: []const u8) !void {
+    const conn = pool.acquire() catch |err| return err;
     defer pool.release(conn);
-    conn.exec("DELETE FROM timers WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
-    conn.exec("DELETE FROM tasks WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
-    conn.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
-    conn.exec(
+    try conn.exec("DELETE FROM timers WHERE instance_id = $1::uuid", &.{instance_id_hex});
+    try conn.exec("DELETE FROM tasks WHERE instance_id = $1::uuid", &.{instance_id_hex});
+    try conn.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{instance_id_hex});
+    try conn.exec(
         "DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid",
         &.{instance_id_hex},
-    ) catch {};
-    conn.exec(
+    );
+    try conn.exec(
         "DELETE FROM instance_projections WHERE instance_id = $1::uuid",
         &.{instance_id_hex},
-    ) catch {};
+    );
 }
 
-fn cleanupByName(pool: *Pool, name: []const u8) void {
-    const conn = pool.acquire() catch return;
+fn cleanupByName(pool: *Pool, name: []const u8) !void {
+    const conn = pool.acquire() catch |err| return err;
     defer pool.release(conn);
-    conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name}) catch {};
+    try conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name});
 }
 
 /// Return COUNT(*) from a parameterised query as i64.
@@ -218,9 +221,8 @@ test "TC-ISS-203-01: single transition emitted events carry correct deterministi
 
     // Per-test UUID: unique definition name prevents cross-test collisions.
     const name = "ISS203-TC01-deterministic-key";
-    cleanupByName(&pool, name);
-    defer cleanupByName(&pool, name);
-
+    try cleanupByName(&pool, name);
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-203 cleanupByName failed: {s}\n", .{@errorName(err)});
     const nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
         .{ .id = "TIMER_WAIT", .node_type = .TIMER, .label = null, .attributes = "{\"duration_iso8601\":\"PT5M\"}" },
@@ -239,8 +241,7 @@ test "TC-ISS-203-01: single transition emitted events carry correct deterministi
 
     const inst_hex = try uuidToHexStr(allocator, inst.instance_id);
     defer allocator.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
-
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-203 cleanupInstance failed: {s}\n", .{@errorName(err)});
     // Verify trigger event (instance_started) was persisted.
     const trigger_count = try countInt(
         &pool,
@@ -314,9 +315,8 @@ test "TC-ISS-203-02: replay dedup — ON CONFLICT DO NOTHING absorbs second inse
     defer inst_store.deinit();
 
     const name = "ISS203-TC02-replay-dedup";
-    cleanupByName(&pool, name);
-    defer cleanupByName(&pool, name);
-
+    try cleanupByName(&pool, name);
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-203 cleanupByName failed: {s}\n", .{@errorName(err)});
     const nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
         .{ .id = "T_NODE", .node_type = .TIMER, .label = null, .attributes = "{\"duration_iso8601\":\"PT1M\"}" },
@@ -335,8 +335,7 @@ test "TC-ISS-203-02: replay dedup — ON CONFLICT DO NOTHING absorbs second inse
 
     const inst_hex = try uuidToHexStr(allocator, inst.instance_id);
     defer allocator.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
-
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-203 cleanupInstance failed: {s}\n", .{@errorName(err)});
     // Count all events after the first (and only) transition.
     const initial_count = try countInt(
         &pool,
@@ -428,9 +427,8 @@ test "TC-ISS-203-03: client key passthrough — trigger event key stored as-is" 
     defer inst_store.deinit();
 
     const name = "ISS203-TC03-client-key-passthrough";
-    cleanupByName(&pool, name);
-    defer cleanupByName(&pool, name);
-
+    try cleanupByName(&pool, name);
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-203 cleanupByName failed: {s}\n", .{@errorName(err)});
     // START → HUMAN_TASK: the instance_started trigger emits no cascade events,
     // so the only row we need to inspect is the trigger itself.
     const nodes = [_]GraphNode{
@@ -478,8 +476,7 @@ test "TC-ISS-203-03: client key passthrough — trigger event key stored as-is" 
 
     const inst_hex = try uuidToHexStr(allocator, inst.instance_id);
     defer allocator.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
-
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-203 cleanupInstance failed: {s}\n", .{@errorName(err)});
     // The instance_started event inserted by inst_store.create() will already
     // have whichever key the orchestrator used. We verify the stored key for
     // the trigger row does NOT start with "engine:" (client keys are not
@@ -544,9 +541,8 @@ test "TC-ISS-203-04: different-instance isolation — same transition produces d
     defer inst_store.deinit();
 
     const name = "ISS203-TC04-instance-isolation";
-    cleanupByName(&pool, name);
-    defer cleanupByName(&pool, name);
-
+    try cleanupByName(&pool, name);
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-203 cleanupByName failed: {s}\n", .{@errorName(err)});
     const nodes = [_]GraphNode{
         .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
         .{ .id = "T_ISO", .node_type = .TIMER, .label = null, .attributes = "{\"duration_iso8601\":\"PT5M\"}" },
@@ -565,13 +561,13 @@ test "TC-ISS-203-04: different-instance isolation — same transition produces d
     defer freeInstance(allocator, inst_a);
     const inst_a_hex = try uuidToHexStr(allocator, inst_a.instance_id);
     defer allocator.free(inst_a_hex);
-    defer cleanupInstance(&pool, inst_a_hex);
+    defer cleanupInstance(&pool, inst_a_hex) catch |err| std.debug.print("ISS-203 cleanupInstance A failed: {s}\n", .{@errorName(err)});
 
     const inst_b = try inst_store.create(allocator, def_id, null, "{}");
     defer freeInstance(allocator, inst_b);
     const inst_b_hex = try uuidToHexStr(allocator, inst_b.instance_id);
     defer allocator.free(inst_b_hex);
-    defer cleanupInstance(&pool, inst_b_hex);
+    defer cleanupInstance(&pool, inst_b_hex) catch |err| std.debug.print("ISS-203 cleanupInstance B failed: {s}\n", .{@errorName(err)});
 
     // The two instances must be distinct (sanity check).
     try std.testing.expect(!std.mem.eql(u8, inst_a_hex, inst_b_hex));
@@ -643,9 +639,8 @@ test "TC-ISS-203-05: ordinal uniqueness — N emitted events produce N distinct 
     defer inst_store.deinit();
 
     const name = "ISS203-TC05-ordinal-uniqueness";
-    cleanupByName(&pool, name);
-    defer cleanupByName(&pool, name);
-
+    try cleanupByName(&pool, name);
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-203 cleanupByName failed: {s}\n", .{@errorName(err)});
     // Graph:
     //   START → PARALLEL_GW → TIMER_A ("PT1M")
     //                        → TIMER_B ("PT2M")
@@ -688,8 +683,7 @@ test "TC-ISS-203-05: ordinal uniqueness — N emitted events produce N distinct 
 
     const inst_hex = try uuidToHexStr(allocator, inst.instance_id);
     defer allocator.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
-
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-203 cleanupInstance failed: {s}\n", .{@errorName(err)});
     // Collect all engine-keyed events for this instance.
     const conn = try pool.acquire();
     defer pool.release(conn);

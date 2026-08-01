@@ -153,10 +153,18 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
         if (already_migrated) |*result| {
             defer result.deinit();
             if (result.rows.len > 0) {
-                const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
-                defer allocator.free(set_path_sql);
-                try conn.exec(set_path_sql, &.{});
-                return;
+                var needs_reconcile = try conn.query(
+                    allocator,
+                    "SELECT 1 FROM public.schema_migrations WHERE schema_name = $1 AND version = '1106_iss0125_instance_definition_snapshots_cascade.sql'",
+                    &.{schema},
+                );
+                defer needs_reconcile.deinit();
+                if (needs_reconcile.rows.len > 0) {
+                    const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
+                    defer allocator.free(set_path_sql);
+                    try conn.exec(set_path_sql, &.{});
+                    return;
+                }
             }
         }
     }
@@ -178,11 +186,10 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
             .pool_size = 2,
         });
         defer mig_pool.deinit();
-        // force_reconcile=false: the harness expects a clean db_test baseline
-        // (see tools/verify_schema_baseline.py §6). Migrations marked with
-        // `-- reapply_on_drift: true` are skipped here on purpose; only the
-        // GBL-105 corrective migration is the regular one we want to apply.
-        try bpm.migrations.Migrations.runForSchema(allocator, &mig_pool, resolved.dir, schema, false);
+        // force_reconcile=true: corrective migrations marked
+        // `-- reapply_on_drift: true` must repair tenant-schema drift even when
+        // a stale migrations_applied_at fast path previously skipped them.
+        try bpm.migrations.Migrations.runForSchema(allocator, &mig_pool, resolved.dir, schema, true);
     }
 
     const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
@@ -307,6 +314,17 @@ fn execCompatibilitySql(conn: *pg.Conn, sql: []const u8) !void {
     };
 }
 
+// ISS-0125 / GitHub #391: resetTestData() intentionally truncates
+// instance_definition_snapshots before process_definitions even though
+// the FK uses ON DELETE CASCADE (see GBL-106). The order is preserved
+// as defense in depth — TRUNCATE ... CASCADE is independent of the FK's
+// referential action, but documenting the order makes the invariant
+// visible and prevents future "harmless" reorderings from masking a
+// regression. Per-test cleanup helpers in
+// iss202_merge_atomicity_test.zig, iss203_idempotency_keys_test.zig,
+// and iss601_state_snapshots_test.zig now follow the same
+// child-before-parent order AND propagate (do not swallow) any SQL
+// error from a child delete before attempting the parent delete.
 fn resetTestData(conn: *pg.Conn) !void {
     // Keep migration/seed/config tables intact and only clear transient test data.
     // Truncate tables one-by-one so one missing legacy table does not skip cleanup.
@@ -418,6 +436,16 @@ pub fn cleanupTestTenant(conn: *pg.Conn, tenant_id: []const u8) void {
         "DELETE FROM public.tenant WHERE id = $1::uuid AND tenant_type = 'test'",
         .{tenant_id},
     ) catch {};
+}
+
+/// ISS-0125 / GitHub #391: delete definition snapshots for one definition.
+/// SQL errors are deliberately propagated so a caller cannot continue to
+/// parent cleanup after an incomplete child cleanup.
+pub fn cleanupDefinitionSnapshots(conn: *pg.Conn, definition_id: []const u8) !void {
+    try conn.exec(
+        "DELETE FROM instance_definition_snapshots WHERE definition_id = $1::uuid",
+        &.{definition_id},
+    );
 }
 
 // ---------------------------------------------------------------------------

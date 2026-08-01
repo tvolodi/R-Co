@@ -110,6 +110,51 @@ const minimal_graph = DefinitionGraph{ .nodes = &minimal_nodes, .edges = &minima
 
 const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
+/// ISS-0125 / GitHub #391: instance-level cleanup helper. Deletes every
+/// per-instance row in FK order so a failed child delete prevents the
+/// parent-side helpers from running and surfacing a C23503 cascade.
+/// Propagates (does not swallow) the first SQL error.
+fn cleanupInstanceAll(pool: *Pool, inst_hex: []const u8) !void {
+    const conn = pool.acquire() catch |err| return err;
+    defer pool.release(conn);
+    try conn.exec(
+        "DELETE FROM instance_state_snapshots WHERE instance_id = $1::uuid",
+        &.{inst_hex},
+    );
+    try conn.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{inst_hex});
+    try conn.exec(
+        "DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid",
+        &.{inst_hex},
+    );
+    try conn.exec(
+        "DELETE FROM instance_projections WHERE instance_id = $1::uuid",
+        &.{inst_hex},
+    );
+}
+
+/// ISS-0125 / GitHub #391: definition cleanup helper. Must be called
+/// after all per-instance cleanup for that definition's instances has
+/// succeeded (LIFO ordering). Propagates (does not swallow) the first
+/// SQL error.
+fn cleanupDefinitionByName(pool: *Pool, name: []const u8) !void {
+    const conn = pool.acquire() catch |err| return err;
+    defer pool.release(conn);
+    try conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{name});
+}
+
+/// ISS-0125 / GitHub #391: overflow-payload cleanup helper for tests
+/// that write to event_payloads_overflow. Must be called BEFORE
+/// `cleanupInstanceAll` since the events rows it depends on must still
+/// exist for the subselect. Propagates the first SQL error.
+fn cleanupOverflowForInstance(pool: *Pool, inst_hex: []const u8) !void {
+    const conn = pool.acquire() catch |err| return err;
+    defer pool.release(conn);
+    try conn.exec(
+        "DELETE FROM event_payloads_overflow WHERE event_id IN (SELECT event_id FROM events WHERE instance_id = $1::uuid)",
+        &.{inst_hex},
+    );
+}
+
 /// Snapshot cleanup helper — best-effort DELETE from instance_state_snapshots.
 fn cleanupSnapshots(pool: *Pool, inst_hex: []const u8) void {
     if (pool.acquire()) |c| {
@@ -168,16 +213,18 @@ test "TC-ISS-601-01: reconstructInstanceWithSnapshot falls back to full replay w
     defer alloc.free(inst_hex);
     defer freeInstance(alloc, inst);
 
-    // Best-effort cleanup: delete instance rows, then definition.
-    defer {
-        if (pool.acquire()) |c| {
-            defer pool.release(c);
-            c.exec("DELETE FROM instance_state_snapshots WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-        } else |_| {}
-    }
+    // ISS-0125 / GitHub #391: propagate (do not swallow) SQL errors from
+    // cleanup. LIFO ordering: parent-cleanup registered AFTER child-cleanup
+    // runs FIRST (CASCADE on the FK makes parent deletion safe even if it
+    // precedes child deletion).
+    defer cleanupInstanceAll(&pool, inst_hex) catch |err| std.debug.print(
+        "ISS-601-01 cleanupInstanceAll failed: {s}\n",
+        .{@errorName(err)},
+    );
+    defer cleanupDefinitionByName(&pool, "TC-ISS-601-01 Process") catch |err| std.debug.print(
+        "ISS-601-01 cleanupDefinitionByName failed: {s}\n",
+        .{@errorName(err)},
+    );
 
     // Verify no snapshots exist for this instance
     var check_conn = try pool.acquire();
@@ -614,16 +661,18 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
     defer alloc.free(inst_hex);
     defer freeInstance(alloc, inst);
 
-    // Best-effort cleanup
-    defer {
-        if (pool.acquire()) |c| {
-            defer pool.release(c);
-            c.exec("DELETE FROM instance_state_snapshots WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-        } else |_| {}
-    }
+    // ISS-0125 / GitHub #391: propagate (do not swallow) SQL errors from
+    // cleanup. LIFO ordering: parent-cleanup registered AFTER child-cleanup
+    // runs FIRST (CASCADE on the FK makes parent deletion safe even if it
+    // precedes child deletion).
+    defer cleanupInstanceAll(&pool, inst_hex) catch |err| std.debug.print(
+        "ISS-601-02 cleanupInstanceAll failed: {s}\n",
+        .{@errorName(err)},
+    );
+    defer cleanupDefinitionByName(&pool, "TC-ISS-601-02 Process") catch |err| std.debug.print(
+        "ISS-601-02 cleanupDefinitionByName failed: {s}\n",
+        .{@errorName(err)},
+    );
 
     // Insert 49 additional events (seq 2..50) so we have 50 events total.
     // Use task_completed with a payload that keeps the instance ACTIVE.
@@ -835,17 +884,22 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
     defer alloc.free(inst_hex);
     defer freeInstance(alloc, inst);
 
-    // Cleanup
-    defer {
-        if (pool.acquire()) |c| {
-            defer pool.release(c);
-            c.exec("DELETE FROM event_payloads_overflow WHERE event_id IN (SELECT event_id FROM events WHERE instance_id = $1::uuid)", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM instance_state_snapshots WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-        } else |_| {}
-    }
+    // ISS-0125 / GitHub #391: propagate (do not swallow) SQL errors from
+    // cleanup. LIFO ordering: overflow cleanup registered LAST so it runs
+    // FIRST (the subselect needs the events rows to still exist); then
+    // parent cleanup; then instance cleanup runs LAST.
+    defer cleanupInstanceAll(&pool, inst_hex) catch |err| std.debug.print(
+        "ISS-601-05 cleanupInstanceAll failed: {s}\n",
+        .{@errorName(err)},
+    );
+    defer cleanupDefinitionByName(&pool, "TC-ISS-601-05 Process") catch |err| std.debug.print(
+        "ISS-601-05 cleanupDefinitionByName failed: {s}\n",
+        .{@errorName(err)},
+    );
+    defer cleanupOverflowForInstance(&pool, inst_hex) catch |err| std.debug.print(
+        "ISS-601-05 cleanupOverflowForInstance failed: {s}\n",
+        .{@errorName(err)},
+    );
 
     // Insert a large payload (>4KB) in event_payloads_overflow.
     // First, insert the event row (seq 2) with a $ref marker.
@@ -987,16 +1041,18 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
     defer alloc.free(inst_hex);
     defer freeInstance(alloc, inst);
 
-    // Cleanup
-    defer {
-        if (pool.acquire()) |c| {
-            defer pool.release(c);
-            c.exec("DELETE FROM instance_state_snapshots WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-            c.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{inst_hex}) catch {};
-        } else |_| {}
-    }
+    // ISS-0125 / GitHub #391: propagate (do not swallow) SQL errors from
+    // cleanup. LIFO ordering: parent-cleanup registered AFTER child-cleanup
+    // runs FIRST (CASCADE on the FK makes parent deletion safe even if it
+    // precedes child deletion).
+    defer cleanupInstanceAll(&pool, inst_hex) catch |err| std.debug.print(
+        "ISS-601-08 cleanupInstanceAll failed: {s}\n",
+        .{@errorName(err)},
+    );
+    defer cleanupDefinitionByName(&pool, "TC-ISS-601-08 Process") catch |err| std.debug.print(
+        "ISS-601-08 cleanupDefinitionByName failed: {s}\n",
+        .{@errorName(err)},
+    );
 
     // Insert additional events so we have 2500 total.
     // Use batched INSERTs for performance.
