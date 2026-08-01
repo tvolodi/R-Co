@@ -7,8 +7,8 @@
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-08-01T10:17:44Z",
   "started_at": "2026-08-01T10:18:05Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-01T10:31:35Z",
+  "status": "COMPLETED",
   "priority": "HIGH",
   "context": {
     "stage": "WF-03 Issue Resolving \u2014 Step 3 (implement fix)",
@@ -51,7 +51,40 @@
       "fn:register-inner-report"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "5 changes implemented per src/design/fix-iss0112.md \u00a76. (1) migrations/GBL-105_iss0112_schema_ledger_reconcile.sql created with -- reapply_on_drift: true header; DO block backfills 97 prior ledger rows in public.schema_migrations + per-tenant schemas (skipping GBL-prefixed); adds webhook_subscriptions.secret_ref column, public.tenant_realm_binding table, per-tenant entity_type_instances; idempotent CHECK constraint upgrades guarded by pg_constraint existence check. (2) src/db/migrations.zig::Migrations.runForSchema now takes force_reconcile: bool (5th arg); reads first 1 KiB of each file to detect -- reapply_on_drift header; src/db/provisioning.zig:112 call site updated to pass false. (3) tests/integration/helpers.zig::ensureDefaultOidcSeeds - canonical default tenant INSERT now sets tenant_type=test with ON CONFLICT DO UPDATE; 9-row SVC-01..04 fixture block REMOVED with relocation comment; new pub fn cleanupTestTenant() added for defer-block use. (4) tools/clean_test_db.py - argparse + --include-fixtures flag added; gated extra DELETEs for LEGACY_RLS-without-tenant_type fixtures. (5) tools/verify_schema_baseline.py CREATED - psycopg2-based, 4 check functions, --check-tenants/--auto-fix flags, exit codes 0/1/2.",
+    "artifacts_out": [
+      "migrations/GBL-105_iss0112_schema_ledger_reconcile.sql",
+      "src/db/migrations.zig",
+      "src/db/provisioning.zig",
+      "tests/integration/helpers.zig",
+      "tools/clean_test_db.py",
+      "tools/verify_schema_baseline.py"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh375-20260801",
+      "commit_sha": "178436a",
+      "commit_sha_list": [
+        "178436a"
+      ],
+      "preceding_sha": "1a8a869",
+      "remote_branch": "origin/feature/WF03-gh375-20260801",
+      "push_status": "ok",
+      "push_evidence": "1a8a869..178436a  feature/WF03-gh375-20260801 -> feature/WF03-gh375-20260801"
+    },
+    "validation": {
+      "zig_build": "EXIT_CODE=0",
+      "zig_build_test": "EXIT_CODE=0",
+      "zig_build_migrate": "EXIT_CODE=0 (1 migration applied: GBL-105; total now 98)",
+      "verify_schema_baseline_py": "EXIT_CODE=0 (3 checks PASS; 98/98 ledger == files)",
+      "verify_schema_baseline_py_check_tenants": "EXIT_CODE=0 (4 checks PASS)",
+      "lint_test_isolation_py": "BLOCKER=0, no new helpers.zig findings; 63 active MAJOR (pre-existing baseline + suppressed 195)",
+      "error_set_check": "no matches (clean)"
+    },
+    "next_action": "Route to TEST-RUNNER Step 5 (verify) - this is a pure regression fix (corrective migration + applier guard + test infrastructure), no business logic added/modified, so Step 4 test design is not required."
+  },
   "rework_count": 0,
   "max_rework": 3
 }
