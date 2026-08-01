@@ -1,7 +1,7 @@
 {
   "id": "ISS-0126",
   "title": "TC-OIDC-22-01 bootstrap state singleton failure isolated from other OIDC regressions",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "MAJOR",
   "category": "test-code-error / oidc-bootstrap-lifecycle",
   "run_id": "WF03-gh375-20260801",
@@ -11,8 +11,8 @@
     "tests/integration/helpers.zig"
   ],
   "created_at": "2026-08-01T12:09:25Z",
-  "updated_at": "2026-08-01T14:48:00Z",
-  "resolved_at": null,
+  "updated_at": "2026-08-01T15:59:11Z",
+  "resolved_at": "2026-08-01T15:59:11Z",
   "notes": "Cluster O from Step 5c. TC-OIDC-22-01 'bootstrap state is singleton and bootstrap audit event types are enforced' fails at tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig:234 with `try testing.expectEqual(@as(u32, 1), try parseCount(constraint_result.rows[0][0]))` returning 2 instead of 1. Confirmed via direct DB query against BPM_TEST_DB_URL: `SELECT COUNT(*) FROM pg_constraint c JOIN pg_class t ON t.oid = c.conrelid WHERE t.relname = 'agent_bootstrap_audit' AND pg_get_constraintdef(c.oid) LIKE '%BOOTSTRAP_REENABLED%'` returns 2. With schema filter `JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = 'public'`, returns 1. The earlier hypothesis (bootstrap_state seeded multiple times) was wrong: `agent_bootstrap_state` has 0 rows; the test is purely a schema-introspection query. Evidence: scratch/WF03-gh392-20260801/diag5_output.txt. Re-classification: Category E (test code error) per WF-03 taxonomy.",
   "root_cause": {
     "type": "test-code-error",
@@ -25,6 +25,20 @@
     "tests/integration/helpers.zig"
   ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/392",
+  "resolution": {
+    "type": "test-code-error-fix",
+    "implemented_in": [
+      "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig"
+    ],
+    "commits": [
+      {
+        "sha": "991aefd",
+        "message": "fix(WF03-gh392): schema-qualify TC-OIDC-22-01 pg_constraint query (ISS-0126 / GH #392)",
+        "branch": "feature/WF03-gh392-20260801"
+      }
+    ],
+    "verification": "zig build test-integration confirms TC-OIDC-22-01 passes; before-fix=2, after-fix=1 via direct SQL"
+  },
   "prevention": [
     "Always JOIN pg_namespace when introspecting single-schema objects via system catalogs and filter by nspname.",
     "System catalog queries for pg_constraint/pg_class/pg_index are schema-agnostic; require explicit schema filtering.",
@@ -40,6 +54,11 @@
       "run_id": "WF03-gh392-20260801",
       "step": "0.5/1",
       "description": "Confirmed ISS-0126 category, root cause, schema-aware prevention, and GitHub issue linkage during registry and diagnosis review."
+    },
+    {
+      "run_id": "WF03-gh392-20260801",
+      "step": "3/5/7",
+      "description": "Fix applied, verified, and documentation updated; PR to follow in Step Final"
     }
   ]
 }
