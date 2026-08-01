@@ -8446,7 +8446,61 @@
       "status": "COMPLETED",
       "stage": "WF-03 Step 0.5 - ISSUE-FIXER registry lookup",
       "completed_at": "2026-08-01T16:46:55Z"
+    },
+    {
+      "handoff_id": "WF03-gh391-step01",
+      "file": "handoffs/WF03-gh391-20260801/step-01-issue-fixer.json",
+      "run_id": "WF03-gh391-20260801",
+      "workflow_id": "WF-03",
+      "step": "1",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-01T16:48:12Z",
+      "started_at": "2026-08-01T16:48:12Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 1 - root cause diagnosis",
+      "completed_at": "2026-08-01T16:56:26Z"
+    },
+    {
+      "handoff_id": "WF03-gh391-step02",
+      "file": "handoffs/WF03-gh391-20260801/step-02-code-designer.json",
+      "run_id": "WF03-gh391-20260801",
+      "workflow_id": "WF-03",
+      "step": "2",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-01T16:56:58Z",
+      "started_at": "2026-08-01T16:56:58Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 2 - fix design artefact",
+      "completed_at": "2026-08-01T17:01:32Z"
+    },
+    {
+      "handoff_id": "WF03-gh391-step02b",
+      "file": "handoffs/WF03-gh391-20260801/step-02b-code-design-validator.json",
+      "run_id": "WF03-gh391-20260801",
+      "workflow_id": "WF-03",
+      "step": "2b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-01T17:02:00Z",
+      "started_at": "2026-08-01T17:02:00Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 2b - design validator (hard gate)"
+    },
+    {
+      "handoff_id": "WF03-gh391-step03",
+      "file": "handoffs/WF03-gh391-20260801/step-03-backend-dev.json",
+      "run_id": "WF03-gh391-20260801",
+      "workflow_id": "WF-03",
+      "step": "3",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-01T17:05:01Z",
+      "started_at": "2026-08-01T17:05:01Z",
+      "status": "PENDING",
+      "stage": "WF-03 Step 3 - implement fix"
     }
   ],
-  "last_updated": "2026-08-01T16:45:43Z"
+  "last_updated": "2026-08-01T17:05:01Z"
 }

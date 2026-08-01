@@ -1,0 +1,48 @@
+{
+  "handoff_id": "WF03-gh391-step02b",
+  "run_id": "WF03-gh391-20260801",
+  "workflow_id": "WF-03",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-01T17:02:00Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2b",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh391-step02"
+    ],
+    "artifacts_in": [
+      "src/design/iss-0125-fk-cascade.md",
+      "docs/issue-reports/ISS-0125-root-cause.md",
+      "docs/issues/ISS-0125.json"
+    ],
+    "issue_ref": "ISS-0125 / GitHub tvolodi/R-Co#391"
+  },
+  "task": {
+    "description": "Step 2b \u2014 validate the design artefact for ISS-0125. HARD GATE: BACKEND-DEV cannot start until PASS.\n\nRun per-artefact checks (mandatory):\n  python tools/lint_design_artefact.py src/design/iss-0125-fk-cascade.md   # must exit 0\n  exit 0, no BLOCKER/MAJOR\n\nThen verify (manually):\n1. Every acceptance criterion in every MUST requirement of GitHub issue #391 has a design element.\n2. For Type E (this is Type E): no implementation code is present (no .zig function bodies, no full SQL DDL files inline \u2014 design references the migration file but does NOT contain the migration file's body). Prose+DDL snippets in design are fine; full migration body inlined is NOT fine.\n3. All public function signatures are listed (Type E). For helpers.zig edits: signature `pub fn resetTestData(...)` is shown, including error return type.\n4. Error taxonomy exists or is explicitly stated as 'no new error sets' (Type E).\n5. Dependencies documented (Type E).\n6. Classification per templates/lego-catalog.md is correct \u2014 confirm Type E.\n7. The design references src/design/iss-0125-fk-cascade.md for itself.\n8. Migration DDL snippet in the design is idempotent (uses IF EXISTS / IF NOT EXISTS where appropriate).\n9. Migration header contains 'reapply_on_drift: true'.\n10. BEGIN/COMMIT wrapping is described for the FK alter (so it integrates with the schema_migrations ledger).\n\nFAIL if any check fails. Complete handoff with PASS or FAIL. On PASS, set next_action to 'Route to BACKEND-DEV (Step 3)'.",
+    "acceptance_criteria": [
+      "python tools/lint_design_artefact.py exits 0",
+      "No BLOCKER or MAJOR issues",
+      "All 10 hard-gate checks documented in result.summary pass"
+    ],
+    "functions_to_call": [
+      "fn:lint-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "All 10 hard-gate checks PASS. Lint exits 0 with 0 BLOCKER / 0 MAJOR (13 MINOR \u2014 schema-qualified names in DDL, expected). Per-check: (1) Every GitHub #391 AC has a design element (4/4 ACs covered in section 7 AC-1..AC-5 + section 5.3-5.5 + section 10). (2) Type E \u2014 no full .zig function bodies; DDL body in section 4.2 is a verbatim 4-statement snippet for BACKEND-DEV (BEGIN, DROP CONSTRAINT IF EXISTS, ADD CONSTRAINT, COMMIT) plus the section 4.1 file header comment. (3) Public signatures listed: `fn resetTestData(conn: *pg.Conn) !void { ... }` in section 5.2 with error return type shown; section 3.2 states 'no new public functions' for test files. (4) Error taxonomy: section 8 explicitly states 'No new error sets are introduced'. (5) Dependencies documented in section 9 (PostgreSQL 15+, zig build migrate, no new packages). (6) Type E classification correct per lego-catalog.md rule 5 (cross-cutting schema + 5-file test-cleanup rework, not a single CRUD template). (7) Self-reference consistent (only the H1 title on line 1). (8) DDL is idempotent: DROP CONSTRAINT IF EXISTS + ADD CONSTRAINT by preserved name. (9) `reapply_on_drift: true` in section 4.1 file header. (10) BEGIN/COMMIT wrapping described in section 4.2 + section 4.6 (rationale: applier wraps outer transaction; nested BEGIN/COMMIT = no-ops-with-warnings).",
+    "artifacts_out": [
+      "src/design/iss-0125-fk-cascade.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-01T17:02:00Z",
+  "completed_at": "2026-08-01T17:03:57Z"
+}

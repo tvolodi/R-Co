@@ -127,27 +127,33 @@ fn freeDefinition(allocator: std.mem.Allocator, d: Definition) void {
 }
 
 /// Delete instance rows for one instance.
-fn cleanupInstance(pool: *Pool, instance_id_hex: []const u8) void {
-    const conn = pool.acquire() catch return;
+/// ISS-0125 / GitHub #391: propagate (do not swallow) the first SQL error
+/// from a child delete so a failed child surfaces visibly instead of
+/// letting the parent DELETE proceed and emit C23503.
+fn cleanupInstance(pool: *Pool, instance_id_hex: []const u8) !void {
+    const conn = pool.acquire() catch |err| return err;
     defer pool.release(conn);
-    conn.exec(
+    try conn.exec(
         "DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid",
         &.{instance_id_hex},
-    ) catch {};
-    conn.exec(
+    );
+    try conn.exec(
         "DELETE FROM instance_projections WHERE instance_id = $1::uuid",
         &.{instance_id_hex},
-    ) catch {};
+    );
 }
 
 /// Delete all process_definitions rows with the given name.
-fn cleanupByName(pool: *Pool, name: []const u8) void {
-    const conn = pool.acquire() catch return;
+/// ISS-0125 / GitHub #391: propagate the first SQL error. Callers must
+/// have already cleaned up child rows (instance_definition_snapshots,
+/// instance_projections) before invoking this helper.
+fn cleanupByName(pool: *Pool, name: []const u8) !void {
+    const conn = pool.acquire() catch |err| return err;
     defer pool.release(conn);
-    conn.exec(
+    try conn.exec(
         "DELETE FROM process_definitions WHERE name = $1",
         &.{name},
-    ) catch {};
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -200,8 +206,8 @@ test "TC-ISS-202-01: Phase 1 validation succeeds for all valid keys" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -209,7 +215,8 @@ test "TC-ISS-202-01: Phase 1 validation succeeds for all valid keys" {
     const inst = try inst_store.create(alloc, draft.id, null, "{\"amount\":100}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     // Test mergeVariables with all valid keys
@@ -294,8 +301,8 @@ test "TC-ISS-202-02: Phase 1 fails on invalid key; no state change, no events" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -303,7 +310,8 @@ test "TC-ISS-202-02: Phase 1 fails on invalid key; no state change, no events" {
     const inst = try inst_store.create(alloc, draft.id, null, "{\"amount\":100}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     // Setup: define a schema for "count" that requires integer >= 0
@@ -404,8 +412,8 @@ test "TC-ISS-202-03: Phase 1 validates all keys exhaustively" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -413,7 +421,8 @@ test "TC-ISS-202-03: Phase 1 validates all keys exhaustively" {
     const inst = try inst_store.create(alloc, draft.id, null, "{\"amount\":100}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();
@@ -516,8 +525,8 @@ test "TC-ISS-202-04: Phase 2 applies all keys atomically" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -525,7 +534,8 @@ test "TC-ISS-202-04: Phase 2 applies all keys atomically" {
     const inst = try inst_store.create(alloc, draft.id, null, "{\"amount\":100,\"status\":\"initial\"}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();
@@ -614,8 +624,8 @@ test "TC-ISS-202-05: Retry after failure preserves pre-merge state" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -623,7 +633,8 @@ test "TC-ISS-202-05: Retry after failure preserves pre-merge state" {
     const inst = try inst_store.create(alloc, draft.id, null, "{\"value\":42}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();
@@ -722,8 +733,8 @@ test "TC-ISS-202-06: Empty merge is a no-op" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -731,7 +742,8 @@ test "TC-ISS-202-06: Empty merge is a no-op" {
     const inst = try inst_store.create(alloc, draft.id, null, "{\"amount\":100}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();
@@ -813,8 +825,8 @@ test "TC-ISS-202-07: All keys existing — collisions detected and applied atomi
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -822,7 +834,8 @@ test "TC-ISS-202-07: All keys existing — collisions detected and applied atomi
     const inst = try inst_store.create(alloc, draft.id, null, "{\"x\":1,\"y\":2}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();
@@ -913,8 +926,8 @@ test "TC-ISS-202-08: Schema mismatch on key triggers Phase 1 failure" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -922,7 +935,8 @@ test "TC-ISS-202-08: Schema mismatch on key triggers Phase 1 failure" {
     const inst = try inst_store.create(alloc, draft.id, null, "{}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();
@@ -1017,8 +1031,8 @@ test "TC-ISS-202-09: Null value where schema requires non-null" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -1026,7 +1040,8 @@ test "TC-ISS-202-09: Null value where schema requires non-null" {
     const inst = try inst_store.create(alloc, draft.id, null, "{}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();
@@ -1131,8 +1146,8 @@ test "TC-ISS-202-10: Memory allocation failure leaves no partial state" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -1140,7 +1155,8 @@ test "TC-ISS-202-10: Memory allocation failure leaves no partial state" {
     const inst = try inst_store.create(alloc, draft.id, null, "{\"x\":1}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();
@@ -1227,8 +1243,8 @@ test "TC-ISS-202-INT-01: Transactional all-or-nothing merge with crash recovery"
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -1236,7 +1252,8 @@ test "TC-ISS-202-INT-01: Transactional all-or-nothing merge with crash recovery"
     const inst = try inst_store.create(alloc, draft.id, null, "{\"amount\":100}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();
@@ -1327,8 +1344,8 @@ test "TC-ISS-202-INT-02: Concurrent merge requests on same instance" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -1336,7 +1353,8 @@ test "TC-ISS-202-INT-02: Concurrent merge requests on same instance" {
     const inst = try inst_store.create(alloc, draft.id, null, "{}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     // First merge: add key "a"
@@ -1455,8 +1473,8 @@ test "TC-ISS-202-INT-03: Merge recovery after timeout" {
     const active_def = try def_store.activate(alloc, draft.id);
     defer freeDefinition(alloc, active_def);
 
-    defer cleanupByName(&pool, name);
-
+    defer cleanupByName(&pool, name) catch |err| std.debug.print("ISS-202 cleanupByName failed: {s}
+", .{@errorName(err)});
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
     defer inst_store.deinit();
@@ -1464,7 +1482,8 @@ test "TC-ISS-202-INT-03: Merge recovery after timeout" {
     const inst = try inst_store.create(alloc, draft.id, null, "{\"value\":42}");
     const inst_hex = try uuidToHexStr(alloc, inst.instance_id);
     defer alloc.free(inst_hex);
-    defer cleanupInstance(&pool, inst_hex);
+    defer cleanupInstance(&pool, inst_hex) catch |err| std.debug.print("ISS-202 cleanupInstance failed: {s}
+", .{@errorName(err)});
     defer freeInstance(alloc, inst);
 
     const conn = try pool.acquire();

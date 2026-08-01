@@ -307,6 +307,17 @@ fn execCompatibilitySql(conn: *pg.Conn, sql: []const u8) !void {
     };
 }
 
+// ISS-0125 / GitHub #391: resetTestData() intentionally truncates
+// instance_definition_snapshots before process_definitions even though
+// the FK uses ON DELETE CASCADE (see GBL-106). The order is preserved
+// as defense in depth — TRUNCATE ... CASCADE is independent of the FK's
+// referential action, but documenting the order makes the invariant
+// visible and prevents future "harmless" reorderings from masking a
+// regression. Per-test cleanup helpers in
+// iss202_merge_atomicity_test.zig, iss203_idempotency_keys_test.zig,
+// and iss601_state_snapshots_test.zig now follow the same
+// child-before-parent order AND propagate (do not swallow) any SQL
+// error from a child delete before attempting the parent delete.
 fn resetTestData(conn: *pg.Conn) !void {
     // Keep migration/seed/config tables intact and only clear transient test data.
     // Truncate tables one-by-one so one missing legacy table does not skip cleanup.
