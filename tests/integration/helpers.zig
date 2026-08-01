@@ -359,15 +359,30 @@ fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
     // tools/clean_test_db.py's pre-existing filter (which deletes
     // tenant_type='production' AND slug != 'default') from mistaking
     // the harness's persistent fixture for production state.
+    //
+    // Check constraint ck_tenant_type_fk_coherence requires that every
+    // row with tenant_type='test' has production_tenant_id IS NOT NULL.
+    // We point production_tenant_id at this same canonical UUID
+    // (self-reference) because (a) no separate "production of the test
+    // world" tenant exists — the 'default' tenant IS the root, (b) every
+    // other integration test fixture that creates a test tenant uses
+    // '00000000-0000-0000-0000-000000000000' as production_tenant_id
+    // (see env01_test.zig insertTestTenant, adp04a_external_identity_linkage_test.zig
+    // ensureTenantBinding, svc01_service_catalog_scope_test.zig insertTenant,
+    // svc04_admin_api_test.zig, etc.), so this is the established
+    // convention and (c) ON CONFLICT DO UPDATE must re-assert the FK
+    // when the column is updated by a parallel migration in case the
+    // column was ever left NULL during a baseline.
     try conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
         \\VALUES (
         \\  '00000000-0000-0000-0000-000000000000'::uuid,
         \\  'default',
         \\  'Default Tenant',
         \\  'ACTIVE',
         \\  'bpm-default',
-        \\  'test'
+        \\  'test',
+        \\  '00000000-0000-0000-0000-000000000000'::uuid
         \\)
         \\ON CONFLICT (id) DO UPDATE
         \\SET slug = EXCLUDED.slug,
@@ -375,6 +390,7 @@ fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
         \\    status = EXCLUDED.status,
         \\    idp_realm_id = COALESCE(public.tenant.idp_realm_id, EXCLUDED.idp_realm_id),
         \\    tenant_type = 'test',
+        \\    production_tenant_id = '00000000-0000-0000-0000-000000000000'::uuid,
         \\    updated_at = NOW()
     , &.{});
 
