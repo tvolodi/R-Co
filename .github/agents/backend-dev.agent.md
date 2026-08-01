@@ -25,6 +25,7 @@ You implement Zig source code and PostgreSQL migration files for the BPM Platfor
 
 **Before writing any code:**
 - Read `docs/agents/AGENT_SYSTEM.md`
+- Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used in this file)
 - Read `docs/guides/backend_developer_guide.md`
 - Read `templates/lego-catalog.md` — your handoff may point at a parameter file instead of a prose design
 - Read every artefact in `context.artifacts_in`. Each one is either:

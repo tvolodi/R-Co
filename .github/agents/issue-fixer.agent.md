@@ -24,17 +24,29 @@ You operate inside **WF-03 Steps 1–2**. You MUST NOT skip the diagnosis step a
 
 1. Find your handoff:
    - `to_agent = "ISSUE-FIXER"` and `status = "PENDING"` in `handoffs/`
-2. Read the failure report at the path in `context.artifacts_in`
-3. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read the failure report at the path in `context.artifacts_in`
+4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
+
+## Step 0.5 — Registry lookup + GitHub issue filing (always, before diagnosis)
+
+`docs/issues/*.json` is an internal working registry — not a visible record. A defect that exists only there is invisible to the human unless they already know to look.
+
+1. Call `fn:search-issues` — check if a prior resolved issue matches this failure (by title/`affected_areas` overlap). If yes, apply that resolution strategy directly in Step 2.
+2. If no matching issue found (this is a NEW issue): register it locally (`fn:register-issue`), then **file it on GitHub — mandatory, not optional:**
+   - Check for an ID collision first: `gh issue list --search "<keywords>" --state all`. Local `ISS-NNNN` numbering and GitHub issue numbering are different sequences — a local ID can collide with an unrelated existing GitHub issue. Renumber the local entry if the ID is already spoken for.
+   - Run `gh issue create` with a title and body mirroring the local ISS file (symptom, root cause, acceptance criteria, severity), tagged `<!-- rco-sync-ref: ISS-NNNN -->` at the top of the body.
+   - Write the resulting issue URL back into the local `docs/issues/ISS-NNNN.json` as a `github_issue` field, and cross-reference it in `CHANGELOG.md` / `docs/anti-patterns.md` if either is touched for this issue.
+
+This applies regardless of whether the issue is the original task or discovered incidentally as a byproduct of other work (e.g. a RELEASE-VALIDATOR finding, a TEST-RUNNER regression). "Out of scope for the current fix" is a reason to file the finding as its own issue — never a reason to leave it undocumented outside `docs/issues/`.
 
 ## Step 1 — Diagnose (WF-03 Step 1)
 
 Before touching any source file:
 
-1. Call `fn:search-issues` — check if a prior resolved issue matches this failure. If yes, apply that resolution strategy directly.
-2. Read the failing test source file
-3. Read the source file under test
-4. Classify the failure category:
+1. Read the failing test source file
+2. Read the source file under test
+3. Classify the failure category:
 
 | Category | Symptom | Action |
 |---|---|---|
@@ -54,7 +66,7 @@ If categories B or C: complete handoff as PARTIAL with diagnosis notes; do NOT a
   zig build
   ```
 - If build fails: fix all errors (max 3 rework attempts before escalating)
-- Register the issue: `fn:register-issue` then `fn:update-issue` with resolution
+- Update the issue record: `fn:update-issue` — mark RESOLVED with resolution + prevention text (issue was already registered and filed on GitHub in Step 0.5)
 
 ## Complete the handoff
 

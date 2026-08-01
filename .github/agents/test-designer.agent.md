@@ -25,7 +25,8 @@ Calling `fn:complete-handoff` without first calling `fn:register-inner-report` i
 
 1. Find your handoff:
    - `to_agent = "TEST-DESIGNER"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/guides/test_developer_guide.md` (full)
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/guides/test_developer_guide.md` (full)
 3. Read the design artefact and requirement IDs listed in `context.artifacts_in`
 4. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
 
@@ -75,6 +76,32 @@ For each requirement ID in the handoff:
 
 > Note: Your output will be reviewed by **TEST-DESIGN-VALIDATOR** (Step 3b) before TEST-RUNNER executes. Pass only complete work — the validator checks every item in this list.
 
+## Pipeline test responsibilities
+
+After writing per-requirement specs and island tests, apply the pipeline test rule.
+
+**If the requirement involves a user-visible sequential action** (i.e. it is a step in a user journey that depends on prior steps having run):
+
+1. Check whether a pipeline file exists for this journey:
+   ```bash
+   ls web/tests/e2e/pipelines/
+   ```
+   Also read `docs/guides/test_developer_guide.md §11.10` (inventory table).
+
+2. **If a pipeline file exists** for this feature area: insert a new `pl.step()` at the correct position in the chain and update the step table in `tests/specs/PIPELINE-<slug>.md`.
+
+3. **If no pipeline file exists yet** AND this is the second or later requirement in a sequential user journey: create both `tests/specs/PIPELINE-<slug>.md` (spec) and `web/tests/e2e/pipelines/<slug>.pipeline.e2e.spec.ts` (implementation), then add a row to the inventory table in `docs/guides/test_developer_guide.md §11.10`.
+
+**Pipeline test rules** (see `docs/guides/test_developer_guide.md §11` for full detail):
+- Import helpers from `web/tests/e2e/pipeline.ts` — do not duplicate logic (`loginWithToken`, `navigateSpa`, `getKeycloakToken`, etc.)
+- One `test()` block per workflow, steps via `pl.step()`
+- `pl.gate()` after any action that produces an ID or state the rest of the chain depends on
+- `pl.onCleanup()` registered unconditionally — cleanup must survive mid-chain abort
+- No `test.beforeEach` / `test.afterEach` inside pipeline test files — pipeline tests are single-test chains, not suites
+- No setup/teardown per step — state flows forward through `pl.state`
+
+Add produced pipeline file(s) to `artifacts_out` in the handoff result.
+
 ## Complete the handoff
 
 ```
@@ -86,7 +113,7 @@ fn:validate-completeness → fn:register-inner-report → fn:complete-handoff
   "result": {
     "status": "PASS",
     "summary": "Test specs and test code for <REQ-IDs>",
-    "artifacts_out": ["tests/specs/...", "src/.../..._test.zig"],
+    "artifacts_out": ["tests/specs/...", "src/.../..._test.zig", "web/tests/e2e/pipelines/<slug>.pipeline.e2e.spec.ts"],
     "issues": [],
     "next_action": "Route to TEST-DESIGN-VALIDATOR (WF-02 Step 3b)"
   }

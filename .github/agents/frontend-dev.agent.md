@@ -25,7 +25,8 @@ Calling `fn:complete-handoff` without first calling `fn:register-inner-report` i
 
 1. Find your handoff:
    - `to_agent = "FRONTEND-DEV"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/guides/frontend_developer_guide.md` (full)
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/guides/frontend_developer_guide.md` (full)
 3. Read `docs/guides/frontend_design_system.md` (full)
 4. Read `docs/guides/test_developer_guide.md` — especially the Core Testing Directives (§1)
 5. Read `templates/lego-catalog.md` — your handoff may point at a parameter file (Type B/D) instead of a prose design

@@ -24,7 +24,8 @@ You operate inside **WF-02 Step 1b** — after CODE-DESIGNER (Step 1) and before
 
 1. Find your handoff:
    - `to_agent = "CODE-DESIGN-VALIDATOR"` and `status = "PENDING"` in `handoffs/`
-2. Read `templates/lego-catalog.md` — the section *How CODE-DESIGN-VALIDATOR uses this catalog*
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `templates/lego-catalog.md` — the section *How CODE-DESIGN-VALIDATOR uses this catalog*
 3. Read every artefact in `context.artifacts_in`. Each one is either:
    - a parameter file under `templates/specs/*.yaml` (Type A–D), or
    - a prose design under `src/design/<module>.md` (Type E)

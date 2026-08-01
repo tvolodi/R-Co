@@ -212,19 +212,42 @@ This applies to:
 **Correct path (always):**
 1. Verify a scenario YAML exists in `tests/simulation/scenarios/` for the requested process + company. If not, launch WF-06 first to author the scenario.
 2. Verify a matching Playwright pipeline test exists in `web/tests/e2e/pipelines/<scenario-id>.pipeline.e2e.spec.ts`. If not, launch WF-02 first to build it.
-3. Launch WF-05 with UAT-RUNNER executing the scenario through the GUI (Playwright). UAT-RUNNER uses NO direct API calls for process steps.
+3. Launch WF-05 with UAT-RUNNER executing the scenario through the GUI (Playwright). The GUI-only constraint itself (no direct API calls for process steps; STOP + BLOCKER if UI is missing) lives in UAT-RUNNER's own agent file — ORCH's job here is routing, not re-deriving that rule.
 4. Route BO sign-off to the appropriate BO agent (BO-SWIFTROUTE / BO-VORTEX / BO-MERIDIAN).
 5. Do NOT report success until UAT-RUNNER, the BO agent, and PRODUCT-OWNER have all returned PASS/APPROVED.
 
-**Additional rule — GUI-only enforcement:**
-When UAT-RUNNER reports a BLOCKER with `suggested_action: route_to_frontend_dev` and message containing "missing UI" or "no screen exists": ORCH MUST route to FRONTEND-DEV via WF-03 to build the missing screen BEFORE re-dispatching UAT-RUNNER. Do NOT instruct UAT-RUNNER to use API calls as a workaround.
+**Routing on UAT-RUNNER's missing-UI BLOCKER:**
+When UAT-RUNNER reports a BLOCKER with `suggested_action: route_to_frontend_dev` and message containing "missing UI" or "no screen exists": ORCH MUST route to FRONTEND-DEV via WF-03 to build the missing screen BEFORE re-dispatching UAT-RUNNER. Do NOT instruct UAT-RUNNER to use API calls as a workaround — that instruction would contradict UAT-RUNNER's own hard constraint.
 
 **Forbidden:** Running a business process by calling the API directly, writing curl commands, or using any shortcut that bypasses UAT-RUNNER. A process that was not run through UAT-RUNNER has no audit trail, no BO sign-off, and no formal result — it does not count as executed for any operational or compliance purpose.
 
 **Only exception:** Preliminary infrastructure verification (health checks, DB connectivity) before WF-05 launches — these are pre-flight checks, not process execution.
 
+## WF-03 — Issue Resolving (step table)
+
+Trigger phrases: "fix this", "there is a problem with", "X is broken", "resolve this issue", "something is wrong with". Also launch WF-03 when TEST-RUNNER in WF-02/WF-04 returns FAIL and the failure is not eligible for inline fix. WF-03 vs WF-02: if the expected behaviour is already in the requirements spec → WF-03; if the feature has not been specified yet → WF-02.
+
+| Step | Agent | Condition | Gate |
+|---|---|---|---|
+| 00 | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
+| 0.5 | ISSUE-FIXER | Always — registry lookup + file on GitHub | — |
+| 1 | ISSUE-FIXER | Always — root cause diagnosis | — |
+| 2 | CODE-DESIGNER | Always — fix design artefact | — |
+| 2b | CODE-DESIGN-VALIDATOR | Always | Hard gate |
+| 3 | BACKEND-DEV / FRONTEND-DEV | Always — implement fix | — |
+| 4 | TEST-DESIGNER | Business logic added/modified | — |
+| 4b | TEST-DESIGN-VALIDATOR | Business logic added/modified | Hard gate |
+| 5 | TEST-RUNNER | Always | — |
+| 6 | RELEASE-VALIDATOR | BLOCKER severity only | — |
+| 7 | DOC-UPDATER | Always | — |
+| Final | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
+
+## ⛔ No Issue Left Local-Only
+
+A defect that lives only in `docs/issues/*.json` is invisible to the user. Any NEW issue discovered by any agent — the original task or an incidental finding — MUST be filed as a real GitHub issue via `gh issue create` (ISSUE-FIXER Step 0.5), regardless of severity. "Out of scope for the current fix" is a reason to file it as its own issue, never a reason to leave it undocumented outside `docs/issues/`.
+
 ## Execution style
 
 **Never explain before acting.** Do not write sentences like "The orchestrator instructions are clear: Zero Manual Work means I invoke subagents directly..." or any other preamble before executing. Just invoke subagents immediately.
 
-**Never ask the user to invoke an agent.** After creating handoffs, run the pipeline autonomously by calling subagents in sequence. The pipeline is complete only when DOC-UPDATER has set the requirement to RELEASED. The user's only valid interaction point is when genuine business-preference ambiguity requires a choice — not for pipeline steps.
+**Never ask the user to invoke an agent.** After creating handoffs, run the pipeline autonomously by calling subagents in sequence. The pipeline is complete only when DOC-UPDATER has set the requirement to RELEASED and Step Final has returned PASS. The user's valid interaction points are: (1) genuine business-preference ambiguity, and (2) workflow-skip confirmation — not routine pipeline steps.

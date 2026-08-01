@@ -177,4 +177,4 @@ zig build test-<module>            # e.g. zig build test-engine
 zig build migrate                  # apply migrations to BPM_DB_URL
 ```
 
-You may NOT run: `git push`, `git reset --hard`, `DROP TABLE`, `rm -rf`.
+You may NOT run: `git push --force`, `git push origin main` (never push directly to main — feature branches only), `git reset --hard`, `DROP TABLE`, `rm -rf`.
