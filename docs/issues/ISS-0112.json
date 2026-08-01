@@ -1,0 +1,29 @@
+{
+  "id": "ISS-0112",
+  "title": "Migration/schema drift and shared database state break 42 integration tests",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "schema/migration-drift",
+  "run_id": "WF03-gh364-20260801",
+  "handoff_id": null,
+  "affected_areas": [
+    "migrations/",
+    "tests/integration/ext02_webhook_dispatch_test.zig",
+    "tests/integration/env01_test.zig",
+    "tests/integration/env02_test.zig",
+    "tests/integration/env03_test.zig",
+    "tests/integration/exp201_202_entities_test.zig",
+    "tests/integration/svc01_service_catalog_scope_test.zig",
+    "tests/integration/svc03_definition_activation_scope_test.zig",
+    "tests/integration/svc04_admin_api_test.zig"
+  ],
+  "created_at": "2026-08-01T08:52:13Z",
+  "resolved_at": null,
+  "notes": "Cluster A from the final integration run: 42 failures across ext02_webhook_dispatch_test (10), ADP/OIDC migration checks (8), env03 (5), EXP-201/202 entities (3), service catalog (6), env01/env02 (2), and 8 other cases. Observed missing webhook_subscriptions.secret_ref, missing public.tenant_realm_binding, missing tenant entity_type_instances, tenant_storage_mode_check and webhook_deliveries_status_check mismatches. Evidence: _integration_final.log lines 13213-16646, 23258-38773, 38985-42352.",
+  "root_cause": "TBD. Initial hypothesis: the long-lived shared integration database has migration-ledger/schema state that does not match the migration contracts expected by concurrently executed targets, with incomplete propagation into tenant schemas.",
+  "candidate_resolution": "Reconcile the canonical migration ledger with actual public and tenant-schema objects, make corrective migrations idempotent, and provision each integration target from a deterministic schema baseline before validating the affected contracts.",
+  "resolution": null,
+  "files_to_change": [],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/375",
+  "prevention": []
+}

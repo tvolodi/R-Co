@@ -1,0 +1,28 @@
+report_id: WF03-gh364-20260801-step-00-backend-dev
+agent_id: BACKEND-DEV
+run_id: WF03-gh364-20260801
+workflow_id: WF-03
+step: "00"
+created_at: "2026-08-01T04:05:58Z"
+summary: "Authenticated GitHub issue #364 was captured verbatim as permanent YAML workflow input. The mandatory git setup gate completed: local main was synchronized to origin/main, and feature/WF03-gh364-20260801 was created locally and pushed to origin at base commit 9ff3580f17b4b23d5a9109f32bab08943b857dd4. No fix was implemented."
+files_created:
+  - docs/issue-reports/gh-364-input.yaml
+  - handoffs/WF03-gh364-20260801/step-00-backend-dev.json
+  - docs/issue-reports/WF03-gh364-20260801-step-00-backend-dev-INNER-REPORT.yaml
+files_modified:
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+tests_run:
+  - name: authenticated GitHub issue retrieval
+    status: pass
+    detail: "gh issue view 364 returned OPEN issue metadata, exact body, bug label, and zero comments."
+  - name: local branch verification
+    status: pass
+    detail: "git branch --show-current returned feature/WF03-gh364-20260801."
+  - name: remote branch verification
+    status: pass
+    detail: "git ls-remote returned refs/heads/feature/WF03-gh364-20260801 at 9ff3580f17b4b23d5a9109f32bab08943b857dd4."
+issues_found: []
+next_steps:
+  - "ORCH routes to WF-03 Step 0.5 ISSUE-FIXER using docs/issue-reports/gh-364-input.yaml."
+blockers: []
