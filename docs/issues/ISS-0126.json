@@ -1,0 +1,36 @@
+{
+  "id": "ISS-0126",
+  "title": "TC-OIDC-22-01 bootstrap state singleton failure isolated from other OIDC regressions",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "code-defect / oidc-bootstrap-lifecycle",
+  "run_id": "WF03-gh375-20260801",
+  "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+  "affected_areas": [
+    "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
+    "src/identity/oidc.zig",
+    "src/identity/bootstrap.zig",
+    "migrations/"
+  ],
+  "created_at": "2026-08-01T12:09:25Z",
+  "resolved_at": null,
+  "notes": "Cluster O from Step 5c. TC-OIDC-22-01 'bootstrap state is singleton and bootstrap audit event types are enforced' fails at tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig:234 with `try testing.expectEqual(@as(u32, 1), try parseCount(constraint_result.rows[0][0]))` returning a value other than 1. Constraint-reported rows are stacked one per test (multiple expectEqual calls in the same test) \u2014 this indicates the constraint for bootstrap state singleton has multiple rows rather than 1. Observed 4 sequential failure lines in the same test, suggesting the bootstrap-state table contains more than one row due to a previous run leaving rows behind. Not covered by any existing ISS-0101..0120. Evidence: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log offset 2341760.",
+  "root_cause": {
+    "type": "code-defect",
+    "details": "TBD. Initial hypothesis: the bootstrap state table was seeded multiple times (once per test run that failed before cleanup) and the OIDC test's expectEqual(1) check is failing because the table now has multiple rows. The constraint that should enforce singleton cardinality is not unique enough, or the cleanup path is missing for this specific table."
+  },
+  "candidate_resolution": "Add a TRUNCATE bootstrap_state in tests/integration/helpers.zig resetTestData(), strengthen the singleton constraint to enforce unique-index cardinality, and ensure each OIDC test cleans up after itself.",
+  "resolution": null,
+  "files_to_change": [
+    "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
+    "src/identity/oidc.zig",
+    "src/identity/bootstrap.zig",
+    "tests/integration/helpers.zig",
+    "migrations/"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/392",
+  "prevention": [
+    "Add bootstrap_state to the standard cleanup set in resetTestData().",
+    "Use a unique partial index on bootstrap_state to enforce real singleton cardinality."
+  ]
+}

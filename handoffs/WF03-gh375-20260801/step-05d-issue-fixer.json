@@ -1,0 +1,40 @@
+{
+  "handoff_id": "30afde61-52e9-4a2e-8bb8-4306998ae224",
+  "run_id": "WF03-gh375-20260801",
+  "step": "05d",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-01T12:15:49Z",
+  "status": "COMPLETED",
+  "started_at": "2026-08-01T12:09:25Z",
+  "completed_at": "2026-08-01T12:15:49Z",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 5d — out-of-scope failure filing",
+    "requirement_ids": [],
+    "related_handoff_ids": ["33e22440-f306-426c-a3d5-993b14d45dd1"],
+    "artifacts_in": [
+      "scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log",
+      "scratch/WF03-gh375-20260801/test-runner-step5c/lint.log"
+    ]
+  },
+  "task": {
+    "description": "Register and file GitHub issues for failures found in Step 5c that are not within scope of ISS-0112. ISS-0112 itself is fixed (compile is clean, +909 pass delta from step 5b) but the integration suite still has 204 failures and lint reports 258 MAJOR T010 violations. Cluster these failures, register ISS files starting at ISS-0121, and file each on GitHub."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Reconciled existing ISS-0113..0120 (already filed as #376-#383 in prior workflow WF03-gh364-20260801, missing from issue_index.json — added) and filed 6 NEW GitHub issues for clusters not yet covered by any ISS: ISS-0121 -> #387 (T010 hardcoded UUID lint, 258 MAJOR findings); ISS-0122 -> #388 (C22021 invalid UTF-8 byte 0xaa in TC-EE-10-06 / TC-EXT-01-INT-07); ISS-0123 -> #389 (P0001 audit_entries immutable + C42703 source_ref missing); ISS-0124 -> #390 (C42883 operator text = integer in 2 tests); ISS-0125 -> #391 (C23503 FK on process_definitions blocked by orphan instance_definition_snapshots); ISS-0126 -> #392 (TC-OIDC-22-01 bootstrap state singleton). Local ISS-0121..0126.json files written with github_issue URLs; issue_index.json updated; orchestrator.log appended; commit + push pending.",
+    "artifacts_out": [
+      "docs/issues/ISS-0121.json",
+      "docs/issues/ISS-0122.json",
+      "docs/issues/ISS-0123.json",
+      "docs/issues/ISS-0124.json",
+      "docs/issues/ISS-0125.json",
+      "docs/issues/ISS-0126.json",
+      "docs/issues/issue_index.json",
+      "handoffs/WF03-gh375-20260801/step-05d-issue-fixer.json"
+    ],
+    "issues": [],
+    "next_action": "Route back to ORCH — proceed with Step 7 (DOC-UPDATER) to mark ISS-0112 RESOLVED"
+  }
+}
