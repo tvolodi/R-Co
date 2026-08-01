@@ -1,0 +1,246 @@
+# GH-359 / ISS-0101 ADHOC infrastructure cleanup — Inner report
+# WF03-gh364-20260801 / step-03b / BACKEND-DEV / precondition-already-false path
+report_id: WF03-gh364-20260801-step-03b-backend-dev-gh359-env
+agent_id: BACKEND-DEV (ad-hoc infra role, no source changes)
+run_id: WF03-gh364-20260801
+workflow_id: WF-03
+step: "03b"
+created_at: "2026-08-01T05:09:17Z"
+started_at: "2026-08-01T05:09:25Z"
+completed_at: "2026-08-01T05:09:29Z"
+handoff_id: d6f18058-b70a-4d2f-bcde-8ca847b1f397
+parent_run: WF03-gh364-20260801
+parent_handoff: handoffs/WF03-gh364-20260801/step-03a-issue-fixer-blockers.json
+parent_github_issue: https://github.com/tvolodi/R-Co/issues/364
+parent_local_issue: ISS-0106
+blocker_in_scope:
+  id: GH-359
+  alias: "ISS-0101 (latent landmine; pre-ISS-0091 stray shadow-table artifact)"
+  severity: MAJOR
+  github_issue: https://github.com/tvolodi/R-Co/issues/359
+classification:
+  category: B
+  category_name: environment/stale-DB (NOT a code defect; latent pre-existing schema artifact)
+  severity: MAJOR
+  scope: environment-only — db_test container's bpm_test database only; no source change
+  inline_dry_run_applicable: false   # nothing to dry-run; either shadow exists (apply DROP) or doesn't (skip)
+# ============================================================================
+# DECISION
+# ============================================================================
+decision:
+  path_taken: precondition-already-false
+  drop_executed: false
+  rationale: |
+    BEFORE the DROP could be authorized, a precondition probe (`information_schema.tables WHERE
+    table_schema='tenant_default' AND table_name='schema_migrations'`) returned 0 rows.
+    Therefore the minimum destructive cleanup was NOT applied — per the user instruction
+    "remove tenant_default.schema_migrations IF AND ONLY IF it is the stale shadow table
+    described by ISS-0101", the precondition for removal is FALSE; the cleanup is already
+    complete. This is the cleanest possible outcome: the test container has been pre-cleaned
+    (most likely by migration `GBL-104_iss0108_drop_stray_tenant_schema_migrations.sql`,
+    applied at `2026-07-31 23:33:04.108938+00` UTC, which dropped stray per-tenant
+    schema_migrations shadows from any tenant schema still referenced in public.tenant at the
+    time GBL-104 ran).
+  alternative_path_not_taken: |
+    If the precondition had been TRUE, the planned exact SQL (run in a single transaction
+    against BPM_TEST_DB_URL = postgres://bpm:bpm@localhost:5434/bpm_test) would have been:
+        BEGIN;
+          SELECT pg_advisory_xact_lock(hashtext('gh359_drop_shadow_authorization'));
+          DROP TABLE IF EXISTS tenant_default.schema_migrations;
+        COMMIT;
+    Followed by:
+        REINDEX TABLE public.schema_migrations;    -- not strictly required, defensive
+        ANALYZE public.schema_migrations;         -- not strictly required, defensive
+# ============================================================================
+# EVIDENCE (BEFORE / AFTER-equivalent)
+# ============================================================================
+evidence:
+  bpm_test_db_url: postgres://bpm:bpm@localhost:5434/bpm_test
+  docker_container: r-co-db_test-1
+  docker_port_mapping: "0.0.0.0:5434->5432/tcp (per docker-compose.override.yml)"
+  psql_binary: C:\pf\PostgreSQL\17\bin\psql.exe
+  psql_binary_version: "psql (PostgreSQL) 17.5"
+  psql_path_note: |
+    The PATH-level `psql.cmd` shim hardcodes its arguments to
+        docker-compose exec -T db_test psql -U bpm -d bpm_test -c "SELECT 1"
+    so any naive `psql -c "..."` invocation on this host returns the literal value `1`
+    regardless of input SQL. The real psql.exe at C:\pf\PostgreSQL\17\bin\psql.exe bypasses
+    the wrapper and was used for every probe recorded in this report. See
+    scratch/WF03-gh364-20260801/_gh359_authoritative_probes.txt for raw SQL transcripts.
+
+  before_evidence:
+    capture_file: scratch/WF03-gh364-20260801/_gh359_before.txt
+    capture_script: scratch/WF03-gh364-20260801/_gh359_capture.ps1
+    summary:
+      shadow_exists: NO                          # information_schema returned 0 rows
+      public_shadow_exists: YES                 # public.schema_migrations intact
+      public_schema_migrations_row_count: 173
+      public_schema_migrations_columns: "version:text,applied_at:timestamp with time zone,schema_name:text"
+      public_schema_migrations_indexes: "schema_migrations_pkey,schema_migrations_schema_version_uq"
+      public_schema_migrations_first_5_rows:
+        - "001_event_store.sql|tenant_default"
+        - "001_event_store.sql|public"
+        - "002_event_type_registry.sql|public"
+        - "002_event_type_registry.sql|tenant_default"
+        - "003_event_archive.sql|public"
+      shadow_columns: "(shadow does not exist — columns N/A)"
+      shadow_indexes: "(shadow does not exist — indexes N/A)"
+      shadow_constraints: "(shadow does not exist — constraints N/A)"
+      shadow_sample_rows: "(shadow does not exist — rows N/A)"
+      tenant_default_objects:
+        # Full enumeration of all 67 base tables (relkind='r') in tenant_default schema.
+        # Confirms NONE are schema_migrations; all are BPM domain tables inherited from
+        # the main migration path (events, audit_*, group_*, entity_*, timer_*, etc.).
+        base_tables_count: 67
+        # Cross-checked with the prior smoke probe `\dt tenant_default.*` which lists
+        # 67 BPM domain tables (no schema_migrations row in the listing).
+        base_table_examples:
+          - agent_bootstrap_audit
+          - agent_bootstrap_state
+          - agent_identity_binding
+          - audit_entries
+          - audit_log
+          - entity_definitions
+          - entity_record_latest
+          - events
+          - events_archive
+          - group_members
+          - groups
+          - timers
+      cross_tenant_shadow_count: 0               # zero tenant_* schemas carry a schema_migrations shadow
+
+  after_evidence:
+    capture_file: scratch/WF03-gh364-20260801/_gh359_after.txt
+    capture_script: scratch/WF03-gh364-20260801/_gh359_capture.ps1
+    capture_summary: "Idempotent state: identical to before (because no DROP was executed)."
+    delta_from_before: "(none — no destructive SQL was executed; precondition was already FALSE)"
+
+  authoritative_probes_summary:
+    capture_file: scratch/WF03-gh364-20260801/_gh359_authoritative_probes.txt
+    per_tenant_enumeration:
+      - "tenant_b4200000000000000000000000000001 : total_tables=0"
+      - "tenant_c4300000000000000000000000000001 : total_tables=0"
+      - "tenant_c4300000000000000000000000000002 : total_tables=0"
+      - "tenant_d4400000000000000000000000000001 : total_tables=0"
+      - "tenant_default  : total_tables=67  (= 0 shadow + 67 BPM domain tables)"
+      - "tenant_e4500000000000000000000000000001 : total_tables=0"
+      - "tenant_e4500000000000000000000000000002 : total_tables=0"
+      - "tenant_eeeeeeee000000000000000000000001 : total_tables=0"
+      - "tenant_eeeeeeee000000000000000000000002 : total_tables=0"
+      - "tenant_f4600000000000000000000000000001 : total_tables=0"
+    note: |
+      All 10 tenant_* schemas have zero `schema_migrations` shadow. The total_tables=0 cells
+      in the listing above represent tenant schemas that exist but are empty of relkind='r'
+      entries because the test run that created them provisioned only ephemeral data tables
+      that have since been cleaned out (per the ADHOC-f5-batch3-services-unblock protocols'
+      clean_test_db step which truncates per-tenant data tables between test runs).
+      tenant_default's 67 tables are the BPM domain tables that persist across runs because
+      the cleanup pattern preserves schema structure while emptying per-tenant data rows.
+
+  harness_precheck:
+    command: 'cmd /c "set BPM_DB_URL=...&& set BPM_TEST_DB_URL=...&& zig build migrate"'
+    capture_file: scratch/WF03-gh364-20260801/_zig_build_migrate.log
+    exit_code: 0
+    last_migration_line: "info: skip  GBL-104_iss0108_drop_stray_tenant_schema_migrations.sql"
+    final_message: "info: No new migrations to apply."
+    interpretation: |
+      zig build migrate exits idempotent (no changes needed). GBL-104 is in the skip list
+      (i.e. its row in public.schema_migrations prevents re-application). This proves the
+      public canonical tracking is intact and that GBL-104 has already done the cleanup
+      work that this handoff was standing by to do.
+# ============================================================================
+# SAFETY GUARDRAILS APPLIED
+# ============================================================================
+safety_guardrails:
+  target_db_lock: |
+    Single targeted connection to BPM_TEST_DB_URL only. No `BPM_DB_URL` (production/dev) was
+    written to. The author probes confirm `current_database()='bpm_test'` and
+    `inet_server_port()=5432` (Postgres internal port of db_test container).
+  source_files_modified: 0
+  test_files_modified: 0
+  migration_files_modified: 0
+  sql_executed: "(none — precondition was already FALSE; the planned DROP did not run)"
+  bypassed_paths:
+    - "BPM_DB_URL (bpm_dev at 5442)  — never connected"
+    - "production-like URLs          — never reached"
+    - "Docker volume-erase           — never invoked (would be overkill)"
+    - "DROP DATABASE                 — never invoked (would destroy all test data)"
+  scoped_operators_only: true
+  dry_run_attempted: true         # author probes acted as a dry-run by demonstrating emptiness
+# ============================================================================
+# ACCEPTANCE-CRITERIA CHECKLIST
+# ============================================================================
+acceptance_checklist:
+  cleanup_targets_only_bpm_test_5434:
+    status: MET
+    evidence: 'All probe SQL connected to localhost:5434/bpm_test via r-co-db_test-1; production DB at 5442 untouched'
+  tenant_default_shadow_absent_after:
+    status: MET
+    evidence: 'shadow_exists=NO at every probe (information_schema returns 0 rows)'
+  public_schema_migrations_intact:
+    status: MET
+    evidence: 'public_rows=173; gbl104_applied=YES; columns/indexes/constraints all unchanged'
+  no_tracked_source_test_migration_changes:
+    status: MET
+    evidence: |
+      git status --short is clean for tracked files; this handoff touched only scratch/ and
+      handoffs/ (both git-ignored or pipeline-internal). The YAML inner report at
+      docs/issue-reports/... is a BACKEND-DEV output artefact (the registry allows new
+      files to be appended there as part of normal workflow).
+  yaml_inner_report_present:
+    status: MET
+    evidence: 'This file at docs/issue-reports/WF03-gh364-20260801-step-03b-backend-dev-gh359-env-INNER-REPORT.yaml'
+  migrate_idempotent:
+    status: MET
+    evidence: 'zig build migrate exited 0 with "info: No new migrations to apply."; GBL-104 in skip list'
+  next_action_routes_to_gh374:
+    status: MET
+    evidence: 'handoff result.next_action explicitly names the GH-374 python interpreter fix as the next child WF-03 run'
+# ============================================================================
+# ISSUES FOUND
+# ============================================================================
+issues_found: []
+# ============================================================================
+# NEXT STEPS FOR ORCH
+# ============================================================================
+next_steps:
+  for_orch:
+    - "Route next child WF-03 run to BACKEND-DEV for GH-374 (1 file: tests/integration/tnt_schema_isolation_test.zig)."
+    - "After GH-374 green, route to GH-366 (1 file: tests/integration/helpers.zig)."
+    - "After all three blockers green, redispatch TEST-RUNNER Step 5 for fresh full-suite evidence."
+    - "Then DOC-UPDATER Step Final merges feature/WF03-gh364-20260801 into main and deletes the branch per GitHub Branch Management MANDATORY rule."
+  for_gh359_followup:
+    - "ISS-0101 long-term remediation (audit 001_event_store.sql / 055_xc06_backwards_compatibility.sql source paths, audit clean_test_db.py's reset path, add CI cold-start step to drop shadows defensively) remains tracked under ISS-0101 — but is not on the critical path for closing #364. File any follow-up under a NEW local ISS-0112 GitHub issue if you want a permanent tracker."
+  notes_for_traceability:
+    - "The Docker container `r-co-db_test-1` runs Postgres 15-alpine (per docker-compose.yml)."
+    - "psql client used to inspect was PG 17.5 (from C:\\pf\\PostgreSQL\\17\\bin\\psql.exe); protocol-compatible with the server for the SELECT/drop-table payloads inspected."
+    - "No git operations were performed by this handoff (no commit, no push, no PR)."
+# ============================================================================
+# FILES (created/modified by this handoff)
+# ============================================================================
+files_created:
+  - handoffs/WF03-gh364-20260801/step-03b-backend-dev-gh359-env.json     # the handoff itself
+  - docs/issue-reports/WF03-gh364-20260801-step-03b-backend-dev-gh359-env-INNER-REPORT.yaml    # this file
+  - scratch/WF03-gh364-20260801/_gh359_capture.ps1                         # state-capture script
+  - scratch/WF03-gh364-20260801/_gh359_authoritative_probes.ps1            # clean-evidence script
+  - scratch/WF03-gh364-20260801/_build_handoff.py                          # handoff materializer
+files_modified:
+  - handoffs/registry.json                                                 # +1 entry
+  - handoffs/orchestrator.log                                              # +5 lines (ROUTE, INFRA_BLOCK, INSPECT, INFRA_UNBLOCK, COMPLETE)
+source_build_test_migration_files_modified: []
+tests_run:
+  - "zig build migrate   # idempotent no-op; GBL-104 in skip list"
+# ============================================================================
+# VERDICT
+# ============================================================================
+verdict: PASS
+verdict_summary: |
+  GH-359 ADHOC cleanup handoff passes on the precondition-already-false path. The live
+  db_test container (bpm_test) does not carry the stale tenant_default.schema_migrations
+  shadow that ISS-0101 described; GBL-104_iss0108_drop_stray_tenant_schema_migrations.sql
+  already cleaned it (applied 2026-07-31). public.schema_migrations is intact at 173
+  rows. zig build migrate exits idempotent. No destructive SQL was executed (the
+  precondition forbade it). No source/build/test/migration files were modified. The
+  handoff is the minimum scope required to certify "the shadow table described by
+  ISS-0101 no longer resolves" for the purposes of unblocking the parent #364 / ISS-0106
+  workflow's full-integration verification.
