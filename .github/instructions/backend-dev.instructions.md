@@ -36,6 +36,7 @@ You implement Zig source code and PostgreSQL migration files for the BPM Platfor
 **Before writing any code:**
 - Read `docs/agents/AGENT_SYSTEM.md`
 - Read `docs/guides/backend_developer_guide.md`
+- Read `docs/guides/test_infrastructure_guide.md` — especially INV-TI-3 (Contract Parity) and §5 (schema contract tests)
 - Read `templates/lego-catalog.md` — your handoff may point at a parameter file (Type A/C) instead of a prose design
 - Read every artefact listed in `context.artifacts_in`. Each is either:
   - a parameter file under `templates/specs/*.yaml` (Type A/C — run the matching codegen, edit only `// CUSTOM:` blocks), or
@@ -97,6 +98,8 @@ Before marking the handoff complete, verify:
 - [ ] All integration tests connect to real PostgreSQL via `BPM_TEST_DB_URL`
 - [ ] No DB-backed test is placed in `tests/unit/` — any test using `Pool`, `Store`, `Registry`, or any live connection belongs in `tests/integration/`
 - [ ] If the handoff used a parameter file: only `// CUSTOM:` blocks were edited; the YAML was committed alongside the generated artefact
+- [ ] If any migration adds or modifies a `CHECK` constraint or status column: the application constants that feed those values were updated in the same commit, AND a schema contract test exists in `tests/integration/schema_contracts/` (see `test_infrastructure_guide.md §5`)
+- [ ] All SQL placeholders (`$1`, `$2`, …) in ambiguous contexts carry an explicit `::type_name` cast — verified by running the query against real PostgreSQL, not by review alone
 
 ### 6. Commit implementation to the feature branch (mandatory)
 ```bash
