@@ -1,0 +1,28 @@
+{
+  "handoff_id": "step07-gh375-20260801-iss0112",
+  "run_id": "WF03-gh375-20260801",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-01T12:19:21Z",
+  "status": "COMPLETED",
+  "started_at": "2026-08-01T12:19:21Z",
+  "completed_at": "2026-08-01T12:19:21Z",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 7 — finalize documentation",
+    "requirement_ids": ["TC-EXT-02","TC-TNT-01","TC-TNT-02","TC-TNT-03","TC-ISS-503","TC-ADP-02","TC-ADP-04a","TC-ADP-04b","TC-ADP-05","TC-ADP-06","TC-ADP-09","TC-ADP-10","TC-EXP-201","TC-EXP-202","TC-SVC-01","TC-SVC-04","TC-ENV-01","TC-ENV-02"],
+    "related_handoff_ids": ["8cff840b-9d33-4d80-ae27-8a6c9c22842d"],
+    "artifacts_in": ["docs/issues/ISS-0112.json", "CHANGELOG.md", "docs/requirements.yaml"]
+  },
+  "task": {
+    "description": "Finalize ISS-0112 documentation: changelog entry, requirement status updates, ISS file resolution."
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0112 documentation finalized: CHANGELOG.md updated under ## Unreleased; 18 requirements (mapped to canonical IDs without TC- prefix: EXT-02, TNT-01..03, ISS-503, ADP-02/04a/04b/05/06/09/10, EXP-201/202, SVC-01/04, ENV-01/02) re-stamped RELEASED with --implemented-in pointing at the ISS-0112 fix files (migrations/GBL-105_iss0112_schema_ledger_reconcile.sql, src/db/migrations.zig, src/db/provisioning.zig, tests/integration/helpers.zig, tools/clean_test_db.py, tools/verify_schema_baseline.py, src/design/fix-iss0112.md); docs/status/requirement_status.yaml regenerated; ISS-0112.json and issue_index.json updated to status=RESOLVED, resolved_at=2026-08-01T12:19:21Z, prevention array populated.",
+    "artifacts_out": ["CHANGELOG.md", "docs/status/requirement_status.yaml", "docs/issues/ISS-0112.json", "docs/issues/issue_index.json", "docs/requirements.yaml", "docs/issue-reports/WF03-gh375-20260801-step-07-doc-updater-INNER-REPORT.json"],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV Step Final (git-merge)"
+  }
+}

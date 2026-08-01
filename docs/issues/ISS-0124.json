@@ -1,0 +1,37 @@
+{
+  "id": "ISS-0124",
+  "title": "PostgreSQL operator does not exist: text = integer (C42883) in 2 integration tests",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "code-defect / sql-type-mismatch",
+  "run_id": "WF03-gh375-20260801",
+  "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+  "affected_areas": [
+    "src/reports/runs.zig",
+    "src/reports/export.zig",
+    "src/db/pool.zig",
+    "tests/integration/reports_run_query_test.zig",
+    "tests/integration/ext02_webhook_dispatch_test.zig"
+  ],
+  "created_at": "2026-08-01T12:09:25Z",
+  "resolved_at": null,
+  "notes": "Cluster M from Step 5c. Two POSTGRES ERROR C42883 'operator does not exist: text = integer' (mbutils.c parse_oper.c:647 op_error) errors observed in the run. The C42883 indicates a SQL comparison where a text column is being compared to an integer value without an explicit cast. SURFACES FROM src/db/pool.zig:430 exec / pg.zig:145 exec / pg.zig:303 readUntilReady. The errors are isolated but the type signature suggests the application is interpolating a numeric expression into a query that was built for a text field. Likely cause: a run_query filter or run export SELECT/UPDATE uses $1 with text type but the test passes an integer, or a where clause forgets an explicit cast. Evidence: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log (POSTGRES ERROR C42883 min 2 occurrences).",
+  "root_cause": {
+    "type": "code-defect",
+    "details": "SQL placeholders in src/reports/ and possibly src/db/pool.zig lack explicit PG cast or have an inferred text type that doesn't match the integer the test passes. Without the cast, PostgreSQL 42883 errors out because there is no implicit text = integer operator. Same root cause for both occurrences; one statement pattern in two tests."
+  },
+  "candidate_resolution": "Add explicit ::int or ::text casts on both sides of the comparison (or cast the parameter explicitly in the binding) so the operator resolves to the text = text or int = int family. Confirm the fix satisfies the test's comparison semantics and doesn't break adjacent query paths.",
+  "resolution": null,
+  "files_to_change": [
+    "src/reports/runs.zig",
+    "src/reports/export.zig",
+    "src/db/pool.zig",
+    "tests/integration/reports_run_query_test.zig",
+    "tests/integration/ext02_webhook_dispatch_test.zig"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/390",
+  "prevention": [
+    "Run a parametrized-query lint that requires explicit PG type casts on any = comparison with a placeholder.",
+    "Centralize all 'filter by id' query templates under one function that always casts the parameter explicitly."
+  ]
+}

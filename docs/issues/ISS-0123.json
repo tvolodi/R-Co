@@ -1,0 +1,40 @@
+{
+  "id": "ISS-0123",
+  "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6\u00d7 alongside missing source_ref column",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "schema-drift / audit-trigger-side-effect",
+  "run_id": "WF03-gh375-20260801",
+  "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+  "affected_areas": [
+    "src/db/audit.zig",
+    "migrations/GBL-102_audit_immutability.sql",
+    "migrations/GBL-103_audit_immutability_guard.sql",
+    "src/events/store.zig",
+    "tests/integration/audit_iss103_test.zig",
+    "tests/integration/iss202_merge_atomicity_test.zig",
+    "tests/integration/iss203_idempotency_keys_test.zig"
+  ],
+  "created_at": "2026-08-01T12:09:25Z",
+  "resolved_at": null,
+  "notes": "Cluster L from Step 5c. Step 5c log records 6 PostgreSQL P0001 'audit_entries is immutable' RAISE exceptions from bpm_audit_immutable_guard() AND 9\u00d7 'column \"source_ref\" does not exist' (C42703) errors clustering in tests/integration/iss202_merge_atomicity_test.zig and iss203_idempotency_keys_test.zig. The audit-trigger guard fires inside bpm_audit_on_mutation() at line 43 (the INSERT INTO audit_entries statement). The C42703 source_ref errors come from event_store insert paths that try to write a source_ref column on a table that doesn't have one. Evidence: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log offsets 1480582, 1480767. The forced 'forced audit insert failure for test' P0001 RAISE confirms that some tests intentionally trip the trigger, but the source_ref C42703 indicates the test fixture is producing an INSERT statement that expects a column which the migration cleared. Possibly GBL-100/101 removed source_ref from the event_store table but the test helpers still reference it.",
+  "root_cause": {
+    "type": "schema-drift",
+    "details": "Two intertwined issues: (a) the audit trigger bpm_audit_on_mutation fires 6\u00d7 with P0001 because some tests deliberately try to insert/audit a failed transaction and the guard is doing its job \u2014 but the surrounding tests then fail to clean up, so the audit guard is detected as a failure context. (b) The C42703 'source_ref' column missing is a real schema-vs-test drift: test event_store inserts expect a source_ref column that was removed by a recent migration; the migration is canonical but the tests still target the old schema. The two clusters are linked because ISS-202/203 events write through the same audit path that produces the C42703 error."
+  },
+  "candidate_resolution": "Audit the event_store schema currently in scope (verify_schema_baseline.py) and ensure all event_store INSERT statements in tests/integration/iss202/iss203/iss205 match the live schema. Remove source_ref usage from tests that target the post-GBL-100/101 schema. Wrap the audit guard test paths so they intentionally trip P0001 without leaking into neighboring tests via shared transaction state.",
+  "resolution": null,
+  "files_to_change": [
+    "src/db/audit.zig",
+    "src/events/store.zig",
+    "tests/integration/iss202_merge_atomicity_test.zig",
+    "tests/integration/iss203_idempotency_keys_test.zig",
+    "tests/integration/iss205_webhook_outbox_test.zig",
+    "tests/integration/audit_iss103_test.zig"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/389",
+  "prevention": [
+    "Run a nightly 'schema vs test fixture references' lint that diffs every column referenced in tests/integration/*.zig against the canonical schema produced by zig build migrate.",
+    "Make the audit guard test path use a dedicated transaction that never escapes into the larger test setup."
+  ]
+}

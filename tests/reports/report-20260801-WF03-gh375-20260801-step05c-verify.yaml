@@ -1,0 +1,57 @@
+run_id: WF03-gh375-20260801
+step: 05c
+infrastructure_health_checklist:
+  - name: backend_services
+    status: PASS
+    evidence: Existing run completed; no integration process remains in flight.
+  - name: migration_ledger_count
+    status: PASS
+    evidence: 98 ledger rows equal 98 migration files.
+  - name: per_migration_rows
+    status: PASS
+    evidence: All 98 migrations have ledger rows.
+  - name: tenant_schemas_consistent
+    status: PASS
+    evidence: All SCHEMA-mode tenants have a PostgreSQL schema.
+  - name: expected_constraints
+    status: PASS
+    evidence: webhook_deliveries_status_check and tenant_storage_mode_check present.
+  - name: migration_command
+    status: PASS
+    evidence: zig_build_migrate.log completed with migrations skipped as already applied.
+  - name: test_isolation_lint
+    status: FAIL
+    evidence: lint.log reports MAJOR T010 hardcoded UUID violations.
+verify_schema_baseline:
+  verify_schema_exit_code: 0
+  verify_schema_tenants_exit_code: 0
+unit_tests:
+  pass: 583
+  fail: 0
+  skip: 84
+  compile: PASS
+integration_tests:
+  pass: 1065
+  fail: 204
+  skip: 18
+  compile: PASS
+  build_exit_code: 1
+  final_binary_summary: "465 pass, 7 skip, 71 fail (543 total); 19 leaks"
+delta_vs_step05b:
+  baseline_pass: 156
+  baseline_fail: 461
+  pass_delta: 909
+  fail_delta: 257
+regressions:
+  - severity: MAJOR
+    description: Integration suite remains red with 204 aggregate failures; representative failures include text/integer operator mismatch, timers status constraint violation, missing events_archive relation, tenant storage mode constraint violation, and lock timeout.
+  - severity: MAJOR
+    description: Test isolation lint reports hardcoded UUID violations (T010).
+verdict: FAIL
+verdict_reason: Compile succeeded and failures improved significantly, but the integration suite is not regression-free and the required lint checklist is not clean.
+artifacts:
+  integration_log: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log
+  unit_log: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_unit.log
+  schema_logs:
+    - scratch/WF03-gh375-20260801/test-runner-step5c/verify_schema.log
+    - scratch/WF03-gh375-20260801/test-runner-step5c/verify_schema_tenants.log

@@ -78,11 +78,14 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     {
         var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arena.deinit();
+        // force_reconcile=false: see audit_iss103_test.zig for rationale;
+        // same harness baseline, same ledger-driven apply path.
         bpm.migrations.Migrations.runForSchema(
             arena.allocator(),
             &pool,
             build_opts.migrations_dir,
             "tenant_default",
+            false,
         ) catch |err| {
             std.debug.print("makePool: runForSchema error (non-fatal): {}\n", .{err});
         };

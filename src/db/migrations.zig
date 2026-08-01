@@ -55,7 +55,7 @@ pub const Migrations = struct {
         pool: *Pool,
         migrations_dir: []const u8,
     ) MigrationError!void {
-        return runForSchema(allocator, pool, migrations_dir, "public");
+        return runForSchema(allocator, pool, migrations_dir, "public", false);
     }
 
     /// Apply pending migrations inside a specific PostgreSQL schema.
@@ -80,6 +80,7 @@ pub const Migrations = struct {
         pool: *Pool,
         migrations_dir: []const u8,
         schema_name: []const u8,
+        force_reconcile: bool,
     ) MigrationError!void {
         // Acquire connection.
         const conn = pool.acquire() catch |err| switch (err) {
@@ -208,6 +209,58 @@ pub const Migrations = struct {
 
             // Skip already-applied migrations (idempotent).
             if (applied.contains(filename)) continue;
+
+            // ISS-0112 applier guard (Change 2 of src/design/fix-iss0112.md).
+            // Read the migration file's first 1 KiB to detect the
+            // `-- reapply_on_drift: true` header convention. When set on a
+            // corrective migration, the applier supports a second skip
+            // predicate: if the ledger row is missing AND the migration's
+            // target objects already exist in the target schema (heuristic:
+            // any later migration has already been applied for this schema,
+            // which proves a downstream object is present that the
+            // corrective itself would also have created), log a notice
+            // and skip to avoid duplicate DDL. When `force_reconcile=true`,
+            // the applier re-runs every flagged corrective regardless of
+            // object presence and re-records the ledger row.
+            //
+            // `force_reconcile` is the verifier-driven reconcile mode and
+            // is the OFF switch for this guard.
+            const reapply_on_drift: bool = blk: {
+                const probe = dir.readFileAlloc(
+                    pool.io,
+                    filename,
+                    allocator,
+                    std.Io.Limit.limited(1024),
+                ) catch break :blk false;
+                if (probe.len == 0) break :blk false;
+                defer allocator.free(probe);
+                const needle = "-- reapply_on_drift: true";
+                break :blk std.mem.indexOf(u8, probe, needle) != null;
+            };
+
+            if (reapply_on_drift and !force_reconcile) {
+                // Heuristic for "objects already present": if some later
+                // migration has been applied for this schema, the corrective's
+                // effects are downstream of that and assumed already in
+                // place (because every migration in the chain is itself
+                // idempotent, and the corrective is idempotent too).
+                const has_late_row = blk: {
+                    var has_it = false;
+                    var ait = applied.keyIterator();
+                    while (ait.next()) |k| {
+                        if (migrationOrder(k.*) > migrationOrder(filename)) {
+                            has_it = true;
+                            break;
+                        }
+                    }
+                    break :blk has_it;
+                };
+                if (has_late_row) {
+                    conn.exec("SELECT 'MigrationLedgerSync: ' || $1 || ': row missing but later migrations applied, skipping re-apply to avoid duplicate DDL.'",
+                        &.{filename}) catch {};
+                    continue;
+                }
+            }
 
             // Out-of-order check: a lower numeric migration order cannot be applied
             // after a higher order has already been recorded for this schema.

@@ -109,7 +109,7 @@ pub fn provisionTenantSchema(
     }
 
     // Step 5: Apply migrations inside the tenant schema.
-    migrations.Migrations.runForSchema(allocator, pool, migrations_dir, schema_name) catch
+    migrations.Migrations.runForSchema(allocator, pool, migrations_dir, schema_name, false) catch
         return ProvisionError.MigrationFailed;
 
     // Step 6: Update migrations_applied_at timestamp in tenant_schemas.

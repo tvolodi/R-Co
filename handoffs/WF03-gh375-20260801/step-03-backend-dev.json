@@ -1,0 +1,110 @@
+{
+  "handoff_id": "67e35468-383a-4a31-a122-9cffa55c26b6",
+  "run_id": "WF03-gh375-20260801",
+  "workflow_id": "WF-03",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-01T10:17:44Z",
+  "started_at": "2026-08-01T11:20:26Z",
+  "completed_at": "2026-08-01T11:31:44Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 3 (implement fix)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "555ec95e-342f-413e-aa50-ad90bc21fcfb",
+      "8cff840b-9d33-4d80-ae27-8a6c9c22842d",
+      "f72648a5-4ff9-4234-acd3-952d98633a52",
+      "e53c8008-a98d-4689-ba64-028fee9df964",
+      "a43fdf2d-293e-42f8-96c9-9cc5a07151cf"
+    ],
+    "artifacts_in": [
+      "src/design/fix-iss0112.md",
+      "docs/issues/ISS-0112.json",
+      "docs/issue-reports/ISS-0112-step-1-WF03-gh375-20260801.yaml",
+      "docs/issue-reports/ISS-0112-step-2-WF03-gh375-20260801.yaml",
+      "docs/issue-reports/ISS-0112-step-2b-WF03-gh375-20260801.yaml"
+    ],
+    "branch_name": "feature/WF03-gh375-20260801"
+  },
+  "task": {
+    "description": "Step 3 of WF-03: implement the fix per design at src/design/fix-iss0112.md. The design prescribes 5 changes: (1) corrective migration GBL-105 (idempotent); (2) applier guard with force_reconcile param in src/db/migrations.zig; (3) per-test isolation refactor in tests/integration/helpers.zig; (4) tools/clean_test_db.py --include-fixtures flag; (5) tools/verify_schema_baseline.py (new). Implement, run fn:check-zig-build and fn:apply-migrations, then commit + push. This is the implementation step \u2014 touch only files listed in design. After zig build exits 0 and zig build migrate exits 0, run `python tools/verify_schema_baseline.py` (newly created tool) to confirm baseline matches.\n\nREWORK 1 (TEST-RUNNER FAIL):\n- 19 integration binaries failed to compile because Migrations.runForSchema signature was changed (added force_reconcile: bool as 5th arg) but 3 call sites in tests/integration/ still pass 4 args.\n- Specifically: tests/integration/helpers.zig:181, tests/integration/audit_iss103_test.zig:44, tests/integration/exp103_instance_waits_test.zig:81.\n- Fix: update these 3 call sites to pass \false (5th arg). Alternatively, change Migrations.runForSchema to make force_reconcile optional by providing two overloads or a wrapper.\n- Design-checker missed this because grep only checked src/, not tests/integration/.\n\nAcceptance criteria for rework:\n  - All 3 call sites updated (helpers.zig:181, audit_iss103_test.zig:44, exp103_instance_waits_test.zig:81)\n  - zig build exits 0 (no compile errors in any binary)\n  - zig build test-integration exits 0 OR compiles all binaries (individual test failures from infra drift acceptable; compile must be clean)\n  - Commit + push\n  - handoff result.status == PASS\n\nREWORK 2 (TEST-RUNNER FAIL on step 5b):\n- 461 integration test failures remain after compile was fixed.\n- Root cause: ck_tenant_type_fk_coherence requires (tenant_type='test') -> (production_tenant_id IS NOT NULL).\n- helpers.zig:362 INSERT sets tenant_type='test' without providing production_tenant_id.\n- Fix: at helpers.zig:362 either (a) include production_tenant_id='00000000-0000-0000-0000-000000000000'::uuid in the INSERT, OR (b) change tenant_type from test to production (which the prior comment says is wrong for cleanup semantics).\n- Recommended fix: (a) - add production_tenant_id column with the default-tenant UUID itself, satisfying ck_tenant_type_fk_coherence while preserving tenant_type='test' for clean_test_db.py filter semantics.\n- Also: clean_test_db.py may need a tweak if the production_tenant_id FK is now violated by other test tenants.\n\nAcceptance criteria for rework 2:\n  - ck_tenant_type_fk_coherence constraint satisfied for the default fixture tenant (production_tenant_id IS NOT NULL where tenant_type='test')\n  - helpers.zig:362 INSERT includes production_tenant_id\n  - zig build exits 0\n  - zig build test-integration compiles all binaries\n  - Re-running the iss503 pre-flight test no longer fails on the ck_tenant_type_fk_coherence constraint\n  - Commit + push\n  - handoff result.status == PASS\n",
+    "acceptance_criteria": [
+      "migrations/GBL-105_iss0112_schema_ledger_reconcile.sql exists; idempotent (uses IF NOT EXISTS / ON CONFLICT DO NOTHING); reconciles public + tenant ledgers; adds missing webhook_subscriptions.secret_ref column, public.tenant_realm_binding table, tenant.entity_type_instances table, and constraint upgrades",
+      "src/db/migrations.zig::Migrations.runForSchema takes new force_reconcile: bool parameter; respects a per-migration `-- reapply_on_drift: true` header comment; zig build exits 0",
+      "tests/integration/helpers.zig::ensureDefaultOidcSeeds sets tenant_type='test' on the 'default' tenant; fixture SVC-* INSERTs are relocated to per-test defer cleanup()",
+      "tools/clean_test_db.py supports --include-fixtures flag (off by default); today's behavior unchanged without it",
+      "tools/verify_schema_baseline.py is a NEW file that mechanically enforces docs/guides/test_infrastructure_guide.md \u00a76 with --check-tenants strict mode and --auto-fix reconcile mode; exit codes 0/1/2",
+      "zig build exits 0 with no error-set warnings",
+      "zig build migrate exits 0",
+      "python3 tools/verify_schema_baseline.py --check-tenants exits 0 against the freshly-migrated db_test",
+      "ISS-0112.json files_changed field populated with concrete paths",
+      "Commit + push to feature/WF03-gh375-20260801",
+      "handoff result.status == 'PASS'",
+      "Determine next_action: 'Route to TEST-DESIGNER Step 4 (test design)' if business logic added/modified, OR 'Route to TEST-RUNNER Step 5 (verify)' if pure regression fix"
+    ],
+    "functions_to_call": [
+      "fn:check-zig-build",
+      "fn:apply-migrations",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 2: helpers.zig default tenant fixture now sets production_tenant_id to the canonical UUID (self-reference), satisfying ck_tenant_type_fk_coherence. zig build exits 0 with no error-set warnings; zig build test-integration compiles all binaries (runtime test failures in non-ISS-0112 areas are infra drift, not regressions); verify_schema_baseline.py --check-tenants exits 0; INSERT manually verified to succeed against db_test; ISS-503 pre-flight test now passes the ck_tenant_type_fk_coherence gate (next gate is SCHEMA-mode cutover, an unrelated pre-existing concern).",
+    "artifacts_out": [
+      "tests/integration/helpers.zig",
+      "scratch/WF03-gh375-20260801/step-3-rework2/constraint_definition.log",
+      "scratch/WF03-gh375-20260801/step-3-rework2/violating_tenants.log",
+      "scratch/WF03-gh375-20260801/step-3-rework2/zig_build.log",
+      "scratch/WF03-gh375-20260801/step-3-rework2/zig_build_error_set.log",
+      "scratch/WF03-gh375-20260801/step-3-rework2/zig_build_test_integration.log",
+      "scratch/WF03-gh375-20260801/step-3-rework2/verify_schema_baseline.log",
+      "scratch/WF03-gh375-20260801/step-3-rework2/zig_test_integration_iss503.log",
+      "scratch/WF03-gh375-20260801/step-3-rework2/helpers_diff.log",
+      "scratch/WF03-gh375-20260801/step-3-rework2/git_commit.log",
+      "scratch/WF03-gh375-20260801/step-3-rework2/git_push.log"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER Step 5c (re-verify after rework 2)",
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh375-20260801",
+      "commit_sha": "f0eb04a9c54b5c41bb4e7dbbabd8a8ecdeaa3f25",
+      "commit_sha_list": [
+        "f0eb04a9c54b5c41bb4e7dbbabd8a8ecdeaa3f25"
+      ],
+      "preceding_sha": "69582fe",
+      "remote_branch": "origin/feature/WF03-gh375-20260801",
+      "push_status": "ok",
+      "push_evidence": "69582fe..f0eb04a  feature/WF03-gh375-20260801 -> feature/WF03-gh375-20260801"
+    },
+    "validation": {
+      "zig_build": "EXIT_CODE=0 (no output = clean compile)",
+      "zig_build_error_set_check": "no matches (clean)",
+      "zig_build_test_integration_compile": "all binaries compiled; runtime failures are unrelated infra drift (test.exe ran successfully across many binaries)",
+      "verify_schema_baseline_check_tenants": "EXIT_CODE=0 - all checks PASS (migration ledger, per-migration rows, tenant schemas, expected check constraints)",
+      "ck_tenant_type_fk_coherence_violations_after_fix": "0 rows (SELECT count(*) FROM public.tenant WHERE tenant_type=test AND production_tenant_id IS NULL returns 0)",
+      "iss503_preflight_progress": "pre-flight now passes ck_tenant_type_fk_coherence gate; next failure is pre-existing SCHEMA-mode cutover gate (unrelated to ISS-0112)",
+      "helper_insert_repro_before_fix": "ERROR: violates check constraint ck_tenant_type_fk_coherence",
+      "helper_insert_repro_after_fix": "INSERT 0 1 - succeeds"
+    }
+  },
+  "rework_count": 2,
+  "max_rework": 3,
+  "rework_delta": {
+    "rework_iteration": 2,
+    "rework_count_after": 2,
+    "fix_paths_chosen": {
+      "A": "helpers.zig ensureDefaultOidcSeeds now sets production_tenant_id = canonical UUID (self-reference) on both the INSERT and the ON CONFLICT DO UPDATE clause - SELECTED",
+      "B": "change ck_tenant_type_fk_coherence to permit tenant_type=test with NULL production_tenant_id - REJECTED (constraint is correct; constraint reflects business invariant)",
+      "C": "change tenant_type back to production - REJECTED (forbidden by handoff rule: breaks clean_test_db.py filter)"
+    },
+    "other_fixtures_audited": {
+      "tenant_type_test_inserts_in_tests_integration": 0,
+      "note": "grep on tenant_type=, ) and on test_regex returned zero matches across tests/integration/**/*.zig - no other harness fixtures set tenant_type=test without production_tenant_id. All ad-hoc test fixtures (env01, adp04a, svc01, svc04, oidc09-15, oidc35, oidc12, tenant_config_realm_test) already include production_tenant_id in their INSERT, so only helpers.zig needed a fix."
+    },
+    "convention_established": "Every test tenant points production_tenant_id at 00000000-0000-0000-0000-000000000000 (canonical default). helpers.zig now follows the same convention via self-reference because the canonical default itself has tenant_type=test."
+  }
+}

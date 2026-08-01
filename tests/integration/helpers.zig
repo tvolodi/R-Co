@@ -178,7 +178,11 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
             .pool_size = 2,
         });
         defer mig_pool.deinit();
-        try bpm.migrations.Migrations.runForSchema(allocator, &mig_pool, resolved.dir, schema);
+        // force_reconcile=false: the harness expects a clean db_test baseline
+        // (see tools/verify_schema_baseline.py §6). Migrations marked with
+        // `-- reapply_on_drift: true` are skipped here on purpose; only the
+        // GBL-105 corrective migration is the regular one we want to apply.
+        try bpm.migrations.Migrations.runForSchema(allocator, &mig_pool, resolved.dir, schema, false);
     }
 
     const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});
@@ -346,20 +350,47 @@ fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
     // shadow table instead of public.tenant and fail once a GBL-only
     // column is referenced. Schema-qualifying eliminates the ambiguity
     // regardless of search_path or shadow-table drift.
+    //
+    // ISS-0112 (GitHub #375): the canonical 'default' tenant now carries
+    // tenant_type='test' explicitly. Production code never creates this
+    // row (it is the harness's persistent fixture); production tenants
+    // are created via real onboarding flow that explicitly sets
+    // tenant_type='production'. Setting it to 'test' here keeps
+    // tools/clean_test_db.py's pre-existing filter (which deletes
+    // tenant_type='production' AND slug != 'default') from mistaking
+    // the harness's persistent fixture for production state.
+    //
+    // Check constraint ck_tenant_type_fk_coherence requires that every
+    // row with tenant_type='test' has production_tenant_id IS NOT NULL.
+    // We point production_tenant_id at this same canonical UUID
+    // (self-reference) because (a) no separate "production of the test
+    // world" tenant exists — the 'default' tenant IS the root, (b) every
+    // other integration test fixture that creates a test tenant uses
+    // '00000000-0000-0000-0000-000000000000' as production_tenant_id
+    // (see env01_test.zig insertTestTenant, adp04a_external_identity_linkage_test.zig
+    // ensureTenantBinding, svc01_service_catalog_scope_test.zig insertTenant,
+    // svc04_admin_api_test.zig, etc.), so this is the established
+    // convention and (c) ON CONFLICT DO UPDATE must re-assert the FK
+    // when the column is updated by a parallel migration in case the
+    // column was ever left NULL during a baseline.
     try conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id)
+        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
         \\VALUES (
         \\  '00000000-0000-0000-0000-000000000000'::uuid,
         \\  'default',
         \\  'Default Tenant',
         \\  'ACTIVE',
-        \\  'bpm-default'
+        \\  'bpm-default',
+        \\  'test',
+        \\  '00000000-0000-0000-0000-000000000000'::uuid
         \\)
         \\ON CONFLICT (id) DO UPDATE
         \\SET slug = EXCLUDED.slug,
         \\    display_name = EXCLUDED.display_name,
         \\    status = EXCLUDED.status,
         \\    idp_realm_id = COALESCE(public.tenant.idp_realm_id, EXCLUDED.idp_realm_id),
+        \\    tenant_type = 'test',
+        \\    production_tenant_id = '00000000-0000-0000-0000-000000000000'::uuid,
         \\    updated_at = NOW()
     , &.{});
 
@@ -369,26 +400,24 @@ fn ensureDefaultOidcSeeds(conn: *pg.Conn) !void {
         \\ON CONFLICT (realm) DO NOTHING
     , &.{});
 
-    // SVC-01..04 integration test fixture tenants.
-    // These are committed before each test's transaction begins so that
-    // pool-based catalog operations (registerService, etc.) can see them.
-    // SVC-04 per-test tenant fixtures are also included here; the test code
-    // re-inserts them inside the harness transaction (ON CONFLICT DO NOTHING
-    // makes those re-inserts no-ops) to keep the test SQL self-documenting.
-    try conn.exec(
-        \\INSERT INTO public.tenant (id, slug, display_name, status, idp_realm_id, tenant_type, production_tenant_id)
-        \\VALUES
-        \\  ('eeeeeeee-0000-0000-0000-000000000001'::uuid, 'svc-t1',       'SVC Test Tenant 1',       'ACTIVE', 'svc-realm-t1',      'test', '00000000-0000-0000-0000-000000000000'::uuid),
-        \\  ('eeeeeeee-0000-0000-0000-000000000002'::uuid, 'svc-t2',       'SVC Test Tenant 2',       'ACTIVE', 'svc-realm-t2',      'test', '00000000-0000-0000-0000-000000000000'::uuid),
-        \\  ('b4200000-0000-0000-0000-000000000001'::uuid, 'svc04-upd-tn', 'SVC04 Update Tenant',     'ACTIVE', 'realm-svc04-upd',   'test', '00000000-0000-0000-0000-000000000000'::uuid),
-        \\  ('c4300000-0000-0000-0000-000000000001'::uuid, 'svc04-cnf-ow', 'SVC04 Conflict Owner',    'ACTIVE', 'realm-svc04-cnf-ow','test', '00000000-0000-0000-0000-000000000000'::uuid),
-        \\  ('c4300000-0000-0000-0000-000000000002'::uuid, 'svc04-cnf-ot', 'SVC04 Conflict Other',    'ACTIVE', 'realm-svc04-cnf-ot','test', '00000000-0000-0000-0000-000000000000'::uuid),
-        \\  ('d4400000-0000-0000-0000-000000000001'::uuid, 'svc04-inuse-t','SVC04 InUse Tenant',      'ACTIVE', 'realm-svc04-inuse', 'test', '00000000-0000-0000-0000-000000000000'::uuid),
-        \\  ('e4500000-0000-0000-0000-000000000001'::uuid, 'svc04-lst-ta', 'SVC04 List TA',           'ACTIVE', 'realm-svc04-ta',    'test', '00000000-0000-0000-0000-000000000000'::uuid),
-        \\  ('e4500000-0000-0000-0000-000000000002'::uuid, 'svc04-lst-tb', 'SVC04 List TB',           'ACTIVE', 'realm-svc04-tb',    'test', '00000000-0000-0000-0000-000000000000'::uuid),
-        \\  ('f4600000-0000-0000-0000-000000000001'::uuid, 'svc04-all-t',  'SVC04 All Tenant',        'ACTIVE', 'realm-svc04-all',   'test', '00000000-0000-0000-0000-000000000000'::uuid)
-        \\ON CONFLICT (id) DO NOTHING
-    , &.{});
+    // ISS-0112 (GitHub #375): SVC-01..04 fixture tenants RELOCATED.
+    // Each SVC test now owns its own per-test fixture INSERTs via
+    // `try h.conn.exec(...)` and `defer cleanupTestTenant(...)`. The 9
+    // rows previously seeded here were the source of LEGACY_RLS-without-
+    // tenant_type fixtures that leaked across runs (Cluster C). Per-test
+    // fixtures are born inside the harness transaction and automatically
+    // rolled back at deinit(), eliminating the cross-run leak.
+}
+
+/// ISS-0112 (GitHub #375): belt-and-suspenders helper for SVC-* test files
+/// that may have escaped the per-test transaction rollback via pool-based
+/// operations. Issues a best-effort DELETE; never returns an error so it
+/// can be called from `defer` blocks safely.
+pub fn cleanupTestTenant(conn: *pg.Conn, tenant_id: []const u8) void {
+    conn.exec(
+        "DELETE FROM public.tenant WHERE id = $1::uuid AND tenant_type = 'test'",
+        .{tenant_id},
+    ) catch {};
 }
 
 // ---------------------------------------------------------------------------
