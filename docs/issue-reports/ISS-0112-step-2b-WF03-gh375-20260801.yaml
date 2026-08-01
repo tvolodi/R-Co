@@ -1,0 +1,101 @@
+issue_id: ISS-0112
+run_id: WF03-gh375-20260801
+step: 2b
+agent: CODE-DESIGN-VALIDATOR
+handoff_id: a43fdf2d-293e-42f8-96c9-9cc5a07151cf
+reported_at: 2026-08-01T10:18:00Z
+summary: >-
+  Validated the Type E design at src/design/fix-iss0112.md for the
+  ISS-0112 test-infrastructure-drift cluster. All 7 hard-gate checks
+  PASS. Design addresses the diagnosed root cause (INV-TI-1 / INV-TI-2
+  violation: ledger mismatch, fixture contamination, missing baseline
+  verifier) with 5 interlocking changes; every public function
+  signature before/after is documented; no implementation code beyond
+  the corrective migration's CREATE/ALTER/INSERT outline and the
+  single default-tenant INSERT shown to communicate the
+  tenant_type='test' addition; error taxonomy is explicit (new
+  LedgerOutOfSync variant recommended-deferred, existing 6 variants
+  unchanged); callers impacted section enumerates 22+ integration
+  binaries, lint/clean/verify tools, and 5 SVC test files; the 6-file
+  scope oversize is flagged with closed-circuit justification citing
+  the ISS-0106/0107/0110/0111 churn history; 5 measurable acceptance
+  criteria provided. Routing to BACKEND-DEV Step 3 (implement fix).
+checks:
+  - id: a
+    name: Root cause addressed (not workaround)
+    status: PASS
+    evidence: >-
+      All 5 changes present and explicit: (1) corrective migration
+      GBL-105 with 5-step outline; (2) applier guard in
+      Migrations.runForSchema with force_reconcile + reapply_on_drift
+      header comment; (3) per-test isolation via relocated SVC
+      fixtures + tenant_type='test' on default; (4)
+      clean_test_db.py --include-fixtures broadening; (5) new
+      tools/verify_schema_baseline.py with 4 check functions.
+  - id: b
+    name: Public function signatures before/after documented (Type E)
+    status: PASS
+    evidence: >-
+      Dedicated "Public function signatures before / after" section
+      covers Migrations.runForSchema (4→5 params, force_reconcile
+      added), Migrations.run (body change), clean_test_db.py::main
+      (--include-fixtures flag), verify_schema_baseline.py (4 helper
+      functions + main), ensureDefaultOidcSeeds (tenant_type='test'
+      + SVC INSERT removal), new cleanupTestTenant helper.
+  - id: c
+    name: No implementation code present
+    status: PASS
+    evidence: >-
+      SQL section uses CREATE/ALTER/INSERT outline shapes only (IF
+      NOT EXISTS, ON CONFLICT DO NOTHING, DO $$ FOREACH). Only
+      concrete code shown: the default-tenant INSERT (used to
+      communicate the tenant_type='test' addition) and the verifier
+      docstring + 4 helper signatures with `...` bodies. No function
+      bodies, no full DDL.
+  - id: d
+    name: Error taxonomy updated
+    status: PASS
+    evidence: >-
+      Dedicated "Error taxonomy" section. New MigrationsError.LedgerOutOfSync
+      variant discussed and explicitly recommended-deferred; existing
+      6 MigrationError variants enumerated as unchanged;
+      verify_schema_baseline.py new error surface (exit codes 0/1/2)
+      documented; clean_test_db.py error path confirmed unchanged.
+  - id: e
+    name: Callers impacted section
+    status: PASS
+    evidence: >-
+      Dedicated "Callers impacted" section. Lists 22+ test_integration_*
+      binaries from build.zig, 3 tooling consumers (lint, clean,
+      verify), and 5 SVC test files needing fixture relocation.
+      5-step orchestrator run order enumerated. Far exceeds the ≥3
+      caller classes threshold.
+  - id: f
+    name: Fix scope flag
+    status: PASS
+    evidence: >-
+      Dedicated "Fix scope flag (exceeds 5 files — explicit flag for
+      ORCH awareness)" section. Counts 6 source files explicitly.
+      Quotes the WF-03 §Fix ≤ 5 files rule. Provides closed-circuit
+      justification: Change 1↔2, 2↔5, 3↔4, 4↔5 each pair is
+      meaningless without the other. Cites ISS-0106/0107/0110/0111
+      churn as empirical evidence that splitting replays prior
+      rework. ORCH escalation path documented.
+  - id: g
+    name: Acceptance criteria present
+    status: PASS
+    evidence: >-
+      Dedicated "Acceptance criteria" section with 5 measurable
+      criteria: (1) verify_schema_baseline.py exits 0 idempotently;
+      (2) lint_test_isolation.py exits 0 (T060 not triggered);
+      (3) zig build test-integration exits 0 with no Clusters A-E
+      failures; (4) clean_test_db.py --include-fixtures reduces
+      LEGACY_RLS count to 0; (5) schema_migrations count = 97.
+overall_verdict: PASS
+next_action: Route to BACKEND-DEV Step 3 (implement fix per design)
+files_changed:
+  - docs/issue-reports/ISS-0112-step-2b-WF03-gh375-20260801.yaml
+  - handoffs/WF03-gh375-20260801/step-02b-code-design-validator.json
+no_code_changes: true
+blockers: []
+issues_found: []
