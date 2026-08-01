@@ -20,6 +20,7 @@ const testing = std.testing;
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 const build_options = @import("build_options");
+const builtin = @import("builtin");
 
 const bpm = @import("bpm");
 const Pool = bpm.pool.Pool;
@@ -57,6 +58,54 @@ fn testDbUrl(allocator: std.mem.Allocator) (error{
         },
         else => return err,
     };
+}
+
+/// Resolve the Python interpreter path used by TC-TNT-02-03 / TC-TNT-02-04 to
+/// launch tools/lint_migration_schema.py as a child process. See
+/// src/design/fix-ISS-0111.md for the full design (GH-374 / Windows
+/// AppExecutionAlias hijack fix).
+///
+/// Strict 3-step priority order:
+///   1. $BPM_TEST_PYTHON environment variable (CI override knob), if set
+///      and non-empty. Honored verbatim — no path resolution, no existence
+///      check; CI caller is expected to have set it to a valid path.
+///   2. Repository .venv interpreter (Windows: .venv\Scripts\python.exe;
+///      POSIX: .venv/bin/python), relative to cwd, if it exists.
+///   3. Bare "python3" fallback (preserves Linux/macOS CI behavior where
+///      python3 is a real interpreter).
+///
+/// Returns an allocator-owned []const u8 the caller must free via
+/// defer alloc.free(python). All three return paths are freed exactly once
+/// by the same defer in the caller; no double-free or use-after-free risk.
+fn resolveTestPython(allocator: std.mem.Allocator) (error{
+    MissingTestPythonInterpreter,
+    OutOfMemory,
+    EnvironmentVariableMissing,
+    InvalidWtf8,
+} || std.Io.Dir.StatFileError)![]const u8 {
+    // 1. Explicit override (BPM_TEST_PYTHON env var).
+    const env: std.process.Environ = .{ .block = .global };
+    if (env.getAlloc(allocator, "BPM_TEST_PYTHON")) |p| {
+        if (p.len > 0) return p;
+        allocator.free(p);
+    } else |err| switch (err) {
+        error.EnvironmentVariableMissing => {},
+        error.OutOfMemory => return error.OutOfMemory,
+        error.InvalidWtf8 => unreachable,
+    }
+    // 2. Repo venv interpreter (Windows: Scripts\python.exe; POSIX: bin/python).
+    const venv_rel: []const u8 = if (builtin.os.tag == .windows)
+        ".venv\\Scripts\\python.exe"
+    else
+        ".venv/bin/python";
+    if (std.Io.Dir.cwd().statFile(std.testing.io, venv_rel, .{})) |_| {
+        return allocator.dupe(u8, venv_rel) catch return error.OutOfMemory;
+    } else |e| switch (e) {
+        error.FileNotFound => {},
+        else => return e,
+    }
+    // 3. Bare fallback.
+    return allocator.dupe(u8, "python3") catch return error.OutOfMemory;
 }
 
 /// Return the migrations directory path from build options.
@@ -588,8 +637,27 @@ test "TC-TNT-02-03: linter rejects migration file containing public.events" {
     defer std.Io.Dir.cwd().deleteFile(std.testing.io, scratch_path) catch {};
 
     // Run the linter as a subprocess using Zig 0.16 std.process.run.
+    // GH-374 / ISS-0111: resolve the Python interpreter deterministically
+    // (env override → repo .venv → bare 'python3' fallback) so the
+    // subprocess does not hit the Microsoft Store AppExecutionAlias stub
+    // on Windows. See src/design/fix-ISS-0111.md for the full design.
+    const python = resolveTestPython(alloc) catch |err| switch (err) {
+        error.MissingTestPythonInterpreter => {
+            std.debug.print(
+                "TC-TNT-02-03: no Python interpreter found. Set $BPM_TEST_PYTHON or " ++
+                    "create .venv at the repo root (python -m venv .venv). Tested " ++
+                    "paths: $BPM_TEST_PYTHON, .venv/Scripts/python.exe (Windows) / " ++
+                    ".venv/bin/python (POSIX), bare 'python3' on PATH.\n",
+                .{},
+            );
+            return error.MissingTestPythonInterpreter;
+        },
+        else => return err,
+    };
+    defer alloc.free(python);
+
     const result = try std.process.run(alloc, std.testing.io, .{
-        .argv = &.{ "python3", "tools/lint_migration_schema.py", scratch_path },
+        .argv = &.{ python, "tools/lint_migration_schema.py", scratch_path },
         .stdout_limit = .limited(64 * 1024),
         .stderr_limit = .limited(64 * 1024),
     });
@@ -656,8 +724,24 @@ test "TC-TNT-02-04: linter accepts migration file containing public.schema_migra
     });
     defer std.Io.Dir.cwd().deleteFile(std.testing.io, scratch_path) catch {};
 
+    // GH-374 / ISS-0111: see comment in TC-TNT-02-03 above for rationale.
+    const python = resolveTestPython(alloc) catch |err| switch (err) {
+        error.MissingTestPythonInterpreter => {
+            std.debug.print(
+                "TC-TNT-02-04: no Python interpreter found. Set $BPM_TEST_PYTHON or " ++
+                    "create .venv at the repo root (python -m venv .venv). Tested " ++
+                    "paths: $BPM_TEST_PYTHON, .venv/Scripts/python.exe (Windows) / " ++
+                    ".venv/bin/python (POSIX), bare 'python3' on PATH.\n",
+                .{},
+            );
+            return error.MissingTestPythonInterpreter;
+        },
+        else => return err,
+    };
+    defer alloc.free(python);
+
     const result = try std.process.run(alloc, std.testing.io, .{
-        .argv = &.{ "python3", "tools/lint_migration_schema.py", scratch_path },
+        .argv = &.{ python, "tools/lint_migration_schema.py", scratch_path },
         .stdout_limit = .limited(64 * 1024),
         .stderr_limit = .limited(64 * 1024),
     });

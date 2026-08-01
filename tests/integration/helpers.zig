@@ -96,7 +96,24 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, url: 
     // retries forever. Hold a session-level advisory lock for the whole
     // check-and-apply pass so only one process migrates `public` at a time;
     // the rest wait, then see the migration already recorded and skip it.
+    // GH-366 / ISS-0107 regression: bracket this acquire with the same
+    // '90s'/'5s' lock_timeout scoping that fc5884b's ISS-0107 Rework-1
+    // already applies at the (different) line-487 widened acquire. The
+    // line-99 critical section's "narrow" assumption no longer holds under
+    // the post-fc5884b queue depth: the lock holder is now busy in the
+    // line-487 widened section, so the back of the queue legitimately needs
+    // more than the ambient 5s ceiling to acquire this lock. See
+    // src/design/fix-ISS-0110.md for full analysis and src/design/fix-ISS-0107.md
+    // for the proven Rework-1 pattern this brackets. Plain sequential SET
+    // (not SET LOCAL — the connection is not inside a transaction at this
+    // point; not defer/errdefer — errdefer conn.close() on the caller already
+    // discards the whole connection on any error path, and a function-scope
+    // defer would not fire until after the function returned, which is too
+    // late).
+    try conn.exec("SET lock_timeout = '90s'", &.{});
     try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
+    try conn.exec("SET lock_timeout = '5s'", &.{});
+
     defer conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
 
     try markPublicGlobalSkipsApplied(conn);
