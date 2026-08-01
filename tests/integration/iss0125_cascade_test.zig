@@ -3,8 +3,23 @@
 //! Requires a real PostgreSQL database through BPM_TEST_DB_URL. Each test uses
 //! TestHarness transaction rollback and per-test random UUID fixtures.
 const std = @import("std");
+const builtin = @import("builtin");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
+
+fn fillRandom(buf: []u8) void {
+    switch (comptime builtin.os.tag) {
+        .linux => _ = std.os.linux.getrandom(buf.ptr, buf.len, 0),
+        .windows => {
+            const adv = struct {
+                extern "advapi32" fn SystemFunction036(pbBuffer: *anyopaque, cbBuffer: u32) u8;
+            };
+            _ = adv.SystemFunction036(@ptrCast(buf.ptr), @intCast(buf.len));
+        },
+        .macos, .ios, .tvos, .watchos, .visionos, .driverkit, .freebsd, .netbsd, .openbsd, .dragonfly => std.c.arc4random_buf(buf.ptr, buf.len),
+        else => @compileError("fillRandom: unsupported OS — add a platform branch"),
+    }
+}
 
 fn requireTestDatabaseUrl(allocator: std.mem.Allocator) !void {
     const env: std.process.Environ = .{ .block = .global };
@@ -20,7 +35,7 @@ fn requireTestDatabaseUrl(allocator: std.mem.Allocator) !void {
 
 fn newUuid(allocator: std.mem.Allocator) ![]u8 {
     var bytes: [16]u8 = undefined;
-    std.crypto.random.bytes(&bytes);
+    fillRandom(&bytes);
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;
     return std.fmt.allocPrint(
@@ -115,9 +130,11 @@ test "TC-ISS-0125-03: migration ALTER body reapplies cleanly" {
     var h = try TestHarness.init(allocator);
     defer h.deinit();
 
-    const alter_body =
+    const alter_drop =
         \\ALTER TABLE instance_definition_snapshots
-        \\    DROP CONSTRAINT IF EXISTS instance_definition_snapshots_definition_id_fkey;
+        \\    DROP CONSTRAINT IF EXISTS instance_definition_snapshots_definition_id_fkey
+    ;
+    const alter_add =
         \\ALTER TABLE instance_definition_snapshots
         \\    ADD CONSTRAINT instance_definition_snapshots_definition_id_fkey
         \\    FOREIGN KEY (definition_id)
@@ -125,8 +142,10 @@ test "TC-ISS-0125-03: migration ALTER body reapplies cleanly" {
         \\    ON DELETE CASCADE
     ;
 
-    try h.conn.exec(alter_body, &.{});
-    try h.conn.exec(alter_body, &.{});
+    try h.conn.exec(alter_drop, &.{});
+    try h.conn.exec(alter_add, &.{});
+    try h.conn.exec(alter_drop, &.{});
+    try h.conn.exec(alter_add, &.{});
     try expectCascadeConstraint(allocator, &h.conn);
 }
 
@@ -150,8 +169,12 @@ test "TC-ISS-0125-04: cleanup helper propagates child DELETE errors" {
         \\RETURNS trigger LANGUAGE plpgsql AS $$
         \\BEGIN
         \\    RAISE EXCEPTION 'ISS-0125 forced child cleanup failure';
-        \\END;
-        \\$$;
+        \\END
+        \\$$
+    ,
+        &.{},
+    );
+    try h.conn.exec(
         \\CREATE TRIGGER iss0125_reject_snapshot_delete_trigger
         \\BEFORE DELETE ON instance_definition_snapshots
         \\FOR EACH ROW EXECUTE FUNCTION iss0125_reject_snapshot_delete()
@@ -159,9 +182,17 @@ test "TC-ISS-0125-04: cleanup helper propagates child DELETE errors" {
         &.{},
     );
 
+    try h.conn.exec(
+        "SAVEPOINT iss0125_cleanup_failure",
+        &.{},
+    );
     try std.testing.expectError(
         error.ServerError,
         helpers.cleanupDefinitionSnapshots(&h.conn, definition_id),
+    );
+    try h.conn.exec(
+        "ROLLBACK TO SAVEPOINT iss0125_cleanup_failure",
+        &.{},
     );
 
     var rows = try h.conn.query(
