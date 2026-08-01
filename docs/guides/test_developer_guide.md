@@ -1,8 +1,10 @@
 # BPM Platform — Test Developer Guide
 
-**Version:** 0.1 · 2026-05-20  
+**Version:** 0.2 · 2026-08-01 (infrastructure rules added — see §12)  
 **Agent ID:** `TEST-DESIGNER`, `TEST-RUNNER`  
 **Audience:** Test Designer agent, Test Runner agent, Issue Fixer agent
+
+> **See also:** `docs/guides/test_infrastructure_guide.md` — authoritative rules for test infrastructure health, the Green-Main gate, schema contract tests, and the three infrastructure invariants (INV-TI-1 through INV-TI-3). Those rules supersede this guide where they conflict.
 
 ---
 
@@ -488,3 +490,44 @@ When a pipeline test fails, the checkpoint file at `web/tests/e2e/.pipeline-stat
 | `pipelines/onboarding-wizard.pipeline.e2e.spec.ts` | PLATFORM_ADMIN: nav entry → fill form → progress spinner → result screen | ONB-UI-01..04 |
 
 Add new rows to this table when creating new pipeline files.
+
+---
+
+## 12. Test Infrastructure Rules (summary — see `test_infrastructure_guide.md` for full detail)
+
+This section is a required-reading summary. Agents MUST read `docs/guides/test_infrastructure_guide.md` in full before writing or running tests.
+
+### 12.1 The three non-negotiable invariants
+
+| Invariant | Rule |
+|---|---|
+| **INV-TI-1 Deterministic Baseline** | Before any integration test binary runs, `zig build migrate` must exit 0 and the live schema must match the migration ledger exactly |
+| **INV-TI-2 Strict Isolation** | No test reads, writes, or depends on state created by any other test or prior run. Per-test UUIDs are mandatory. Cleanup is unconditional (defer before any state-creating call). |
+| **INV-TI-3 Contract Parity** | Application constants (status strings, enum values) must match DB CHECK constraints exactly. SQL placeholders in ambiguous type contexts must carry an explicit `::type_name` cast. |
+
+### 12.2 TEST-RUNNER pre-flight checklist
+
+TEST-RUNNER MUST complete this checklist before dispatching any test binary. Each failure = STOP + return FAIL BLOCKER:
+
+```
+[ ] db_test container healthy
+[ ] zig build migrate exits 0, no error output
+[ ] public.schema_migrations row count == migrations/*.sql file count
+[ ] all tenant schemas in public.tenants exist as PostgreSQL schemas
+[ ] zig build exits 0
+[ ] python3 tools/lint_test_isolation.py tests/integration exits 0, no BLOCKER
+```
+
+### 12.3 Schema contract tests
+
+When BACKEND-DEV writes a migration that creates or modifies a `CHECK` constraint, the TEST-DESIGNER MUST add a schema contract test in `tests/integration/schema_contracts/`. The test must:
+
+1. Insert every application-side valid value — all must succeed.
+2. Insert a known-invalid value — must fail with PostgreSQL error `23514`.
+3. Verify the constraint row exists in `information_schema.check_constraints`.
+
+TEST-DESIGN-VALIDATOR must fail the handoff if a new constraint migration lacks a corresponding schema contract test.
+
+### 12.4 Green-Main gate (Step 00a in WF-02 and WF-03)
+
+ORCH must not start implementation work when existing integration tests are already failing. Step 00a (run by TEST-RUNNER against `main` before git-setup) is a hard gate. See `test_infrastructure_guide.md §4` for the full procedure.

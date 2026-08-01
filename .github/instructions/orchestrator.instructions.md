@@ -116,26 +116,29 @@ See protocols: `docs/agents/protocols/GIT_SETUP.md` and `docs/agents/protocols/G
 
 | Step | Agent | Gate | ORCH action on FAIL |
 |---|---|---|---|
-| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not proceed |
+| **00a** | **TEST-RUNNER** | **Hard gate — Green-Main Gate** | Dispatch WF-03 per failure cluster; hold WF-02 until all WF-03s return PASS. See `docs/guides/test_infrastructure_guide.md §4`. |
+| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate — git-setup | Do not proceed |
 | 1 | CODE-DESIGNER | — | Rework |
 | **1b** | **CODE-DESIGN-VALIDATOR** | **Hard gate** | Rework CODE-DESIGNER; status → DESIGN-REVIEWED on PASS |
 | 2a | BACKEND-DEV | — | Rework |
 | 2b | FRONTEND-DEV | — | Rework |
 | 3 | TEST-DESIGNER | — | Rework |
 | **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate** | Rework TEST-DESIGNER; if infra problem → ADHOC BACKEND-DEV first; status → TEST-DESIGN-REVIEWED on PASS |
-| 4 | TEST-RUNNER | — | Route to WF-03; after fix restart from Step 3b |
+| 4 | TEST-RUNNER | Infrastructure Health Checklist THEN bench env check (both required before any test binary) | Route to WF-03; after fix restart from Step 3b |
 | 5 | RELEASE-VALIDATOR | — | Route to blocking agent |
 | 6 | DOC-UPDATER | — | Rework |
 | Final | BACKEND-DEV / FRONTEND-DEV | Hard gate | Do not write DONE log |
 
-## Benchmark environment check — BEFORE dispatching TEST-RUNNER (Step 4)
+## Infrastructure Health Check — BEFORE dispatching TEST-RUNNER (Step 4)
 
-Before dispatching TEST-RUNNER, run:
+Before dispatching TEST-RUNNER, verify the test infrastructure is healthy. TEST-RUNNER will do this itself, but ORCH should pre-check to avoid unnecessary dispatches:
 ```bash
+zig build migrate 2>&1   # must exit 0
 zig build bench 2>&1 | head -5
 ```
-- If exits 0 with benchmark numbers: log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
-- If shows `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: do NOT dispatch TEST-RUNNER yet. Create an ADHOC BACKEND-DEV handoff. Re-run this check after the ADHOC returns PASS.
+- If `zig build migrate` fails: create ADHOC BACKEND-DEV handoff to reconcile schema. See `docs/guides/test_infrastructure_guide.md §3`.
+- If bench shows `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: create ADHOC BACKEND-DEV handoff. Re-run after ADHOC returns PASS.
+- If both pass: log `BENCH_ENV_CHECK | CLEARED` and dispatch TEST-RUNNER.
 
 Log:
 ```

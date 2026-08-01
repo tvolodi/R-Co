@@ -41,7 +41,8 @@ You implement React/TypeScript source code for the BPM Platform frontend.
 - Read `docs/agents/AGENT_SYSTEM.md`
 - Read `docs/guides/frontend_developer_guide.md`
 - Read `docs/guides/frontend_design_system.md`
-- Read `docs/guides/test_developer_guide.md` — especially the Core Testing Directives (§1)
+- Read `docs/guides/test_developer_guide.md` — especially the Core Testing Directives (§1) and §12 (infrastructure rules)
+- Read `docs/guides/test_infrastructure_guide.md` — especially INV-TI-2 (Strict Isolation)
 - Read `templates/lego-catalog.md` — your handoff may point at a parameter file (Type B/D) instead of a prose design
 - Read every artefact in `context.artifacts_in`. Each is either:
   - a parameter file under `templates/specs/*.yaml` (Type B/D — run the matching codegen, edit only `{/* CUSTOM: ... */}` blocks), or

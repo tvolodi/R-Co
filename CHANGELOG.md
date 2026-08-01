@@ -2,6 +2,10 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## Unreleased
+
+Nine independent integration-failure root-cause clusters were registered for follow-up: **ISS-0112 ([#375](https://github.com/tvolodi/R-Co/issues/375))** migration/schema drift and shared database state; **ISS-0113 ([#376](https://github.com/tvolodi/R-Co/issues/376))** event-store/idempotency fixture contamination; **ISS-0114 ([#377](https://github.com/tvolodi/R-Co/issues/377))** tenant schema/search-path state (GH-359 follow-on); **ISS-0115 ([#378](https://github.com/tvolodi/R-Co/issues/378))** task claim/group behavior; **ISS-0116 ([#379](https://github.com/tvolodi/R-Co/issues/379))** DLQ behavior; **ISS-0117 ([#380](https://github.com/tvolodi/R-Co/issues/380))** missing EXP-401 graph validation; **ISS-0118 ([#381](https://github.com/tvolodi/R-Co/issues/381))** webhook-delivery status-domain mismatch; **ISS-0119 ([#382](https://github.com/tvolodi/R-Co/issues/382))** timer behavior/constraints; and **ISS-0120 ([#383](https://github.com/tvolodi/R-Co/issues/383))** EXP-402 SQL parameter typing.
+
 ## [ISS-0109 / lint_migration_schema.py strips `--` comments before business-table scan] — 2026-08-01
 
 ### Fixed

@@ -437,20 +437,21 @@ Backend services (PostgreSQL, Keycloak) are a **standard runtime requirement** �
 
 | Step | Agent | Gate |
 |---|---|---|
-| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate |
+| **00a** | **TEST-RUNNER** | **Hard gate — Green-Main Gate: all existing tests must pass on `main` before any implementation starts. If any test fails, dispatch WF-03 per failure cluster and hold WF-02 until WF-03 returns PASS. See `docs/guides/test_infrastructure_guide.md §4`.** |
+| 00 | BACKEND-DEV / FRONTEND-DEV | Hard gate — git-setup |
 | 1 | CODE-DESIGNER | — |
 | **1b** | **CODE-DESIGN-VALIDATOR** | **Hard gate — BACKEND-DEV cannot start until PASS** |
 | 2a/2b | BACKEND-DEV / FRONTEND-DEV | — |
 | 3 | TEST-DESIGNER | — |
-| **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate — TEST-RUNNER cannot start until PASS** |
-| 4 | TEST-RUNNER | bench env checked before dispatch |
+| **3b** | **TEST-DESIGN-VALIDATOR** | **Hard gate — TEST-RUNNER cannot start until PASS; must verify schema contract tests exist for any new constraint migrations** |
+| 4 | TEST-RUNNER | Infrastructure Health Checklist (§3 of test_infrastructure_guide.md) THEN bench env checked; both required before any test binary runs |
 | 5 | RELEASE-VALIDATOR | — |
 | 6 | DOC-UPDATER | — |
 | Final | BACKEND-DEV / FRONTEND-DEV | Hard gate |
 
 **WF-03 trigger recognition (issue resolving):**
 
-Launch WF-03 when the user prompt describes a bug, defect, or problem with existing behaviour — even without a failing test. Trigger phrases: "fix this", "there is a problem with", "X is broken", "resolve this issue", "something is wrong with". Also launch WF-03 when TEST-RUNNER in WF-02/WF-04 returns FAIL and the failure is not eligible for inline fix.
+Launch WF-03 when the user prompt describes a bug, defect, or problem with existing behaviour — even without a failing test. Trigger phrases: "fix this", "there is a problem with", "X is broken", "resolve this issue", "something is wrong with". Also launch WF-03 when TEST-RUNNER in WF-02/WF-04 returns FAIL and the failure is not eligible for inline fix. Also launch WF-03 when Step 00a of WF-02 detects pre-existing failures on `main` (one WF-03 per failure cluster).
 
 WF-03 vs WF-02 rule: if the expected behaviour is already in the requirements spec → WF-03. If the feature has not been specified yet → WF-02.
 
@@ -972,6 +973,7 @@ AGENT_ID: TEST-RUNNER
 Also read:
 ```bash
 cat docs/guides/test_developer_guide.md
+cat docs/guides/test_infrastructure_guide.md
 ```
 
 Find your handoff, then run the test commands specified in `task.functions_to_call`.
@@ -986,13 +988,22 @@ psql "$BPM_TEST_DB_URL" -c "SELECT 1" > /dev/null 2>&1 && echo "DB_OK" || echo "
 ```
 If any service is down: STOP. Return FAIL with severity BLOCKER, message: `"Backend services unavailable: <which services>. ORCH must run docker-compose up -d db db_test keycloak via ADHOC BACKEND-DEV, then redispatch TEST-RUNNER."` Do NOT attempt to start services yourself.
 
-**2. Benchmark environment check:**
+**2. Infrastructure Health Checklist** (INV-TI-1 — required for integration tests):
+```bash
+zig build migrate 2>&1   # must exit 0, no ERROR output
+psql "$BPM_TEST_DB_URL" -c "SELECT count(*) FROM public.schema_migrations"
+# compare to: number of files in migrations/ — must match
+python3 tools/lint_test_isolation.py tests/integration   # must exit 0, no BLOCKER
+```
+If any check fails: STOP. Return FAIL with severity BLOCKER, message: `"Test infrastructure unhealthy: <which check failed>. See docs/guides/test_infrastructure_guide.md §3."` Do NOT run any test binaries until the infrastructure is healthy.
+
+**3. Benchmark environment check:**
 ```bash
 zig build bench 2>&1 | head -5
 ```
 If output contains `BPM_DB_URL`, `BENCHMARK_SETUP_ERROR`, or `missing`: STOP. Return FAIL with severity BLOCKER.
 
-If both pre-checks pass: proceed to run tests. Write results to `tests/reports/report-<date>-<run_id>.yaml` per the test guide §9 format. Complete your handoff with a full issue list and severity classification.
+If all pre-checks pass: proceed to run tests. Write results to `tests/reports/report-<date>-<run_id>.yaml` per the test guide §9 format. Complete your handoff with a full issue list and severity classification.
 
 ---
 
