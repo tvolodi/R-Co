@@ -8105,6 +8105,18 @@
       "insertions": 374,
       "deletions": 14,
       "created_at": "2026-08-01T09:36:45Z"
+    },
+    {
+      "entry_type": "PR_MERGE",
+      "branch": "feature/iss-0112-0120-registry-20260801",
+      "pr": 385,
+      "merged_into": "main",
+      "merge_commit": "c5d3f29",
+      "title": "docs(issues): register ISS-0112..0120 + WF03-gh364 diagnostic chain",
+      "files_changed": 19,
+      "insertions": 2039,
+      "deletions": 0,
+      "created_at": "2026-08-01T09:45:24Z"
     }
   ],
   "last_updated": "2026-07-31T21:01:17Z"
