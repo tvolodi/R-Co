@@ -8117,6 +8117,18 @@
       "insertions": 2039,
       "deletions": 0,
       "created_at": "2026-08-01T09:45:24Z"
+    },
+    {
+      "entry_type": "PR_MERGE",
+      "branch": "feature/wf03-gh364-audit-trail-20260801",
+      "pr": 386,
+      "merged_into": "main",
+      "merge_commit": "6ae7d65",
+      "title": "chore(audit): persist WF03-gh364-20260801 audit trail + repo-memory lesson",
+      "files_changed": 13,
+      "insertions": 1828,
+      "deletions": 0,
+      "created_at": "2026-08-01T09:52:49Z"
     }
   ],
   "last_updated": "2026-07-31T21:01:17Z"
