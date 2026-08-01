@@ -1,7 +1,7 @@
 {
   "id": "ISS-0112",
   "title": "Migration/schema drift and shared database state break 42 integration tests",
-  "status": "OPEN",
+  "status": "RESOLVED",
   "severity": "BLOCKER",
   "category": "environment/test-infrastructure-drift",
   "run_id": "WF03-gh375-20260801",
@@ -17,7 +17,7 @@
     "tests/integration/svc04_admin_api_test.zig"
   ],
   "created_at": "2026-08-01T08:52:13Z",
-  "resolved_at": null,
+  "resolved_at": "2026-08-01T12:19:21Z",
   "notes": "Cluster A from the final integration run: 42 failures across ext02_webhook_dispatch_test (10), ADP/OIDC migration checks (8), env03 (5), EXP-201/202 entities (3), service catalog (6), env01/env02 (2), and 8 other cases. Observed missing webhook_subscriptions.secret_ref, missing public.tenant_realm_binding, missing tenant entity_type_instances, tenant_storage_mode_check and webhook_deliveries_status_check mismatches. Evidence: _integration_final.log lines 13213-16646, 23258-38773, 38985-42352.\n\n---\n[OCCURRENCE 2026-08-01T10:00:23Z] run_id=WF03-gh375-20260801 handoff_id=8cff840b-9d33-4d80-ae27-8a6c9c22842d trigger=user_report — User asked to resolve github issue #375 (ISS-0112) — schema/migration drift cluster from prior integration run. Re-opened for fresh diagnosis; original 42-failure cluster from WF03-gh364-20260801 is still the canonical symptom set. Status remains OPEN until Step 7 marks RESOLVED.",
   "root_cause": {
     "type": "test-infrastructure-drift",
@@ -66,5 +66,7 @@
     "TC-ENV-02"
   ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/375",
-  "prevention": []
+  "prevention": [
+    "Migration applier guard `reapply_on_drift` (force_reconcile in Migrations.runForSchema) + per-test isolation helpers in tests/integration/helpers.zig (cleanupTestTenant(), tenant_type='test' default) + verify_schema_baseline.py (4-invariant schema/tenant consistency checker with --auto-fix) — see src/design/fix-iss0112.md for full design."
+  ]
 }

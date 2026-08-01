@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-07-31T04:04:02Z'
+last_updated: '2026-08-01T12:19:49Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -167,18 +167,13 @@ requirements:
     priority: MUST
     title: Tenant column on definition, instance, and audit tables
     implemented_in:
-    - migrations/028_adp02_tenant_scope_persistence.sql
-    - src/definition/store.zig
-    - src/definition/snapshot.zig
-    - src/definition/export_import.zig
-    - src/engine/instance.zig
-    - src/obs/audit.zig
-    - tests/integration/adp02_tenant_scope_test.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-02.md
     test_run: tests/reports/report-20260525T215115Z-WF02-adp02-20260526-step04.json
     tested_at: '2026-05-25'
     released_at: '2026-05-25T21:53:34Z'
     release_run: WF02-adp02-20260526
+    note: 'ISS-0112 fix: tenant column presence at integration baseline'
   ADP-03:
     status: RELEASED
     stage: 6.5
@@ -217,71 +212,56 @@ requirements:
     priority: MUST
     title: External identity linkage for users
     implemented_in:
-    - migrations/030_adp04a_external_identity_linkage.sql
-    - src/identity/registry.zig
-    - src/identity/service.zig
-    - tests/integration/adp04a_external_identity_linkage_test.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-04a.md
     test_run: tests/reports/WF02-adp04a-20260526-step-04-test-runner.md
     tested_at: '2026-05-26'
     released_at: '2026-05-26T04:49:32Z'
     release_run: WF02-adp04a-20260526
     release_decision: docs/status/release-ADP-04a-20260526.json
+    note: 'ISS-0112 fix: external identity linkage columns present at baseline'
   ADP-04b:
     status: RELEASED
     stage: 6.5
     priority: MUST
     title: Tenant realm binding for OIDC foundations
     implemented_in:
-    - migrations/031_adp04b_tenant_realm_binding.sql
-    - src/identity/registry.zig
-    - src/identity/service.zig
-    - src/api/routes/identity.zig
-    - tests/integration/adp04a_external_identity_linkage_test.zig
-    - tests/integration/adp04b_tenant_realm_binding_test.zig
-    - tests/integration/main_test.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-04b.md
     test_run: tests/reports/report-20260526T055349Z-WF02-adp04b-20260526-step04b-rework1.json
     tested_at: '2026-05-26'
     released_at: '2026-05-26T05:58:22Z'
     release_run: WF02-adp04b-20260526
     release_decision: docs/status/release-ADP-04b-20260526.json
+    note: 'ISS-0112 fix: tenant_realm_binding table reconciled'
   ADP-05:
     status: RELEASED
     stage: 6.5
     priority: MUST
     title: Artifact hash reference on instance
     implemented_in:
-    - migrations/032_adp05_instance_artifact_hash.sql
-    - src/engine/instance.zig
-    - src/engine/reconstruction.zig
-    - tests/integration/adp05_instance_artifact_hash_test.zig
-    - tests/integration/main_test.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-05.md
     test_run: tests/reports/report-20260526T070227Z-WF02-adp05-20260526-step04b.json
     tested_at: '2026-05-26'
     released_at: '2026-05-26T07:09:18Z'
     release_run: WF02-adp05-20260526
     release_decision: docs/status/release-ADP-05-20260526.json
+    note: 'ISS-0112 fix: artifact hash columns present'
   ADP-06:
     status: RELEASED
     stage: 6.5
     priority: SHOULD
     title: Pipeline run correlation on audit and events
     implemented_in:
-    - migrations/033_adp06_pipeline_run_correlation.sql
-    - src/obs/audit.zig
-    - src/event_store/store.zig
-    - src/api/routes/audit.zig
-    - src/api/routes/instances.zig
-    - tests/integration/adp06_pipeline_run_correlation_test.zig
-    - tests/integration/main_test.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-06.md
     test_run: tests/reports/report-20260526T085420Z-WF02-adp06-20260526-step04b.json
     tested_at: '2026-05-26'
     released_at: '2026-05-26T09:00:49Z'
     release_run: WF02-adp06-20260526
     release_decision: docs/status/release-ADP-06-20260526.json
+    note: 'ISS-0112 fix: pipeline run correlation columns present'
   ADP-07:
     status: RELEASED
     stage: 6.5
@@ -325,30 +305,28 @@ requirements:
     priority: MUST
     title: Tamper-evident audit chain
     implemented_in:
-    - migrations/035_adp09_tamper_evident_audit_chain.sql
-    - tests/integration/adp09_tamper_evident_audit_chain_test.zig
-    - tests/integration/main_test.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-09.md
     test_run: tests/reports/report-20260526T132149Z-WF02-adp09-20260526-step04b-rework1.json
     tested_at: '2026-05-26'
     released_at: '2026-05-26T13:31:17Z'
     release_run: WF02-adp09-20260526
     release_decision: docs/status/release-ADP-09-20260526.json
+    note: 'ISS-0112 fix: tamper-evident audit chain columns present'
   ADP-10:
     status: RELEASED
     stage: 6.5
     priority: MUST
     title: Agent IO capture audit
     implemented_in:
-    - migrations/036_adp10_agent_io_capture_audit.sql
-    - tests/integration/adp10_agent_io_capture_audit_test.zig
-    - tests/integration/main_test.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/ADP-10.md
     test_run: tests/reports/report-20260526T151827Z-WF02-adp10-20260526-step04.json
     tested_at: '2026-05-26'
     released_at: '2026-05-26T15:23:42Z'
     release_run: WF02-adp10-20260526
     release_decision: docs/status/release-ADP-10-20260526.json
+    note: 'ISS-0112 fix: agent IO capture audit columns present'
   ADP-11:
     status: RELEASED
     stage: 6.5
@@ -1001,26 +979,31 @@ requirements:
     priority: MUST
     title: Tenant carries a type field distinguishing production from test
     implemented_in:
-    - WF02-env-batch1-20260610
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - tests/integration/helpers.zig
     test_spec: tests/specs/ENV-01.md
     test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
     tested_at: '2026-06-11'
     released_at: '2026-06-11T00:00:00Z'
     release_run: WF02-env-batch1-20260610
     release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
+    note: 'ISS-0112 fix: tenant_type field reconciliation + per-test isolation helpers'
   ENV-02:
     status: RELEASED
     stage: 14
     priority: MUST
     title: Test tenant is fully isolated from its paired production tenant
     implemented_in:
-    - WF02-env-batch1-20260610
+    - tests/integration/helpers.zig
+    - tools/clean_test_db.py
+    - tools/verify_schema_baseline.py
     test_spec: tests/specs/ENV-02.md
     test_run: tests/reports/report-20260611-WF02-env-batch1-20260610.yaml
     tested_at: '2026-06-11'
     released_at: '2026-06-11T00:00:00Z'
     release_run: WF02-env-batch1-20260610
     release_decision: docs/status/release-stage14-env-batch1-20260611.yaml
+    note: 'ISS-0112 fix: per-test isolation, --include-fixtures cleanup, verify_schema_baseline.py'
   ENV-03:
     status: RELEASED
     stage: 14
@@ -1179,33 +1162,28 @@ requirements:
     stage: Expansion
     title: Entity definition format + Repository artifact
     implemented_in:
-    - src/entities/definition.zig
-    - src/entities/validator.zig
-    - src/entities/mod.zig
-    - src/repository/canonicaliser.zig
-    - migrations/094_entity_subsystem.sql
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - tools/verify_schema_baseline.py
     test_spec: tests/specs/EXP-201.md
     test_run: tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml
     tested_at: '2026-06-14'
     released_at: '2026-06-14'
     release_run: WF02-exp201-202-20260612
     release_decision: docs/status/release-exp201-202-20260614.yaml
+    note: 'ISS-0112 fix: entity_type_instances backfill and baseline verification'
   EXP-202:
     status: RELEASED
     stage: Expansion
     title: Entity command API -> event family
     implemented_in:
-    - src/entities/events.zig
-    - src/entities/commands.zig
-    - src/entities/projector.zig
-    - src/api/routes/entities.zig
-    - migrations/094_entity_subsystem.sql
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/EXP-202.md
     test_run: tests/reports/report-2026-06-14-WF02-exp201-202-20260612-step04-rework.yaml
     tested_at: '2026-06-14'
     released_at: '2026-06-14'
     release_run: WF02-exp201-202-20260612
     release_decision: docs/status/release-exp201-202-20260614.yaml
+    note: 'ISS-0112 fix: entity command API contract on baseline schema'
   EXP-203:
     status: UNTRACKED
     title: Typed projection tables (generated DDL) + projector
@@ -1274,15 +1252,13 @@ requirements:
     priority: MUST
     title: Webhook event dispatch
     implemented_in:
-    - src/webhook/subscription_store.zig
-    - src/webhook/dispatcher.zig
-    - src/webhook/signing.zig
-    - src/api/routes/webhooks.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/EXT-02.md
     test_run: tests/integration/ext02_webhook_dispatch_test.zig
     released_at: '2026-05-28T05:42:12Z'
     release_run: WF02-ext02-20260528
     release_decision: docs/status/release-stage6-ext02-20260528.json
+    note: 'ISS-0112 fix: ledger reconciliation backfills webhook_subscriptions.secret_ref'
   EXT-03:
     status: RELEASED
     stage: 6
@@ -1754,11 +1730,11 @@ requirements:
     stage: Epic 5
     title: Remove legacy tenant_id/RLS predicates (SPT-03)
     implemented_in:
-    - migrations/GBL-084_rls_removal.sql
-    - src/db/pool.zig
-    - tests/integration/test_iss503_rls_removal.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - tools/verify_schema_baseline.py
     test_spec: tests/specs/ISS-503.md
     released_at: '2026-07-30T11:13:21Z'
+    note: 'ISS-0112 fix: schema baseline verification script and reconcile migration'
   ISS-504:
     status: TESTED
     stage: Epic 5
@@ -3485,13 +3461,15 @@ requirements:
     priority: MUST
     title: Service catalog entries carry a scope and owner tenant
     implemented_in:
-    - WF02-svc-batch1-20260610
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - tests/integration/helpers.zig
     test_spec: tests/specs/SVC-01.md
     test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
     tested_at: '2026-06-10'
     released_at: '2026-06-11T00:00:00Z'
     release_run: WF02-svc-batch1-20260610
     release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
+    note: 'ISS-0112 fix: service catalog fixture hygiene + schema baseline'
   SVC-02:
     status: RELEASED
     stage: 13
@@ -3524,13 +3502,15 @@ requirements:
     priority: MUST
     title: Admin UI and API for service catalog scope management
     implemented_in:
-    - WF02-svc-batch1-20260610
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - tests/integration/helpers.zig
     test_spec: tests/specs/SVC-04.md
     test_run: tests/reports/report-20260610-WF02-svc-batch1-20260610.yaml
     tested_at: '2026-06-10'
     released_at: '2026-06-11T00:00:00Z'
     release_run: WF02-svc-batch1-20260610
     release_decision: docs/status/release-stage13-svc-batch1-20260610.yaml
+    note: 'ISS-0112 fix: admin API service catalog fixture hygiene + baseline'
   TD-UI-01:
     status: UNTRACKED
     priority: MUST
@@ -3771,39 +3751,44 @@ requirements:
     priority: MUST
     title: Business tables migrated to per-tenant schemas
     implemented_in:
-    - WF02-tnt-batch1-20260609
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/TNT-01.md
     test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
     tested_at: '2026-06-10'
     released_at: '2026-06-10T02:49:11Z'
     release_run: WF02-tnt-batch1-20260609
     release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
+    note: 'ISS-0112 fix: per-tenant entity_type_instances rows backfilled'
   TNT-02:
     status: RELEASED
     stage: 12
     priority: MUST
     title: Migration runner enforces search_path isolation
     implemented_in:
-    - WF02-tnt-batch1-20260609
+    - src/db/migrations.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/TNT-02.md
     test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
     tested_at: '2026-06-10'
     released_at: '2026-06-10T02:49:11Z'
     release_run: WF02-tnt-batch1-20260609
     release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
+    note: 'ISS-0112 fix: reapply_on_drift guard in Migrations.runForSchema'
   TNT-03:
     status: RELEASED
     stage: 12
     priority: MUST
     title: Connection pool sets search_path per tenant on checkout
     implemented_in:
-    - WF02-tnt-batch1-20260609
+    - src/db/provisioning.zig
+    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
     test_spec: tests/specs/TNT-03.md
     test_run: tests/reports/report-20260610-WF02-tnt-batch1-20260609.yaml
     tested_at: '2026-06-10'
     released_at: '2026-06-10T02:49:11Z'
     release_run: WF02-tnt-batch1-20260609
     release_decision: docs/status/release-stage12-tnt-batch1-20260610.yaml
+    note: 'ISS-0112 fix: search_path isolation guarded by reapply_on_drift'
   TNT-04:
     status: RELEASED
     stage: 12
