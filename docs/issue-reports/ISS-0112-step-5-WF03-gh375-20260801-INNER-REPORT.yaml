@@ -1,0 +1,151 @@
+# Inner report — Step 5 (TEST-RUNNER verify) for WF03-gh375-20260801
+# Verdict: FAIL — Step 3 implementation introduced a compile regression.
+
+report_id: WF03-gh375-20260801-step-5-test-runner-INNER-REPORT
+agent_id: TEST-RUNNER
+run_id: WF03-gh375-20260801
+workflow_id: WF-03
+step: "05-verify"
+step_handoff_id: "866837a3-e1e2-44f6-9a37-9d88e6d090bc"
+branch: feature/WF03-gh375-20260801
+commit_under_test: "178436a"
+created_at: "2026-08-01T10:43:05Z"
+
+summary: |
+  Step 5 verification of WF03-gh375-20260801 (ISS-0112 / GitHub #375)
+  confirms the Infrastructure Health Checklist, the schema baseline
+  verifier, and the unit test suite all pass — but the full integration
+  test suite fails to compile because src/db/migrations.zig gained a
+  required 5th parameter (force_reconcile: bool) in Step 3 without
+  updating three direct integration test call sites.
+
+  Of the 53 integration test binaries: 13 succeeded (running 26 tests
+  with 100% pass rate), 19 failed to compile due to the signature
+  change, and the rest are transitive failures. Compared to the
+  pre-WF-03 baseline (37/53 succeeded, 1052/1238 tests executed), this
+  is a net regression of 6 additional broken binaries and 1212 fewer
+  executable tests.
+
+  The original 42-failure cluster from baseline cannot be re-evaluated
+  until the compile errors are fixed. Per WF-03 §Step 5 procedure, the
+  handoff is FAIL and must route back to BACKEND-DEV Step 3 for rework.
+
+files_created:
+  - tests/reports/report-20260801-WF03-gh375-20260801-step05-verify.yaml
+  - scratch/WF03-gh375-20260801/test-runner/zig_build.log
+  - scratch/WF03-gh375-20260801/test-runner/verify_schema_baseline.log
+  - scratch/WF03-gh375-20260801/test-runner/verify_schema_baseline_tenants.log
+  - scratch/WF03-gh375-20260801/test-runner/lint_test_isolation.log
+  - scratch/WF03-gh375-20260801/test-runner/zig_test_unit.log
+  - scratch/WF03-gh375-20260801/test-runner/zig_test_unit_summary.log
+  - scratch/WF03-gh375-20260801/test-runner/zig_test_integration.log
+  - scratch/WF03-gh375-20260801/test-runner/integration_errors.txt
+  - scratch/WF03-gh375-20260801/test-runner/find_helpers_importers.py
+  - docs/issue-reports/ISS-0112-step-5-WF03-gh375-20260801-INNER-REPORT.yaml
+
+files_modified: []
+
+tests_run:
+  - name: "Infrastructure Health Checklist (test_infrastructure_guide.md §3)"
+    status: pass
+    detail: |
+      All 7 items satisfied. See tests/reports/...yaml infrastructure_health_checklist
+      section for per-item evidence. Key verdicts: db_test healthy; zig build
+      migrate exits 0; 98 ledger rows == 98 migration files; 28 tenant schemas
+      == 28 public.tenant rows; zig build exits 0; lint_test_isolation.py
+      BLOCKER=0 (MAJOR=258 pre-existing baseline + 195 suppressed); 0
+      ungranted pg_locks.
+  - name: "tools/verify_schema_baseline.py"
+    status: pass
+    detail: "EXIT_CODE=0; 3 OK (ledger count, per-migration row, expected CHECK constraints)"
+  - name: "tools/verify_schema_baseline.py --check-tenants"
+    status: pass
+    detail: "EXIT_CODE=0; 4 OK (added tenant schema consistency check)"
+  - name: "zig build"
+    status: pass
+    detail: "EXIT_CODE=0, no output (no error-set warnings)"
+  - name: "zig build test --summary all (unit tests)"
+    status: pass
+    detail: "Build Summary: 86/86 steps succeeded; 583/667 tests passed (84 skipped)"
+  - name: "zig build test-integration --summary all"
+    status: fail
+    detail: |
+      Build Summary: 13/53 steps succeeded (19 failed); 26/26 tests passed.
+      19 integration test binaries fail to compile. Three distinct error sites:
+        - tests/integration/helpers.zig:181:38
+        - tests/integration/audit_iss103_test.zig:44:34
+        - tests/integration/exp103_instance_waits_test.zig:81:34
+      All errors: "expected 5 argument(s), found 4" for
+      bpm.migrations.Migrations.runForSchema. The helpers.zig error cascades
+      into 17 additional binaries (70 test files @import helpers.zig).
+  - name: "python tools/lint_test_isolation.py tests/integration"
+    status: pass-with-MAJOR
+    detail: |
+      BLOCKER=0 MAJOR=258 MINOR=0; Suppressed 195 from baseline. The 258
+      remaining MAJOR are pre-existing (the 195 suppressed + 63 active
+      matches the baseline). Exit code 1 is by-design (line 24 of
+      lint_test_isolation.py: 1 if any MAJOR); Health Checklist criterion
+      is BLOCKER=0 only.
+
+issues_found:
+  - severity: BLOCKER
+    description: |
+      Step 3 implementation broke the integration test suite with an
+      incomplete signature change. src/db/migrations.zig::Migrations.
+      runForSchema gained a 5th required parameter `force_reconcile: bool`
+      but the three direct integration test call sites were not updated.
+      19 of 53 integration test binaries fail to compile. The Step 3
+      implementation self-review claimed `zig build test exits 0` which
+      is true (unit tests still pass), but failed to run `zig build
+      test-integration` which would have surfaced the regression.
+    affected_files:
+      - tests/integration/helpers.zig:181
+      - tests/integration/audit_iss103_test.zig:44
+      - tests/integration/exp103_instance_waits_test.zig:81
+    root_cause: |
+      Design prescribed "Zig default-param idiom: force_reconcile: bool = false"
+      but Zig has no default-param support. BACKEND-DEV chose required-param
+      + wrapper pattern but only updated one internal caller (the convenience
+      overload Migrations.run) and src/db/provisioning.zig:112. The
+      integration test direct call sites were not searched for or updated.
+    design_oversight: |
+      Step 2b CODE-DESIGN-VALIDATOR approved the design with the claim
+      "No external callers exist (verified by `grep -r 'runForSchema' src/
+      tests/`)" but `tests/integration/helpers.zig` was not in the
+      searched path — the grep would have found at least 70 importers
+      of helpers.zig (which transitively call runForSchema) plus the
+      two direct callers (audit_iss103_test.zig, exp103_instance_waits_test.zig).
+      Future signature changes MUST grep both tests/ and web/src/.
+
+  - severity: BLOCKER
+    description: |
+      Compile-failing binary count increased from 13 (baseline) to 19
+      (current). Net regression: 6 additional broken binaries. Net
+      reduction in test surface: 1238 baseline tests executable → 26
+      current. The 42-failure cluster cannot be re-evaluated until the
+      compile regression is fixed.
+
+  - severity: MINOR
+    description: |
+      7 POSTGRES ERROR runtime lines observed in tests that did compile
+      (mostly uq_event_idempotency duplicates and "operator does not
+      exist: text = integer"). These are runtime issues from test
+      isolation, not regressions caused by Step 3 (they exist in
+      baseline log too).
+    location: scratch/WF03-gh375-20260801/test-runner/zig_test_integration.log
+
+next_steps:
+  - "ORCH: route this handoff back to BACKEND-DEV Step 3 for rework."
+  - "BACKEND-DEV: pick one of three fix paths (see next_action in test report):"
+  - "  A) Add runForSchema4 wrapper preserving 4-arg signature."
+  - "  B) Update 3 direct call sites to pass `, false` 5th arg."
+  - "  C) Use ?bool optional idiom for force_reconcile."
+  - "BACKEND-DEV: ALSO fix the Step 2b verification gap — future signature changes must grep tests/ and web/src/."
+  - "After compile fix, re-run zig build test-integration end-to-end and dispatch TEST-RUNNER Step 5 again."
+
+blockers:
+  - "Cannot evaluate the 42-failure cluster from baseline — 19 of 53 test binaries do not compile."
+  - "Cannot produce a release verdict while integration tests are broken."
+
+verdict: FAIL
+next_action: "Route to BACKEND-DEV Step 3 (rework)"
