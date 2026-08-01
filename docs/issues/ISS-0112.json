@@ -2,8 +2,8 @@
   "id": "ISS-0112",
   "title": "Migration/schema drift and shared database state break 42 integration tests",
   "status": "OPEN",
-  "severity": "MAJOR",
-  "category": "schema/migration-drift",
+  "severity": "BLOCKER",
+  "category": "environment/test-infrastructure-drift",
   "run_id": "WF03-gh375-20260801",
   "handoff_id": "8cff840b-9d33-4d80-ae27-8a6c9c22842d",
   "affected_areas": [
@@ -11,7 +11,6 @@
     "tests/integration/ext02_webhook_dispatch_test.zig",
     "tests/integration/env01_test.zig",
     "tests/integration/env02_test.zig",
-    "tests/integration/env03_test.zig",
     "tests/integration/exp201_202_entities_test.zig",
     "tests/integration/svc01_service_catalog_scope_test.zig",
     "tests/integration/svc03_definition_activation_scope_test.zig",
@@ -20,10 +19,40 @@
   "created_at": "2026-08-01T08:52:13Z",
   "resolved_at": null,
   "notes": "Cluster A from the final integration run: 42 failures across ext02_webhook_dispatch_test (10), ADP/OIDC migration checks (8), env03 (5), EXP-201/202 entities (3), service catalog (6), env01/env02 (2), and 8 other cases. Observed missing webhook_subscriptions.secret_ref, missing public.tenant_realm_binding, missing tenant entity_type_instances, tenant_storage_mode_check and webhook_deliveries_status_check mismatches. Evidence: _integration_final.log lines 13213-16646, 23258-38773, 38985-42352.\n\n---\n[OCCURRENCE 2026-08-01T10:00:23Z] run_id=WF03-gh375-20260801 handoff_id=8cff840b-9d33-4d80-ae27-8a6c9c22842d trigger=user_report — User asked to resolve github issue #375 (ISS-0112) — schema/migration drift cluster from prior integration run. Re-opened for fresh diagnosis; original 42-failure cluster from WF03-gh364-20260801 is still the canonical symptom set. Status remains OPEN until Step 7 marks RESOLVED.",
-  "root_cause": "TBD. Initial hypothesis: the long-lived shared integration database has migration-ledger/schema state that does not match the migration contracts expected by concurrently executed targets, with incomplete propagation into tenant schemas.",
+  "root_cause": {
+    "type": "test-infrastructure-drift",
+    "details": "Category F (environment/configuration), with database-contract symptoms: the shared db_test baseline violates INV-TI-1 and INV-TI-2. The live public.schema_migrations ledger reports 1 row while migrations/ contains 97 SQL files, yet the prior zig build migrate log reports all listed migrations as skipped. The schema probe has only public and tenant_default schemas and 51 public tables, while tenant_rows.txt contains 10 tenants (1 SCHEMA and 9 LEGACY_RLS). Bare public.tenant fixtures, including ensureDefaultOidcSeeds' default tenant, omit tenant_type='test'; tools/clean_test_db.py filters cleanup by tenant_type and therefore leaves production-defaulted fixtures. The resulting contaminated baseline explains the integration clusters: EXT-02/webhook failures at _integration_final.log lines 13213-16646; tenant-schema/search_path failures and missing events at 6384-6484 and 38774-38845; ISS-503 pre-flight cutoff at 8713-8717; ADP/OIDC migration-contract failures at 23258-35661; and service/entity/env missing-column plus fixture failures at 38865-42354. This matches docs/guides/test_infrastructure_guide.md §3 (Infrastructure Health Checklist), §4 (Green-Main Gate), and §10's long-lived database and tenant fixture anti-patterns."
+  },
   "candidate_resolution": "Reconcile the canonical migration ledger with actual public and tenant-schema objects, make corrective migrations idempotent, and provision each integration target from a deterministic schema baseline before validating the affected contracts.",
   "resolution": null,
-  "files_to_change": [],
+  "files_to_change": [
+    "migrations/",
+    "src/db/migrations.zig",
+    "tests/integration/helpers.zig",
+    "tools/clean_test_db.py",
+    "tools/verify_schema_baseline.py",
+    "src/design/fix-iss0112.md"
+  ],
+  "requirement_ids": [
+    "TC-EXT-02",
+    "TC-TNT-01",
+    "TC-TNT-02",
+    "TC-TNT-03",
+    "TC-ISS-503",
+    "TC-ADP-02",
+    "TC-ADP-04a",
+    "TC-ADP-04b",
+    "TC-ADP-05",
+    "TC-ADP-06",
+    "TC-ADP-09",
+    "TC-ADP-10",
+    "TC-EXP-201",
+    "TC-EXP-202",
+    "TC-SVC-01",
+    "TC-SVC-04",
+    "TC-ENV-01",
+    "TC-ENV-02"
+  ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/375",
   "prevention": []
 }
