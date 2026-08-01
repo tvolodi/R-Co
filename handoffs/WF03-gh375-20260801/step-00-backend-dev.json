@@ -1,0 +1,59 @@
+{
+  "handoff_id": "555ec95e-342f-413e-aa50-ad90bc21fcfb",
+  "run_id": "WF03-gh375-20260801",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-01T09:56:59Z",
+  "started_at": "2026-08-01T09:57:28Z",
+  "completed_at": "2026-08-01T09:58:46Z",
+  "status": "COMPLETED",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 00 (git-setup)",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0112.json",
+      "docs/agents/protocols/GIT_SETUP.md",
+      "docs/agents/protocols/GIT_MERGE.md"
+    ],
+    "branch_name": "feature/WF03-gh375-20260801",
+    "owned_modules": [
+      "migrations/",
+      "src/db/migrations.zig",
+      "tests/integration/helpers.zig",
+      "tools/clean_test_db.py"
+    ]
+  },
+  "task": {
+    "description": "Resolve GitHub issue #375 / docs/issues/ISS-0112: 'Migration/schema drift and shared database state break 42 integration tests'. Follow GIT_SETUP.md exactly to create the feature branch feature/WF03-gh375-20260801 off origin/main. Branch MUST be pushed to origin before any other work begins. After git-setup PASS, route to ISSUE-FIXER for Step 0.5.",
+    "acceptance_criteria": [
+      "git branch --show-current == 'feature/WF03-gh375-20260801'",
+      "git push origin feature/WF03-gh375-20260801 succeeds and the branch is visible to other hosts",
+      "Local working tree on the new branch is clean",
+      "handoff result.status == 'PASS'"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Branch feature/WF03-gh375-20260801 created and pushed to origin.",
+    "artifacts_out": ["handoffs/WF03-gh375-20260801/step-00-backend-dev.json"],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh375-20260801",
+      "commit_sha_list": ["a888ee6b22ca43a7463ebae6d3f64777dd987cce"],
+      "remote_branch": "origin/feature/WF03-gh375-20260801",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to ISSUE-FIXER Step 0.5 (issue registry)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

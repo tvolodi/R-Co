@@ -1,8 +1,31 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-01T00:14:08Z",
-  "next_issue_id": 110,
+  "last_updated": "2026-08-01T12:19:21Z",
+  "next_issue_id": 127,
   "issues": [
+    {
+      "id": "ISS-0112",
+      "title": "Migration/schema drift and shared database state break 42 integration tests",
+      "status": "RESOLVED",
+      "severity": "MAJOR",
+      "category": "schema/migration-drift",
+      "run_id": "WF03-gh375-20260801",
+      "handoff_id": "8cff840b-9d33-4d80-ae27-8a6c9c22842d",
+      "affected_areas": [
+        "migrations/",
+        "tests/integration/ext02_webhook_dispatch_test.zig",
+        "tests/integration/env01_test.zig",
+        "tests/integration/env02_test.zig",
+        "tests/integration/env03_test.zig",
+        "tests/integration/exp201_202_entities_test.zig",
+        "tests/integration/svc01_service_catalog_scope_test.zig",
+        "tests/integration/svc03_definition_activation_scope_test.zig",
+        "tests/integration/svc04_admin_api_test.zig"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": "2026-08-01T12:19:21Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/375"
+    },
     {
       "id": "ISS-0109",
       "title": "lint_migration_schema.py reports false-positive BLOCKER on public.<table> mentioned inside a -- prose comment (081_iss101_timers_failed_status.sql)",
@@ -1095,6 +1118,282 @@
       ],
       "created_at": "2026-07-30T00:00:00Z",
       "resolved_at": "2026-07-30T00:00:00Z"
+    },
+    {
+      "id": "ISS-0113",
+      "title": "Event-store idempotency fixtures contaminate shared integration state",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "integration-test-fixture-contamination",
+      "run_id": "WF03-gh364-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/iss203_idempotency_test.zig",
+        "tests/integration/event_store_test.zig",
+        "tests/integration/instance_error_test.zig",
+        "tests/integration/iss202_event_store_test.zig",
+        "tests/integration/ext01_service_task_test.zig",
+        "src/events/"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/376"
+    },
+    {
+      "id": "ISS-0114",
+      "title": "Tenant schema and search_path state causes GH-359-class failures",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "tenant-schema-isolation",
+      "run_id": "WF03-gh364-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/tnt_schema_isolation_test.zig",
+        "tests/integration/db_integration_test.zig",
+        "src/db/pool.zig",
+        "src/db/provisioning.zig",
+        "migrations/"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/377"
+    },
+    {
+      "id": "ISS-0115",
+      "title": "Task claim and group authorization behavior violates integration expectations",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "task-claim-group-behavior",
+      "run_id": "WF03-gh364-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/iss102_claim_test.zig",
+        "tests/integration/idn02_group_tasks_test.zig",
+        "src/tasks/",
+        "src/identity/"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/378"
+    },
+    {
+      "id": "ISS-0116",
+      "title": "Dead-letter queue persistence, retry, discard, and alert behavior fails",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "dlq-behavior",
+      "run_id": "WF03-gh364-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/obs05_dlq_test.zig",
+        "tests/integration/obs06_alerts_test.zig",
+        "src/observability/",
+        "migrations/"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/379"
+    },
+    {
+      "id": "ISS-0117",
+      "title": "EXP-401 definition creation accepts invalid process graphs",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "graph-validation",
+      "run_id": "WF03-gh364-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/exp401_exp402_comp_restore_test.zig",
+        "src/engine/",
+        "src/definitions/"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/380"
+    },
+    {
+      "id": "ISS-0118",
+      "title": "Webhook delivery status values disagree with database constraint",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "webhook-status-constraint",
+      "run_id": "WF03-gh364-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/ext02_webhook_dispatch_test.zig",
+        "src/webhooks/",
+        "migrations/"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/381"
+    },
+    {
+      "id": "ISS-0119",
+      "title": "Timer retry, pending, locking, and rollback semantics fail",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "timer-behavior",
+      "run_id": "WF03-gh364-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/sch02_timer_polling_test.zig",
+        "tests/integration/sch303_timer_retry_test.zig",
+        "src/scheduler/",
+        "src/engine/"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/382"
+    },
+    {
+      "id": "ISS-0120",
+      "title": "EXP-402 orphan restore SQL leaves parameter $2 untyped",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "sql-parameter-typing",
+      "run_id": "WF03-gh364-20260801",
+      "handoff_id": null,
+      "affected_areas": [
+        "tests/integration/exp401_exp402_comp_restore_test.zig",
+        "src/restore/",
+        "src/export/"
+      ],
+      "created_at": "2026-08-01T08:52:13Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/383"
+    },
+    {
+      "id": "ISS-0121",
+      "title": "Hardcoded UUID violations (T010) across 100+ integration test files",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "test-quality / per-test-fixture-isolation",
+      "run_id": "WF03-gh375-20260801",
+      "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+      "affected_areas": [
+        "tests/integration/adp02_tenant_scope_test.zig",
+        "tests/integration/iss101_timers_failed_status_test.zig",
+        "tests/integration/iss102_claim_test.zig",
+        "tests/integration/iss202_merge_atomicity_test.zig",
+        "tests/integration/iss203_idempotency_keys_test.zig",
+        "tests/integration/iss205_webhook_outbox_test.zig",
+        "tests/integration/iss207_error_retry_test.zig",
+        "tests/integration/iss208_task_guard_test.zig",
+        "tests/integration/iss601_state_snapshots_test.zig",
+        "tests/integration/obs05_dlq_test.zig",
+        "tests/integration/obs06_alerts_test.zig",
+        "tests/integration/sch02_timer_polling_test.zig",
+        "tests/integration/sch303_timer_dlq_test.zig",
+        "tests/integration/svc01_service_catalog_scope_test.zig",
+        "tests/integration/svc03_definition_activation_scope_test.zig",
+        "tests/integration/svc04_admin_api_test.zig",
+        "tests/integration/tm01_tenant_list_test.zig",
+        "tools/lint_test_isolation.py",
+        "tests/integration/helpers.zig"
+      ],
+      "created_at": "2026-08-01T12:09:25Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/387"
+    },
+    {
+      "id": "ISS-0122",
+      "title": "Invalid UTF-8 byte 0xaa in instance creation payload (TC-EE-10-06, TC-EXT-01-INT-07)",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "code-defect / sql-parameter-encoding",
+      "run_id": "WF03-gh375-20260801",
+      "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+      "affected_areas": [
+        "src/engine/instance.zig",
+        "src/engine/instance_store.zig",
+        "src/db/pool.zig",
+        "vendor/pg/pg.zig",
+        "tests/integration/instance_error_test.zig",
+        "tests/integration/ext01_service_task_test.zig"
+      ],
+      "created_at": "2026-08-01T12:09:25Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/388"
+    },
+    {
+      "id": "ISS-0123",
+      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6\u00d7 alongside missing source_ref column",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "schema-drift / audit-trigger-side-effect",
+      "run_id": "WF03-gh375-20260801",
+      "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+      "affected_areas": [
+        "src/db/audit.zig",
+        "migrations/GBL-102_audit_immutability.sql",
+        "migrations/GBL-103_audit_immutability_guard.sql",
+        "src/events/store.zig",
+        "tests/integration/audit_iss103_test.zig",
+        "tests/integration/iss202_merge_atomicity_test.zig",
+        "tests/integration/iss203_idempotency_keys_test.zig"
+      ],
+      "created_at": "2026-08-01T12:09:25Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/389"
+    },
+    {
+      "id": "ISS-0124",
+      "title": "PostgreSQL operator does not exist: text = integer (C42883) in 2 integration tests",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "code-defect / sql-type-mismatch",
+      "run_id": "WF03-gh375-20260801",
+      "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+      "affected_areas": [
+        "src/reports/runs.zig",
+        "src/reports/export.zig",
+        "src/db/pool.zig",
+        "tests/integration/reports_run_query_test.zig",
+        "tests/integration/ext02_webhook_dispatch_test.zig"
+      ],
+      "created_at": "2026-08-01T12:09:25Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/390"
+    },
+    {
+      "id": "ISS-0125",
+      "title": "process_definitions DELETE blocked by orphan FK references in instance_definition_snapshots",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "code-defect / cleanup-cascade-order",
+      "run_id": "WF03-gh375-20260801",
+      "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+      "affected_areas": [
+        "tests/integration/iss202_merge_atomicity_test.zig",
+        "tests/integration/iss203_idempotency_keys_test.zig",
+        "tests/integration/iss601_state_snapshots_test.zig",
+        "tests/integration/event_store_test.zig",
+        "src/db/migrations.zig",
+        "tests/integration/helpers.zig",
+        "migrations/GBL-105_iss0112_schema_ledger_reconcile.sql"
+      ],
+      "created_at": "2026-08-01T12:09:25Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/391"
+    },
+    {
+      "id": "ISS-0126",
+      "title": "TC-OIDC-22-01 bootstrap state singleton failure isolated from other OIDC regressions",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "code-defect / oidc-bootstrap-lifecycle",
+      "run_id": "WF03-gh375-20260801",
+      "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+      "affected_areas": [
+        "tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig",
+        "src/identity/oidc.zig",
+        "src/identity/bootstrap.zig",
+        "migrations/"
+      ],
+      "created_at": "2026-08-01T12:09:25Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/392"
     }
   ]
 }

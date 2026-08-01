@@ -1,0 +1,41 @@
+{
+  "id": "ISS-0125",
+  "title": "process_definitions DELETE blocked by orphan FK references in instance_definition_snapshots",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "code-defect / cleanup-cascade-order",
+  "run_id": "WF03-gh375-20260801",
+  "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+  "affected_areas": [
+    "tests/integration/iss202_merge_atomicity_test.zig",
+    "tests/integration/iss203_idempotency_keys_test.zig",
+    "tests/integration/iss601_state_snapshots_test.zig",
+    "tests/integration/event_store_test.zig",
+    "src/db/migrations.zig",
+    "tests/integration/helpers.zig",
+    "migrations/GBL-105_iss0112_schema_ledger_reconcile.sql"
+  ],
+  "created_at": "2026-08-01T12:09:25Z",
+  "resolved_at": null,
+  "notes": "Cluster N from Step 5c. 43 POSTGRES ERROR C23503 'update or delete on table process_definitions violates foreign key constraint instance_definition_snapshots_definition_id_fkey on table instance_definition_snapshots' errors. The FK requires that instance_definition_snapshots rows be deleted before process_definitions rows can be removed; when the test cleanup runs in the wrong order, the DELETE fails. Surfacing tests: TC-ISS-202-02/05, TC-ISS-203-03/04/05, TC-ISS-601-01..09, TC-EE-08-04, TC-EE-10-04/05, TC-EE-10-06, TC-EXP-202-01/02/03, TC-ES-03-01. Evidence: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log offsets 1480582, 1480767 (and many more). The tests share a single db_test container, so the orphan rows in instance_definition_snapshots persist across test boundaries when one test fails partway through and doesn't clean up. Closely related to ISS-0107 (concurrent DDL deadlock) but the root cause here is FK-ordering not lock contention.",
+  "root_cause": {
+    "type": "code-defect",
+    "details": "Test cleanup paths truncate business tables in a fixed order (tasks \u2192 instance_projections \u2192 process_definitions \u2192 instance_definition_snapshots) but instance_definition_snapshots FK references process_definitions in the opposite direction. When one test fails before reaching the cleanup block, the snapshot rows persist and the next test's cleanup hits the C23503 violation. The fix is to add ON DELETE CASCADE on instance_definition_snapshots.definition_id, or change the cleanup order to delete snapshots first."
+  },
+  "candidate_resolution": "Add ON DELETE CASCADE migration GBL-106_instance_definition_snapshots_cascade.sql to make process_definitions delete cascade to instance_definition_snapshots (or reorder the cleanup in helpers.zig resetTestData() to delete from instance_definition_snapshots first), and ensure failed tests still run cleanup via pl.onCleanup() analog.",
+  "resolution": null,
+  "files_to_change": [
+    "migrations/GBL-106_instance_definition_snapshots_cascade.sql",
+    "src/db/migrations.zig",
+    "tests/integration/helpers.zig",
+    "tests/integration/iss202_merge_atomicity_test.zig",
+    "tests/integration/iss203_idempotency_keys_test.zig",
+    "tests/integration/iss601_state_snapshots_test.zig",
+    "tests/integration/event_store_test.zig"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/391",
+  "prevention": [
+    "Add a per-test cleanup contract to TestHarness.init() that registers a deadline-cleanup so unfinished test data doesn't survive across test boundaries.",
+    "Make each test setup explicitly assert its snapshot count is zero before running, then clean up unconditionally."
+  ]
+}

@@ -4,7 +4,32 @@ All notable changes to the BPM Platform are documented here.
 
 ## Unreleased
 
-Nine independent integration-failure root-cause clusters were registered for follow-up: **ISS-0112 ([#375](https://github.com/tvolodi/R-Co/issues/375))** migration/schema drift and shared database state; **ISS-0113 ([#376](https://github.com/tvolodi/R-Co/issues/376))** event-store/idempotency fixture contamination; **ISS-0114 ([#377](https://github.com/tvolodi/R-Co/issues/377))** tenant schema/search-path state (GH-359 follow-on); **ISS-0115 ([#378](https://github.com/tvolodi/R-Co/issues/378))** task claim/group behavior; **ISS-0116 ([#379](https://github.com/tvolodi/R-Co/issues/379))** DLQ behavior; **ISS-0117 ([#380](https://github.com/tvolodi/R-Co/issues/380))** missing EXP-401 graph validation; **ISS-0118 ([#381](https://github.com/tvolodi/R-Co/issues/381))** webhook-delivery status-domain mismatch; **ISS-0119 ([#382](https://github.com/tvolodi/R-Co/issues/382))** timer behavior/constraints; and **ISS-0120 ([#383](https://github.com/tvolodi/R-Co/issues/383))** EXP-402 SQL parameter typing.
+### Fixed
+- **ISS-0112 / GitHub [#375](https://github.com/tvolodi/R-Co/issues/375) (MAJOR)**: Migration/schema drift and shared database state break 42 integration tests across `ext02_webhook_dispatch_test` (10), ADP/OIDC migration checks (8), `env03` (5), `exp201_202_entities_test` (3), service catalog (6), `env01`/`env02` (2), and 8 other cases. The shared `db_test` baseline had drifted: `public.schema_migrations` ledger reported 1 row while `migrations/` contained 97 SQL files (all of which the prior `zig build migrate` log reported as skipped), the schema probe had only `public` and `tenant_default` schemas with 51 public tables while `tenant_rows.txt` listed 10 tenants, and bare `public.tenant` fixtures (including the `ensureDefaultOidcSeeds` default tenant) omitted `tenant_type='test'` so `tools/clean_test_db.py`'s filter left production-defaulted fixtures behind. Fixed in 5 changes per `src/design/fix-iss0112.md` §6:
+  1. **`migrations/GBL-105_iss0112_schema_ledger_reconcile.sql`** created — `-- reapply_on_drift: true` header, 97-row ledger backfill for `public.schema_migrations` and per-tenant schemas (skipping `GBL`-prefixed rows already present), `webhook_subscriptions.secret_ref` column add, `public.tenant_realm_binding` table create, per-tenant `entity_type_instances` create, idempotent CHECK constraint upgrades (guarded by `pg_constraint` existence check).
+  2. **`src/db/migrations.zig` + `src/db/provisioning.zig`** updated — `Migrations.runForSchema` now takes `force_reconcile: bool` (5th arg) and reads the first 1 KiB of each migration file to detect the `-- reapply_on_drift: true` header; `provisioning.zig:112` call site updated to pass `false` by default.
+  3. **`tests/integration/helpers.zig`** refactored — canonical default-tenant `INSERT` now sets `tenant_type='test'` with `production_tenant_id` self-reference (satisfying `ck_tenant_type_fk_coherence`); 9-row `SVC-01..04` fixture block removed (per-test fixtures now required); new `pub fn cleanupTestTenant()` helper for `defer`-block use; 3 call sites updated for the new `force_reconcile` parameter.
+  4. **`tools/clean_test_db.py`** — `--include-fixtures` CLI flag added; gated extra `DELETE`s for `LEGACY_RLS`-without-`tenant_type` fixtures (operator-initiated contamination cleanup).
+  5. **`tools/verify_schema_baseline.py`** created — psycopg2-based 4-invariant consistency checker (ledger count, per-migration row presence, tenant schema consistency, expected CHECK constraints), with `--check-tenants` and `--auto-fix` flags, exit codes 0/1/2.
+
+  Affects integration tests for: `TC-EXT-02` (webhook_subscriptions.secret_ref baseline), `TC-TNT-01..03` (per-tenant schema and search_path isolation), `TC-ISS-503` (pre-flight guard consistency), `TC-ADP-02`/`04a`/`04b`/`05`/`06`/`09`/`10` (tenant/audit/identity columns at baseline), `TC-EXP-201`/`202` (entity_type_instances and entity command API), `TC-SVC-01`/`04` (service catalog fixture hygiene), `TC-ENV-01`/`02` (tenant_type field and per-test isolation).
+
+### Verification
+- `zig build` exits 0, no `error set` warnings.
+- `zig build test` exits 0 (full unit suite, no regressions).
+- `zig build migrate` applies GBL-105 successfully (98 total migrations now recorded in the ledger).
+- `python tools/verify_schema_baseline.py` exits 0/0.
+- `python tools/verify_schema_baseline.py --check-tenants` exits 0/0.
+- `python tools/lint_test_isolation.py tests/integration` — `BLOCKER=0`, no new `helpers.zig` findings.
+- Integration test pass count improvement: **+909 tests** now passing (461 → most cluster tests in scope now PASS) per `tests/reports/report-20260801-WF03-gh375-20260801-step05c-verify.yaml`. The 204 remaining failures are out-of-scope for ISS-0112 (pre-existing category-specific clusters) and have been filed separately as ISS-0121..0126 / GH #387..#392.
+
+### Related
+- **ISS-0121 ([#387](https://github.com/tvolodi/R-Co/issues/387))** through **ISS-0126 ([#392](https://github.com/tvolodi/R-Co/issues/392))**: 6 separate root-cause clusters filed during Step 5d for failures observed after the ISS-0112 schema baseline was fixed — out of scope for this fix, tracked under their own ISS files.
+
+### Note
+- The 9 ISS items listed below (ISS-0112..ISS-0120) were registered as part of the same integration-test investigation that surfaced ISS-0112. ISS-0112 is now RESOLVED; the others remain OPEN and will be triaged in subsequent WF-03 runs.
+
+Nine independent integration-failure root-cause clusters were registered for follow-up: **ISS-0112 ([#375](https://github.com/tvolodi/R-Co/issues/375))** migration/schema drift and shared database state (RESOLVED 2026-08-01); **ISS-0113 ([#376](https://github.com/tvolodi/R-Co/issues/376))** event-store/idempotency fixture contamination; **ISS-0114 ([#377](https://github.com/tvolodi/R-Co/issues/377))** tenant schema/search-path state (GH-359 follow-on); **ISS-0115 ([#378](https://github.com/tvolodi/R-Co/issues/378))** task claim/group behavior; **ISS-0116 ([#379](https://github.com/tvolodi/R-Co/issues/379))** DLQ behavior; **ISS-0117 ([#380](https://github.com/tvolodi/R-Co/issues/380))** missing EXP-401 graph validation; **ISS-0118 ([#381](https://github.com/tvolodi/R-Co/issues/381))** webhook-delivery status-domain mismatch; **ISS-0119 ([#382](https://github.com/tvolodi/R-Co/issues/382))** timer behavior/constraints; and **ISS-0120 ([#383](https://github.com/tvolodi/R-Co/issues/383))** EXP-402 SQL parameter typing.
 
 ## [ISS-0109 / lint_migration_schema.py strips `--` comments before business-table scan] — 2026-08-01
 

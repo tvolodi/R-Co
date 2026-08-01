@@ -1,0 +1,38 @@
+{
+  "id": "ISS-0122",
+  "title": "Invalid UTF-8 byte 0xaa in instance creation payload (TC-EE-10-06, TC-EXT-01-INT-07)",
+  "status": "OPEN",
+  "severity": "MAJOR",
+  "category": "code-defect / sql-parameter-encoding",
+  "run_id": "WF03-gh375-20260801",
+  "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+  "affected_areas": [
+    "src/engine/instance.zig",
+    "src/engine/instance_store.zig",
+    "src/db/pool.zig",
+    "vendor/pg/pg.zig",
+    "tests/integration/instance_error_test.zig",
+    "tests/integration/ext01_service_task_test.zig"
+  ],
+  "created_at": "2026-08-01T12:09:25Z",
+  "resolved_at": null,
+  "notes": "Cluster K from Step 5c. 85 occurrences of POSTGRES ERROR C22021 'invalid byte sequence for encoding UTF8: 0xaa' at unnamed portal parameter $1 (mbutils.c:1665 report_invalid_encoding). The errors cluster inside two tests: TC-EE-10-06 (EXECUTION_ERROR payload contains all required fields, in tests/integration/instance_error_test.zig:852) and TC-EXT-01-INT-07 (exhausted retries move the failure to OBS-05 DLQ and ERROR, in tests/integration/ext01_service_task_test.zig, surfacing from src/engine/instance.zig:699 create). The failing call site is `const inst = try inst_store.create(allocator, def.id, null, \"{\\\"foo\\\":\\\"bar\\\"}\");` \u2014 null payload literal combined with a JSON string. Symptom in vendor/pg/pg.zig:303 readUntilReady: bytes 0xAA appear in the wire protocol because the JSON parameter is bound as a raw byte buffer rather than a UTF-8 validated string. Likely root cause: Zig 0.16.0 libpq binding parameter type inference regression, OR the test passes a stale null-marker byte from a previous failed transaction. Evidence: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log offsets 924607, 924787, 924967.",
+  "root_cause": {
+    "type": "code-defect",
+    "details": "When the engine forwards a JSON-shaped payload to PostgreSQL via the pg.zig binding, the byte stream is not being validated as UTF-8 before (or after) parameter substitution. Bytes 0xAA from a surrounding struct field or null-sentinel reach the wire and PostgreSQL rejects with SQLSTATE 22021. The same byte value appears 85 times in the Step 5c log, all coming from the same two test call sites, suggesting a single root binding rather than 85 distinct bugs. Until the binding is fixed (or the test payload is wrapped in a typed []const u8 cast), every test that passes a null-then-string payload will trip the encoding guard."
+  },
+  "candidate_resolution": "Audit src/engine/instance.zig:699 create (and the InstanceStore.create call path) to ensure the payload argument is typed as ?[]const u8 with explicit SQL NULL handling, free the JSON buffer before parameter binding, and propagate std.unicode.Utf8View validation when the payload is non-null. Alternatively, switch the binding from text protocol to binary protocol so libpq itself validates UTF-8.",
+  "resolution": null,
+  "files_to_change": [
+    "src/engine/instance.zig",
+    "src/engine/instance_store.zig",
+    "vendor/pg/pg.zig",
+    "tests/integration/instance_error_test.zig",
+    "tests/integration/ext01_service_task_test.zig"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/388",
+  "prevention": [
+    "Add a per-call UTF-8 validation step in the pool.zig exec helper so coding errors surface locally rather than as Postgres errors mid-pipeline.",
+    "Add a Zig-side smoke test that constructs and binds a JSON payload of multiple encodings and asserts the wire bytes are valid UTF-8."
+  ]
+}
