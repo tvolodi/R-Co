@@ -84,11 +84,15 @@ test "TC-ISS-0091-01: TestHarness and direct runForSchema agree on tenant_defaul
     {
         var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arena.deinit();
+        // force_reconcile=false: this test exercises harness-vs-direct
+        // migration-state agreement on a clean baseline. Drift reapply is
+        // explicitly out of scope for TC-ISS-0091-01.
         try bpm.migrations.Migrations.runForSchema(
             arena.allocator(),
             &pool,
             build_options.migrations_dir,
             "tenant_default",
+            false,
         );
     }
 

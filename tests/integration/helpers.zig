@@ -178,7 +178,11 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
             .pool_size = 2,
         });
         defer mig_pool.deinit();
-        try bpm.migrations.Migrations.runForSchema(allocator, &mig_pool, resolved.dir, schema);
+        // force_reconcile=false: the harness expects a clean db_test baseline
+        // (see tools/verify_schema_baseline.py §6). Migrations marked with
+        // `-- reapply_on_drift: true` are skipped here on purpose; only the
+        // GBL-105 corrective migration is the regular one we want to apply.
+        try bpm.migrations.Migrations.runForSchema(allocator, &mig_pool, resolved.dir, schema, false);
     }
 
     const set_path_sql = try std.fmt.allocPrint(allocator, "SET search_path TO {s}, public", .{schema});

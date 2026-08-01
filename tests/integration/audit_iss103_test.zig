@@ -41,11 +41,16 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     {
         var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
         defer arena.deinit();
+        // force_reconcile=false: the test uses a freshly-migrated db_test, so
+        // the regular ledger-driven apply path is correct. Drift reapplication
+        // (GBL-prefixed `-- reapply_on_drift: true` migrations) is not desired
+        // for this unit's assertion surface.
         bpm.migrations.Migrations.runForSchema(
             arena.allocator(),
             &pool,
             build_opts.migrations_dir,
             "tenant_default",
+            false,
         ) catch |err| {
             std.debug.print("makePool: provisionTenantSchema failed: {}\n", .{err});
         };

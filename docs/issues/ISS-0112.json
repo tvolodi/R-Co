@@ -38,6 +38,10 @@
     "src/db/migrations.zig",
     "src/db/provisioning.zig",
     "tests/integration/helpers.zig",
+    "tests/integration/audit_iss103_test.zig",
+    "tests/integration/exp103_instance_waits_test.zig",
+    "tests/integration/iss102_claim_test.zig",
+    "tests/integration/iss0091_harness_tracker_unification_test.zig",
     "tools/clean_test_db.py",
     "tools/verify_schema_baseline.py"
   ],
