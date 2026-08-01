@@ -8143,7 +8143,22 @@
       "completed_at": "2026-08-01T09:58:46Z",
       "status": "COMPLETED",
       "stage": "WF-03 Issue Resolving - Step 00 (git-setup)"
+    },
+    {
+      "handoff_id": "8cff840b-9d33-4d80-ae27-8a6c9c22842d",
+      "file": "handoffs/WF03-gh375-20260801/step-05-issue-fixer.json",
+      "run_id": "WF03-gh375-20260801",
+      "workflow_id": "WF-03",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-01T09:59:28Z",
+      "started_at": "2026-08-01T09:59:45Z",
+      "completed_at": "2026-08-01T10:01:46Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving - Step 0.5 (issue registry lookup)",
+      "last_updated": "2026-08-01T10:01:46Z"
     }
   ],
-  "last_updated": "2026-08-01T09:58:46Z"
+  "last_updated": "2026-08-01T10:01:46Z"
 }
