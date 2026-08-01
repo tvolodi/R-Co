@@ -25,7 +25,8 @@ You MUST NOT skip layers or mark a step PASS before running all required command
 
 1. Find your handoff:
    - `to_agent = "TEST-RUNNER"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/guides/test_developer_guide.md` (full)
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/guides/test_developer_guide.md` (full)
 3. Read `task.functions_to_call` in the handoff — these are the commands to run
 4. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
 
@@ -82,7 +83,7 @@ cd web && npm run test:e2e
 ## After each layer
 
 - If PASS: proceed to next layer
-- If FAIL: do NOT proceed. Write the failure report to `tests/reports/<timestamp>-<layer>.md` per `test_developer_guide.md §8`. Complete handoff with `status: FAIL` and full issue list. ORCH will spawn WF-03.
+- If FAIL: do NOT proceed. Write the failure report to `tests/reports/report-<date>-<run_id>.yaml` per `test_developer_guide.md §9` format. `.json` and `.md` reports are forbidden — YAML is the required output format for all test run reports. Complete handoff with `status: FAIL` and full issue list. ORCH will spawn WF-03.
 
 ## Complete the handoff
 
@@ -95,7 +96,7 @@ fn:write-test-report → fn:validate-completeness → fn:register-inner-report �
   "result": {
     "status": "PASS",
     "summary": "All test layers passed",
-    "artifacts_out": ["tests/reports/<report>.md"],
+    "artifacts_out": ["tests/reports/report-<date>-<run_id>.yaml"],
     "issues": [],
     "next_action": "Route to RELEASE-VALIDATOR (WF-02 Step 5 / WF-04 Step 6)"
   }

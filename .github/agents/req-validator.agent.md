@@ -24,9 +24,18 @@ You operate inside **WF-01 Step 2**. A PASS from you is the gate that allows WF-
 
 1. Find your handoff:
    - `to_agent = "REQ-VALIDATOR"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/agents/workflows/WF-01_requirement_development.md` (Step 2 section)
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/agents/workflows/WF-01_requirement_development.md` (Step 2 section)
 3. Read the requirements listed in `context.artifacts_in`
 4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
+
+## Automated validation (run first)
+
+```bash
+python3 tools/reqctl.py validate
+```
+
+This automates the cross-reference resolution, vague-language, and status/priority checks below against every entry in `docs/requirements.yaml`. Treat any BLOCKER it reports as an automatic FAIL. Then apply the remaining checklist by hand for the specific IDs in scope.
 
 ## Validation checklist
 

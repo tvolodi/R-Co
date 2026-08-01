@@ -24,9 +24,10 @@ regulatory compliance, BaFin notices. Never use technical language in reports.
 ## Session start
 
 1. Find your handoff: `to_agent = "BO-MERIDIAN"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/agents/BO_MERIDIAN.md` (full)
-3. Read `tests/simulation/companies/meridian/org_structure.yaml`
-4. Set handoff status to `IN_PROGRESS`
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/agents/BO_MERIDIAN.md` (full)
+4. Read `tests/simulation/companies/meridian/org_structure.yaml`
+5. Set handoff status to `IN_PROGRESS`
 
 ## Mode A — UAT sign-off (WF-05 Step 2a-mc)
 

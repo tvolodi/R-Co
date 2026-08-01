@@ -48,8 +48,9 @@ AGENT_ID: ORCH
 ## Session start procedure
 
 1. Read `docs/agents/AGENT_SYSTEM.md` (full)
-2. Read `docs/agents/ORCHESTRATOR.md` (full)
-3. Read `handoffs/registry.json` — understand current workflow state
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call referenced across all agent handoffs)
+3. Read `docs/agents/ORCHESTRATOR.md` (full)
+4. Read `handoffs/registry.json` — understand current workflow state
 4. Read the user's request or the pending trigger
 5. Determine which workflow applies (see ORCHESTRATOR.md §3)
 6. Create the first handoff for the appropriate workflow
@@ -123,10 +124,33 @@ If output is clean (exits 0 with numbers): log `BENCH_ENV_CHECK | CLEARED` and d
 
 ## Stage gate check
 
-Before launching WF-02 for Stage N+1, verify in `docs/status/requirement_status.json`:
+Before launching WF-02 for Stage N+1, verify in `docs/status/requirement_status.yaml`:
 - All MUST requirements for Stage N have status `RELEASED`
 
 If not: tell the user which requirements are blocking and why.
+
+## WF-03 — Issue Resolving
+
+Trigger phrases: "fix this", "there is a problem with", "X is broken", "resolve this issue", "something is wrong with". Also launch WF-03 when TEST-RUNNER in WF-02/WF-04 returns FAIL and the failure is not eligible for inline fix.
+
+WF-03 vs WF-02 rule: if the expected behaviour is already in the requirements spec → WF-03. If the feature has not been specified yet → WF-02.
+
+Pipeline:
+
+| Step | Agent | Condition | Gate |
+|---|---|---|---|
+| 00 | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
+| 0.5 | ISSUE-FIXER | Always — registry lookup + create/update ISS file + file on GitHub | — |
+| 1 | ISSUE-FIXER | Always — root cause diagnosis | — |
+| 2 | CODE-DESIGNER | Always — fix design artefact | — |
+| 2b | CODE-DESIGN-VALIDATOR | Always | Hard gate — fix cannot start until PASS |
+| 3 | BACKEND-DEV / FRONTEND-DEV | Always — implement fix per design | — |
+| 4 | TEST-DESIGNER | Business logic added/modified | — |
+| 4b | TEST-DESIGN-VALIDATOR | Business logic added/modified | Hard gate |
+| 5 | TEST-RUNNER | Always | — |
+| 6 | RELEASE-VALIDATOR | BLOCKER severity only | — |
+| 7 | DOC-UPDATER | Always | — |
+| Final | BACKEND-DEV / FRONTEND-DEV | Always | Hard gate |
 
 ## WF-05 — UAT Run
 
@@ -196,6 +220,11 @@ if not scenarios:
 - Never skip WF-05 because "technical tests already passed" — UAT is a separate gate
 - Never dispatch PRODUCT-OWNER before all three BO sign-offs are present
 - Never dispatch RELEASE-VALIDATOR before PRODUCT-OWNER returns APPROVED
+- Never skip a standard workflow (WF-01 through WF-06) without explicit user confirmation (see `ORCHESTRATOR.md §11`)
+
+## ⛔ No Issue Left Local-Only
+
+A defect that lives only in `docs/issues/*.json` is invisible to the user — that registry is a working file for the pipeline, not somewhere a human would look for "what's broken." Any NEW issue discovered by any agent — whether the original task or an incidental finding surfaced while doing something else — MUST be filed as a real GitHub issue via `gh issue create` by ISSUE-FIXER (Step 0.5), not just registered locally. This applies regardless of severity and is not limited to issues ORCH itself routes; if any agent's result surfaces an undocumented defect, route it through ISSUE-FIXER Step 0.5 rather than letting it live only in the handoff result.
 
 ## Subagent Invocation Protocol
 

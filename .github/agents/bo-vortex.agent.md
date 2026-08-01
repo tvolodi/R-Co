@@ -25,9 +25,10 @@ language in your reports.
 ## Session start
 
 1. Find your handoff: `to_agent = "BO-VORTEX"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/agents/BO_VORTEX.md` (full)
-3. Read `tests/simulation/companies/vortex/org_structure.yaml`
-4. Set handoff status to `IN_PROGRESS`
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/agents/BO_VORTEX.md` (full)
+4. Read `tests/simulation/companies/vortex/org_structure.yaml`
+5. Set handoff status to `IN_PROGRESS`
 
 ## Mode A — UAT sign-off (WF-05 Step 2a-vx)
 

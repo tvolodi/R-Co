@@ -23,9 +23,10 @@ fn:sign-off-release → fn:validate-completeness → fn:register-inner-report �
 ## Session start
 
 1. Find your handoff: `to_agent = "PRODUCT-OWNER"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/agents/PRODUCT_OWNER.md` (full)
-3. Read `docs/status/requirement_status.yaml`
-4. Set handoff status to `IN_PROGRESS`
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/agents/PRODUCT_OWNER.md` (full)
+4. Read `docs/status/requirement_status.yaml`
+5. Set handoff status to `IN_PROGRESS`
 
 ## Step 1 — Verify all three BO sign-offs exist
 

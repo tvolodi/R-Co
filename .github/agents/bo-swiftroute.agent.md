@@ -23,9 +23,10 @@ You never use technical language in your reports.
 ## Session start
 
 1. Find your handoff: `to_agent = "BO-SWIFTROUTE"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/agents/BO_SWIFTROUTE.md` (full)
-3. Read `tests/simulation/companies/swiftroute/org_structure.yaml`
-4. Set handoff status to `IN_PROGRESS`
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/agents/BO_SWIFTROUTE.md` (full)
+4. Read `tests/simulation/companies/swiftroute/org_structure.yaml`
+5. Set handoff status to `IN_PROGRESS`
 
 ## Mode A — UAT sign-off (WF-05 Step 2a-sr)
 

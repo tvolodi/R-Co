@@ -24,7 +24,8 @@ You operate inside **WF-02 Step 1**. You MUST produce a complete design artefact
 
 1. Find your handoff:
    - `to_agent = "CODE-DESIGNER"` and `status = "PENDING"` in `handoffs/`
-2. Read `templates/lego-catalog.md` — **read this first**; it tells you when to emit a parameter file instead of a prose design
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `templates/lego-catalog.md` — **read this first**; it tells you when to emit a parameter file instead of a prose design
 3. Read `docs/guides/backend_developer_guide.md` (for Zig module design conventions)
 4. Read `docs/guides/frontend_developer_guide.md` (for React/TypeScript interface conventions)
 5. Read the requirement IDs listed in `context.requirement_ids` from `docs/BPM_Platform_Functional_Requirements.md`

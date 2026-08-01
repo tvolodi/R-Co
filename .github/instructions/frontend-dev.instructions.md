@@ -207,7 +207,7 @@ MSW / axios-mock-adapter / fetch intercepts of any kind
 test.skip on MUST requirement tests
 Calling fetch() directly outside web/src/api/client.ts
 Marking a test PASS without visual screenshot confirmation
-git push / git reset --hard / rm -rf
+git push --force / git push origin main (never push directly to main — feature branches only) / git reset --hard / rm -rf
 Creating .json test reports or status files (use .yaml)
 Creating scratch/temp files in the project root
 ```

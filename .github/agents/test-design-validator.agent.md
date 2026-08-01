@@ -26,7 +26,8 @@ You operate inside **WF-02 Step 3b** — after TEST-DESIGNER (Step 3) and before
 
 1. Find your handoff:
    - `to_agent = "TEST-DESIGN-VALIDATOR"` and `status = "PENDING"` in `handoffs/`
-2. Read the test spec files listed in `context.artifacts_in` (e.g. `tests/specs/<REQ-ID>.md`)
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read the test spec files listed in `context.artifacts_in` (e.g. `tests/specs/<REQ-ID>.md`)
 3. Read the test source files associated with each requirement (`tests/`, `src/<module>/<module>_test.zig`, or `web/src/`)
 4. Read the requirement IDs from `context.requirement_ids` in `docs/BPM_Platform_Functional_Requirements.md`
 5. Set handoff status to `IN_PROGRESS` — do NOT set `started_at` (ORCH stamps this before dispatch)
@@ -52,6 +53,13 @@ You operate inside **WF-02 Step 3b** — after TEST-DESIGNER (Step 3) and before
 **Security:**
 - [ ] No credentials, secrets, or real production URLs are hardcoded in any test file
 - [ ] SQL in test files uses parameterised queries only (no string concatenation of test data into SQL)
+
+**Pipeline tests (MAJOR — does not block PASS but must be noted in issues):**
+- [ ] (6) Every MUST requirement that involves a sequential UI action has a `pl.step()` in the relevant pipeline file under `web/tests/e2e/pipelines/`. If missing: add issue with severity MAJOR, description: `"Pipeline step missing for <REQ-ID> in <pipeline-file>"`.
+- [ ] (7) A `tests/specs/PIPELINE-<slug>.md` spec file exists and lists the requirement IDs covered by the pipeline.
+- [ ] (8) Pipeline file imports from `web/tests/e2e/pipeline.ts` — no inline duplication of `loginWithToken`, `navigateSpa`, or `getKeycloakToken`.
+- [ ] (9) `pl.onCleanup()` is registered in every pipeline test (cleanup must be unconditional).
+- [ ] (10) No `test.beforeEach` / `test.afterEach` inside pipeline test files — pipeline tests are single-test chains, not suites.
 
 ## Outcome
 

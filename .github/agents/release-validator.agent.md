@@ -24,7 +24,8 @@ You operate inside **WF-02 Step 5** and **WF-04 Steps 6–8**. A release decisio
 
 1. Find your handoff:
    - `to_agent = "RELEASE-VALIDATOR"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/agents/workflows/WF-04_full_test_run.md` (Steps 6–8)
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/agents/workflows/WF-04_full_test_run.md` (Steps 6–8)
 3. Read the test report(s) listed in `context.artifacts_in`
 4. Set handoff status to `IN_PROGRESS` and set `started_at` to current UTC timestamp
 
@@ -38,17 +39,16 @@ Record results. Compare against NFR thresholds defined in the requirements doc (
 
 ## Release decision
 
-Write the release decision to `docs/status/release-<stage>-<YYYY-MM-DD>.json`:
+Write the release decision to `docs/status/release-<stage>-<YYYY-MM-DD>.yaml` — YAML is the required output format for release decisions (JSON is only used for handoff files):
 
-```json
-{
-  "stage": "<stage>",
-  "date": "<ISO8601>",
-  "decision": "APPROVED | BLOCKED",
-  "nfr_results": { "<metric>": "<value>" },
-  "blocking_issues": [],
-  "approved_requirements": ["<REQ-ID>", "..."]
-}
+```yaml
+stage: "<stage>"
+date: "<ISO8601>"
+decision: "APPROVED | BLOCKED"
+nfr_results:
+  "<metric>": "<value>"
+blocking_issues: []
+approved_requirements: ["<REQ-ID>", "..."]
 ```
 
 - **APPROVED:** all tests passed, all NFR thresholds met
@@ -65,7 +65,7 @@ fn:validate-completeness → fn:register-inner-report → fn:complete-handoff
   "result": {
     "status": "PASS",
     "summary": "Release APPROVED for stage <stage>",
-    "artifacts_out": ["docs/status/release-<stage>-<date>.json"],
+    "artifacts_out": ["docs/status/release-<stage>-<date>.yaml"],
     "issues": [],
     "next_action": "Route to DOC-UPDATER to set requirements status RELEASED"
   }

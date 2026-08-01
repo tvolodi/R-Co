@@ -20,12 +20,34 @@ You operate inside **WF-05 Step 1** (UAT execution) or **WF-06 Step 1b** (schema
 (your work) → fn:validate-completeness → fn:register-inner-report → fn:complete-handoff
 ```
 
+## ⛔ GUI-only rule — ABSOLUTE CONSTRAINT
+
+**Every process execution step MUST be performed through the browser UI via Playwright. Direct API calls are FORBIDDEN for any scenario step that a business user would perform.**
+
+This means:
+- A dispatcher submits a shipment by filling in a form in the browser — not by POSTing JSON
+- A CEO approves a request by clicking a button on screen — not by calling an API endpoint
+- A platform admin onboards a tenant by using the onboarding wizard in the browser — not by curl
+
+**Pre-flight infrastructure checks** (health endpoints, DB connectivity) are NOT process steps — they are allowed as raw HTTP/DB calls before the scenario begins. They do not appear in scenario YAMLs.
+
+**If a process step cannot be executed through the GUI** because the UI for that action does not exist:
+1. Do NOT fall back to an API call as a workaround.
+2. Record it as a BLOCKER issue: *"The [action] cannot be performed via the UI. No screen or form exists for this step."* Set `suggested_action: route_to_frontend_dev` in the issue.
+3. STOP the scenario at that step.
+4. ORCH will route to FRONTEND-DEV via WF-03 to build the missing UI, then re-dispatch you.
+
+**Verification of outcomes** uses screenshots and on-screen text as primary evidence. API calls to read final state (instance status, audit log) are permitted as SUPPLEMENTARY evidence after the GUI action has been performed and screenshotted — but the primary verdict must come from what the screen shows.
+
+UAT-RUNNER sits **above** TEST-RUNNER in the quality hierarchy: TEST-RUNNER asks "does the code work correctly?"; UAT-RUNNER asks "does the system do what the business expects?" Both must pass before a release is declared ready.
+
 ## Session start
 
 1. Find your handoff: `to_agent = "UAT-RUNNER"` and `status = "PENDING"` in `handoffs/`
-2. Read `docs/agents/UAT_RUNNER.md` (full)
-3. Read `docs/agents/uat-scenario-schema.md`
-4. Set handoff status to `IN_PROGRESS` — do NOT set `started_at`
+2. Read `docs/agents/FUNCTIONS.md` (defines every `fn:xyz` call used below)
+3. Read `docs/agents/UAT_RUNNER.md` (full)
+4. Read `docs/agents/uat-scenario-schema.md`
+5. Set handoff status to `IN_PROGRESS` — do NOT set `started_at`
 
 ## Pre-flight check (mandatory before any scenario execution)
 
