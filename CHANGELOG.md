@@ -14,6 +14,8 @@ All notable changes to the BPM Platform are documented here.
 
   Affects integration tests for: `TC-EXT-02` (webhook_subscriptions.secret_ref baseline), `TC-TNT-01..03` (per-tenant schema and search_path isolation), `TC-ISS-503` (pre-flight guard consistency), `TC-ADP-02`/`04a`/`04b`/`05`/`06`/`09`/`10` (tenant/audit/identity columns at baseline), `TC-EXP-201`/`202` (entity_type_instances and entity command API), `TC-SVC-01`/`04` (service catalog fixture hygiene), `TC-ENV-01`/`02` (tenant_type field and per-test isolation).
 
+- **ISS-0125 / GitHub [#391](https://github.com/tvolodi/R-Co/issues/391) (MAJOR)**: `process_definitions` DELETE blocked by FK constraint violation on `instance_definition_snapshots` (PostgreSQL C23503 error) in 43 integration test runs. Migration `004_definitions.sql` declared `instance_definition_snapshots.definition_id` with `REFERENCES process_definitions(id)` but without `ON DELETE CASCADE`, defaulting to `NO ACTION`. Fixed by creating migration `migrations/1106_iss0125_instance_definition_snapshots_cascade.sql` to add the `ON DELETE CASCADE` referential action, plus cleanup helper reordering in `tests/integration/helpers.zig` and regression tests in `tests/integration/iss0125_cascade_test.zig`.
+
 ### Verification
 - `zig build` exits 0, no `error set` warnings.
 - `zig build test` exits 0 (full unit suite, no regressions).
