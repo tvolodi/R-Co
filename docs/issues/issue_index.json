@@ -1,22 +1,22 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-07-31T23:36:06Z",
+  "last_updated": "2026-08-01T00:14:08Z",
   "next_issue_id": 110,
   "issues": [
     {
       "id": "ISS-0109",
       "title": "lint_migration_schema.py reports false-positive BLOCKER on public.<table> mentioned inside a -- prose comment (081_iss101_timers_failed_status.sql)",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MINOR",
       "category": "tooling / lint-false-positive-comment-text-scanned-as-sql",
-      "run_id": "WF03-iss0108-20260801",
+      "run_id": "WF03-iss0109-20260801",
       "handoff_id": null,
       "affected_areas": [
         "tools/lint_migration_schema.py",
         "migrations/081_iss101_timers_failed_status.sql"
       ],
       "created_at": "2026-07-31T23:36:06Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-01T00:14:08Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/370"
     },
     {
