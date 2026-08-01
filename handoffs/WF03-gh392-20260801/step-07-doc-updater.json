@@ -7,12 +7,12 @@
   "to_agent": "DOC-UPDATER",
   "created_at": "2026-08-01T15:58:18Z",
   "started_at": "2026-08-01T15:58:25Z",
-  "completed_at": null,
-  "status": "PENDING",
+  "completed_at": "2026-08-01T16:01:24Z",
+  "status": "COMPLETED",
   "priority": "NORMAL",
-  "stage": "WF-03 Step 7 — DOC-UPDATER",
+  "stage": "WF-03 Step 7 \u2014 DOC-UPDATER",
   "context": {
-    "stage": "Step 7 — DOC-UPDATER",
+    "stage": "Step 7 \u2014 DOC-UPDATER",
     "branch_name": "feature/WF03-gh392-20260801",
     "issue_id": "ISS-0126",
     "github_issue": "https://github.com/tvolodi/R-Co/issues/392",
@@ -28,16 +28,30 @@
     ]
   },
   "task": {
-    "description": "Update documentation after the WF-03 fix is verified.\n\n**Step-by-step:**\n\n1. cd C:\\Users\\tvolo\\dev\\ai-dala\\R-Co\n2. git branch --show-current — MUST output feature/WF03-gh392-20260801. If not, STOP and report FAIL.\n\n3. **Update docs/issues/ISS-0126.json:**\n   - status: RESOLVED\n   - updated_at: <exact output of `python -c \"import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))\"`>\n   - resolved_at: <same timestamp>\n   - resolution: {\n       \"type\": \"test-code-error-fix\",\n       \"implemented_in\": [\n         \"tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig\"\n       ],\n       \"commits\": [\n         {\n           \"sha\": \"991aefd\",\n           \"message\": \"fix(WF03-gh392): schema-qualify TC-OIDC-22-01 pg_constraint query (ISS-0126 / GH #392)\",\n           \"branch\": \"feature/WF03-gh392-20260801\"\n         }\n       ],\n       \"verification\": \"zig build test-integration confirms TC-OIDC-22-01 passes; before-fix=2, after-fix=1 via direct SQL\"\n     }\n   - occurrences: append an entry with run_id='WF03-gh392-20260801', step='3/5/7', description='Fix applied and verified; PR opened and merged'\n\n4. **Update CHANGELOG.md:**\n   Find the unreleased / current version section and add an entry under 'Bug Fixes' (or equivalent):\n   ```\n   - Schema-qualify TC-OIDC-22-01 pg_constraint query to filter by public schema (ISS-0126 / GH #392).\n     Migration 042 (non-GBL) was applied to public AND every tenant_* schema, so identical CHECK\n     constraints existed in both schemas. The test query lacked a pg_namespace join and counted both\n     copies, observing 2 instead of 1. Added `JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = 'public'`\n     to the constraint introspection query.\n   ```\n\n5. **Update docs/anti-patterns.md:**\n   Add a new entry documenting this anti-pattern (if not already present):\n   - Title: 'Schema-agnostic system catalog queries'\n   - Description: When introspecting pg_constraint/pg_class/pg_index, always JOIN pg_namespace and filter by nspname. These system catalogs are schema-agnostic.\n   - Wrong vs right example (SQL snippet).\n   - Reference: ISS-0126, GH #392.\n\n6. **Update docs/anti-patterns.md** if there's a section about test isolation — append a brief mention that migration 042 (non-GBL) creates identical objects across public + tenant_* schemas, so schema-aware introspection queries are required.\n\n7. Run `python3 tools/reqctl.py show ISS-0126` (if it has a tracked ID — it's not a requirement but the ISS file may be referenced). Just verify ISS-0126.json is valid JSON.\n\n8. **Commit the documentation updates** (still on feature/WF03-gh392-20260801):\n   ```bash\n   git add -A\n   git commit -m \"docs(WF03-gh392): update CHANGELOG + ISS-0126 + anti-patterns (ISS-0126 / GH #392)\"\n   git push origin feature/WF03-gh392-20260801\n   ```\n\n9. **Update handoff:**\n   - status: COMPLETED\n   - result.status: PASS or FAIL\n   - result.summary: short paragraph listing files modified and commit SHA\n   - result.artifacts_out: ['docs/issues/ISS-0126.json', 'CHANGELOG.md', 'docs/anti-patterns.md', 'commit: <SHA>']\n   - result.issues: []\n   - result.next_action: 'Route to BACKEND-DEV Step Final (git-merge)'\n   - started_at, completed_at (run the timestamp command before and after)\n\n10. **Update handoffs/registry.json:** find entry handoff_id='wf03-gh392-20260801-step-07' and set status to COMPLETED.\n\n11. **Update handoffs/orchestrator.log:** append the COMPLETED entry.\n\n**Allowed commands:** python (file edits), git add/commit/push (on feature branch only), python tools/reqctl.py.\n\n**Forbidden:** zig build, modifying source code (already done in Step 3), merge to main (Step Final's job), git push --force.",
+    "description": "Update documentation after the WF-03 fix is verified.\n\n**Step-by-step:**\n\n1. cd C:\\Users\\tvolo\\dev\\ai-dala\\R-Co\n2. git branch --show-current \u2014 MUST output feature/WF03-gh392-20260801. If not, STOP and report FAIL.\n\n3. **Update docs/issues/ISS-0126.json:**\n   - status: RESOLVED\n   - updated_at: <exact output of `python -c \"import datetime; print(datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'))\"`>\n   - resolved_at: <same timestamp>\n   - resolution: {\n       \"type\": \"test-code-error-fix\",\n       \"implemented_in\": [\n         \"tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig\"\n       ],\n       \"commits\": [\n         {\n           \"sha\": \"991aefd\",\n           \"message\": \"fix(WF03-gh392): schema-qualify TC-OIDC-22-01 pg_constraint query (ISS-0126 / GH #392)\",\n           \"branch\": \"feature/WF03-gh392-20260801\"\n         }\n       ],\n       \"verification\": \"zig build test-integration confirms TC-OIDC-22-01 passes; before-fix=2, after-fix=1 via direct SQL\"\n     }\n   - occurrences: append an entry with run_id='WF03-gh392-20260801', step='3/5/7', description='Fix applied and verified; PR opened and merged'\n\n4. **Update CHANGELOG.md:**\n   Find the unreleased / current version section and add an entry under 'Bug Fixes' (or equivalent):\n   ```\n   - Schema-qualify TC-OIDC-22-01 pg_constraint query to filter by public schema (ISS-0126 / GH #392).\n     Migration 042 (non-GBL) was applied to public AND every tenant_* schema, so identical CHECK\n     constraints existed in both schemas. The test query lacked a pg_namespace join and counted both\n     copies, observing 2 instead of 1. Added `JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = 'public'`\n     to the constraint introspection query.\n   ```\n\n5. **Update docs/anti-patterns.md:**\n   Add a new entry documenting this anti-pattern (if not already present):\n   - Title: 'Schema-agnostic system catalog queries'\n   - Description: When introspecting pg_constraint/pg_class/pg_index, always JOIN pg_namespace and filter by nspname. These system catalogs are schema-agnostic.\n   - Wrong vs right example (SQL snippet).\n   - Reference: ISS-0126, GH #392.\n\n6. **Update docs/anti-patterns.md** if there's a section about test isolation \u2014 append a brief mention that migration 042 (non-GBL) creates identical objects across public + tenant_* schemas, so schema-aware introspection queries are required.\n\n7. Run `python3 tools/reqctl.py show ISS-0126` (if it has a tracked ID \u2014 it's not a requirement but the ISS file may be referenced). Just verify ISS-0126.json is valid JSON.\n\n8. **Commit the documentation updates** (still on feature/WF03-gh392-20260801):\n   ```bash\n   git add -A\n   git commit -m \"docs(WF03-gh392): update CHANGELOG + ISS-0126 + anti-patterns (ISS-0126 / GH #392)\"\n   git push origin feature/WF03-gh392-20260801\n   ```\n\n9. **Update handoff:**\n   - status: COMPLETED\n   - result.status: PASS or FAIL\n   - result.summary: short paragraph listing files modified and commit SHA\n   - result.artifacts_out: ['docs/issues/ISS-0126.json', 'CHANGELOG.md', 'docs/anti-patterns.md', 'commit: <SHA>']\n   - result.issues: []\n   - result.next_action: 'Route to BACKEND-DEV Step Final (git-merge)'\n   - started_at, completed_at (run the timestamp command before and after)\n\n10. **Update handoffs/registry.json:** find entry handoff_id='wf03-gh392-20260801-step-07' and set status to COMPLETED.\n\n11. **Update handoffs/orchestrator.log:** append the COMPLETED entry.\n\n**Allowed commands:** python (file edits), git add/commit/push (on feature branch only), python tools/reqctl.py.\n\n**Forbidden:** zig build, modifying source code (already done in Step 3), merge to main (Step Final's job), git push --force.",
     "acceptance_criteria": [
       "ISS-0126.json status=RESOLVED with resolved_at and resolution",
       "CHANGELOG.md entry added for the fix",
       "docs/anti-patterns.md entry added (if missing)",
       "Commit pushed to feature/WF03-gh392-20260801 (NOT main)"
     ],
-    "functions_to_call": ["fn:update-changelog", "fn:update-issue"]
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue"
+    ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "DOC-UPDATER for ISS-0126 / GH #392: marked ISS-0126 RESOLVED with resolution (type=test-code-error-fix, implemented_in=[tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig], commit 991aefd), added new [ISS-0126] section to CHANGELOG.md (with pre-fix=2/post-fix=1 verification note), added new anti-pattern entry 'Schema-agnostic system catalog queries' to docs/anti-patterns.md (wrong vs correct SQL examples, reference GH #392), and appended a step=3/5/7 occurrence to ISS-0126 occurrences list. Commit 2fd67ac pushed to origin/feature/WF03-gh392-20260801 (82df2c0..2fd67ac).",
+    "artifacts_out": [
+      "docs/issues/ISS-0126.json",
+      "CHANGELOG.md",
+      "docs/anti-patterns.md",
+      "commit:2fd67ac"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV Step Final (git-merge)"
+  },
   "rework_count": 0,
   "max_rework": 3
 }
