@@ -1,0 +1,44 @@
+{
+  "handoff_id": "5790e901-7d47-44a0-ac91-711afc5fb4a1",
+  "run_id": "WF03-gh389-20260802",
+  "workflow_id": "WF-03",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-02T05:26:12Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 7",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh389-step5b"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0123.json",
+      "docs/anti-patterns.md",
+      "CHANGELOG.md",
+      "https://github.com/tvolodi/R-Co/issues/389"
+    ],
+    "issue_ref": "ISS-0123 / GitHub tvolodi/R-Co#389"
+  },
+  "task": {
+    "description": "WF-03 Step 7 — DOC-UPDATER. Update documentation for ISS-0123 / GitHub #389 fix.\n\nRequired actions:\n1. Update CHANGELOG.md — add an entry under the latest section:\n   \"### Fixed (ISS-0123 / GitHub #389 — DLQ table rename + audit trigger isolation)\n    - Renamed `dead_letter_queue` → `dead_letter_items` across 22 source/test files (post-072 canonical name)\n    - Wrapped `trg_bpm_test_fail_audit_insert` install in `obs05_dlq_test.zig` in a SAVEPOINT with errdefer ROLLBACK for unconditional cleanup\n    - Added new tools/lint_sql_table_refs.py to detect legacy table names in src/ and tests/integration/\n    - New regression tests: tests/integration/iss0123_regression_test.zig (TC-ISS-0123-01 source-assertion + TC-ISS-0123-02 audit-insert smoke)\n    - Migration 072_tnt01_rename_legacy_tables.sql confirmed canonical\"\n\n2. Update docs/anti-patterns.md — add a new section:\n   \"### Anti-pattern: legacy table name in source/test after migration rename\n   - Symptom: PostgreSQL C42703 \"column does not exist\" or \"relation does not exist\" after a migration renames a table\n   - Detection: tools/lint_sql_table_refs.py scans src/**/*.zig and tests/integration/**/*.zig for legacy table names\n   - Prevention: when renaming a table in a migration, also update every reference in src/ and tests/ in the SAME commit. The new linter will fail the build if any legacy reference returns.\"\n\n3. Mark ISS-0123 as RESOLVED. Update docs/issues/ISS-0123.json:\n   - status: \"RESOLVED\"\n   - resolved_at: <current ISO8601 timestamp>\n   - resolution: \"Implemented fix on feature/WF03-gh389-20260802: renamed dead_letter_queue → dead_letter_items across 22 source/test files, wrapped obs05 trigger install in SAVEPOINT with errdefer ROLLBACK, added tools/lint_sql_table_refs.py linter, added tests/integration/iss0123_regression_test.zig regression test. Validated: zig build/test/migrate all exit 0, 2/2 iss0123 tests pass, 14/14 TM tests pass, NFR benchmarks all green.\"\n\n4. Update docs/requirements.yaml via reqctl.py if any requirements were affected (most likely none for an issue fix, but check).\n\n5. Post a comment to GitHub issue #389: \"<!-- rco-sync-ref: ISS-0123 -->\\nResolved in PR #<PR-number>. Tests pass: 2/2 iss0123 + 14/14 TM. Migration 072 canonical, no more C42703 source_ref errors, no more P0001 audit-trigger leaks from obs05.\"\n\n6. Commit and push:\n   - git add -A\n   - git commit -m \"docs(WF03-gh389): update CHANGELOG, resolve ISS-0123, anti-pattern entry\"\n   - git push origin feature/WF03-gh389-20260802\n\nWhen done:\n- Set handoff status: \"COMPLETED\"\n- Fill result.status: \"PASS\", result.summary: \"Documentation updated for ISS-0123\", result.artifacts_out: [\"CHANGELOG.md\", \"docs/anti-patterns.md\", \"docs/issues/ISS-0123.json\"], result.issues: [], result.next_action: \"Route to BACKEND-DEV (Step Final) — PR, squash-merge, branch cleanup\"\n- Set completed_at to current ISO8601 timestamp\n- Update handoffs/registry.json for the new handoff_id\n- Append to handoffs/orchestrator.log\n- IMPORTANT: registry.json must use open(..., encoding='utf-8'). Use \\n (not CRLF).\n\nAllowed commands: read_file, file_search, grep_search, run_in_terminal, create_file, replace_string_in_file, multi_replace_string_in_file, .venv\\Scripts\\python.exe for reqctl.py, git, gh (at C:\\Program Files\\GitHub CLI\\gh.exe). NO zig build, NO source code edits.\n",
+    "acceptance_criteria": [
+      "CHANGELOG.md has a new entry describing the ISS-0123 fix",
+      "docs/anti-patterns.md has a new anti-pattern section about legacy table names after migration rename",
+      "docs/issues/ISS-0123.json status=RESOLVED, resolved_at set, resolution populated",
+      "GitHub issue #389 has a closing comment (use gh CLI, NOT comment that already exists)",
+      "Changes committed and pushed to feature/WF03-gh389-20260802"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:resolve-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-02T05:26:32Z",
+  "completed_at": null
+}

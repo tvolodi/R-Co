@@ -4,6 +4,13 @@ All notable changes to the BPM Platform are documented here.
 
 ## Unreleased
 
+### Fixed (ISS-0123 / GitHub #389 — DLQ table rename + audit trigger isolation)
+- Renamed `dead_letter_queue` → `dead_letter_items` across 22 source/test files (post-072 canonical name).
+- Wrapped `trg_bpm_test_fail_audit_insert` installation in `obs05_dlq_test.zig` in a SAVEPOINT with `errdefer ROLLBACK` for unconditional cleanup.
+- Added `tools/lint_sql_table_refs.py` to detect legacy table names in `src/` and `tests/integration/`.
+- Added regression tests in `tests/integration/iss0123_regression_test.zig`: TC-ISS-0123-01 source assertion and TC-ISS-0123-02 audit-insert smoke test.
+- Confirmed `migrations/072_tnt01_rename_legacy_tables.sql` as canonical.
+
 ### Fixed
 - **ISS-0124 / GitHub [#390](https://github.com/tvolodi/R-Co/issues/390) (MAJOR)**: Resolve all PostgreSQL C42883 `operator does not exist: text = integer` / `uuid = text` errors. Fixed asymmetric SQL type casting in 8 source files (`subscription_store.zig`, `identity/registry.zig`, `identity/onboarding.zig`, `obs/timeline.zig`, `oidc/jit_provisioning.zig`, `entities/projector.zig`, `api/middleware/auth.zig`, `tasks/store.zig`) and corrected TC-TNT-07 migration version key format. All C42883 errors eliminated; TC-TNT-07 tests now 15/15 passing. ([#396](https://github.com/tvolodi/R-Co/pull/396))
 
