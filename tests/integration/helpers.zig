@@ -599,6 +599,12 @@ pub const TestHarness = struct {
     /// Roll back the open transaction and close the connection.
     /// Never commits — test isolation is guaranteed.
     pub fn deinit(self: *TestHarness) void {
+        // ISS-0122: clean up audit rows with non-UTF-8 placeholder resource_ids from prior tests.
+        // Best-effort pre-rollback sweep; guarded by `catch {}` so it never blocks teardown.
+        self.conn.exec(
+            "DELETE FROM audit_entries WHERE resource_id LIKE '<invalid-utf8:%'",
+            &.{},
+        ) catch {};
         self.conn.rollback() catch {};
         self.conn.close();
     }

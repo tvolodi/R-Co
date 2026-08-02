@@ -18,21 +18,30 @@
   "resolved_at": null,
   "notes": "Cluster K from Step 5c. 85 occurrences of POSTGRES ERROR C22021 'invalid byte sequence for encoding UTF8: 0xaa' at unnamed portal parameter $1 (mbutils.c:1665 report_invalid_encoding). The errors cluster inside two tests: TC-EE-10-06 (EXECUTION_ERROR payload contains all required fields, in tests/integration/instance_error_test.zig:852) and TC-EXT-01-INT-07 (exhausted retries move the failure to OBS-05 DLQ and ERROR, in tests/integration/ext01_service_task_test.zig, surfacing from src/engine/instance.zig:699 create). The failing call site is `const inst = try inst_store.create(allocator, def.id, null, \"{\\\"foo\\\":\\\"bar\\\"}\");` \u2014 null payload literal combined with a JSON string. Symptom in vendor/pg/pg.zig:303 readUntilReady: bytes 0xAA appear in the wire protocol because the JSON parameter is bound as a raw byte buffer rather than a UTF-8 validated string. Likely root cause: Zig 0.16.0 libpq binding parameter type inference regression, OR the test passes a stale null-marker byte from a previous failed transaction. Evidence: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log offsets 924607, 924787, 924967.",
   "root_cause": {
-    "type": "code-defect",
-    "details": "When the engine forwards a JSON-shaped payload to PostgreSQL via the pg.zig binding, the byte stream is not being validated as UTF-8 before (or after) parameter substitution. Bytes 0xAA from a surrounding struct field or null-sentinel reach the wire and PostgreSQL rejects with SQLSTATE 22021. The same byte value appears 85 times in the Step 5c log, all coming from the same two test call sites, suggesting a single root binding rather than 85 distinct bugs. Until the binding is fixed (or the test payload is wrapped in a typed []const u8 cast), every test that passes a null-then-string payload will trip the encoding guard."
+    "type": "code-defect / sql-trigger-incompatibility",
+    "details": "After running WF03-gh388-20260802 Step 1 diagnosis (scratch/WF03-gh388-20260802/issue-fixer-step1/diagnosis.{md,yaml}), the 0xAA byte does NOT originate from a Zig-side buffer in src/engine/instance.zig or vendor/pg/pg.zig — all bind sources verified pure-ASCII. The 0xAA originates server-side inside the audit_entries.resource_id TEXT column (after GBL-081 widened it from UUID to TEXT). The BEFORE INSERT trigger bpm_audit_apply_chain_hash (migrations/051_xc02_audit_immutability.sql:30-90) calls bpm_audit_compute_chain_hash (migrations/035_adp09_tamper_evident_audit_chain.sql:88-130) whose signature still declares p_resource_id UUID. The implicit UUID cast or convert_to(..., 'UTF8') rejects when NEW.resource_id contains 0xAA, bubbles C22021 to the originating INSERT, which PG reports as the original bind parameter $1. The interleaved C23503/C42703/C23514 errors in the same log regions confirm shared-DB-state contamination (similar to ISS-0112 / GH #375). The audit chain hash trigger pipeline is the actual defect; the JSON '{\"foo\":\"bar\"}' payload is a red herring. Confidence: medium.",
+    "evidence_log_offsets": ["924660..939773", "1124980..1134040"],
+    "evidence_files": [
+      "migrations/035_adp09_tamper_evident_audit_chain.sql:88-130",
+      "migrations/051_xc02_audit_immutability.sql:30-90",
+      "migrations/GBL-081_iss103_audit_resource_id_text.sql:107-180",
+      "migrations/GBL-082_fix_audit_chain_resource_id_text.sql:94-180"
+    ]
   },
-  "candidate_resolution": "Audit src/engine/instance.zig:699 create (and the InstanceStore.create call path) to ensure the payload argument is typed as ?[]const u8 with explicit SQL NULL handling, free the JSON buffer before parameter binding, and propagate std.unicode.Utf8View validation when the payload is non-null. Alternatively, switch the binding from text protocol to binary protocol so libpq itself validates UTF-8.",
+  "candidate_resolution": "Migrate bpm_audit_compute_chain_hash to accept p_resource_id TEXT (drop implicit UUID cast), and update bpm_audit_chain_canonical_payload accordingly. Alternatively, in bpm_audit_apply_chain_hash, validate NEW.resource_id is valid UTF-8 before calling compute_chain_hash; if invalid, normalise to a placeholder so audit never blocks business writes. Add tests/integration/audit_chain_utf8_test.zig regression test that inserts a parent row with 0xAA in its primary-key TEXT column and asserts the chain hash trigger does NOT raise C22021.",
   "resolution": null,
   "files_to_change": [
-    "src/engine/instance.zig",
-    "src/engine/instance_store.zig",
-    "vendor/pg/pg.zig",
-    "tests/integration/instance_error_test.zig",
-    "tests/integration/ext01_service_task_test.zig"
+    "migrations/035_adp09_tamper_evident_audit_chain.sql",
+    "migrations/051_xc02_audit_immutability.sql",
+    "migrations/GBL-081_iss103_audit_resource_id_text.sql",
+    "migrations/GBL-082_fix_audit_chain_resource_id_text.sql",
+    "tests/integration/audit_chain_utf8_test.zig",
+    "tests/integration/helpers.zig"
   ],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/388",
   "prevention": [
     "Add a per-call UTF-8 validation step in the pool.zig exec helper so coding errors surface locally rather than as Postgres errors mid-pipeline.",
     "Add a Zig-side smoke test that constructs and binds a JSON payload of multiple encodings and asserts the wire bytes are valid UTF-8."
-  ]
+  ],
+  "gh_comment_url": "https://github.com/tvolodi/R-Co/issues/388#issuecomment-5155985384"
 }

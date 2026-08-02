@@ -1212,6 +1212,24 @@ pub fn build(b: *std.Build) void {
     run_iss0125_integration_tests.setCwd(b.path("."));
     run_iss0125_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-0122: Audit chain TEXT resource_id + non-UTF-8 resilience regression tests.
+    // Migration 1107 wrapped the chain-hash pipeline in EXCEPTION blocks and
+    // pre-normalises non-UTF-8 bytes in NEW.resource_id; this test exercises
+    // the audit_entries BEFORE INSERT trigger directly with both ASCII and
+    // intentionally-malformed-UTF-8 byte sequences (0xAA via the canonical
+    // convert_from(decode('e2aaaa','hex'),'UTF8') pattern).
+    const iss0122_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/audit_chain_utf8_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0122_integration_tests = b.addRunArtifact(iss0122_integration_tests);
+    run_iss0122_integration_tests.setCwd(b.path("."));
+    run_iss0122_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     // ISS-0123: DLQ rename (Cluster B) + obs05 audit-trigger isolation (Cluster A) regression tests.
     const iss0123_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1435,11 +1453,16 @@ pub fn build(b: *std.Build) void {
     test_integration_iss0125_step.dependOn(&clean_test_db.step);
     test_integration_iss0125_step.dependOn(&run_iss0125_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0125_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0122_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0123_integration_tests.step);
 
     const test_integration_iss0123_step = b.step("test-integration-iss0123", "Run ISS-0123 DLQ rename + audit-trigger isolation regression tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0123_step.dependOn(&clean_test_db.step);
     test_integration_iss0123_step.dependOn(&run_iss0123_integration_tests.step);
+
+    const test_integration_iss0122_step = b.step("test-integration-iss0122", "Run ISS-0122 audit chain non-UTF-8 resilience integration tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0122_step.dependOn(&clean_test_db.step);
+    test_integration_iss0122_step.dependOn(&run_iss0122_integration_tests.step);
 
     const test_integration_iss205_step = b.step("test-integration-iss205", "Run ISS-205 webhook transactional outbox integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss205_step.dependOn(&clean_test_db.step);

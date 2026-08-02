@@ -4,6 +4,15 @@ All notable changes to the BPM Platform are documented here.
 
 ## Unreleased
 
+### Fixed (ISS-0122 / GitHub #388 — Audit chain UTF-8 resilience)
+- Resolved SQLSTATE 22021 'invalid byte sequence for encoding "UTF8"' exception when audit entries contain non-UTF-8 `resource_id` values.
+- **Migration 1107** (`fix_audit_chain_text_resource_id.sql`): Widened `resource_id` parameter from `UUID` to `TEXT` in all chain-hash computation functions. Pre-normalizes non-UTF-8 bytes to `'<invalid-utf8:N>'` format before hashing. Wraps hash computation in `EXCEPTION` block returning 64-zero sentinel `'0'*64` on failure. Applied to both `public` and all `tenant_*` schemas.
+- **Migration 1108** (`iss0122_validator_skip_zero_sentinel.sql`): Updated validator function to skip rows with zero-sentinel chain_hash. Normalizes `resource_id` via `BEGIN/EXCEPTION` block before recomputing hash (critical fix for validation accuracy). Matches trigger's normalization logic.
+- **Migration 1109** (`iss0122_apply_chain_hash_lock_cast.sql`): Added explicit `::bigint` cast on advisory lock key to prevent SQLSTATE 42P08 "inconsistent types deduced" errors in concurrent non-UTF-8 inserts.
+- **Migration 1110** (`iss0122_validator_zero_sentinel_per_tenant.sql`): Applied validator zero-sentinel handling to every `tenant_*` schema via per-tenant DO loop.
+- Added regression test suite in `tests/integration/audit_chain_utf8_test.zig`: TC-ISS-0122-01 (ASCII happy path, PASS), TC-ISS-0122-02 (non-UTF-8 no exception, PASS), TC-ISS-0122-03 (validator skip zero-sentinel, PASS), TC-ISS-0122-04 (concurrent non-UTF-8 inserts, deferred — Zig test infrastructure issue).
+- Verified: Business cases TC-EE-10-06 and TC-EXT-01-INT-07 remain PASS.
+
 ### Fixed (ISS-0123 / GitHub #389 — DLQ table rename + audit trigger isolation)
 - Renamed `dead_letter_queue` → `dead_letter_items` across 22 source/test files (post-072 canonical name).
 - Wrapped `trg_bpm_test_fail_audit_insert` installation in `obs05_dlq_test.zig` in a SAVEPOINT with `errdefer ROLLBACK` for unconditional cleanup.

@@ -12,7 +12,7 @@
       "started_at": "2026-07-31T15:15:19Z",
       "completed_at": "2026-07-31T15:23:16Z",
       "status": "COMPLETED",
-      "stage": "WF-03 issue resolving — Step Final (changelog + branch management)"
+      "stage": "WF-03 issue resolving \u2014 Step Final (changelog + branch management)"
     },
     {
       "handoff_id": "wf03-f8-b1-edit-save-hang-20260606-001",
@@ -47,7 +47,7 @@
       "started_at": "2026-05-24T01:44:20Z",
       "completed_at": "2026-05-24T01:48:03Z",
       "status": "FAILED",
-      "stage": "Stage 5 РІР‚вЂќ Scheduler + Identity"
+      "stage": "Stage 5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Scheduler + Identity"
     },
     {
       "handoff_id": "99af97c2-1763-4e87-8f22-075fa3f327f9",
@@ -61,7 +61,7 @@
       "started_at": "2026-05-24T02:33:40Z",
       "completed_at": "2026-05-24T02:35:24Z",
       "status": "FAILED",
-      "stage": "Stage 5 РІР‚вЂќ Scheduler + Identity"
+      "stage": "Stage 5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Scheduler + Identity"
     },
     {
       "handoff_id": "153d07b5-b16f-4ce3-aeb0-2f76900ccf42",
@@ -75,7 +75,7 @@
       "started_at": "2026-05-24T02:36:40Z",
       "completed_at": "2026-05-24T02:42:16Z",
       "status": "FAILED",
-      "stage": "Stage 5 РІР‚вЂќ Scheduler + Identity"
+      "stage": "Stage 5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Scheduler + Identity"
     },
     {
       "handoff_id": "f0fa7edf-4e71-490f-97a8-20f95bcd4a61",
@@ -89,7 +89,7 @@
       "started_at": "2026-05-24T03:00:20Z",
       "completed_at": "2026-05-24T03:02:23Z",
       "status": "FAILED",
-      "stage": "Stage 5 РІР‚вЂќ Scheduler + Identity"
+      "stage": "Stage 5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Scheduler + Identity"
     },
     {
       "handoff_id": "1a4d0b8f-5c42-4c7f-a9d5-7234e83f7079",
@@ -103,7 +103,7 @@
       "started_at": "2026-05-24T06:30:14Z",
       "completed_at": "2026-05-24T06:34:01Z",
       "status": "FAILED",
-      "stage": "Stage 5 РІР‚вЂќ Scheduler + Identity"
+      "stage": "Stage 5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Scheduler + Identity"
     },
     {
       "handoff_id": "96fc63a6-0bb3-4ad2-874a-7f8bb6ef2c4b",
@@ -117,7 +117,7 @@
       "started_at": "2026-05-24T14:30:20Z",
       "completed_at": "2026-05-24T14:46:52Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "3fb06e5f-e8c6-4d8f-9470-6d70e5ed5db2",
@@ -131,7 +131,7 @@
       "started_at": "2026-05-24T15:18:50Z",
       "completed_at": "2026-05-24T16:52:52Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "3f56f3e8-8b7e-44e8-a4f0-652f7f6aaf2f",
@@ -145,7 +145,7 @@
       "started_at": "2026-05-24T18:01:40Z",
       "completed_at": "2026-05-24T18:05:31Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "149c8f5f-6dd8-48f9-868d-472683d6a7e4",
@@ -159,7 +159,7 @@
       "started_at": "2026-05-24T18:14:20Z",
       "completed_at": "2026-05-24T18:27:02Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-004",
@@ -173,7 +173,7 @@
       "started_at": "2026-05-25T09:40:20Z",
       "completed_at": "2026-05-25T09:44:55Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-006",
@@ -187,7 +187,7 @@
       "started_at": "2026-05-25T10:22:20Z",
       "completed_at": "2026-05-25T10:25:30Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-008",
@@ -201,7 +201,7 @@
       "started_at": "2026-05-25T10:38:20Z",
       "completed_at": "2026-05-25T10:41:16Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-065",
@@ -215,7 +215,7 @@
       "started_at": "2026-05-25T12:30:20Z",
       "completed_at": "2026-05-25T12:46:55Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-017",
@@ -229,7 +229,7 @@
       "started_at": "2026-05-25T12:50:20Z",
       "completed_at": "2026-05-25T02:44:54Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-019",
@@ -243,7 +243,7 @@
       "started_at": "2026-05-25T13:10:20Z",
       "completed_at": "2026-05-25T03:00:49Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-020",
@@ -257,7 +257,7 @@
       "started_at": "2026-05-25T13:25:20Z",
       "completed_at": "2026-05-25T03:06:42Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-022",
@@ -271,7 +271,7 @@
       "started_at": "2026-05-25T13:55:20Z",
       "completed_at": "2026-05-25T03:26:50Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-029",
@@ -285,7 +285,7 @@
       "started_at": "2026-05-25T16:20:20Z",
       "completed_at": "2026-05-25T16:33:03Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-038",
@@ -299,7 +299,7 @@
       "started_at": "2026-05-25T17:45:20Z",
       "completed_at": "2026-05-25T06:42:01Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-046",
@@ -313,7 +313,7 @@
       "started_at": "2026-05-25T19:10:20Z",
       "completed_at": "2026-05-25T07:49:29Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-051",
@@ -327,7 +327,7 @@
       "started_at": "2026-05-25T20:20:20Z",
       "completed_at": "2026-05-25T08:49:47Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260525-053",
@@ -341,7 +341,7 @@
       "started_at": "2026-05-25T20:40:20Z",
       "completed_at": "2026-05-25T09:05:50Z",
       "status": "FAILED",
-      "stage": "Stage 6 РІР‚вЂќ Observability + Extensions"
+      "stage": "Stage 6 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Observability + Extensions"
     },
     {
       "handoff_id": "20260526-004",
@@ -355,7 +355,7 @@
       "started_at": "2026-05-26T00:36:20Z",
       "completed_at": "2026-05-25T20:39:21Z",
       "status": "FAILED",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260526-025",
@@ -369,7 +369,7 @@
       "started_at": "2026-05-26T03:01:20Z",
       "completed_at": "2026-05-26T03:05:26Z",
       "status": "FAILED",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260526-034",
@@ -383,7 +383,7 @@
       "started_at": "2026-05-26T04:21:20Z",
       "completed_at": "2026-05-26T04:26:15Z",
       "status": "FAILED",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260526-036",
@@ -397,7 +397,7 @@
       "started_at": "2026-05-26T04:31:20Z",
       "completed_at": "2026-05-26T04:32:45Z",
       "status": "FAILED",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260526-044",
@@ -411,7 +411,7 @@
       "started_at": "2026-05-26T05:28:20Z",
       "completed_at": "2026-05-26T05:34:27Z",
       "status": "FAILED",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260526-083",
@@ -425,7 +425,7 @@
       "started_at": "2026-05-26T12:36:20Z",
       "completed_at": "2026-05-26T12:48:08Z",
       "status": "FAILED",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260526-105",
@@ -439,7 +439,7 @@
       "started_at": "2026-05-26T18:09:20Z",
       "completed_at": "2026-05-26T18:13:58Z",
       "status": "FAILED",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260527-002",
@@ -453,7 +453,7 @@
       "started_at": "2026-05-27T06:20:49Z",
       "completed_at": "2026-05-26T19:12:20Z",
       "status": "IN_PROGRESS",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260527-003",
@@ -467,7 +467,7 @@
       "started_at": "2026-05-27T06:24:43Z",
       "completed_at": "2026-05-26T19:26:27Z",
       "status": "IN_PROGRESS",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260527-004",
@@ -481,7 +481,7 @@
       "started_at": "2026-05-27T06:39:08Z",
       "completed_at": "2026-05-26T19:34:57Z",
       "status": "IN_PROGRESS",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260527-005",
@@ -495,7 +495,7 @@
       "started_at": "2026-05-27T06:45:38Z",
       "completed_at": "2026-05-27T00:40:00Z",
       "status": "IN_PROGRESS",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260527-007",
@@ -509,7 +509,7 @@
       "started_at": "2026-05-27T06:49:14Z",
       "completed_at": "2026-05-26T19:47:46Z",
       "status": "IN_PROGRESS",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260527-008",
@@ -523,7 +523,7 @@
       "started_at": "2026-05-27T06:53:53Z",
       "completed_at": "2026-05-26T19:52:24Z",
       "status": "IN_PROGRESS",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260527-001",
@@ -537,7 +537,7 @@
       "started_at": "2026-05-27T06:19:24Z",
       "completed_at": "2026-05-26T19:08:16Z",
       "status": "IN_PROGRESS",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "20260527-006",
@@ -551,7 +551,7 @@
       "started_at": "2026-05-27T06:48:00Z",
       "completed_at": "2026-05-26T19:43:27Z",
       "status": "IN_PROGRESS",
-      "stage": "Stage 6.5 РІР‚вЂќ Schema adaptations + OIDC foundations"
+      "stage": "Stage 6.5 \u0420\u0406\u0420\u201a\u0432\u0402\u045c Schema adaptations + OIDC foundations"
     },
     {
       "handoff_id": "f71d4d1a-30f2-4fb1-8b24-3b2b1c6b2d11",
@@ -3555,7 +3555,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-06-05T07:56:37Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01",
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01",
       "completed_at": "2026-06-05T08:00:43Z"
     },
     {
@@ -3568,7 +3568,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-06-05T07:56:37Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01"
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01"
     },
     {
       "handoff_id": "e298a8f8-1cea-4325-a839-03c69b14b760",
@@ -3580,7 +3580,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-06-05T07:56:37Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01",
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01",
       "completed_at": "2026-06-05T08:06:40Z"
     },
     {
@@ -3593,7 +3593,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-06-05T07:56:37Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01",
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01",
       "completed_at": "2026-06-05T08:16:32Z"
     },
     {
@@ -3606,7 +3606,7 @@
       "to_agent": "TEST-DESIGNER",
       "created_at": "2026-06-05T07:56:37Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01"
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01"
     },
     {
       "handoff_id": "1bb8f075-89ba-4478-9717-8b164355f3ab",
@@ -3618,7 +3618,7 @@
       "to_agent": "TEST-DESIGN-VALIDATOR",
       "created_at": "2026-06-05T07:56:37Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01",
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01",
       "completed_at": "2026-06-05T08:27:22Z"
     },
     {
@@ -3631,7 +3631,7 @@
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-06-05T07:56:37Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01"
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01"
     },
     {
       "handoff_id": "ada87627-7f86-428f-817f-986634ba1471",
@@ -3643,7 +3643,7 @@
       "to_agent": "RELEASE-VALIDATOR",
       "created_at": "2026-06-05T07:56:37Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01",
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01",
       "completed_at": "2026-06-05T09:18:56Z"
     },
     {
@@ -3657,7 +3657,7 @@
       "created_at": "2026-06-05T07:56:37Z",
       "completed_at": "2026-06-05T09:23:04Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01"
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01"
     },
     {
       "handoff_id": "db7f640b-b6a8-4692-8649-0a47e6d099e3",
@@ -3670,7 +3670,7 @@
       "created_at": "2026-06-05T07:56:37Z",
       "completed_at": "2026-06-05T09:23:04Z",
       "status": "COMPLETED",
-      "stage": "Schema-Per-Tenant Migration — SPT-01"
+      "stage": "Schema-Per-Tenant Migration \u2014 SPT-01"
     },
     {
       "handoff_id": "wf02-f8-b1-20260606-final",
@@ -3770,7 +3770,7 @@
       "created_at": "2026-06-07T01:02:03Z",
       "completed_at": "2026-06-07T01:03:29Z",
       "status": "COMPLETED",
-      "stage": "WF-03 — SPT-01 onboarding schema provisioning gap"
+      "stage": "WF-03 \u2014 SPT-01 onboarding schema provisioning gap"
     },
     {
       "handoff_id": "wf03-spt01-schema-20260607-005",
@@ -3782,7 +3782,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-06-07T01:02:03Z",
       "status": "COMPLETED",
-      "stage": "WF-03 — SPT-01 onboarding schema provisioning gap"
+      "stage": "WF-03 \u2014 SPT-01 onboarding schema provisioning gap"
     },
     {
       "handoff_id": "wf03-spt01-schema-20260607-002",
@@ -3794,7 +3794,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-06-07T01:06:26Z",
       "status": "COMPLETED",
-      "stage": "WF-03 — SPT-01 onboarding schema provisioning gap"
+      "stage": "WF-03 \u2014 SPT-01 onboarding schema provisioning gap"
     },
     {
       "handoff_id": "wf03-spt01-schema-20260607-002b",
@@ -3807,7 +3807,7 @@
       "created_at": "2026-06-07T01:12:38Z",
       "completed_at": "2026-06-07T01:14:51Z",
       "status": "FAILED",
-      "stage": "WF-03 — SPT-01 onboarding schema provisioning gap (hard gate)"
+      "stage": "WF-03 \u2014 SPT-01 onboarding schema provisioning gap (hard gate)"
     },
     {
       "handoff_id": "wf03-spt01-schema-20260607-002-r1",
@@ -3858,7 +3858,7 @@
       "started_at": "2026-06-07T01:29:28Z",
       "completed_at": "2026-06-07T01:35:11Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — SPT-01 onboarding schema provisioning gap (implement fix)"
+      "stage": "WF-03 Issue Resolving \u2014 SPT-01 onboarding schema provisioning gap (implement fix)"
     },
     {
       "handoff_id": "wf03-spt01-schema-20260607-002b-r3",
@@ -3885,7 +3885,7 @@
       "started_at": "2026-06-07T01:36:31Z",
       "completed_at": "2026-06-07T01:39:32Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — SPT-01 onboarding schema provisioning gap (test design)"
+      "stage": "WF-03 Issue Resolving \u2014 SPT-01 onboarding schema provisioning gap (test design)"
     },
     {
       "handoff_id": "wf03-spt01-schema-20260607-004b",
@@ -3899,7 +3899,7 @@
       "started_at": "2026-06-07T01:41:05Z",
       "completed_at": "2026-06-07T01:42:13Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — SPT-01 onboarding schema provisioning gap (test design hard gate)"
+      "stage": "WF-03 Issue Resolving \u2014 SPT-01 onboarding schema provisioning gap (test design hard gate)"
     },
     {
       "handoff_id": "wf03-spt01-schema-20260607-005tr",
@@ -3913,7 +3913,7 @@
       "started_at": "2026-06-07T01:43:47Z",
       "completed_at": "2026-06-07T01:45:46Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — SPT-01 onboarding schema provisioning gap (test execution)"
+      "stage": "WF-03 Issue Resolving \u2014 SPT-01 onboarding schema provisioning gap (test execution)"
     },
     {
       "handoff_id": "wf03-spt01-schema-20260607-007",
@@ -3927,7 +3927,7 @@
       "started_at": "2026-06-07T01:46:44Z",
       "completed_at": "2026-06-07T01:48:40Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — SPT-01 onboarding schema provisioning gap (doc update + git merge)"
+      "stage": "WF-03 Issue Resolving \u2014 SPT-01 onboarding schema provisioning gap (doc update + git merge)"
     },
     {
       "handoff_id": "5b5f902d-2e6b-42df-bbc5-c7789e10cba2",
@@ -5760,7 +5760,7 @@
       "to_agent": "REQ-ANALYST",
       "created_at": "2026-06-12T15:28:44Z",
       "status": "COMPLETED",
-      "stage": "EXP-101 Scale Anchor — Architecture Doc"
+      "stage": "EXP-101 Scale Anchor \u2014 Architecture Doc"
     },
     {
       "handoff_id": "exp101-doc-updater-02",
@@ -5772,7 +5772,7 @@
       "to_agent": "DOC-UPDATER",
       "created_at": "2026-06-12T15:28:44Z",
       "status": "COMPLETED",
-      "stage": "EXP-101 Scale Anchor — Doc Commit"
+      "stage": "EXP-101 Scale Anchor \u2014 Doc Commit"
     },
     {
       "handoff_id": "exp103-code-designer-01",
@@ -6517,7 +6517,7 @@
       "started_at": "2026-06-14T18:47:35Z",
       "completed_at": "2026-06-14T18:50:08Z",
       "status": "COMPLETED",
-      "stage": "WF-03 onboarding E2E fix — git setup"
+      "stage": "WF-03 onboarding E2E fix \u2014 git setup"
     },
     {
       "handoff_id": "ed0b5d20-67f6-4486-9951-c1814c5c6d5f",
@@ -6531,7 +6531,7 @@
       "started_at": "2026-06-14T18:51:44Z",
       "completed_at": "2026-06-14T18:56:48Z",
       "status": "COMPLETED",
-      "stage": "WF-03 onboarding E2E fix — diagnosis"
+      "stage": "WF-03 onboarding E2E fix \u2014 diagnosis"
     },
     {
       "handoff_id": "903efcc2-ccdf-4165-b408-7580924e0168",
@@ -6545,7 +6545,7 @@
       "started_at": "2026-06-14T19:01:00Z",
       "completed_at": "2026-06-14T19:04:32Z",
       "status": "COMPLETED",
-      "stage": "WF-03 onboarding E2E fix — design"
+      "stage": "WF-03 onboarding E2E fix \u2014 design"
     },
     {
       "handoff_id": "b9c0d1e2-3f4a-5b6c-7d8e-9f0a1b2c3d4e",
@@ -6567,7 +6567,7 @@
       "to_agent": "FRONTEND-DEV",
       "created_at": "2026-06-14T19:10:15Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — Implementation"
+      "stage": "WF-03 Issue Resolving \u2014 Implementation"
     },
     {
       "handoff_id": "d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f70",
@@ -6578,7 +6578,7 @@
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-06-14T19:15:10Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Issue Resolving — Verification"
+      "stage": "WF-03 Issue Resolving \u2014 Verification"
     },
     {
       "handoff_id": "e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7081",
@@ -6589,7 +6589,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-06-15T15:05:40Z",
       "status": "PENDING",
-      "stage": "WF-03 Issue Resolving — New Cycle (backend saga bug)"
+      "stage": "WF-03 Issue Resolving \u2014 New Cycle (backend saga bug)"
     },
     {
       "handoff_id": "f0a1b2c3-d4e5-6f70-8192-a3b4c5d6e7f8",
@@ -7139,7 +7139,7 @@
       "to_agent": "UAT-RUNNER",
       "created_at": "2026-06-16T06:07:20Z",
       "status": "COMPLETED",
-      "stage": "WF-05 UAT v9 — ISS-V9-001 MAJOR (roles mapper missing from onboarding saga)",
+      "stage": "WF-05 UAT v9 \u2014 ISS-V9-001 MAJOR (roles mapper missing from onboarding saga)",
       "completed_at": "2026-06-16T10:24:59Z"
     },
     {
@@ -7254,7 +7254,7 @@
       "to_agent": "TEST-DESIGNER",
       "created_at": "2026-07-30T08:17:04Z",
       "status": "COMPLETED",
-      "stage": "Epic 5 continuation — ISS-503",
+      "stage": "Epic 5 continuation \u2014 ISS-503",
       "completed_at": "2026-07-30T11:02:15Z",
       "started_at": "2026-07-30T08:17:04Z"
     },
@@ -7761,7 +7761,7 @@
       "to_agent": "CODE-DESIGN-VALIDATOR",
       "created_at": "2026-07-31T11:36:20Z",
       "status": "COMPLETED",
-      "stage": "WF-03 issue resolving — hard gate before rework implementation"
+      "stage": "WF-03 issue resolving \u2014 hard gate before rework implementation"
     },
     {
       "handoff_id": "wf03-iss0100-step-03f",
@@ -7772,7 +7772,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-07-31T14:09:26Z",
       "status": "COMPLETED",
-      "stage": "WF-03 issue resolving — implement validated ISS-0105 fix (single file)"
+      "stage": "WF-03 issue resolving \u2014 implement validated ISS-0105 fix (single file)"
     },
     {
       "handoff_id": "043f933e-7c71-4f65-86be-39f09b12bf8a",
@@ -8272,7 +8272,7 @@
       "started_at": "2026-08-01T12:09:25Z",
       "completed_at": "2026-08-01T12:15:49Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 5d — out-of-scope failure filing"
+      "stage": "WF-03 Step 5d \u2014 out-of-scope failure filing"
     },
     {
       "handoff_id": "step07-gh375-20260801-iss0112",
@@ -8286,7 +8286,7 @@
       "started_at": "2026-08-01T12:19:21Z",
       "completed_at": "2026-08-01T12:19:21Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 7 — finalize documentation (ISS-0112 RESOLVED)"
+      "stage": "WF-03 Step 7 \u2014 finalize documentation (ISS-0112 RESOLVED)"
     },
     {
       "handoff_id": "6f57b54f-d417-4358-b60e-12114b28296d",
@@ -8310,7 +8310,7 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-01T14:47:43Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 00 — git-setup for TC-OIDC-22-01 fix",
+      "stage": "WF-03 Step 00 \u2014 git-setup for TC-OIDC-22-01 fix",
       "started_at": "2026-08-01T14:50:10Z",
       "completed_at": "2026-08-01T14:50:36Z",
       "last_updated": "2026-08-01T14:50:36Z"
@@ -8325,7 +8325,7 @@
       "to_agent": "ISSUE-FIXER",
       "created_at": "2026-08-01T14:50:50Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 0.5/1 — Registry + diagnosis",
+      "stage": "WF-03 Step 0.5/1 \u2014 Registry + diagnosis",
       "started_at": "2026-08-01T14:52:21Z",
       "completed_at": "2026-08-01T14:53:05Z",
       "last_updated": "2026-08-01T14:53:05Z"
@@ -8340,7 +8340,7 @@
       "to_agent": "CODE-DESIGNER",
       "created_at": "2026-08-01T14:52:30Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 2 — Code design for ISS-0126 fix",
+      "stage": "WF-03 Step 2 \u2014 Code design for ISS-0126 fix",
       "started_at": "2026-08-01T14:56:26Z",
       "completed_at": "2026-08-01T14:58:31Z",
       "last_updated": "2026-08-01T14:58:31Z"
@@ -8357,7 +8357,7 @@
       "started_at": "2026-08-01T14:58:31Z",
       "completed_at": "2026-08-01T15:00:54Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 2b — Validate design for ISS-0126 fix",
+      "stage": "WF-03 Step 2b \u2014 Validate design for ISS-0126 fix",
       "last_updated": "2026-08-01T15:00:54Z"
     },
     {
@@ -8372,7 +8372,7 @@
       "started_at": "2026-08-01T15:06:02Z",
       "completed_at": "2026-08-01T15:31:00Z",
       "status": "COMPLETED",
-      "stage": "WF-03 Step 3 — Apply fix per design for ISS-0126",
+      "stage": "WF-03 Step 3 \u2014 Apply fix per design for ISS-0126",
       "last_updated": "2026-08-01T15:31:00Z"
     },
     {
@@ -8591,7 +8591,7 @@
       "status": "COMPLETED",
       "run_id": "WF03-gh390-20260801",
       "handoff_id": "a8b9c0d1-e2f3-4g5h-6i7j-8k9l0m1n2o3p",
-      "stage": "WF-03 issue resolving — Step 0.5 (registry and GitHub sync) for ISS-0124 (gh#390)",
+      "stage": "WF-03 issue resolving \u2014 Step 0.5 (registry and GitHub sync) for ISS-0124 (gh#390)",
       "file": "handoffs/WF03-gh390-20260801/step-0.5-issue-fixer.json"
     },
     {
@@ -8603,7 +8603,7 @@
       "status": "COMPLETED",
       "run_id": "WF03-gh390-20260801",
       "handoff_id": "b1c2d3e4-f5g6-4h7i-8j9k-0l1m2n3o4p5q",
-      "stage": "WF-03 issue resolving — Step 1 (root cause diagnosis) for ISS-0124 (gh#390)",
+      "stage": "WF-03 issue resolving \u2014 Step 1 (root cause diagnosis) for ISS-0124 (gh#390)",
       "file": "handoffs/WF03-gh390-20260801/step-01-issue-fixer.json"
     },
     {
@@ -8615,7 +8615,7 @@
       "status": "PENDING",
       "run_id": "WF03-gh390-20260801",
       "handoff_id": "c3d4e5f6-g7h8-4i9j-0k1l-2m3n4o5p6q7r",
-      "stage": "WF-03 issue resolving — Step 2 (fix design) for ISS-0124 (gh#390)",
+      "stage": "WF-03 issue resolving \u2014 Step 2 (fix design) for ISS-0124 (gh#390)",
       "file": "handoffs/WF03-gh390-20260801/step-02-code-designer.json"
     },
     {
@@ -8627,7 +8627,7 @@
       "status": "COMPLETED",
       "run_id": "WF03-gh390-20260801",
       "handoff_id": "d5e6f7g8-h9i0-4j1k-2l3m-4n5o6p7q8r9s",
-      "stage": "WF-03 issue resolving — Step 2b (design validation gate - HARD GATE) for ISS-0124 (gh#390)",
+      "stage": "WF-03 issue resolving \u2014 Step 2b (design validation gate - HARD GATE) for ISS-0124 (gh#390)",
       "file": "handoffs/WF03-gh390-20260801/step-2b-code-design-validator.json"
     },
     {
@@ -8639,7 +8639,7 @@
       "status": "COMPLETED",
       "run_id": "WF03-gh390-20260801",
       "handoff_id": "e7f8g9h0-i1j2-4k3l-4m5n-6o7p8q9r0s1t",
-      "stage": "WF-03 issue resolving — Step 3 (implementation) for ISS-0124 (gh#390)",
+      "stage": "WF-03 issue resolving \u2014 Step 3 (implementation) for ISS-0124 (gh#390)",
       "file": "handoffs/WF03-gh390-20260801/step-03-backend-dev.json"
     },
     {
@@ -8651,7 +8651,7 @@
       "status": "FAILED",
       "run_id": "WF03-gh390-20260801",
       "handoff_id": "f9g0h1i2-j3k4-4l5m-6n7o-8p9q0r1s2t3u",
-      "stage": "WF-03 issue resolving — Step 5 (test verification) for ISS-0124 (gh#390)",
+      "stage": "WF-03 issue resolving \u2014 Step 5 (test verification) for ISS-0124 (gh#390)",
       "file": "handoffs/WF03-gh390-20260801/step-05-test-runner.json"
     },
     {
@@ -8663,7 +8663,7 @@
       "status": "PENDING",
       "run_id": "ADHOC-WF03-gh390-dbauth-20260801",
       "handoff_id": "g1h2i3j4-k5l6-4m7n-8o9p-0q1r2s3t4u5v",
-      "stage": "ADHOC infrastructure — PostgreSQL auth fix for WF03-gh390",
+      "stage": "ADHOC infrastructure \u2014 PostgreSQL auth fix for WF03-gh390",
       "file": "handoffs/ADHOC-WF03-gh390-dbauth-20260801/step-infra-backend-dev.json"
     },
     {
@@ -8857,6 +8857,91 @@
       "created_at": "2026-08-02T05:31:37Z",
       "status": "COMPLETED",
       "stage": "WF-03 Step Final"
+    },
+    {
+      "handoff_id": "WF03-gh388-step-00",
+      "file": "handoffs/WF03-gh388-20260802/step-00-backend-dev.json",
+      "run_id": "WF03-gh388-20260802",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-02T06:30:50Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 00 git-setup"
+    },
+    {
+      "handoff_id": "WF03-gh388-step-051",
+      "file": "handoffs/WF03-gh388-20260802/step-05-issue-fixer.json",
+      "run_id": "WF03-gh388-20260802",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-02T06:40:15Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 0.5 + Step 1 ISSUE-FIXER"
+    },
+    {
+      "handoff_id": "WF03-gh388-step-02",
+      "file": "handoffs/WF03-gh388-20260802/step-02-code-designer.json",
+      "run_id": "WF03-gh388-20260802",
+      "step": "02",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-02T06:54:29Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 2 fix design",
+      "completed_at": "2026-08-02T06:58:23Z",
+      "started_at": "2026-08-02T06:54:44Z"
+    },
+    {
+      "handoff_id": "WF03-gh388-step-02b",
+      "file": "handoffs/WF03-gh388-20260802/step-02b-code-design-validator.json",
+      "run_id": "WF03-gh388-20260802",
+      "step": "02b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-02T06:59:42Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 2b hard gate",
+      "completed_at": "2026-08-02T07:01:36Z"
+    },
+    {
+      "handoff_id": "WF03-gh388-step-03",
+      "file": "handoffs/WF03-gh388-20260802/step-03-backend-dev.json",
+      "run_id": "WF03-gh388-20260802",
+      "step": "03",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-02T07:02:37Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 3 implement fix",
+      "completed_at": "2026-08-02T07:08:38Z"
+    },
+    {
+      "handoff_id": "WF03-gh388-step-04",
+      "file": "handoffs/WF03-gh388-20260802/step-04-test-designer.json",
+      "run_id": "WF03-gh388-20260802",
+      "step": "04",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-DESIGNER",
+      "created_at": "2026-08-02T07:09:55Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Step 4 regression test",
+      "completed_at": "2026-08-02T07:27:51Z"
+    },
+    {
+      "handoff_id": "WF03-gh388-adhoc-tenant-apply",
+      "file": "handoffs/WF03-gh388-20260802/adhoc-tenant-default-apply.json",
+      "run_id": "WF03-gh388-20260802",
+      "step": "ADHOC",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-02T07:31:41Z",
+      "status": "COMPLETED",
+      "stage": "INFRA_BLOCK per-tenant chain function migration",
+      "completed_at": "2026-08-02T07:37:17Z",
+      "started_at": "2026-08-02T07:31:59Z",
+      "last_updated": "2026-08-02T07:37:17Z"
     }
   ],
   "last_updated": "2026-08-02T05:30:40Z"
