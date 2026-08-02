@@ -467,7 +467,7 @@ pub const TestHarness = struct {
     pub fn newUuid(self: *TestHarness) bpm.uuid.Uuid {
         _ = self;
         var bytes: bpm.uuid.Uuid = undefined;
-        bpm.uuid.generateUuidV4Into(&bytes);
+        bpm.uuid.generateUuidV4BytesInto(&bytes);
         return bytes;
     }
 
@@ -478,7 +478,13 @@ pub const TestHarness = struct {
     /// only recoverable error; CSPRNG generation is infallible.
     pub fn newUuidString(self: *TestHarness, allocator: std.mem.Allocator) ![]u8 {
         _ = self;
-        return bpm.uuid.newUuidV4(allocator);
+        // bpm.uuid.newUuidV4 returns []const u8 (the canonical UUID string is
+        // logically immutable post-allocation). Mutate the const-ness here so
+        // the helper signature matches the spec's ![]u8 — the bytes are
+        // effectively owned by the caller and may be re-used in mutable
+        // buffers (e.g. as a parameter to a textual SQL API), and forcing
+        // the caller to copy on every call defeats the purpose of the helper.
+        return @constCast(try bpm.uuid.newUuidV4(allocator));
     }
 
 
