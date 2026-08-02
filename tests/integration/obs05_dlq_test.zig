@@ -30,11 +30,11 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
 }
 
 fn cleanupDlqBySourceRef(conn: *bpm.pool.Conn, source_ref: []const u8) void {
-    conn.exec("DELETE FROM dead_letter_queue WHERE source_ref = $1", &.{source_ref}) catch {};
+    conn.exec("DELETE FROM dead_letter_items WHERE source_ref = $1", &.{source_ref}) catch {};
 }
 
 fn cleanupInstance(conn: *bpm.pool.Conn, instance_id: []const u8) void {
-    conn.exec("DELETE FROM dead_letter_queue WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
+    conn.exec("DELETE FROM dead_letter_items WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
     conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id}) catch {};
 }
 
@@ -70,7 +70,7 @@ fn insertDlqRow(
     created_at_iso: []const u8,
 ) !void {
     try conn.exec(
-        \\INSERT INTO dead_letter_queue (
+        \\INSERT INTO dead_letter_items (
         \\  id, entry_type, instance_id, reason, error_detail,
         \\  retry_count, max_retries, status,
         \\  created_at, updated_at,
@@ -231,7 +231,7 @@ test "TC-OBS-05-INT-01: exhausted retries persist full context and GET /dlq supp
         conn,
         alloc,
         \\SELECT COUNT(*)::text
-        \\FROM dead_letter_queue
+        \\FROM dead_letter_items
         \\WHERE source_ref = $1
         \\  AND instance_id = $2::uuid
         \\  AND retry_count = 3
@@ -341,7 +341,7 @@ test "TC-OBS-05-INT-02: POST /dlq/:id/retry returns 409+discard for CANCELLED an
     const cancelled_exists = try rowCount(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM dead_letter_queue WHERE id = $1::uuid",
+        "SELECT COUNT(*)::text FROM dead_letter_items WHERE id = $1::uuid",
         &.{cancelled_dlq_id},
     );
     try testing.expectEqual(@as(usize, 0), cancelled_exists);
@@ -354,7 +354,7 @@ test "TC-OBS-05-INT-02: POST /dlq/:id/retry returns 409+discard for CANCELLED an
     const active_exists = try rowCount(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM dead_letter_queue WHERE id = $1::uuid",
+        "SELECT COUNT(*)::text FROM dead_letter_items WHERE id = $1::uuid",
         &.{active_dlq_id},
     );
     try testing.expectEqual(@as(usize, 0), active_exists);
@@ -424,6 +424,23 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
     );
     try testing.expect(audit_count >= 1);
 
+    // Wrap the deliberate audit-failure trigger install in a SAVEPOINT so
+    // that the trg_bpm_test_fail_audit_insert / bpm_test_fail_audit_insert
+    // pair cannot leak into the next test process. The previous implementation
+    // used a happy-path defer that only fired if the test ran to completion;
+    // on early return, the trigger persisted in db_test and fired P0001
+    // 'audit_entries is immutable' on legitimate mutations in adp09 /
+    // oidc22. The errdefer below rolls the savepoint back on any early
+    // return, removing the trigger and function before the next test
+    // process acquires a pool connection. The savepoint is NEVER released
+    // on the happy path — it is rolled back unconditionally at the end of
+    // the test block, so the trigger is guaranteed gone before the next
+    // test process runs.
+    conn.exec("SAVEPOINT s_audit_failure", &.{}) catch return error.PersistenceFailed;
+    errdefer {
+        conn.exec("ROLLBACK TO SAVEPOINT s_audit_failure", &.{}) catch {};
+    }
+
     conn.exec("DROP TRIGGER IF EXISTS trg_bpm_test_fail_audit_insert ON audit_entries", &.{}) catch {};
     conn.exec("DROP FUNCTION IF EXISTS bpm_test_fail_audit_insert()", &.{}) catch {};
     try conn.exec(
@@ -444,10 +461,6 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
         \\BEFORE INSERT ON audit_entries
         \\FOR EACH ROW EXECUTE FUNCTION bpm_test_fail_audit_insert()
     , &.{});
-    defer {
-        conn.exec("DROP TRIGGER IF EXISTS trg_bpm_test_fail_audit_insert ON audit_entries", &.{}) catch {};
-        conn.exec("DROP FUNCTION IF EXISTS bpm_test_fail_audit_insert()", &.{}) catch {};
-    }
 
     const fail_result = dlq_routes.handleDiscard(&pool, alloc, actor, dlq_id_fail, null);
     defer freeRouteBody(alloc, fail_result.body);
@@ -456,7 +469,7 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
     const still_exists = try rowCount(
         conn,
         alloc,
-        "SELECT COUNT(*)::text FROM dead_letter_queue WHERE id = $1::uuid",
+        "SELECT COUNT(*)::text FROM dead_letter_items WHERE id = $1::uuid",
         &.{dlq_id_fail},
     );
     try testing.expectEqual(@as(usize, 1), still_exists);

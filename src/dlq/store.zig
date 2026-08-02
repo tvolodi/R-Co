@@ -145,7 +145,7 @@ pub fn moveToDlq(
     const instance_id = input.instance_id orelse "";
     const rows = conn.query(
         allocator,
-        \\INSERT INTO dead_letter_queue (
+        \\INSERT INTO dead_letter_items (
         \\  entry_type,
         \\  instance_id,
         \\  reason,
@@ -259,7 +259,7 @@ pub fn list(
         \\  to_char(last_failed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
         \\  (EXTRACT(EPOCH FROM created_at) * 1000000)::bigint::text
-        \\FROM dead_letter_queue
+        \\FROM dead_letter_items
         \\WHERE status IN ('pending', 'retrying')
     ) catch return error.OutOfMemory;
 
@@ -358,7 +358,7 @@ pub fn retry(
     const row = conn.queryRow(
         allocator,
         \\SELECT id::text, instance_id::text, item_type
-        \\FROM dead_letter_queue
+        \\FROM dead_letter_items
         \\WHERE id = $1::uuid
         \\FOR UPDATE
     ,
@@ -405,7 +405,7 @@ pub fn retry(
             if (std.mem.eql(u8, status, "CANCELLED")) {
                 conn.exec("SELECT set_config('bpm.actor_id', $1, true)", &.{actor_id}) catch return error.PersistenceFailed;
                 conn.exec("SELECT set_config('bpm.audit_action', 'dlq.discard', true)", &.{}) catch return error.PersistenceFailed;
-                conn.exec("DELETE FROM dead_letter_queue WHERE id = $1::uuid", &.{locked_id}) catch return error.PersistenceFailed;
+                conn.exec("DELETE FROM dead_letter_items WHERE id = $1::uuid", &.{locked_id}) catch return error.PersistenceFailed;
                 conn.commit() catch return error.PersistenceFailed;
                 return error.InstanceCancelled;
             }
@@ -413,7 +413,7 @@ pub fn retry(
     }
 
     conn.exec(
-        \\UPDATE dead_letter_queue
+        \\UPDATE dead_letter_items
         \\SET retry_count = 0,
         \\    status = 'retrying',
         \\    last_retried_at = NOW(),
@@ -425,7 +425,7 @@ pub fn retry(
 
     conn.exec("SELECT set_config('bpm.actor_id', $1, true)", &.{actor_id}) catch return error.PersistenceFailed;
     conn.exec("SELECT set_config('bpm.audit_action', 'dlq.retry', true)", &.{}) catch return error.PersistenceFailed;
-    conn.exec("DELETE FROM dead_letter_queue WHERE id = $1::uuid", &.{locked_id}) catch return error.PersistenceFailed;
+    conn.exec("DELETE FROM dead_letter_items WHERE id = $1::uuid", &.{locked_id}) catch return error.PersistenceFailed;
 
     conn.commit() catch return error.PersistenceFailed;
 
@@ -458,7 +458,7 @@ pub fn discard(
 
     const row = conn.query(
         allocator,
-        \\DELETE FROM dead_letter_queue
+        \\DELETE FROM dead_letter_items
         \\WHERE id = $1::uuid
         \\RETURNING id::text
     ,
@@ -508,7 +508,7 @@ pub fn retryConvergent(
     const dlq_row = conn.queryRow(
         allocator,
         \\SELECT id::text, instance_id::text, original_payload::text
-        \\FROM dead_letter_queue
+        \\FROM dead_letter_items
         \\WHERE id = $1::uuid
         \\FOR UPDATE
     ,
@@ -622,7 +622,7 @@ pub fn retryConvergent(
 
     // Step 4: Mark DLQ item as retrying (reset retry_count; worker picks it up).
     conn.exec(
-        \\UPDATE dead_letter_queue
+        \\UPDATE dead_letter_items
         \\SET retry_count = 0,
         \\    status = 'retrying',
         \\    last_retried_at = NOW(),
@@ -688,7 +688,7 @@ pub fn retryWithInput(
     const dlq_row = conn.queryRow(
         allocator,
         \\SELECT id::text, instance_id::text
-        \\FROM dead_letter_queue
+        \\FROM dead_letter_items
         \\WHERE id = $1::uuid
         \\FOR UPDATE
     ,
@@ -743,7 +743,7 @@ pub fn retryWithInput(
 
     // Update the DLQ item: store corrected payload and mark retrying.
     conn.exec(
-        \\UPDATE dead_letter_queue
+        \\UPDATE dead_letter_items
         \\SET retry_count = 0,
         \\    status = 'retrying',
         \\    original_payload = $2::jsonb,

@@ -3411,7 +3411,7 @@ fn insertServiceTaskDlqInTx(
     defer allocator.free(metadata_json);
 
     conn.exec(
-        \\INSERT INTO dead_letter_queue (
+        \\INSERT INTO dead_letter_items (
         \\  entry_type,
         \\  instance_id,
         \\  reason,

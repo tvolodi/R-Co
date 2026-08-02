@@ -153,8 +153,8 @@ fn readUsageForDimension(
         .file_count => countRows(allocator, pool, "repository_artifacts", tenant_id),
         .file_bytes => sumColumn(allocator, pool, "repository_artifacts", "byte_size", tenant_id),
         .concurrent_sandboxes => countRows(allocator, pool, "instance_waits", tenant_id),
-        .agent_retry_per_job => maxColumn(allocator, pool, "dead_letter_queue", "retry_count", tenant_id),
-        .agent_retry_per_day => countRowsWhereRecent(allocator, pool, "dead_letter_queue", tenant_id),
+        .agent_retry_per_job => maxColumn(allocator, pool, "dead_letter_items", "retry_count", tenant_id),
+        .agent_retry_per_day => countRowsWhereRecent(allocator, pool, "dead_letter_items", tenant_id),
         .script_cpu => 0,
         .script_memory => 0,
     } catch |err| switch (err) {
@@ -213,8 +213,8 @@ fn countRowsWhereRecent(
     tenant_id: []const u8,
 ) (error{ OutOfMemory, QueryFailed } || pool_mod.PoolError)!u64 {
     _ = tenant_id;
-    const sql = if (std.mem.eql(u8, table_name, "dead_letter_queue"))
-        "SELECT COUNT(*)::text FROM dead_letter_queue WHERE COALESCE(last_retried_at, updated_at, created_at) >= NOW() - INTERVAL '1 day'"
+    const sql = if (std.mem.eql(u8, table_name, "dead_letter_items"))
+        "SELECT COUNT(*)::text FROM dead_letter_items WHERE COALESCE(last_retried_at, updated_at, created_at) >= NOW() - INTERVAL '1 day'"
     else
         "SELECT 0::text";
 
@@ -274,7 +274,7 @@ fn maxColumn(
     tenant_id: []const u8,
 ) (error{ OutOfMemory, QueryFailed } || pool_mod.PoolError)!u64 {
     _ = tenant_id;
-    if (!std.mem.eql(u8, table_name, "dead_letter_queue") or !std.mem.eql(u8, col_name, "retry_count")) {
+    if (!std.mem.eql(u8, table_name, "dead_letter_items") or !std.mem.eql(u8, col_name, "retry_count")) {
         return 0;
     }
 
@@ -283,7 +283,7 @@ fn maxColumn(
 
     const row = conn.queryRow(
         allocator,
-        "SELECT COALESCE(MAX(retry_count), 0)::text FROM dead_letter_queue",
+        "SELECT COALESCE(MAX(retry_count), 0)::text FROM dead_letter_items",
         &.{},
     ) catch return error.QueryFailed;
 

@@ -106,7 +106,7 @@ fn cleanupWorkflow(pool: *Pool, instance_id_hex: []const u8, process_name: []con
     defer pool.release(conn);
     conn.exec("DELETE FROM tasks WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
-    conn.exec("DELETE FROM dead_letter_queue WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
+    conn.exec("DELETE FROM dead_letter_items WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{process_name}) catch {};
@@ -849,7 +849,7 @@ test "TC-EXT-01-INT-07: exhausted retries move the failure to OBS-05 DLQ and ERR
     defer allocator.free(status);
     try testing.expectEqualStrings("ERROR", status);
 
-    const dlq_count = try rowCount(conn, allocator, "SELECT COUNT(*) FROM dead_letter_queue WHERE instance_id = $1::uuid", &.{fixture.inst_id_hex});
+    const dlq_count = try rowCount(conn, allocator, "SELECT COUNT(*) FROM dead_letter_items WHERE instance_id = $1::uuid", &.{fixture.inst_id_hex});
     try testing.expectEqual(@as(usize, 1), dlq_count);
 
     const error_count = try rowCount(conn, allocator, "SELECT COUNT(*) FROM events WHERE instance_id = $1::uuid AND event_type = 'EXECUTION_ERROR'", &.{fixture.inst_id_hex});
