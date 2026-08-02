@@ -1,0 +1,47 @@
+{
+  "handoff_id": "WF03-gh387-20260802-step02b",
+  "run_id": "WF03-gh387-20260802",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-02T11:01:54Z",
+  "started_at": null,
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Design validation (Step 2b)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh387-20260802-step02"
+    ],
+    "artifacts_in": [
+      "src/design/iss0121_per_test_uuids.md",
+      "docs/issues/ISS-0121.json",
+      "tests/integration/helpers.zig",
+      "tools/lint_test_isolation.py"
+    ]
+  },
+  "task": {
+    "description": "REWORK #1 \u2014 Validator returned FAIL. Apply these two fixes to src/design/iss0121_per_test_uuids.md:\n\n1. LINT_FAIL \u2014 Add a `## Purpose` (or `## Module purpose`) heading near the top, and a `## Errors` (or `## Error taxonomy` / `## Error cases`) heading near \u00a73 API contract. Required by tools/lint_design_artefact.py E010.\n\n2. RISK_NAME_MISSING \u2014 \u00a711 must explicitly mention `cyclic-dependency` as a named risk and explain that the new API surface introduces no module-to-module cycle. Add a row to the \u00a711 table naming `Cyclic dependency`.\n\nThen re-validate.",
+    "acceptance_criteria": [
+      "python tools/lint_design_artefact.py src/design/iss0121_per_test_uuids.md exits 0",
+      "Design has `## Purpose` heading near top",
+      "Design has `## Errors` heading near \u00a73 API contract",
+      "\u00a711 explicitly names `cyclic-dependency` as a risk",
+      "All 11 numbered sections still present"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK #1 PASS — added Purpose and Errors sections, named cyclic-dependency risk",
+    "artifacts_out": [
+      "src/design/iss0121_per_test_uuids.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "completed_at": "2026-08-02T11:11:06Z"
+}

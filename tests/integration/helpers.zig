@@ -458,6 +458,30 @@ pub const TestHarness = struct {
     conn: pg.Conn,
     allocator: std.mem.Allocator,
 
+    /// ISS-0121 / GitHub #387: return a fresh 16-byte UUID v4 value sourced
+    /// from the standard library CSPRNG. Generation is infallible and
+    /// allocation-free, so it is suitable for hot fixtures in MUST tests.
+    /// Each call yields a distinct value, removing the T010 hardcoded-UUID
+    /// collision class documented in
+    /// `docs/guides/test_infrastructure_guide.md` §9.
+    pub fn newUuid(self: *TestHarness) bpm.uuid.Uuid {
+        _ = self;
+        var bytes: bpm.uuid.Uuid = undefined;
+        bpm.uuid.generateUuidV4Into(&bytes);
+        return bytes;
+    }
+
+    /// ISS-0121 / GitHub #387: allocate the canonical 36-byte hyphenated
+    /// lower-case representation of a fresh UUID. Caller owns the returned
+    /// slice and must release it with the supplied allocator (typically via
+    /// an immediate `defer allocator.free(id)`). Allocation failure is the
+    /// only recoverable error; CSPRNG generation is infallible.
+    pub fn newUuidString(self: *TestHarness, allocator: std.mem.Allocator) ![]u8 {
+        _ = self;
+        return bpm.uuid.newUuidV4(allocator);
+    }
+
+
     /// Initialise the harness:
     ///  1. Reads BPM_TEST_DB_URL from the environment.
     ///  2. Connects directly to the test database (no pool overhead needed).

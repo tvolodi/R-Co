@@ -1,0 +1,36 @@
+{
+  "handoff_id": "WF03-gh387-20260802-step03",
+  "run_id": "WF03-gh387-20260802",
+  "step": "03",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-02T11:11:34Z",
+  "started_at": "2026-08-02T11:11:34Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "Implementation (Step 3)",
+    "requirement_ids": [],
+    "related_handoff_ids": ["WF03-gh387-20260802-step02b"],
+    "artifacts_in": [
+      "src/design/iss0121_per_test_uuids.md",
+      "tests/integration/helpers.zig"
+    ]
+  },
+  "task": {
+    "description": "Implement the fix for ISS-0121 per the validated design at src/design/iss0121_per_test_uuids.md.\n\nSCOPE OF THIS STEP — MINIMAL IMPLEMENTATION ONLY:\nThis step adds the new helper method to TestHarness AND migrates ONE focused representative test (tests/integration/audit_chain_utf8_test.zig — the freshest test from prior WF-03) to validate the helper works end-to-end. The remaining 19 files in docs/issues/ISS-0121.json#files_to_change will be migrated in a follow-up incremental migration under a separate workflow ticket (test-quality follow-up).\n\nWAIT — reconsidering scope: the user requested to RESOLVE issue #387 end-to-end. So SCOPE = implement helper + migrate all 19 remaining test files in docs/issues/ISS-0121.json#files_to_change. That is the only way to drive MAJOR count below 10. Do that.\n\nRequired actions:\n\n1. In tests/integration/helpers.zig, add to pub const TestHarness (lines 452+):\n   ```zig\n   pub fn newUuid(self: *TestHarness) std.uuid.Uuid {\n       var bytes: [16]u8 = undefined;\n       std.crypto.random.bytes(&bytes);\n       return std.uuid.Uuid{ .bytes = bytes };\n   }\n\n   pub fn newUuidString(self: *TestHarness, allocator: std.mem.Allocator) ![]u8 {\n       const u = self.newUuid();\n       const out = try allocator.alloc(u8, 36);\n       _ = std.fmt.bufPrint(out, \"{s}\", .{std.fmt.fmtSliceHexUpper(u.bytes[0..4])}[0..8]}) catch unreachable;\n       // ... or use std.fmt to print hyphenated form\n       return out;\n   }\n   ```\n   Adjust to use Zig 0.16 std APIs. Helper must compile with `zig build` exit 0.\n\n2. For each of the 20 files in docs/issues/ISS-0121.json#files_to_change:\n   - Open the file.\n   - Identify hardcoded UUID string literals of the form `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` used inside INSERT VALUES clauses or function-call parameters.\n   - Replace each literal with a local binding `const some_id = try h.newUuidString(allocator);` (or `try self.newUuidString(allocator);` if TestHarness is not the receiver), passed as a parameter binding instead.\n   - Allocator is `allocator` (or `std.testing.allocator`) depending on the file's existing convention.\n   - Run `python tools/lint_test_isolation.py tests/integration` after each file replacement to confirm T010 count drops.\n   - Run `zig build` after the helper change to confirm no compile regressions.\n\n3. After all replacements, refresh tools/lint_test_isolation.baseline.json so that any remaining suppressions only apply to genuinely static UUIDs (e.g. inside JSON fixture blobs, where the literal isn't substituted into SQL).\n\n4. Validate:\n   ```\n   zig build\n   zig build test\n   python tools/lint_test_isolation.py tests/integration   # BLOCKER=0 MAJOR<=10\n   ```\n\n5. Self-review checklist (CLAUDE.md §BACKEND-DEV):\n   - No SQL string interpolation.\n   - All allocating functions accept std.mem.Allocator.\n   - Error types defined in per-module error sets.\n   - `python3 tools/lint_sql_param_types.py src tests` exits 0.\n   - No `error.SkipZigTest` on tests covering MUST requirements.\n\n6. Commit:\n   ```\n   git add -A\n   git commit -m \"feat(WF03-gh387-20260802): per-test UUID generator on TestHarness (ISS-0121)\"\n   git push origin feature/WF03-gh387-20260802\n   ```\n\n7. Complete the handoff with `completed_at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')` exact output.\n\nIf scope is too large to complete in a single pass, document remaining files in `result.issues` with severity MINOR and proceed with what you can — but the implementation MUST at minimum:\n- add the helper to TestHarness,\n- migrate at least tests/integration/adp02_tenant_scope_test.zig and tests/integration/iss202_merge_atomicity_test.zig (verifiable drop in lint count),\n- ensure `zig build` exits 0.",
+    "acceptance_criteria": [
+      "tests/integration/helpers.zig contains `pub fn newUuid` and `pub fn newUuidString` on TestHarness",
+      "`zig build` exits 0",
+      "`python tools/lint_test_isolation.py tests/integration` reports MAJOR count strictly less than 258 (must drop by at least 10)",
+      "Git branch is still feature/WF03-gh387-20260802",
+      "Commit pushed to origin feature/WF03-gh387-20260802"
+    ],
+    "functions_to_call": ["fn:backend-dev-checklist", "fn:git-impl-commit"]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-02T11:11:34Z",
+  "completed_at": null
+}
