@@ -190,3 +190,147 @@ The prevention contract is:
 | Existing tests depend on recognizable literals | Debugging or expected serialized text becomes less readable. | Keep semantic variable names and include generated values in failure diagnostics where existing test helpers support them. |
 | Cyclic dependency | The new API surface could accidentally introduce a module-to-module import cycle that prevents compilation or breaks layering. | `newUuid` and `newUuidString` live entirely within `tests/integration/helpers.zig`, depend only on `std.uuid`, the standard cryptographic random source, and a caller-supplied `std.mem.Allocator`. They have no runtime dependency on the database, the network, the process environment, the harness pool, or any other production module, so the diff cannot create a cycle. The import graph remains a strict DAG from `tests/integration/*` into `tests/integration/helpers.zig`, and from `helpers.zig` into `std` only. |
 | CI hook duplicates or bypasses build behavior | Local and CI outcomes diverge. | Invoke the same repository-root linter command in both documented pre-check and mandatory CI/build gate, propagating its exit code unchanged. |
+
+## 12. Follow-up: Batch migration of 17 remaining files (ISS-0121 GH #387 PR #400)
+
+### Purpose
+
+This follow-up extends the §6 migration sweep to the 17 integration-test files that still embed non-zero UUID literals after PR #399 closed the first batch of three files. The helper API introduced in §3 (`TestHarness.newUuid` and `TestHarness.newUuidString`) is unchanged — the follow-up is a pure client of the same API. The work is incremental: each file in scope is migrated individually against the existing design contract, and the CI gate from §8 continues to enforce the T010 baseline.
+
+### Errors
+
+No new error variants are introduced. The follow-up reuses the API surface declared in §3:
+
+- `newUuid(self: *TestHarness) std.uuid.Uuid` — infallible at the public contract level.
+- `newUuidString(self: *TestHarness, allocator: std.mem.Allocator) error{OutOfMemory}![]u8` — propagates only `error.OutOfMemory`.
+
+Callers must continue to pair `newUuidString` with `defer allocator.free(binding)`. The follow-up must not add error variants, change the return type, or alter the ownership rules.
+
+### Replacement rule
+
+The rule from §3 applies unchanged:
+
+1. Create the harness before generating identifiers.
+2. Declare a local binding in the same test block.
+3. Use `newUuid` for typed `std.uuid.Uuid` consumers.
+4. Use `newUuidString` for textual SQL/API parameters and pair with `defer allocator.free(binding)`.
+5. Preserve the all-zero sentinel (`00000000-0000-0000-0000-000000000000`) only where it represents the platform default tenant or an explicit no-value sentinel. The literal `ALL_ZEROS_UUID` is **not** replaced.
+6. Replace each non-zero UUID literal with `h.newUuidString(allocator)` (or `h.newUuid()` for `[16]u8` callers) — never suppress, never alias.
+7. Generated bindings flow through prepared-statement parameters or helper arguments; never into SQL text.
+
+### Batches
+
+The follow-up splits the 17 remaining files into three commits, mirroring the inner report at `docs/issue-reports/WF03-gh387-followup-20260802-step-01-issue-fixer-INNER-REPORT.yaml`. Each batch is a single commit, a single focused integration-test target run, and a single lint delta.
+
+#### Batch A — Tenant and webhook fixtures
+
+| File | UUID count | Notes |
+|---|---:|---|
+| `tests/integration/adp02_tenant_scope_test.zig` | 18 | tenant, actor, definition, instance, token, task, audit IDs |
+| `tests/integration/iss202_merge_atomicity_test.zig` | 13 | typed `[16]u8` created_by values; one per test block |
+| `tests/integration/iss205_webhook_outbox_test.zig` | 11 | owner, subscription, delivery, instance IDs |
+| `tests/integration/iss207_distribution_pause_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+| `tests/integration/iss208_idempotent_replay_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+
+Expected lint delta: up to 42 active T010 findings removed from the batch A subset. Commit subject: `test(WF03-gh387-followup-20260802): isolate tenant and webhook fixtures`.
+
+#### Batch B — Observability and scheduler fixtures
+
+| File | UUID count | Notes |
+|---|---:|---|
+| `tests/integration/iss601_compensation_journal_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+| `tests/integration/obs05_dlq_test.zig` | 18 | instance, user, definition, DLQ identifiers |
+| `tests/integration/obs06_incident_report_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+| `tests/integration/sch02_audit_pipeline_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+| `tests/integration/sch303_tenant_suspension_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+
+Expected lint delta: up to 18 active T010 findings removed from the batch B subset. Commit subject: `test(WF03-gh387-followup-20260802): isolate observability and scheduler fixtures`.
+
+#### Batch C — Admin and tenant-management fixtures
+
+| File | UUID count | Notes |
+|---|---:|---|
+| `tests/integration/svc01_admin_groups_api_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+| `tests/integration/svc02_admin_users_api_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+| `tests/integration/svc03_admin_realms_api_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+| `tests/integration/svc04_admin_api_test.zig` | 10 | tenant and owner IDs; retain zero system/default tenant sentinel |
+| `tests/integration/tm01_sla_breach_test.zig` | 0 | no current T010 literal; confirm lint delta is zero |
+| `tests/integration/onboarding_realm_guard_test.zig` | 0 | T020 mutable-state finding is out of scope for this UUID migration |
+| `tests/integration/svc02_plugin_dispatch_scope_test.zig` | 0 | T050 BPM_TEST_DB_URL finding is out of scope for this UUID migration |
+
+Expected lint delta: up to 10 active T010 findings removed from the batch C subset. Commit subject: `test(WF03-gh387-followup-20260802): isolate admin and tenant-management fixtures`.
+
+The combined expected lint delta across all three batches is up to 70 active T010 findings removed from these 17 files (relative to the 243-finding baseline captured at `run_at: "2026-08-02T16:43:29Z"`). The follow-up does not move findings between batches; each batch is independently verifiable.
+
+### Per-file patterns
+
+Each of the 17 files falls into one of four patterns. The classification below is the contract that BACKEND-DEV applies during the migration sweep.
+
+#### instance-id — per-test `INSERT INTO instances` UUIDs
+
+Files where the dominant pattern is generating the primary key for a freshly inserted process instance, then propagating that ID into related fixtures (tasks, tokens, audit rows, idempotency keys).
+
+- `tests/integration/adp02_tenant_scope_test.zig`
+- `tests/integration/iss202_merge_atomicity_test.zig`
+- `tests/integration/iss205_webhook_outbox_test.zig`
+- `tests/integration/obs05_dlq_test.zig`
+- `tests/integration/svc04_admin_api_test.zig` (tenant-context instances only)
+
+For each `instance-id` file, declare `const instance_id = try h.newUuidString(allocator); defer allocator.free(instance_id);` at the top of the test block, then thread it through every SQL parameter and assertion.
+
+#### actor-id — per-test `creator_id` / `actor_id` UUIDs
+
+Files where the dominant pattern is generating a human or system actor identity used in audit and ownership columns.
+
+- `tests/integration/adp02_tenant_scope_test.zig` (overlaps with `instance-id`; actor IDs are distinct from instance IDs)
+- `tests/integration/iss202_merge_atomicity_test.zig` (typed `[16]u8` `created_by`)
+- `tests/integration/obs05_dlq_test.zig` (user IDs)
+
+For typed `[16]u8` consumers, prefer `h.newUuid()` directly and pass the value into the API or helper that expects the raw byte form. Do not stringify and reparse; the helper exists precisely to avoid that allocation.
+
+#### audit-id — per-test `audit_entries.resource_id` UUIDs
+
+Files where the dominant pattern is generating a resource identifier that appears in audit log fixtures.
+
+- `tests/integration/adp02_tenant_scope_test.zig` (audit rows for tenant operations)
+- `tests/integration/iss205_webhook_outbox_test.zig` (delivery audit entries)
+- `tests/integration/obs05_dlq_test.zig` (DLQ audit entries)
+
+These audit IDs are referenced from both INSERT statements and SELECT assertions; both sides of the comparison must move together.
+
+#### module-const — file-scope `const` UUIDs that need parameterisation
+
+Files where a non-zero UUID literal is bound at module scope and reused across multiple test blocks. Such constants must be moved into the owning test block and replaced with a generated binding per the §3 rule.
+
+- `tests/integration/adp02_tenant_scope_test.zig` (verify each tenant constant is local to its test block)
+- `tests/integration/iss202_merge_atomicity_test.zig` (the repeated `created_by` literal must become per-block, not shared)
+
+Files with zero current T010 findings (see batch tables above) are retained in the migration sweep only for completeness; BACKEND-DEV must confirm the lint delta is exactly zero before declaring the file migrated.
+
+### Lint acceptance
+
+The follow-up uses the baseline recorded at `run_at: "2026-08-02T16:43:29Z"`: 243 active MAJOR findings across the 17 affected files, captured by `tools/lint_test_isolation.py`. The acceptance gate is:
+
+- MAJOR count across these 17 files must drop to **<10** (i.e. fewer than ten residual active MAJOR findings total).
+- BLOCKER count must remain **0**.
+- The combined removal across the three batches must be ≥ 70 active T010 findings to claim the migration is complete; any shortfall is filed as a follow-up WF-03 issue, not absorbed into a baseline suppression.
+- The regenerated baseline must not introduce new T010 suppressions for any of the 17 files.
+
+### Risks & mitigations
+
+| Risk | Consequence | Mitigation |
+|---|---|---|
+| Test parallelism collision | Two parallel tests receive the same generated ID under load. | The 3-file baseline in PR #399 already proved per-test generation suffices; this follow-up reuses the same `TestHarness` allocation path with no shared mutable state. |
+| Module-level constants | Tests remain order-dependent even though literals disappear. | Any file-scope `const` UUID is moved into the owning test block during migration; BACKEND-DEV must reject patches that introduce a new module-level UUID binding. |
+| Helper string vs raw bytes | `[16]u8` consumers receive a stringified allocation that costs both an allocation and a parse. | Use `h.newUuid()` directly for typed `[16]u8` consumers; reserve `h.newUuidString` for textual SQL/API parameters. Verify each call site during the file-by-file sweep. |
+| Lint over-suppression | Residual T010 findings are hidden in a regenerated baseline instead of being migrated. | The follow-up is migration-only; no new suppression entries are added. The regenerated baseline is reviewed against the no-baseline output, matching the §7 rules. |
+
+### Follow-up acceptance criteria
+
+1. Each of the 17 files listed above is reviewed against the §3 API contract.
+2. Files with `uuid_count > 0` have every non-zero literal replaced with a generated binding; the all-zero sentinel remains only where semantically required.
+3. Files with `uuid_count == 0` are confirmed clean by a `--no-baseline` lint run; no new UUID literals are introduced.
+4. The combined MAJOR count across the 17 files is below 10 after the three commits land.
+5. The three commits follow the subject lines listed in the batch tables above and land on the `feature/WF03-gh387-followup-20260802` branch.
+6. The regenerated baseline contains no new T010 suppressions and matches the §7 review rules.
+7. The CI hook from §8 exits zero on the merged branch.

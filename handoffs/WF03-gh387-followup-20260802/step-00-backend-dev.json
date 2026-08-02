@@ -1,0 +1,45 @@
+﻿{
+    "handoff_id":  "WF03-gh387-followup-20260802-step00",
+    "run_id":  "WF03-gh387-followup-20260802",
+    "step":  "00",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "created_at":  "2026-08-02T16:41:10Z",
+    "started_at":  "2026-08-02T16:41:10Z",
+    "status":  "COMPLETED",
+    "priority":  "NORMAL",
+    "context":  {
+                    "stage":  "Git setup",
+                    "requirement_ids":  [
+
+                                        ],
+                    "related_handoff_ids":  [
+                                                "WF03-gh387-20260802-stepfinal"
+                                            ],
+                    "artifacts_in":  [
+                                         "docs/issues/ISS-0121.json"
+                                     ]
+                },
+    "task":  {
+                 "description":  "Step 00 of WF-03 follow-up: create feature branch for incremental UUID migration.\n\nProcedure:\n\n1. `git branch --show-current` — confirm on `main`. If not, abort.\n\n2. `git pull --ff-only origin main` — sync with remote.\n\n3. `git checkout -b feature/WF03-gh387-followup-20260802` — create the follow-up branch.\n\n4. `git branch --show-current` — must output `feature/WF03-gh387-followup-20260802`.\n\n5. Update handoff file `handoffs/WF03-gh387-followup-20260802/step-00-backend-dev.json`:\n   - `status` = \"COMPLETED\"\n   - `result.status` = \"PASS\"\n   - `result.summary` = \"Branch feature/WF03-gh387-followup-20260802 created from main@\u003csha\u003e\"\n   - `result.artifacts_out` = [\"feature/WF03-gh387-followup-20260802\"]\n   - `result.issues` = []\n   - `result.next_action` = \"Route to ISSUE-FIXER (Step 0.5/1)\"\n   - `completed_at` = (Get-Date).ToUniversalTime().ToString(\"yyyy-MM-ddTHH:mm:ssZ\") — exact output\n\n6. Update `handoffs/registry.json`: find `handoff_id = \"WF03-gh387-followup-20260802-step00\"` and set `status` = \"COMPLETED\".\n\nReturn: branch name, base commit SHA.",
+                 "acceptance_criteria":  [
+                                             "Branch feature/WF03-gh387-followup-20260802 created",
+                                             "Working tree clean",
+                                             "main HEAD before branch = current main SHA"
+                                         ]
+             },
+    "result":  {
+                   "status":  "PASS",
+                   "summary":  "Branch feature/WF03-gh387-followup-20260802 created from main@8e7e3ecea1f4c9b3f79fd9b08725548ca9da5b45",
+                   "artifacts_out":  [
+                                         "feature/WF03-gh387-followup-20260802"
+                                     ],
+                   "issues":  [
+
+                              ],
+                   "next_action":  "Route to ISSUE-FIXER (Step 0.5/1)"
+               },
+    "rework_count":  0,
+    "max_rework":  3,
+    "completed_at":  "2026-08-02T16:42:04Z"
+}

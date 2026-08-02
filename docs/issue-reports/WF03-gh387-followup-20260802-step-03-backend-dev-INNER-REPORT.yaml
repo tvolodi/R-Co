@@ -1,0 +1,40 @@
+﻿report_id: WF03-gh387-followup-20260802-step-03-backend-dev
+agent_id: BACKEND-DEV
+run_id: WF03-gh387-followup-20260802
+step: '03'
+created_at: '2026-08-02T16:58:45Z'
+summary: 'Migrated every non-zero UUID literal in the six existing exact-path files across the three mandated commits; the other eleven nominated paths are stale/nonexistent aliases confirmed by the design report. Build and unit tests pass. Requested-scope lint reports 2 residual non-UUID MAJOR findings; full-tree lint reports 174 MAJOR.'
+files_created:
+  - docs/issue-reports/WF03-gh387-followup-20260802-step-03-backend-dev-INNER-REPORT.yaml
+files_modified:
+  - tests/integration/adp02_tenant_scope_test.zig
+  - tests/integration/iss202_merge_atomicity_test.zig
+  - tests/integration/iss205_webhook_outbox_test.zig
+  - tests/integration/obs05_dlq_test.zig
+  - tests/integration/svc04_admin_api_test.zig
+  - handoffs/WF03-gh387-followup-20260802/step-03-backend-dev.json
+  - handoffs/registry.json
+tests_run:
+  - name: zig build
+    status: pass
+    detail: 'exit 0'
+  - name: zig build test
+    status: pass
+    detail: 'exit 0 after every batch and final validation'
+  - name: error-set scan
+    status: pass
+    detail: 'no error-set diagnostics'
+  - name: isolation lint requested scope
+    status: pass
+    detail: 'BLOCKER=0, MAJOR=2; both residuals are known out-of-scope T020/T050 findings'
+  - name: isolation lint full tree
+    status: fail
+    detail: 'BLOCKER=0, MAJOR=174; repository-wide legacy debt outside this handoff remains'
+issues_found:
+  - severity: MINOR
+    description: 'Eleven handoff paths are stale/nonexistent aliases; the design report maps them to differently named files outside the exact requested-path contract.'
+  - severity: MINOR
+    description: 'Full-tree lint remains at 174 MAJOR, while the exact 17-path acceptance scope is 2 MAJOR.'
+next_steps:
+  - 'Route to TEST-DESIGNER (Step 4).'
+blockers: []
