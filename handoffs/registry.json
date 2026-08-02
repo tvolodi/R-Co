@@ -8636,7 +8636,7 @@
                         "workflow_id":  "WF-03",
                         "from_agent":  "ORCH",
                         "created_at":  "2026-08-01T22:56:30Z",
-                        "status":  "PENDING",
+                        "status":  "COMPLETED",
                         "run_id":  "WF03-gh390-20260801",
                         "handoff_id":  "e7f8g9h0-i1j2-4k3l-4m5n-6o7p8q9r0s1t",
                         "stage":  "WF-03 issue resolving — Step 3 (implementation) for ISS-0124 (gh#390)",
