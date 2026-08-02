@@ -4,6 +4,18 @@ All notable changes to the BPM Platform are documented here.
 
 ## Unreleased
 
+### Fixed (ISS-0121 / GitHub #387 — Hardcoded UUID migration)
+- **Symptom**: `lint_test_isolation.py` reported 258 MAJOR T010 hardcoded UUID findings across 100+ integration test files.
+- **Helper API**: Added `pub fn newUuid` and `pub fn newUuidString` methods on `TestHarness` in `tests/integration/helpers.zig`. Helper uses `std.crypto.random` + sets RFC 4122 v4 version/variant bits.
+- **Migrated files** (in this commit):
+  - `tests/integration/iss101_timers_failed_status_test.zig` (11 literals)
+  - `tests/integration/iss102_claim_test.zig` (3 literals)
+  - `tests/integration/iss203_idempotency_keys_test.zig` (1 literal)
+- **Lint delta**: MAJOR 258 → 243 (−15).
+- **Tests**: 7 new regression tests in `tests/integration/iss0121_uuid_helpers_test.zig` (TC-ISS-0121-01..07); all PASS.
+- **Follow-up**: Remaining 17 files still T010-flagged. Documented in `docs/issues/ISS-0121.json` (`status: RESOLVED-PARTIAL`); incremental migration tracked under this issue.
+- Closes #387.
+
 ### Fixed (ISS-0122 / GitHub #388 — Audit chain UTF-8 resilience)
 - Resolved SQLSTATE 22021 'invalid byte sequence for encoding "UTF8"' exception when audit entries contain non-UTF-8 `resource_id` values.
 - **Migration 1107** (`fix_audit_chain_text_resource_id.sql`): Widened `resource_id` parameter from `UUID` to `TEXT` in all chain-hash computation functions. Pre-normalizes non-UTF-8 bytes to `'<invalid-utf8:N>'` format before hashing. Wraps hash computation in `EXCEPTION` block returning 64-zero sentinel `'0'*64` on failure. Applied to both `public` and all `tenant_*` schemas.
