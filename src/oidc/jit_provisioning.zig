@@ -476,7 +476,7 @@ fn updateUserProfile(
         \\UPDATE users
         \\SET display_name = $3, email = $4, status = $5,
         \\    is_active = $6::boolean, updated_at = NOW()
-        \\WHERE id::text = $1 AND tenant_id = $2::uuid
+         \\WHERE id = $1::uuid AND tenant_id = $2::uuid
         \\RETURNING id::text, username, display_name, email, status, created_at::text
     ,
         &[_][]const u8{ user_id, tenant_id, display_name, email, status_str, active_str },

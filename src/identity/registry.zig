@@ -634,7 +634,7 @@ pub const Registry = struct {
             allocator,
             \\UPDATE users
             \\SET status = $3, is_active = $4::boolean, updated_at = NOW()
-            \\WHERE id::text = $1 AND tenant_id = $2::uuid
+            \\WHERE id = $1::uuid AND tenant_id = $2::uuid
             \\RETURNING id::text, username, display_name, email, status, created_at::text
         ,
             &[_][]const u8{ user_id, tenant_id, status_str, active_str },
@@ -665,7 +665,7 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            "SELECT status, is_active::text FROM users WHERE id::text = $1 AND tenant_id = $2::uuid",
+            "SELECT status, is_active::text FROM users WHERE id = $1::uuid AND tenant_id = $2::uuid",
             &[_][]const u8{ user_id, tenant_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,
@@ -704,7 +704,7 @@ pub const Registry = struct {
             allocator,
             \\SELECT id::text, username, display_name, email, status, created_at::text
             \\FROM users
-            \\WHERE id::text = $1 AND tenant_id = $2::uuid
+            \\WHERE id = $1::uuid AND tenant_id = $2::uuid
             \\LIMIT 1
         ,
             &[_][]const u8{ user_id, tenant_id },
@@ -940,7 +940,7 @@ pub const Registry = struct {
             \\UPDATE users
             \\SET display_name = $3, email = $4, status = $5,
             \\    is_active = $6::boolean, updated_at = NOW()
-            \\WHERE id::text = $1 AND tenant_id = $2::uuid
+            \\WHERE id = $1::uuid AND tenant_id = $2::uuid
             \\RETURNING id::text, username, display_name, email, status, created_at::text
         ,
             &[_][]const u8{ user_id, tenant_id, display_name, email, status_str, active_str },
@@ -1228,7 +1228,7 @@ pub const Registry = struct {
 
         const row = conn.queryRow(
             allocator,
-            "SELECT id::text FROM groups WHERE id::text = $1 AND tenant_id = $2::uuid LIMIT 1",
+            "SELECT id::text FROM groups WHERE id = $1::uuid AND tenant_id = $2::uuid LIMIT 1",
             &[_][]const u8{ group_id, tenant_id },
         ) catch |err| return switch (err) {
             pool_mod.PoolError.StaleConnection,

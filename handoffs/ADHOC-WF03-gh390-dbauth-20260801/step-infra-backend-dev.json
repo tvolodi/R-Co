@@ -1,0 +1,47 @@
+{
+    "handoff_id":  "g1h2i3j4-k5l6-4m7n-8o9p-0q1r2s3t4u5v",
+    "run_id":  "ADHOC-WF03-gh390-dbauth-20260801",
+    "step":  "infra",
+    "from_agent":  "ORCH",
+    "to_agent":  "BACKEND-DEV",
+    "created_at":  "2026-08-01T22:58:20Z",
+    "status":  "COMPLETED",
+    "priority":  "BLOCKER",
+    "context":  {
+                    "issue":  "PostgreSQL database authentication failure during test pool initialization",
+                    "error":  "PgError.AuthenticationFailed at vendor/pg/pg.zig:451",
+                    "blocking_workflow":  "WF03-gh390-20260801",
+                    "blocking_step":  "5 (TEST-RUNNER)",
+                    "direct_psql_works":  true,
+                    "docker_services_healthy":  true,
+                    "unit_tests_pass":  true,
+                    "integration_tests_fail":  "Cannot connect to test DB"
+                },
+    "task":  {
+                 "description":  "ADHOC: Diagnose and fix PostgreSQL database authentication failure. The test infrastructure can connect to PostgreSQL via psql and Docker services are healthy, but the Zig PostgreSQL client library (vendor/pg/pg.zig) fails to authenticate during connection pool initialization. Fix the connection string, credentials, or pool initialization logic to restore database connectivity for integration tests.",
+                 "acceptance_criteria":  [
+                                             "zig build test-integration exits 0 (not 1)",
+                                             "Integration tests can successfully establish database connection",
+                                             "No authentication errors in test output",
+                                             "All integration tests run to completion (may have test failures, but connection succeeds)"
+                                         ],
+                 "functions_to_call":  [
+                                           "fn:diagnose-db-auth"
+                                       ]
+             },
+    "result":  {
+                   "summary":  "PostgreSQL authentication fixed: Environment variable BPM_DB_URL now properly set for test database connections. Zig pg client successfully authenticates to PostgreSQL 15 test instance. All migrations applied. Integration tests can connect to database.",
+                   "status":  "PASS",
+                   "issues":  [
+
+                              ],
+                   "artifacts_out":  [
+
+                                     ],
+                   "next_action":  "Redispatch WF03-gh390-20260801 Step 5 TEST-RUNNER"
+               },
+    "rework_count":  0,
+    "max_rework":  2,
+    "started_at":  "2026-08-01T22:58:35Z",
+    "completed_at":  "2026-08-01T23:26:38Z"
+}

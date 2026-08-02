@@ -33,9 +33,29 @@
                                            "fn:validate-build"
                                        ]
              },
-    "result":  null,
-    "rework_count":  0,
+    "result":  {
+                   "summary":  "C42883 fix did not work - errors still present in integration tests. Must rediagnose root cause and reapply fix correctly.",
+                   "status":  "FAIL",
+                   "issues":  [
+                                  {
+                                      "code":  "C42883",
+                                      "description":  "PostgreSQL operator does not exist: text = integer still appears in ext02_webhook_dispatch_test and other integration tests. The fix applied (parameter type casting) did not resolve the errors.",
+                                      "severity":  "BLOCKER"
+                                  },
+                                  {
+                                      "code":  "C42703",
+                                      "description":  "Column \u0027item_type\u0027 of relation \u0027dead_letter_queue\u0027 does not exist. Schema migration mismatch or incomplete database update.",
+                                      "severity":  "BLOCKER"
+                                  },
+                                  {
+                                      "code":  "C23503",
+                                      "description":  "Foreign key constraint \u0027variable_schemas_definition_id_fkey\u0027 violated in iss202_merge_atomicity_test",
+                                      "severity":  "MAJOR"
+                                  }
+                              ]
+               },
+    "rework_count":  1,
     "max_rework":  2,
-    "started_at":  "2026-08-01T22:56:45Z",
-    "completed_at":  null
+    "started_at":  "2026-08-01T23:50:15Z",
+    "completed_at":  "2026-08-01T23:01:03Z"
 }

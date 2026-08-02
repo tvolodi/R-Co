@@ -124,7 +124,7 @@ pub fn rebuildProjection(
         \\SELECT e.payload::text
         \\FROM events e
         \\JOIN event_type_registry etr ON e.event_type_id = etr.id
-        \\WHERE e.tenant_id = (SELECT id FROM tenants WHERE external_id = $1 OR id::text = $1)
+         \\WHERE e.tenant_id = (SELECT id FROM tenants WHERE external_id = $1 OR id = $1::uuid)
         \\  AND etr.name IN ('ENTITY_RECORD_CREATED', 'ENTITY_RECORD_UPDATED', 'ENTITY_RECORD_DELETED')
         \\  AND e.payload->>'entity_type' = $2
         \\ORDER BY e.created_at ASC

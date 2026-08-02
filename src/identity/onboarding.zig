@@ -504,7 +504,7 @@ fn deleteTenantInDb(pool: *pool_mod.Pool, tenant_id: []const u8, tenant_slug: ?[
     if (tenant_slug) |slug| {
         conn.exec("DELETE FROM public.tenant WHERE slug = $1", &[_][]const u8{slug}) catch {};
     }
-    conn.exec("DELETE FROM public.tenant WHERE id::text = $1", &[_][]const u8{tenant_id}) catch {};
+    conn.exec("DELETE FROM public.tenant WHERE id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
 }
 
 fn dropTenantSchemaInDb(pool: *pool_mod.Pool, tenant_id: []const u8) void {
@@ -568,7 +568,7 @@ fn bindHostname(
 fn unbindHostname(pool: *pool_mod.Pool, tenant_id: []const u8) !void {
     const conn = pool.acquire() catch return;
     defer pool.release(conn);
-    conn.exec("DELETE FROM tenant_hostnames WHERE tenant_id::text = $1", &[_][]const u8{tenant_id}) catch {};
+    conn.exec("DELETE FROM tenant_hostnames WHERE tenant_id = $1::uuid", &[_][]const u8{tenant_id}) catch {};
 }
 
 // ── Discovery verification ────────────────────────────────────────────────────
@@ -710,7 +710,7 @@ pub fn selectOnboardingById(
         allocator,
         \\SELECT onboarding_id::text, idempotency_key, COALESCE(tenant_id::text, ''), encode(request_hash, 'hex'), response_status, COALESCE(response_body::text, '{}'), state, created_at::text, completed_at::text
         \\FROM onboarding_registry
-        \\WHERE onboarding_id::text = $1
+        \\WHERE onboarding_id = $1::uuid
         \\LIMIT 1
     ,
         &[_][]const u8{onboarding_id},
