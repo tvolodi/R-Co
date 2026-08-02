@@ -6,7 +6,7 @@
   "from_agent": "ORCH",
   "to_agent": "DOC-UPDATER",
   "created_at": "2026-08-02T05:26:12Z",
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "WF-03 Step 7",
@@ -36,9 +36,19 @@
       "fn:resolve-issue"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Documentation updated for ISS-0123 / GH #389",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/anti-patterns.md",
+      "docs/issues/ISS-0123.json"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step Final) — PR, squash-merge, branch cleanup"
+  },
   "rework_count": 0,
   "max_rework": 3,
   "started_at": "2026-08-02T05:26:32Z",
-  "completed_at": null
+  "completed_at": "2026-08-02T05:30:40Z"
 }
