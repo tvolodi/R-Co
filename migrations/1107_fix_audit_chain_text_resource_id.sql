@@ -178,9 +178,20 @@ BEGIN
             v_prev_hash TEXT;
             v_safe_resource_id TEXT;
             v_chain_hash TEXT;
+            v_lock_key BIGINT;
         BEGIN
-            -- Acquire per-tenant advisory lock so concurrent writers do not fork the chain.
-            PERFORM pg_advisory_xact_lock(hashtext('bpm.audit.chain.' || NEW.tenant_id::text));
+            -- Acquire per-tenant advisory lock so concurrent writers do not
+            -- fork the chain. Explicit ::bigint cast avoids SQLSTATE 42P08
+            -- 'inconsistent types deduced for parameter $1' under PL/pgSQL
+            -- when the parameter-type inference is ambiguous. Wrapped in
+            -- BEGIN ... EXCEPTION so a transient lock-acquisition failure
+            -- never aborts the audit INSERT.
+            BEGIN
+                v_lock_key := hashtext('bpm.audit.chain.' || NEW.tenant_id::text)::bigint;
+                PERFORM pg_advisory_xact_lock(v_lock_key::bigint);
+            EXCEPTION WHEN OTHERS THEN
+                RAISE WARNING 'audit_chain_lock_skip: % (audit_id=%s, tenant_id=%s)', SQLERRM, NEW.audit_id, NEW.tenant_id;
+            END;
 
             SELECT chain_hash
               INTO v_prev_hash
@@ -428,8 +439,21 @@ BEGIN
                     v_prev_hash TEXT;
                     v_safe_resource_id TEXT;
                     v_chain_hash TEXT;
+                    v_lock_key BIGINT;
                 BEGIN
-                    PERFORM pg_advisory_xact_lock(hashtext('bpm.audit.chain.' || NEW.tenant_id::text));
+                    -- Acquire per-tenant advisory lock so concurrent writers
+                    -- do not fork the chain. Explicit ::bigint cast avoids
+                    -- SQLSTATE 42P08 'inconsistent types deduced for
+                    -- parameter $1' under PL/pgSQL when the parameter-type
+                    -- inference is ambiguous. Wrapped in BEGIN ...
+                    -- EXCEPTION so a transient lock-acquisition failure
+                    -- never aborts the audit INSERT.
+                    BEGIN
+                        v_lock_key := hashtext('bpm.audit.chain.' || NEW.tenant_id::text)::bigint;
+                        PERFORM pg_advisory_xact_lock(v_lock_key::bigint);
+                    EXCEPTION WHEN OTHERS THEN
+                        RAISE WARNING 'audit_chain_lock_skip: %% (audit_id=%%s, tenant_id=%%s)', SQLERRM, NEW.audit_id, NEW.tenant_id;
+                    END;
 
                     SELECT chain_hash
                       INTO v_prev_hash
