@@ -1,0 +1,46 @@
+{
+  "handoff_id": "WF03-gh388-adhoc-tenant-apply",
+  "run_id": "WF03-gh388-20260802",
+  "step": "ADHOC",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-02T07:31:41Z",
+  "status": "IN_PROGRESS",
+  "priority": "HIGH",
+  "context": {
+    "stage": "WF-03 INFRA_BLOCK \u2014 extend 1107 migration to apply per-tenant",
+    "requirement_ids": [
+      "ISS-0122"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/388",
+    "related_handoff_ids": [
+      "WF03-gh388-step-03",
+      "WF03-gh388-step-04"
+    ],
+    "artifacts_in": [
+      "migrations/1107_fix_audit_chain_text_resource_id.sql",
+      "migrations/GBL-081_iss103_audit_resource_id_text.sql"
+    ]
+  },
+  "task": {
+    "description": "INFRA BLOCK. The previous step's migration (1107) was applied via zig build migrate against public schema only. Diagnostic shows tenant_default.audit_entries.resource_id is still UUID, and tenant_default.bpm_audit_compute_chain_hash / bpm_audit_chain_canonical_payload still take p_resource_id uuid. The chain hash trigger on tenant_default.audit_entries points at the OLD functions, so the ISS-0122 fix is effectively a no-op against real test data. Extend migrations/1107_fix_audit_chain_text_resource_id.sql to ALSO apply the same DDL to every pg_namespace entry matching LIKE 'tenant_%' (and any future tenant schema). Use a single DO $$ ... $$ block at the bottom that loops over SELECT nspname FROM pg_namespace WHERE nspname LIKE 'tenant_%' AND nspname NOT IN ('public', 'information_schema') AND nspname NOT LIKE 'pg_%' AND nspname NOT LIKE 'pgtoast%' AND nspname NOT LIKE 'pg_temp%' ORDER BY nspname \u2014 for each schema, run the same DROP FUNCTION IF EXISTS + CREATE OR REPLACE FUNCTION + DROP TRIGGER IF EXISTS + CREATE TRIGGER + CREATE OR REPLACE FUNCTION (apply_chain_hash) sequence. The body should NOT do `ALTER TABLE ... ALTER COLUMN resource_id TYPE TEXT` because GBL-081 already does that conditionally \u2014 only ensure the chain functions and trigger are correctly installed per-tenant. Validate by running zig build (must exit 0) and zig build migrate (must exit 0). Then run a diagnostic: SELECT n.nspname, p.proname, pg_get_function_identity_arguments(p.oid) FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid WHERE p.proname IN ('bpm_audit_compute_chain_hash', 'bpm_audit_chain_canonical_payload') AND nspname = 'tenant_default' \u2014 must show TEXT signatures. Commit on the feature branch and push. Return PASS only when the chain functions in tenant_default have TEXT signatures AND zig build migrate exits 0 AND a follow-up SELECT confirms tenant_default.audit_entries.resource_id is TEXT (if it is still UUID, also run GBL-081 manually for tenant_default within the same transaction in 1107 \u2014 use current_schema() AND a per-tenant DO $$ loop to backfill).",
+    "acceptance_criteria": [
+      "migrations/1107_fix_audit_chain_text_resource_id.sql has a per-tenant DO block that applies the chain function+trigger DDL to every tenant_* schema",
+      "zig build exits 0",
+      "zig build migrate exits 0",
+      "SELECT pg_get_function_identity_arguments(p.oid) FROM pg_proc p JOIN pg_namespace n ON p.pronamespace=n.oid WHERE p.proname='bpm_audit_compute_chain_hash' AND n.nspname='tenant_default' returns '... p_resource_id text, ...'",
+      "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema='tenant_default' AND table_name='audit_entries' AND column_name='resource_id' shows data_type='text'",
+      "Branch is feature/WF03-gh388-20260802, working tree clean, commit pushed"
+    ],
+    "functions_to_call": [
+      "apply-per-tenant-migration",
+      "verify-schema-state",
+      "git-commit-push"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-02T07:31:59Z",
+  "completed_at": null
+}
