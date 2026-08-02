@@ -1,0 +1,193 @@
+run_id: WF03-gh388-rootcause-20260802
+handoff_id: WF03-gh388-rootcause-20260802-step01
+agent: ISSUE-FIXER
+step: "0.5/1"
+created_at: 2026-08-02T18:30:00Z
+status: PASS
+summary: >-
+  Diagnosed two independent failures in tests/integration/audit_chain_utf8_test.zig
+  introduced by PR #398 (e5bbaea, "fix(ISS-0122): audit chain UTF-8 resilience"):
+    (a) TC-ISS-0122-03 — validator returns 3 issues instead of 0, because
+        migration 1110_iss0122_validator_zero_sentinel_per_tenant.sql
+        intentionally passes NULL for the trace_id argument when calling
+        bpm_audit_compute_chain_hash, but the trigger function (1109 +
+        tenant_default.bpm_audit_apply_chain_hash) hashes against the actual
+        r.trace_id / NEW.trace_id value. Result: validator expected_chain
+        never matches the trigger-stored chain_hash whenever trace_id IS
+        NOT NULL — both rows in TC-03 fail to match, plus a prev_chain_hash
+        propagation issue.
+    (b) TC-ISS-0122-04 — connection-abort cascade rooted in C42883
+        'inconsistent types deduced for parameter $1 (text versus uuid)'
+        emitted by PostgreSQL when the dynamically-built INSERT contains the
+        same placeholder $1 referenced both as the tenant_id UUID column
+        match and as $1::text inside a string concatenation. PostgreSQL
+        cannot pick a single type and rejects the prepared statement.
+        Once the first INSERT raises, the worker thread's connection enters
+        'current transaction is aborted' state (25P02) for every subsequent
+        command in that transaction.
+symptom:
+  observed_command: >-
+    cmd /c "set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test&&
+    set BPM_TEST_URL=http://127.0.0.1:8080&&
+    set BPM_IDP_BASE_URL=http://localhost:8081&&
+    zig build test-integration-iss0122 2>&1"
+  observed_result: "+- run test 2 pass, 2 fail (4 total)"
+  tc03_failure: >-
+    error: 'audit_chain_utf8_test.test.TC-ISS-0122-03:
+    bpm_audit_validate_chain returns empty issues[]' failed:
+    expected 0, found 3
+  tc03_actual_issues: |
+    ChainHashMismatch|chain_hash mismatch for canonicalized row content|1b559bb7df9e1bec2df8210feff76648766af27e9bc868f0f1603b972d22f2ca|d271d4bc8769d529c234663e710ac9f47edbaab69f0fec60a474b99cfb52ba0f||
+    PrevHashMismatch|prev_chain_hash does not match prior expected chain hash|1013232315558e8ed7de8127d7dd3131baead260cb7e6636d53365a13cbd41db|605a88b5c12ef39fb28fdbabebb8276968e957332d9300bdbe967a422102672a|1b559bb7df9e1bec2df8210feff76648766af27e9bc868f0f1603b972d22f2ca|d271d4bc8769d529c234663e710ac9f47edbaab69f0fec60a474b99cfb52ba0f
+    ChainHashMismatch|chain_hash mismatch for canonicalized row content|1013232315558e8ed7de8127d7dd3131baead260cb7e6636d53365a13cbd41db|605a88b5c12ef39fb28fdbabebb8276968e957332d9300bdbe967a422102672a|1b559bb7df9e1bec2df8210feff76648766af27e9bc868f0f1603b972d22f2ca|d271d4bc8769d529c234663e710ac9f47edbaab69f0fec60a474b99cfb52ba0f
+  tc04_failure: >-
+    POSTGRES ERROR: SERRORVERRORC42P08Minconsistent types deduced for parameter
+    $1Dtext versus uuidP181Fparse_param.cL223Rvariable_coerce_param_hook
+    error.Unexpected NTSTATUS=0xc0000241 (CONNECTION_ABORTED)
+    POSTGRES ERROR: SERRORVERRORC25P02Mcurrent transaction is aborted, commands
+    ignored until end of transaction blockFpostgres.cL1439Rexec_parse_message
+    tests/integration/audit_chain_utf8_test.zig:403:9 in
+    test.TC-ISS-0122-04
+suspected_root_cause:
+  tc03: >-
+    The per-tenant bpm_audit_validate_chain re-created by
+    migrations/1110_iss0122_validator_zero_sentinel_per_tenant.sql
+    DO block calls tenant_default.bpm_audit_compute_chain_hash(...)
+    with the trace_id argument hard-coded to NULL (the migration
+    comment says "NULL passed to bpm_audit_compute_chain_hash for
+    the trace_id argument so the function compiles against
+    audit_entries regardless of whether the schema has the trace_id
+    column"). However, the corresponding trigger function
+    tenant_default.bpm_audit_apply_chain_hash (also re-created by
+    1109) computes the chain hash using NEW.trace_id (the actual
+    row value, e.g. 'iss0122-test'). Because the canonical payload
+    embeds trace_id, validator's expected_chain and trigger's
+    stored chain_hash diverge whenever trace_id IS NOT NULL.
+    bpm_audit_chain_canonical_payload (the TEXT overload, lines
+    17-21 in tenant_default.bpm_audit_chain_canonical_payload)
+    renders trace_id as 'trace_id=<value>' or 'trace_id=~' for
+    NULL — the literal difference is enough to flip the SHA-256.
+    Verified empirically by computing the canonical payload via
+    SELECT bpm_audit_chain_canonical_payload(...) directly and
+    SHA-256-hashing it: matches the stored chain_hash for both
+    ASCII and non-UTF-8 rows when the same trace_id is supplied;
+    mismatches when trace_id=NULL is supplied.
+  tc04: >-
+    The TC-04 INSERT statement is built by std.fmt.bufPrint and
+    embeds the same $1 placeholder in two places with conflicting
+    inferred types: (i) VALUES($1, $2, ...) where the column is
+    tenant_id UUID — PG infers uuid; (ii) inside the resource_id
+    expression as $1::text — PG infers text. With both usages,
+    PG raises SQLSTATE 42P08 'inconsistent types deduced for
+    parameter $1 (text versus uuid)' during PREPARE/Parse.
+    Reproduced manually with the same SQL via PREPARE p1 AS ...
+    EXECUTE p1('0000...', '0000...').
+failing_tests:
+  - id: TC-ISS-0122-03
+    path: tests/integration/audit_chain_utf8_test.zig
+    line: 282
+    failure_mode: >-
+      bpm_audit_validate_chain($1::uuid, NULL, NULL, false) returns 3 rows
+      (1 PrevHashMismatch, 2 ChainHashMismatch) instead of 0. Validator
+      computes expected_chain using trace_id=NULL; trigger stored
+      chain_hash using trace_id='iss0122-test'.
+    first_failure_observes: expected 0, found 3
+  - id: TC-ISS-0122-04
+    path: tests/integration/audit_chain_utf8_test.zig
+    line: 403
+    failure_mode: >-
+      PostgreSQL C42883 'inconsistent types deduced for parameter $1
+      (text versus uuid)' on the second INSERT iteration. The first
+      iteration also raises (verifiable by isolation); subsequent
+      commands in the same transaction raise 25P02 'current transaction
+      is aborted'. The Zig-side pg.Conn propagates this as
+      error.Unexpected NTSTATUS=0xc0000241 (CONNECTION_ABORTED) for the
+      worker thread.
+    first_failure_observes: C42P08 inconsistent types deduced for parameter $1 (text versus uuid)
+passing_tests:
+  - id: TC-ISS-0122-01
+    path: tests/integration/audit_chain_utf8_test.zig
+    note: ASCII TEXT resource_id writes through the chain trigger. PASS.
+  - id: TC-ISS-0122-02
+    path: tests/integration/audit_chain_utf8_test.zig
+    note: non-UTF-8 TEXT resource_id writes without C22021 propagation. PASS.
+candidate_fix:
+  category: Mixed (A — code-defect + D — test-defect)
+  category_label: Migration bug + test SQL type ambiguity
+  changes:
+    - target: migrations/1110_iss0122_validator_zero_sentinel_per_tenant.sql
+      description: >-
+        In the DO block's CREATE OR REPLACE FUNCTION
+        %I.bpm_audit_validate_chain(...) body, change the inner compute
+        call so the trace_id argument is the row's r.trace_id (not
+        NULL). Currently the inline body passes NULL for trace_id,
+        which makes the validator diverge from the trigger whenever
+        the audit row has trace_id IS NOT NULL. Apply the same fix to
+        public.bpm_audit_validate_chain (which already passes r.trace_id
+        correctly) by adding a CREATE OR REPLACE in this migration to
+        normalize across all tenant_* schemas. The fix is idempotent
+        under CREATE OR REPLACE and does not require new
+        schema_migrations ledger entries if 1110 is reapplied via the
+        per-tenant DO loop. Alternative: ship migration 1111 with the
+        corrected body.
+    - target: tests/integration/audit_chain_utf8_test.zig
+      description: >-
+        In TC-ISS-0122-04, replace the conflicting `$1` reuse with
+        either a separate `$3` placeholder (and add tenant_id to the
+        params tuple) OR remove the `$1::text` cast entirely — embed
+        the index in the resource_id via std.fmt.bufPrint (the index
+        is already being interpolated that way) and stop including
+        the tenant_id inside the resource_id expression. The trigger
+        pipeline cares only about the chain hash and prev-chain-hash
+        continuity; the test's goal is to verify chain continuity
+        under concurrent non-UTF-8 inserts, not the literal
+        resource_id value.
+      location: >-
+        audit_chain_utf8_test.zig:343-353 (worker thread B SQL) and
+        audit_chain_utf8_test.zig:388-398 (connection A SQL). Replace
+        `|| $1::text || '-i{d}'` with a constant suffix (e.g.
+        `|| '-i{d}'`) since the per-iteration index is already
+        embedded via the bufPrint argument.
+  alternative_fix_paths:
+    - >-
+      For the test SQL, use prepare-execute with named parameters
+      via libpq's text protocol ($1 in one place only). Simplest:
+      drop the resource_id tenant-id concatenation; the chain-continuity
+      assertion does not require it.
+  validation_plan:
+    - command: cmd /c "set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://localhost:8081&& zig build test-integration-iss0122"
+      expected: "+- run test 4 pass, 0 fail (4 total)"
+    - command: cmd /c "set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test&& set BPM_TEST_URL=http://127.0.0.1:8080&& set BPM_IDP_BASE_URL=http://localhost:8081&& zig build test-integration"
+      expected: full integration suite stays green or only the audited suite improves
+    - command: python tools/lint_sql_param_types.py src tests
+      expected: 0 BLOCKER, 0 MAJOR (no new findings)
+  out_of_scope:
+    - >-
+      Enhancing tools/lint_sql_param_types.py to detect dynamically
+      constructed SQL via std.fmt.bufPrint with ambiguous $N
+      placeholders. The current lint cannot see TC-04's SQL because
+      the format string is split across multiple line-continuation
+      \\ literals; tracking this would require a Zig-aware parser.
+      Filed as a separate finding for a future WF-03 pass.
+    - >-
+      Re-running the audit chain hash for the ASCII row in TC-03 to
+      confirm the validator now agrees with the trigger; this is a
+      natural consequence of the migration fix and is included in the
+      validation_plan.
+  evidence_artifacts:
+    - path: scratch/audit_fns.sql
+      description: pg_get_functiondef dump of public + tenant_default chain functions
+    - path: scratch/validator_compare_clean.sql
+      description: side-by-side public vs tenant_default validator; line 268 shows NULL trace_id in tenant_default
+    - path: scratch/trigger_td_clean2.sql
+      description: tenant_default trigger body — passes NEW.trace_id
+    - path: scratch/probe_canon.sql
+      description: confirmed canonical payload embeds 'trace_id=iss0122-test' (literal)
+    - path: scratch/probe_tc04.sql
+      description: manual PREPARE/EXECUTE reproducing C42883
+    - path: scratch/simulate_tc03.sql
+      description: manual simulation of TC-03 inserts + validator call returning 3 issues
+artifacts_out:
+  - docs/issue-reports/WF03-gh388-rootcause-20260802-step-01-issue-fixer-INNER-REPORT.yaml
+next_action: "Route to CODE-DESIGNER (Step 2) — design the validator fix (migration 1111) and the test SQL simplification (audit_chain_utf8_test.zig) before BACKEND-DEV implements"
+issues: []

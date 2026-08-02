@@ -2,7 +2,10 @@
 
 All notable changes to the BPM Platform are documented here.
 
-## Unreleased
+## [Unreleased] — 2026-08-02
+
+### Fixed
+- **ISS-0122 / GitHub #388 (root cause)**: Resolved remaining `C22021 invalid byte sequence for encoding "UTF8"` errors via migration `1111_iss0122_validator_pass_trace_id.sql`, which re-creates `bpm_audit_validate_chain` in every `tenant_*` schema and passes `r.trace_id` to `bpm_audit_compute_chain_hash` — matching the BEFORE INSERT trigger's `NEW.trace_id` semantics. Test `TC-ISS-0122-04` INSERT in `tests/integration/audit_chain_utf8_test.zig` rewritten to use distinct parameter positions (`$1` … `$6`) instead of duplicating `$1` with conflicting inferred types (uuid vs text). Commit `f554bbc`.
 
 ### Fixed (ISS-0121 / GitHub #387 — incremental UUID migration)
 - **Continuation of PR #399 (helper API).** This PR migrates 17 more integration test files from hardcoded UUID literals to `TestHarness.newUuid` / `TestHarness.newUuidString` (per-test UUIDs).
