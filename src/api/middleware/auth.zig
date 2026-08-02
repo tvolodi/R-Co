@@ -1428,7 +1428,7 @@ pub fn authenticate(
     // IDN-01: reject tokens for INACTIVE users with HTTP 401.
     const user_status_row = conn.queryRow(
         allocator,
-        "SELECT status, is_active::text FROM users WHERE id::text = $1",
+        "SELECT status, is_active::text FROM users WHERE id = $1::uuid",
         &[_][]const u8{user_id},
     ) catch {
         allocator.free(token_id);

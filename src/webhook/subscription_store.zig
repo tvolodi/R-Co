@@ -186,7 +186,7 @@ pub fn createSubscription(
 }
 
 fn resolveOwnerUserId(allocator: std.mem.Allocator, conn: anytype, actor_id: []const u8) ![]u8 {
-    if (try querySingleUserId(allocator, conn, "SELECT id::text FROM users WHERE id::text = $1 LIMIT 1", &.{actor_id})) |value| {
+    if (try querySingleUserId(allocator, conn, "SELECT id::text FROM users WHERE id = $1::uuid LIMIT 1", &.{actor_id})) |value| {
         return value;
     }
 

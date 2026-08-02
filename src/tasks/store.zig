@@ -627,14 +627,14 @@ pub const TaskStore = struct {
             if (params.include_group_membership_for_user) {
                 const cond = std.fmt.allocPrint(
                     a,
-                    "((assignee_type = 'USER' AND assignee_ref = ${d}) OR (assignee_type = 'GROUP' AND EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id::text = ${d} AND gm.group_id::text = tasks.assignee_ref)))",
+                    "((assignee_type = 'USER' AND assignee_ref = ${d}::uuid) OR (assignee_type = 'GROUP' AND EXISTS (SELECT 1 FROM group_members gm WHERE gm.user_id = ${d}::uuid AND gm.group_id = tasks.assignee_ref)))",
                     .{ aid_idx, aid_idx },
                 ) catch return TaskError.InvalidInput;
                 conditions.append(a, cond) catch return TaskError.InvalidInput;
             } else {
                 const cond = std.fmt.allocPrint(
                     a,
-                    "assignee_ref = ${d}",
+                    "assignee_ref = ${d}::uuid",
                     .{aid_idx},
                 ) catch return TaskError.InvalidInput;
                 conditions.append(a, cond) catch return TaskError.InvalidInput;

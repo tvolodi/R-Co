@@ -1407,7 +1407,7 @@ pub const Service = struct {
             allocator,
             \\UPDATE api_tokens
             \\SET revoked_at = COALESCE(revoked_at, NOW())
-            \\WHERE id::text = $1
+            \\WHERE id = $1::uuid
             \\RETURNING id::text
         ,
             &[_][]const u8{token_id},

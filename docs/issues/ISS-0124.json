@@ -4,8 +4,8 @@
   "status": "OPEN",
   "severity": "MAJOR",
   "category": "code-defect / sql-type-mismatch",
-  "run_id": "WF03-gh375-20260801",
-  "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
+  "run_id": "WF03-gh390-20260801",
+  "handoff_id": "a8b9c0d1-e2f3-4g5h-6i7j-8k9l0m1n2o3p",
   "affected_areas": [
     "src/reports/runs.zig",
     "src/reports/export.zig",

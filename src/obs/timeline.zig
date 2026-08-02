@@ -311,7 +311,7 @@ fn resolveActorDisplayName(
         defer allocator.free(actor_hex);
         const row = conn.queryRow(
             allocator,
-            "SELECT display_name FROM users WHERE id::text = $1 LIMIT 1",
+             "SELECT display_name FROM users WHERE id = $1::uuid LIMIT 1",
             &.{actor_hex},
         ) catch return TimelineError.IdentityLookupFailure;
         if (row) |r| {
