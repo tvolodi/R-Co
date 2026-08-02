@@ -160,7 +160,7 @@ test "TC-IDN-04-01: issue token returns one-time token value and persists only h
 
     const hash_row = (try conn.queryRow(
         alloc,
-        "SELECT token_hash FROM api_tokens WHERE id::text = $1",
+        "SELECT token_hash FROM api_tokens WHERE id = $1::uuid",
         &[_][]const u8{token_id},
     )) orelse return error.TestUnexpectedResult;
     defer {

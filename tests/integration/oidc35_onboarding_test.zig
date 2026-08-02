@@ -326,7 +326,7 @@ test "TC-OIDC-35-04: select onboarding by onboarding_id returns correct record" 
         alloc,
         \\SELECT onboarding_id::text, idempotency_key, encode(request_hash, 'hex'), response_status, response_body::text, state
         \\FROM onboarding_registry
-        \\WHERE onboarding_id::text = $1
+        \\WHERE onboarding_id = $1::uuid
         \\LIMIT 1
     ,
         &[_][]const u8{onboarding_id},
@@ -828,7 +828,7 @@ test "TC-OIDC-35-12: non-existent onboarding_id returns null" {
     var q = try harness.conn.query(
         alloc,
         \\SELECT onboarding_id::text FROM onboarding_registry
-        \\WHERE onboarding_id::text = $1
+        \\WHERE onboarding_id = $1::uuid
         \\LIMIT 1
     ,
         &[_][]const u8{fake_id},

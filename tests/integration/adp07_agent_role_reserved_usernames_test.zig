@@ -143,7 +143,7 @@ test "TC-ADP-07-01: AGENT_RUNNER role is seeded and token issuance accepts it" {
 
     const token_row = (try conn.queryRow(
         alloc,
-        "SELECT roles_json::text FROM api_tokens WHERE id::text = $1",
+        "SELECT roles_json::text FROM api_tokens WHERE id = $1::uuid",
         &[_][]const u8{issued.token_id},
     )) orelse return error.TestUnexpectedResult;
     defer freeRow(alloc, token_row);
