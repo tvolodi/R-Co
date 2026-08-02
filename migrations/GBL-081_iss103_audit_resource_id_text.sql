@@ -80,7 +80,15 @@ BEGIN
         BEGIN
             src := COALESCE(new_row, old_row);
             resource_type := table_name;
-            
+
+            -- ISS-0122: every branch below uses bare text passthrough (src->>''id''),
+            -- NOT src->>''id''::uuid. A non-UUID primary key (e.g. a TEXT-PK parent
+            -- table whose column is named `id` but carries non-UUID bytes such as
+            -- 0xAA from a previous failed test binary) would raise C22P02
+            -- invalid_text_representation BEFORE the audit row is even INSERTed,
+            -- which would block the originating business INSERT. Branches are
+            -- downgraded to text passthrough so a TEXT-PK parent cannot trip the
+            -- audit dispatcher.
             IF table_name = ''definitions'' OR table_name = ''process_definitions'' THEN
                 resource_id := src->>''id'';
             ELSIF table_name = ''instances'' OR table_name = ''instance_projections'' THEN
