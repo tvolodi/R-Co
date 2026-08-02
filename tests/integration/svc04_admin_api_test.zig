@@ -1,4 +1,4 @@
-// Integration tests for SVC-04: admin API route handlers for service catalog.
+﻿// Integration tests for SVC-04: admin API route handlers for service catalog.
 //
 // Tests exercise handleListServices, handleAdminListServices,
 // handleAdminRegisterService, handleAdminUpdateService, and
@@ -202,7 +202,8 @@ test "svc04: admin register tenant-scoped service returns 201" {
     defer catalog.deinit();
 
     // Use pre-committed fixture tenant (visible to pool connections).
-    const owner_hex = "eeeeeeee-0000-0000-0000-000000000001";
+    const owner_hex = try h.newUuidString(alloc);
+    defer alloc.free(owner_hex);
 
     const svc_id = try randomServiceId(alloc, "svc04-tnt");
     defer alloc.free(svc_id);
@@ -288,7 +289,9 @@ test "svc04: non-admin actor on register returns 403" {
     const body = try makeRegistrationBody(alloc, svc_id, "global", null);
     defer alloc.free(body);
 
-    const non_admin = tenantActor("00000000-0000-0000-0000-000000000001");
+    const non_admin_id = try h.newUuidString(alloc);
+    defer alloc.free(non_admin_id);
+    const non_admin = tenantActor(non_admin_id);
     const result = services_routes.handleAdminRegisterService(alloc, &catalog, non_admin, body);
     defer alloc.free(result.body);
 
@@ -315,7 +318,9 @@ test "svc04: admin update service scope returns 200" {
     var catalog = ServiceCatalog.init(alloc, &pool);
     defer catalog.deinit();
 
-    const owner_hex = "b4200000-0000-0000-0000-000000000001";
+    const owner_hex = try h.newUuidString(alloc);
+
+    defer alloc.free(owner_hex);
     try h.conn.exec(
         \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
@@ -372,8 +377,11 @@ test "svc04: scope change to tenant with conflicting active definitions returns 
     var catalog = ServiceCatalog.init(alloc, &pool);
     defer catalog.deinit();
 
-    const owner_hex = "c4300000-0000-0000-0000-000000000001";
-    const other_tenant_hex = "c4300000-0000-0000-0000-000000000002";
+    const owner_hex = try h.newUuidString(alloc);
+
+    defer alloc.free(owner_hex);
+    const other_tenant_hex = try h.newUuidString(alloc);
+    defer alloc.free(other_tenant_hex);
     try h.conn.exec(
         \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
@@ -522,7 +530,9 @@ test "svc04: delete service in use by active definition returns 409" {
     var catalog = ServiceCatalog.init(alloc, &pool);
     defer catalog.deinit();
 
-    const tenant_hex = "d4400000-0000-0000-0000-000000000001";
+    const tenant_hex = try h.newUuidString(alloc);
+
+    defer alloc.free(tenant_hex);
     try h.conn.exec(
         \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
@@ -618,8 +628,11 @@ test "svc04: GET services for tenant admin excludes other tenants scoped service
     var catalog = ServiceCatalog.init(alloc, &pool);
     defer catalog.deinit();
 
-    const tenant_a_hex = "e4500000-0000-0000-0000-000000000001";
-    const tenant_b_hex = "e4500000-0000-0000-0000-000000000002";
+    const tenant_a_hex = try h.newUuidString(alloc);
+
+    defer alloc.free(tenant_a_hex);
+    const tenant_b_hex = try h.newUuidString(alloc);
+    defer alloc.free(tenant_b_hex);
     try h.conn.exec(
         \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
@@ -693,7 +706,9 @@ test "svc04: GET admin services returns all entries" {
     var catalog = ServiceCatalog.init(alloc, &pool);
     defer catalog.deinit();
 
-    const tenant_hex = "f4600000-0000-0000-0000-000000000001";
+    const tenant_hex = try h.newUuidString(alloc);
+
+    defer alloc.free(tenant_hex);
     try h.conn.exec(
         \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
         \\VALUES ($1::uuid, $2, $3, $4, now(), 'test', $5::uuid)
@@ -750,7 +765,9 @@ test "svc04: GET admin services returns 403 for non-admin" {
     var catalog = ServiceCatalog.init(alloc, &pool);
     defer catalog.deinit();
 
-    const non_admin = tenantActor("00000000-0000-0000-0000-000000000001");
+    const non_admin_id = try h.newUuidString(alloc);
+    defer alloc.free(non_admin_id);
+    const non_admin = tenantActor(non_admin_id);
     const result = services_routes.handleAdminListServices(alloc, &catalog, non_admin, null, null);
     defer alloc.free(result.body);
 
@@ -787,3 +804,4 @@ test "svc04: admin update unknown service returns 404" {
 
     try std.testing.expectEqual(@as(u16, 404), result.status_code);
 }
+
