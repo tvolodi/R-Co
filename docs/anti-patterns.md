@@ -40,6 +40,12 @@ See also `templates/lego-catalog.md` for the standard-pattern templates that low
 
 ## Database / Migrations
 
+### Anti-pattern: legacy table name in source/test after migration rename
+
+- **Symptom:** PostgreSQL C42703 `column does not exist` or `relation does not exist` after a migration renames a table.
+- **Detection:** `tools/lint_sql_table_refs.py` scans `src/**/*.zig` and `tests/integration/**/*.zig` for legacy table names.
+- **Prevention:** When renaming a table in a migration, update every reference in `src/` and `tests/` in the **same commit**. The linter fails the build if any legacy reference returns.
+
 | Anti-Pattern | Consequence | Correct Approach |
 |---|---|---|
 | Schema-qualified names in migrations (`public.table_name`) | Migration fails if `search_path` differs between environments | Use unqualified table names; let `search_path` resolve |

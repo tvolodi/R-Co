@@ -136,7 +136,7 @@ fn cleanupWorkflow(pool: *Pool, instance_id_hex: []const u8, process_name: []con
     defer pool.release(conn);
     conn.exec("DELETE FROM tasks WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM events WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
-    conn.exec("DELETE FROM dead_letter_queue WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
+    conn.exec("DELETE FROM dead_letter_items WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM instance_definition_snapshots WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM instance_projections WHERE instance_id = $1::uuid", &.{instance_id_hex}) catch {};
     conn.exec("DELETE FROM process_definitions WHERE name = $1", &.{process_name}) catch {};

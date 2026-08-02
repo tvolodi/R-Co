@@ -1,0 +1,68 @@
+{
+  "handoff_id": "58dd2001-c676-4c7a-9ad9-dbec59f45be3",
+  "run_id": "WF03-gh389-20260802",
+  "workflow_id": "WF-03",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-02T04:56:18Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 5",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh389-step3",
+      "WF03-gh389-step4c"
+    ],
+    "artifacts_in": [
+      "src/design/dlq_rename_and_trigger_isolation.md",
+      "tests/integration/iss0123_regression_test.zig",
+      "build.zig"
+    ],
+    "issue_ref": "ISS-0123 / GitHub tvolodi/R-Co#389"
+  },
+  "task": {
+    "description": "WF-03 Step 5 \u2014 TEST-RUNNER run all integration tests to verify the ISS-0123 / GH #389 fix.\n\nRequired actions:\n\n1. PRE-CHECKS \u2014 Required for integration tests (TEST-RUNNER protocol):\n   a. Backend services check:\n      cd c:\\Users\\tvolo\\dev\\ai-dala\\R-Co\n      docker-compose ps 2>/dev/null | grep -E \"keycloak|db\"\n      curl -sf http://localhost:8081/health/ready > /dev/null && echo \"KC_OK\" || echo \"KC_DOWN\"\n      psql \"$BPM_TEST_DB_URL\" -c \"SELECT 1\" > /dev/null 2>&1 && echo \"DB_OK\" || echo \"DB_DOWN\"\n   b. If any service is down: STOP. Return FAIL with severity BLOCKER, message \"Backend services unavailable: <which services>\". Do NOT attempt to start services yourself.\n   c. Infrastructure Health Checklist:\n      zig build migrate 2>&1 (must exit 0)\n      psql \"$BPM_TEST_DB_URL\" -c \"SELECT count(*) FROM public.schema_migrations\"\n      python3 tools/lint_test_isolation.py tests/integration (must exit 0)\n   d. Benchmark environment check:\n      zig build bench 2>&1 | head -5\n      If output contains \"BPM_DB_URL\", \"BENCHMARK_SETUP_ERROR\", or \"missing\": STOP. Return FAIL with severity BLOCKER.\n\n2. IF ALL PRE-CHECKS PASS, run the integration tests:\n   cd c:\\Users\\tvolo\\dev\\ai-dala\\R-Co\n   set BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test\n   set BPM_TEST_URL=http://127.0.0.1:8080\n   set BPM_IDP_BASE_URL=http://localhost:8081\n   zig build test-integration-tm 2>&1 | tee scratch/WF03-gh389-20260802/test-runner-step5/zig_test_integration.log\n   (create the dir scratch/WF03-gh389-20260802/test-runner-step5/ first if it does not exist)\n\n   Also run the new test specifically:\n   zig build test-integration-iss0123 2>&1 | tee scratch/WF03-gh389-20260802/test-runner-step5/zig_test_iss0123.log\n\n   The integration test must:\n   - Run the obs05_dlq_test.zig tests (no P0001 leak into adp09 or oidc22)\n   - Run the iss202_merge_atomicity_test.zig and iss203_idempotency_keys_test.zig (no C42703 source_ref)\n   - Run iss0123_regression_test.zig (TC-ISS-0123-01 + TC-ISS-0123-02 PASS)\n\n3. Write the test report to tests/reports/report-2026-08-02-WF03-gh389.yaml (YAML format per CLAUDE.md). Required fields per test_developer_guide.md \u00a79:\n   - run_id, timestamp, total tests, passed, failed, skipped\n   - per-test results (test ID, status, duration, error message if any)\n   - issues list with severity classification (BLOCKER/MAJOR/MINOR)\n\n4. Complete the handoff:\n   - Set status to \"COMPLETED\"\n   - Set result.status to \"PASS\" if all integration tests pass, \"FAIL\" otherwise\n   - Set result.summary to a one-paragraph summary\n   - Set result.artifacts_out to [\"tests/reports/report-2026-08-02-WF03-gh389.yaml\", \"scratch/WF03-gh389-20260802/test-runner-step5/zig_test_integration.log\", \"scratch/WF03-gh389-20260802/test-runner-step5/zig_test_iss0123.log\"]\n   - Set result.issues to the list of issues (BLOCKER/MAJOR/MINOR)\n   - Set result.next_action to \"Route to DOC-UPDATER (Step 7)\" on PASS, or \"Route to BACKEND-DEV (Step 3 rework)\" on FAIL\n   - Set completed_at to current ISO8601 timestamp\n   - Update handoffs/registry.json for the new handoff_id (set status to COMPLETED)\n   - Append to handoffs/orchestrator.log: <ts> | COMPLETE | WF03-gh389-20260802 | <id> | TEST-RUNNER | PASS|FAIL\n   - IMPORTANT: registry.json must use open(..., encoding='utf-8') (NOT 'utf-8-sig'). Use \\n (not CRLF) line endings.\n\nAllowed commands: zig build, zig build test, zig build test-integration-tm, zig build test-integration-iss0123, zig build migrate, zig build bench, docker-compose, psql, curl, python3, ripgrep, read_file, file_search, grep_search, run_in_terminal, create_file, replace_string_in_file. NO git push, NO git commit, NO source code edits.\n\nIf you see a BLOCKER (services down, infrastructure unhealthy), STOP. Do NOT attempt to start services yourself. Return FAIL with the BLOCKER and let ORCH route to ADHOC BACKEND-DEV.\n\nReturn a short final message with the test report summary.\n",
+    "acceptance_criteria": [
+      "All pre-checks pass (services up, infrastructure healthy, bench env clean)",
+      "zig build test-integration-tm exits 0",
+      "zig build test-integration-iss0123 exits 0",
+      "No P0001 audit-trigger leaks into adp09 or oidc22 tests",
+      "No C42703 source_ref errors in iss202/iss203",
+      "TC-ISS-0123-01 and TC-ISS-0123-02 PASS",
+      "Test report written to tests/reports/report-2026-08-02-WF03-gh389.yaml"
+    ],
+    "functions_to_call": [
+      "fn:run-integration-tests",
+      "fn:write-test-report"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "test-integration-tm PASS (14/14). test-integration-iss0123 FAIL: tests/integration/iss0123_regression_test.zig fails to compile under Zig 0.16 because std.fs.cwd() is no longer exposed (moved to std.Io.Dir.cwd()) at lines 106 and 154. The fix code itself compiled cleanly (zig build exit 0). MAJOR test-side compile failure; routing back to BACKEND-DEV for a mechanical stdlib API update.",
+    "artifacts_out": [
+      "tests/reports/report-2026-08-02-WF03-gh389.yaml",
+      "scratch/WF03-gh389-20260802/test-runner-step5/zig_test_integration.log",
+      "scratch/WF03-gh389-20260802/test-runner-step5/zig_test_iss0123.log"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "target": "zig build test-integration-iss0123",
+        "description": "tests/integration/iss0123_regression_test.zig:154 (and 106) fail to compile under Zig 0.16: root source file struct fs has no member named cwd. std.fs.cwd() was removed in Zig 0.16 (moved to std.Io.Dir.cwd()). Compile error blocks TC-ISS-0123-01 and TC-ISS-0123-02 from running. Fix is mechanical: replace std.fs.cwd() with std.Io.Dir.cwd() in two places. Production fix code itself compiles cleanly via zig build (exit 0); test-integration-tm passed 14/14.",
+        "evidence": "scratch/WF03-gh389-20260802/test-runner-step5/zig_test_iss0123.log"
+      },
+      {
+        "severity": "MINOR",
+        "target": "handoff task.description",
+        "description": "Task description specifies BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5433/bpm_test but actual is :5434 (docker-compose port mapping 5434:5432 for db_test; .env confirms). Correct env was loaded from .env so no test was affected. Doc-only fix."
+      }
+    ],
+    "next_action": "Route to BACKEND-DEV (fix std.fs.cwd() -> std.Io.Dir.cwd() in tests/integration/iss0123_regression_test.zig at lines 106 and 154, then re-dispatch TEST-RUNNER for zig build test-integration-iss0123)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-02T04:56:40Z",
+  "completed_at": "2026-08-02T05:06:39Z"
+}

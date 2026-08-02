@@ -1,0 +1,51 @@
+{
+  "handoff_id": "1fa3a8ec-eb9f-4408-8723-bf3f470f2d56",
+  "run_id": "WF03-gh389-20260802",
+  "workflow_id": "WF-03",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-02T03:59:34Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 0.5",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh389-step00"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0123.json",
+      "https://github.com/tvolodi/R-Co/issues/389",
+      "handoffs/WF03-gh389-20260802/step-00-backend-dev.json"
+    ],
+    "issue_ref": "ISS-0123 / GitHub tvolodi/R-Co#389"
+  },
+  "task": {
+    "description": "WF-03 Step 0.5 \u2014 registry lookup and GitHub filing for ISS-0123 / GitHub #389.\n\n1. Call fn:search-issues. Read docs/issues/ISS-0123.json (already exists). Confirm it covers the issue referenced by the user (audit P0001 + source_ref C42703). Also read docs/issues/ISS-0124.json, ISS-0125.json, ISS-0126.json for recent resolution patterns (C42883 type-cast fix, CASCADE FK fix, schema-qualified pg_constraint fix) \u2014 these are recent adjacent fixes that may inform the approach.\n\n2. Refine docs/issues/ISS-0123.json:\n   - Confirm root_cause, candidate_resolution, files_to_change match the issue body in GitHub #389\n   - If they already align, do not duplicate work \u2014 just ensure accuracy and timestamp\n   - Set/refresh the last_seen_at field to current timestamp if missing\n\n3. GitHub filing: GitHub issue #389 already exists in the repo (tvolodi/R-Co#389) \u2014 confirmed by gh CLI. This is the SAME issue as ISS-0123. Cross-reference: ensure docs/issues/ISS-0123.json has github_issue set to https://github.com/tvolodi/R-Co/issues/389 (already there per the file content). Do NOT file a duplicate GitHub issue.\n\n4. Add cross-reference comment to GitHub #389 if it does not already link to a tracking comment for this WF-03 run. Use: gh issue comment 389 --repo tvolodi/R-Co --body \"<!-- rco-sync-ref: ISS-0123 -->\\nWF-03 fix in progress on branch feature/WF03-gh389-20260802.\". If a previous comment with this tag already exists, do not duplicate.\n\n5. Verify: docs/issues/ISS-0123.json exists, contains github_issue field, status remains OPEN (resolution not yet applied).\n\nReturn PASS only after the issue file is current and the GitHub comment is in place. Do NOT diagnose root cause or implement a fix \u2014 those are Steps 1 and 3 respectively.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0123.json contains github_issue=https://github.com/tvolodi/R-Co/issues/389",
+      "docs/issues/ISS-0123.json root_cause and candidate_resolution are accurate (matches GitHub #389 body)",
+      "GitHub issue #389 has a comment tagged rco-sync-ref: ISS-0123 (only one, not a duplicate)",
+      "No new GitHub issue filed (already exists as #389)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 0.5 complete for ISS-0123 / GH #389. Verified docs/issues/ISS-0123.json accurately reflects the GitHub #389 body (audit P0001 guard + missing source_ref C42703); github_issue field already present (https://github.com/tvolodi/R-Co/issues/389); reviewed ISS-0124/125/126 for adjacent-fix patterns (C42883 type-cast, CASCADE FK, schema-qualified pg_constraint). Added last_seen_at=2026-08-02T04:00:41Z and recorded the tracking GitHub comment URL. Posted single tracking comment to GH #389 (URL https://github.com/tvolodi/R-Co/issues/389#issuecomment-5155144249) with marker <!-- rco-sync-ref: ISS-0123 -->; no duplicate (comments list was empty before post). No new GitHub issue filed. Issue status remains OPEN; no root-cause diagnosis or fix applied (those are Steps 1 and 3 respectively).",
+    "artifacts_out": [
+      "docs/issues/ISS-0123.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 1) - root-cause diagnosis"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-02T04:00:01Z",
+  "completed_at": "2026-08-02T04:00:41Z"
+}

@@ -1,0 +1,53 @@
+{
+  "handoff_id": "0e3f58b4-35d0-4f7e-99af-d786cd2e6639",
+  "run_id": "WF03-gh389-20260802",
+  "workflow_id": "WF-03",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-02T04:01:18Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 1",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "WF03-gh389-step00",
+      "WF03-gh389-step0.5"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0123.json",
+      "https://github.com/tvolodi/R-Co/issues/389",
+      "handoffs/WF03-gh389-20260802/step-0.5-issue-fixer.json",
+      "scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log"
+    ],
+    "issue_ref": "ISS-0123 / GitHub tvolodi/R-Co#389"
+  },
+  "task": {
+    "description": "WF-03 Step 1 \u2014 root-cause diagnosis for ISS-0123 / GitHub #389.\n\nUse fn:search-issues first. Then read the relevant source files to confirm/refine the root-cause hypothesis already documented in docs/issues/ISS-0123.json. The issue has TWO intertwined clusters:\n\nCLUSTER A \u2014 Audit-trigger P0001 ('audit_entries is immutable' from bpm_audit_immutable_guard)\n  - Read src/db/audit.zig and migrations/GBL-102_audit_immutability.sql + migrations/GBL-103_audit_immutability_guard.sql\n  - Read tests/integration/audit_iss103_test.zig and the GBL-103/GBL-102-triggering helpers in tests/integration/helpers.zig\n  - Confirm: is the P0001 raised because tests INTENTIONALLY trip the guard, or because of an actual production-code bug?\n  - Confirm: the audit-guard test paths use a dedicated transaction that doesn't leak into neighboring tests\n\nCLUSTER B \u2014 source_ref C42703 (column does not exist)\n  - Read src/events/store.zig \u2014 every INSERT statement must list only columns that exist in the canonical event_store schema\n  - Check migrations that define event_store (search for CREATE TABLE event_store in migrations/)\n  - Find every tests/integration/iss202_merge_atomicity_test.zig, iss203_idempotency_keys_test.zig, iss205_webhook_outbox_test.zig reference to a source_ref column. Use ripgrep:\n      rg -n \"source_ref\" tests/integration/iss202_merge_atomicity_test.zig tests/integration/iss203_idempotency_keys_test.zig tests/integration/iss205_webhook_outbox_test.zig src/events/store.zig\n  - Read scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log at offsets 1480582 and 1480767 to confirm the C42703 error is from a test INSERT statement (not from a production code path)\n  - Cross-reference the canonical event_store schema (look at \\\\d+ event_store in the migration that creates it) to see whether source_ref was ever a column or never existed at all\n\nProduce a written diagnosis at docs/issue-reports/ISS-0123-root-cause.md (YAML format per CLAUDE.md output rules \u2014 use .yaml extension) with:\n  - symptom (verbatim error from log: both P0001 and C42703 messages)\n  - root cause (file:line refs for each cluster)\n  - candidate fix strategies (e.g. a: add a column to event_store; b: remove source_ref from test INSERTs; c: both), with a recommendation\n  - acceptance criteria for the fix (concrete, testable)\n  - linked evidence (log offsets, file:line refs)\n\nAlso update docs/issues/ISS-0123.json:\n  - Refine root_cause with concrete file:line refs from your diagnosis\n  - Set candidate_resolution to the recommended strategy\n  - Set resolution to null (still unresolved)\n  - Do NOT mark resolved_at\n\nDo NOT implement the fix yet. Diagnosis only.",
+    "acceptance_criteria": [
+      "docs/issue-reports/ISS-0123-root-cause.yaml exists (YAML format, NOT .md)",
+      "docs/issues/ISS-0123.json root_cause refined with file:line refs",
+      "Recommendation stated: e.g. \"remove source_ref from test INSERTs\" or \"add column to event_store\"",
+      "Acceptance criteria for the fix are concrete and testable (which tests must pass, with specific TCs)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:diagnose-root-cause"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed ISS-0123 / GitHub #389. The handoff hypothesis (src/db/audit.zig + iss202/203/205 source_ref drift) was incorrect; actual root cause is in the DLQ subsystem: (A) src/dlq/store.zig and tests reference legacy table name `dead_letter_queue` (renamed to `dead_letter_items` by migration 072 but production/test code was never updated) \u2014 PostgreSQL C42703 (source_ref / item_type column missing) fires on every INSERT in obs05_dlq_test + obs06_alerts_test. (B) tests/integration/obs05_dlq_test.zig:TC-OBS-05-INT-01 lines 427-449 install trg_bpm_test_fail_audit_insert without a savepoint wrapper; the cleanup defer only runs on the happy path, so the trigger leaks into adp09_tamper_evident_audit_chain_test:TC-ADP-09-01 and oidc16_26_agent_lifecycle_foundations_test:TC-OIDC-22-01 where it fires P0001 audit_entries is immutable on legitimate mutations. Recommended fix: rename `dead_letter_queue` to `dead_letter_items` in src/dlq/store.zig (11 sites) + the two DLQ test files, and add unconditional trigger cleanup in obs05_dlq_test.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0123-root-cause.yaml",
+      "docs/issues/ISS-0123.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-02T04:01:35Z",
+  "completed_at": "2026-08-02T04:14:37Z"
+}

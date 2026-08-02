@@ -169,7 +169,7 @@ test "TC-EXP-601-04: quota middleware rejects sandbox allocation and agent retri
     try insertQuotaPolicyArtifact(&harness.conn, "e6010000-0000-0000-0000-000000000040", "e6010000-0000-0000-0000-000000000041", zeroQuotaPolicyJson());
     try ensureQuotaPolicyActivation(&harness.conn, tenant_id, "e6010000-0000-0000-0000-000000000041");
     try harness.conn.exec("INSERT INTO instance_waits (instance_id, kind, ref_id, node_id, fire_at) VALUES ($1::uuid, 'sandbox', $2::uuid, 'EXP601_NODE', NOW()) ON CONFLICT (instance_id, ref_id) DO NOTHING", &.{ "e6010000-0000-0000-0000-000000002031", "e6010000-0000-0000-0000-000000002032" });
-    try harness.conn.exec("INSERT INTO dead_letter_queue (id, tenant_id, retry_count, created_at, updated_at) VALUES ($1::uuid, $2::uuid, 1, NOW(), NOW())", &.{ "e6010000-0000-0000-0000-000000002041", tenant_id });
+    try harness.conn.exec("INSERT INTO dead_letter_items (id, tenant_id, retry_count, created_at, updated_at) VALUES ($1::uuid, $2::uuid, 1, NOW(), NOW())", &.{ "e6010000-0000-0000-0000-000000002041", tenant_id });
 
     try quota_middleware.init(alloc);
     defer quota_middleware.deinit();

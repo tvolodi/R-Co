@@ -8,7 +8,7 @@
 //! Requirement traceability:
 //!   ISS-207 → TC1: bare retry same def version → RetryWithoutChange
 //!   ISS-207 → TC2: retry-with-input corrected payload → RETRYING
-//!   ISS-207 → TC3: discard → CANCELLED + dead_letter_queue deleted
+//!   ISS-207 → TC3: discard → CANCELLED + dead_letter_items deleted
 const std = @import("std");
 const helpers = @import("helpers.zig");
 
@@ -89,7 +89,7 @@ test "ISS-207-TC1: bare retry same def version returns RetryWithoutChange" {
 
     // Insert DLQ item referencing the error instance.
     try h.conn.exec(
-        \\INSERT INTO dead_letter_queue
+        \\INSERT INTO dead_letter_items
         \\  (id, entry_type, instance_id, reason, error_detail, retry_count, max_retries,
         \\   status, item_type, retry_limit, original_payload, error_chain, processor_metadata,
         \\   first_failed_at, last_failed_at, source_ref, updated_at)
@@ -172,7 +172,7 @@ test "ISS-207-TC2: retry-with-input returns RETRYING and updates payload" {
     );
 
     try h.conn.exec(
-        \\INSERT INTO dead_letter_queue
+        \\INSERT INTO dead_letter_items
         \\  (id, entry_type, instance_id, reason, error_detail, retry_count, max_retries,
         \\   status, item_type, retry_limit, original_payload, error_chain, processor_metadata,
         \\   first_failed_at, last_failed_at, source_ref, updated_at)
@@ -210,7 +210,7 @@ test "ISS-207-TC2: retry-with-input returns RETRYING and updates payload" {
     defer pool.release(check_conn);
     const row = try check_conn.queryRow(
         allocator,
-        "SELECT status, original_payload::text FROM dead_letter_queue WHERE id = $1::uuid",
+        "SELECT status, original_payload::text FROM dead_letter_items WHERE id = $1::uuid",
         &.{dlq_id},
     );
     if (row) |r| {
@@ -265,7 +265,7 @@ test "ISS-207-TC3: discard cancels instance and removes DLQ row" {
     );
 
     try h.conn.exec(
-        \\INSERT INTO dead_letter_queue
+        \\INSERT INTO dead_letter_items
         \\  (id, entry_type, instance_id, reason, error_detail, retry_count, max_retries,
         \\   status, item_type, retry_limit, original_payload, error_chain, processor_metadata,
         \\   first_failed_at, last_failed_at, source_ref, updated_at)
@@ -294,7 +294,7 @@ test "ISS-207-TC3: discard cancels instance and removes DLQ row" {
 
     const dlq_row = try check_conn.queryRow(
         allocator,
-        "SELECT id::text FROM dead_letter_queue WHERE id = $1::uuid",
+        "SELECT id::text FROM dead_letter_items WHERE id = $1::uuid",
         &.{dlq_id},
     );
     try std.testing.expect(dlq_row == null);

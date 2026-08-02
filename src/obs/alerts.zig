@@ -185,7 +185,7 @@ pub fn readDlqDepth(allocator: std.mem.Allocator, pool: *db.Pool) AlertError!u64
 
     const row = conn.queryRow(
         allocator,
-        "SELECT COUNT(*)::text FROM dead_letter_queue WHERE status IN ('pending', 'retrying')",
+        "SELECT COUNT(*)::text FROM dead_letter_items WHERE status IN ('pending', 'retrying')",
         &.{},
     ) catch return error.StateReadFailed;
     if (row == null) return 0;

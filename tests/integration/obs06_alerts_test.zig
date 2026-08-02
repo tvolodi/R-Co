@@ -29,7 +29,7 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
 }
 
 fn cleanupDlqBySourceRef(conn: *bpm.pool.Conn, source_ref: []const u8) void {
-    conn.exec("DELETE FROM dead_letter_queue WHERE source_ref = $1", &.{source_ref}) catch {};
+    conn.exec("DELETE FROM dead_letter_items WHERE source_ref = $1", &.{source_ref}) catch {};
 }
 
 fn rowText(
@@ -53,7 +53,7 @@ fn insertDlqRow(
     status: []const u8,
 ) !void {
     try conn.exec(
-        \\INSERT INTO dead_letter_queue (
+        \\INSERT INTO dead_letter_items (
         \\  id, entry_type, instance_id, reason, error_detail,
         \\  retry_count, max_retries, status,
         \\  created_at, updated_at,

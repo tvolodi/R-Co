@@ -1,0 +1,210 @@
+issue_id: ISS-0123
+github_issue: https://github.com/tvolodi/R-Co/issues/389
+diagnosed_at: "2026-08-02T04:13:07Z"
+diagnosed_by: ISSUE-FIXER
+workflow_id: WF-03
+step: 1
+log_encoding_note: |
+  The cited log file scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log
+  is UTF-16 LE encoded. The byte offsets 1480582 and 1480767 referenced in the handoff
+  correspond to character offsets 740291 and 740384 in the decoded log. At those offsets
+  the log contains unrelated Zig std.testing.expectEqual stack frames — NOT the verbatim
+  P0001 / C42703 errors. The actual error occurrences were located by pattern search of
+  the decoded log.
+
+corrected_hypothesis: |
+  The handoff's hypothesis that src/db/audit.zig (Cluster A) and tests/integration/iss202_merge_atomicity_test.zig +
+  iss203_idempotency_keys_test.zig + iss205_webhook_outbox_test.zig (Cluster B) are the
+  source of the source_ref C42703 errors is INCORRECT:
+
+  - src/db/audit.zig does not exist. Audit code lives in src/obs/audit.zig and src/api/middleware/audit.zig.
+  - src/events/store.zig does not exist. Event store code lives in src/event_store/store.zig.
+  - migrations/GBL-102_audit_immutability.sql and GBL-103_audit_immutability_guard.sql do NOT exist.
+    The actual audit immutability migrations are 020_obs03_audit_entries.sql and 051_xc02_audit_immutability.sql.
+  - The `source_ref` column does NOT exist in the event_store table. It exists in
+    dead_letter_queue (added by migration 021, preserved through rename to dead_letter_items by migration 072).
+  - Tests iss202 / iss203 / iss205 do NOT reference `source_ref` anywhere. Their
+    separate failures are unrelated infrastructure drift (FK violation on variable_schemas,
+    check constraint on webhook_deliveries, DebugAllocator leaks).
+
+actual_root_cause: |
+  Both the P0001 audit-guard cluster and the C42703 source_ref cluster originate from
+  the DLQ (dead-letter queue) subsystem, not from event_store / iss202-203-205.
+
+  - CLUSTER A (P0001) is concentrated in tests/integration/obs05_dlq_test.zig:TC-OBS-05-INT-01
+    (lines 427-449) which DELIBERATELY installs a BEFORE-INSERT trigger `trg_bpm_test_fail_audit_insert`
+    that raises P0001 'forced audit insert failure for test'. The subsequent P0001
+    `audit_entries is immutable` raise is the `bpm_audit_immutable_guard()` from migration 020,
+    re-fired when the failed INSERT bubbles through `bpm_audit_on_mutation()` line 43.
+    The 2 extra P0001 occurrences in tests/integration/adp09_tamper_evident_audit_chain_test:TC-ADP-09-01
+    and tests/integration/oidc16_26_agent_lifecycle_foundations_test:TC-OIDC-22-01 are caused by
+    the same root cause: the obs05_dlq_test installs the trigger with NO cleanup `defer`, so it
+    leaks into the next test processes via shared db_test state. The defer blocks at
+    obs05_dlq_test.zig:448-449 only clean up if the test's main flow runs to completion.
+
+  - CLUSTER B (C42703 source_ref) is concentrated in tests/integration/obs05_dlq_test.zig:TC-OBS-05-INT-01/03
+    and tests/integration/obs06_alerts_test.zig:TC-OBS-06-INT-05. Both tests (and the production
+    src/dlq/store.zig) INSERT into `dead_letter_queue`. In the active test database, this table
+    exists in the search_path schema but lacks the `source_ref` / `item_type` columns added by
+    migration 021_obs05_dead_letter_context.sql. PostgreSQL returns C42703
+    'column "source_ref" of relation "dead_letter_queue" does not exist'. This happens because
+    either (a) the table was created in a schema where migration 021 was NOT applied (fresh
+    public schema or a partial-migration tenant), or (b) the search_path routes through
+    public.dead_letter_queue which GBL-073 should have dropped but in some databases still exists
+    with the pre-021 column set.
+
+clusters:
+  - id: A
+    title: Audit-trigger P0001 ('audit_entries is immutable' / 'forced audit insert failure for test')
+    triggering_tests:
+      - tests/integration/obs05_dlq_test.zig:TC-OBS-05-INT-01 (2x, expected behaviour — test installs
+        trg_bpm_test_fail_audit_insert to verify error path)
+      - tests/integration/adp09_tamper_evident_audit_chain_test.zig:TC-ADP-09-01 (2x, leak —
+        trg_bpm_test_fail_audit_insert was not cleaned up before this test ran)
+      - tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig:TC-OIDC-22-01 (2x, same leak)
+    verbatim_error: |
+      POSTGRES ERROR: SERRORVERRORCP0001Mforced audit insert failure for test
+        W PL/pgSQL function bpm_test_fail_audit_insert() line 3 at RAISE
+        SQL statement "INSERT INTO audit_entries ( actor_id, action, resource_type,
+          resource_id, before_state, after_state ) VALUES ( ... )"
+        PL/pgSQL function bpm_audit_on_mutation() line 43 at SQL statement F pl_exec.cL3905Rexec_stmt_raise
+      POSTGRES ERROR: SERRORVERRORCP0001Maudit_entries is immutable
+        W PL/pgSQL function bpm_audit_immutable_guard() line 3 at RAISE F pl_exec.cL3905Rexec_stmt_raise
+    root_cause:
+      file: tests/integration/obs05_dlq_test.zig
+      line: 427
+      explanation: |
+        The test intentionally installs trg_bpm_test_fail_audit_insert BEFORE-INSERT trigger
+        on audit_entries (line 443) to verify that handleDiscard() returns 500 when the audit
+        insert fails. The cleanup defer at line 448-449 only runs if the test reaches its
+        end-of-function, but the trigger persists in db_test and bleeds into the next test
+        processes (adp09_tamper_evident_audit_chain_test, oidc16_26_agent_lifecycle_foundations_test)
+        where it fires audit-guard P0001 on legitimate mutations.
+    evidence:
+      - scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log offset (decoded chars) 1480582, 1480767, 1659378, 1659563, 2170298, 2170483
+      - migrations/020_obs03_audit_entries.sql:43 (bpm_audit_on_mutation() INSERT INTO audit_entries)
+      - migrations/020_obs03_audit_entries.sql:48 (bpm_audit_immutable_guard() RAISE EXCEPTION)
+      - migrations/051_xc02_audit_immutability.sql:89-107 (bpm_audit_enforce_immutability trigger pair)
+  - id: B
+    title: C42703 'column source_ref does not exist' on dead_letter_queue
+    triggering_tests:
+      - tests/integration/obs05_dlq_test.zig:TC-OBS-05-INT-01 (3x, via insertDlqRow at line 73)
+      - tests/integration/obs06_alerts_test.zig:TC-OBS-06-INT-05 (6x, via insertDlqRow at line 56)
+    verbatim_error: |
+      POSTGRES ERROR: SERRORVERRORC42703Mcolumn "source_ref" does not exist
+        P37 F parse_relation.c L3665 R errorMissingColumn
+      POSTGRES ERROR: SERRORVERRORC42703Mcolumn "item_type" of relation "dead_letter_queue" does not exist
+        P150 F parse_target.c L1075 R checkInsertTargets
+    root_cause:
+      file: src/dlq/store.zig
+      line: 148
+      explanation: |
+        src/dlq/store.zig (lines 148, 262, 361, 408, 416, 428, 461, 511, 625, 691, 746) and
+        the DLQ integration tests obs05_dlq_test.zig (lines 33, 37, 73, 234, 344, 357, 459)
+        and obs06_alerts_test.zig (lines 32, 56) all INSERT/SELECT against `dead_letter_queue`.
+        In the active test database, this relation exists but lacks the columns added by
+        migration 021_obs05_dead_letter_context.sql (item_type, source_ref, etc.) because
+        migration 021 was either not applied to that schema (search_path routes through a
+        schema where only migration 006 ran) or GBL-073 did not successfully drop the legacy
+        public.dead_letter_queue before the test connection acquired it. PostgreSQL returns
+        C42703 (undefined_column) on every INSERT/SELECT. The rename in migration 072
+        dead_letter_queue → dead_letter_items was never applied to the failing schema, so
+        the production store.zig and tests must target whatever relation has the full schema.
+    evidence:
+      - scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log offset (decoded chars) 1480952, 1481094, 1481236, 1485525, 1485667, 1485809, 1486125, 1486267, 1486409
+      - migrations/021_obs05_dead_letter_context.sql:4-67 (ALTER TABLE dead_letter_queue ADD COLUMN source_ref + NOT NULL)
+      - migrations/072_tnt01_rename_legacy_tables.sql:22 (ALTER TABLE dead_letter_queue RENAME TO dead_letter_items)
+      - migrations/006_tasks.sql:9-32 (CREATE TABLE dead_letter_queue with only basic columns — no source_ref)
+      - migrations/GBL-073_tnt01_drop_legacy_public_business_tables.sql:51 (DROP TABLE IF EXISTS public.dead_letter_queue CASCADE)
+      - src/dlq/store.zig:148 (INSERT INTO dead_letter_queue) — production code path
+
+recommended_fix: |
+  TWO-PART FIX (one source-code change, one infra fix):
+
+  1. PRODUCTION CODE (Cluster B — root fix):
+     Rename every reference to `dead_letter_queue` in src/dlq/store.zig (lines 148, 262, 361,
+     408, 416, 428, 461, 511, 625, 691, 746) to `dead_letter_items` to match the rename done
+     in migration 072. Search src/event_store/, src/admin/, src/dlq/, src/api/ for any
+     remaining `dead_letter_queue` literals (excluding src/api/middleware/audit.zig and
+     migration files) and replace. This is the canonical name per migration 072.
+
+  2. DLQ INTEGRATION TESTS (Cluster B — secondary fix):
+     Rename `dead_letter_queue` to `dead_letter_items` in tests/integration/obs05_dlq_test.zig
+     (lines 33, 37, 73, 234, 344, 357, 459) and tests/integration/obs06_alerts_test.zig
+     (lines 32, 56) for consistency. Tests must use the post-rename canonical name.
+
+  3. TEST ISOLATION (Cluster A — secondary fix):
+     tests/integration/obs05_dlq_test.zig lines 427-449 install trg_bpm_test_fail_audit_insert
+     on db_test without a wrapper transaction. Move trigger creation inside a savepoint and
+     add an EXPLICIT cleanup at the start of the next test or use a dedicated test schema
+     for OBS-05 audit-failure scenarios. Currently the trigger leaks into neighbouring tests
+     (adp09_tamper_evident_audit_chain_test, oidc16_26_agent_lifecycle_foundations_test).
+
+  4. DB SCHEMA RECONCILIATION (Cluster B — infra fix):
+     Verify the test database has the dead_letter_items table with all columns from migration 021
+     in the search_path. If a stale public.dead_letter_queue still exists with the pre-021
+     column set (because GBL-073 was skipped due to migration_window_active=TRUE), set
+     public.onboarding_registry.migration_window_active=FALSE and re-run zig build migrate
+     so GBL-073 drops the stale relation.
+
+  The most likely single-shot resolution is (1) + (2): once src/dlq/store.zig points to
+  dead_letter_items and the test fixtures agree, Cluster B disappears. Cluster A is
+  addressed by (3) without any production change.
+
+acceptance_criteria:
+  - tests/integration/obs05_dlq_test.zig:TC-OBS-05-INT-01 passes (no source_ref C42703; the
+    deliberate P0001 audit-guard fire is still observed, but no leak to next test)
+  - tests/integration/obs05_dlq_test.zig:TC-OBS-05-INT-02 passes
+  - tests/integration/obs05_dlq_test.zig:TC-OBS-05-INT-03 passes
+  - tests/integration/obs06_alerts_test.zig:TC-OBS-06-INT-05 passes (no source_ref C42703)
+  - tests/integration/adp09_tamper_evident_audit_chain_test.zig:TC-ADP-09-01 passes (no P0001 leak)
+  - tests/integration/oidc16_26_agent_lifecycle_foundations_test.zig:TC-OIDC-22-01 passes (no P0001 leak)
+  - After the test obs05_dlq_test completes, the next test process can insert into audit_entries
+    without tripping trg_bpm_test_fail_audit_insert (verifies trigger cleanup is unconditional)
+
+related_issues:
+  - ISS-0122 (related dead_letter / test infrastructure cluster from same Step 5c log)
+  - ISS-0124 / ISS-0125 / ISS-0126 (sibling defects from the same WF03-gh375-20260801 run; some may share
+    the same root cause if they also reference dead_letter_queue)
+  - iss202 / iss203 / iss205 failures are SEPARATE infrastructure drift unrelated to this diagnosis
+    (FK on variable_schemas, check constraint on webhook_deliveries, DebugAllocator leaks)
+
+linked_evidence:
+  log_file: scratch/WF03-gh375-20260801/test-runner-step5c/zig_test_integration.log
+  log_encoding: UTF-16 LE
+  byte_offsets_handoff_cited: [1480582, 1480767]
+  char_offsets_decoded:
+    p0001_first_occurrence: 1480582
+    p0001_last_occurrence: 2170483
+    c42703_first_occurrence: 1480952
+    c42703_last_occurrence: 1486409
+  triggering_tests_observed:
+    - obs05_dlq_test.zig:TC-OBS-05-INT-01
+    - adp09_tamper_evident_audit_chain_test.zig:TC-ADP-09-01
+    - oidc16_26_agent_lifecycle_foundations_test.zig:TC-OIDC-22-01
+    - obs06_alerts_test.zig:TC-OBS-06-INT-05
+  p0001_count: 6
+  c42703_count: 9
+
+prevention:
+  - Add a search-and-fail lint to tools/lint_sql_table_refs.py (or equivalent) that walks
+    src/ and tests/integration/ for references to legacy table names (dead_letter_queue,
+    form_schema_registry, audit_log, etc.) and reports every hit. Run it in zig build
+    before tests.
+  - Add a tearDown/cleanup helper to tests/integration/helpers.zig that is called automatically
+    after any test that installs a db trigger without a savepoint wrapper. Document the
+    invariant that any CREATE TRIGGER / CREATE FUNCTION inside an integration test must be
+    wrapped in a savepoint with a defer that drops the trigger/function before commit.
+  - Run `SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema()
+    AND table_name = 'dead_letter_items'` as part of the test infrastructure health check
+    and fail fast if `source_ref` is missing.
+
+files_affected:
+  production_code:
+    - src/dlq/store.zig
+  test_code:
+    - tests/integration/obs05_dlq_test.zig
+    - tests/integration/obs06_alerts_test.zig
+  migrations_no_change: []
+
+next_action: "Route to CODE-DESIGNER (WF-03 Step 2) to draft the design artefact for the rename + isolation fix."
