@@ -364,7 +364,7 @@ test "TC-TNT-07-01: GBL-077 migration is applied (RLS cleanup complete)" {
     defer pool.release(conn);
 
     const row = conn.queryRow(alloc,
-        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = 'public' AND version = '77'",
+        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = 'public' AND version = 'GBL-077_tnt07_rls_cleanup.sql'",
         &.{},
     ) catch null;
     if (row) |r| {
@@ -470,7 +470,7 @@ test "TC-TNT-07-05: GBL-077 migration is idempotent (already applied)" {
     // GBL-077 is already recorded in schema_migrations (version 77).
     // The migration runner should skip it. Verify the record is there.
     const row = conn.queryRow(alloc,
-        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = 'public' AND version = '77'",
+        "SELECT count(*) FROM public.schema_migrations WHERE schema_name = 'public' AND version = 'GBL-077_tnt07_rls_cleanup.sql'",
         &.{},
     ) catch null;
     if (row) |r| {
