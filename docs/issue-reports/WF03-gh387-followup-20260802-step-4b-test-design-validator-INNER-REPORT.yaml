@@ -1,0 +1,35 @@
+report_id: WF03-gh387-followup-20260802-step-4b-test-design-validator
+agent_id: TEST-DESIGN-VALIDATOR
+run_id: WF03-gh387-followup-20260802
+step: 4b
+created_at: '2026-08-02T17:13:30Z'
+summary: >-
+  Validated ISS-0121 follow-up test design on the required feature branch. The
+  specification describes the migration approach, references the existing
+  helper API regression suite, declares no new MUST requirements, and documents
+  per-test UUID generation and cleanup. The design artefact lint passed with
+  exit code 0. No user-visible sequential action applies, so no pipeline gate
+  is required.
+files_created: []
+files_modified:
+  - tests/specs/ISS-0121-followup.md
+  - tests/integration/iss0121_uuid_helpers_test.zig
+  - handoffs/WF03-gh387-followup-20260802/step-04b-test-design-validator.json
+  - handoffs/registry.json
+tests_run:
+  - name: git branch --show-current
+    status: pass
+    detail: 'feature/WF03-gh387-followup-20260802'
+  - name: python tools/lint_design_artefact.py tests/specs/ISS-0121-followup.md
+    status: pass
+    detail: 'Exit code 0; no issues reported.'
+  - name: helper regression test source inspection
+    status: pass
+    detail: 'TC-ISS-0121-01..07 are implemented; no SkipZigTest in the helper regression file; allocated fixtures use defer cleanup and generated UUIDs.'
+  - name: specification completeness inspection
+    status: pass
+    detail: 'Migration approach and helper API references present; no deferred or future-phase test cases; no new MUST requirement is introduced.'
+issues_found: []
+next_steps:
+  - Route to TEST-RUNNER (Step 5)
+blockers: []

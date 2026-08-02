@@ -1,4 +1,4 @@
-//! Integration tests for ISS-205 — Webhook transactional outbox.
+﻿//! Integration tests for ISS-205 — Webhook transactional outbox.
 //!
 //! Tests verify:
 //!   TC1: insertWebhookDeliveriesInTx creates delivery rows inside the same
@@ -76,9 +76,13 @@ test "ISS-205-TC1: insertWebhookDeliveriesInTx rolled back removes deliveries at
     };
     defer h.deinit();
 
-    const owner_id = "e0205001-0000-0000-0000-000000000001";
-    const sub_id = "e0205001-0000-0000-0000-000000000002";
-    const inst_id = "e0205001-0000-0000-0000-000000000003";
+    const owner_id = try h.newUuidString(allocator);
+
+    defer allocator.free(owner_id);
+    const sub_id = try h.newUuidString(allocator);
+    defer allocator.free(sub_id);
+    const inst_id = try h.newUuidString(allocator);
+    defer allocator.free(inst_id);
 
     // Seed an owner user so the subscription FK is satisfied.
     try h.conn.exec(
@@ -161,10 +165,15 @@ test "ISS-205-TC2: dispatchDueWebhookAttempts picks up orphaned committed delive
     };
     defer h.deinit();
 
-    const owner_id = "e0205002-0000-0000-0000-000000000001";
-    const sub_id = "e0205002-0000-0000-0000-000000000002";
-    const delivery_id = "e0205002-0000-0000-0000-000000000003";
-    const inst_id = "e0205002-0000-0000-0000-000000000004";
+    const owner_id = try h.newUuidString(allocator);
+
+    defer allocator.free(owner_id);
+    const sub_id = try h.newUuidString(allocator);
+    defer allocator.free(sub_id);
+    const delivery_id = try h.newUuidString(allocator);
+    defer allocator.free(delivery_id);
+    const inst_id = try h.newUuidString(allocator);
+    defer allocator.free(inst_id);
 
     try h.conn.exec(
         \\INSERT INTO users (id, email, display_name, password_hash, is_active, username, status)
@@ -242,10 +251,15 @@ test "ISS-205-TC3: exhausting max_attempts pauses the subscription" {
     };
     defer h.deinit();
 
-    const owner_id = "e0205003-0000-0000-0000-000000000001";
-    const sub_id = "e0205003-0000-0000-0000-000000000002";
-    const delivery_id = "e0205003-0000-0000-0000-000000000003";
-    const inst_id = "e0205003-0000-0000-0000-000000000004";
+    const owner_id = try h.newUuidString(allocator);
+
+    defer allocator.free(owner_id);
+    const sub_id = try h.newUuidString(allocator);
+    defer allocator.free(sub_id);
+    const delivery_id = try h.newUuidString(allocator);
+    defer allocator.free(delivery_id);
+    const inst_id = try h.newUuidString(allocator);
+    defer allocator.free(inst_id);
 
     try h.conn.exec(
         \\INSERT INTO users (id, email, display_name, password_hash, is_active, username, status)
@@ -299,3 +313,5 @@ test "ISS-205-TC3: exhausting max_attempts pauses the subscription" {
         return error.TestUnexpectedNull;
     }
 }
+
+

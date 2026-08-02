@@ -1,4 +1,4 @@
-const std = @import("std");
+﻿const std = @import("std");
 const helpers = @import("helpers.zig");
 const TestHarness = helpers.TestHarness;
 
@@ -147,9 +147,11 @@ test "TC-ADP-02-02: definition uniqueness is tenant-partitioned and reads are te
 
     const name = "adp02-tenant-iso-def";
     const version = "1.0.0";
-    const actor = "00000000-0000-0000-0000-000000000123";
+    const actor = try h.newUuidString(alloc);
+    defer alloc.free(actor);
     const tenant_a = default_tenant;
-    const tenant_b = "22222222-2222-2222-2222-222222222222";
+    const tenant_b = try h.newUuidString(alloc);
+    defer alloc.free(tenant_b);
 
     // Pre-cleanup: ensure no stale definitions from previous test runs.
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
@@ -220,12 +222,18 @@ test "TC-ADP-02-03: instance persistence is tenant-scoped with default-tenant fa
     defer pool.release(conn);
 
     const tenant_a = default_tenant;
-    const tenant_b = "22222222-2222-2222-2222-222222222222";
+    const tenant_b = try h.newUuidString(alloc);
+    defer alloc.free(tenant_b);
 
-    const definition_id = "33333333-3333-3333-3333-333333333333";
-    const instance_a = "33333333-3333-3333-3333-333333333334";
-    const instance_b = "33333333-3333-3333-3333-333333333335";
-    const instance_default = "33333333-3333-3333-3333-333333333336";
+    const definition_id = try h.newUuidString(alloc);
+
+    defer alloc.free(definition_id);
+    const instance_a = try h.newUuidString(alloc);
+    defer alloc.free(instance_a);
+    const instance_b = try h.newUuidString(alloc);
+    defer alloc.free(instance_b);
+    const instance_default = try h.newUuidString(alloc);
+    defer alloc.free(instance_default);
     const corr = "adp02-instance-corr";
 
     // Pre-cleanup: ensure no stale instances from previous test runs.
@@ -315,15 +323,24 @@ test "TC-ADP-02-04: task and transition persistence are isolated across tenants"
     defer pool.release(conn);
 
     const tenant_a = default_tenant;
-    const tenant_b = "22222222-2222-2222-2222-222222222222";
+    const tenant_b = try h.newUuidString(alloc);
+    defer alloc.free(tenant_b);
 
-    const def_id = "44444444-4444-4444-4444-444444444440";
-    const inst_a = "44444444-4444-4444-4444-444444444441";
-    const inst_b = "44444444-4444-4444-4444-444444444442";
-    const token_a = "44444444-4444-4444-4444-444444444443";
-    const token_b = "44444444-4444-4444-4444-444444444444";
-    const task_a = "44444444-4444-4444-4444-444444444445";
-    const task_b = "44444444-4444-4444-4444-444444444446";
+    const def_id = try h.newUuidString(alloc);
+
+    defer alloc.free(def_id);
+    const inst_a = try h.newUuidString(alloc);
+    defer alloc.free(inst_a);
+    const inst_b = try h.newUuidString(alloc);
+    defer alloc.free(inst_b);
+    const token_a = try h.newUuidString(alloc);
+    defer alloc.free(token_a);
+    const token_b = try h.newUuidString(alloc);
+    defer alloc.free(token_b);
+    const task_a = try h.newUuidString(alloc);
+    defer alloc.free(task_a);
+    const task_b = try h.newUuidString(alloc);
+    defer alloc.free(task_b);
 
     // Pre-cleanup: ensure no stale tasks/tokens/instances from previous test runs.
     try conn.exec("SELECT set_config('bpm.tenant_id', $1, false)", &.{tenant_a});
@@ -456,9 +473,12 @@ test "TC-ADP-02-05: audit persistence is tenant-scoped for audit_entries and aud
     defer pool.release(conn);
 
     const tenant_a = default_tenant;
-    const tenant_b = "22222222-2222-2222-2222-222222222222";
-    const audit_target_a = "55555555-5555-5555-5555-555555555551";
-    const audit_target_b = "55555555-5555-5555-5555-555555555552";
+    const tenant_b = try h.newUuidString(alloc);
+    defer alloc.free(tenant_b);
+    const audit_target_a = try h.newUuidString(alloc);
+    defer alloc.free(audit_target_a);
+    const audit_target_b = try h.newUuidString(alloc);
+    defer alloc.free(audit_target_b);
 
     // Pre-cleanup: ensure no stale audit entries from previous test runs.
     // This is critical because if the test fails partway through, cleanup at the end won't run.
@@ -552,3 +572,5 @@ test "TC-ADP-02-05: audit persistence is tenant-scoped for audit_entries and aud
     conn.exec("DELETE FROM audit_log WHERE entity_id IN ($1::uuid, $2::uuid)", &.{ audit_target_a, audit_target_b }) catch {};
     conn.exec("SELECT set_config('bpm.tenant_id', '', false)", &.{}) catch {};
 }
+
+

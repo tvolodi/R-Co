@@ -1,4 +1,4 @@
-//! Integration tests for ISS-202 — Two-phase (all-or-nothing) variable merge.
+﻿//! Integration tests for ISS-202 — Two-phase (all-or-nothing) variable merge.
 //!
 //! Tests exercise InstanceStore.mergeVariables() and the full merge flow through
 //! completeTask() against a real PostgreSQL database.
@@ -192,7 +192,7 @@ test "TC-ISS-202-01: Phase 1 validation succeeds for all valid keys" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-01 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -285,7 +285,7 @@ test "TC-ISS-202-02: Phase 1 fails on invalid key; no state change, no events" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-02 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -394,7 +394,7 @@ test "TC-ISS-202-03: Phase 1 validates all keys exhaustively" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-03 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -505,7 +505,7 @@ test "TC-ISS-202-04: Phase 2 applies all keys atomically" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-04 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -602,7 +602,7 @@ test "TC-ISS-202-05: Retry after failure preserves pre-merge state" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-05 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -709,7 +709,7 @@ test "TC-ISS-202-06: Empty merge is a no-op" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-06 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -799,7 +799,7 @@ test "TC-ISS-202-07: All keys existing — collisions detected and applied atomi
     defer def_store.deinit();
 
     const name = "TC-ISS-202-07 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -898,7 +898,7 @@ test "TC-ISS-202-08: Schema mismatch on key triggers Phase 1 failure" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-08 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -1001,7 +1001,7 @@ test "TC-ISS-202-09: Null value where schema requires non-null" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-09 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -1114,7 +1114,7 @@ test "TC-ISS-202-10: Memory allocation failure leaves no partial state" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-10 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -1209,7 +1209,7 @@ test "TC-ISS-202-INT-01: Transactional all-or-nothing merge with crash recovery"
     defer def_store.deinit();
 
     const name = "TC-ISS-202-INT-01 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -1308,7 +1308,7 @@ test "TC-ISS-202-INT-02: Concurrent merge requests on same instance" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-INT-02 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -1435,7 +1435,7 @@ test "TC-ISS-202-INT-03: Merge recovery after timeout" {
     defer def_store.deinit();
 
     const name = "TC-ISS-202-INT-03 Process";
-    const created_by = try parseUuid(alloc, "00000000-0000-0000-0000-000000000099");
+    const created_by = h.newUuid();
 
     const draft = try def_store.create(alloc, CreateParams{
         .name = name,
@@ -1519,3 +1519,4 @@ test "TC-ISS-202-INT-03: Merge recovery after timeout" {
 
     try conn.exec("ROLLBACK", &.{});
 }
+

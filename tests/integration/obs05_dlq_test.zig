@@ -1,4 +1,5 @@
-const std = @import("std");
+﻿const std = @import("std");
+const helpers = @import("helpers.zig");
 const testing = std.testing;
 
 const bpm = @import("bpm");
@@ -177,6 +178,9 @@ test "TC-OBS-05-INT-01: exhausted retries persist full context and GET /dlq supp
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
@@ -187,8 +191,17 @@ test "TC-OBS-05-INT-01: exhausted retries persist full context and GET /dlq supp
     cleanupDlqBySourceRef(conn, "obs05-int01-webhook");
     cleanupDlqBySourceRef(conn, "obs05-int01-timer");
 
+    const service_instance = try h.newUuidString(alloc);
+    defer alloc.free(service_instance);
+    const timer_instance = try h.newUuidString(alloc);
+    defer alloc.free(timer_instance);
+    const operator_id = try h.newUuidString(alloc);
+    defer alloc.free(operator_id);
+    const worker_id = try h.newUuidString(alloc);
+    defer alloc.free(worker_id);
+
     try dlq_store.moveToDlq(alloc, &pool, .{
-        .instance_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        .instance_id = service_instance,
         .item_type = .SERVICE_TASK,
         .retry_count = 3,
         .retry_limit = 3,
@@ -214,7 +227,7 @@ test "TC-OBS-05-INT-01: exhausted retries persist full context and GET /dlq supp
         .reason = "webhook retry exhausted",
     });
     try dlq_store.moveToDlq(alloc, &pool, .{
-        .instance_id = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+        .instance_id = timer_instance,
         .item_type = .TIMER,
         .retry_count = 3,
         .retry_limit = 3,
@@ -240,18 +253,18 @@ test "TC-OBS-05-INT-01: exhausted retries persist full context and GET /dlq supp
         \\  AND error_chain @> '[{"code":"HTTP_TIMEOUT"}]'::jsonb
         \\  AND processor_metadata @> '{"source_module":"engine.service_task"}'::jsonb
     ,
-        &.{ "obs05-int01-service", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" },
+        &.{ "obs05-int01-service", service_instance },
     );
     try testing.expectEqual(@as(usize, 1), persisted_service_context);
 
     const operator = dlq_routes.Actor{
-        .user_id = "00000000-0000-0000-0000-000000000111",
+        .user_id = operator_id,
         .roles = &[_]bpm.api_authorization.Role{.PROCESS_OPERATOR},
         .is_operator_or_above = true,
         .is_platform_admin = false,
     };
     const worker = dlq_routes.Actor{
-        .user_id = "00000000-0000-0000-0000-000000000112",
+        .user_id = worker_id,
         .roles = &[_]bpm.api_authorization.Role{.TASK_WORKER},
         .is_operator_or_above = false,
         .is_platform_admin = false,
@@ -280,13 +293,15 @@ test "TC-OBS-05-INT-01: exhausted retries persist full context and GET /dlq supp
     try testing.expect(std.mem.containsAtLeast(u8, filtered.body, 1, "\"item_type\":\"WEBHOOK\""));
 
     const filtered_instance = dlq_routes.handleList(&pool, alloc, operator, .{
-        .instance_id = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+        .instance_id = service_instance,
         .page_size = 10,
     });
     defer freeRouteBody(alloc, filtered_instance.body);
     try testing.expectEqual(@as(u16, 200), filtered_instance.status_code);
     try testing.expect(std.mem.containsAtLeast(u8, filtered_instance.body, 1, "\"count\":1"));
-    try testing.expect(std.mem.containsAtLeast(u8, filtered_instance.body, 1, "\"instance_id\":\"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa\""));
+    const expected_instance = try std.fmt.allocPrint(alloc, "\"instance_id\":\"{s}\"", .{service_instance});
+    defer alloc.free(expected_instance);
+    try testing.expect(std.mem.containsAtLeast(u8, filtered_instance.body, 1, expected_instance));
 }
 
 test "TC-OBS-05-INT-02: POST /dlq/:id/retry returns 409+discard for CANCELLED and 202 for ACTIVE" {
@@ -294,15 +309,22 @@ test "TC-OBS-05-INT-02: POST /dlq/:id/retry returns 409+discard for CANCELLED an
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    const cancelled_instance = "cccccccc-cccc-cccc-cccc-cccccccccccc";
-    const active_instance = "dddddddd-dddd-dddd-dddd-dddddddddddd";
-    const definition_id = "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
+    const cancelled_instance = try h.newUuidString(alloc);
+
+    defer alloc.free(cancelled_instance);
+    const active_instance = try h.newUuidString(alloc);
+    defer alloc.free(active_instance);
+    const definition_id = try h.newUuidString(alloc);
+    defer alloc.free(definition_id);
 
     cleanupInstance(conn, cancelled_instance);
     cleanupInstance(conn, active_instance);
@@ -312,19 +334,26 @@ test "TC-OBS-05-INT-02: POST /dlq/:id/retry returns 409+discard for CANCELLED an
     try insertInstanceProjection(conn, cancelled_instance, definition_id, "CANCELLED");
     try insertInstanceProjection(conn, active_instance, definition_id, "ACTIVE");
 
-    const cancelled_dlq_id = "11111111-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-    const active_dlq_id = "22222222-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+    const cancelled_dlq_id = try h.newUuidString(alloc);
+
+    defer alloc.free(cancelled_dlq_id);
+    const active_dlq_id = try h.newUuidString(alloc);
+    defer alloc.free(active_dlq_id);
     try insertDlqRow(conn, cancelled_dlq_id, cancelled_instance, "TIMER", "obs05-int02-cancelled", "2026-05-25T11:00:00Z");
     try insertDlqRow(conn, active_dlq_id, active_instance, "SERVICE_TASK", "obs05-int02-active", "2026-05-25T11:01:00Z");
 
+    const actor_id = try h.newUuidString(alloc);
+    defer alloc.free(actor_id);
+    const worker_id = try h.newUuidString(alloc);
+    defer alloc.free(worker_id);
     const actor = dlq_routes.Actor{
-        .user_id = "00000000-0000-0000-0000-000000000121",
+        .user_id = actor_id,
         .roles = &[_]bpm.api_authorization.Role{.PROCESS_OPERATOR},
         .is_operator_or_above = true,
         .is_platform_admin = false,
     };
     const worker = dlq_routes.Actor{
-        .user_id = "00000000-0000-0000-0000-000000000122",
+        .user_id = worker_id,
         .roles = &[_]bpm.api_authorization.Role{.TASK_WORKER},
         .is_operator_or_above = false,
         .is_platform_admin = false,
@@ -382,27 +411,37 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
     const url = try testDbUrl(alloc);
     defer alloc.free(url);
 
+    var h = try helpers.TestHarness.init(alloc);
+    defer h.deinit();
+
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
     const conn = try pool.acquire();
     defer pool.release(conn);
 
-    const dlq_id_ok = "33333333-cccc-cccc-cccc-cccccccccccc";
-    const dlq_id_fail = "44444444-dddd-dddd-dddd-dddddddddddd";
+    const dlq_id_ok = try h.newUuidString(alloc);
+
+    defer alloc.free(dlq_id_ok);
+    const dlq_id_fail = try h.newUuidString(alloc);
+    defer alloc.free(dlq_id_fail);
     try insertDlqRow(conn, dlq_id_ok, null, "WEBHOOK", "obs05-int03-ok", "2026-05-25T12:00:00Z");
     try insertDlqRow(conn, dlq_id_fail, null, "WEBHOOK", "obs05-int03-fail", "2026-05-25T12:01:00Z");
     defer cleanupDlqBySourceRef(conn, "obs05-int03-ok");
     defer cleanupDlqBySourceRef(conn, "obs05-int03-fail");
 
+    const actor_id = try h.newUuidString(alloc);
+    defer alloc.free(actor_id);
+    const worker_id = try h.newUuidString(alloc);
+    defer alloc.free(worker_id);
     const actor = dlq_routes.Actor{
-        .user_id = "00000000-0000-0000-0000-000000000131",
+        .user_id = actor_id,
         .roles = &[_]bpm.api_authorization.Role{.PROCESS_OPERATOR},
         .is_operator_or_above = true,
         .is_platform_admin = false,
     };
     const worker = dlq_routes.Actor{
-        .user_id = "00000000-0000-0000-0000-000000000132",
+        .user_id = worker_id,
         .roles = &[_]bpm.api_authorization.Role{.TASK_WORKER},
         .is_operator_or_above = false,
         .is_platform_admin = false,
@@ -474,3 +513,4 @@ test "TC-OBS-05-INT-03: POST /dlq/:id/discard appends audit and rolls back on au
     );
     try testing.expectEqual(@as(usize, 1), still_exists);
 }
+
