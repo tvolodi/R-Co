@@ -606,11 +606,22 @@ If any output: a function's return type does not cover all errors it propagates.
 error-set declarations now. This is the #1 cause of TEST-RUNNER compile failures and
 WF-03 dispatches. Do not proceed until this command produces no output.
 
+**4b. SQL type-cast validation (mandatory, run before self-review):**
+```bash
+python3 tools/lint_sql_param_types.py src tests
+```
+If any BLOCKER or MAJOR output: a SQL query has an asymmetric type cast that will cause
+PostgreSQL C42883 at runtime. Fix all findings before proceeding.
+The two patterns to fix:
+- `col::text = $N` without `$N::text` → change to `col = $N::uuid` (or add `$N::text`)
+- `WHERE text_col = <integer_literal>` → use a string literal instead
+
 **5. Self-review:**
 - [ ] No SQL string interpolation of user data (prepared statements only — security critical)
 - [ ] All allocating functions accept `std.mem.Allocator`
 - [ ] `src/engine/transition.zig` has zero I/O if modified (pure function — absolute rule)
 - [ ] Error types defined in per-module error sets
+- [ ] `python3 tools/lint_sql_param_types.py src tests` exits 0 — no BLOCKER/MAJOR (prevents C42883)
 - [ ] If any function signature changed: verify all call sites by running `zig build` and checking zero errors
 - [ ] `zig build` exits 0 with no "error set" output in stderr
 - [ ] No mocks, stubs, in-memory fakes, or stub return values in any test file (DIRECTIVE T-1)
