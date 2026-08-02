@@ -173,13 +173,16 @@ fn countInt(
 
 /// Create, activate, and return the definition ID. Caller is responsible for
 /// calling cleanupByName() in a defer.
+///
+/// ISS-0121 / GitHub #387: `created_by` is now passed in by the caller, who
+/// supplies a freshly generated per-test UUID via `TestHarness.newUuid()`.
 fn createAndActivateDefinition(
     allocator: std.mem.Allocator,
     def_store: *DefinitionStore,
     name: []const u8,
     graph: DefinitionGraph,
+    created_by: [16]u8,
 ) ![16]u8 {
-    const created_by = try parseUuid(allocator, "00000000-0000-0000-0000-000000000099");
     const draft = try def_store.create(allocator, CreateParams{
         .name = name,
         .version = "1.0",
@@ -234,7 +237,7 @@ test "TC-ISS-203-01: single transition emitted events carry correct deterministi
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph);
+    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph, h.newUuid());
 
     const inst = try inst_store.create(allocator, def_id, null, "{}");
     defer freeInstance(allocator, inst);
@@ -328,7 +331,7 @@ test "TC-ISS-203-02: replay dedup — ON CONFLICT DO NOTHING absorbs second inse
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph);
+    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph, h.newUuid());
 
     const inst = try inst_store.create(allocator, def_id, null, "{}");
     defer freeInstance(allocator, inst);
@@ -447,7 +450,7 @@ test "TC-ISS-203-03: client key passthrough — trigger event key stored as-is" 
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph);
+    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph, h.newUuid());
 
     // The test UUID seed is mixed with the test case ID so each test is isolated.
     const test_uuid = generateTestUuid(0x203_03_CAFE_BABE);
@@ -554,7 +557,7 @@ test "TC-ISS-203-04: different-instance isolation — same transition produces d
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph);
+    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph, h.newUuid());
 
     // Create two separate instances.
     const inst_a = try inst_store.create(allocator, def_id, null, "{}");
@@ -676,7 +679,7 @@ test "TC-ISS-203-05: ordinal uniqueness — N emitted events produce N distinct 
     };
     const graph = DefinitionGraph{ .nodes = &nodes, .edges = &edges };
 
-    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph);
+    const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph, h.newUuid());
 
     const inst = try inst_store.create(allocator, def_id, null, "{}");
     defer freeInstance(allocator, inst);

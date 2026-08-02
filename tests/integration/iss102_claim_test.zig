@@ -71,8 +71,8 @@ const test_graph = DefinitionGraph{ .nodes = &test_nodes, .edges = &test_edges }
 // Worker UUID constants
 // ---------------------------------------------------------------------------
 
-const worker_a = "aaaaaaaa-0000-4000-8000-000000000001";
-const worker_b = "bbbbbbbb-0000-4000-8000-000000000002";
+// ISS-0121: worker_a/worker_b moved into each test as `try randomUuidStr(alloc); defer alloc.free(...)`
+// ISS-0121: worker_a/worker_b moved into each test as `try randomUuidStr(alloc); defer alloc.free(...)`
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -178,7 +178,9 @@ fn createActiveDefinition(
     name: []const u8,
     version: []const u8,
 ) ![16]u8 {
-    const creator_id = try parseUuid(allocator, "00000000-0000-0000-0000-000000000099");
+    const creator_hex = try randomUuidStr(allocator);
+    defer allocator.free(creator_hex);
+    const creator_id = try parseUuid(allocator, creator_hex);
     const created = try def_store.create(allocator, CreateParams{
         .name = name,
         .version = version,
@@ -251,6 +253,8 @@ fn makeWorkerActor(user_id: []const u8) Actor {
 
 test "TC-ISS-102-01: happy path — claimTask sets claimed_by" {
     // covers: ISS-102 AC-1
+    const worker_a = try randomUuidStr(alloc); defer alloc.free(worker_a);
+    const worker_b = try randomUuidStr(alloc); defer alloc.free(worker_b);
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -347,6 +351,8 @@ fn claimWorkerThread(ctx: *ClaimCtx) void {
 
 test "TC-ISS-102-02: concurrent double-claim — exactly one wins" {
     // covers: ISS-102 AC-2
+    const worker_a = try randomUuidStr(alloc); defer alloc.free(worker_a);
+    const worker_b = try randomUuidStr(alloc); defer alloc.free(worker_b);
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -445,6 +451,8 @@ test "TC-ISS-102-02: concurrent double-claim — exactly one wins" {
 
 test "TC-ISS-102-03: claim on already-claimed task returns AlreadyClaimed" {
     // covers: ISS-102 AC-3
+    const worker_a = try randomUuidStr(alloc); defer alloc.free(worker_a);
+    const worker_b = try randomUuidStr(alloc); defer alloc.free(worker_b);
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -495,6 +503,8 @@ test "TC-ISS-102-03: claim on already-claimed task returns AlreadyClaimed" {
 
 test "TC-ISS-102-04: claim on non-PENDING task returns NotPending" {
     // covers: ISS-102 AC-4
+    const worker_a = try randomUuidStr(alloc); defer alloc.free(worker_a);
+    const worker_b = try randomUuidStr(alloc); defer alloc.free(worker_b);
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -552,6 +562,8 @@ test "TC-ISS-102-04: claim on non-PENDING task returns NotPending" {
 
 test "TC-ISS-102-05: complete by claimed_by worker succeeds" {
     // covers: ISS-102 AC-5
+    const worker_a = try randomUuidStr(alloc); defer alloc.free(worker_a);
+    const worker_b = try randomUuidStr(alloc); defer alloc.free(worker_b);
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -615,6 +627,8 @@ test "TC-ISS-102-05: complete by claimed_by worker succeeds" {
 
 test "TC-ISS-102-06: complete by different worker returns 403" {
     // covers: ISS-102 AC-6
+    const worker_a = try randomUuidStr(alloc); defer alloc.free(worker_a);
+    const worker_b = try randomUuidStr(alloc); defer alloc.free(worker_b);
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -678,6 +692,8 @@ test "TC-ISS-102-06: complete by different worker returns 403" {
 
 test "TC-ISS-102-07: complete USER-assigned unclaimed task by that user succeeds" {
     // covers: ISS-102 AC-7
+    const worker_a = try randomUuidStr(alloc); defer alloc.free(worker_a);
+    const worker_b = try randomUuidStr(alloc); defer alloc.free(worker_b);
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);
@@ -741,6 +757,8 @@ test "TC-ISS-102-07: complete USER-assigned unclaimed task by that user succeeds
 
 test "TC-ISS-102-08: complete USER-assigned unclaimed task by different user returns 403" {
     // covers: ISS-102 AC-8
+    const worker_a = try randomUuidStr(alloc); defer alloc.free(worker_a);
+    const worker_b = try randomUuidStr(alloc); defer alloc.free(worker_b);
     const alloc = std.testing.allocator;
 
     var h = try TestHarness.init(alloc);

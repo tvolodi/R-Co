@@ -1230,6 +1230,23 @@ pub fn build(b: *std.Build) void {
     run_iss0122_integration_tests.setCwd(b.path("."));
     run_iss0122_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-0121: TestHarness per-test UUID isolation helper regression tests
+    // (GitHub #387). Pins the contract for `h.newUuid()` and
+    // `h.newUuidString(allocator)` so a future refactor of the helpers or
+    // `bpm.uuid` cannot silently break the 258+ T010 migration sites
+    // documented in src/design/iss0121_per_test_uuids.md.
+    const iss0121_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0121_uuid_helpers_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0121_integration_tests = b.addRunArtifact(iss0121_integration_tests);
+    run_iss0121_integration_tests.setCwd(b.path("."));
+    run_iss0121_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     // ISS-0123: DLQ rename (Cluster B) + obs05 audit-trigger isolation (Cluster A) regression tests.
     const iss0123_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1455,6 +1472,7 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss0125_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0122_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0123_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0121_integration_tests.step);
 
     const test_integration_iss0123_step = b.step("test-integration-iss0123", "Run ISS-0123 DLQ rename + audit-trigger isolation regression tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0123_step.dependOn(&clean_test_db.step);
@@ -1463,6 +1481,10 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss0122_step = b.step("test-integration-iss0122", "Run ISS-0122 audit chain non-UTF-8 resilience integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0122_step.dependOn(&clean_test_db.step);
     test_integration_iss0122_step.dependOn(&run_iss0122_integration_tests.step);
+
+    const test_integration_iss0121_step = b.step("test-integration-iss0121", "Run ISS-0121 TestHarness UUID-helper regression tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0121_step.dependOn(&clean_test_db.step);
+    test_integration_iss0121_step.dependOn(&run_iss0121_integration_tests.step);
 
     const test_integration_iss205_step = b.step("test-integration-iss205", "Run ISS-205 webhook transactional outbox integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss205_step.dependOn(&clean_test_db.step);

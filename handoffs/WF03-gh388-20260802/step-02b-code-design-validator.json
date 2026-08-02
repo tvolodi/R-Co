@@ -1,0 +1,55 @@
+{
+  "handoff_id": "WF03-gh388-step-02b",
+  "run_id": "WF03-gh388-20260802",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-02T06:59:42Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2b CODE-DESIGN-VALIDATOR \u2014 hard gate",
+    "requirement_ids": [
+      "ISS-0122"
+    ],
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/388",
+    "related_handoff_ids": [
+      "WF03-gh388-step-00",
+      "WF03-gh388-step-051",
+      "WF03-gh388-step-02"
+    ],
+    "artifacts_in": [
+      "src/design/audit_chain_text_resource_id.md",
+      "docs/issue-reports/WF03-gh388-20260802-step-02-code-designer-INNER-REPORT.yaml",
+      "docs/issues/ISS-0122.json"
+    ]
+  },
+  "task": {
+    "description": "Validate the design artefact at src/design/audit_chain_text_resource_id.md per the standard CODE-DESIGN-VALIDATOR procedure. Run `python3 tools/lint_design_artefact.py src/design/audit_chain_text_resource_id.md` and verify it exits 0 with no BLOCKER/MAJOR. Then verify the 7 hard requirements: (1) every acceptance criterion in every MUST requirement (here: ISS-0122 acceptance criteria = the 9 items in diagnosis.yaml) has a design element; (2) no implementation code is present in the artefact (no Zig function bodies, no SQL CREATE statements, only design-level descriptions and pseudo-SQL); (3) all public function signatures are listed (bpm_audit_chain_canonical_payload, bpm_audit_compute_chain_hash, bpm_audit_apply_chain_hash); (4) error taxonomy exists (22021, 22023, 42703, 42P10, others); (5) dependencies documented (pgcrypto for digest, pgcrypto is installed as part of test_infrastructure_guide \u2014 verify by listing src/design or migration files that reference pgcrypto); (6) classification per templates/lego-catalog.md is correct (Type E cross-cutting \u2014 only the audit chain subsystem + 4 migrations + 1 test file); (7) the test contract section lists exactly the TCs the diagnosis requires (TC-EE-10-06, TC-EXT-01-INT-07, TC-SCH-02-02, plus new TC-AUDIT-UTF8 with assertions a-d). On PASS set next_action='Route to BACKEND-DEV (Step 3)'. On FAIL set next_action='Route to CODE-DESIGNER for rework' and list every blocked check.",
+    "acceptance_criteria": [
+      "python tools/lint_design_artefact.py src/design/audit_chain_text_resource_id.md exits 0 with no BLOCKER/MAJOR",
+      "All 9 acceptance criteria from diagnosis.yaml are mapped to design elements",
+      "No SQL CREATE statements, no Zig function bodies in the design",
+      "All three PL/pgSQL function signatures listed",
+      "Error taxonomy section present with at least 22021 covered",
+      "Test contract section mentions TC-EE-10-06, TC-EXT-01-INT-07, TC-SCH-02-02, plus TC-AUDIT-UTF8"
+    ],
+    "functions_to_call": [
+      "validate-design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact src/design/audit_chain_text_resource_id.md is lint-clean and covers all 8 acceptance criteria from docs/issues/ISS-0122.json / scratch/WF03-gh388-20260802/issue-fixer-step1/diagnosis.yaml. tools/lint_design_artefact.py exited 0 with BLOCKER=0 MAJOR=0. The 7-section Type E structure (module purpose / affected files / schema+migration / public interface / error taxonomy / test contract / migration safety) maps every MUST requirement to a concrete design element; the 3 failing pre-fix TCs (TC-EE-10-06, TC-EXT-01-INT-07, TC-SCH-02-02) plus the new regression TC-AUDIT-UTF8 are explicitly enumerated. Error taxonomy covers 22021 (10 mentions), 22023, 42703, 42P10, 40001/40P01 plus WHEN OTHERS catch-all. All three required PL/pgSQL function signatures (bpm_audit_chain_canonical_payload, bpm_audit_compute_chain_hash, bpm_audit_apply_chain_hash) are listed in section 4. pgcrypto built-ins (digest/encode/convert_to) are documented in the section 3 step-4 outline. Type E classification is correct per templates/lego-catalog.md (audit chain / tamper-evident logic is never-templated). No Zig function bodies or executable SQL DDL \u2014 only design-level outlines and signature blocks. No executable CREATE TABLE / CREATE FUNCTION / CREATE TRIGGER; the few matches are inside narrative prose in section 3 step 5 (migration operation outline) and section 8 Q3 (test-body comment), both explicitly labelled as design-level.",
+    "artifacts_out": [
+      "src/design/audit_chain_text_resource_id.md",
+      "docs/issue-reports/WF03-gh388-20260802-step-02-code-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-02T07:00:06Z",
+  "completed_at": "2026-08-02T07:01:36Z"
+}

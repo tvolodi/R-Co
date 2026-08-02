@@ -1,0 +1,40 @@
+report_id: WF03-gh387-20260802-step-02-code-designer
+agent_id: CODE-DESIGNER
+run_id: WF03-gh387-20260802
+workflow_id: WF-03
+step: "02"
+created_at: "2026-08-02T11:00:50Z"
+handoff_id: WF03-gh387-20260802-step02
+classification:
+  type: E
+  type_name: Novel / cross-cutting integration-test UUID isolation refactor
+  rationale: >-
+    The change spans the shared TestHarness API, 19 integration-test files,
+    lint baseline governance, and CI prevention; none of the Type A-D Lego
+    parameter-file patterns applies.
+summary: >-
+  Created the Type E design at src/design/iss0121_per_test_uuids.md for
+  ISS-0121 / GitHub #387. The design covers the TestHarness UUID APIs,
+  replacement and migration rules, all 20 requested Zig files with rough
+  literal counts, baseline regeneration, CI prevention, acceptance criteria,
+  scope boundaries, and risks. Verification found all 11 numbered sections
+  and only signature declarations, with no function bodies or SQL DDL.
+files_created:
+  - src/design/iss0121_per_test_uuids.md
+files_modified: []
+tests_run:
+  - name: Design section-header verification
+    status: pass
+    detail: "Exactly 11 numbered headers found: sections 1 through 11."
+  - name: Implementation-code exclusion check
+    status: pass
+    detail: "Only the two required pub fn signatures are present; no Zig function bodies and no SQL DDL blocks were found."
+  - name: Acceptance-criteria completeness review
+    status: pass
+    detail: >-
+      Design path, Type E classification, API signatures, ISS-0121 files list,
+      and the test infrastructure guide per-test UUID pattern reference are present.
+issues_found: []
+next_steps:
+  - "Route to CODE-DESIGN-VALIDATOR (Step 2b hard gate)."
+blockers: []

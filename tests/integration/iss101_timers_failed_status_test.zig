@@ -127,17 +127,22 @@ fn openTenantConn(
 }
 
 /// Insert a minimal instance_projections row so the timers FK is satisfied.
+/// ISS-0121 / GitHub #387: definition_id is generated per call rather than a
+/// hardcoded literal so concurrent test binaries cannot collide on the FK.
 fn insertInstanceProjection(
+    allocator: std.mem.Allocator,
     conn: *pg.Conn,
     instance_id_hex: []const u8,
 ) !void {
+    const definition_id_hex = try randomUuidStr(allocator);
+    defer allocator.free(definition_id_hex);
     try conn.exec(
         \\INSERT INTO instance_projections
         \\    (instance_id, definition_id, status, last_event_seq)
         \\VALUES ($1::uuid, $2::uuid, 'ACTIVE', 0)
         \\ON CONFLICT (instance_id) DO NOTHING
     ,
-        &.{ instance_id_hex, "00000000-1010-4000-8000-000000000000" },
+        &.{ instance_id_hex, definition_id_hex },
     );
 }
 
@@ -190,10 +195,10 @@ test "iss101_timers_failed_status: update_timer_to_failed_succeeds" {
     var conn = try openTenantConn(allocator, url, schema_name_str);
     defer conn.close();
 
-    const instance_id = "10110000-0000-4000-8000-000000000001";
-    const timer_id    = "10110000-0000-4000-8000-000000000002";
+    const instance_id = try randomUuidStr(allocator); defer allocator.free(instance_id);;
+    const timer_id = try randomUuidStr(allocator); defer allocator.free(timer_id);;
 
-    try insertInstanceProjection(&conn, instance_id);
+    try insertInstanceProjection(allocator, &conn, instance_id);
     try insertPendingTimer(&conn, timer_id, instance_id);
 
     // Act: update status to lowercase 'failed'
@@ -245,10 +250,10 @@ test "iss101_timers_failed_status: update_timer_to_failed_uppercase_succeeds" {
     var conn = try openTenantConn(allocator, url, schema_name_str);
     defer conn.close();
 
-    const instance_id = "10110000-0000-4000-8000-000000000003";
-    const timer_id    = "10110000-0000-4000-8000-000000000004";
+    const instance_id = try randomUuidStr(allocator); defer allocator.free(instance_id);;
+    const timer_id = try randomUuidStr(allocator); defer allocator.free(timer_id);;
 
-    try insertInstanceProjection(&conn, instance_id);
+    try insertInstanceProjection(allocator, &conn, instance_id);
     try insertPendingTimer(&conn, timer_id, instance_id);
 
     // Act: update status to uppercase 'FAILED' — CHECK uses lower() so it passes
@@ -304,10 +309,10 @@ test "iss101_timers_failed_status: invalid_status_still_rejected" {
     var conn = try openTenantConn(allocator, url, schema_name_str);
     defer conn.close();
 
-    const instance_id = "10110000-0000-4000-8000-000000000005";
-    const timer_id    = "10110000-0000-4000-8000-000000000006";
+    const instance_id = try randomUuidStr(allocator); defer allocator.free(instance_id);;
+    const timer_id = try randomUuidStr(allocator); defer allocator.free(timer_id);;
 
-    try insertInstanceProjection(&conn, instance_id);
+    try insertInstanceProjection(allocator, &conn, instance_id);
     try insertPendingTimer(&conn, timer_id, instance_id);
 
     // Begin a transaction to contain the SAVEPOINT.
@@ -373,12 +378,13 @@ test "iss101_timers_failed_status: existing_statuses_remain_valid" {
     var conn = try openTenantConn(allocator, url, schema_name_str);
     defer conn.close();
 
-    const instance_id     = "10110000-0000-4000-8000-000000000007";
-    const timer_pending   = "10110000-0000-4000-8000-000000000008";
-    const timer_fired     = "10110000-0000-4000-8000-000000000009";
-    const timer_cancelled = "10110000-0000-4000-800a-000000000001";
+    const instance_id = try randomUuidStr(allocator); defer allocator.free(instance_id);;
+    const timer_pending = try randomUuidStr(allocator); defer allocator.free(timer_pending);;
+    const timer_fired = try randomUuidStr(allocator); defer allocator.free(timer_fired);;
+    const timer_cancelled = try randomUuidStr(allocator);
+    defer allocator.free(timer_cancelled);
 
-    try insertInstanceProjection(&conn, instance_id);
+    try insertInstanceProjection(allocator, &conn, instance_id);
 
     // Insert timer with status 'pending'
     try conn.exec(
