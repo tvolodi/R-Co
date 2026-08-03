@@ -223,8 +223,8 @@ test "ISS-208-TC2: task completion on completed instance returns 409 INSTANCE_NO
         &.{ inst_id, tenant_id, def_id },
     );
 
-    const token_id_2 = try randomUuidStr(alloc);
-    defer alloc.free(token_id_2);
+    const token_id_2 = try randomUuidStr(allocator);
+    defer allocator.free(token_id_2);
 
     // Insert a token (required by tasks.token_id FK).
     try h.conn.exec(
