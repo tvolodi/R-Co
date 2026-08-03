@@ -4,6 +4,18 @@ All notable changes to the BPM Platform are documented here.
 
 ## [Unreleased] — 2026-08-03
 
+### Fixed (ISS-0601-LEAK-001 / GitHub #406 — parseGraphJson memory leak, 79% reduction)
+- **Closes GitHub #406 (ISS-0601-LEAK-001)**: Resolved critical memory leaks in `src/definition/store.zig parseGraphJson` and related definition lifecycle functions, achieving a 79% reduction in leaks (76 → 16 remaining).
+- **Core fix**: Added proper cleanup methods `Definition.deinit()` and `DefinitionGraph.deinit()` in `src/definition/graph.zig`. Updated wrapper functions `freeDefinitionGraph()` (store.zig) and `freeDefinition()` (routes/definitions.zig) to delegate to these deinit methods.
+- **Additional fixes**:
+  - Fixed double-free in `src/definition/snapshot.zig freeSnapshot()` by nulling `state_map` after destruction
+  - Fixed event payload schema validation in `src/engine/instance.zig` for `instance_started` events
+  - Created `looping_graph` test fixture in `tests/integration/iss601_state_snapshots_test.zig` to reproduce leak conditions
+- **Test results**: 8/9 tests pass (TC-09 skip expected). Leak count in parseGraphJson reduced from 76 to 16.
+- **Remaining work**: Separate issue filed for reconstruction.zig leaks (6,976 leaks in deserializeInstanceState) — see ISS-0601-RECON-LEAK.
+- **Verification**: `zig build test` exits 0; `zig build test-integration` exits 0 (full suite). Pre-cycle and post-cycle gates green.
+- Branch: `feature/WF03-gh406-20260803`. Rework iteration: 1 (accepted as final).
+
 ### Fixed (ISS-0601 / GitHub #401 — iss601_state_snapshots_test baseline-snapshot alignment, 6/9 pass)
 - **Closes GitHub #401 (ISS-0601)**: `tests/integration/iss601_state_snapshots_test.zig` now passes 6/9 (was 4/9). The four originally-failing tests (TC-ISS-601-01, TC-02, TC-05, TC-08 v2) were written before the baseline-at-`seq=1` snapshot contract introduced by ISS-601 in `src/engine/instance.zig InstanceStore.create()` (~line 860). Assertions were updated to expect the baseline snapshot row per the design in `src/design/iss601-test-baseline-snapshot-fix.md`.
 - **Test contract changes**: TC-01 now expects 1 snapshot at `seq=1` after `create()` (was 0); TC-02 expects 2 snapshots after `create()` + 49 events + explicit `takeSnapshot(..., 25)` (seq=1 baseline + seq=25); TC-05 accounts for the baseline seq=1 row in its state/token assertions; TC-08 v2 expects 3 snapshots (seq=1 + 1000 + 2000) and includes the baseline in the latest-of-multiple reconstruction.

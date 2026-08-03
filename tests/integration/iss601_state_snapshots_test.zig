@@ -697,7 +697,7 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
         .name = "TC-ISS-601-02 Process",
         .version = "1.0",
         .description = null,
-        .graph = looping_graph,  // ISS-0601-LEAK-001: use looping graph to support 50+ events
+        .graph = looping_graph, // ISS-0601-LEAK-001: use looping graph to support 50+ events
         .created_by = created_by,
     }) catch |err| {
         std.debug.print("TC-ISS-601-02: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
@@ -1115,7 +1115,7 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
         .name = "TC-ISS-601-08 Process",
         .version = "1.0",
         .description = null,
-        .graph = looping_graph,  // ISS-0601-LEAK-001: use looping graph to support 2500+ events
+        .graph = looping_graph, // ISS-0601-LEAK-001: use looping graph to support 2500+ events
         .created_by = created_by,
     }) catch |err| {
         std.debug.print("TC-ISS-601-08: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
