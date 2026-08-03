@@ -1,0 +1,60 @@
+{
+  "handoff_id": "f4010200-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh401-20260803",
+  "workflow_id": "WF-03",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-gh401-20260803/step-02-code-designer.json",
+  "created_at": "2026-08-03T14:36:41Z",
+  "started_at": "2026-08-03T14:37:24Z",
+  "completed_at": "2026-08-03T09:48:57Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving \u2014 Step 2 (CODE-DESIGNER: fix design artefact)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f4010000-0000-0000-0000-000000000000",
+      "f4010050-0000-0000-0000-000000000000",
+      "f4010100-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0601.json",
+      "docs/issue-reports/ISS-0601-step1.yaml",
+      "tests/integration/iss601_state_snapshots_test.zig",
+      "src/engine/instance.zig",
+      "src/engine/snapshot_writer.zig",
+      "src/engine/reconstruction.zig",
+      "tests/integration/helpers.zig"
+    ]
+  },
+  "task": {
+    "description": "WF-03 Step 2 (SOLUTION DESIGN): Produce the fix design artefact for ISS-0601.\n\n## Background (from Step 1 inner report)\n\nISS-0601: 4 integration tests in `tests/integration/iss601_state_snapshots_test.zig` fail with off-by-one snapshot counts because `src/engine/instance.zig InstanceStore.create()` now takes a baseline snapshot at seq=1 (line ~860). The 4 failing tests assert snapshot counts or specific seq values that predate this feature.\n\n## Design Output\n\nProduce a Type E prose design artefact at `src/design/iss601-test-baseline-snapshot-fix.md` per `docs/guides/backend_developer_guide.md \u00a76`. The design MUST include:\n\n1. **Problem statement** \u2014 restate the off-by-one mismatch in plain language.\n2. **Root cause** \u2014 cite `src/engine/instance.zig` line ~860 (`takeSnapshot(...1) catch {}`) and explain that the implementation writes a baseline snapshot after every successful create.\n3. **Fix strategy** \u2014 update the 4 failing tests (and only those) to expect the baseline snapshot at seq=1:\n   - **TC-ISS-601-01** (line ~242): change `expectEqual(@as(i64, 0), cnt)` to `expectEqual(@as(i64, 1), cnt)`, then verify the snapshot is at seq=1 and contains the expected state_blob. Reconstruction call should still succeed.\n   - **TC-ISS-601-02** (line ~759): the test inserts 49 events then takes a snapshot at seq=25; with the baseline seq=1 row now present, `SELECT ... ORDER BY snapshot_seq DESC` returns 2 rows. Pin `WHERE snapshot_seq = 25` (or filter `snapshot_seq = 25` in the lookup), and assert the seq=1 baseline + seq=25 are both present.\n   - **TC-ISS-601-05** (overflow-payload join): the test currently does not assert a snapshot count, so it may pass once the seq=1 baseline is documented as the new contract. Re-verify by reading the test and adjusting any seq-specific assertion.\n   - **TC-ISS-601-08 v2** (line ~1124): the test takes snapshots at seq 1000 and seq 2000, then asserts row count == 2. With the baseline seq=1, the row count is 3. Update the assertion to `expectEqual(@as(usize, 3), rows.rows.len)`, filter on `snapshot_seq IN (1000, 2000)` for the latest-of-multiple check, and confirm seq=2000 is the latest.\n4. **Secondary cleanup (optional, MINOR)** \u2014 move `'SET session_replication_role = replica'` to the top of `TestHarness.init()` in `tests/integration/helpers.zig` (before `resetTestData`), so the audit_entries DELETE in resetTestData does not trigger the immutability guard. This is purely cosmetic \u2014 it silences the misleading 'POSTGRES ERROR: audit_entries is immutable' messages during test setup. Do NOT remove the silent `error.ServerError => {}` catch in `deleteTableBestEffort` as a backup safety net.\n5. **Out of scope** \u2014 do NOT change `InstanceStore.create()` to skip the baseline snapshot. The baseline-at-seq-1 is the ISS-601 design contract; changing it would regress the snapshot optimization for production traffic.\n6. **Public function signatures** \u2014 no business-logic signatures change. Test signatures unchanged.\n7. **Error taxonomy** \u2014 no new errors; existing `error.SkipZigTest` patterns preserved.\n8. **Dependencies** \u2014 no new modules.\n9. **Acceptance criteria** \u2014 restate the GitHub issue acceptance: `zig build test-integration-iss601` \u2192 9/9 PASS (or 8/9 with TC-09 skipped), no regression in iss601/state-snapshot business journeys, `zig build`, `zig build test`, `python3 tools/lint_test_isolation.py tests/integration` all green.\n\n## Important: Do Not Implement\n\nYou are the CODE-DESIGNER. Do NOT modify any test, source, or migration file. Write ONLY the design artefact `src/design/iss601-test-baseline-snapshot-fix.md`. BACKEND-DEV will implement per the design.\n\n## Validation\n\nBefore completing the handoff, run:\n```bash\npython tools/lint_design_artefact.py src/design/iss601-test-baseline-snapshot-fix.md\n```\nExpected: exit 0, no BLOCKER/MAJOR.\n\nAlso run codegen dry-run if there are any Type A\u2013D parameter files (there should be none for this fix).\n\nREWORK 1:\n- [MAJOR] AC2 is not covered because the design does not explicitly reference docs/issues/ISS-0601.json as the investigation-notes source. ADD an explicit reference in the Acceptance Criteria section.\n- [MAJOR] TC-02 is internally inconsistent: the design says the parity assertions remain untouched, while the verified root-cause report identifies the parity assertion as the failure location. RECONCILE by either (a) removing the seq=25 pinning suggestion and replacing it with explicit assertion changes for all 4 parity assertions in TC-02, or (b) explaining exactly how the seq=25 WHERE-filter makes the parity assertions pass without changes.",
+    "acceptance_criteria": [
+      "Design artefact `src/design/iss601-test-baseline-snapshot-fix.md` exists",
+      "Design covers all 4 failing tests with concrete line numbers and fix hints",
+      "Design explicitly excludes changing `InstanceStore.create()` baseline behavior",
+      "Design covers the optional helpers.zig cleanup with explicit before/after SQL ordering",
+      "`python tools/lint_design_artefact.py src/design/iss601-test-baseline-snapshot-fix.md` exits 0",
+      "Handoff result filled with PASS, summary, artifacts_out, completed_at"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:lint-design-artefact",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1/2 of WF-03 Step 2 for ISS-0601. (1) Added explicit cross-reference to docs/issues/ISS-0601.json in both \u00a71 Purpose and \u00a710 Acceptance Criteria; the validator had flagged AC2 as uncovered because the JSON record was not cited as the canonical local investigation-notes source. (2) Rewrote \u00a74.2 (TC-02) to enumerate all six observable assertions (A1..A6) with current status, failure cause, and per-assertion fix. Resolved the internal inconsistency: the WHERE snapshot_seq=25 filter resolves only A3 (which passed by accident); A4 and A5 (the parity checks at lines 820-821) require a separate fix \u2014 DELETE the seq=1 baseline before the reconstructInstanceWithSnapshot call so the snapshot-assisted path operates on the same single-snapshot environment the test was originally written for. A1, A2, A6 require no change. The pre-existing parity assertions A4/A5 are kept verbatim. (3) Updated \u00a711 self-lint block-size list to reflect the new \u00a74.2.3 code block. Lint passes (EXIT=0). No implementation code touched; this is design-only rework.",
+    "artifacts_out": [
+      "src/design/iss601-test-baseline-snapshot-fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b) \u2014 re-validation"
+  },
+  "rework_count": 1,
+  "max_rework": 2
+}
