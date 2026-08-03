@@ -196,11 +196,13 @@ test "TC-ISS-601-01: reconstructInstanceWithSnapshot falls back to full replay w
         std.debug.print("TC-ISS-601-01: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer draft.deinit(alloc);
 
     const active_def = def_store.activate(alloc, draft.id) catch |err| {
         std.debug.print("TC-ISS-601-01: activate definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer active_def.deinit(alloc);
 
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
@@ -266,7 +268,7 @@ test "TC-ISS-601-01: reconstructInstanceWithSnapshot falls back to full replay w
     }
 
     // Reconstruct -- should fall back to full replay
-    const reconst_state = reconstruction_mod.reconstructInstanceWithSnapshot(
+    var reconst_state = reconstruction_mod.reconstructInstanceWithSnapshot(
         alloc,
         &pool,
         &snap_store,
@@ -276,6 +278,22 @@ test "TC-ISS-601-01: reconstructInstanceWithSnapshot falls back to full replay w
         std.debug.print("TC-ISS-601-01: reconstruction failed ({s})\n", .{@errorName(err)});
         return err;
     };
+    defer {
+        for (reconst_state.tokens) |tok| {
+            alloc.free(tok.node_id);
+            alloc.free(tok.branch_id);
+            if (tok.token_id) |t| alloc.free(t);
+            if (tok.waiting_child_instance_id) |w| alloc.free(w);
+        }
+        alloc.free(reconst_state.tokens);
+        reconst_state.variables.deinit(alloc);
+        reconst_state.join_counters.deinit(alloc);
+        for (reconst_state.pending_task_nodes) |n| alloc.free(n);
+        alloc.free(reconst_state.pending_task_nodes);
+        if (reconst_state.error_detail) |e| alloc.free(e);
+        for (reconst_state.cancelled_branch_ids) |b| alloc.free(b);
+        alloc.free(reconst_state.cancelled_branch_ids);
+    }
 
     // Verify reconstructed state is ACTIVE with at least one token
     try testing.expect(reconst_state.status == .ACTIVE);
@@ -666,11 +684,13 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
         std.debug.print("TC-ISS-601-02: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer draft.deinit(alloc);
 
     const active_def = def_store.activate(alloc, draft.id) catch |err| {
         std.debug.print("TC-ISS-601-02: activate definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer active_def.deinit(alloc);
 
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
@@ -911,11 +931,13 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
         std.debug.print("TC-ISS-601-05: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer draft.deinit(alloc);
 
     const active_def = def_store.activate(alloc, draft.id) catch |err| {
         std.debug.print("TC-ISS-601-05: activate definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer active_def.deinit(alloc);
 
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
@@ -1070,11 +1092,13 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
         std.debug.print("TC-ISS-601-08: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer draft.deinit(alloc);
 
     const active_def = def_store.activate(alloc, draft.id) catch |err| {
         std.debug.print("TC-ISS-601-08: activate definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer active_def.deinit(alloc);
 
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);

@@ -1,0 +1,44 @@
+{
+  "handoff_id": "a3f8d9c1-2b5e-4a7c-9d3e-1f6b8a4c2e9d",
+  "run_id": "WF03-gh406-20260803",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-03T10:53:59Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "e89580bd-bd01-4aef-9040-655403085fcd"
+    ],
+    "artifacts_in": [
+      "src/design/definition-leak-fix.md"
+    ],
+    "issue_id": "ISS-0601-LEAK-001",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/406"
+  },
+  "task": {
+    "description": "WF-03 Step 2b: Validate Fix Design (HARD GATE)\n\nValidate src/design/definition-leak-fix.md for ISS-0601-LEAK-001.\n\nThis is a Type E prose design. Run validation checks:\n1. Run: python tools/lint_design_artefact.py src/design/definition-leak-fix.md\n   Must exit 0 with no BLOCKER/MAJOR findings\n2. Verify design covers all issue acceptance criteria from GitHub #406:\n   - Design explains how parseGraphJson allocations will be freed\n   - Design identifies Definition.deinit() as the cleanup mechanism\n   - Design lists call sites that need defer statements\n   - Design addresses test verification strategy\n3. Check: no implementation code present (pure prose only)\n4. Check: all public interfaces documented (Definition.deinit signature)\n5. Check: error handling strategy documented (deinit is infallible)\n6. Check: migration impact documented (100+ call sites)\n\nThis is a HARD GATE. FAIL if any check fails.\nReturn PASS only if design is complete and implementation-ready.\n\nOn PASS: set next_action to Route to BACKEND-DEV Step 3\nOn FAIL: list all blocking issues for rework.",
+    "acceptance_criteria": [
+      "lint_design_artefact.py exits 0 (no BLOCKER/MAJOR)",
+      "Design covers all GitHub #406 acceptance criteria",
+      "No implementation code present",
+      "All public interfaces documented"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design validation PASSED after rework. All 6 checks passed: lint exits 0, all GitHub #406 acceptance criteria covered, no implementation code present, all public interfaces documented, error taxonomy documented (deinit is infallible), migration impact fully documented with 9 confirmed leaking sites listed plus grep pattern for audit. Design is complete and implementation-ready.",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-03T10:59:31Z",
+  "completed_at": "2026-08-03T11:01:15Z"
+}

@@ -800,11 +800,7 @@ fn currentMicrosecondTimestamp() i64 {
 
 /// Free all heap-allocated strings inside a Definition.
 fn freeDefinition(allocator: std.mem.Allocator, def: definition_store.Definition) void {
-    allocator.free(def.name);
-    allocator.free(def.version);
-    if (def.description) |d| allocator.free(d);
-    if (def.stage) |s| allocator.free(s);
-    definition_store.freeDefinitionGraph(allocator, def.graph);
+    def.deinit(allocator);
 }
 
 /// Append a JSON-encoded string (double-quoted, with escaping) to buf.

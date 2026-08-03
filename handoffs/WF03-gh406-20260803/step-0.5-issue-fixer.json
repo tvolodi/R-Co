@@ -1,0 +1,46 @@
+{
+  "handoff_id": "19515745-a803-4912-87b7-65d7e4e3135c",
+  "run_id": "WF03-gh406-20260803",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-03T10:43:59Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "05f19a4f-d9cb-48a7-995f-dc8a47847756"
+    ],
+    "artifacts_in": [],
+    "issue_id": "ISS-0601-LEAK-001",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/406"
+  },
+  "task": {
+    "description": "WF-03 Step 0.5: Issue Registration\n\nGitHub Issue #406: Memory leak in src/definition/store.zig parseGraphJson\n\nSymptom: parseGraphJson calls allocator.dupe(u8, n.id) without a matching free, leaking allocations every time a Definition with graph_json is loaded. Surfaced by tests/integration/iss601_state_snapshots_test.zig TC-ISS-601-01 (48 leaks) and TC-ISS-601-05 (42 leaks).\n\nReproduction:\n  BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-iss601\n  \nExpected: 9/9 PASS. Actual: 6 pass, 1 skip, 2 fail (leak errors at store.zig:1356).\n\nSeverity: MAJOR (affects every integration test with Definition + graph_json).\n\nExecute fn:register-issue:\n1. Check if ISS-0601-LEAK-001 already exists in docs/issues/\n2. If not: create docs/issues/ISS-0601-LEAK-001.json with symptom, root cause, severity MAJOR\n3. Update docs/issues/issue_index.json\n4. GitHub issue #406 already filed - record URL in the ISS file\n5. Return PASS with issue file path in artifacts_out\n\nDo NOT implement any fix in this step - only register the issue.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0601-LEAK-001.json exists",
+      "docs/issues/issue_index.json updated",
+      "Issue file contains github_issue field with #406 URL"
+    ],
+    "functions_to_call": [
+      "fn:register-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Registered ISS-0601-LEAK-001: memory leak in src/definition/store.zig parseGraphJson. Issue already filed as GitHub #406 and documented with symptom, root cause, severity MAJOR.",
+    "artifacts_out": [
+      "docs/issues/ISS-0601-LEAK-001.json",
+      "docs/issues/issue_index.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER Step 1 for diagnosis"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-03T10:44:27Z",
+  "completed_at": "2026-08-03T10:45:09Z"
+}
