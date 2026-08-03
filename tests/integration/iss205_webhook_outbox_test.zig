@@ -194,7 +194,7 @@ test "ISS-205-TC2: dispatchDueWebhookAttempts picks up orphaned committed delive
         \\  (id, subscription_id, status, attempt_count, max_attempts, next_attempt_at,
         \\   event_type, instance_id, payload_json, trace_id, created_at, updated_at)
         \\VALUES
-        \\  ($1::uuid, $2::uuid, 'pending', 0, 5, NOW() - INTERVAL '1 minute',
+        \\  ($1::uuid, $2::uuid, 'PENDING', 0, 5, NOW() - INTERVAL '1 minute',
         \\   'task.completed', $3::uuid, '{}', 'trace-205-tc2', NOW(), NOW())
         \\ON CONFLICT (id) DO NOTHING
     ,
@@ -278,7 +278,7 @@ test "ISS-205-TC3: exhausting max_attempts pauses the subscription" {
         \\  (id, subscription_id, status, attempt_count, max_attempts, next_attempt_at,
         \\   event_type, instance_id, payload_json, trace_id, created_at, updated_at)
         \\VALUES
-        \\  ($1::uuid, $2::uuid, 'failed', 4, 5, NOW() - INTERVAL '1 minute',
+        \\  ($1::uuid, $2::uuid, 'FAILED', 4, 5, NOW() - INTERVAL '1 minute',
         \\   'task.completed', $3::uuid, '{}', 'trace-205-tc3', NOW(), NOW())
         \\ON CONFLICT (id) DO NOTHING
     ,

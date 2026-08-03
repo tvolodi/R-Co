@@ -799,7 +799,7 @@ test "TC-EXT-02-INT-10: Same source event with multiple subscriptions keeps retr
     var attempt_idx: u8 = 1;
     while (attempt_idx < 5) : (attempt_idx += 1) {
         try conn.exec(
-            "UPDATE webhook_deliveries SET next_attempt_at = NOW() WHERE subscription_id = $1::uuid AND status = 'failed'",
+            "UPDATE webhook_deliveries SET next_attempt_at = NOW() WHERE subscription_id = $1::uuid AND status = 'FAILED'",
             &.{fail_sub_id},
         );
         try webhook_dispatcher.dispatchDueWebhookAttempts(allocator, &pool);

@@ -356,7 +356,7 @@ test "iss106_webhook_outbox: out_of_domain_status_rejected" {
             \\INSERT INTO webhook_deliveries
             \\    (id, subscription_id, event_id, status, attempt, next_attempt_at, created_at)
             \\VALUES
-            \\    ($1::uuid, $2::uuid, NULL, 'pending', 0, NOW(), NOW())
+            \\    ($1::uuid, $2::uuid, NULL, 'PENDING', 0, NOW(), NOW())
         ,
             &.{ delivery_id, subscription_id },
         );
