@@ -1,0 +1,67 @@
+{
+  "handoff_id": "f4010700-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh401-20260803",
+  "workflow_id": "WF-03",
+  "step": "7",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "file": "handoffs/WF03-gh401-20260803/step-07-doc-updater.json",
+  "created_at": "2026-08-03T15:11:36Z",
+  "started_at": "2026-08-03T15:12:08Z",
+  "completed_at": "2026-08-03T10:13:01Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 7 (DOC-UPDATER: changelog + status)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f4010000-0000-0000-0000-000000000000",
+      "f4010050-0000-0000-0000-000000000000",
+      "f4010100-0000-0000-0000-000000000000",
+      "f4010200-0000-0000-0000-000000000000",
+      "f4010250-0000-0000-0000-000000000000",
+      "f4010300-0000-0000-0000-000000000000",
+      "f4010500-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "CHANGELOG.md",
+      "docs/requirements.yaml",
+      "docs/status/requirement_status.yaml",
+      "docs/issues/ISS-0601.json",
+      "docs/issues/ISS-0601-LEAK-001.json",
+      "tests/reports/report-20260803-WF03-gh401-20260803.yaml",
+      "src/design/iss601-test-baseline-snapshot-fix.md"
+    ],
+    "test_outcome": {
+      "pre_fix": "4 pass, 1 skip, 4 fail",
+      "post_fix": "6 pass, 1 skip, 2 fail (improved)",
+      "remaining_failures": "TC-ISS-601-01 + TC-ISS-601-05 \u2014 pre-existing src/definition/store.zig parseGraphJson leak (filed as GH #406 / ISS-0601-LEAK-001)",
+      "overall_design_outcome": "PASS (within design scope)"
+    }
+  },
+  "task": {
+    "description": "WF-03 Step 7: Update CHANGELOG.md and requirement status for ISS-0601 resolution.\n\n## Mandatory Pre-Work\n\n```\ncat docs/agents/AGENT_SYSTEM.md\ncat docs/agents/FUNCTIONS.md\n```\n\n## Tasks\n\n### 1. Update CHANGELOG.md\n\nAdd an entry under the 'Unreleased' / current release section. Format per repo convention:\n\n```markdown\n### Fixed\n- ISS-0601 / GH #401: iss601_state_snapshots_test now passes 6/9 (was 4/9) by accounting for the baseline-at-seq=1 snapshot contract introduced by ISS-601 in `src/engine/instance.zig InstanceStore.create()`. TC-01, TC-02, TC-05, TC-08 v2 updated per design (`src/design/iss601-test-baseline-snapshot-fix.md`). Also moved `SET session_replication_role = 'replica'` earlier in `TestHarness.init()` to silence the misleading 'audit_entries is immutable' log noise during cleanup. The 2 remaining failures (TC-01, TC-05) are pre-existing memory leaks in `src/definition/store.zig:1356 parseGraphJson`, filed separately as GH #406 / ISS-0601-LEAK-001.\n```\n\n### 2. Update docs/issues/ISS-0601.json status\n\nAlready updated by ORCH \u2014 verify the file shows `status: RESOLVED_WITH_MINOR_FINDINGS` and the `resolution` block is present.\n\n### 3. Do NOT touch docs/status/requirement_status.yaml\n\nISS-0601 is not a tracked requirement (it's a test fix), so no requirement status update is needed.\n\n### 4. Do NOT file a new GitHub issue\n\nISS-0601-LEAK-001 was filed by ORCH (GH #406). The DOC-UPDATER does not re-file.\n\n### 5. Retrospective (this is a WF-03 run, not WF-02 \u2014 so retrospective is OPTIONAL)\n\nSkip the retrospective section per CLAUDE.md: WF-03 does not require an `estimation.json`. Do not write `docs/metrics/retrospectives/<run_id>.yaml` unless explicitly requested.\n\n## Completion\n\nGet completion timestamp:\n```powershell\n(Get-Date).ToUniversalTime().ToString(\"yyyy-MM-ddTHH:mm:ssZ\")\n```\n\nUpdate `handoffs/WF03-gh401-20260803/step-07-doc-updater.json`:\n- `status`: \"COMPLETED\"\n- `result.status`: \"PASS\"\n- `result.summary`: brief description of doc updates applied\n- `result.artifacts_out`: list of modified files (CHANGELOG.md, etc.)\n- `result.issues`: []\n- `result.next_action`: \"Route to BACKEND-DEV Step Final (git-merge)\"\n- `completed_at`: real UTC timestamp\n\nUpdate `handoffs/registry.json`: set entry `f4010700-0000-0000-0000-000000000000` status to \"COMPLETED\".\n\nAppend route log:\n```\n<ISO8601> | ROUTE | WF03-gh401-20260803 | f4010700 | ORCH \u2192 DOC-UPDATER | COMPLETED\n```\n\n## Allowed Commands\n\n```powershell\n# Read current changelog\nGet-Content CHANGELOG.md | Select-Object -First 30\n\n# Apply changelog edit (only ONE edit, minimal change)\n# Use replace_string_in_file for surgical CHANGELOG.md update\n\n# Verify\nGet-Content CHANGELOG.md | Select-Object -First 30\n\n# Standard handoff management\npy -c \"import json ...\"\nAdd-Content handoffs\\orchestrator.log -Value \"...\" -Encoding Unicode\n```\n\n## Forbidden Commands\n\n```powershell\n# NO source code changes (CHANGELOG.md only)\n# NO requirement_status.yaml hand-edit (must use reqctl.py)\n# NO git state changes\n# NO file creation outside the changelog\n```\n\n## Return Format\n\nWhen done, reply with:\n- CHANGELOG.md: which section updated, which entries added\n- ISS-0601.json: status verification\n- Final handoff status\n- Path to changelog (no diff required)\n",
+    "acceptance_criteria": [
+      "CHANGELOG.md has new entry under appropriate section describing ISS-0601 fix",
+      "ISS-0601.json status field reads RESOLVED_WITH_MINOR_FINDINGS",
+      "No edits to requirement_status.yaml (none needed for this test fix)",
+      "No git state changes (DOC-UPDATER does not commit)",
+      "Handoff result filled with PASS"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Updated CHANGELOG.md with ISS-0601 / GH #401 entry under [Unreleased] \u2014 2026-08-03. Verified docs/issues/ISS-0601.json already shows status RESOLVED_WITH_MINOR_FINDINGS with full resolution block (8 keys). No requirement_status.yaml edits (test-fix issue, not a tracked requirement). No new GitHub issue filed (ISS-0601-LEAK-001 / GH #406 already filed by ORCH). No retrospective (WF-03 does not require estimation.json).",
+    "artifacts_out": [
+      "CHANGELOG.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV Step Final (git-merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 2
+}
