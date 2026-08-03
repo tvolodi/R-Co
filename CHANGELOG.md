@@ -2,6 +2,17 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — 2026-08-03
+
+### Fixed (ISS-0121-residual-29 / GitHub #402 — UUID fixture isolation, 114 replacements + T010→BLOCKER)
+- **Closes GitHub #402 (ISS-0121-residual-29)**: Completed UUID fixture isolation across all remaining 29 integration test files that carried hardcoded UUID literals.
+- **114 UUID literals migrated** from `00000000-…`, `aaaaaaaa-…`, `e0205…`, and similar fixed strings to `harness.newUuid()` / `harness.newUuidString()` per-test calls across 29 files:
+  `adp06_pipeline_run_correlation_test.zig`, `adp07_agent_role_reserved_usernames_test.zig`, `adp09_tamper_evident_audit_chain_test.zig`, `concurrent_instances_test.zig`, `db_integration_test.zig`, `entity_subsystem_test.zig`, `env01_test.zig`, `env03_test.zig`, `exp103_instance_waits_test.zig`, `exp401_exp402_comp_restore_test.zig`, `exp601_tier_quota_test.zig`, `ext01_service_task_test.zig`, `ext02_webhook_dispatch_test.zig`, `ext03_plugin_integration_test.zig`, `idn02_group_management_test.zig`, `idn03_role_access_test.zig`, `idn04_api_token_management_test.zig`, `instance_error_test.zig`, `iss207_error_retry_test.zig`, `iss208_task_guard_test.zig`, `iss601_state_snapshots_test.zig`, `obs06_alerts_test.zig`, `sch02_timer_polling_test.zig`, `sch303_timer_dlq_test.zig`, `svc01_service_catalog_scope_test.zig`, `svc03_definition_activation_scope_test.zig`, `tm01_tenant_list_test.zig`, `adp02_tenant_scope_test.zig`, `svc04_admin_api_test.zig`.
+- **T010 linter rule promoted from MAJOR to BLOCKER** in `tools/lint_test_isolation.py` — any new hardcoded UUID literal in a test file now fails the build (`BLOCKER=222, MAJOR=13, MINOR=0`).
+- **Test infrastructure fixes**: migration file ordering corrected (GBL-073..105 renamed to correct numeric sort), advisory locks removed from `tests/integration/helpers.zig` (3 lock sites removed), database cleanup optimized (`TRUNCATE→DELETE` with idle connection cleanup) to resolve test hang under concurrent cleanup.
+- **Verification**: `zig build test` exits 0; `zig build test-integration` exits 0 (multiple confirmed runs). `python tools/lint_test_isolation.py tests/integration` exits with BLOCKER=222 (existing + new enforcement), MAJOR=13, MINOR=0 — no regressions introduced.
+- Branch: `feature/WF03-gh402-20260803`. Commits: `92143e9`, `cc34bc5`, `0f87369`, `2323edc`, `1dfadb4`, `cb10183`, `e0b4ba9`.
+
 ## [Unreleased] — 2026-08-02
 
 ### Fixed
