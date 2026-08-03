@@ -623,6 +623,15 @@ pub const TestHarness = struct {
             return err;
         };
 
+        // ISS-0601: GH-402 + OBS-03 (moved UP, before resetTestData and conn.begin()):
+        // Disable ALL triggers for the entire test session so resetTestData() can DELETE
+        // audit_entries without tripping the immutability guard. session_replication_role
+        // is a session-level setting, not a transaction-level one, so it must be set
+        // BEFORE resetTestData() runs.
+        _ = conn.exec("SET session_replication_role = 'replica'", &.{}) catch |err| {
+            std.debug.print("WARNING: Failed to set replication role: {}\n", .{err});
+        };
+
         // Clear transient integration data for deterministic per-test isolation.
         resetTestData(&conn) catch |err| {
             std.debug.print("resetTestData failed: {}\n", .{err});
@@ -666,13 +675,8 @@ pub const TestHarness = struct {
             return err;
         };
 
-        // GH-402 + OBS-03: Disable ALL triggers for tests to avoid audit immutability guards.
-        // Audit triggers on other tables try to INSERT into audit_entries, which is blocked
-        // by guards. We disable all triggers at transaction level. Transaction rollback
-        // ensures changes don't persist, and we re-enable triggers for each deinit().
-        _ = conn.exec("SET session_replication_role = 'replica'", &.{}) catch |err| {
-            std.debug.print("WARNING: Failed to set replication role: {}\n", .{err});
-        };
+        // ISS-0601: session_replication_role was set earlier (before resetTestData).
+        // It is a session-level GUC and remains in effect across BEGIN/ROLLBACK.
 
         return TestHarness{
             .conn = conn,
