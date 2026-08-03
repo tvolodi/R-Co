@@ -1,0 +1,112 @@
+{
+  "handoff_id": "62a758c0-9ff9-42a1-9cd8-ed93aa6a4e48",
+  "run_id": "WF03-gh402-20260803",
+  "workflow_id": "WF-03",
+  "step": "005",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-gh402-20260803/step-005-issue-fixer.json",
+  "created_at": "2026-08-02T21:11:09Z",
+  "started_at": "2026-08-02T21:11:09Z",
+  "completed_at": "2026-08-02T21:13:15Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 0.5 (Issue Registry) + Step 1 (Diagnose), combined",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f880dbd3-fb0c-454b-9b6b-c0578a8f131e"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0121.json",
+      "docs/issues/issue_index.json",
+      "docs/agents/workflows/WF-03_issue_resolving.md",
+      "tools/lint_test_isolation.py",
+      "tools/lint_test_isolation.baseline.json",
+      "tests/integration/helpers.zig"
+    ],
+    "github_issue": {
+      "number": 402,
+      "url": "https://github.com/tvolodi/R-Co/issues/402",
+      "title": "ISS-0121-residual-29: drive T010 hardcoded-UUID MAJOR from 174 to <10",
+      "state": "OPEN",
+      "labels": ["bug"],
+      "sync_ref": "rco-sync-ref: ISS-0121-residual-29",
+      "found_by_run_id": "WF03-gh387-followup-20260802"
+    },
+    "branch_name": "feature/WF03-gh402-20260803",
+    "base_sha": "6cc92ecae27b8c10dd716b433ef83e932982fd1e"
+  },
+  "task": {
+    "description": "WF-03 Steps 0.5 and 1 for GitHub issue #402 (T010 hardcoded-UUID residual migration), combined. The on-disk linter reports BLOCKER=0 MAJOR=174 MINOR=0 across 29 unique affected test files.\n\nRequired actions (read-only — NO source/test code edits in this step):\n\nStep 0.5 — Issue Registry:\n  1. fn:search-issues — search docs/issues/issue_index.json and docs/issues/ISS-*.json for any prior ISS matching: hardcoded UUID / T010 / per-test UUID / TestHarness.newUuid / affected-area prefix tests/integration/. The expected match is ISS-0121 (status RESOLVED-PARTIAL, github_issue https://github.com/tvolodi/R-Co/issues/387).\n  2. Confirm the existing ISS-0121 entry covers GH #402. Decision: REUSE ISS-0121, do NOT file a new local issue. Decision rationale: GH #402 is the continuation issue (sync-ref ISS-0121-residual-29); the local ISS-0121 record is the single knowledge-base entry for this defect family. No `gh issue create` was performed in this step (the user-visible issue already exists at #402).\n  3. Update docs/issues/ISS-0121.json: github_issue field → https://github.com/tvolodi/R-Co/issues/402 (continuation; keep the original link as github_issue_original); append the 29-file residual to affected_areas; add resolution_part_3 entry recording the Step-005 work; advance resolved_at to 2026-08-02T21:11:09Z; status remains RESOLVED-PARTIAL until the migration completes.\n  4. Update docs/issues/issue_index.json: ISS-0121 entry → status=RESOLVED-PARTIAL, affected_areas=29-file residual, github_issue=https://github.com/tvolodi/R-Co/issues/402, run_id=WF03-gh402-20260803, resolved_at=2026-08-02T21:11:09Z; advance last_updated to the same UTC. Do NOT increment next_issue_id (no new ISS was filed).\n  5. Verify there is no GitHub ID collision: local ISS-0121 numbering does not coincide with an unrelated GH issue number; the sync-ref tag on GH #402 (ISS-0121-residual-29) is a string, not a GH number claim. Verified.\n\nStep 1 — Diagnose:\n  6. Run `python tools/lint_test_isolation.py tests/integration` (the project virtualenv is active in the PowerShell session). Capture BLOCKER/MAJOR/MINOR counts verbatim.\n  7. Read tools/lint_test_isolation.py — confirm the T010 rule at line 167 (UUID_LITERAL regex, severity MAJOR, excludes ALL_ZEROS_UUID) and that the only viable post-fix edit is the MAJOR → BLOCKER promotion at the same line once MAJOR < 10.\n  8. Read tools/lint_test_isolation.baseline.json header — confirm the baseline currently suppresses 195 findings.\n  9. Read tests/integration/helpers.zig around lines 467 and 479 — confirm TestHarness.newUuid() (16 raw bytes) and TestHarness.newUuidString(allocator) (![]u8) are available, with no further migration API needed.\n  10. Sample at least 3 affected files and confirm hardcoded literal patterns (e.g. db0301aa-0000-0000-0000-000000000001 in db_integration_test.zig, 00000000-0000-0000-0000-00000000e201 in ext02_webhook_dispatch_test.zig, e1030100-0000-0000-0000-000000000001 in exp103_instance_waits_test.zig).\n  11. Write an INNER-REPORT at docs/issue-reports/WF03-gh402-20260803-step-005-issue-fixer-INNER-REPORT.yaml containing: lint counts, full 29-file inventory with per-file occurrence counts, helpers API signature, root-cause statement, evidence samples, constraints for CODE-DESIGNER, and the acceptance criteria for Step 2.\n  12. Verify completeness: every artifact cited in this handoff's context.artifacts_in is read or referenced; every acceptance criterion below is supported by an evidence pointer.\n  13. Complete the handoff with PASS, exact completed_at, artifacts_out, issues list, next_action=Route to CODE-DESIGNER (Step 2).\n\nForbidden in this step:\n  - Modifying any source/test file under src/ or tests/.\n  - Weakening or extending the T010 rule (no exclusions, no severity downgrade).\n  - Refreshing tools/lint_test_isolation.baseline.json (baseline refresh is a post-fix Step 3 action).\n  - Writing a new local ISS file or filing a new `gh issue create` (GH #402 already exists).",
+    "acceptance_criteria": [
+      "YAML INNER-REPORT exists at docs/issue-reports/WF03-gh402-20260803-step-005-issue-fixer-INNER-REPORT.yaml with the full 29-file inventory, helpers API citations, root-cause statement, and CODE-DESIGNER constraints",
+      "INNER-REPORT cites exact lint counts (BLOCKER=0 MAJOR=174 MINOR=0) from a fresh run on feature/WF03-gh402-20260803 at 6cc92ec",
+      "INNER-REPORT explicitly enumerates the migration API (helpers.zig:467 newUuid / 479 newUuidString) and confirms NO new helper is required",
+      "GitHub issue #402 confirmed to exist already (no duplicate filed) via `gh issue view 402 --repo tvolodi/R-Co --json number,title,body,labels,state,url`",
+      "Local docs/issues/ISS-0121.json reviewed and updated: github_issue → https://github.com/tvolodi/R-Co/issues/402, github_issue_original field preserved, affected_areas extended to the 29-file residual, resolution_part_3 added",
+      "Local docs/issues/issue_index.json ISS-0121 entry updated to status=RESOLVED-PARTIAL with the 29-file residual; last_updated advanced; next_issue_id NOT incremented (no new ISS filed)",
+      "No source/test file modified in this step (verified via `git diff --stat` showing only docs/issues/, docs/issue-reports/, handoffs/, and registry/log changes)",
+      "Handoff file written to handoffs/WF03-gh402-20260803/step-005-issue-fixer.json with valid schema and real UTC timestamps (created_at, started_at, completed_at obtained from `(Get-Date).ToUniversalTime().ToString(\"yyyy-MM-ddTHH:mm:ssZ\")`, NOT invented)",
+      "Registry handoffs/registry.json updated with the new COMPLETED entry",
+      "Route log appended to handoffs/orchestrator.log",
+      "Result.next_action routes to CODE-DESIGNER (WF-03 Step 2) with explicit instruction to NOT promote T010 to BLOCKER until MAJOR < 10 on disk"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Steps 0.5 and 1 executed for GitHub issue #402 (T010 hardcoded-UUID residual migration). fn:search-issues matched ISS-0121 (status RESOLVED-PARTIAL, original GH #387); the user-visible continuation is GH #402 (sync-ref ISS-0121-residual-29). No new local ISS was filed and no `gh issue create` was performed — GH #402 already exists. docs/issues/ISS-0121.json updated: github_issue → https://github.com/tvolodi/R-Co/issues/402 (original #387 preserved as github_issue_original), affected_areas extended to the full 29-file residual inventory (11 carry-overs from the original list + 18 newly surfaced), resolution_part_3 added, resolved_at advanced. docs/issues/issue_index.json ISS-0121 entry synced to RESOLVED-PARTIAL with the same 29-file list and run_id=WF03-gh402-20260803; last_updated advanced; next_issue_id unchanged (no new ISS filed). Live lint on feature/WF03-gh402-20260803 at 6cc92ec reports BLOCKER=0 MAJOR=174 MINOR=0 across 29 unique affected test files (verbatim counts in INNER-REPORT). Helpers API confirmed: TestHarness.newUuid() at tests/integration/helpers.zig:467 (16 raw bytes, infallible) and TestHarness.newUuidString(allocator) at :479 (![]u8 caller-owned, requires defer allocator.free). 3 representative files sampled for root-cause evidence: db_integration_test.zig (5 unique literals incl. db0301aa-..., acac0000-...), ext02_webhook_dispatch_test.zig (18 unique literals incl. 00000000-...-e201..e204, 11111111-...), exp103_instance_waits_test.zig (16 unique literals e10301xx-* / e10302xx-*). Baseline file tools/lint_test_isolation.baseline.json confirms 195 prior suppressions. INNER-REPORT written to docs/issue-reports/WF03-gh402-20260803-step-005-issue-fixer-INNER-REPORT.yaml with constraints for CODE-DESIGNER (no new helper, no baseline refresh, no T010 weakening; promote MAJOR → BLOCKER only after MAJOR < 10). Diagnosis complete; routing to CODE-DESIGNER (WF-03 Step 2) for a 4-batch fix design.",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-gh402-20260803-step-005-issue-fixer-INNER-REPORT.yaml",
+      "docs/issues/ISS-0121.json",
+      "docs/issues/issue_index.json",
+      "handoffs/WF03-gh402-20260803/step-005-issue-fixer.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0121",
+        "severity": "MINOR",
+        "description": "On-disk residual figure (29 files, 174 MAJOR findings) is larger than the 24-file figure cited in the GH #402 body. The body was drafted against an earlier 17→24 mental model. CODE-DESIGNER must inventory against the live 29-file list, not the 24 figure quoted on the issue. Recorded in INNER-REPORT.next_steps and reflected in the updated ISS-0121 affected_areas.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISS-0121",
+        "severity": "MINOR",
+        "description": "ISS-0121.json files_to_change (legacy) lists 22 entries; the authoritative current scope is the 29-file affected_areas set in this step. CODE-DESIGNER should treat files_to_change as legacy and trust the affected_areas list.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISS-0121",
+        "severity": "MINOR",
+        "description": "docs/issues/issue_index.json entry for ISS-0121 was diverged (showed status=OPEN) from docs/issues/ISS-0121.json (status=RESOLVED-PARTIAL) prior to this step. Synced both to RESOLVED-PARTIAL with resolved_at=2026-08-02T21:11:09Z.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISS-0121",
+        "severity": "MINOR",
+        "description": "GitHub #402 title contains 'ISS-0121-residual-29' — the 'residual-29' figure is consistent with the live 29-file inventory even though the body prose references 24. No change to GH #402 is required; the title is the authoritative count for this continuation.",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh402-20260803",
+      "commit_sha_list": ["6cc92ecae27b8c10dd716b433ef83e932982fd1e"],
+      "remote_branch": "origin/feature/WF03-gh402-20260803",
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null,
+      "notes": "Step 005 is a read-only diagnosis step. No source/test changes were produced; nothing to commit or push. Branch was set up and pushed to origin in Step 00 (BACKEND-DEV)."
+    },
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2). The CODE-DESIGNER must produce a fix design (Type E prose preferred for cross-cutting batches, under src/design/) that: (a) cites TestHarness.newUuid (helpers.zig:467) and TestHarness.newUuidString (helpers.zig:479) as the migration API; (b) batches the 29 residual files into ≤ 4 PRs of roughly equal size with a clear rationale; (c) gives a per-file per-call replacement strategy (newUuid vs newUuidString, defer allocator.free for strings, retain all-zero sentinel where the API contract requires); (d) explicitly forbids new helpers, baseline refresh before fixes land, and T010 weakening; (e) defines the post-fix verification recipe (python3 tools/lint_test_isolation.py tests/integration → MAJOR < 10; zig build test → exit 0; full integration suite → exit 0). Implementation MUST NOT begin until CODE-DESIGN-VALIDATOR (Step 2b, hard gate) returns PASS. T010 MUST NOT be promoted from MAJOR to BLOCKER in tools/lint_test_isolation.py until MAJOR < 10 is achieved on disk."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

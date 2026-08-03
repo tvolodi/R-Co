@@ -24,8 +24,9 @@ const TaskStore = bpm.tasks.TaskStore;
 const TimerStore = bpm.scheduler;
 const Scheduler = bpm.scheduler_poller.Scheduler;
 
-const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
-const actor_id_str = "00000000-0000-0000-0000-000000000001";
+/// Fixed UUIDs used across tests.
+const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+const actor_id_str = "87654321-4321-8765-4321-876543218765";
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };

@@ -1,0 +1,120 @@
+{
+  "handoff_id": "611899be-4773-4ad2-b235-de22aa964e16",
+  "run_id": "WF03-gh402-20260803",
+  "workflow_id": "WF-03",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "file": "handoffs/WF03-gh402-20260803/step-02-code-designer.json",
+  "created_at": "2026-08-02T21:17:45Z",
+  "started_at": "2026-08-02T21:17:45Z",
+  "completed_at": "2026-08-02T21:20:07Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 2 (Solution Design)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f880dbd3-fb0c-454b-9b6b-c0578a8f131e",
+      "62a758c0-9ff9-42a1-9cd8-ed93aa6a4e48"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0121.json",
+      "docs/issue-reports/WF03-gh402-20260803-step-005-issue-fixer-INNER-REPORT.yaml",
+      "src/design/iss0121_per_test_uuids.md",
+      "tests/integration/helpers.zig",
+      "tools/lint_test_isolation.py",
+      "tools/lint_test_isolation.baseline.json"
+    ],
+    "github_issue": {
+      "number": 402,
+      "url": "https://github.com/tvolodi/R-Co/issues/402",
+      "title": "ISS-0121-residual-29: drive T010 hardcoded-UUID MAJOR from 174 to <10",
+      "state": "OPEN",
+      "labels": ["bug"],
+      "sync_ref": "rco-sync-ref: ISS-0121-residual-29"
+    },
+    "branch_name": "feature/WF03-gh402-20260803",
+    "base_sha": "6cc92ecae27b8c10dd716b433ef83e932982fd1e",
+    "live_lint_at_design_time": {
+      "command": "python tools/lint_test_isolation.py tests/integration",
+      "ran_at": "2026-08-02T21:17:45Z",
+      "BLOCKER": 0,
+      "MAJOR": 174,
+      "MINOR": 0,
+      "files_checked": 122,
+      "suppressed_from_baseline": 195,
+      "active_breakdown_by_code": {
+        "T010": 168,
+        "T020": 3,
+        "T050": 3
+      },
+      "active_unique_files": 29
+    }
+  },
+  "task": {
+    "description": "WF-03 Step 2 (Solution Design) for GitHub issue #402 (T010 hardcoded-UUID residual-29 migration). Produce a Type E prose fix design at src/design/iss0121_residual29_migration.md that:\n\n(a) cites TestHarness.newUuid (helpers.zig:467) and TestHarness.newUuidString (helpers.zig:479) as the migration API and explicitly forbids any new helper, wrapper, or module;\n(b) batches the 29 residual files into 4 BACKEND-DEV-friendly PRs of roughly equal size (8/8/8/5 files; 27/79/53/9 active T010 literals) with explicit per-batch file sets and per-file per-call replacement strategy (newUuid vs newUuidString, defer allocator.free for strings, preserve the all-zero sentinel where the API contract requires it);\n(c) gives the four per-file replacement patterns (P1 instance-id, P2 actor-id typed [16]u8, P3 audit-id, P4 module-const forbidden) with binding-shape text snippets (NOT implementation code);\n(d) defines four per-batch validation gates (G1 lint strictly decreases; G2 zig build test exits 0; G3 focused integration; G4 full integration suite) and a stale-inventory handling rule that forbids refreshing tools/lint_test_isolation.baseline.json to mask new violations;\n(e) explicitly forbids promoting T010 from MAJOR to BLOCKER in tools/lint_test_isolation.py until the live lint reports MAJOR < 10 across the entire tests/integration tree (the deferred goal of the run — the single acceptable lint-side edit is the one-line severity change at tools/lint_test_isolation.py:84, performed as the last step of Batch D);\n(f) names the post-fix verification recipe (python3 tools/lint_test_isolation.py tests/integration → MAJOR < 10; zig build test → exit 0; full integration suite → exit 0);\n(g) treats T020 (module-level mutable var) and T050 (no BPM_TEST_DB_URL reference) findings as out-of-scope — they are separately actionable lint defects and require architectural changes beyond UUID isolation;\n(h) does NOT contain implementation code (no Zig function bodies, no SQL DDL, no linter regex rewrites, no baseline JSON diffs).\n\nImplementation MUST NOT begin until CODE-DESIGN-VALIDATOR (WF-03 Step 2b — hard gate) returns PASS. After validator PASS, BACKEND-DEV (WF-03 Step 3) applies the design mechanically per §5 (batches) and §6 (per-file patterns), running §7 validation gates after each batch.",
+    "acceptance_criteria": [
+      "src/design/iss0121_residual29_migration.md exists, is Type E prose (no implementation code), and covers: 29-file inventory, 4 batches with file sets, 4 patterns (P1-P4), 4 gates (G1-G4), stale-inventory handling, deferred BLOCKER promotion gated on MAJOR < 10, and post-fix verification recipe",
+      "Design cites helpers.zig:467 (newUuid) and helpers.zig:479 (newUuidString) verbatim as the migration API; no new helper proposed",
+      "All-zero UUID sentinel (00000000-0000-0000-0000-000000000000) explicitly preserved where the API contract requires it (default tenant, NULL marker); the linter's ALL_ZEROS_UUID exclusion at tools/lint_test_isolation.py:84 cited",
+      "Per-batch expected lint delta computed from the live `--json` output (Batch A: 174→147; B: 147→68; C: 68→15; D: 15→≤6) and final acceptance is MAJOR < 10",
+      "T020 and T050 findings explicitly listed as out-of-scope (separate backlog entries recommended); not touched by this migration",
+      "T010 → BLOCKER promotion at tools/lint_test_isolation.py:84 explicitly gated on the post-Batch-D live lint reporting MAJOR < 10; promotion MUST NOT happen earlier",
+      "Per-file per-call replacement strategy is unambiguous enough that BACKEND-DEV can apply it mechanically (pattern name → helper choice → defer rule → assertion update)",
+      "Stale-inventory handling rule explicitly forbids refreshing tools/lint_test_isolation.baseline.json to mask new violations",
+      "Risk table covers: blind replacement breaking relational identity, assertion retention of old literal, module-level generated fixture state, [16]u8 consumer receiving stringified allocation, defer missing, random collision, baseline regeneration masking debt, inventory drift (29 vs 24 in GH #402 body vs 19 in pre-existing design), T020 suppression as side effect, T050 masking, lint baseline gaining entries, debugging readability, cyclic dependency, concurrent-batch contention",
+      "INNER-REPORT exists at docs/issue-reports/WF03-gh402-20260803-step-02-code-designer-INNER-REPORT.yaml with constraints-satisfied cross-check against the step-005 inner-report constraints list",
+      "Handoff file written to handoffs/WF03-gh402-20260803/step-02-code-designer.json with valid schema, fresh UUID (not reused from step-00/step-005), and real UTC timestamps obtained from (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') (NOT invented)",
+      "Registry handoffs/registry.json updated with the new COMPLETED entry",
+      "Route log appended to handoffs/orchestrator.log",
+      "Result.next_action routes to CODE-DESIGN-VALIDATOR (Step 2b, hard gate) with explicit instruction that implementation MUST NOT begin before validator returns PASS"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions",
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 2 (CODE-DESIGNER) produced the Type E prose fix design for the residual-29 T010 hardcoded-UUID migration at src/design/iss0121_residual29_migration.md. The design re-uses the existing TestHarness.newUuid (helpers.zig:467) and TestHarness.newUuidString (helpers.zig:479) API verbatim — no new helper, no wrapper, no new module. The 29 affected files split into four BACKEND-DEV-friendly batches (8/8/8/5 files; 27/79/53/9 active T010 literals) with explicit per-batch file sets and per-file per-call replacement strategies (Pattern P1 instance-id → newUuidString + defer; P2 actor-id typed [16]u8 → newUuid direct; P3 audit-id → binding passed into both INSERT and SELECT; P4 module-const forbidden outcome). Four per-batch validation gates defined (G1 lint strictly decreases with exact delta computed from live `--json` output; G2 zig build test exits 0; G3 focused integration test; G4 full integration suite green). Stale-inventory handling rule explicitly forbids refreshing tools/lint_test_isolation.baseline.json to mask new violations. T010 → BLOCKER promotion at tools/lint_test_isolation.py:84 is the deferred goal of the run and is gated on the post-Batch-D live lint reporting MAJOR < 10; promotion MUST NOT happen earlier (would block the build with 168 active findings, which is a regression). T020 (3 findings) and T050 (3 findings) explicitly listed as out-of-scope (separate backlog entries recommended) — they are separately actionable lint defects requiring architectural changes beyond UUID isolation. Design contains no implementation code (no Zig function bodies, no SQL DDL, no linter regex rewrites, no baseline JSON diffs). INNER-REPORT registered at docs/issue-reports/WF03-gh402-20260803-step-02-code-designer-INNER-REPORT.yaml with constraints-satisfied cross-check against step-005's constraints list. Live lint at design time: BLOCKER=0 MAJOR=174 MINOR=0 across 122 files; 195 suppressed from baseline. Routing to CODE-DESIGN-VALIDATOR (Step 2b — hard gate).",
+    "artifacts_out": [
+      "src/design/iss0121_residual29_migration.md",
+      "docs/issue-reports/WF03-gh402-20260803-step-02-code-designer-INNER-REPORT.yaml"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0121",
+        "severity": "MINOR",
+        "description": "On-disk residual figure (29 files, 174 MAJOR = 168 T010 + 3 T020 + 3 T050) is larger than the 24-file figure cited in the GH #402 body. The body was drafted against an earlier 17→24 mental model. The design §1 documents this explicitly; the §10 risks table names 'inventory drift' as a named risk so BACKEND-DEV trusts the live lint, not the prose counts. No change to GH #402 required; the issue title already says 'residual-29'.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISS-0121",
+        "severity": "MINOR",
+        "description": "Three T020 (module-level mutable var) and three T050 (no BPM_TEST_DB_URL reference) findings exist in the residual-29 file set but are explicitly OUT OF SCOPE for this migration. They are separately actionable lint defects (module-state hygiene and DB-env reference) and require architectural changes beyond UUID isolation. The design §6 'Out-of-scope findings' table lists them by file; BACKEND-DEV MUST NOT touch T020 or T050 during this migration.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISS-0121",
+        "severity": "MINOR",
+        "description": "tools/lint_test_isolation.py:84 is the single-line promotion point for the deferred MAJOR → BLOCKER change. The line number is correct as of the lint capture at 6cc92ec; if a future PR touches that file before this run's Batch D lands, the promotion point must be re-located. The design §9 step 4 flags this implicitly and §12 verification recipe step 'Gate G1-bis' confirms the promotion took effect.",
+        "affected_requirement": null
+      }
+    ],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (WF-03 Step 2b — hard gate). The validator must apply the WF-03 Step 2b checklist (per docs/agents/workflows/WF-03_issue_resolving.md): (a) design addresses the diagnosed root_cause from ISS-0121.json#root_cause (hardcoded fixture identity → per-test UUID generation), (b) public function signatures before/after are documented (Type E: the newUuid/newUuidString signatures are cited unchanged from helpers.zig:467/479), (c) no implementation code is present in the design, (d) error taxonomy is updated if error variants change (none changed; newUuidString still propagates only error.OutOfMemory), (e) callers that must be updated are listed (§5 batch file sets), (f) fix scope ≤ 5 files (the design exceeds 5 files but this is a documented cross-cutting migration of 29 files — the workflow rule allows ORCH escalation to architectural review; the design pre-emptively documents the > 5-file scope in §1 and §5). Implementation MUST NOT begin before the validator returns PASS. After validator PASS, ORCH routes to BACKEND-DEV (WF-03 Step 3) which applies the design mechanically per §5 (batches) and §6 (per-file patterns), running §7 validation gates after each batch."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "git_evidence": {
+    "branch_name": "feature/WF03-gh402-20260803",
+    "commit_sha_list": ["6cc92ecae27b8c10dd716b433ef83e932982fd1e"],
+    "remote_branch": "origin/feature/WF03-gh402-20260803",
+    "push_status": "skipped",
+    "pr_url": null,
+    "pr_create_error": null,
+    "notes": "Step 02 is a design-only step. No source, test, linter, or baseline files were produced; nothing to commit or push. Branch was set up and pushed to origin in Step 00 (BACKEND-DEV). The design artefact src/design/iss0121_residual29_migration.md and the INNER-REPORT at docs/issue-reports/WF03-gh402-20260803-step-02-code-designer-INNER-REPORT.yaml are working artefacts for downstream agents (CODE-DESIGN-VALIDATOR and eventually BACKEND-DEV); they will be committed by BACKEND-DEV as part of Batch A's first commit."
+  }
+}

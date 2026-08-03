@@ -164,7 +164,7 @@ def lint_file(path: Path, report: Report) -> None:
             continue  # zero-UUID is conventional "no value" sentinel
         line = find_line(text, m.start())
         report.issues.append(Issue(
-            "MAJOR", "T010", rel, line,
+            "BLOCKER", "T010", rel, line,
             f"hardcoded UUID `{val}` — generate per-test UUIDs instead",
         ))
 

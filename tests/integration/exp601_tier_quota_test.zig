@@ -53,8 +53,10 @@ test "TC-EXP-601-01: quota policy resolves the effective profile from the active
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_with_policy = "e6010000-0000-0000-0000-000000001001";
-    const tenant_without_policy = "e6010000-0000-0000-0000-000000001002";
+    const tenant_with_policy = try harness.newUuidString(alloc);
+    defer alloc.free(tenant_with_policy);
+    const tenant_without_policy = try harness.newUuidString(alloc);
+    defer alloc.free(tenant_without_policy);
 
     try harness.provisionTenant(tenant_with_policy);
     try harness.provisionTenant(tenant_without_policy);
@@ -82,7 +84,8 @@ test "TC-EXP-601-02: quota middleware rejects entity writes when entity limits a
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = "e6010000-0000-0000-0000-000000002001";
+    const tenant_id = try harness.newUuidString(alloc);
+    defer alloc.free(tenant_id);
     try harness.provisionTenant(tenant_id);
     harness.setTenant(tenant_id);
 
@@ -116,7 +119,8 @@ test "TC-EXP-601-03: quota middleware rejects file writes when file limits are e
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = "e6010000-0000-0000-0000-000000002002";
+    const tenant_id = try harness.newUuidString(alloc);
+    defer alloc.free(tenant_id);
     try harness.provisionTenant(tenant_id);
     harness.setTenant(tenant_id);
 
@@ -162,7 +166,8 @@ test "TC-EXP-601-04: quota middleware rejects sandbox allocation and agent retri
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_id = "e6010000-0000-0000-0000-000000002003";
+    const tenant_id = try harness.newUuidString(alloc);
+    defer alloc.free(tenant_id);
     try harness.provisionTenant(tenant_id);
     harness.setTenant(tenant_id);
 

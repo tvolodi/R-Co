@@ -51,6 +51,24 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
     return Pool.init(std.testing.io, allocator, PoolConfig{ .url = url, .pool_size = 8 });
 }
 
+/// Generate a random UUID string for test fixtures.
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
+    raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
+}
+
 /// Set search_path on a connection acquired before tenant context was active,
 /// or on a non-pool pg.Conn. Idempotent — can be called multiple times.
 fn setTenantSearchPath(conn: anytype) void {
@@ -88,9 +106,12 @@ test "TC-SCH-303-03: timer fire exhaustion moves timer to FAILED and inserts DLQ
     defer pool.deinit();
 
     // Per-test UUIDs — 30310000 prefix isolates from all other test fixtures.
-    const instance_id = "30310000-0000-0000-0000-000000000001";
-    const def_id      = "30310000-0000-0000-0000-000000000000";
-    const timer_id    = "30310000-0000-0000-0000-000000000002";
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const timer_id = try randomUuidStr(allocator);
+    defer allocator.free(timer_id);
     const idem_key    = "timer-fired:30310000-0000-0000-0000-000000000002";
 
     const conn = try pool.acquire();
@@ -196,9 +217,12 @@ test "TC-SCH-303-04: timer stays pending when fire_error_count < max_timer_fire_
     defer pool.deinit();
 
     // Per-test UUIDs — 30320000 prefix.
-    const instance_id = "30320000-0000-0000-0000-000000000001";
-    const def_id      = "30320000-0000-0000-0000-000000000000";
-    const timer_id    = "30320000-0000-0000-0000-000000000002";
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const timer_id = try randomUuidStr(allocator);
+    defer allocator.free(timer_id);
     const idem_key    = "timer-fired:30320000-0000-0000-0000-000000000002";
 
     const conn = try pool.acquire();
@@ -295,9 +319,12 @@ test "TC-SCH-301-03: two sequential scheduler polls on one timer fire it exactly
     // Per-test UUIDs — 30100000 prefix.
     // Note: for this test the fire must SUCCEED, so we do NOT pre-insert the
     // blocking events row. A minimal instance + timer is sufficient.
-    const instance_id = "30100000-0000-0000-0000-000000000001";
-    const def_id      = "30100000-0000-0000-0000-000000000000";
-    const timer_id    = "30100000-0000-0000-0000-000000000002";
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const timer_id = try randomUuidStr(allocator);
+    defer allocator.free(timer_id);
     const idem_key    = "timer-fired:30100000-0000-0000-0000-000000000002";
 
     const conn = try pool.acquire();

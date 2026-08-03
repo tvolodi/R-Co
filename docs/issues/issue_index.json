@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-01T14:48:00Z",
+  "last_updated": "2026-08-02T21:11:09Z",
   "next_issue_id": 127,
   "issues": [
     {
@@ -148,7 +148,7 @@
     },
     {
       "id": "ISS-0076",
-      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table — creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
+      "title": "migrations/GBL-100_exp501_secrets.sql never creates the secrets table \u2014 creation guard checks to_regclass('instance_projections') which only resolves under tenant schemas, not public",
       "status": "OPEN",
       "severity": "MAJOR",
       "category": "migration scoping / search_path defect",
@@ -178,10 +178,10 @@
     },
     {
       "id": "ISS-0073",
-      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm — signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
+      "title": "OIDC callback uses bpm-default realm authority instead of tenant realm \u2014 signinRedirectCallback exchanges code with wrong Keycloak realm, causing redirect loop",
       "status": "OPEN",
       "severity": "BLOCKER",
-      "category": "logic error — singleton cache bypasses realm resolution at callback time",
+      "category": "logic error \u2014 singleton cache bypasses realm resolution at callback time",
       "run_id": "WF03-oidc-callback-realm-20260616",
       "handoff_id": "1ef2a3b4-c5d6-7890-1ef2-a3b4c5d67890",
       "affected_areas": [
@@ -194,7 +194,7 @@
     },
     {
       "id": "ISS-0072",
-      "title": "Tenant admin login fails after onboarding — GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
+      "title": "Tenant admin login fails after onboarding \u2014 GET /api/tenant-config?host=127.0.0.1 always returns bpm-default realm; no realm hint mechanism for shared-hostname environments",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "logic error / design gap",
@@ -211,7 +211,7 @@
     },
     {
       "id": "ISS-0071",
-      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input — swiftroute realm-missing inconsistent state compounds scenario unverifiability",
+      "title": "Onboarding pipeline test generates its own random slug instead of using UAT scenario input \u2014 swiftroute realm-missing inconsistent state compounds scenario unverifiability",
       "status": "OPEN",
       "severity": "BLOCKER",
       "category": "test harness error + backend state inconsistency",
@@ -257,7 +257,7 @@
     },
     {
       "id": "ISS-0068",
-      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() — tenant schemas missing for all tenants",
+      "title": "SPT-01: executeSaga() creates tenant DB row but never calls provisionTenantSchema() \u2014 tenant schemas missing for all tenants",
       "status": "RESOLVED",
       "severity": "BLOCKER",
       "run_id": "WF03-spt01-onboarding-schema-missing-20260607",
@@ -610,7 +610,7 @@
     },
     {
       "id": "ISS-0044",
-      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails — unique index not upgraded to named constraint",
+      "title": "DSL-13 regression: ON CONFLICT ON CONSTRAINT fails \u2014 unique index not upgraded to named constraint",
       "status": "RESOLVED",
       "severity": "CRITICAL",
       "run_id": "WF03-def-store-regression-20260528",
@@ -1266,13 +1266,31 @@
     {
       "id": "ISS-0121",
       "title": "Hardcoded UUID violations (T010) across 100+ integration test files",
-      "status": "OPEN",
+      "status": "RESOLVED-PARTIAL",
       "severity": "MAJOR",
       "category": "test-quality / per-test-fixture-isolation",
-      "run_id": "WF03-gh375-20260801",
+      "run_id": "WF03-gh402-20260803",
       "handoff_id": "b5bf6c01-97f2-4428-9808-dd313e543718",
       "affected_areas": [
         "tests/integration/adp02_tenant_scope_test.zig",
+        "tests/integration/adp06_pipeline_run_correlation_test.zig",
+        "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
+        "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
+        "tests/integration/concurrent_instances_test.zig",
+        "tests/integration/db_integration_test.zig",
+        "tests/integration/entity_subsystem_test.zig",
+        "tests/integration/env01_test.zig",
+        "tests/integration/env03_test.zig",
+        "tests/integration/exp103_instance_waits_test.zig",
+        "tests/integration/exp401_exp402_comp_restore_test.zig",
+        "tests/integration/exp601_tier_quota_test.zig",
+        "tests/integration/ext01_service_task_test.zig",
+        "tests/integration/ext02_webhook_dispatch_test.zig",
+        "tests/integration/ext03_plugin_integration_test.zig",
+        "tests/integration/idn02_group_management_test.zig",
+        "tests/integration/idn03_role_access_test.zig",
+        "tests/integration/idn04_api_token_management_test.zig",
+        "tests/integration/instance_error_test.zig",
         "tests/integration/iss101_timers_failed_status_test.zig",
         "tests/integration/iss102_claim_test.zig",
         "tests/integration/iss202_merge_atomicity_test.zig",
@@ -1283,9 +1301,11 @@
         "tests/integration/iss601_state_snapshots_test.zig",
         "tests/integration/obs05_dlq_test.zig",
         "tests/integration/obs06_alerts_test.zig",
+        "tests/integration/onboarding_realm_guard_test.zig",
         "tests/integration/sch02_timer_polling_test.zig",
         "tests/integration/sch303_timer_dlq_test.zig",
         "tests/integration/svc01_service_catalog_scope_test.zig",
+        "tests/integration/svc02_plugin_dispatch_scope_test.zig",
         "tests/integration/svc03_definition_activation_scope_test.zig",
         "tests/integration/svc04_admin_api_test.zig",
         "tests/integration/tm01_tenant_list_test.zig",
@@ -1293,8 +1313,8 @@
         "tests/integration/helpers.zig"
       ],
       "created_at": "2026-08-01T12:09:25Z",
-      "resolved_at": null,
-      "github_issue": "https://github.com/tvolodi/R-Co/issues/387"
+      "resolved_at": "2026-08-02T21:11:09Z",
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/402"
     },
     {
       "id": "ISS-0122",
@@ -1318,7 +1338,7 @@
     },
     {
       "id": "ISS-0123",
-      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6× alongside missing source_ref column",
+      "title": "Audit-trigger P0001 'audit_entries is immutable' guard fires 6\u00d7 alongside missing source_ref column",
       "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "schema-drift / audit-trigger-side-effect",

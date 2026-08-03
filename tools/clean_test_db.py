@@ -151,9 +151,14 @@ def main() -> None:
         sys.exit(1)
 
     # Clean tenant-schema tables (Stage 12 schema-per-tenant).
-    # Public-schema TRUNCATE does not reach tenant_default.* tables; clean them
-    # separately using a SET search_path so FK-referencing tables are also cleared.
-    TENANT_SCHEMAS = ["tenant_default"]
+    # GH-402: TRUNCATE on tenant_default.* tables hangs indefinitely due to
+    # long-running transaction or lock. Skipped for now; per-test cleanup handles isolation.
+    # TODO: Investigate the root cause and re-enable after fixing the underlying issue.
+    # Original code for reference:
+    # TENANT_SCHEMAS = ["tenant_default"]
+    # TENANT_TABLES = [...]
+    # for schema in TENANT_SCHEMAS:
+    #     run_psql(f"SET search_path TO {schema},public; TRUNCATE TABLE {tenant_tables_str} CASCADE")
     TENANT_TABLES = [
         "instance_definition_snapshots",
         "tasks",
@@ -163,12 +168,17 @@ def main() -> None:
         "process_definitions",
         "events",
     ]
-    for schema in TENANT_SCHEMAS:
-        tenant_tables_str = ", ".join(TENANT_TABLES)
-        run_psql(
-            f"SET search_path TO {schema},public; "
-            f"TRUNCATE TABLE {tenant_tables_str} CASCADE"
-        )
+    # GH-402: Skip tenant-schema TRUNCATE due to indefinite hang
+    # TODO(GH-402): Investigate why TRUNCATE on tenant_default.* tables blocks indefinitely
+    # (likely long-running transaction or lock). For now, rely on per-test cleanup.
+    # for schema in TENANT_SCHEMAS:
+    #     print(f"GH-402 DEBUG: Cleaning tenant schema: {schema}", flush=True)
+    #     tenant_tables_str = ", ".join(TENANT_TABLES)
+    #     run_psql(
+    #         f"SET search_path TO {schema},public; "
+    #         f"TRUNCATE TABLE {tenant_tables_str} CASCADE"
+    #     )
+    #     print(f"GH-402 DEBUG: Finished cleaning tenant schema: {schema}", flush=True)
 
     # Clean tenant rows created by integration tests.
     # ENV-01 added ON DELETE RESTRICT: test tenants must be deleted BEFORE production tenants.

@@ -19,7 +19,19 @@
 
 ALTER TABLE tenant
     ADD COLUMN IF NOT EXISTS tenant_type text NOT NULL DEFAULT 'production' CHECK (tenant_type IN ('production', 'test')),
-    ADD COLUMN IF NOT EXISTS production_tenant_id uuid REFERENCES tenant(id) ON DELETE RESTRICT,
-    ADD CONSTRAINT ck_tenant_type_fk_coherence CHECK ((tenant_type = 'production' AND production_tenant_id IS NULL) OR (tenant_type = 'test' AND production_tenant_id IS NOT NULL));
+    ADD COLUMN IF NOT EXISTS production_tenant_id uuid REFERENCES tenant(id) ON DELETE RESTRICT;
+
+-- CUSTOM: composite tenant_type/production_tenant_id consistency constraint (idempotent check)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'ck_tenant_type_fk_coherence'
+          AND conrelid = 'tenant'::regclass
+    ) THEN
+        ALTER TABLE tenant
+            ADD CONSTRAINT ck_tenant_type_fk_coherence CHECK ((tenant_type = 'production' AND production_tenant_id IS NULL) OR (tenant_type = 'test' AND production_tenant_id IS NOT NULL));
+    END IF;
+END$$;
 
 CREATE INDEX IF NOT EXISTS idx_tenant_production_tenant_id ON tenant (production_tenant_id);

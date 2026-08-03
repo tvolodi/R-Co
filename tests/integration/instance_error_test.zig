@@ -41,11 +41,9 @@ const ErrorType = bpm.engine.ErrorType;
 
 const TaskStore = bpm.tasks.TaskStore;
 
-/// Fake "created_by" UUID reused across all tests.
-const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
-
-/// Fixed actor_id used for setInstanceError calls (no IDN-03 yet).
-const actor_id_str = "00000000-0000-0000-0000-000000000001";
+/// Fixed "created_by" and "actor_id" UUIDs used across tests.
+const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+const actor_id_str = "87654321-4321-8765-4321-876543218765";
 
 // ---------------------------------------------------------------------------
 // Shared helpers

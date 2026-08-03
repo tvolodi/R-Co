@@ -1,0 +1,98 @@
+{
+  "handoff_id": "04f4bbfe-ea7f-4f2d-9dde-035a46356435",
+  "run_id": "WF03-gh402-20260803",
+  "workflow_id": "WF-03",
+  "step": "02b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "file": "handoffs/WF03-gh402-20260803/step-02b-code-design-validator.json",
+  "created_at": "2026-08-02T21:23:41Z",
+  "started_at": "2026-08-02T21:23:41Z",
+  "completed_at": "2026-08-02T21:23:41Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 2b (CODE-DESIGN-VALIDATOR, hard gate)",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f880dbd3-fb0c-454b-9b6b-c0578a8f131e",
+      "62a758c0-9ff9-42a1-9cd8-ed93aa6a4e48"
+    ],
+    "artifacts_in": [
+      "src/design/iss0121_residual29_migration.md",
+      "docs/issue-reports/WF03-gh402-20260803-step-005-issue-fixer-INNER-REPORT.yaml",
+      "docs/issues/ISS-0121.json",
+      "tools/lint_test_isolation.py",
+      "tools/lint_test_isolation.baseline.json",
+      "tests/integration/helpers.zig"
+    ],
+    "github_issue": {
+      "number": 402,
+      "url": "https://github.com/tvolodi/R-Co/issues/402",
+      "title": "ISS-0121-residual-29: drive T010 hardcoded-UUID MAJOR from 174 to <10",
+      "state": "OPEN",
+      "labels": ["bug"],
+      "sync_ref": "rco-sync-ref: ISS-0121-residual-29"
+    },
+    "branch_name": "feature/WF03-gh402-20260803",
+    "base_sha": "6cc92ecae27b8c10dd716b433ef83e932982fd1e"
+  },
+  "task": {
+    "description": "WF-03 Step 2b hard-gate validation of the Type E prose design at src/design/iss0121_residual29_migration.md (the incremental per-test UUID migration over the 29-file residual of T010 hardcoded-UUID findings, continuation of ISS-0121 / GH #402).\n\nVerify and produce evidence for ALL the following:\n  1. The design classifies as Type E (novel / cross-cutting) per templates/lego-catalog.md; no Type A/B/C/D parameter file is appropriate.\n  2. tools/lint_design_artefact.py exits 0 over src/design/iss0121_residual29_migration.md with no BLOCKER/MAJOR findings.\n  3. The 29-file inventory in design §5 is exactly the set of files carrying active T010/T020/T050 findings on the live branch (live lint: BLOCKER=0 MAJOR=174 MINOR=0 across 122 files; T010=168, T020=3, T050=3; 29 unique files).\n  4. The four batch sets in design §8 are mutually exclusive (no file appears in more than one batch) and collectively exhaustive (union = 29 files).\n  5. The helpers.zig API citations at :467 (newUuid) and :479 (newUuidString) match the actual signature, semantics, and ownership rules.\n  6. Per-file replacement rules are unambiguous (Pattern P1/P2/P3/P4 catalogue; rule 5 covers relational-identity preservation; rule 7 covers the all-zero sentinel; rule 9 forbids SQL interpolation).\n  7. Validation gates G1-G5 in design §7 / §12 are concrete and executable (shell commands and exit-code expectations are present).\n  8. Stale-inventory handling rule in design §7 is correct (BACKEND-DEV records discrepancy; MUST NOT refresh baseline to mask it; requires CODE-DESIGNER confirmation before continuing).\n  9. T010 promotion to BLOCKER is safely gated (design §9 step 4: must happen AFTER MAJOR < 10 verified; baseline-aware has_failures property already exits non-zero on BLOCKER).\n 10. No implementation code is embedded in the design (no Zig function bodies, no SQL DDL, no linter regex diffs, no baseline JSON diffs).\n 11. Out-of-scope findings (T020 in 3 files, T050 in 3 files) are explicitly enumerated and excluded with a backlog recommendation.\n 12. The design inherits and respects the iss0121_per_test_uuids.md §7 baseline-update rules and the pre-existing helpers.zig API contract.\n\nComplete handoff with PASS or FAIL. On PASS: set next_action to 'Route to BACKEND-DEV (WF-03 Step 3)'. On FAIL: list every failed check with severity BLOCKER / MAJOR / MINOR and re-route to CODE-DESIGNER for rework (max 3 cycles).\n\nMandatory completion chain: (this handoff) -> fn:register-inner-report -> fn:complete-handoff.",
+    "acceptance_criteria": [
+      "tools/lint_design_artefact.py src/design/iss0121_residual29_migration.md exits 0 with no BLOCKER/MAJOR findings",
+      "Live lint on feature/WF03-gh402-20260803 at 6cc92ec reports BLOCKER=0 MAJOR=174 MINOR=0; the 29 unique files match design §5 / §8 inventory exactly",
+      "helpers.zig:467 newUuid and :479 newUuidString confirmed by grep; signatures match design §3",
+      "All 29 files named in design §8 exist on disk",
+      "The four batches are mutually exclusive (no duplicate file refs across batches); collectively exhaustive (29 unique files)",
+      "No implementation code embedded: no Zig function bodies, no SQL DDL, no linter regex diffs, no baseline JSON diffs",
+      "T010 promotion is gated on MAJOR < 10 verified on disk; baseline-aware has_failures property already exits non-zero on BLOCKER (defense in depth)",
+      "Stale-inventory rule requires CODE-DESIGNER confirmation before continuing after a discrepancy; baseline-refresh is explicitly forbidden as a mask",
+      "Validation gates G1-G5 are concrete and executable (shell commands + exit-code expectations present)",
+      "Per-file replacement rules (P1/P2/P3/P4 + rule 5/7/9) are unambiguous",
+      "Handoff file written to handoffs/WF03-gh402-20260803/step-02b-code-design-validator.json with valid schema and real UTC timestamps (started_at, completed_at from (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))",
+      "YAML INNER-REPORT written to docs/issue-reports/WF03-gh402-20260803-step-02b-code-design-validator-INNER-REPORT.yaml with per-check evidence and issues list",
+      "Registry handoffs/registry.json updated with the new COMPLETED entry; route log appended to handoffs/orchestrator.log",
+      "PASS result routes to BACKEND-DEV Step 3 with explicit instruction that T010 promotion to BLOCKER MUST NOT happen until MAJOR < 10 verified on disk"
+    ],
+    "functions_to_call": [
+      "fn:validate-completeness",
+      "fn:register-inner-report",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 2b hard-gate validation of src/design/iss0121_residual29_migration.md returned PASS with two MINOR issues. Classification verified as Type E (novel/cross-cutting integration-test fixture refactor — no Type A/B/C/D parameter-file pattern applies; the lego-catalog selection rules correctly route to Type E for 'test fixture architecture' and 'cross-cutting changes'). tools/lint_design_artefact.py exits 0 over the design with no BLOCKER/MAJOR findings. Live lint on feature/WF03-gh402-20260803 at 6cc92ec reports BLOCKER=0 MAJOR=174 MINOR=0 across 122 files (174 = T010:168 + T020:3 + T050:3 across 29 unique files); the design's 29-file inventory in §5 / §8 is set-equal to the live lint (zero files in design but not in live lint, zero files in live lint but not in design). The four batches in §8 are mutually exclusive (no file appears in more than one batch) and collectively exhaustive (29 unique files; verified mechanically). All 29 files named in §8 exist on disk. helpers.zig:467 (pub fn newUuid(self: *TestHarness) bpm.uuid.Uuid) and :479 (pub fn newUuidString(self: *TestHarness, allocator: std.mem.Allocator) ![]u8) confirmed by direct file inspection; semantics match design §3 (infallible + allocation-free vs. caller-owned heap allocation with error.OutOfMemory only). All-zero UUID exclusion in tools/lint_test_isolation.py (around line 162-163, 'if val == ALL_ZEROS_UUID: continue') confirmed; the design correctly inherits this and rule 7 forbids replacing it. Pattern P1 (instance-id textual), P2 (actor-id typed), P3 (audit-id), P4 (module-const forbidden) are unambiguous and supported by evidence: e.g. svc01_service_catalog_scope_test.zig uses 'eeeeeeee-0000-0000-0000-000000000001' 4 times (relational sharing — single binding threaded through INSERTs), exp103_instance_waits_test.zig has 'e1030100-0000-0000-0000-000000000001' twice (Pattern P1 reuse). Validation gates G1-G5 are concrete shell commands with explicit exit-code expectations; G4 must pass after EVERY batch (re-check policy prevents inter-batch regressions). Stale-inventory rule is correct: BACKEND-DEV records discrepancy, does NOT refresh baseline to mask it, requires CODE-DESIGNER confirmation before continuing; final MAJOR < 10 acceptance is measured against the live lint at acceptance time, not the design-time inventory. T010 MAJOR→BLOCKER promotion is safely gated (design §9 step 4: only after MAJOR < 10 verified; baseline-aware has_failures property already exits non-zero on BLOCKER; promoting earlier would block the build with 168 active findings). T020/T050 out-of-scope findings explicitly enumerated (entity_subsystem_test.zig, ext03_plugin_integration_test.zig, onboarding_realm_guard_test.zig for T020; entity_subsystem_test.zig, exp601_tier_quota_test.zig, svc02_plugin_dispatch_scope_test.zig for T050). No implementation code embedded in the design. Two MINOR issues recorded (see issues list): (1) the design cites 'tools/lint_test_isolation.py:84' for both the all-zero exclusion and the T010 MAJOR→BLOCKER promotion — actual file has the exclusion around line 162-163 and the T010 Issue constructor at line 167; BACKEND-DEV can resolve via grep 'T010' tools/lint_test_isolation.py and the comment '# T010: hardcoded UUID literals' at line 160. (2) The per-file T010-count column in §5 overstates by 1 each for ext03_plugin_integration_test.zig (claims 1, live=0; only carries T020) and onboarding_realm_guard_test.zig (claims 1, live=0; only carries T020); design §6 already correctly excludes T020 from the migration scope and the batch column lists these files for completeness with no-op effect. Both files are correctly retained in Batches A and D respectively for verification that lint delta is zero; svc02_plugin_dispatch_scope_test.zig (Batch D, design correctly notes 'no active T010') is analogous. Implementation can proceed: BACKEND-DEV follows §4 (replacement rule), §5 (batches), §6 (per-file patterns), §7 (validation gates), §8 (file sets). On PASS, route to BACKEND-DEV (WF-03 Step 3).",
+    "artifacts_out": [
+      "docs/issue-reports/WF03-gh402-20260803-step-02b-code-design-validator-INNER-REPORT.yaml",
+      "handoffs/WF03-gh402-20260803/step-02b-code-design-validator.json"
+    ],
+    "issues": [
+      {
+        "id": "ISS-0121",
+        "severity": "MINOR",
+        "description": "Design cites 'tools/lint_test_isolation.py:84' for both the all-zero UUID exclusion ('if val == ALL_ZEROS_UUID: continue') and the T010 MAJOR→BLOCKER promotion. Actual line numbers in the current file: the all-zero exclusion is at lines 162-163, the T010 Issue constructor (the promotion target) is at line 167, and the '# T010: hardcoded UUID literals' section header is at line 160. Line 84 is the 'has_failures' property getter ('return any(i.severity in (\"BLOCKER\", \"MAJOR\") for i in self.issues)') — not the T010 Issue call. BACKEND-DEV can locate the correct line via 'grep -n \"MAJOR.*T010\\|# T010\" tools/lint_test_isolation.py'. Citation defect does not block implementation: the rule itself (exclusion + single-line promotion) is correct; only the line number is wrong.",
+        "affected_requirement": null
+      },
+      {
+        "id": "ISS-0121",
+        "severity": "MINOR",
+        "description": "Design §5 'Active T010' column overstates by 1 each for ext03_plugin_integration_test.zig (claims 1, live lint reports 0 — file carries only one T020 finding) and onboarding_realm_guard_test.zig (claims 1, live lint reports 0 — file carries only one T020 finding). Design §6 already correctly excludes T020 from migration scope and Batch A / Batch D notes explicitly state 'only the T010 literal is in scope' / 'no active T010'. Net per-batch totals: Batch A design=27 live=23, Batch B design=79 live=74, Batch C design=53 live=65, Batch D design=9 live=6. Total T010 in design sum (170) vs live lint (168) — 2-unit overcount, attributable to the two miscounted files. The acceptance criterion (MAJOR < 10) still holds. Files remain in the batches for lint-delta verification (zero-T010-delta expected) and the §6 out-of-scope note covers them.",
+        "affected_requirement": null
+      }
+    ],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh402-20260803",
+      "commit_sha_list": ["6cc92ecae27b8c10dd716b433ef83e932982fd1e"],
+      "remote_branch": "origin/feature/WF03-gh402-20260803",
+      "push_status": "skipped",
+      "pr_url": null,
+      "pr_create_error": null,
+      "notes": "Step 02b is a read-only validation step. No source/test changes were produced; nothing to commit or push. Branch was set up and pushed to origin in Step 00 (BACKEND-DEV)."
+    },
+    "next_action": "Route to BACKEND-DEV (WF-03 Step 3). BACKEND-DEV implements src/design/iss0121_residual29_migration.md mechanically by following §4 (replacement rule), §5 (batches), §6 (per-file patterns), §7 (validation gates G1-G4 re-checked after each batch), and §8 (file sets). HARD CONSTRAINTS for the implementer: (a) NO new helper, NO wrapper, NO new module on TestHarness — re-use newUuid (helpers.zig:467) and newUuidString (helpers.zig:479) verbatim; (b) NO edit to tools/lint_test_isolation.py before MAJOR < 10 is verified on disk; the single allowed linter edit (MAJOR→BLOCKER for T010, around line 167 — NOT line 84 — use 'grep -n \"MAJOR.*T010\" tools/lint_test_isolation.py' to locate) MUST happen as the LAST step of Batch D after G1 confirms MAJOR < 10; (c) NO refresh of tools/lint_test_isolation.baseline.json to mask new violations — baseline edits only after a fix batch lands; (d) PRESERVE the all-zero UUID sentinel where the API contract requires it (default tenant, NULL marker); (e) BATCH D includes 2 files with no active T010 (svc02_plugin_dispatch_scope_test.zig, exp401_exp402_comp_restore_test.zig) — verify zero T010 lint delta, do not force a replacement; (f) the ext03_plugin_integration_test.zig and onboarding_realm_guard_test.zig entries in Batches A/D are for completeness verification only (live T010 count is 0 for these files; only T020 findings present which are out of scope); (g) after each batch, gate G4 (full integration suite) MUST pass — a batch that breaks G4 is a regression in fixture identity and must be investigated before continuing; (h) the final MAJOR < 10 acceptance is measured against the live lint at acceptance time, NOT the design-time inventory. After fix lands, ISSUE-FIXER Step 3 will update docs/issues/ISS-0121.json: status=RESOLVED, resolution=full migration of N files, prevention='T010 promoted to BLOCKER in tools/lint_test_isolation.py:167', resolved_at=real UTC time, github_issue kept as #402 (continuation; #387 is the original)."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

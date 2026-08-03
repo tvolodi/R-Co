@@ -35,6 +35,9 @@ const reconstruction_mod = bpm.reconstruction;
 const transition_mod = bpm.transition;
 const snapshot_writer_mod = bpm.snapshot_writer;
 
+/// Fixed "created_by" UUID used across tests.
+const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -107,8 +110,6 @@ const minimal_edges = [_]GraphEdge{
     .{ .id = "e2", .source = "T", .target = "E", .condition = null, .is_default = false },
 };
 const minimal_graph = DefinitionGraph{ .nodes = &minimal_nodes, .edges = &minimal_edges };
-
-const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
 
 /// ISS-0125 / GitHub #391: instance-level cleanup helper. Deletes every
 /// per-instance row in FK order so a failed child delete prevents the
@@ -918,7 +919,8 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
     const large_payload = large_payload_builder.items;
     defer alloc.free(large_payload);
 
-    const overflow_event_id = "66666666-0005-0005-0005-000000000005";
+    const overflow_event_id = try h.newUuidString(alloc);
+    defer alloc.free(overflow_event_id);
     // Insert event with small placeholder payload pointing to overflow
     conn.exec(
         \\INSERT INTO events (event_id, instance_id, event_type, payload, actor_id, sequence_number, idempotency_key, metadata, tenant_id)

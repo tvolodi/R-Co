@@ -109,6 +109,23 @@ fn parseUuid(s: []const u8) ![16]u8 {
     return out;
 }
 
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
+    raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
+}
+
 // ---------------------------------------------------------------------------
 // TC-EXP-103-01: Timer arm creates instance_waits row
 // ---------------------------------------------------------------------------
@@ -128,9 +145,12 @@ test "TC-EXP-103-01: timer arm writes instance_waits row" {
     defer pool.deinit();
 
     // Per-test UUIDs — e1030100 prefix.
-    const instance_id = "e1030100-0000-0000-0000-000000000001";
-    const def_id      = "e1030100-0000-0000-0000-000000000000";
-    const timer_id    = "e1030100-0000-0000-0000-000000000002";
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const timer_id = try randomUuidStr(allocator);
+    defer allocator.free(timer_id);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -216,9 +236,12 @@ test "TC-EXP-103-02: TaskStore.createInTx writes instance_waits row" {
     defer pool.deinit();
 
     // Per-test UUIDs — e1030200 prefix.
-    const instance_id_str = "e1030200-0000-0000-0000-000000000001";
-    const def_id_str      = "e1030200-0000-0000-0000-000000000000";
-    const token_id_str    = "e1030200-0000-0000-0000-000000000002";
+    const instance_id_str = try randomUuidStr(allocator);
+    defer allocator.free(instance_id_str);
+    const def_id_str = try randomUuidStr(allocator);
+    defer allocator.free(def_id_str);
+    const token_id_str = try randomUuidStr(allocator);
+    defer allocator.free(token_id_str);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -319,9 +342,12 @@ test "TC-EXP-103-03: Scheduler.pollDueTimers resolves the instance_waits timer r
     defer pool.deinit();
 
     // Per-test UUIDs — e1030300 prefix.
-    const instance_id = "e1030300-0000-0000-0000-000000000001";
-    const def_id      = "e1030300-0000-0000-0000-000000000000";
-    const timer_id    = "e1030300-0000-0000-0000-000000000002";
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const timer_id = try randomUuidStr(allocator);
+    defer allocator.free(timer_id);
     const idem_key    = "timer-fired:e1030300-0000-0000-0000-000000000002";
 
     const conn = try pool.acquire();
@@ -420,10 +446,14 @@ test "TC-EXP-103-04: TaskStore.completeInTx resolves the instance_waits task row
     defer pool.deinit();
 
     // Per-test UUIDs — e1030400 prefix.
-    const instance_id_str = "e1030400-0000-0000-0000-000000000001";
-    const def_id_str      = "e1030400-0000-0000-0000-000000000000";
-    const token_id_str    = "e1030400-0000-0000-0000-000000000002";
-    const task_id_str     = "e1030400-0000-0000-0000-000000000003";
+    const instance_id_str = try randomUuidStr(allocator);
+    defer allocator.free(instance_id_str);
+    const def_id_str = try randomUuidStr(allocator);
+    defer allocator.free(def_id_str);
+    const token_id_str = try randomUuidStr(allocator);
+    defer allocator.free(token_id_str);
+    const task_id_str = try randomUuidStr(allocator);
+    defer allocator.free(task_id_str);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -527,9 +557,12 @@ test "TC-EXP-103-05: rolled-back transaction leaves no orphaned instance_waits r
     defer pool.deinit();
 
     // Per-test UUIDs — e1030500 prefix.
-    const instance_id = "e1030500-0000-0000-0000-000000000001";
-    const def_id      = "e1030500-0000-0000-0000-000000000000";
-    const timer_id    = "e1030500-0000-0000-0000-000000000002";
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const timer_id = try randomUuidStr(allocator);
+    defer allocator.free(timer_id);
 
     const conn = try pool.acquire();
     defer pool.release(conn);

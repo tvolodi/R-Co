@@ -250,7 +250,8 @@ test "TC-ENV-03-01: promoteDefinition returns DRAFT PromotionResult with valid d
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = "00000000-0000-0000-0000-000000000099";
+    const actor_id = try randomUuidStr(alloc);
+    defer alloc.free(actor_id);
 
     // LIFO: prod_id must be declared FIRST so it runs LAST (after test_id is deleted).
     // ON DELETE RESTRICT blocks deleting a production tenant while test tenants reference it.
@@ -329,7 +330,8 @@ test "TC-ENV-03-02: promoteDefinition writes DEFINITION_PROMOTED audit entries o
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = "00000000-0000-0000-0000-000000000098";
+    const actor_id = try randomUuidStr(alloc);
+    defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST (after test_id deleted) — ON DELETE RESTRICT
     defer dropTenantSchema(alloc, &pool, prod_id);
@@ -429,7 +431,8 @@ test "TC-ENV-03-03: promoteDefinition returns ActiveDefinitionNotFound when name
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = "00000000-0000-0000-0000-000000000097";
+    const actor_id = try randomUuidStr(alloc);
+    defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST — ON DELETE RESTRICT
     defer dropTenantSchema(alloc, &pool, prod_id);
@@ -479,7 +482,8 @@ test "TC-ENV-03-04: promoteDefinition returns MissingDesignerRoleOnProd when act
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = "00000000-0000-0000-0000-000000000096";
+    const actor_id = try randomUuidStr(alloc);
+    defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST — ON DELETE RESTRICT
     defer dropTenantSchema(alloc, &pool, prod_id);
@@ -531,7 +535,8 @@ test "TC-ENV-03-05: promoteDefinition increments version when name already exist
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = "00000000-0000-0000-0000-000000000095";
+    const actor_id = try randomUuidStr(alloc);
+    defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST — ON DELETE RESTRICT
     defer dropTenantSchema(alloc, &pool, prod_id);
@@ -608,7 +613,8 @@ test "TC-ENV-03-06: promoteDefinition returns ProductionTenantInactive when prod
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = "00000000-0000-0000-0000-000000000094";
+    const actor_id = try randomUuidStr(alloc);
+    defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST — ON DELETE RESTRICT
     defer cleanupTenantById(&pool, prod_id);

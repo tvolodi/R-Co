@@ -1,0 +1,175 @@
+{
+  "handoff_id": "00f7b4a2-3c8d-45b0-b8a7-c9e2f1d4a5b6",
+  "run_id": "WF03-gh402-20260803",
+  "step": "05-redispatch",
+  "from_agent": "TEST-RUNNER",
+  "to_agent": "ORCH",
+  "created_at": "2026-08-03T02:49:43Z",
+  "started_at": "2026-08-03T02:49:43Z",
+  "status": "COMPLETED",
+  "priority": "BLOCKER",
+  "context": {
+    "stage": "Issue Resolution - Test Execution Redispatch",
+    "issue_id": "ISS-0121-residual-29",
+    "github_issue": "402",
+    "prior_failure": "step-05-test-runner (auth failure: BPM_TEST_DB_URL connection refused)",
+    "infrastructure_recovery": "ADHOC-gh402-infra-20260803 → PASS",
+    "branch": "feature/WF03-gh402-20260803",
+    "artifacts_in": [
+      "handoffs/WF03-gh402-20260803/step-03-backend-dev.json",
+      "handoffs/WF03-gh402-20260803/step-01-backend-dev.json (ADHOC infrastructure recovery)"
+    ]
+  },
+  "task": {
+    "description": "TEST-RUNNER Step 5 Redispatch after infrastructure recovery: (1) Verify infrastructure health (docker-compose, psql connectivity), (2) Run `zig build test` unit tests, (3) Run `zig build test-integration` integration tests, (4) Validate test results and isolation, (5) Create inner report with evidence",
+    "acceptance_criteria": [
+      "Infrastructure Health Checklist completes (services healthy, DB accessible)",
+      "zig build test exits 0 (all unit tests pass)",
+      "zig build test-integration exits 0 (all integration tests pass)",
+      "No regressions detected",
+      "Inner report produced with comprehensive evidence"
+    ],
+    "functions_to_call": [
+      "fn:verify-infrastructure-health",
+      "fn:run-backend-tests",
+      "fn:run-integration-tests",
+      "fn:write-test-report",
+      "fn:validate-completeness"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Infrastructure health verified (Keycloak ✓, test DB ✓ port 5434). However, integration test compilation FAILED due to UUID replacement errors introduced during implementation phase. Compilation errors block test execution. REWORK required: BACKEND-DEV must fix malformed UUID replacements that introduced syntax errors and missing identifier references in test files.",
+    "infrastructure_health": {
+      "status": "HEALTHY",
+      "docker_services": "✓ HEALTHY",
+      "db_test": "✓ UP (port 5434, healthy)",
+      "keycloak": "✓ UP (port 8081, health/ready responding)",
+      "keycloak_gateway": "✓ UP (healthy)",
+      "psql_connectivity_test": "✓ PASS (SELECT 1 returns success)"
+    },
+    "unit_tests": {
+      "status": "PASS",
+      "command": "zig build test",
+      "exit_code": 0,
+      "tests_run": "All unit tests compiled and executed",
+      "tests_passed": "All",
+      "tests_failed": 0
+    },
+    "integration_tests": {
+      "status": "COMPILATION FAILURE",
+      "command": "zig build test-integration",
+      "exit_code": 1,
+      "compilation_errors": [
+        {
+          "severity": "BLOCKER",
+          "file": "tests/integration/iss101_timers_failed_status_test.zig",
+          "line": 198,
+          "error_type": "SYNTAX_ERROR",
+          "description": "Malformed defer statement with double semicolon",
+          "code_snippet": "const instance_id = try randomUuidStr(allocator); defer allocator.free(instance_id);;",
+          "issue": "Double semicolon (;;) after defer statement — likely UUID replacement corruption",
+          "fix": "Remove extra semicolon; ensure proper line separation between const and defer"
+        },
+        {
+          "severity": "BLOCKER",
+          "file": "tests/integration/db_integration_test.zig",
+          "line": "271, 272",
+          "error_type": "UNDECLARED_IDENTIFIER",
+          "description": "Reference to undefined 'harness' variable",
+          "code_snippet": "const inst_id_str = try harness.newUuidString(alloc);",
+          "context": "Variable declared as 'h' (line 254: var h = try TestHarness.init(alloc)), but code references 'harness'",
+          "issue": "UUID replacement corrupted the variable reference",
+          "fix": "Change 'harness.newUuidString' to 'h.newUuidString' at lines 271, 272"
+        },
+        {
+          "severity": "BLOCKER",
+          "file": "tests/integration/env03_test.zig",
+          "line": "253, 333, 434, 485, 538, 616",
+          "error_type": "UNDECLARED_IDENTIFIER",
+          "description": "6 references to undefined 'harness' variable",
+          "context": "Same pattern as db_integration_test.zig — 'h' declared but 'harness' referenced",
+          "fix": "Replace all 'harness.' references with 'h.' in this file"
+        },
+        {
+          "severity": "BLOCKER",
+          "file": "tests/integration/ext02_webhook_dispatch_test.zig",
+          "line": "298, 335, 374, 428, 485, 537, 592",
+          "error_type": "UNDECLARED_IDENTIFIER",
+          "description": "7 references to undefined 'harness' variable",
+          "fix": "Replace all 'harness.' references with 'h.' in this file"
+        },
+        {
+          "severity": "BLOCKER",
+          "file": "tests/integration/exp401_exp402_comp_restore_test.zig",
+          "line": 49,
+          "error_type": "TYPE_EXPRESSION_ERROR",
+          "description": "Malformed defer keyword in type context",
+          "code_snippet": "expected type expression, found 'defer'",
+          "issue": "UUID replacement likely corrupted a line that should not have been modified",
+          "fix": "Review context around line 49 to restore proper syntax"
+        },
+        {
+          "severity": "BLOCKER",
+          "file": "tests/integration/ext01_service_task_test.zig",
+          "line": 38,
+          "error_type": "TYPE_EXPRESSION_ERROR",
+          "description": "Malformed defer keyword in type context",
+          "issue": "Same as exp401_exp402_comp_restore_test.zig line 49",
+          "fix": "Review and restore proper syntax at line 38"
+        }
+      ],
+      "build_summary": {
+        "total_steps": 61,
+        "succeeded": 38,
+        "failed": 12,
+        "errors": "48 compilation errors across multiple test files"
+      },
+      "root_cause": "UUID replacement phase corrupted variable references and introduced syntax errors"
+    },
+    "test_isolation_validation": {
+      "status": "BLOCKED",
+      "reason": "Cannot validate test isolation until compilation errors are fixed",
+      "per_test_uuid_strategy": "Designed per implementation spec (114 replacements across 29 files)"
+    },
+    "issues": [
+      {
+        "id": "COMP-01",
+        "severity": "BLOCKER",
+        "category": "COMPILATION_ERROR",
+        "description": "Syntax error: double semicolon after defer statement in iss101_timers_failed_status_test.zig:198",
+        "files_affected": ["tests/integration/iss101_timers_failed_status_test.zig"],
+        "line_numbers": [198],
+        "fix_strategy": "Remove malformed double semicolon; restore proper Zig syntax for const+defer pairing"
+      },
+      {
+        "id": "COMP-02",
+        "severity": "BLOCKER",
+        "category": "UNDECLARED_IDENTIFIER",
+        "description": "Variable 'harness' referenced but undefined; declared as 'h' in 4 test files",
+        "files_affected": [
+          "tests/integration/db_integration_test.zig",
+          "tests/integration/env03_test.zig",
+          "tests/integration/ext02_webhook_dispatch_test.zig"
+        ],
+        "line_count": "6 + 6 + 7 = 19 total references",
+        "fix_strategy": "Mechanically replace all 'harness.' → 'h.' across affected files"
+      },
+      {
+        "id": "COMP-03",
+        "severity": "BLOCKER",
+        "category": "TYPE_EXPRESSION_ERROR",
+        "description": "Malformed defer keyword in type context in 2 test files",
+        "files_affected": [
+          "tests/integration/exp401_exp402_comp_restore_test.zig",
+          "tests/integration/ext01_service_task_test.zig"
+        ],
+        "fix_strategy": "Review each affected line; restore proper syntax by examining what UUID replacement corrupted"
+      }
+    ],
+    "next_action": "REWORK: Route to BACKEND-DEV Step 3b (fix compilation errors from UUID replacement corruption)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "completed_at": "2026-08-03T02:49:43Z"
+}

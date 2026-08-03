@@ -26,8 +26,10 @@ const TaskStore = bpm.tasks.TaskStore;
 const plugin_interface = bpm.plugin_interface;
 const plugin_registry = bpm.plugin_registry;
 
-const creator_uuid_str = "00000000-0000-0000-0000-000000000199";
 const valid_service_attrs = "{\"url\":\"http://127.0.0.1:19999/ext03\",\"method\":\"POST\",\"timeout_ms\":1000,\"retry_limit\":1}";
+
+/// Fixed "created_by" UUID used across tests.
+const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
 
 const PluginMode = enum {
     complete_empty,

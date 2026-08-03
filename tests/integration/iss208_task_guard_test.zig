@@ -37,6 +37,27 @@ fn makePool(allocator: std.mem.Allocator, url: []const u8) !Pool {
 }
 
 // ---------------------------------------------------------------------------
+// UUID helper
+// ---------------------------------------------------------------------------
+
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
+    raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
+}
+
+// ---------------------------------------------------------------------------
 // TC1: cancel instance then complete task → 409 INSTANCE_NOT_ACTIVE, no events
 // ---------------------------------------------------------------------------
 
@@ -52,9 +73,12 @@ test "ISS-208-TC1: task completion on cancelled instance returns 409 INSTANCE_NO
     defer h.deinit();
 
     const tenant_id = "00000000-0000-0000-0000-000000000000";
-    const def_id = "d0208001-0000-0000-0000-000000000001";
-    const inst_id = "d0208001-0000-0000-0000-000000000002";
-    const task_id = "d0208001-0000-0000-0000-000000000003";
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const inst_id = try randomUuidStr(allocator);
+    defer allocator.free(inst_id);
+    const task_id = try randomUuidStr(allocator);
+    defer allocator.free(task_id);
 
     // Insert process definition.
     try h.conn.exec(
@@ -76,7 +100,8 @@ test "ISS-208-TC1: task completion on cancelled instance returns 409 INSTANCE_NO
         &.{ inst_id, tenant_id, def_id },
     );
 
-    const token_id_1 = "d0208001-0000-0000-0000-000000000004";
+    const token_id_1 = try randomUuidStr(allocator);
+    defer allocator.free(token_id_1);
 
     // Insert a token (required by tasks.token_id FK).
     try h.conn.exec(
@@ -172,9 +197,12 @@ test "ISS-208-TC2: task completion on completed instance returns 409 INSTANCE_NO
     defer h.deinit();
 
     const tenant_id = "00000000-0000-0000-0000-000000000000";
-    const def_id = "d0208002-0000-0000-0000-000000000001";
-    const inst_id = "d0208002-0000-0000-0000-000000000002";
-    const task_id = "d0208002-0000-0000-0000-000000000003";
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const inst_id = try randomUuidStr(allocator);
+    defer allocator.free(inst_id);
+    const task_id = try randomUuidStr(allocator);
+    defer allocator.free(task_id);
 
     try h.conn.exec(
         \\INSERT INTO process_definitions (id, tenant_id, name, status, definition_artifact_hash, version, created_by, created_at, updated_at)
@@ -195,7 +223,8 @@ test "ISS-208-TC2: task completion on completed instance returns 409 INSTANCE_NO
         &.{ inst_id, tenant_id, def_id },
     );
 
-    const token_id_2 = "d0208002-0000-0000-0000-000000000004";
+    const token_id_2 = try randomUuidStr(allocator);
+    defer allocator.free(token_id_2);
 
     // Insert a token (required by tasks.token_id FK).
     try h.conn.exec(

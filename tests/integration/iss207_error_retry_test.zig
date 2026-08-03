@@ -22,6 +22,27 @@ pub const api_tenant_context = bpm.api_tenant_context;
 const dlq_store = bpm.dlq_store;
 
 // ---------------------------------------------------------------------------
+// UUID helper
+// ---------------------------------------------------------------------------
+
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
+    raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
+}
+
+// ---------------------------------------------------------------------------
 // UUIDs generated per-test using per-test unique hex segments
 // ---------------------------------------------------------------------------
 
@@ -63,9 +84,12 @@ test "ISS-207-TC1: bare retry same def version returns RetryWithoutChange" {
     defer h.deinit();
 
     // Insert a process_definition with status ACTIVE and a known artifact hash.
-    const def_id = "d0207001-0000-0000-0000-000000000001";
-    const inst_id = "d0207001-0000-0000-0000-000000000002";
-    const dlq_id = "d0207001-0000-0000-0000-000000000003";
+    const def_id = try h.newUuidString(allocator);
+    defer allocator.free(def_id);
+    const inst_id = try h.newUuidString(allocator);
+    defer allocator.free(inst_id);
+    const dlq_id = try h.newUuidString(allocator);
+    defer allocator.free(dlq_id);
     const artifact_hash = "abc123def456";
 
     try h.conn.exec(
@@ -149,9 +173,12 @@ test "ISS-207-TC2: retry-with-input returns RETRYING and updates payload" {
     };
     defer h.deinit();
 
-    const def_id = "d0207002-0000-0000-0000-000000000001";
-    const inst_id = "d0207002-0000-0000-0000-000000000002";
-    const dlq_id = "d0207002-0000-0000-0000-000000000003";
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const inst_id = try randomUuidStr(allocator);
+    defer allocator.free(inst_id);
+    const dlq_id = try randomUuidStr(allocator);
+    defer allocator.free(dlq_id);
 
     try h.conn.exec(
         \\INSERT INTO process_definitions (id, tenant_id, name, status, definition_artifact_hash, version, created_by, created_at, updated_at)
@@ -242,9 +269,12 @@ test "ISS-207-TC3: discard cancels instance and removes DLQ row" {
     };
     defer h.deinit();
 
-    const def_id = "d0207003-0000-0000-0000-000000000001";
-    const inst_id = "d0207003-0000-0000-0000-000000000002";
-    const dlq_id = "d0207003-0000-0000-0000-000000000003";
+    const def_id = try randomUuidStr(allocator);
+    defer allocator.free(def_id);
+    const inst_id = try randomUuidStr(allocator);
+    defer allocator.free(inst_id);
+    const dlq_id = try randomUuidStr(allocator);
+    defer allocator.free(dlq_id);
 
     try h.conn.exec(
         \\INSERT INTO process_definitions (id, tenant_id, name, status, definition_artifact_hash, version, created_by, created_at, updated_at)
