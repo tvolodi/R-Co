@@ -572,9 +572,6 @@ pub const TestHarness = struct {
         // unnecessary, given errdefer conn.close() above already discards the
         // whole connection on any error, and actively harmful, since a
         // function-scope defer would not fire until after conn.begin() below).
-        try conn.exec("SET lock_timeout = '90s'", &.{});
-        try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
-        try conn.exec("SET lock_timeout = '5s'", &.{});
 
         // Set search_path to tenant_default so resetTestData and all subsequent
         // operations on this direct connection resolve tenant-schema tables
