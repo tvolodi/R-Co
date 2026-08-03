@@ -5,7 +5,7 @@
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-08-03T21:25:52Z",
-  "status": "PENDING",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "WF-03 Issue Resolving",
@@ -35,9 +35,18 @@
     ],
     "functions_to_call": ["fn:implement-fix", "fn:check-zig-build"]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "Applied all 8 SQL case-correction edits to src/webhook/dispatcher.zig (lines 88, 172, 207, 251, 295, 371, 406, 440) per design iss205-webhook-status-case.md: 2 INSERT literals flipped 'pending'→'PENDING', 3 SELECT WHERE clauses flipped ('pending','failed')→('PENDING','FAILED'), and 3 UPDATE terminal-status writes flipped 'success'→'DELIVERED', 'exhausted'→'FAILED', 'failed'→'FAILED'. Line 419 ('PAUSED', webhook_subscriptions) and 5 'ACTIVE' sites on webhook_subscriptions were left untouched. Validation: zig build EXIT 0, error-set grep empty, zig build test EXIT 0, python tools/lint_sql_param_types.py src tests 0 BLOCKER/0 MAJOR/0 MINOR, zig build migrate EXIT 0 (no migrations to apply). Committed and pushed: e373a4c on feature/WF03-gh400-20260804.",
+    "artifacts_out": [
+      "src/webhook/dispatcher.zig",
+      "handoffs/WF03-gh400-20260804/step-3-backend-dev.json"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
   "rework_count": 0,
   "max_rework": 3,
   "started_at": null,
-  "completed_at": null
+  "completed_at": "2026-08-03T21:28:49Z"
 }
