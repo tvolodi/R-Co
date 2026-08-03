@@ -88,9 +88,12 @@ test "TC-SCH-303-03: timer fire exhaustion moves timer to FAILED and inserts DLQ
     defer pool.deinit();
 
     // Per-test UUIDs — 30310000 prefix isolates from all other test fixtures.
-    const instance_id = "30310000-0000-0000-0000-000000000001";
-    const def_id      = "30310000-0000-0000-0000-000000000000";
-    const timer_id    = "30310000-0000-0000-0000-000000000002";
+    const instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const timer_id = try harness.newUuidString(alloc);
+    defer alloc.free(timer_id);
     const idem_key    = "timer-fired:30310000-0000-0000-0000-000000000002";
 
     const conn = try pool.acquire();
@@ -196,9 +199,12 @@ test "TC-SCH-303-04: timer stays pending when fire_error_count < max_timer_fire_
     defer pool.deinit();
 
     // Per-test UUIDs — 30320000 prefix.
-    const instance_id = "30320000-0000-0000-0000-000000000001";
-    const def_id      = "30320000-0000-0000-0000-000000000000";
-    const timer_id    = "30320000-0000-0000-0000-000000000002";
+    const instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const timer_id = try harness.newUuidString(alloc);
+    defer alloc.free(timer_id);
     const idem_key    = "timer-fired:30320000-0000-0000-0000-000000000002";
 
     const conn = try pool.acquire();
@@ -295,9 +301,12 @@ test "TC-SCH-301-03: two sequential scheduler polls on one timer fire it exactly
     // Per-test UUIDs — 30100000 prefix.
     // Note: for this test the fire must SUCCEED, so we do NOT pre-insert the
     // blocking events row. A minimal instance + timer is sufficient.
-    const instance_id = "30100000-0000-0000-0000-000000000001";
-    const def_id      = "30100000-0000-0000-0000-000000000000";
-    const timer_id    = "30100000-0000-0000-0000-000000000002";
+    const instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const timer_id = try harness.newUuidString(alloc);
+    defer alloc.free(timer_id);
     const idem_key    = "timer-fired:30100000-0000-0000-0000-000000000002";
 
     const conn = try pool.acquire();

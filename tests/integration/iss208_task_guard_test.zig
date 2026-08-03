@@ -52,9 +52,12 @@ test "ISS-208-TC1: task completion on cancelled instance returns 409 INSTANCE_NO
     defer h.deinit();
 
     const tenant_id = "00000000-0000-0000-0000-000000000000";
-    const def_id = "d0208001-0000-0000-0000-000000000001";
-    const inst_id = "d0208001-0000-0000-0000-000000000002";
-    const task_id = "d0208001-0000-0000-0000-000000000003";
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const inst_id = try harness.newUuidString(alloc);
+    defer alloc.free(inst_id);
+    const task_id = try harness.newUuidString(alloc);
+    defer alloc.free(task_id);
 
     // Insert process definition.
     try h.conn.exec(
@@ -76,7 +79,8 @@ test "ISS-208-TC1: task completion on cancelled instance returns 409 INSTANCE_NO
         &.{ inst_id, tenant_id, def_id },
     );
 
-    const token_id_1 = "d0208001-0000-0000-0000-000000000004";
+    const token_id_1 = try harness.newUuidString(alloc);
+    defer alloc.free(token_id_1);
 
     // Insert a token (required by tasks.token_id FK).
     try h.conn.exec(
@@ -172,9 +176,12 @@ test "ISS-208-TC2: task completion on completed instance returns 409 INSTANCE_NO
     defer h.deinit();
 
     const tenant_id = "00000000-0000-0000-0000-000000000000";
-    const def_id = "d0208002-0000-0000-0000-000000000001";
-    const inst_id = "d0208002-0000-0000-0000-000000000002";
-    const task_id = "d0208002-0000-0000-0000-000000000003";
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const inst_id = try harness.newUuidString(alloc);
+    defer alloc.free(inst_id);
+    const task_id = try harness.newUuidString(alloc);
+    defer alloc.free(task_id);
 
     try h.conn.exec(
         \\INSERT INTO process_definitions (id, tenant_id, name, status, definition_artifact_hash, version, created_by, created_at, updated_at)
@@ -195,7 +202,8 @@ test "ISS-208-TC2: task completion on completed instance returns 409 INSTANCE_NO
         &.{ inst_id, tenant_id, def_id },
     );
 
-    const token_id_2 = "d0208002-0000-0000-0000-000000000004";
+    const token_id_2 = try harness.newUuidString(alloc);
+    defer alloc.free(token_id_2);
 
     // Insert a token (required by tasks.token_id FK).
     try h.conn.exec(

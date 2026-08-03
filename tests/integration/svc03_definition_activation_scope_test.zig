@@ -231,7 +231,8 @@ test "svc03: activation passes for own-tenant scoped service" {
     plugin_registry.freezePluginRegistry(&registry);
 
     // Use pre-committed fixture tenant (visible to pool connections).
-    const owner_hex = "eeeeeeee-0000-0000-0000-000000000001";
+    const owner_hex = try harness.newUuidString(alloc);
+    defer alloc.free(owner_hex);
     const tid_owner = try parseUuid36(owner_hex);
 
     var rand_bytes: [8]u8 = undefined;
@@ -286,8 +287,10 @@ test "svc03: activation rejected for cross-tenant service reference" {
     plugin_registry.freezePluginRegistry(&registry);
 
     // Use pre-committed fixture tenants (visible to pool connections).
-    const owner_hex = "eeeeeeee-0000-0000-0000-000000000001";
-    const caller_hex = "eeeeeeee-0000-0000-0000-000000000002";
+    const owner_hex = try harness.newUuidString(alloc);
+    defer alloc.free(owner_hex);
+    const caller_hex = try harness.newUuidString(alloc);
+    defer alloc.free(caller_hex);
     const tid_owner = try parseUuid36(owner_hex);
     const tid_caller = try parseUuid36(caller_hex);
 
@@ -480,8 +483,10 @@ test "svc03: first scope violation stops validation atomically" {
     plugin_registry.freezePluginRegistry(&registry);
 
     // Use pre-committed fixture tenants (visible to pool connections).
-    const owner_hex = "eeeeeeee-0000-0000-0000-000000000001";
-    const caller_hex = "eeeeeeee-0000-0000-0000-000000000002";
+    const owner_hex = try harness.newUuidString(alloc);
+    defer alloc.free(owner_hex);
+    const caller_hex = try harness.newUuidString(alloc);
+    defer alloc.free(caller_hex);
     const tid_owner = try parseUuid36(owner_hex);
     const tid_caller = try parseUuid36(caller_hex);
 

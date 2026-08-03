@@ -26,7 +26,8 @@ const TaskStore = bpm.tasks.TaskStore;
 const plugin_interface = bpm.plugin_interface;
 const plugin_registry = bpm.plugin_registry;
 
-const creator_uuid_str = "00000000-0000-0000-0000-000000000199";
+const creator_uuid_str = try harness.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
 const valid_service_attrs = "{\"url\":\"http://127.0.0.1:19999/ext03\",\"method\":\"POST\",\"timeout_ms\":1000,\"retry_limit\":1}";
 
 const PluginMode = enum {

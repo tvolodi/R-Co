@@ -1,0 +1,208 @@
+# WF03-gh402-20260803 — Step 2 (CODE-DESIGNER) Inner Report
+# Workflow: WF-03 Issue Resolving (Step 2 — Solution Design)
+# Agent: CODE-DESIGNER
+# Mode: design-only — NO source, test, linter, or baseline files modified
+# GitHub cross-reference: https://github.com/tvolodi/R-Co/issues/402
+# Local ISS registry entry: docs/issues/ISS-0121.json (status: RESOLVED-PARTIAL)
+# Sync-ref on GH body: rco-sync-ref: ISS-0121-residual-29
+
+report_id: WF03-gh402-20260803-step-02-code-designer
+agent_id: CODE-DESIGNER
+run_id: WF03-gh402-20260803
+step: "02"
+created_at: "2026-08-02T21:17:45Z"
+branch: feature/WF03-gh402-20260803
+related_handoff_ids:
+  - f880dbd3-fb0c-454b-9b6b-c0578a8f131e   # Step 00 (BACKEND-DEV, git-setup)
+  - 62a758c0-9ff9-42a1-9cd8-ed93aa6a4e48   # Step 005 (ISSUE-FIXER, diagnose)
+
+summary: >
+  Produced the WF-03 Step 2 Type E prose fix design for the residual-29 T010
+  hardcoded-UUID migration tracked by GH #402. The design re-uses the existing
+  TestHarness.newUuid (helpers.zig:467) and TestHarness.newUuidString
+  (helpers.zig:479) API verbatim — no new helper, no wrapper, no new module.
+  The 29 affected files are split into four BACKEND-DEV-friendly batches of
+  roughly equal size (8/8/8/5 files; 27/79/53/9 active T010 literals) with
+  explicit per-batch file sets, four per-file replacement patterns (P1-P4),
+  four validation gates per batch (G1 lint, G2 zig build test, G3 focused
+  integration, G4 full integration suite), stale-inventory handling rules,
+  and a deferred one-line MAJOR→BLOCKER promotion at
+  tools/lint_test_isolation.py:84 that is gated on the live lint reporting
+  MAJOR < 10 across the entire tests/integration tree after Batch D lands.
+  The design is complete enough for BACKEND-DEV Step 3 to apply it
+  mechanically — every file in every batch has its replacement pattern
+  enumerated and its expected lint delta computed from the live `--json`
+  output captured at design time.
+
+files_created:
+  - src/design/iss0121_residual29_migration.md
+
+files_modified:
+  - handoffs/WF03-gh402-20260803/step-02-code-designer.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+
+tests_run: []   # CODE-DESIGNER does not run tests; TEST-RUNNER runs them in Step 5
+
+# ---------------------------------------------------------------------------
+# Inputs consumed
+# ---------------------------------------------------------------------------
+
+artifacts_in:
+  - id: step-005-inner-report
+    path: docs/issue-reports/WF03-gh402-20260803-step-005-issue-fixer-INNER-REPORT.yaml
+    summary: >
+      Confirmed residual-29 inventory, helpers.zig:467/479 API citations, and
+      constraints for CODE-DESIGNER. Reused as-is.
+  - id: prior-design
+    path: src/design/iss0121_per_test_uuids.md
+    summary: >
+      The §1-§12 design for PR #399 (the helper addition) and §12-§19 for
+      PR #403 (17-file incremental migration). This design extends the same
+      invariant over the residual 29 files; no API change, no rule change.
+  - id: helpers-api
+    path: tests/integration/helpers.zig
+    summary: >
+      Re-cited the newUuid/newUuidString signatures and the defer-on-success
+      rule for newUuidString. No edits proposed to helpers.zig.
+  - id: linter
+    path: tools/lint_test_isolation.py
+    summary: >
+      Re-cited the T010 regex, the ALL_ZEROS_UUID exclusion (line 84), the
+      baseline-aware exit-code logic, and the single-line promotion point at
+      line 84 (the only acceptable linter edit, deferred until MAJOR < 10).
+
+# ---------------------------------------------------------------------------
+# Live lint capture (frozen at design time)
+# ---------------------------------------------------------------------------
+
+live_lint_run_at_design_time:
+  command: "python tools/lint_test_isolation.py tests/integration"
+  ran_at: "2026-08-02T21:17:45Z"
+  summary:
+    files_checked: 122
+    BLOCKER: 0
+    MAJOR: 174
+    MINOR: 0
+    suppressed_from_baseline: 195
+  active_breakdown_by_code:
+    T010: 168
+    T020: 3
+    T050: 3
+  active_unique_files: 29
+
+batch_split:
+  batch_A:
+    files: 8
+    active_T010_in_batch: 27
+    files:
+      - adp06_pipeline_run_correlation_test.zig
+      - adp07_agent_role_reserved_usernames_test.zig
+      - adp09_tamper_evident_audit_chain_test.zig
+      - idn02_group_management_test.zig
+      - idn03_role_access_test.zig
+      - idn04_api_token_management_test.zig
+      - ext01_service_task_test.zig
+      - ext03_plugin_integration_test.zig
+    expected_MAJOR_after: 147
+  batch_B:
+    files: 8
+    active_T010_in_batch: 79
+    files:
+      - exp601_tier_quota_test.zig
+      - ext02_webhook_dispatch_test.zig
+      - db_integration_test.zig
+      - obs06_alerts_test.zig
+      - entity_subsystem_test.zig
+      - env03_test.zig
+      - sch02_timer_polling_test.zig
+      - instance_error_test.zig
+    expected_MAJOR_after: 68
+  batch_C:
+    files: 8
+    active_T010_in_batch: 53
+    files:
+      - exp103_instance_waits_test.zig
+      - iss207_error_retry_test.zig
+      - iss208_task_guard_test.zig
+      - iss601_state_snapshots_test.zig
+      - sch303_timer_dlq_test.zig
+      - svc01_service_catalog_scope_test.zig
+      - svc03_definition_activation_scope_test.zig
+      - exp401_exp402_comp_restore_test.zig
+    expected_MAJOR_after: 15
+  batch_D:
+    files: 5
+    active_T010_in_batch: 9
+    files:
+      - concurrent_instances_test.zig
+      - onboarding_realm_guard_test.zig
+      - svc02_plugin_dispatch_scope_test.zig   # T010=0; T050 only (out of scope); included for completeness
+      - env01_test.zig
+      - tm01_tenant_list_test.zig
+    expected_MAJOR_after: 6
+
+acceptance_for_step_2:
+  - "src/design/iss0121_residual29_migration.md exists and covers the 29-file inventory, four batches, four patterns, four gates, and the deferred BLOCKER promotion"
+  - "No new helper proposed; helpers.zig:467/479 cited as the migration API"
+  - "Implementation code absent from the design (no Zig function bodies, no SQL DDL, no linter regex rewrites)"
+  - "Error taxonomy unchanged (newUuidString still propagates only error.OutOfMemory)"
+  - "Post-fix verification recipe (§12) names the exact commands and expected outputs for G1, G1-bis, G2, G3, G4, G5"
+  - "T010 → BLOCKER promotion explicitly gated on the live lint reporting MAJOR < 10"
+  - "T020/T050 findings explicitly listed as out-of-scope (separate backlog entries recommended)"
+  - "Stale-inventory handling rule explicitly forbids refreshing the baseline to mask new violations"
+
+issues_found:
+  - severity: MINOR
+    description: >
+      The on-disk residual figure (29 files, 174 MAJOR findings = 168 T010 + 3
+      T020 + 3 T050) is larger than the 24-file figure cited in the GH #402
+      body. The body was drafted against an earlier 17→24 mental model. The
+      design §1 documents this explicitly and §5 batches against the live
+      29-file inventory; the §10 risks table names "inventory drift" as a
+      named risk so BACKEND-DEV trusts the live lint, not the prose counts.
+      Action: optional follow-up — leave a comment on GH #402 clarifying the
+      residual-29 figure supersedes the body's 24 (low priority; the issue
+      title already says "residual-29").
+  - severity: MINOR
+    description: >
+      Three T020 (module-level mutable var) and three T050 (no
+      BPM_TEST_DB_URL reference) findings exist in the residual-29 file set
+      but are OUT OF SCOPE for the per-test UUID migration. They are
+      separately actionable lint defects (module-state hygiene and DB-env
+      reference) and require architectural changes beyond UUID isolation.
+      The design §6 explicitly excludes them; BACKEND-DEV MUST NOT touch T020
+      or T050 during this migration. Action: a separate WF-03 backlog entry
+      per finding recommended (low priority; not blocking the T010 migration).
+  - severity: MINOR
+    description: >
+      tools/lint_test_isolation.py:84 is the single-line promotion point for
+      the deferred MAJOR → BLOCKER change. The line number is correct as of
+      the lint capture at 6cc92ec; if a future PR touches that file before
+      this run's Batch D lands, the promotion point must be re-located. The
+      design §9 step 4 flags this implicitly (BACKEND-DEV performs the
+      promotion as the last step of Batch D) and §12 verification recipe
+      step "Gate G1-bis" confirms the promotion took effect.
+
+next_steps:
+  - "ORCH routes to CODE-DESIGN-VALIDATOR (WF-03 Step 2b — hard gate). Implementation MUST NOT begin until the validator returns PASS."
+  - "After validator PASS, ORCH routes to BACKEND-DEV (WF-03 Step 3). BACKEND-DEV applies the design mechanically per §5 (batches) and §6 (per-file patterns), running §7 validation gates after each batch."
+  - "After all four batches land and lint MAJOR < 10 is verified, ISSUE-FIXER (Step 3) returns to docs/issues/ISS-0121.json: status=RESOLVED, resolution='full migration of <N> files', prevention='T010 promoted to BLOCKER in tools/lint_test_isolation.py:84', resolved_at=now, github_issue kept as #402."
+  - "DOC-UPDATER (Step 7) updates CHANGELOG.md and requirement_status (if any requirement is touched by this migration; the T010 migration does not change production semantics, so CHANGELOG-only is expected)."
+  - "BACKEND-DEV (Step Final) creates one PR per batch (4 PRs total), each squash-merged, each branch deleted from origin."
+
+blockers: []
+
+# ---------------------------------------------------------------------------
+# Constraints satisfied (cross-check against step-005 inner-report)
+# ---------------------------------------------------------------------------
+
+constraints_satisfied:
+  - "helpers.zig:467 (newUuid) and helpers.zig:479 (newUuidString) cited as the migration API; no new helper proposed"
+  - "tools/lint_test_isolation.py weakening explicitly forbidden; the only acceptable lint-side edit is the post-fix MAJOR → BLOCKER promotion at tools/lint_test_isolation.py:84 once MAJOR < 10 is achieved"
+  - "tools/lint_test_isolation.baseline.json refresh explicitly forbidden to mask new violations; baseline edits limited to removing entries whose source literal was replaced"
+  - "All-zero UUID sentinel preserved where the API contract requires it (default tenant, NULL marker)"
+  - "helpers.zig and tests/integration/helpers.zig remain the single source of the per-test UUID API"
+  - "Migration scoped to the 29-file list; tests with no T010 finding untouched"
+  - "Per-call defer allocator.free(id) instruction included for every newUuidString call (§4 step 4)"
+  - "Post-fix verification recipe enumerates zig build test exit 0, full integration suite exit 0, and lint MAJOR < 10"

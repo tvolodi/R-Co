@@ -1,0 +1,105 @@
+{
+  "handoff_id": "f880dbd3-fb0c-454b-9b6b-c0578a8f131e",
+  "run_id": "WF03-gh402-20260803",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh402-20260803/step-00-backend-dev.json",
+  "created_at": "2026-08-02T21:07:44Z",
+  "started_at": "2026-08-02T21:07:44Z",
+  "completed_at": "2026-08-02T21:08:11Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving — Step 00 (git-setup hard gate)",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "github_issue": {
+      "number": 402,
+      "url": "https://github.com/tvolodi/R-Co/issues/402",
+      "title": "ISS-0121-residual-29: drive T010 hardcoded-UUID MAJOR from 174 to <10",
+      "state": "OPEN",
+      "labels": ["bug"],
+      "sync_ref": "rco-sync-ref: ISS-0121-residual-29",
+      "body": "## Symptom\n`tools/lint_test_isolation.py tests/integration` reports `MAJOR=174` T010 hardcoded-UUID findings. The 17-file inventory in the design (`src/design/iss0121_per_test_uuids.md`) was stale; the on-disk linter baseline identifies **29 unique affected test files**, of which 5 were migrated in PR #399 follow-up (WF03-gh387-followup-20260802) and **24 still carry T010 findings**.\n\n## Root cause\nMultiple integration test files still INSERT hardcoded UUID literals (e.g. `00000000-0000-0000-0000-000000000099`, `aaaaaaaa-...`, `11111111-...`, `e02050xx-...`) rather than using `TestHarness.newUuid` / `TestHarness.newUuidString`. Per INV-TI-3, all test fixtures must use per-test UUIDs to avoid deterministic collisions across runs.\n\n## Migration plan\n- Continue the incremental migration: replace each `00000000-...` / `aaaaaaaa-...` / `11111111-...` / `e02050xx-...` literal in the residual 24 files with a `harness.newUuid()` / `harness.newUuidString()` call.\n- Run `python3 tools/lint_test_isolation.py tests/integration` after each batch; target `MAJOR < 10`.\n- Refresh `tools/lint_test_isolation.baseline.json` only after fixes land (never to mask new violations).\n- Promote T010 to BLOCKER once the residual is below 10.\n\n## Acceptance criteria\n- [ ] `python3 tools/lint_test_isolation.py tests/integration` -> `MAJOR < 10` (currently 174)\n- [ ] All 24 residual test files migrated to `TestHarness.newUuid*`\n- [ ] `zig build test` and full integration suite remain green\n- [ ] T010 promoted from MAJOR to BLOCKER in `tools/lint_test_isolation.py`\n\nFound by: WF03-gh387-followup-20260802 Step 5 test run (cluster C).",
+      "comments_count": 0
+    },
+    "module_conflict_scan": {
+      "active_wf03_branches": [
+        "feature/WF03-gh364-20260801",
+        "feature/WF03-gh388-20260802",
+        "feature/WF03-gh389-20260802",
+        "feature/WF03-gh390-20260801",
+        "feature/WF03-iss0076-20260730",
+        "feature/WF03-iss0088-20260730",
+        "feature/WF03-iss0090-20260731",
+        "feature/WF03-iss0093-20260731",
+        "feature/WF03-iss0095-20260731",
+        "feature/WF03-iss0099"
+      ],
+      "no_remote_branch_collision": true,
+      "related_recent_work": [
+        {"sha": "6cc92ec", "pr": 404, "title": "fix(ISS-0122): validator pass trace_id + TC-04 unambiguous parameter (GH #388 root cause)"},
+        {"sha": "ef42a0", "pr": 403, "title": "fix(ISS-0121): incremental per-test UUID migration (GH #387 part 2)"},
+        {"sha": "c40817a", "pr": 399, "title": "fix(ISS-0121): per-test UUID generator on TestHarness (GH #387)"}
+      ],
+      "unrelated_working_tree_changes": [
+        "handoffs/WF03-gh388-rootcause-20260802/step-final-backend-dev.json (modified)",
+        "handoffs/orchestrator.log (modified)",
+        "handoffs/registry.json (modified)",
+        "tests/integration/iss102_claim_test.zig (modified — unrelated to T010)"
+      ]
+    }
+  },
+  "task": {
+    "description": "Execute WF-03 Step 00 hard gate (`fn:git-setup`) for issue #402 (T010 hardcoded-UUID residual migration). Inspect issue via authenticated `gh` CLI, create feature branch `feature/WF03-gh402-20260803`, push to origin (coordination signal), preserve issue metadata in this handoff, register in `handoffs/registry.json`, append route log to `handoffs/orchestrator.log`. DO NOT diagnose or implement the defect in this step — only the git-setup + handoff scaffolding.",
+    "acceptance_criteria": [
+      "Issue #402 metadata captured (number, title, state, labels, body, sync-ref, acceptance criteria) into handoff `context.github_issue`",
+      "Feature branch `feature/WF03-gh402-20260803` created from `main` and pushed to `origin`",
+      "No collision with any active WF03/WF02 feature branch on the affected integration test files",
+      "Handoff file written to `handoffs/WF03-gh402-20260803/step-00-backend-dev.json` with valid schema",
+      "Registry `handoffs/registry.json` updated with the new PENDING→COMPLETED entry",
+      "Route log appended to `handoffs/orchestrator.log`",
+      "Real UTC timestamps used for `created_at`/`started_at`/`completed_at` (not invented)",
+      "No code or migration changes touched in this step"
+    ],
+    "functions_to_call": [
+      "fn:git-setup",
+      "fn:read-github-issue",
+      "fn:complete-handoff"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "WF-03 Step 00 hard gate for GitHub issue #402 (T010 hardcoded-UUID residual migration) executed. Issue metadata captured via authenticated `gh issue view 402 --repo tvolodi/R-Co --json number,title,body,labels,state,url,comments` (title: 'ISS-0121-residual-29: drive T010 hardcoded-UUID MAJOR from 174 to <10', state OPEN, label 'bug', sync-ref rco-sync-ref: ISS-0121-residual-29). Feature branch `feature/WF03-gh402-20260803` created from `main` (which was already at `6cc92ec` and fast-forwarded up to date with `origin/main`) and pushed to origin as the coordination signal. Module conflict scan confirmed no active WF03/WF02 branch owns the 24 residual test files (the only related prior work was PR #399/403/404, all already merged to main). Per-step scope respected: no diagnosis or implementation performed.",
+    "artifacts_out": [
+      "branch: feature/WF03-gh402-20260803",
+      "handoffs/WF03-gh402-20260803/step-00-backend-dev.json"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh402-20260803",
+      "base_sha": "6cc92ecae27b8c10dd716b433ef83e932982fd1e",
+      "commit_sha_list": ["6cc92ecae27b8c10dd716b433ef83e932982fd1e"],
+      "remote_branch": "origin/feature/WF03-gh402-20260803",
+      "tracking_remote": "origin",
+      "tracking_merge": "refs/heads/feature/WF03-gh402-20260803",
+      "push_status": "ok",
+      "push_log_excerpt": "* [new branch]      feature/WF03-gh402-20260803 -> feature/WF03-gh402-20260803\nbranch 'feature/WF03-gh402-20260803' set up to track 'origin/feature/WF03-gh402-20260803'.",
+      "pr_url": null,
+      "pr_create_error": null,
+      "git_setup_checks": {
+        "git_pull_ff_only_origin_main": "Already up to date (exit code 1 reported by PowerShell is stderr noise from git; FETCH_HEAD + 'Already up to date.' confirm success per powerShell-native-command-stderr.md memory)",
+        "git_checkout_b_feature": "Switched to a new branch 'feature/WF03-gh402-20260803' (PowerShell stderr-noise only; success)",
+        "git_push_u_origin": "ok — new branch announced to origin (PowerShell stderr-noise only; success per powerShell-native-command-stderr.md memory)",
+        "git_branch_show_current": "feature/WF03-gh402-20260803",
+        "git_branch_r_remote_visible": "origin/feature/WF03-gh402-20260803"
+      }
+    },
+    "next_action": "ORCH routes to ISSUE-FIXER (Step 0.5) — search the docs/issues registry for any prior ISS-0121 / T010-resolution work (PR #399/403 already on main provide the proven approach), confirm residual-24 inventory against the on-disk lint baseline, then to CODE-DESIGNER (Step 2) for a fix design that batches the 24 files. Do NOT dispatch to BACKEND-DEV (Step 3) until the fix design + CODE-DESIGN-VALIDATOR (Step 2b) returns PASS."
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

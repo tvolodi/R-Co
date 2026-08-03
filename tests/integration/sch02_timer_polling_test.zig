@@ -24,8 +24,10 @@ const TaskStore = bpm.tasks.TaskStore;
 const TimerStore = bpm.scheduler;
 const Scheduler = bpm.scheduler_poller.Scheduler;
 
-const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
-const actor_id_str = "00000000-0000-0000-0000-000000000001";
+const creator_uuid_str = try harness.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
+const actor_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(actor_id_str);
 
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };

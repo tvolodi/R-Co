@@ -174,7 +174,8 @@ fn parseUuid(s: []const u8) ![16]u8 {
     return out;
 }
 
-const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
+const creator_uuid_str = try harness.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
 
 fn makeTaskFixture(
     allocator: std.mem.Allocator,

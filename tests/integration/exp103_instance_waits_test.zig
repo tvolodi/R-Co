@@ -128,9 +128,12 @@ test "TC-EXP-103-01: timer arm writes instance_waits row" {
     defer pool.deinit();
 
     // Per-test UUIDs — e1030100 prefix.
-    const instance_id = "e1030100-0000-0000-0000-000000000001";
-    const def_id      = "e1030100-0000-0000-0000-000000000000";
-    const timer_id    = "e1030100-0000-0000-0000-000000000002";
+    const instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const timer_id = try harness.newUuidString(alloc);
+    defer alloc.free(timer_id);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -216,9 +219,12 @@ test "TC-EXP-103-02: TaskStore.createInTx writes instance_waits row" {
     defer pool.deinit();
 
     // Per-test UUIDs — e1030200 prefix.
-    const instance_id_str = "e1030200-0000-0000-0000-000000000001";
-    const def_id_str      = "e1030200-0000-0000-0000-000000000000";
-    const token_id_str    = "e1030200-0000-0000-0000-000000000002";
+    const instance_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id_str);
+    const def_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(def_id_str);
+    const token_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(token_id_str);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -319,9 +325,12 @@ test "TC-EXP-103-03: Scheduler.pollDueTimers resolves the instance_waits timer r
     defer pool.deinit();
 
     // Per-test UUIDs — e1030300 prefix.
-    const instance_id = "e1030300-0000-0000-0000-000000000001";
-    const def_id      = "e1030300-0000-0000-0000-000000000000";
-    const timer_id    = "e1030300-0000-0000-0000-000000000002";
+    const instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const timer_id = try harness.newUuidString(alloc);
+    defer alloc.free(timer_id);
     const idem_key    = "timer-fired:e1030300-0000-0000-0000-000000000002";
 
     const conn = try pool.acquire();
@@ -420,10 +429,14 @@ test "TC-EXP-103-04: TaskStore.completeInTx resolves the instance_waits task row
     defer pool.deinit();
 
     // Per-test UUIDs — e1030400 prefix.
-    const instance_id_str = "e1030400-0000-0000-0000-000000000001";
-    const def_id_str      = "e1030400-0000-0000-0000-000000000000";
-    const token_id_str    = "e1030400-0000-0000-0000-000000000002";
-    const task_id_str     = "e1030400-0000-0000-0000-000000000003";
+    const instance_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id_str);
+    const def_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(def_id_str);
+    const token_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(token_id_str);
+    const task_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(task_id_str);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -527,9 +540,12 @@ test "TC-EXP-103-05: rolled-back transaction leaves no orphaned instance_waits r
     defer pool.deinit();
 
     // Per-test UUIDs — e1030500 prefix.
-    const instance_id = "e1030500-0000-0000-0000-000000000001";
-    const def_id      = "e1030500-0000-0000-0000-000000000000";
-    const timer_id    = "e1030500-0000-0000-0000-000000000002";
+    const instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const timer_id = try harness.newUuidString(alloc);
+    defer alloc.free(timer_id);
 
     const conn = try pool.acquire();
     defer pool.release(conn);

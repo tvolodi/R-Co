@@ -63,9 +63,12 @@ test "ISS-207-TC1: bare retry same def version returns RetryWithoutChange" {
     defer h.deinit();
 
     // Insert a process_definition with status ACTIVE and a known artifact hash.
-    const def_id = "d0207001-0000-0000-0000-000000000001";
-    const inst_id = "d0207001-0000-0000-0000-000000000002";
-    const dlq_id = "d0207001-0000-0000-0000-000000000003";
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const inst_id = try harness.newUuidString(alloc);
+    defer alloc.free(inst_id);
+    const dlq_id = try harness.newUuidString(alloc);
+    defer alloc.free(dlq_id);
     const artifact_hash = "abc123def456";
 
     try h.conn.exec(
@@ -149,9 +152,12 @@ test "ISS-207-TC2: retry-with-input returns RETRYING and updates payload" {
     };
     defer h.deinit();
 
-    const def_id = "d0207002-0000-0000-0000-000000000001";
-    const inst_id = "d0207002-0000-0000-0000-000000000002";
-    const dlq_id = "d0207002-0000-0000-0000-000000000003";
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const inst_id = try harness.newUuidString(alloc);
+    defer alloc.free(inst_id);
+    const dlq_id = try harness.newUuidString(alloc);
+    defer alloc.free(dlq_id);
 
     try h.conn.exec(
         \\INSERT INTO process_definitions (id, tenant_id, name, status, definition_artifact_hash, version, created_by, created_at, updated_at)
@@ -242,9 +248,12 @@ test "ISS-207-TC3: discard cancels instance and removes DLQ row" {
     };
     defer h.deinit();
 
-    const def_id = "d0207003-0000-0000-0000-000000000001";
-    const inst_id = "d0207003-0000-0000-0000-000000000002";
-    const dlq_id = "d0207003-0000-0000-0000-000000000003";
+    const def_id = try harness.newUuidString(alloc);
+    defer alloc.free(def_id);
+    const inst_id = try harness.newUuidString(alloc);
+    defer alloc.free(inst_id);
+    const dlq_id = try harness.newUuidString(alloc);
+    defer alloc.free(dlq_id);
 
     try h.conn.exec(
         \\INSERT INTO process_definitions (id, tenant_id, name, status, definition_artifact_hash, version, created_by, created_at, updated_at)

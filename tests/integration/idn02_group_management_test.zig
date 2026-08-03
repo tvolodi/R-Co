@@ -143,7 +143,8 @@ fn expectUuidLike(value: []const u8) !void {
     try testing.expectEqual(@as(u8, '-'), value[23]);
 }
 
-const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
+const creator_uuid_str = try harness.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
 
 fn createGroupId(service: *identity_service.Service, allocator: std.mem.Allocator, name: []const u8) ![]u8 {
     const body = try std.fmt.allocPrint(allocator, "{{\"name\":\"{s}\"}}", .{name});

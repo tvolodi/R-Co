@@ -156,8 +156,10 @@ test "TC-ADP-09-02: new rows chain deterministically with tenant-scoped predeces
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant_a = "a9000000-0000-0000-0000-000000000001";
-    const tenant_b = "b9000000-0000-0000-0000-000000000001";
+    const tenant_a = try harness.newUuidString(alloc);
+    defer alloc.free(tenant_a);
+    const tenant_b = try harness.newUuidString(alloc);
+    defer alloc.free(tenant_b);
 
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
@@ -255,7 +257,8 @@ test "TC-ADP-09-03: chain validation reports tampered row first and descendants 
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant = "c9000000-0000-0000-0000-000000000001";
+    const tenant = try harness.newUuidString(alloc);
+    defer alloc.free(tenant);
 
     try harness.conn.exec(
         \\INSERT INTO audit_entries (
@@ -313,7 +316,8 @@ test "TC-ADP-09-04: legacy pre-chain rows remain valid and boundary row starts c
     var harness = try TestHarness.init(alloc);
     defer harness.deinit();
 
-    const tenant = "d9000000-0000-0000-0000-000000000001";
+    const tenant = try harness.newUuidString(alloc);
+    defer alloc.free(tenant);
 
     try harness.conn.exec(
         \\DROP TRIGGER IF EXISTS trg_bpm_audit_apply_chain_hash ON audit_entries

@@ -42,10 +42,12 @@ const ErrorType = bpm.engine.ErrorType;
 const TaskStore = bpm.tasks.TaskStore;
 
 /// Fake "created_by" UUID reused across all tests.
-const creator_uuid_str = "00000000-0000-0000-0000-000000000099";
+const creator_uuid_str = try harness.newUuidString(alloc);
+    defer alloc.free(creator_uuid_str);
 
 /// Fixed actor_id used for setInstanceError calls (no IDN-03 yet).
-const actor_id_str = "00000000-0000-0000-0000-000000000001";
+const actor_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(actor_id_str);
 
 // ---------------------------------------------------------------------------
 // Shared helpers

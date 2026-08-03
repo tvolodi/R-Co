@@ -130,10 +130,14 @@ test "TC-ADP-06-02: trusted pipeline context propagates to event metadata and au
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const instance_id = "ad060000-0000-0000-0000-000000000001";
-    const definition_id = "ad060000-0000-0000-0000-0000000000d1";
-    const actor_id = "ad060000-0000-0000-0000-0000000000a1";
-    const run_id = "11111111-2222-3333-4444-555555555555";
+    const instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const definition_id = try harness.newUuidString(alloc);
+    defer alloc.free(definition_id);
+    const actor_id = try harness.newUuidString(alloc);
+    defer alloc.free(actor_id);
+    const run_id = try harness.newUuidString(alloc);
+    defer alloc.free(run_id);
 
     cleanupInstance(&pool, instance_id);
     defer cleanupInstance(&pool, instance_id);
@@ -236,10 +240,14 @@ test "TC-ADP-06-03: non-pipeline paths preserve null/absent compatibility and qu
     var pool = try makePool(alloc, url);
     defer pool.deinit();
 
-    const instance_id = "ad060000-0000-0000-0000-000000000002";
-    const definition_id = "ad060000-0000-0000-0000-0000000000d2";
-    const actor_id = "ad060000-0000-0000-0000-0000000000a2";
-    const run_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const instance_id = try harness.newUuidString(alloc);
+    defer alloc.free(instance_id);
+    const definition_id = try harness.newUuidString(alloc);
+    defer alloc.free(definition_id);
+    const actor_id = try harness.newUuidString(alloc);
+    defer alloc.free(actor_id);
+    const run_id = try harness.newUuidString(alloc);
+    defer alloc.free(run_id);
 
     cleanupInstance(&pool, instance_id);
     defer cleanupInstance(&pool, instance_id);

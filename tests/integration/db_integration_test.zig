@@ -268,8 +268,10 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
     defer store.deinit();
 
     // Use a unique instance UUID so this test is isolated from other runs.
-    const inst_id_str = "db0301aa-0000-0000-0000-000000000001";
-    const def_id_str = "db0301bb-0000-0000-0000-000000000001";
+    const inst_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(inst_id_str);
+    const def_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(def_id_str);
 
     // Insert prerequisite instance_projections row (autocommit — visible to Pool).
     {
@@ -349,8 +351,10 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
 test "TC-DB-03-02: failed transaction rolls back both writes atomically" {
     const alloc = std.testing.allocator;
 
-    const inst_id_str = "db0302cc-0000-0000-0000-000000000001";
-    const def_id_str = "db0302dd-0000-0000-0000-000000000001";
+    const inst_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(inst_id_str);
+    const def_id_str = try harness.newUuidString(alloc);
+    defer alloc.free(def_id_str);
 
     // Phase 1 — write inside a transaction, inject constraint violation, rollback.
     {
