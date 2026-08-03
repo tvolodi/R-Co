@@ -209,7 +209,7 @@ pub fn reconstructInstance(
         // Map the DB event record to a TransitionEvent.
         // Informational events (VARIABLE_OVERWRITTEN, etc.) are skipped —
         // they do not drive state transitions.
-        const te = mapToTransitionEvent(allocator, event_type, payload_json) catch |err| switch (err) {
+        const te = mapToTransitionEvent(ra, event_type, payload_json) catch |err| switch (err) {
             error.UnknownEventType => continue,
             error.OutOfMemory => return ReconstructionError.OutOfMemory,
             error.ParseFailed => return ReconstructionError.ReplayFailed,
@@ -217,8 +217,16 @@ pub fn reconstructInstance(
 
         // Apply the pure transition function (zero I/O — anti-pattern check).
         // Discard emitted_events during replay — they were already persisted as event rows.
+        const old_state = state;
         state = (transition_mod.transition(allocator, snapshot, state, te, triggering_seq) catch
             return ReconstructionError.ReplayFailed).state;
+
+        // ISS-0601: transition() always returns a state with freshly
+        // duped/deep-cloned tokens, variables, join_counters,
+        // pending_task_nodes, and error_detail — old_state is now fully
+        // owned garbage and must be freed in its entirety, not just its
+        // variables/join_counters maps.
+        transition_mod.freeInstanceState(allocator, old_state);
     }
 
     // ── Step 5: Optional write-back ──────────────────────────────────────────
@@ -426,16 +434,21 @@ pub fn reconstructInstancePointInTime(
     };
     defer pool.release(conn);
 
-    // Query with optional sequence cutoff
+    // Query with optional sequence cutoff.
+    // ISS-0601: ORDER BY is required — without it Postgres may return rows
+    // out of physical/scan order, which breaks event replay (transition()
+    // must see instance_started before any other event).
     const base_sql =
         \\SELECT event_type, payload, sequence_number
         \\FROM events
         \\WHERE instance_id = $1::uuid
+        \\ORDER BY sequence_number ASC
     ;
     const with_cutoff_sql =
         \\SELECT event_type, payload, sequence_number
         \\FROM events
         \\WHERE instance_id = $1::uuid AND sequence_number <= $2
+        \\ORDER BY sequence_number ASC
     ;
 
     var rows: db.QueryResult = undefined;
@@ -477,14 +490,19 @@ pub fn reconstructInstancePointInTime(
             break;
         }
 
-        const te = mapToTransitionEvent(allocator, event_type, payload_json) catch |err| switch (err) {
+        const te = mapToTransitionEvent(ra, event_type, payload_json) catch |err| switch (err) {
             error.UnknownEventType => continue,
             error.OutOfMemory => return ReconstructionError.OutOfMemory,
             error.ParseFailed => return ReconstructionError.ReplayFailed,
         };
 
+        const old_state = state;
         state = (transition_mod.transition(allocator, snapshot, state, te, triggering_seq2) catch
             return ReconstructionError.ReplayFailed).state;
+
+        // ISS-0601: see freeInstanceState doc comment — old_state is fully
+        // owned garbage once transition() returns a freshly-built state.
+        transition_mod.freeInstanceState(allocator, old_state);
     }
 
     return state;
@@ -624,14 +642,19 @@ pub fn reconstructInstanceWithSnapshot(
             break;
         }
 
-        const te = mapToTransitionEvent(allocator, event_type, payload_json) catch |err| switch (err) {
+        const te = mapToTransitionEvent(ra, event_type, payload_json) catch |err| switch (err) {
             error.UnknownEventType => continue,
             error.OutOfMemory => return ReconstructionError.OutOfMemory,
             error.ParseFailed => return ReconstructionError.ReplayFailed,
         };
 
+        const old_state = state;
         state = (transition_mod.transition(allocator, snapshot, state, te, triggering_seq) catch
             return ReconstructionError.ReplayFailed).state;
+
+        // ISS-0601: see freeInstanceState doc comment — old_state is fully
+        // owned garbage once transition() returns a freshly-built state.
+        transition_mod.freeInstanceState(allocator, old_state);
     }
 
     // ── Step 5: Optional write-back ──────────────────────────────────────────
@@ -845,11 +868,16 @@ fn parseObjectMapFromJson(
     while (it.next()) |entry| {
         const key = entry.key_ptr.*;
         const value = entry.value_ptr.*;
+        // ISS-0601: Duplicate the key string so it's owned by allocator, not borrowed from source
+        const key_copy = allocator.dupe(u8, key) catch return error.OutOfMemory;
         // Clone the value into allocator.
-        const cloned_value = cloneJsonValue(allocator, value) catch
+        const cloned_value = cloneJsonValue(allocator, value) catch {
+            allocator.free(key_copy);
             return error.OutOfMemory;
-        result.put(allocator, key, cloned_value) catch {
-            // Free the cloned value on put failure.
+        };
+        result.put(allocator, key_copy, cloned_value) catch {
+            // Free the cloned key and value on put failure.
+            allocator.free(key_copy);
             freeJsonValue(allocator, cloned_value);
             return error.OutOfMemory;
         };
@@ -895,9 +923,15 @@ fn cloneJsonValue(allocator: std.mem.Allocator, value: std.json.Value) error{Out
             }
             var it = obj.iterator();
             while (it.next()) |entry| {
-                const cloned = cloneJsonValue(allocator, entry.value_ptr.*) catch
+                // ISS-0601: Duplicate the key string so it's owned by allocator
+                const key_copy = allocator.dupe(u8, entry.key_ptr.*) catch
                     return error.OutOfMemory;
-                new_obj.put(allocator, entry.key_ptr.*, cloned) catch {
+                const cloned = cloneJsonValue(allocator, entry.value_ptr.*) catch {
+                    allocator.free(key_copy);
+                    return error.OutOfMemory;
+                };
+                new_obj.put(allocator, key_copy, cloned) catch {
+                    allocator.free(key_copy);
                     freeJsonValue(allocator, cloned);
                     return error.OutOfMemory;
                 };
@@ -911,6 +945,28 @@ fn cloneJsonValue(allocator: std.mem.Allocator, value: std.json.Value) error{Out
     };
 }
 
+/// Free all keys and values in a JsonValue ObjectMap, then deinit the map.
+/// This is the REQUIRED cleanup pattern for ObjectMaps populated by
+/// parseObjectMapFromJson or cloneJsonValue.
+///
+/// Usage in application code:
+///   defer freeObjectMap(allocator, &reconst_state.variables);
+///
+/// Usage in test code:
+///   freeObjectMap(alloc, &reconst_state.variables);
+///   freeObjectMap(alloc, &reconst_state.join_counters);
+pub fn freeObjectMap(
+    allocator: std.mem.Allocator,
+    map: *std.json.ObjectMap,
+) void {
+    var it = map.iterator();
+    while (it.next()) |entry| {
+        allocator.free(entry.key_ptr.*);
+        freeJsonValue(allocator, entry.value_ptr.*);
+    }
+    map.deinit(allocator);
+}
+
 fn freeJsonValue(allocator: std.mem.Allocator, value: std.json.Value) void {
     var mutable_value = value;
     switch (mutable_value) {
@@ -922,7 +978,11 @@ fn freeJsonValue(allocator: std.mem.Allocator, value: std.json.Value) void {
         },
         .object => |*obj| {
             var it = obj.iterator();
-            while (it.next()) |entry| freeJsonValue(allocator, entry.value_ptr.*);
+            while (it.next()) |entry| {
+                // ISS-0601: Free both keys and values
+                allocator.free(entry.key_ptr.*);
+                freeJsonValue(allocator, entry.value_ptr.*);
+            }
             obj.deinit(allocator);
         },
         else => {},

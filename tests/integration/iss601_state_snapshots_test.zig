@@ -305,8 +305,8 @@ test "TC-ISS-601-01: reconstructInstanceWithSnapshot falls back to full replay w
             if (tok.waiting_child_instance_id) |w| alloc.free(w);
         }
         alloc.free(reconst_state.tokens);
-        reconst_state.variables.deinit(alloc);
-        reconst_state.join_counters.deinit(alloc);
+        reconstruction_mod.freeObjectMap(alloc, &reconst_state.variables);
+        reconstruction_mod.freeObjectMap(alloc, &reconst_state.join_counters);
         for (reconst_state.pending_task_nodes) |n| alloc.free(n);
         alloc.free(reconst_state.pending_task_nodes);
         if (reconst_state.error_detail) |e| alloc.free(e);
@@ -802,8 +802,8 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
             if (tok.waiting_child_instance_id) |w| alloc.free(w);
         }
         alloc.free(state_at_25.tokens);
-        state_at_25.variables.deinit(alloc);
-        state_at_25.join_counters.deinit(alloc);
+        reconstruction_mod.freeObjectMap(alloc, &state_at_25.variables);
+        reconstruction_mod.freeObjectMap(alloc, &state_at_25.join_counters);
         for (state_at_25.pending_task_nodes) |n| alloc.free(n);
         alloc.free(state_at_25.pending_task_nodes);
         if (state_at_25.error_detail) |e| alloc.free(e);
@@ -872,8 +872,8 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
             if (tok.waiting_child_instance_id) |w| alloc.free(w);
         }
         alloc.free(snap_reconstructed.tokens);
-        snap_reconstructed.variables.deinit(alloc);
-        snap_reconstructed.join_counters.deinit(alloc);
+        reconstruction_mod.freeObjectMap(alloc, &snap_reconstructed.variables);
+        reconstruction_mod.freeObjectMap(alloc, &snap_reconstructed.join_counters);
         for (snap_reconstructed.pending_task_nodes) |n| alloc.free(n);
         alloc.free(snap_reconstructed.pending_task_nodes);
         if (snap_reconstructed.error_detail) |e| alloc.free(e);
@@ -900,8 +900,8 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
             if (tok.waiting_child_instance_id) |w| alloc.free(w);
         }
         alloc.free(full_reconstructed.tokens);
-        full_reconstructed.variables.deinit(alloc);
-        full_reconstructed.join_counters.deinit(alloc);
+        reconstruction_mod.freeObjectMap(alloc, &full_reconstructed.variables);
+        reconstruction_mod.freeObjectMap(alloc, &full_reconstructed.join_counters);
         for (full_reconstructed.pending_task_nodes) |n| alloc.free(n);
         alloc.free(full_reconstructed.pending_task_nodes);
         if (full_reconstructed.error_detail) |e| alloc.free(e);
@@ -1011,7 +1011,7 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
         try large_payload_builder.append(alloc, 'x');
     }
     try large_payload_builder.appendSlice(alloc, "\"}}");
-    const large_payload = large_payload_builder.items;
+    const large_payload = try large_payload_builder.toOwnedSlice(alloc);
     defer alloc.free(large_payload);
 
     const overflow_event_id = try h.newUuidString(alloc);
@@ -1074,8 +1074,8 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
             if (tok.waiting_child_instance_id) |w| alloc.free(w);
         }
         alloc.free(reconst_state.tokens);
-        reconst_state.variables.deinit(alloc);
-        reconst_state.join_counters.deinit(alloc);
+        reconstruction_mod.freeObjectMap(alloc, &reconst_state.variables);
+        reconstruction_mod.freeObjectMap(alloc, &reconst_state.join_counters);
         for (reconst_state.pending_task_nodes) |n| alloc.free(n);
         alloc.free(reconst_state.pending_task_nodes);
         if (reconst_state.error_detail) |e| alloc.free(e);
@@ -1284,8 +1284,8 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
             if (tok.waiting_child_instance_id) |w| alloc.free(w);
         }
         alloc.free(reconst_state.tokens);
-        reconst_state.variables.deinit(alloc);
-        reconst_state.join_counters.deinit(alloc);
+        reconstruction_mod.freeObjectMap(alloc, &reconst_state.variables);
+        reconstruction_mod.freeObjectMap(alloc, &reconst_state.join_counters);
         for (reconst_state.pending_task_nodes) |n| alloc.free(n);
         alloc.free(reconst_state.pending_task_nodes);
         if (reconst_state.error_detail) |e| alloc.free(e);
