@@ -160,6 +160,23 @@ fn queryBool(
     return std.mem.eql(u8, value, "t") or std.mem.eql(u8, value, "true");
 }
 
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
+    raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
+}
+
 const LocalWebhookServer = struct {
     port: u16,
     response_status: u16,
@@ -295,7 +312,7 @@ test "TC-EXT-02-INT-01: Admin create subscription returns 201 and persists norma
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const comp_id = try h.newUuidString(alloc);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -332,7 +349,7 @@ test "TC-EXT-02-INT-02: GET subscriptions is admin-only and redacts secret value
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const owner_id = try randomUuidStr(allocator);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -371,7 +388,7 @@ test "TC-EXT-02-INT-03: DELETE subscription is admin-only and removes row" {
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const owner_id = try randomUuidStr(allocator);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -425,7 +442,7 @@ test "TC-EXT-02-INT-04: Matching lifecycle event fans out and emits contract-com
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const owner_id = try randomUuidStr(allocator);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -482,7 +499,7 @@ test "TC-EXT-02-INT-05: Signature header is present only for secret-configured s
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const owner_id = try randomUuidStr(allocator);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -534,7 +551,7 @@ test "TC-EXT-02-INT-06: Non-2xx and timeout failures retry with at-least-once se
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const owner_id = try randomUuidStr(allocator);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -589,7 +606,7 @@ test "TC-EXT-02-INT-07: Fifth consecutive failure pauses subscription and emits 
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const owner_id = try randomUuidStr(allocator);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -634,7 +651,7 @@ test "TC-EXT-02-INT-08: Create/delete operations write OBS-03 audit rows atomica
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const owner_id = try randomUuidStr(allocator);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -699,14 +716,14 @@ test "TC-EXT-02-INT-09: 2xx with invalid/non-JSON response body is success witho
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const owner_id = try randomUuidStr(allocator);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
     try prepareExt02Owner(conn, owner_id, "ext02-int09-admin@example.test");
     defer cleanupExt02Rows(conn, owner_id);
 
-    const subscription_id = try harness.newUuidString(alloc);
+    const subscription_id = try randomUuidStr(allocator);
     defer alloc.free(subscription_id);
     try seedWebhookSubscription(conn, subscription_id, owner_id, "http://127.0.0.1:19109/hook", "{task.completed}", null);
 
@@ -756,16 +773,16 @@ test "TC-EXT-02-INT-10: Same source event with multiple subscriptions keeps retr
     var pool = try makePool(allocator, url);
     defer pool.deinit();
 
-    const owner_id = try harness.newUuidString(alloc);
+    const owner_id = try randomUuidStr(allocator);
     defer alloc.free(owner_id);
     const conn = try pool.acquire();
     defer pool.release(conn);
     try prepareExt02Owner(conn, owner_id, "ext02-int10-admin@example.test");
     defer cleanupExt02Rows(conn, owner_id);
 
-    const ok_sub_id = try harness.newUuidString(alloc);
+    const ok_sub_id = try randomUuidStr(allocator);
     defer alloc.free(ok_sub_id);
-    const fail_sub_id = try harness.newUuidString(alloc);
+    const fail_sub_id = try randomUuidStr(allocator);
     defer alloc.free(fail_sub_id);
     try seedWebhookSubscription(conn, ok_sub_id, owner_id, "http://127.0.0.1:19110/hook", "{task.completed}", null);
     try seedWebhookSubscription(conn, fail_sub_id, owner_id, "http://127.0.0.1:19111/hook", "{task.completed}", null);

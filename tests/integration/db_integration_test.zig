@@ -268,9 +268,9 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
     defer store.deinit();
 
     // Use a unique instance UUID so this test is isolated from other runs.
-    const inst_id_str = try harness.newUuidString(alloc);
+    const inst_id_str = try h.newUuidString(alloc);
     defer alloc.free(inst_id_str);
-    const def_id_str = try harness.newUuidString(alloc);
+    const def_id_str = try h.newUuidString(alloc);
     defer alloc.free(def_id_str);
 
     // Insert prerequisite instance_projections row (autocommit — visible to Pool).

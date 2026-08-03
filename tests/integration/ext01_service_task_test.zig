@@ -35,9 +35,6 @@ const SnapshotStore = bpm.snapshot.SnapshotStore;
 const InstanceStore = bpm.engine.InstanceStore;
 const TaskStore = bpm.tasks.TaskStore;
 
-const creator_uuid_str = try harness.newUuidString(alloc);
-    defer alloc.free(creator_uuid_str);
-
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------

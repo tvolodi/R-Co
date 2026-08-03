@@ -195,8 +195,10 @@ test "iss101_timers_failed_status: update_timer_to_failed_succeeds" {
     var conn = try openTenantConn(allocator, url, schema_name_str);
     defer conn.close();
 
-    const instance_id = try randomUuidStr(allocator); defer allocator.free(instance_id);;
-    const timer_id = try randomUuidStr(allocator); defer allocator.free(timer_id);;
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const timer_id = try randomUuidStr(allocator);
+    defer allocator.free(timer_id);
 
     try insertInstanceProjection(allocator, &conn, instance_id);
     try insertPendingTimer(&conn, timer_id, instance_id);
@@ -250,8 +252,10 @@ test "iss101_timers_failed_status: update_timer_to_failed_uppercase_succeeds" {
     var conn = try openTenantConn(allocator, url, schema_name_str);
     defer conn.close();
 
-    const instance_id = try randomUuidStr(allocator); defer allocator.free(instance_id);;
-    const timer_id = try randomUuidStr(allocator); defer allocator.free(timer_id);;
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const timer_id = try randomUuidStr(allocator);
+    defer allocator.free(timer_id);
 
     try insertInstanceProjection(allocator, &conn, instance_id);
     try insertPendingTimer(&conn, timer_id, instance_id);
@@ -309,8 +313,10 @@ test "iss101_timers_failed_status: invalid_status_still_rejected" {
     var conn = try openTenantConn(allocator, url, schema_name_str);
     defer conn.close();
 
-    const instance_id = try randomUuidStr(allocator); defer allocator.free(instance_id);;
-    const timer_id = try randomUuidStr(allocator); defer allocator.free(timer_id);;
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const timer_id = try randomUuidStr(allocator);
+    defer allocator.free(timer_id);
 
     try insertInstanceProjection(allocator, &conn, instance_id);
     try insertPendingTimer(&conn, timer_id, instance_id);
@@ -378,9 +384,12 @@ test "iss101_timers_failed_status: existing_statuses_remain_valid" {
     var conn = try openTenantConn(allocator, url, schema_name_str);
     defer conn.close();
 
-    const instance_id = try randomUuidStr(allocator); defer allocator.free(instance_id);;
-    const timer_pending = try randomUuidStr(allocator); defer allocator.free(timer_pending);;
-    const timer_fired = try randomUuidStr(allocator); defer allocator.free(timer_fired);;
+    const instance_id = try randomUuidStr(allocator);
+    defer allocator.free(instance_id);
+    const timer_pending = try randomUuidStr(allocator);
+    defer allocator.free(timer_pending);
+    const timer_fired = try randomUuidStr(allocator);
+    defer allocator.free(timer_fired);
     const timer_cancelled = try randomUuidStr(allocator);
     defer allocator.free(timer_cancelled);
 

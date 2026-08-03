@@ -250,7 +250,7 @@ test "TC-ENV-03-01: promoteDefinition returns DRAFT PromotionResult with valid d
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try randomUuidStr(alloc);
     defer alloc.free(actor_id);
 
     // LIFO: prod_id must be declared FIRST so it runs LAST (after test_id is deleted).
@@ -330,7 +330,7 @@ test "TC-ENV-03-02: promoteDefinition writes DEFINITION_PROMOTED audit entries o
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try randomUuidStr(alloc);
     defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST (after test_id deleted) — ON DELETE RESTRICT
@@ -431,7 +431,7 @@ test "TC-ENV-03-03: promoteDefinition returns ActiveDefinitionNotFound when name
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try randomUuidStr(alloc);
     defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST — ON DELETE RESTRICT
@@ -482,7 +482,7 @@ test "TC-ENV-03-04: promoteDefinition returns MissingDesignerRoleOnProd when act
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try randomUuidStr(alloc);
     defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST — ON DELETE RESTRICT
@@ -535,7 +535,7 @@ test "TC-ENV-03-05: promoteDefinition increments version when name already exist
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try randomUuidStr(alloc);
     defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST — ON DELETE RESTRICT
@@ -613,7 +613,7 @@ test "TC-ENV-03-06: promoteDefinition returns ProductionTenantInactive when prod
     defer alloc.free(prod_id);
     const test_id = try randomUuidStr(alloc);
     defer alloc.free(test_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try randomUuidStr(alloc);
     defer alloc.free(actor_id);
 
     // LIFO: prod_id declared first so it runs LAST — ON DELETE RESTRICT
