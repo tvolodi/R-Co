@@ -1316,21 +1316,7 @@ pub const Store = struct {
 // ---------------------------------------------------------------------------
 
 pub fn freeDefinitionGraph(allocator: std.mem.Allocator, graph: DefinitionGraph) void {
-    for (graph.nodes) |n| {
-        allocator.free(n.id);
-        if (n.label) |l| allocator.free(l);
-        if (n.attributes) |attrs| allocator.free(attrs);
-    }
-    allocator.free(graph.nodes);
-
-    for (graph.edges) |e| {
-        allocator.free(e.id);
-        allocator.free(e.source);
-        allocator.free(e.target);
-        if (e.condition) |c| allocator.free(c);
-        if (e.transform) |t| allocator.free(t);
-    }
-    allocator.free(graph.edges);
+    graph.deinit(allocator);
 }
 
 fn parseGraphJson(allocator: std.mem.Allocator, graph_json: []const u8) !DefinitionGraph {

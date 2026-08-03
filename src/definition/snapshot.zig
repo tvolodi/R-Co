@@ -59,25 +59,9 @@ pub const Snapshot = struct {
 pub fn freeSnapshot(allocator: std.mem.Allocator, snapshot: Snapshot) void {
     allocator.free(snapshot.definition_name);
     allocator.free(snapshot.definition_ver);
-
-    for (snapshot.graph.nodes) |node| {
-        allocator.free(node.id);
-        if (node.label) |label| allocator.free(label);
-        if (node.attributes) |attributes| allocator.free(attributes);
-    }
-    if (snapshot.graph.nodes.len > 0) {
-        allocator.free(snapshot.graph.nodes);
-    }
-
-    for (snapshot.graph.edges) |edge| {
-        allocator.free(edge.id);
-        allocator.free(edge.source);
-        allocator.free(edge.target);
-        if (edge.condition) |condition| allocator.free(condition);
-    }
-    if (snapshot.graph.edges.len > 0) {
-        allocator.free(snapshot.graph.edges);
-    }
+    // ISS-0601-LEAK-001: Delegate graph cleanup to DefinitionGraph.deinit()
+    // instead of manually freeing to avoid double-free.
+    snapshot.graph.deinit(allocator);
 }
 
 // ---------------------------------------------------------------------------

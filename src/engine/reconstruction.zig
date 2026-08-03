@@ -100,6 +100,7 @@ pub fn reconstructInstance(
         error.PoolExhausted => return ReconstructionError.PoolExhausted,
         else => return ReconstructionError.QueryFailed,
     };
+    defer snapshot_mod.freeSnapshot(allocator, snapshot_obj);
     const snapshot = snapshot_obj.graph;
 
     // ── Step 2: Query the ordered event log ─────────────────────────────────
@@ -414,6 +415,7 @@ pub fn reconstructInstancePointInTime(
         error.PoolExhausted => return ReconstructionError.PoolExhausted,
         else => return ReconstructionError.QueryFailed,
     };
+    defer snapshot_mod.freeSnapshot(allocator, snapshot_obj);
     const snapshot = snapshot_obj.graph;
 
     const inst_id_hex = uuidToHex(ra, instance_id) catch return ReconstructionError.OutOfMemory;
@@ -521,6 +523,7 @@ pub fn reconstructInstanceWithSnapshot(
         error.PoolExhausted => return ReconstructionError.PoolExhausted,
         else => return ReconstructionError.QueryFailed,
     };
+    defer snapshot_mod.freeSnapshot(allocator, snapshot_obj);
     const snapshot = snapshot_obj.graph;
 
     var row_arena = std.heap.ArenaAllocator.init(allocator);

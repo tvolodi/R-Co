@@ -99,6 +99,25 @@ fn freeInstance(allocator: std.mem.Allocator, inst: Instance) void {
     allocator.free(inst.definition_snapshot);
 }
 
+/// ISS-0601-LEAK-001: Looping graph with gateway for testing long event sequences
+/// START -> T1 -> T2 -> GATEWAY -> T1 (loop through gateway) or -> END (exit)
+/// CHK-06 requires cycles to go through gateway nodes. CHK-02 requires at least one END node.
+const looping_nodes = [_]GraphNode{
+    .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
+    .{ .id = "T1", .node_type = .HUMAN_TASK, .label = null, .attributes = "{\"role\":\"tester\"}" },
+    .{ .id = "T2", .node_type = .HUMAN_TASK, .label = null, .attributes = "{\"role\":\"tester\"}" },
+    .{ .id = "GW", .node_type = .EXCLUSIVE_GATEWAY, .label = null, .attributes = null },
+    .{ .id = "E", .node_type = .END, .label = null, .attributes = null },
+};
+const looping_edges = [_]GraphEdge{
+    .{ .id = "e1", .source = "S", .target = "T1", .condition = null, .is_default = false },
+    .{ .id = "e2", .source = "T1", .target = "T2", .condition = null, .is_default = false },
+    .{ .id = "e3", .source = "T2", .target = "GW", .condition = null, .is_default = false },
+    .{ .id = "e4", .source = "GW", .target = "T1", .condition = null, .is_default = true }, // loop back (default)
+    .{ .id = "e5", .source = "GW", .target = "E", .condition = "{\"done\":true}", .is_default = false }, // exit condition
+};
+const looping_graph = DefinitionGraph{ .nodes = &looping_nodes, .edges = &looping_edges };
+
 /// Minimal valid graph: START -> HUMAN_TASK -> END
 const minimal_nodes = [_]GraphNode{
     .{ .id = "S", .node_type = .START, .label = null, .attributes = null },
@@ -196,11 +215,13 @@ test "TC-ISS-601-01: reconstructInstanceWithSnapshot falls back to full replay w
         std.debug.print("TC-ISS-601-01: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer draft.deinit(alloc);
 
     const active_def = def_store.activate(alloc, draft.id) catch |err| {
         std.debug.print("TC-ISS-601-01: activate definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer active_def.deinit(alloc);
 
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
@@ -266,7 +287,7 @@ test "TC-ISS-601-01: reconstructInstanceWithSnapshot falls back to full replay w
     }
 
     // Reconstruct -- should fall back to full replay
-    const reconst_state = reconstruction_mod.reconstructInstanceWithSnapshot(
+    var reconst_state = reconstruction_mod.reconstructInstanceWithSnapshot(
         alloc,
         &pool,
         &snap_store,
@@ -276,6 +297,22 @@ test "TC-ISS-601-01: reconstructInstanceWithSnapshot falls back to full replay w
         std.debug.print("TC-ISS-601-01: reconstruction failed ({s})\n", .{@errorName(err)});
         return err;
     };
+    defer {
+        for (reconst_state.tokens) |tok| {
+            alloc.free(tok.node_id);
+            alloc.free(tok.branch_id);
+            if (tok.token_id) |t| alloc.free(t);
+            if (tok.waiting_child_instance_id) |w| alloc.free(w);
+        }
+        alloc.free(reconst_state.tokens);
+        reconst_state.variables.deinit(alloc);
+        reconst_state.join_counters.deinit(alloc);
+        for (reconst_state.pending_task_nodes) |n| alloc.free(n);
+        alloc.free(reconst_state.pending_task_nodes);
+        if (reconst_state.error_detail) |e| alloc.free(e);
+        for (reconst_state.cancelled_branch_ids) |b| alloc.free(b);
+        alloc.free(reconst_state.cancelled_branch_ids);
+    }
 
     // Verify reconstructed state is ACTIVE with at least one token
     try testing.expect(reconst_state.status == .ACTIVE);
@@ -660,17 +697,19 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
         .name = "TC-ISS-601-02 Process",
         .version = "1.0",
         .description = null,
-        .graph = minimal_graph,
+        .graph = looping_graph,  // ISS-0601-LEAK-001: use looping graph to support 50+ events
         .created_by = created_by,
     }) catch |err| {
         std.debug.print("TC-ISS-601-02: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer draft.deinit(alloc);
 
     const active_def = def_store.activate(alloc, draft.id) catch |err| {
         std.debug.print("TC-ISS-601-02: activate definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer active_def.deinit(alloc);
 
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
@@ -697,14 +736,24 @@ test "TC-ISS-601-02: reconstructInstanceWithSnapshot replays delta events after 
         .{@errorName(err)},
     );
 
-    // Insert 49 additional events (seq 2..50) so we have 50 events total.
-    // Use task_completed with a payload that keeps the instance ACTIVE.
-    const task_payload = "{\"task_node_id\":\"T\",\"output_variables\":{}}";
+    // ISS-0601-LEAK-001: Insert 49 additional events (seq 2..50) so we have 50 events total.
+    // After instance_started (seq 1), token is on T1. Alternate task_completed between T1 and T2
+    // to create a valid looping sequence: T1 -> T2 -> T1 -> T2 -> ...
     var conn = try pool.acquire();
     defer pool.release(conn);
 
     var i: usize = 2;
     while (i <= 50) : (i += 1) {
+        // Alternate between T1 (even sequence numbers) and T2 (odd sequence numbers after seq 1).
+        // After seq 1 (instance_started), token is on T1.
+        // Seq 2: complete T1 (move to T2)
+        // Seq 3: complete T2 (move back to T1)
+        // Seq 4: complete T1 (move to T2)
+        // ...
+        const task_node_id = if (i % 2 == 0) "T1" else "T2";
+        var payload_buf: [128]u8 = undefined;
+        const task_payload = try std.fmt.bufPrint(&payload_buf, "{{\"task_node_id\":\"{s}\",\"output_variables\":{{}}}}", .{task_node_id});
+
         var seq_buf: [32]u8 = undefined;
         const seq_str = try std.fmt.bufPrint(&seq_buf, "{d}", .{i});
         var ikey_buf: [128]u8 = undefined;
@@ -911,11 +960,13 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
         std.debug.print("TC-ISS-601-05: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer draft.deinit(alloc);
 
     const active_def = def_store.activate(alloc, draft.id) catch |err| {
         std.debug.print("TC-ISS-601-05: activate definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer active_def.deinit(alloc);
 
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
@@ -1064,17 +1115,19 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
         .name = "TC-ISS-601-08 Process",
         .version = "1.0",
         .description = null,
-        .graph = minimal_graph,
+        .graph = looping_graph,  // ISS-0601-LEAK-001: use looping graph to support 2500+ events
         .created_by = created_by,
     }) catch |err| {
         std.debug.print("TC-ISS-601-08: create definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer draft.deinit(alloc);
 
     const active_def = def_store.activate(alloc, draft.id) catch |err| {
         std.debug.print("TC-ISS-601-08: activate definition failed ({s}) -- skipping\n", .{@errorName(err)});
         return error.SkipZigTest;
     };
+    defer active_def.deinit(alloc);
 
     var snap_store = SnapshotStore{ .pool = &pool };
     var inst_store = InstanceStore.init(&pool, &snap_store);
@@ -1101,21 +1154,25 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
         .{@errorName(err)},
     );
 
-    // Insert additional events so we have 2500 total.
-    // Use batched INSERTs for performance.
+    // ISS-0601-LEAK-001: Insert additional events so we have 2500 total.
+    // After instance_started (seq 1), token is on T1. Alternate between T1 and T2.
     var conn = try pool.acquire();
     defer pool.release(conn);
 
     var event_i: usize = 2;
     while (event_i <= 2500) : (event_i += 1) {
+        const task_node_id = if (event_i % 2 == 0) "T1" else "T2";
+        var payload_buf: [128]u8 = undefined;
+        const task_payload = try std.fmt.bufPrint(&payload_buf, "{{\"task_node_id\":\"{s}\",\"output_variables\":{{}}}}", .{task_node_id});
+
         var seq_buf: [32]u8 = undefined;
         const seq_str = try std.fmt.bufPrint(&seq_buf, "{d}", .{event_i});
         var ikey_buf: [128]u8 = undefined;
         const ikey = try std.fmt.bufPrint(&ikey_buf, "tc60108full-{s}-{d}", .{ inst_hex[0..8], event_i });
         conn.exec(
             \\INSERT INTO events (instance_id, event_type, payload, actor_id, sequence_number, idempotency_key, metadata, tenant_id)
-            \\VALUES ($1::uuid, 'task_completed', '{"task_node_id":"T","output_variables":{}}'::jsonb, $2::uuid, $3::bigint, $4, '{}'::jsonb, $2::uuid)
-        , &.{ inst_hex, inst_hex, seq_str, ikey }) catch |err| {
+            \\VALUES ($1::uuid, 'task_completed', $2::jsonb, $3::uuid, $4::bigint, $5, '{}'::jsonb, $3::uuid)
+        , &.{ inst_hex, task_payload, inst_hex, seq_str, ikey }) catch |err| {
             std.debug.print("TC-ISS-601-08: insert event {d} failed ({s}) -- skipping\n", .{ event_i, @errorName(err) });
             return error.SkipZigTest;
         };
@@ -1142,22 +1199,37 @@ test "TC-ISS-601-08: reconstructInstanceWithSnapshot uses latest of multiple sna
     // Reconstruct state at seq 1000, create snapshot.
     const conn2 = try pool.acquire();
     defer pool.release(conn2);
-    // For simplicity, create a minimal valid state and snapshot it.
-    var tokens_buf_snap = [_]transition_mod.Token{
-        .{ .node_id = "T", .branch_id = "branch-snap", .token_id = null, .waiting_child_instance_id = null },
+    // ISS-0601-LEAK-001: After even seq, token is on T2. After odd seq, token is on T1.
+    // seq 1000 (even) → token on T2
+    var tokens_buf_1000 = [_]transition_mod.Token{
+        .{ .node_id = "T2", .branch_id = "branch-snap", .token_id = null, .waiting_child_instance_id = null },
     };
-    var base_state = transition_mod.InstanceState{
+    var base_state_1000 = transition_mod.InstanceState{
         .instance_id = inst.instance_id,
         .status = .ACTIVE,
-        .tokens = &tokens_buf_snap,
+        .tokens = &tokens_buf_1000,
         .variables = std.json.ObjectMap{},
         .join_counters = std.json.ObjectMap{},
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
         .cancelled_branch_ids = &[_][]const u8{},
     };
-    try writer.takeSnapshot(alloc, inst.instance_id, &base_state, 1000);
-    try writer.takeSnapshot(alloc, inst.instance_id, &base_state, 2000);
+    // seq 2000 (even) → token on T2
+    var tokens_buf_2000 = [_]transition_mod.Token{
+        .{ .node_id = "T2", .branch_id = "branch-snap", .token_id = null, .waiting_child_instance_id = null },
+    };
+    var base_state_2000 = transition_mod.InstanceState{
+        .instance_id = inst.instance_id,
+        .status = .ACTIVE,
+        .tokens = &tokens_buf_2000,
+        .variables = std.json.ObjectMap{},
+        .join_counters = std.json.ObjectMap{},
+        .pending_task_nodes = &[_][]const u8{},
+        .error_detail = null,
+        .cancelled_branch_ids = &[_][]const u8{},
+    };
+    try writer.takeSnapshot(alloc, inst.instance_id, &base_state_1000, 1000);
+    try writer.takeSnapshot(alloc, inst.instance_id, &base_state_2000, 2000);
 
     // Verify all snapshots exist (seq=1 baseline from create() + seq=1000 + seq=2000).
     var snap_chk = try conn.query(

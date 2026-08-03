@@ -1,0 +1,74 @@
+{
+  "handoff_id": "b9d3e7f1-4c2a-5b8d-9e3f-1a6c8d4e2b9f",
+  "run_id": "WF03-gh406-20260803",
+  "step": "5",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-03T11:24:43Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "f7c4e8d9-3b2a-4e5f-9a1c-7d6b8e4f3a2c"
+    ],
+    "artifacts_in": [
+      "src/definition/graph.zig",
+      "src/definition/store.zig",
+      "src/api/routes/definitions.zig",
+      "src/engine/reconstruction.zig",
+      "tests/integration/iss601_state_snapshots_test.zig"
+    ],
+    "issue_id": "ISS-0601-LEAK-001",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/406"
+  },
+  "task": {
+    "description": "WF-03 Step 5: Test Run for ISS-0601-LEAK-001 Fix\n\nBACKEND-DEV implemented memory leak fix (GitHub #406):\n- Added Definition.deinit() and DefinitionGraph.deinit() methods\n- Updated 9 call sites with defer statements\n- Result: 76 leaks \u2192 16 leaks (79% reduction)\n- TC-ISS-601-01: now PASS with zero leaks\n- TC-ISS-601-02, TC-ISS-601-08: FAIL (ReplayFailed - may be pre-existing)\n\nRun full test suite to assess:\n\n1. Pre-checks (Infrastructure Health per test_infrastructure_guide.md):\n   - Backend services check (Docker, Keycloak, PostgreSQL)\n   - zig build migrate (must exit 0)\n   - Benchmark environment check\n\n2. Test execution:\n   - zig build\n   - zig build test\n   - BPM_TEST_DB_URL=postgres://bpm:bpm@localhost:5434/bpm_test zig build test-integration-iss601\n   - zig build test-integration (full suite to check for regressions)\n\n3. Leak analysis:\n   - Are the 16 remaining leaks from the pre-existing test failures (TC-02, TC-08)?\n   - Or from additional InstanceState cleanup gaps in other tests?\n   - Is the core parseGraphJson leak fully resolved?\n\n4. Write test report to: tests/reports/report-20260803-WF03-gh406.yaml\n\nGitHub #406 acceptance criteria:\n- src/definition/store.zig no longer leaks parseGraphJson allocations\n- tests/integration/iss601_state_snapshots_test.zig reaches 9/9 PASS (or 8/9 with TC-09 skip)\n- No regression in other integration tests\n\nReturn PASS if all criteria met.\nReturn FAIL with severity classification if:\n- New regressions introduced\n- Core parseGraphJson leak still present\n- Acceptance criteria not met",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "test-integration-iss601 shows 9/9 PASS (or 8/9) OR demonstrates remaining leaks are pre-existing",
+      "test-integration full suite shows no new regressions",
+      "Test report written to tests/reports/"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Memory leak fix for parseGraphJson SUCCESSFUL (79% reduction, core leak resolved). However, only 6/9 ISS-601 tests pass (target 8-9). Two tests fail with ReplayFailed errors in reconstruction logic (TC-ISS-601-02, TC-ISS-601-08). These are functional failures separate from the memory leak fix but block acceptance criteria.",
+    "artifacts_out": [
+      "tests/reports/report-20260803-WF03-gh406.yaml",
+      "scratch/test-integration-full.txt"
+    ],
+    "issues": [
+      {
+        "id": "ISS-WF03-GH406-01",
+        "severity": "MAJOR",
+        "component": "src/engine/reconstruction.zig",
+        "description": "TC-ISS-601-02 fails with ReplayFailed during reconstructInstancePointInTime",
+        "location": "tests/integration/iss601_state_snapshots_test.zig:766"
+      },
+      {
+        "id": "ISS-WF03-GH406-02",
+        "severity": "MAJOR",
+        "component": "src/engine/reconstruction.zig",
+        "description": "TC-ISS-601-08 fails with ReplayFailed during reconstructInstanceWithSnapshot",
+        "location": "tests/integration/iss601_state_snapshots_test.zig:1229"
+      },
+      {
+        "id": "ISS-WF03-GH406-03",
+        "severity": "MINOR",
+        "component": "src/engine/reconstruction.zig",
+        "description": "16 memory leaks remaining in deserializeInstanceState (separate from parseGraphJson fix)",
+        "location": "reconstruction.zig lines 707, 709, 752"
+      }
+    ],
+    "next_action": "REWORK to BACKEND-DEV: Fix reconstruction ReplayFailed errors in TC-02 and TC-08. Memory leak fix itself is correct and should be preserved."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-03T11:25:15Z",
+  "completed_at": "2026-08-03T11:46:44Z"
+}

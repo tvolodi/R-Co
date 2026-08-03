@@ -1,0 +1,41 @@
+{
+  "handoff_id": "05f19a4f-d9cb-48a7-995f-dc8a47847756",
+  "run_id": "WF03-gh406-20260803",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-03T10:41:39Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "workflow_id": "WF-03",
+  "context": {
+    "stage": "Issue Resolving",
+    "requirement_ids": [],
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "issue_id": "ISS-0601-LEAK-001",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/406"
+  },
+  "task": {
+    "description": "WF-03 Step 00: Git Setup for GitHub issue #406 (ISS-0601-LEAK-001)\n\nIssue: Memory leak in src/definition/store.zig parseGraphJson - node IDs allocated via allocator.dupe(u8, n.id) without matching free.\n\nExecute fn:git-setup protocol from docs/agents/protocols/GIT_SETUP.md:\n1. Ensure on main branch with clean state\n2. Pull latest from origin\n3. Create feature branch: feature/WF03-gh406-20260803\n4. Push feature branch to origin\n5. Verify branch exists on GitHub\n\nReturn PASS only when feature branch exists on GitHub and local repo is on that branch.",
+    "acceptance_criteria": [
+      "git branch --show-current outputs: feature/WF03-gh406-20260803",
+      "git status shows clean working tree",
+      "gh repo view shows feature branch exists on GitHub"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Git setup completed: feature branch feature/WF03-gh406-20260803 created and pushed to GitHub",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-03T10:42:23Z",
+  "completed_at": "2026-08-03T10:43:29Z"
+}

@@ -81,6 +81,26 @@ pub const GraphEdge = struct {
 pub const DefinitionGraph = struct {
     nodes: []const GraphNode,
     edges: []const GraphEdge,
+
+    /// Free all allocated memory owned by this DefinitionGraph.
+    /// Must be called with the same allocator used to parse the graph.
+    pub fn deinit(self: DefinitionGraph, allocator: std.mem.Allocator) void {
+        for (self.nodes) |n| {
+            allocator.free(n.id);
+            if (n.label) |l| allocator.free(l);
+            if (n.attributes) |attrs| allocator.free(attrs);
+        }
+        allocator.free(self.nodes);
+
+        for (self.edges) |e| {
+            allocator.free(e.id);
+            allocator.free(e.source);
+            allocator.free(e.target);
+            if (e.condition) |c| allocator.free(c);
+            if (e.transform) |t| allocator.free(t);
+        }
+        allocator.free(self.edges);
+    }
 };
 
 /// In-memory representation of one row in `process_definitions`.
@@ -100,6 +120,16 @@ pub const Definition = struct {
     archived_at: ?i64,
     /// Optional process stage label (PD-07 ?stage= filter support). Null when unset.
     stage: ?[]const u8 = null,
+
+    /// Free all allocated memory owned by this Definition.
+    /// Must be called with the same allocator used to create the Definition.
+    pub fn deinit(self: Definition, allocator: std.mem.Allocator) void {
+        allocator.free(self.name);
+        allocator.free(self.version);
+        if (self.description) |d| allocator.free(d);
+        if (self.stage) |s| allocator.free(s);
+        self.graph.deinit(allocator);
+    }
 };
 
 // ---------------------------------------------------------------------------

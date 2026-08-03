@@ -1,0 +1,390 @@
+issue_id: ISS-0601-LEAK-001
+github_issue: https://github.com/tvolodi/R-Co/issues/406
+title: Memory leak in src/definition/store.zig parseGraphJson
+discovered_in_run: WF03-gh401-20260803
+diagnosis_date: 2026-08-03T10:46:13Z
+
+symptom_summary: |
+  Every Definition loaded with a non-empty graph_json field leaks memory.
+  Tests/integration/iss601_state_snapshots_test.zig reports 48 leaks in TC-ISS-601-01
+  and 42 leaks in TC-ISS-601-05. The leaks are for allocated strings (node IDs, labels,
+  edge sources/targets, etc.) that are never freed.
+
+allocation_sites:
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1356
+    code: "nodes_copy[i].id = try allocator.dupe(u8, n.id)"
+    description: "Node ID string duplication"
+  
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1358
+    code: "nodes_copy[i].label = if (n.label) |l| try allocator.dupe(u8, l) else null"
+    description: "Node label string duplication (optional)"
+  
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1359
+    code: "nodes_copy[i].attributes = if (n.attributes) |a| try allocator.dupe(u8, a) else null"
+    description: "Node attributes JSON string duplication (optional)"
+  
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1378
+    code: "edges_copy[i].id = try allocator.dupe(u8, e.id)"
+    description: "Edge ID string duplication"
+  
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1379
+    code: "edges_copy[i].source = try allocator.dupe(u8, e.source)"
+    description: "Edge source node ID duplication"
+  
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1380
+    code: "edges_copy[i].target = try allocator.dupe(u8, e.target)"
+    description: "Edge target node ID duplication"
+  
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1381
+    code: "edges_copy[i].condition = if (e.condition) |c| try allocator.dupe(u8, c) else null"
+    description: "Edge condition CEL expression duplication (optional)"
+  
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1382
+    code: "edges_copy[i].transform = if (e.transform) |t| try allocator.dupe(u8, t) else null"
+    description: "Edge transform CEL expression duplication (optional)"
+
+allocation_arrays:
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1344
+    code: "const nodes_copy = try allocator.alloc(graph_mod.GraphNode, parsed.value.nodes.len)"
+    description: "Array of GraphNode structs"
+  
+  - file: src/definition/store.zig
+    function: parseGraphJson
+    line: 1364
+    code: "const edges_copy = try allocator.alloc(graph_mod.GraphEdge, parsed.value.edges.len)"
+    description: "Array of GraphEdge structs"
+
+deallocation_analysis:
+  cleanup_function_exists: true
+  cleanup_function_location: src/definition/store.zig:1318
+  cleanup_function_name: freeDefinitionGraph
+  cleanup_implementation: |
+    The function properly frees all allocated memory:
+    - Iterates through graph.nodes, frees id, label (optional), attributes (optional)
+    - Frees graph.nodes array
+    - Iterates through graph.edges, frees id, source, target, condition (optional), transform (optional)
+    - Frees graph.edges array
+  
+  api_wrapper_exists: true
+  api_wrapper_location: src/api/routes/definitions.zig:802
+  api_wrapper_name: freeDefinition
+  api_wrapper_implementation: |
+    Frees all Definition-level allocations:
+    - def.name
+    - def.version
+    - def.description (optional)
+    - def.stage (optional)
+    - calls freeDefinitionGraph(allocator, def.graph)
+  
+  problem: |
+    The cleanup functions exist but are NOT consistently called by all Definition consumers.
+    Only src/api/routes/definitions.zig:handleGetById uses "defer freeDefinition(allocator, def)".
+    Other load sites do NOT call cleanup.
+
+ownership_analysis:
+  struct_definition: src/definition/graph.zig:87-103
+  struct_has_deinit: false
+  ownership_model: |
+    The Definition struct contains:
+      - id: Uuid (value type, no allocation)
+      - name: []const u8 (allocated by rowToDefinition)
+      - version: []const u8 (allocated by rowToDefinition)
+      - description: ?[]const u8 (allocated by rowToDefinition if present)
+      - status: DefinitionStatus (enum, no allocation)
+      - graph: DefinitionGraph (contains allocated slices)
+      - created_by: Uuid (value type)
+      - created_at, updated_at, archived_at: integers
+      - stage: ?[]const u8 (allocated if present)
+    
+    DefinitionGraph struct (src/definition/graph.zig:81-84):
+      - nodes: []const GraphNode (allocated array + each node has allocated strings)
+      - edges: []const GraphEdge (allocated array + each edge has allocated strings)
+    
+    Ownership: The allocator passed to getById/create/getByName/getActiveByName/activate
+    is expected to own all these allocations for the lifetime of the Definition. Caller
+    MUST explicitly free them via freeDefinition() or freeDefinitionGraph().
+    
+    Problem: This contract is not enforced by the type system (no deinit method),
+    and most callers are unaware of the requirement.
+
+root_cause:
+  primary: |
+    parseGraphJson performs allocator.dupe() on 8 different fields per graph (5 required,
+    3 optional) plus 2 array allocations. These allocations are returned as part of the
+    DefinitionGraph which is embedded in the Definition struct. Neither DefinitionGraph
+    nor Definition has a deinit method, so the compiler does not enforce cleanup.
+    
+    Callers must manually call freeDefinitionGraph() or the API wrapper freeDefinition(),
+    but this requirement is not documented and most callers do not do it.
+  
+  secondary: |
+    rowToDefinition (line 1396) also allocates name, version, description, stage strings
+    separately from the graph allocations. These add 2-4 more allocations per Definition
+    that also need cleanup via freeDefinition().
+
+affected_callers:
+  properly_cleaned:
+    - location: src/api/routes/definitions.zig:80
+      function: handleGetById
+      cleanup: "defer freeDefinition(allocator, def)"
+      note: "Only known caller that properly cleans up"
+  
+  leaking:
+    - location: tests/integration/iss601_state_snapshots_test.zig:189
+      function: TC-ISS-601-01
+      issue: "const draft = def_store.create(...) - never freed"
+    
+    - location: tests/integration/iss601_state_snapshots_test.zig:201
+      function: TC-ISS-601-01
+      issue: "const active_def = def_store.activate(...) - never freed"
+    
+    - location: tests/integration/iss601_state_snapshots_test.zig:659
+      function: TC-ISS-601-05
+      issue: "const draft = def_store.create(...) - never freed"
+    
+    - location: tests/integration/iss601_state_snapshots_test.zig:904
+      function: TC-ISS-601-??
+      issue: "const draft = def_store.create(...) - never freed"
+    
+    - location: tests/integration/iss601_state_snapshots_test.zig:1063
+      function: TC-ISS-601-??
+      issue: "const draft = def_store.create(...) - never freed"
+    
+    - location: src/api/routes/definitions.zig:182
+      function: handleGetByActiveRoute
+      issue: "const def = store.getActiveByName(...) - never freed"
+    
+    - location: src/api/routes/definitions.zig:324
+      function: handleCreate
+      issue: "const def = store.create(...) - never freed"
+    
+    - location: src/api/routes/definitions.zig:485
+      function: handleUpdate
+      issue: "const current = store.getById(...) - never freed"
+    
+    - location: src/api/routes/definitions.zig:572
+      function: handleActivate
+      issue: "const current = store.getById(...) - never freed"
+  
+  potential_additional_leaks:
+    note: |
+      Any code path that calls def_store.create(), def_store.getById(),
+      def_store.getByName(), def_store.getActiveByName(), or def_store.activate()
+      without a corresponding freeDefinition() or freeDefinitionGraph() call will leak.
+      
+      Full search found 100+ potential call sites across the codebase. Manual audit
+      required to identify all leakers.
+
+fix_strategies:
+  strategy_1:
+    name: "Add Definition.deinit() method"
+    implementation: |
+      Add a public deinit method to the Definition struct in src/definition/graph.zig:
+      
+      pub fn deinit(self: Definition, allocator: std.mem.Allocator) void {
+          allocator.free(self.name);
+          allocator.free(self.version);
+          if (self.description) |d| allocator.free(d);
+          if (self.stage) |s| allocator.free(s);
+          freeDefinitionGraph(allocator, self.graph);
+      }
+      
+      This makes the cleanup contract explicit and allows idiomatic Zig cleanup:
+      
+      const def = try store.getById(allocator, id);
+      defer def.deinit(allocator);
+    
+    pros:
+      - Idiomatic Zig pattern
+      - Type-enforced cleanup via compiler (defer expected)
+      - Clear ownership model
+    
+    cons:
+      - Requires updating ALL callers to add defer statements
+      - Breaking API change (though internal to this codebase)
+      - Need to audit 100+ call sites
+    
+    impact: HIGH - requires changes to every Definition load site
+
+  strategy_2:
+    name: "Use arena allocator in rowToDefinition/parseGraphJson"
+    implementation: |
+      Modify rowToDefinition and parseGraphJson to accept two allocators:
+      - arena_allocator for all string dupes (owned by the Definition lifetime)
+      - temp_allocator for temporary allocations
+      
+      Caller creates an ArenaAllocator, passes it to getById/create/etc, and
+      deinits the arena when done with the Definition:
+      
+      var arena = std.heap.ArenaAllocator.init(allocator);
+      defer arena.deinit();
+      const def = try store.getById(arena.allocator(), id);
+      // All allocations freed by arena.deinit()
+    
+    pros:
+      - Single cleanup call (arena.deinit()) frees everything
+      - No need to track individual allocations
+      - Less error-prone than manual cleanup
+    
+    cons:
+      - Changes function signatures (breaking change)
+      - Arena grows with Definition size (might be wasteful for short-lived uses)
+      - Still requires caller discipline (create arena, defer deinit)
+    
+    impact: HIGH - requires signature changes and caller updates
+
+  strategy_3:
+    name: "Document cleanup requirement + add helper"
+    implementation: |
+      1. Add clear documentation to all load functions stating that caller
+         must call freeDefinition() when done
+      2. Make freeDefinition() public in store.zig (currently in API only)
+      3. Add lint rule or test to detect missing cleanup
+      4. Fix all known leakers in this WF-03
+    
+    pros:
+      - Minimal API changes
+      - Allows incremental fixing
+      - Preserves existing function signatures
+    
+    cons:
+      - Relies on human discipline, not type system
+      - Easy to miss in future code
+      - No compile-time enforcement
+      - Still requires auditing all call sites
+    
+    impact: MEDIUM - documentation + spot fixes
+
+recommended_fix: strategy_1
+recommendation_rationale: |
+  Strategy 1 (add Definition.deinit()) is the most idiomatic Zig pattern and provides
+  compile-time enforcement through the type system. The "defer x.deinit()" pattern is
+  standard in Zig and immediately visible in code review. While it requires updating
+  all callers, this is a one-time cost that prevents future leaks.
+  
+  Strategy 2 (arena allocator) would also work but changes function signatures more
+  invasively and doesn't match the existing codebase pattern (most structs with
+  allocations have deinit methods, not arena requirements).
+  
+  Strategy 3 (documentation only) is too weak - this issue demonstrates that
+  undocumented cleanup contracts are easily missed.
+
+implementation_steps:
+  step_1:
+    description: "Add Definition.deinit() to src/definition/graph.zig"
+    code_location: "src/definition/graph.zig after line 103"
+    code: |
+      /// Free all allocations owned by this Definition.
+      /// Must be called with the same allocator used to load the Definition.
+      pub fn deinit(self: Definition, allocator: std.mem.Allocator) void {
+          allocator.free(self.name);
+          allocator.free(self.version);
+          if (self.description) |d| allocator.free(d);
+          if (self.stage) |s| allocator.free(s);
+          
+          // Free graph allocations
+          for (self.graph.nodes) |n| {
+              allocator.free(n.id);
+              if (n.label) |l| allocator.free(l);
+              if (n.attributes) |attrs| allocator.free(attrs);
+          }
+          allocator.free(self.graph.nodes);
+          
+          for (self.graph.edges) |e| {
+              allocator.free(e.id);
+              allocator.free(e.source);
+              allocator.free(e.target);
+              if (e.condition) |c| allocator.free(c);
+              if (e.transform) |t| allocator.free(t);
+          }
+          allocator.free(self.graph.edges);
+      }
+  
+  step_2:
+    description: "Update all Definition load sites to call defer def.deinit(allocator)"
+    priority: "Fix test files first (4-5 call sites), then API handlers (~8 call sites)"
+    test_sites:
+      - tests/integration/iss601_state_snapshots_test.zig (5 calls)
+      - Other integration tests as discovered
+    api_sites:
+      - src/api/routes/definitions.zig (replace freeDefinition calls with def.deinit)
+      - src/definition/export_import.zig
+      - Any engine code that loads definitions
+  
+  step_3:
+    description: "Remove the old freeDefinition wrapper from definitions.zig"
+    note: "Keep freeDefinitionGraph in store.zig as a public helper if needed for partial cleanup"
+  
+  step_4:
+    description: "Run memory leak detection to verify fix"
+    command: "zig build test-integration-iss601 with leak detection enabled"
+
+impact_assessment:
+  memory_leak_severity: MAJOR
+  leak_magnitude: |
+    For a typical BPM process definition with 10 nodes and 12 edges:
+    - Node IDs: ~10 strings × 8 bytes avg = 80 bytes
+    - Node labels: ~10 strings × 20 bytes avg = 200 bytes (optional)
+    - Node attributes: ~5 strings × 50 bytes avg = 250 bytes (optional)
+    - Edge IDs: ~12 strings × 8 bytes avg = 96 bytes
+    - Edge sources/targets: ~24 strings × 8 bytes avg = 192 bytes
+    - Edge conditions: ~6 strings × 40 bytes avg = 240 bytes (optional)
+    - Arrays: 2 × 8 bytes = 16 bytes
+    - Total: ~1074 bytes per Definition load
+    
+    For the failing tests:
+    - TC-ISS-601-01: 48 leaks reported → ~48-100 allocations × avg 20 bytes = ~1-2 KB
+    - TC-ISS-601-05: 42 leaks reported → similar magnitude
+  
+  production_impact: |
+    In production, this leak would accumulate with every Definition load:
+    - API GET /definitions/:id - leaks on every request
+    - Instance creation - loads Definition once per instance
+    - Definition list operations - leaks one Definition per page item
+    
+    For a system loading 1000 definitions/hour:
+    - 1000 × 1 KB = 1 MB/hour leaked
+    - 24 MB/day
+    - 8.7 GB/year (requires restart)
+    
+    This is a gradual memory exhaustion risk.
+  
+  test_impact: |
+    Integration tests fail leak detection when run with ASAN or valgrind.
+    Blocks ISS-601 acceptance because TC-ISS-601-01 and TC-ISS-601-05 both
+    fail with leak reports.
+
+prior_solutions:
+  searched: true
+  search_location: docs/issues/issue_index.json
+  matches_found: 0
+  note: |
+    No prior memory leak issues in the issue registry that match this pattern.
+    This is the first documented allocator-dupe-without-free issue for Definition loading.
+
+next_actions:
+  - Complete this diagnosis report
+  - Proceed to WF-03 Step 2 (fix implementation)
+  - Apply recommended fix (Strategy 1: add Definition.deinit)
+  - Update all call sites in tests/integration/iss601_state_snapshots_test.zig
+  - Update all call sites in src/api/routes/definitions.zig
+  - Verify fix via leak detection
+  - Register resolution in docs/issues/ISS-0601-LEAK-001.json
