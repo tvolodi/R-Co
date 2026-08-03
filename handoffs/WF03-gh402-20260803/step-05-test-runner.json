@@ -6,7 +6,7 @@
   "to_agent": "ORCH",
   "created_at": "2026-08-03T02:27:00Z",
   "started_at": "2026-08-03T02:31:15Z",
-  "status": "COMPLETED",
+  "status": "FAILED",
   "priority": "NORMAL",
   "context": {
     "stage": "Issue Resolution - Test Execution",
@@ -21,7 +21,7 @@
     ]
   },
   "task": {
-    "description": "Execute Step 5 TEST-RUNNER: (1) Infrastructure Health Checklist per docs/guides/test_infrastructure_guide.md §3, (2) Run `zig build test` unit tests, (3) Run `zig build test-integration` integration tests, (4) Verify linter shows 212 BLOCKER T010 + 13 MAJOR non-T010 + 0 MINOR, (5) Validate per-test UUID isolation, (6) Create inner report with evidence",
+    "description": "Execute Step 5 TEST-RUNNER: (1) Infrastructure Health Checklist per docs/guides/test_infrastructure_guide.md \u00a73, (2) Run `zig build test` unit tests, (3) Run `zig build test-integration` integration tests, (4) Verify linter shows 212 BLOCKER T010 + 13 MAJOR non-T010 + 0 MINOR, (5) Validate per-test UUID isolation, (6) Create inner report with evidence",
     "acceptance_criteria": [
       "Infrastructure Health Checklist completes (deterministic baseline, per-test isolation, schema/code parity)",
       "zig build test exits 0 (all unit tests pass)",
@@ -42,110 +42,7 @@
   },
   "result": {
     "status": "FAIL",
-    "summary": "Linter validation PASSED (212 BLOCKER T010, 13 MAJOR, 0 MINOR, exactly as designed). Implementation correctly applied across all 4 batches (29 test files, 114 UUID replacements). However, test execution is BLOCKED by pre-existing database infrastructure issue: PostgreSQL test database authentication failing (BPM_TEST_DB_URL connection refused with 'error: Failed to connect to database: error.AuthenticationFailed'). This is INV-TI-1 violation (deterministic baseline drift). Unit and integration test execution halted pending database service restoration.",
-    "infrastructure_health": {
-      "docker_services": "HEALTHY (db_test service running, responding to pg_isready)",
-      "keycloak_gateway": "HEALTHY (listening on 8081)",
-      "database_url_connection": "FAILED",
-      "zig_build": "PASS (no compilation errors)",
-      "lint_test_isolation": "PASS"
-    },
-    "test_results": {
-      "build_status": "PASS",
-      "build_output": "No errors, 0 steps failed",
-      "unit_tests": "BLOCKED - database authentication failure prevents execution",
-      "unit_tests_attempted": "yes",
-      "integration_tests": "BLOCKED - database authentication failure prevents execution",
-      "integration_tests_attempted": "yes",
-      "total_tests_run": 0,
-      "tests_passed": 0,
-      "tests_failed": 0,
-      "failure_reason": "PostgreSQL connection refused: 'error: Failed to connect to database: error.AuthenticationFailed' in src/db/pool.zig:672"
-    },
-    "lint_verification": {
-      "status": "PASS",
-      "blocker_count": 212,
-      "blocker_type": "T010 - hardcoded UUID violations",
-      "major_count": 13,
-      "major_types": [
-        "T020 - module-level mutable vars shared across test blocks (ext03_plugin_integration_test.zig, 8 findings)",
-        "T050 - integration test does not reference BPM_TEST_DB_URL (exp601_tier_quota_test.zig, 1 finding)",
-        "T050 - integration test missing DB_URL reference (other tests, 4 findings)"
-      ],
-      "minor_count": 0,
-      "baseline_suppressed": 30,
-      "files_checked": 122,
-      "lint_exit_code": 1,
-      "note": "Lint exit code 1 is expected when findings exist. BLOCKER count (212) exactly matches design specification. This represents 114 UUID replacements across 29 files in 4 batches being properly flagged by T010 after promotion from MAJOR to BLOCKER."
-    },
-    "implementation_validation": {
-      "git_branch": "feature/WF03-gh402-20260803",
-      "latest_commit": "2dbc21d - doc(WF03-gh402-20260803): step-03 handoff and comprehensive inner report",
-      "implementation_commit": "92143e9 - test(WF03-gh402-20260803): isolate UUID identity bindings across 29 integration test files (all 4 batches)",
-      "files_modified": 36,
-      "insertions": 2110,
-      "deletions": 158,
-      "uuid_bindings_applied": "All 4 batches completed (A: 8 files, B: 8 files, C: 8 files, D: 5 files)",
-      "uuid_replacements_count": 114,
-      "implementation_status": "COMPLETE and COMMITTED"
-    },
-    "artifacts_out": [
-      "tests/integration/adp06_pipeline_run_correlation_test.zig",
-      "tests/integration/adp07_agent_role_reserved_usernames_test.zig",
-      "tests/integration/adp09_tamper_evident_audit_chain_test.zig",
-      "tests/integration/idn02_group_management_test.zig",
-      "tests/integration/idn03_role_access_test.zig",
-      "tests/integration/idn04_api_token_management_test.zig",
-      "tests/integration/ext01_service_task_test.zig",
-      "tests/integration/ext03_plugin_integration_test.zig",
-      "tests/integration/exp601_tier_quota_test.zig",
-      "tests/integration/ext02_webhook_dispatch_test.zig",
-      "tests/integration/db_integration_test.zig",
-      "tests/integration/obs06_alerts_test.zig",
-      "tests/integration/entity_subsystem_test.zig",
-      "tests/integration/env03_test.zig",
-      "tests/integration/sch02_timer_polling_test.zig",
-      "tests/integration/instance_error_test.zig",
-      "tests/integration/exp103_instance_waits_test.zig",
-      "tests/integration/iss207_error_retry_test.zig",
-      "tests/integration/iss208_task_guard_test.zig",
-      "tests/integration/iss601_state_snapshots_test.zig",
-      "tests/integration/sch303_timer_dlq_test.zig",
-      "tests/integration/svc01_service_catalog_scope_test.zig",
-      "tests/integration/svc03_definition_activation_scope_test.zig",
-      "tests/integration/exp401_exp402_comp_restore_test.zig",
-      "docs/issue-reports/WF03-gh402-20260803-step-05-test-runner-INNER-REPORT.yaml"
-    ],
-    "issues": [
-      {
-        "severity": "BLOCKER",
-        "category": "Infrastructure",
-        "code": "INV-TI-1",
-        "description": "Database infrastructure unavailable: PostgreSQL test database connection failed with 'error.AuthenticationFailed'. This violates INV-TI-1 (deterministic baseline). Cannot execute unit or integration tests until database connectivity is restored.",
-        "affected_component": "src/db/pool.zig:672, vendor/pg/pg.zig:636 (handleScram authentication)",
-        "evidence": "zig build test exit 1; tests/unit/test_api08_auth.zig:520 and :604 failed during pool initialization with PgError.AuthenticationFailed",
-        "recommendation": "ORCH must dispatch ADHOC BACKEND-DEV handoff to restore database connectivity: verify BPM_TEST_DB_URL connection, check PostgreSQL test container state, verify credentials match docker-compose.yml (bpm/bpm), ensure migrations are applied via `zig build migrate`",
-        "blocking_test_execution": true
-      },
-      {
-        "severity": "MINOR",
-        "category": "Test Quality",
-        "code": "T020",
-        "description": "Module-level mutable vars shared across test blocks in ext03_plugin_integration_test.zig (8 findings: g_plugin_mode, g_handler_invoked, g_last_node_type, g_last_node_type_len, g_last_node_config, g_last_node_config_len, g_last_instance_vars, g_last_instance_vars_len)",
-        "affected_files": ["tests/integration/ext03_plugin_integration_test.zig"],
-        "lint_findings": 8,
-        "note": "Pre-existing issue, not introduced by WF03-gh402 implementation. Documented for awareness. T020 is MAJOR severity per lint rules."
-      },
-      {
-        "severity": "MINOR",
-        "category": "Test Quality",
-        "code": "T050",
-        "description": "Integration tests missing or not referencing BPM_TEST_DB_URL: exp601_tier_quota_test.zig and others (5 findings total)",
-        "lint_findings": 5,
-        "note": "Pre-existing issues, not introduced by WF03-gh402 implementation. Documented for awareness. T050 is MAJOR severity per lint rules."
-      }
-    ],
-    "next_action": "ORCH must dispatch ADHOC BACKEND-DEV handoff (priority BLOCKER) to restore database infrastructure. Task: verify database connectivity, check PostgreSQL test container, apply missing migrations if needed, restore BPM_TEST_DB_URL connection. After ADHOC BACKEND-DEV returns PASS, ORCH redispatches TEST-RUNNER Step 5 to complete test execution."
+    "summary": "Infrastructure blocker: 3rd pg_advisory_lock at helpers.zig:575-576 causes test timeouts. ADHOC incomplete."
   },
-  "completed_at": "2026-08-03T02:37:57Z"
+  "completed_at": "2026-08-03T05:39:10.241141Z"
 }
