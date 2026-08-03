@@ -1,0 +1,53 @@
+{
+  "handoff_id": "40020000-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh400-20260804",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-03T21:23:33Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/400",
+    "issue_title": "ISS-0205: webhook_deliveries.status written lowercase but CHECK requires UPPERCASE",
+    "iss_id": "ISS-0205",
+    "branch_name": "feature/WF03-gh400-20260804",
+    "related_handoff_ids": [
+      "40000000-0000-0000-0000-000000000000",
+      "40050000-0000-0000-0000-000000000000",
+      "40010000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "handoffs/WF03-gh400-20260804/step-1-issue-fixer-diagnosis.json",
+      "src/webhook/dispatcher.zig",
+      "migrations/085_iss106_webhook_deliveries_outbox.sql"
+    ]
+  },
+  "task": {
+    "description": "Step 2 \u2014 write a fix design artefact. The fix is a single-source-file change: src/webhook/dispatcher.zig has 8 SQL string literals (lines 88, 172, 207, 251, 295, 371, 406, 440) that violate the webhook_deliveries.status CHECK constraint defined in migration 085. Write src/design/iss205-webhook-status-case.md (Type E prose) describing: (1) the contract mapping (pending\u2192PENDING, success\u2192DELIVERED, failed\u2192FAILED, exhausted\u2192FAILED); (2) the exact 8 SQL edits in a table (line, before, after, rationale); (3) verification: which integration tests will pass and why (iss205 3/3, iss106, ext02; iss601 not affected); (4) no schema change, no new endpoint, no test addition required (existing tests already exercise the rows). Do NOT write implementation code. Do NOT add a regression test \u2014 the existing 3 failing iss205 tests are the regression tests.",
+    "acceptance_criteria": [
+      "src/design/iss205-webhook-status-case.md created with sections per docs/guides/backend_developer_guide.md \u00a76 (Context, Contract, Design, Verification)",
+      "All 8 SQL edits listed with before/after",
+      "Mapping table shows source_lc \u2192 CHECK_domain value with rationale for each",
+      "No implementation code in the design (Type E prose only)"
+    ],
+    "functions_to_call": [
+      "fn:design-artefact"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design artefact written; 8 SQL edits enumerated (4 INSERT/SELECT lineage + 3 UPDATE + 1 INSERT enqueue) for ISS-0205 / GH #400. Linter passes (no BLOCKER/MAJOR). All 8 sites are in src/webhook/dispatcher.zig (lines 88, 172, 207, 251, 295, 371, 406, 440). Mapping table defines pending->PENDING, success->DELIVERED, failed->FAILED, exhausted->FAILED per migration 085 Step 3. Out-of-scope sites (line 419 webhook_subscriptions PAUSED; lines 68/154/297 webhook_subscriptions ACTIVE) explicitly excluded. Verification section lists iss205/iss106/ext02/iss601 expected verdicts; no new test added because existing ISS-205 TC1/TC2/TC3 already exercise the affected paths.",
+    "artifacts_out": [
+      "src/design/iss205-webhook-status-case.md",
+      "commit 6d40475"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 0,
+  "max_rework": 2,
+  "started_at": null,
+  "completed_at": "2026-08-03T21:24:55Z"
+}

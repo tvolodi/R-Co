@@ -85,7 +85,7 @@ pub fn insertWebhookDeliveriesInTx(
             \\   next_attempt_at, event_type, instance_id, payload_json, trace_id,
             \\   created_at, updated_at)
             \\VALUES
-            \\  ($1::uuid, NULLIF($2, '')::uuid, 'pending', 0, 5,
+            \\  ($1::uuid, NULLIF($2, '')::uuid, 'PENDING', 0, 5,
             \\   NOW() + '5 seconds'::interval,
             \\   $3, NULLIF($4, '')::uuid, $5::jsonb, $6,
             \\   NOW(), NOW())
@@ -169,7 +169,7 @@ pub fn enqueueDeliveryAttempts(
             \\INSERT INTO webhook_deliveries
             \\  (subscription_id, status, attempt_count, max_attempts, next_attempt_at, event_type, instance_id, payload_json, trace_id, created_at, updated_at)
             \\VALUES
-            \\  ($1::uuid, 'pending', 0, 5, NOW(), $2, NULLIF($3, '')::uuid, $4::jsonb, $5, NOW(), NOW())
+            \\  ($1::uuid, 'PENDING', 0, 5, NOW(), $2, NULLIF($3, '')::uuid, $4::jsonb, $5, NOW(), NOW())
         ,
             &.{ subscription_id, event_type, envelope.instance_id, payload, envelope.trace_id },
         ) catch return error.PersistenceFailed;
@@ -204,7 +204,7 @@ pub fn dispatchDueWebhookAttempts(
         \\  COALESCE(s.secret_ref, '')
         \\FROM webhook_deliveries d
         \\JOIN webhook_subscriptions s ON s.id = d.subscription_id
-        \\WHERE d.status IN ('pending', 'failed')
+        \\WHERE d.status IN ('PENDING', 'FAILED')
         \\  AND d.next_attempt_at <= NOW()
         \\  AND s.status = 'ACTIVE'
         \\ORDER BY d.next_attempt_at ASC
@@ -248,7 +248,7 @@ pub fn dispatchDueWebhookAttemptsForTrace(
         \\  COALESCE(s.secret_ref, '')
         \\FROM webhook_deliveries d
         \\JOIN webhook_subscriptions s ON s.id = d.subscription_id
-        \\WHERE d.status IN ('pending', 'failed')
+        \\WHERE d.status IN ('PENDING', 'FAILED')
         \\  AND d.next_attempt_at <= NOW()
         \\  AND s.status = 'ACTIVE'
         \\  AND d.trace_id = $1
@@ -292,7 +292,7 @@ pub fn dispatchDueWebhookAttemptsForSubscription(
         \\  COALESCE(s.secret_ref, '')
         \\FROM webhook_deliveries d
         \\JOIN webhook_subscriptions s ON s.id = d.subscription_id
-        \\WHERE d.status IN ('pending', 'failed')
+        \\WHERE d.status IN ('PENDING', 'FAILED')
         \\  AND d.next_attempt_at <= NOW()
         \\  AND s.status = 'ACTIVE'
         \\  AND d.subscription_id = $1::uuid
@@ -368,7 +368,7 @@ fn dispatchOne(
             defer allocator.free(next_attempt_txt);
             conn.exec(
                 \\UPDATE webhook_deliveries
-                \\SET status = 'success',
+                \\SET status = 'DELIVERED',
                 \\    attempt_count = $2::int,
                 \\    last_attempt_at = NOW(),
                 \\    delivered_at = NOW(),
@@ -403,7 +403,7 @@ fn dispatchOne(
     if (should_pause) {
         conn.exec(
             \\UPDATE webhook_deliveries
-            \\SET status = 'exhausted',
+            \\SET status = 'FAILED',
             \\    attempt_count = $2::int,
             \\    last_attempt_at = NOW(),
             \\    last_error = 'delivery_failed',
@@ -437,7 +437,7 @@ fn dispatchOne(
 
         conn.exec(
             \\UPDATE webhook_deliveries
-            \\SET status = 'failed',
+            \\SET status = 'FAILED',
             \\    attempt_count = $2::int,
             \\    last_attempt_at = NOW(),
             \\    last_error = 'delivery_failed',

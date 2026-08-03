@@ -1,0 +1,52 @@
+{
+  "handoff_id": "40030000-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh400-20260804",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-03T21:25:52Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/400",
+    "issue_title": "ISS-0205: webhook_deliveries.status written lowercase but CHECK requires UPPERCASE",
+    "iss_id": "ISS-0205",
+    "branch_name": "feature/WF03-gh400-20260804",
+    "related_handoff_ids": [
+      "40020000-0000-0000-0000-000000000000",
+      "4002b000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss205-webhook-status-case.md"
+    ]
+  },
+  "task": {
+    "description": "Step 3 REWORK 2 \u2014 fix the user-insert idempotency gap surfaced by re-running test-integration-iss205. Rework 1 (commit f5e13f2) successfully aligned the 4 test SQL literals to UPPERCASE. However, when the same tests are re-run (without a fresh test database), the INSERT into users fails with C23505 'duplicate key value violates unique constraint users_email_key' because tests use a fixed email per TC ('iss205tc1@test.local' etc.) and the existing test harness does not clean up the users table between runs. The 'ON CONFLICT (id) DO NOTHING' clause is wrong: it only matches duplicate id (UUID), not duplicate email. Fix by changing 'ON CONFLICT (id) DO NOTHING' to 'ON CONFLICT (email) DO NOTHING' on the user INSERT in TC1 (line 88), TC2 (line 178), and TC3 (line 264) of tests/integration/iss205_webhook_outbox_test.zig. After editing, re-run zig build test-integration-iss205 and confirm 3/3 PASS. Then commit and push with message 'fix(WF03-gh400): make iss205 user fixtures idempotent across re-runs (ISS-0205, GH #400)'. DO NOT touch the dispatcher or any other file.\n\nREWORK 2:\n- [BLOCKER] tests/integration/iss205_webhook_outbox_test.zig:88 user INSERT 'ON CONFLICT (id) DO NOTHING' \u2192 'ON CONFLICT (email) DO NOTHING'\n- [BLOCKER] tests/integration/iss205_webhook_outbox_test.zig:178 same fix\n- [BLOCKER] tests/integration/iss205_webhook_outbox_test.zig:264 same fix\n- Re-run zig build test-integration-iss205 must be 3/3 PASS\n\nREWORK 1 (already applied at commit f5e13f2, do NOT undo):\n- [BLOCKER] tests/integration/iss205_webhook_outbox_test.zig:194 'pending' \u2192 'PENDING'\n- [BLOCKER] tests/integration/iss205_webhook_outbox_test.zig:278 'failed' \u2192 'FAILED'\n- [MINOR] ext02 and iss106 audit fixes (already applied at f5e13f2)",
+    "acceptance_criteria": [
+      "All 8 SQL edits applied in src/webhook/dispatcher.zig (lines 88, 172, 207, 251, 295, 371, 406, 440)",
+      "Line 419 (PAUSED) UNCHANGED; the 5 'ACTIVE' sites UNCHANGED",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "python3 tools/lint_sql_param_types.py src tests exits 0 with no BLOCKER/MAJOR",
+      "zig build migrate exits 0",
+      "git commit and push to feature/WF03-gh400-20260804 with message 'fix(WF03-gh400): align webhook_deliveries.status with UPPERCASE CHECK (ISS-0205, GH #400)'",
+      "Return next_action: 'Route to TEST-RUNNER (Step 5)'"
+    ],
+    "functions_to_call": [
+      "fn:implement-fix",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "fix applied",
+    "artifacts_out": [],
+    "issues": [],
+    "next_action": "Route to DOC-UPDATER"
+  },
+  "rework_count": 2,
+  "max_rework": 3,
+  "started_at": "2026-08-03T21:47:14Z",
+  "completed_at": "2026-08-03T21:55:46Z"
+}

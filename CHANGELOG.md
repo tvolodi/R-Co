@@ -2,6 +2,17 @@
 
 All notable changes to the BPM Platform are documented here.
 
+## [Unreleased] — 2026-08-04
+
+### Fixed (ISS-0205 / GitHub #400 — webhook_deliveries.status case alignment)
+- **Closes GitHub #400 (ISS-0205)**: `src/webhook/dispatcher.zig` was writing `webhook_deliveries.status` in lowercase (`pending`, `failed`, `delivered`, `retrying`) but the CHECK constraint defined in `migrations/085_iss106_webhook_deliveries_outbox.sql` requires UPPERCASE values (`PENDING`, `FAILED`, `DELIVERED`, `RETRYING`). Every INSERT in the dispatcher failed with `C23514 webhook_deliveries_status_check`.
+- **Fix**: 8 INSERT/UPDATE sites in `src/webhook/dispatcher.zig` (lines 88, 172, 207, 251, 295, 371, 406, 440) aligned to UPPERCASE status literals. The `PAUSED` literal at line 419 and the 5 `ACTIVE` sites were left unchanged (they already match the constraint).
+- **Test fixtures aligned**: `tests/integration/iss205_webhook_outbox_test.zig` (TC1 line 194 `pending`→`PENDING`, TC2 line 278 `failed`→`FAILED`) and `tests/integration/iss106_webhook_outbox_test.zig` / `tests/integration/ext02_webhook_dispatch_test.zig` SELECT queries updated to match UPPERCASE.
+- **Idempotency fix**: TC1/TC2/TC3 in `iss205_webhook_outbox_test.zig` use `ON CONFLICT (email) DO NOTHING` (was `ON CONFLICT (id)`) so re-runs without a fresh test DB no longer fail with `C23505 users_email_key`.
+- **Verification**: `zig build test` exits 0 (247/247). `zig build test-integration-iss205` exits 2/3 PASS — TC1+TC2 PASS prove the case-alignment fix is correct (both fail with C23514 on main). TC3 fails on a pre-existing schema/code mismatch (column `s.secret_ref` does not exist, C42703) — `webhook_subscriptions.secret_ref` is referenced in `src/webhook/dispatcher.zig` but the migration GBL-128 ADD COLUMN block is guarded by `to_regclass(webhook_subscriptions)` which returns NULL in the public schema where the migration runs (the table lives in per-tenant schemas). Tracked separately at GitHub #375 (ISS-0112 schema drift cluster). Out of scope for GH #400.
+- Design: `src/design/iss205-webhook-status-case.md`. Issue: `docs/issues/ISS-0205.json`. Test report: `tests/reports/report-20260803-WF03-gh400.yaml`. Inner report: `docs/issue-reports/WF03-gh400-20260804-step-5-test-runner-INNER-REPORT.yaml`.
+- Branch: `feature/WF03-gh400-20260804`. Commits: `98dff26`, `6d40475`, `e373a4c`, `fe2ece0`, `f5e13f2`, `9af552d`, `13bd19a`.
+
 ## [Unreleased] — 2026-08-03
 
 ### Fixed (ISS-0601-LEAK-001 / GitHub #406 — parseGraphJson memory leak, 79% reduction)
