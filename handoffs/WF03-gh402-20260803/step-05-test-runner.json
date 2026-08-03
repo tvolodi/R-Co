@@ -42,7 +42,39 @@
   },
   "result": {
     "status": "FAIL",
-    "summary": "Infrastructure blocker: 3rd pg_advisory_lock at helpers.zig:575-576 causes test timeouts. ADHOC incomplete."
+    "summary": "Infrastructure blocker: Test database cleanup hangs during TestHarness.init() → resetTestData(). Both unit and integration test suites blocked. Advisory lock fix (1dfadb4) in place but insufficient.",
+    "blocker_severity": "BLOCKER",
+    "blocker_category": "INFRASTRUCTURE - Test Database Cleanup Timeout",
+    "artifacts_out": [
+      "tests/reports/report-20260803-WF03-gh402-final.yaml"
+    ],
+    "issues": [
+      {
+        "id": "BLOCKER-1",
+        "severity": "BLOCKER",
+        "title": "Test database cleanup timeout during TestHarness.init()",
+        "description": "Both unit tests (zig build test) and integration tests (zig build test-integration) hang indefinitely during database cleanup phase. Process blocks at 'Cleaning test database...' message in resetTestData() function. No compilation errors in backend code. Infrastructure (docker-compose services, psql connectivity) verified healthy.",
+        "affected_layers": ["test-harness", "database-cleanup", "integration-tests", "unit-tests"],
+        "blocking_path": "TestHarness.init() → configureTestSearchPath() → resetTestData() → TRUNCATE operations",
+        "prior_fix": "Commit 1dfadb4 removed advisory locks from lines 99, 143, and 575-577 in helpers.zig. Fix is in place but insufficient.",
+        "evidence": "test-runner attempt 3: zig build succeeds (0 errors), docker ps healthy, psql SELECT 1 succeeds, unit test timeout at 60s, integration test timeout at 120s, both last log 'Cleaning test database...'",
+        "investigation_needed": [
+          "Check pg_stat_activity for stale connections in bpm_test database",
+          "Check pg_locks for table-level locks blocking truncate operations",
+          "Verify foreign key cascade timing in truncateTableBestEffort() function",
+          "Review PostgreSQL logs for statement timeouts or deadlock errors",
+          "Consider connection pool reset or alternative database cleanup strategy"
+        ]
+      }
+    ],
+    "metrics": {
+      "backend_compilation": "PASS (exit 0, 0 errors)",
+      "docker_services": "HEALTHY (db, db_test, keycloak, gateway all running)",
+      "database_connectivity": "ACCESSIBLE (psql SELECT 1 succeeds)",
+      "unit_tests": "TIMEOUT (hang during cleanup, never reach test execution)",
+      "integration_tests": "TIMEOUT (hang during cleanup, never reach test execution)",
+      "uuid_corruption_fixes": "IN PLACE (entity_subsystem_test.zig, iss601_state_snapshots_test.zig fixed in prior session)"
+    }
   },
-  "completed_at": "2026-08-03T05:39:10.241141Z"
+  "completed_at": "2026-08-03T06:16:59Z"
 }

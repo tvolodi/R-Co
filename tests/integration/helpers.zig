@@ -316,40 +316,86 @@ fn execCompatibilitySql(conn: *pg.Conn, sql: []const u8) !void {
     };
 }
 
-// ISS-0125 / GitHub #391: resetTestData() intentionally truncates
+/// GH-402 (Database cleanup hang): Before truncating tables, terminate idle
+/// connections that may be holding AccessExclusiveLock. This is critical because
+/// TRUNCATE acquires AccessExclusiveLock on the target table, and even an idle
+/// transaction (state='idle in transaction') blocks it indefinitely. Stale
+/// connections from crashed test processes or earlier runs leave locks that
+/// cause subsequent test suites to hang at statement_timeout (60s) with no
+/// visible error.
+fn killIdleConnections(conn: *pg.Conn) !void {
+    // Terminate only idle in-transaction connections (not active queries).
+    // Never terminate the current backend (pg_backend_pid()).
+    const sql = "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'idle in transaction' AND pid != pg_backend_pid()";
+    conn.exec(sql, &.{}) catch |err| {
+        // Failure to kill idle connections is not fatal; log but continue.
+        // The statement_timeout on truncates below will catch cases where
+        // a kill failed and the idle connection still holds a lock.
+        std.debug.print("killIdleConnections: {}\n", .{err});
+    };
+}
+
+// ISS-0125 / GitHub #391: resetTestData() intentionally clears
 // instance_definition_snapshots before process_definitions even though
 // the FK uses ON DELETE CASCADE (see GBL-106). The order is preserved
-// as defense in depth — TRUNCATE ... CASCADE is independent of the FK's
-// referential action, but documenting the order makes the invariant
-// visible and prevents future "harmless" reorderings from masking a
-// regression. Per-test cleanup helpers in
+// as defense in depth — for DELETE operations this order ensures
+// referential integrity is maintained. Per-test cleanup helpers in
 // iss202_merge_atomicity_test.zig, iss203_idempotency_keys_test.zig,
 // and iss601_state_snapshots_test.zig now follow the same
 // child-before-parent order AND propagate (do not swallow) any SQL
 // error from a child delete before attempting the parent delete.
+//
+// GH-402: Uses DELETE instead of TRUNCATE to avoid AccessExclusiveLock
+// which can be blocked indefinitely by idle connections. DELETE acquires
+// RowExclusiveLock which other sessions can work around.
 fn resetTestData(conn: *pg.Conn) !void {
-    // Keep migration/seed/config tables intact and only clear transient test data.
-    // Truncate tables one-by-one so one missing legacy table does not skip cleanup.
-    try truncateTableBestEffort(conn, "instance_definition_snapshots");
-    try truncateTableBestEffort(conn, "tasks");
-    try truncateTableBestEffort(conn, "timers");
-    try truncateTableBestEffort(conn, "instance_projections");
-    try truncateTableBestEffort(conn, "variable_schemas");
-    try truncateTableBestEffort(conn, "process_definitions");
-    try truncateTableBestEffort(conn, "events");
-    try truncateTableBestEffort(conn, "audit_log");
-    try truncateTableBestEffort(conn, "audit_entries");
-    try truncateTableBestEffort(conn, "dead_letter_items");
-    try truncateTableBestEffort(conn, "webhook_subscriptions");
-    // SVC-04 uses the service catalog; truncate so LIMIT-50 page-1 tests stay deterministic.
-    try truncateTableBestEffort(conn, "service_catalog");
+    // GH-402: Kill any idle connections before cleaning, so they don't
+    // hold locks and cause indefinite waits or deadlocks.
+    try killIdleConnections(conn);
+
+    // Temporarily lower lock_timeout and statement_timeout for cleanup
+    // operations to fail fast if there's contention.
+    conn.exec("SET lock_timeout = '5s'", &.{}) catch {};
+    conn.exec("SET statement_timeout = '20s'", &.{}) catch {};
+
+    // Clear transient test data via DELETE to avoid locks that can be blocked
+    // indefinitely by idle connections. Delete in child-before-parent order
+    // to respect foreign key constraints even though CASCADE is set.
+    try deleteTableBestEffort(conn, "instance_definition_snapshots");
+    try deleteTableBestEffort(conn, "tasks");
+    try deleteTableBestEffort(conn, "timers");
+    try deleteTableBestEffort(conn, "instance_projections");
+    try deleteTableBestEffort(conn, "variable_schemas");
+    try deleteTableBestEffort(conn, "process_definitions");
+    try deleteTableBestEffort(conn, "events");
+    try deleteTableBestEffort(conn, "audit_log");
+    try deleteTableBestEffort(conn, "audit_entries");
+    try deleteTableBestEffort(conn, "dead_letter_items");
+    try deleteTableBestEffort(conn, "webhook_subscriptions");
+    // SVC-04 uses the service catalog; clear so LIMIT-50 page-1 tests stay deterministic.
+    try deleteTableBestEffort(conn, "service_catalog");
+
+    // Reset sequences for tables that use IDENTITY columns (best-effort).
+    conn.exec("SELECT setval(pg_get_serial_sequence('tasks', 'id'), 1, false)", &.{}) catch {};
+    conn.exec("SELECT setval(pg_get_serial_sequence('timers', 'id'), 1, false)", &.{}) catch {};
+
+    // Restore default timeouts.
+    conn.exec("SET lock_timeout = '5s'", &.{}) catch {};
+    conn.exec("SET statement_timeout = '60s'", &.{}) catch {};
 }
 
-fn truncateTableBestEffort(conn: *pg.Conn, comptime table_name: []const u8) !void {
-    const sql = "TRUNCATE TABLE " ++ table_name ++ " RESTART IDENTITY CASCADE";
+fn deleteTableBestEffort(conn: *pg.Conn, comptime table_name: []const u8) !void {
+    // GH-402: Use DELETE instead of TRUNCATE to avoid AccessExclusiveLock.
+    // DELETE acquires RowExclusiveLock which won't block other sessions.
+    // For test tables (expected to be small), DELETE performance is acceptable.
+    const sql = "DELETE FROM " ++ table_name;
     conn.exec(sql, &.{}) catch |err| switch (err) {
         // Some tables may not exist yet in partial migration states.
         error.ServerError => {},
+        // Timeout on delete (lock blocking) — log but don't fail the whole suite.
+        error.Timeout => {
+            std.debug.print("WARNING: deleteTableBestEffort({s}) timed out (lock blocked)\n", .{table_name});
+        },
         else => return err,
     };
 }

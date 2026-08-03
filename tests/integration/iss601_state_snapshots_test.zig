@@ -919,7 +919,7 @@ test "TC-ISS-601-05: overflow payload join reconstructs full payloads" {
     const large_payload = large_payload_builder.items;
     defer alloc.free(large_payload);
 
-    const overflow_event_id = try harness.newUuidString(alloc);
+    const overflow_event_id = try h.newUuidString(alloc);
     defer alloc.free(overflow_event_id);
     // Insert event with small placeholder payload pointing to overflow
     conn.exec(

@@ -19,6 +19,26 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-03T04:45:00Z",
       "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "7b0915e7-2f6c-4007-91cc-8479c81a742a",
+      "file": "handoffs/ADHOC-gh402-advisory-lock-complete-20260803/step-00-backend-dev-final-lock-removal.json",
+      "run_id": "ADHOC-gh402-advisory-lock-complete-20260803",
+      "step": "00-adhoc",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-03T05:20:00Z",
+      "status": "PENDING"
+    },
+    {
+      "handoff_id": "e0f6da5d-ca30-419c-8dde-a795db9851cf",
+      "file": "handoffs/ADHOC-gh402-db-cleanup-hang-20260803/step-00-backend-dev-db-cleanup.json",
+      "run_id": "ADHOC-gh402-db-cleanup-hang-20260803",
+      "step": "00-adhoc",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-03T06:20:00Z",
+      "status": "PENDING"
     }
   ]
 }

@@ -195,7 +195,7 @@ test "EXP-202: Create entity record (Integration)" {
     // 1. Create a tenant for the test
     const tenant_id = try generateTestId(allocator);
     defer allocator.free(tenant_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try h.newUuidString(allocator);
     defer alloc.free(actor_id); // Non-nil UUID for actor_id
 
     try h.provisionTenant(tenant_id);
@@ -280,7 +280,7 @@ test "EXP-202: Update entity record (Integration)" {
 
     const tenant_id = try generateTestId(allocator);
     defer allocator.free(tenant_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try h.newUuidString(allocator);
     defer alloc.free(actor_id);
 
     try h.provisionTenant(tenant_id);
@@ -363,7 +363,7 @@ test "EXP-202: Create record idempotency" {
 
     const tenant_id = try generateTestId(allocator);
     defer allocator.free(tenant_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try h.newUuidString(allocator);
     defer alloc.free(actor_id);
     const idemp_key = try generateIdempKey(allocator);
     defer allocator.free(idemp_key);
@@ -425,7 +425,7 @@ test "EXP-202: Delete entity record (Integration)" {
 
     const tenant_id = try generateTestId(allocator);
     defer allocator.free(tenant_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try h.newUuidString(allocator);
     defer alloc.free(actor_id);
 
     try h.provisionTenant(tenant_id);
@@ -507,7 +507,7 @@ test "EXP-202: Create record with invalid payload (Integration)" {
 
     const tenant_id = try generateTestId(allocator);
     defer allocator.free(tenant_id);
-    const actor_id = try harness.newUuidString(alloc);
+    const actor_id = try h.newUuidString(allocator);
     defer alloc.free(actor_id);
 
     try h.provisionTenant(tenant_id);

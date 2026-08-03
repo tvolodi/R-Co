@@ -1,0 +1,31 @@
+{
+  "handoff_id": "e0f6da5d-ca30-419c-8dde-a795db9851cf",
+  "run_id": "ADHOC-gh402-db-cleanup-hang-20260803",
+  "step": "00-adhoc",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-03T06:20:00Z",
+  "started_at": null,
+  "status": "PENDING",
+  "priority": "BLOCKER",
+  "context": {
+    "parent_workflow": "WF03-gh402-20260803",
+    "parent_step": "05-test-runner",
+    "blocking_issue": "Integration tests hang during TestHarness.init() database cleanup phase (resetTestData)",
+    "root_cause": "truncateTableBestEffort() hangs indefinitely; database responsive to direct psql but cleanup operation times out",
+    "evidence": "Logs show 'Cleaning test database...' then indefinite hang at 60s+ timeout"
+  },
+  "task": {
+    "description": "Debug and fix database cleanup hang in TestHarness.init() \u2192 resetTestData() \u2192 truncateTableBestEffort(). Investigate: (1) stale connections holding locks, (2) foreign key cascade timeouts, (3) connection pool exhaustion, (4) PostgreSQL statement timeouts. Use diagnostic queries to identify blocking operations. Apply fix (connection cleanup, statement timeouts, cascade logic). Verify zig build test exits 0 within reasonable time (<2 min). Then verify zig build test-integration exits 0.",
+    "acceptance_criteria": [
+      "TestHarness.init() \u2192 resetTestData() completes within 30 seconds per test",
+      "zig build test exits 0 (no hangs)",
+      "zig build test-integration exits 0 (all tests pass)",
+      "No database cleanup timeouts in test output",
+      "Changes committed and pushed to feature/WF03-gh402-20260803"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1
+}
