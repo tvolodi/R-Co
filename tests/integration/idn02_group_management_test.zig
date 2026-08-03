@@ -17,6 +17,9 @@ const snapshot_mod = bpm.snapshot;
 const instance_mod = bpm.engine;
 const task_mod = bpm.tasks;
 
+/// Fixed "created_by" UUID used across tests.
+const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
@@ -142,9 +145,6 @@ fn expectUuidLike(value: []const u8) !void {
     try testing.expectEqual(@as(u8, '-'), value[18]);
     try testing.expectEqual(@as(u8, '-'), value[23]);
 }
-
-const creator_uuid_str = try harness.newUuidString(alloc);
-    defer alloc.free(creator_uuid_str);
 
 fn createGroupId(service: *identity_service.Service, allocator: std.mem.Allocator, name: []const u8) ![]u8 {
     const body = try std.fmt.allocPrint(allocator, "{{\"name\":\"{s}\"}}", .{name});

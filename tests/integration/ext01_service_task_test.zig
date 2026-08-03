@@ -24,6 +24,10 @@ const PoolConfig = bpm.pool.PoolConfig;
 // Root-level export required so pool connections apply tenant-schema search_path
 // instead of falling back to search_path=public (see audit_iss103_test.zig).
 pub const api_tenant_context = bpm.api_tenant_context;
+
+/// Fixed "created_by" UUID used across tests.
+const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+
 const DefinitionStore = bpm.definition.Store;
 const CreateParams = bpm.definition.CreateParams;
 const GraphNode = bpm.definition.GraphNode;

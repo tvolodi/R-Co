@@ -21,6 +21,27 @@ const helpers = @import("helpers.zig");
 // instead of falling back to search_path=public (see audit_iss103_test.zig).
 pub const api_tenant_context = bpm.api_tenant_context;
 
+// ---------------------------------------------------------------------------
+// UUID helper
+// ---------------------------------------------------------------------------
+
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
+    raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
+}
+
 const Pool = bpm.pool.Pool;
 const PoolConfig = bpm.pool.PoolConfig;
 const ServiceCatalog = bpm.service_catalog.ServiceCatalog;
@@ -231,7 +252,7 @@ test "svc03: activation passes for own-tenant scoped service" {
     plugin_registry.freezePluginRegistry(&registry);
 
     // Use pre-committed fixture tenant (visible to pool connections).
-    const owner_hex = try harness.newUuidString(alloc);
+    const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
     const tid_owner = try parseUuid36(owner_hex);
 
@@ -287,9 +308,9 @@ test "svc03: activation rejected for cross-tenant service reference" {
     plugin_registry.freezePluginRegistry(&registry);
 
     // Use pre-committed fixture tenants (visible to pool connections).
-    const owner_hex = try harness.newUuidString(alloc);
+    const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
-    const caller_hex = try harness.newUuidString(alloc);
+    const caller_hex = try randomUuidStr(alloc);
     defer alloc.free(caller_hex);
     const tid_owner = try parseUuid36(owner_hex);
     const tid_caller = try parseUuid36(caller_hex);
@@ -483,9 +504,9 @@ test "svc03: first scope violation stops validation atomically" {
     plugin_registry.freezePluginRegistry(&registry);
 
     // Use pre-committed fixture tenants (visible to pool connections).
-    const owner_hex = try harness.newUuidString(alloc);
+    const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
-    const caller_hex = try harness.newUuidString(alloc);
+    const caller_hex = try randomUuidStr(alloc);
     defer alloc.free(caller_hex);
     const tid_owner = try parseUuid36(owner_hex);
     const tid_caller = try parseUuid36(caller_hex);

@@ -1,0 +1,28 @@
+{
+  "handoff_id": "224d6bec-0315-4f3e-a070-86f007ddddba",
+  "run_id": "ADHOC-gh402-migration-order-20260803",
+  "step": "00-adhoc",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-03T04:02:53Z",
+  "started_at": null,
+  "status": "PENDING",
+  "priority": "BLOCKER",
+  "context": {
+    "parent_workflow": "WF03-gh402-20260803",
+    "parent_step": "05-test-runner",
+    "blocking_issue": "zig build test-integration fails: MigrationError.OutOfOrderMigration",
+    "root_cause": "GBL-073 through GBL-105 migrations sort after 1106+ lexicographically but must apply before numerically"
+  },
+  "task": {
+    "description": "Fix migration file sequencing: rename GBL-073..105 migrations to have numeric prefixes that sort correctly (0730..0805 range recommended). Verify zig build migrate and zig build test-integration both exit 0.",
+    "acceptance_criteria": [
+      "All 33 GBL migrations renamed to numeric-compliant prefixes",
+      "zig build migrate exits 0 with 'No new migrations to apply'",
+      "zig build test-integration exits 0 (all tests pass)"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 1
+}

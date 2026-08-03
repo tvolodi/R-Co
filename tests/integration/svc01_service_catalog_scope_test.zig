@@ -17,6 +17,27 @@ const helpers = @import("helpers.zig");
 pub const api_tenant_context = @import("bpm").api_tenant_context;
 
 // ---------------------------------------------------------------------------
+// UUID helper
+// ---------------------------------------------------------------------------
+
+fn randomUuidStr(allocator: std.mem.Allocator) ![]u8 {
+    var raw: [16]u8 = undefined;
+    std.testing.io.random(&raw);
+    raw[6] = (raw[6] & 0x0f) | 0x40; // version 4
+    raw[8] = (raw[8] & 0x3f) | 0x80; // variant 10xx
+    return std.fmt.allocPrint(allocator, "{x:0>2}{x:0>2}{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}-" ++
+        "{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}{x:0>2}", .{
+        raw[0],  raw[1],  raw[2],  raw[3],
+        raw[4],  raw[5],  raw[6],  raw[7],
+        raw[8],  raw[9],  raw[10], raw[11],
+        raw[12], raw[13], raw[14], raw[15],
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Setup / cleanup helpers
 // ---------------------------------------------------------------------------
 
@@ -91,8 +112,8 @@ test "svc01: global service visible to any tenant" {
     try insertGlobalService(&h.conn, svc_id);
 
     // List for a random tenant — global service must appear.
-    const tenant_hex = try harness.newUuidString(alloc);
-    defer alloc.free(tenant_hex);
+    const tenant_hex = try randomUuidStr(std.testing.allocator);
+    defer std.testing.allocator.free(tenant_hex);
     const rows = try h.conn.query(
         std.testing.allocator,
         \\SELECT service_id, scope, owner_tenant_id
@@ -111,8 +132,8 @@ test "svc01: global service visible to any tenant" {
     try std.testing.expectEqualStrings("global", scope_val);
 
     // Also visible to a different tenant.
-    const tenant2_hex = try harness.newUuidString(alloc);
-    defer alloc.free(tenant2_hex);
+    const tenant2_hex = try randomUuidStr(std.testing.allocator);
+    defer std.testing.allocator.free(tenant2_hex);
     const rows2 = try h.conn.query(
         std.testing.allocator,
         \\SELECT service_id FROM service_catalog
@@ -133,8 +154,8 @@ test "svc01: tenant-scoped service visible only to owner tenant" {
     defer h.deinit();
 
     // Insert tenant A (owner).
-    const tenant_a_hex = try harness.newUuidString(alloc);
-    defer alloc.free(tenant_a_hex);
+    const tenant_a_hex = try randomUuidStr(std.testing.allocator);
+    defer std.testing.allocator.free(tenant_a_hex);
     try insertTenant(&h.conn, tenant_a_hex, "svc01-ta");
 
     var id_buf: [8]u8 = undefined;
@@ -159,8 +180,8 @@ test "svc01: tenant-scoped service visible only to owner tenant" {
     try std.testing.expect(rows_a.rows.len == 1);
 
     // NOT visible to tenant B (different tenant).
-    const tenant_b_hex = try harness.newUuidString(alloc);
-    defer alloc.free(tenant_b_hex);
+    const tenant_b_hex = try randomUuidStr(std.testing.allocator);
+    defer std.testing.allocator.free(tenant_b_hex);
     const rows_b = try h.conn.query(
         std.testing.allocator,
         \\SELECT service_id FROM service_catalog
@@ -200,8 +221,8 @@ test "svc01: on_delete_cascade removes scoped service when owner tenant deleted"
     var h = try helpers.TestHarness.init(std.testing.allocator);
     defer h.deinit();
 
-    const tenant_hex = try harness.newUuidString(alloc);
-    defer alloc.free(tenant_hex);
+    const tenant_hex = try randomUuidStr(std.testing.allocator);
+    defer std.testing.allocator.free(tenant_hex);
     // Insert tenant directly (NOT through the harness transaction so we can delete it).
     try h.conn.exec(
         \\INSERT INTO public.tenant (id, slug, display_name, idp_realm_id, created_at, tenant_type, production_tenant_id)
@@ -324,9 +345,9 @@ test "svc01: listServicesForTenant filters correctly via store API" {
     const svc_other_id = try std.fmt.bufPrint(&svc_other_id_buf, "svc-lst-o-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
 
     // Use pre-committed fixture tenants (visible to pool connections).
-    const tenant_a_hex = try harness.newUuidString(alloc);
+    const tenant_a_hex = try randomUuidStr(alloc);
     defer alloc.free(tenant_a_hex);
-    const tenant_b_hex = try harness.newUuidString(alloc);
+    const tenant_b_hex = try randomUuidStr(alloc);
     defer alloc.free(tenant_b_hex);
 
     // Parse tenant UUIDs into [16]u8.
@@ -433,9 +454,9 @@ test "svc01: getServiceForTenant returns ServiceNotFound for cross-tenant servic
     const svc_id = try std.fmt.bufPrint(&svc_id_buf, "svc-xscp-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
 
     // Use pre-committed fixture tenants (visible to pool connections).
-    const owner_hex = try harness.newUuidString(alloc);
+    const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
-    const caller_hex = try harness.newUuidString(alloc);
+    const caller_hex = try randomUuidStr(alloc);
     defer alloc.free(caller_hex);
 
     const tid_owner = try parseUuid36(owner_hex);
@@ -502,7 +523,7 @@ test "svc01: registerService stores scope and owner_tenant_id correctly" {
     const svc_id = try std.fmt.bufPrint(&svc_id_buf, "svc-reg-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
 
     // Use pre-committed fixture tenant (visible to pool connections).
-    const owner_hex = try harness.newUuidString(alloc);
+    const owner_hex = try randomUuidStr(alloc);
     defer alloc.free(owner_hex);
 
     const tid_owner = try parseUuid36(owner_hex);
@@ -631,7 +652,7 @@ test "svc01: listServicesForTenant with nil tenant returns all entries" {
     const svc_b_id = try std.fmt.bufPrint(&svc_b_id_buf, "svc-all-s-{s}", .{std.fmt.bytesToHex(&rand_bytes, .lower)});
 
     // Use pre-committed fixture tenant (visible to pool connections).
-    const tenant_all_hex = try harness.newUuidString(alloc);
+    const tenant_all_hex = try randomUuidStr(alloc);
     defer alloc.free(tenant_all_hex);
     const tid_all = try parseUuid36(tenant_all_hex);
 

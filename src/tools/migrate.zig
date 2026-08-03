@@ -21,10 +21,16 @@ pub fn main(init: std.process.Init) !void {
     defer conn.close();
 
     // Ensure schema_migrations table exists.
+    // ISS-0091: use the composite (schema_name, version) key so the CLI migration
+    // runner and test harness (tests/integration/helpers.zig) both track progress
+    // against the same canonical table. Per-tenant schemas are identified by
+    // schema_name; the public schema uses schema_name='public'.
     conn.exec(
-        \\CREATE TABLE IF NOT EXISTS schema_migrations (
-        \\  version    TEXT        PRIMARY KEY,
-        \\  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        \\CREATE TABLE IF NOT EXISTS public.schema_migrations (
+        \\  schema_name TEXT        NOT NULL DEFAULT 'public',
+        \\  version     TEXT        NOT NULL,
+        \\  applied_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        \\  PRIMARY KEY (schema_name, version)
         \\)
     ,
         &.{},
@@ -68,13 +74,13 @@ pub fn main(init: std.process.Init) !void {
         }
     }.lessThan);
 
-    // Fetch already-applied versions.
+    // Fetch already-applied versions for the public schema.
     var applied = std.StringHashMap(void).init(allocator);
     defer applied.deinit();
 
     var result = conn.query(
         allocator,
-        "SELECT version FROM schema_migrations ORDER BY version",
+        "SELECT version FROM public.schema_migrations WHERE schema_name = 'public' ORDER BY version",
         &.{},
     ) catch |err| {
         std.log.err("Failed to query schema_migrations: {}", .{err});
@@ -175,7 +181,7 @@ pub fn main(init: std.process.Init) !void {
         };
 
         conn.exec(
-            "INSERT INTO schema_migrations (version) VALUES ($1)",
+            "INSERT INTO public.schema_migrations (schema_name, version) VALUES ('public', $1)",
             &.{filename},
         ) catch |err| {
             conn.exec("ROLLBACK", &.{}) catch {};

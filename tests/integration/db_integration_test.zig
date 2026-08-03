@@ -351,18 +351,20 @@ test "TC-DB-03-01: successful transaction commits both event row and state updat
 test "TC-DB-03-02: failed transaction rolls back both writes atomically" {
     const alloc = std.testing.allocator;
 
-    const inst_id_str = try harness.newUuidString(alloc);
+    var h_phase1 = try TestHarness.init(alloc);
+    defer h_phase1.deinit();
+
+    const inst_id_str = try h_phase1.newUuidString(alloc);
     defer alloc.free(inst_id_str);
-    const def_id_str = try harness.newUuidString(alloc);
+    const def_id_str = try h_phase1.newUuidString(alloc);
     defer alloc.free(def_id_str);
 
     // Phase 1 — write inside a transaction, inject constraint violation, rollback.
     {
-        var h = try TestHarness.init(alloc);
         // BEGIN is already active (TestHarness.init() called conn.begin()).
 
         // Insert instance row inside the harness transaction (not yet committed).
-        try h.conn.exec(
+        try h_phase1.conn.exec(
             "INSERT INTO instance_projections " ++
                 "(instance_id, definition_id, status, last_event_seq) " ++
                 "VALUES ($1::uuid, $2::uuid, 'ACTIVE', 0)",
@@ -370,7 +372,7 @@ test "TC-DB-03-02: failed transaction rolls back both writes atomically" {
         );
 
         // Insert an events row inside the same transaction.
-        try h.conn.exec(
+        try h_phase1.conn.exec(
             "INSERT INTO events " ++
                 "(instance_id, event_type, payload, actor_id, sequence_number, idempotency_key, global_seq) " ++
                 "VALUES ($1::uuid, 'DB03_ROLLBACK', '{}', $2::uuid, 1, 'db03-02-idem', nextval('events_global_seq'))",
@@ -379,7 +381,7 @@ test "TC-DB-03-02: failed transaction rolls back both writes atomically" {
 
         // Inject a constraint violation: duplicate primary key on instance_projections.
         // This puts the transaction into the PostgreSQL "aborted" state.
-        h.conn.exec(
+        h_phase1.conn.exec(
             "INSERT INTO instance_projections " ++
                 "(instance_id, definition_id, status, last_event_seq) " ++
                 "VALUES ($1::uuid, $2::uuid, 'ACTIVE', 0)",
@@ -387,7 +389,7 @@ test "TC-DB-03-02: failed transaction rolls back both writes atomically" {
         ) catch {}; // expected to fail — duplicate PK
 
         // deinit() calls ROLLBACK — all writes in this block are discarded.
-        h.deinit();
+        h_phase1.deinit();
     }
 
     // Phase 2 — verify nothing was committed.

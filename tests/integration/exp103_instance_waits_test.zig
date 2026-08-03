@@ -146,11 +146,11 @@ test "TC-EXP-103-01: timer arm writes instance_waits row" {
 
     // Per-test UUIDs — e1030100 prefix.
     const instance_id = try randomUuidStr(allocator);
-    defer alloc.free(instance_id);
+    defer allocator.free(instance_id);
     const def_id = try randomUuidStr(allocator);
-    defer alloc.free(def_id);
+    defer allocator.free(def_id);
     const timer_id = try randomUuidStr(allocator);
-    defer alloc.free(timer_id);
+    defer allocator.free(timer_id);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -237,11 +237,11 @@ test "TC-EXP-103-02: TaskStore.createInTx writes instance_waits row" {
 
     // Per-test UUIDs — e1030200 prefix.
     const instance_id_str = try randomUuidStr(allocator);
-    defer alloc.free(instance_id_str);
+    defer allocator.free(instance_id_str);
     const def_id_str = try randomUuidStr(allocator);
-    defer alloc.free(def_id_str);
+    defer allocator.free(def_id_str);
     const token_id_str = try randomUuidStr(allocator);
-    defer alloc.free(token_id_str);
+    defer allocator.free(token_id_str);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -343,11 +343,11 @@ test "TC-EXP-103-03: Scheduler.pollDueTimers resolves the instance_waits timer r
 
     // Per-test UUIDs — e1030300 prefix.
     const instance_id = try randomUuidStr(allocator);
-    defer alloc.free(instance_id);
+    defer allocator.free(instance_id);
     const def_id = try randomUuidStr(allocator);
-    defer alloc.free(def_id);
+    defer allocator.free(def_id);
     const timer_id = try randomUuidStr(allocator);
-    defer alloc.free(timer_id);
+    defer allocator.free(timer_id);
     const idem_key    = "timer-fired:e1030300-0000-0000-0000-000000000002";
 
     const conn = try pool.acquire();
@@ -447,13 +447,13 @@ test "TC-EXP-103-04: TaskStore.completeInTx resolves the instance_waits task row
 
     // Per-test UUIDs — e1030400 prefix.
     const instance_id_str = try randomUuidStr(allocator);
-    defer alloc.free(instance_id_str);
+    defer allocator.free(instance_id_str);
     const def_id_str = try randomUuidStr(allocator);
-    defer alloc.free(def_id_str);
+    defer allocator.free(def_id_str);
     const token_id_str = try randomUuidStr(allocator);
-    defer alloc.free(token_id_str);
+    defer allocator.free(token_id_str);
     const task_id_str = try randomUuidStr(allocator);
-    defer alloc.free(task_id_str);
+    defer allocator.free(task_id_str);
 
     const conn = try pool.acquire();
     defer pool.release(conn);
@@ -558,11 +558,11 @@ test "TC-EXP-103-05: rolled-back transaction leaves no orphaned instance_waits r
 
     // Per-test UUIDs — e1030500 prefix.
     const instance_id = try randomUuidStr(allocator);
-    defer alloc.free(instance_id);
+    defer allocator.free(instance_id);
     const def_id = try randomUuidStr(allocator);
-    defer alloc.free(def_id);
+    defer allocator.free(def_id);
     const timer_id = try randomUuidStr(allocator);
-    defer alloc.free(timer_id);
+    defer allocator.free(timer_id);
 
     const conn = try pool.acquire();
     defer pool.release(conn);

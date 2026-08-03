@@ -14,6 +14,9 @@ const snapshot_mod = bpm.snapshot;
 const instance_mod = bpm.engine;
 const task_mod = bpm.tasks;
 
+/// Fixed "created_by" UUID used across tests.
+const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+
 fn testDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
@@ -173,9 +176,6 @@ fn parseUuid(s: []const u8) ![16]u8 {
     _ = try std.fmt.hexToBytes(&out, buf[0..32]);
     return out;
 }
-
-const creator_uuid_str = try harness.newUuidString(alloc);
-    defer alloc.free(creator_uuid_str);
 
 fn makeTaskFixture(
     allocator: std.mem.Allocator,

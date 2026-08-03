@@ -58,8 +58,8 @@ fn resolveMigrationsDir(allocator: std.mem.Allocator) !struct { dir: []const u8,
 /// migrator (which has no per-caller skip-list hook) silently treats them as
 /// done. These migrations have data pre-conditions in production that
 /// isolated integration test runs don't set up:
-///   - GBL-074/075: TNT-05 backfill tracking (requires pre-existing migration state)
-///   - GBL-077: TNT-07 RLS cleanup (requires schema-per-tenant state)
+///   - GBL-113/114: TNT-05 backfill tracking (requires pre-existing migration state)
+///   - GBL-116: TNT-07 RLS cleanup (requires schema-per-tenant state)
 /// Idempotent: ON CONFLICT DO NOTHING means re-running this is a no-op once
 /// the rows already exist.
 fn markPublicGlobalSkipsApplied(conn: *pg.Conn) !void {
@@ -72,9 +72,9 @@ fn markPublicGlobalSkipsApplied(conn: *pg.Conn) !void {
         \\)
     , &.{});
     const skip_files = [_][]const u8{
-        "GBL-074_tnt05_backfill_tracking.sql",
-        "GBL-075_tnt05_backfill_run.sql",
-        "GBL-077_tnt07_rls_cleanup.sql",
+        "GBL-113_tnt05_backfill_tracking.sql",
+        "GBL-114_tnt05_backfill_run.sql",
+        "GBL-116_tnt07_rls_cleanup.sql",
     };
     for (skip_files) |filename| {
         try conn.exec(

@@ -109,27 +109,33 @@ DECLARE
         '092_iss303_timer_fire_error_count.sql',
         '093_exp103_instance_waits.sql',
         '094_entity_subsystem.sql',
-        'GBL-073_tnt01_drop_legacy_public_business_tables.sql',
-        'GBL-074_tnt05_backfill_tracking.sql',
-        'GBL-075_tnt05_backfill_run.sql',
-        'GBL-076_tnt06_db_host_column.sql',
-        'GBL-077_tnt07_rls_cleanup.sql',
-        'GBL-078_svc01_service_catalog_scope.sql',
-        'GBL-079_svc04_cross_schema_proc_def_refs.sql',
-        'GBL-080_env01_tenant_type_field.sql',
-        'GBL-081_iss103_audit_resource_id_text.sql',
-        'GBL-082_fix_audit_chain_resource_id_text.sql',
-        'GBL-083_rate_limit_buckets.sql',
-        'GBL-084_rls_removal.sql',
-        'GBL-085_state_snapshots.sql',
-        'GBL-097_exp301_effects_outbox.sql',
-        'GBL-098_exp301_effects_event_types.sql',
-        'GBL-099_exp302_service_task_effect_ref.sql',
-        'GBL-100_exp501_secrets.sql',
-        'GBL-101_exp501_secrets_corrective.sql',
-        'GBL-102_iss503_guard_tenant_type_scope.sql',
-        'GBL-103_iss0100_guard_tc_slug_scope.sql',
-        'GBL-104_iss0108_drop_stray_tenant_schema_migrations.sql'
+        '1106_iss0125_instance_definition_snapshots_cascade.sql',
+        '1107_fix_audit_chain_text_resource_id.sql',
+        '1108_iss0122_validator_skip_zero_sentinel.sql',
+        '1109_iss0122_apply_chain_hash_lock_cast.sql',
+        '1110_iss0122_validator_zero_sentinel_per_tenant.sql',
+        '1111_iss0122_validator_pass_trace_id.sql',
+        'GBL-112_tnt01_drop_legacy_public_business_tables.sql',
+        'GBL-113_tnt05_backfill_tracking.sql',
+        'GBL-114_tnt05_backfill_run.sql',
+        'GBL-115_tnt06_db_host_column.sql',
+        'GBL-116_tnt07_rls_cleanup.sql',
+        'GBL-117_svc01_service_catalog_scope.sql',
+        'GBL-118_svc04_cross_schema_proc_def_refs.sql',
+        'GBL-119_env01_tenant_type_field.sql',
+        'GBL-120_iss103_audit_resource_id_text.sql',
+        'GBL-121_fix_audit_chain_resource_id_text.sql',
+        'GBL-122_rate_limit_buckets.sql',
+        'GBL-123_rls_removal.sql',
+        'GBL-124_state_snapshots.sql',
+        'GBL-125_exp301_effects_outbox.sql',
+        'GBL-126_exp301_effects_event_types.sql',
+        'GBL-127_exp302_service_task_effect_ref.sql',
+        'GBL-128_exp501_secrets.sql',
+        'GBL-129_exp501_secrets_corrective.sql',
+        'GBL-130_iss503_guard_tenant_type_scope.sql',
+        'GBL-131_iss0100_guard_tc_slug_scope.sql',
+        'GBL-132_iss0108_drop_stray_tenant_schema_migrations.sql'
     ];
     v_tenant RECORD;
     v_tenant_schema TEXT;
@@ -137,8 +143,8 @@ DECLARE
     v_inserted_tenant INTEGER := 0;
     v_filename TEXT;
 BEGIN
-    -- ── Step 1: Backfill public.schema_migrations for all 96 prior files. ──
-    -- Excludes 'GBL-105_iss0112_schema_ledger_reconcile.sql' itself (the applier
+    -- ── Step 1: Backfill public.schema_migrations for all prior non-GBL files. ──
+    -- Excludes 'GBL-133_iss0112_schema_ledger_reconcile.sql' itself (the applier
     -- records that via its normal flow after this block completes). Use the
     -- native ON CONFLICT DO NOTHING to keep this idempotent on re-runs.
     FOREACH v_filename IN ARRAY v_filenames LOOP
@@ -150,7 +156,7 @@ BEGIN
         END IF;
     END LOOP;
 
-    RAISE NOTICE 'GBL-105: inserted % public.schema_migrations rows (96 expected on first run, 0 on re-run).', v_inserted_public;
+    RAISE NOTICE 'GBL-133: inserted % public.schema_migrations rows (98 expected on first run, 0 on re-run).', v_inserted_public;
 
     -- ── Step 2: Per-tenant-schema ledger backfill. ─────────────────────────
     -- The migration ledger is keyed by (schema_name, version). For every

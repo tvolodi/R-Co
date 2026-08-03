@@ -47,6 +47,9 @@ const reconstruction_mod = bpm.reconstruction;
 
 const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000";
 
+/// Fixed "created_by" UUID used across tests.
+const creator_uuid_str = "12345678-1234-5678-1234-567812345678";
+
 fn getTestDbUrl(allocator: std.mem.Allocator) ![]u8 {
     const env: std.process.Environ = .{ .block = .global };
     return env.getAlloc(allocator, "BPM_TEST_DB_URL") catch |err| switch (err) {
