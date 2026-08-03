@@ -5,7 +5,7 @@ description: Canonical requirements registry for the BPM Platform -- the single 
   and docs/BPM_Platform_Frontend_Requirements.md are the pre-consolidation prose docs this file was migrated
   from (2026-07-22); they are now frozen historical references, not editable sources -- new/changed requirement
   content goes into this file, not those.
-generated_at: '2026-08-01T12:19:45Z'
+generated_at: '2026-08-03T21:58:33Z'
 requirements:
   ADM-UI-01:
     id: ADM-UI-01
@@ -3170,13 +3170,13 @@ requirements:
     alt_sources:
     - individual-file
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - src/webhook/dispatcher.zig
     test_spec: tests/specs/EXT-02.md
     test_run: tests/integration/ext02_webhook_dispatch_test.zig
     released_at: '2026-05-28T05:42:12Z'
     release_run: WF02-ext02-20260528
     release_decision: docs/status/release-stage6-ext02-20260528.json
-    last_updated: '2026-08-01T12:19:33Z'
+    last_updated: '2026-08-03T21:58:32Z'
     type: requirement
     note: 'ISS-0112 fix: ledger reconciliation backfills webhook_subscriptions.secret_ref'
   EXT-03:
@@ -4046,15 +4046,14 @@ requirements:
     body_source: architecture-backlog
     alt_sources: []
     implemented_in:
-    - migrations/085_iss106_webhook_deliveries_outbox.sql
-    - tests/integration/iss106_webhook_outbox_test.zig
+    - src/webhook/dispatcher.zig
     test_spec: tests/specs/ISS-106.md
     test_run: tests/reports/report-20260611-WF02-iss106-webhook-outbox.yaml
     tested_at: '2026-06-11'
     released_at: '2026-06-11'
     release_run: WF02-iss106-webhook-outbox-20260611
     release_decision: docs/status/release-iss106-20260611.yaml
-    last_updated: '2026-06-11T14:00:00Z'
+    last_updated: '2026-08-03T21:58:33Z'
     type: requirement
   ISS-107:
     id: ISS-107

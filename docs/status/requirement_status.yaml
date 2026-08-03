@@ -1,6 +1,6 @@
 schema_version: '1.0'
 generated_by: tools/reqctl.py render-status -- do not hand-edit this file, edit docs/requirements.yaml
-last_updated: '2026-08-03T08:22:41Z'
+last_updated: '2026-08-03T21:58:39Z'
 requirements:
   ADM-UI-01:
     status: RELEASED
@@ -1252,7 +1252,7 @@ requirements:
     priority: MUST
     title: Webhook event dispatch
     implemented_in:
-    - migrations/GBL-105_iss0112_schema_ledger_reconcile.sql
+    - src/webhook/dispatcher.zig
     test_spec: tests/specs/EXT-02.md
     test_run: tests/integration/ext02_webhook_dispatch_test.zig
     released_at: '2026-05-28T05:42:12Z'
@@ -1573,8 +1573,7 @@ requirements:
     priority: MUST
     title: Formalize webhook_deliveries outbox table
     implemented_in:
-    - migrations/085_iss106_webhook_deliveries_outbox.sql
-    - tests/integration/iss106_webhook_outbox_test.zig
+    - src/webhook/dispatcher.zig
     test_spec: tests/specs/ISS-106.md
     test_run: tests/reports/report-20260611-WF02-iss106-webhook-outbox.yaml
     tested_at: '2026-06-11'
