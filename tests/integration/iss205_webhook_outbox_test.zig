@@ -88,7 +88,7 @@ test "ISS-205-TC1: insertWebhookDeliveriesInTx rolled back removes deliveries at
     try h.conn.exec(
         \\INSERT INTO users (id, email, display_name, password_hash, is_active, username, status)
         \\VALUES ($1::uuid, 'iss205tc1@test.local', 'ISS205 TC1', 'x', true, 'iss205tc1', 'ACTIVE')
-        \\ON CONFLICT (id) DO NOTHING
+        \\ON CONFLICT (email) DO NOTHING
     ,
         &.{owner_id},
     );
@@ -178,7 +178,7 @@ test "ISS-205-TC2: dispatchDueWebhookAttempts picks up orphaned committed delive
     try h.conn.exec(
         \\INSERT INTO users (id, email, display_name, password_hash, is_active, username, status)
         \\VALUES ($1::uuid, 'iss205tc2@test.local', 'ISS205 TC2', 'x', true, 'iss205tc2', 'ACTIVE')
-        \\ON CONFLICT (id) DO NOTHING
+        \\ON CONFLICT (email) DO NOTHING
     ,
         &.{owner_id},
     );
@@ -264,7 +264,7 @@ test "ISS-205-TC3: exhausting max_attempts pauses the subscription" {
     try h.conn.exec(
         \\INSERT INTO users (id, email, display_name, password_hash, is_active, username, status)
         \\VALUES ($1::uuid, 'iss205tc3@test.local', 'ISS205 TC3', 'x', true, 'iss205tc3', 'ACTIVE')
-        \\ON CONFLICT (id) DO NOTHING
+        \\ON CONFLICT (email) DO NOTHING
     ,
         &.{owner_id},
     );
