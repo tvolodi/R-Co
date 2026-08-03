@@ -753,6 +753,15 @@ pub const InstanceStore = struct {
         idem_bytes[8] = (idem_bytes[8] & 0x3f) | 0x80;
         const idem_key_hex = uuidToHex(a, idem_bytes) catch return InstanceError.TransactionFailed;
 
+        // ISS-0601-LEAK-001: Build instance_started event payload with initial_variables
+        // and start_node_id fields (required by mapToTransitionEvent in reconstruction).
+        // Manually construct the JSON string to avoid ObjectMap initialization complexity.
+        const start_payload_json = std.fmt.allocPrint(
+            a,
+            "{{\"initial_variables\":{s},\"start_node_id\":\"{s}\"}}",
+            .{ initial_variables, start_node_id.? },
+        ) catch return InstanceError.TransactionFailed;
+
         // INSERT event row (instance_started).
         conn2.exec(
             \\WITH seq AS (
@@ -768,7 +777,7 @@ pub const InstanceStore = struct {
             \\SELECT $1::uuid, $2, $3::jsonb, $1::uuid, seq.val, $4
             \\FROM seq
         ,
-            &.{ inst_id_hex, "instance_started", vars_json, idem_key_hex },
+            &.{ inst_id_hex, "instance_started", start_payload_json, idem_key_hex },
         ) catch return InstanceError.TransactionFailed;
 
         // ISS-203: persist cascade emitted events with deterministic engine: keys.
