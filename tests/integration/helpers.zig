@@ -93,11 +93,13 @@ fn runMigrations(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Conn, url: 
     // bare `CREATE TABLE IF NOT EXISTS` cannot deduplicate under a true race,
     // so one loses with "already exists" — and because the failure rolls
     // back before the schema_migrations row commits, every subsequent run
-    // retries forever. Hold a session-level advisory lock for the whole
-    // check-and-apply pass so only one process migrates `public` at a time;
-    // the rest wait, then see the migration already recorded and skip it.
-    try conn.exec("SELECT pg_advisory_lock(hashtext('bpm_test_migrations_public'))", &.{});
-    defer conn.exec("SELECT pg_advisory_unlock(hashtext('bpm_test_migrations_public'))", &.{}) catch {};
+    // retries forever.
+    //
+    // GH-402: Previous implementation used pg_advisory_lock() which could hang
+    // indefinitely if another process held the lock. Statement timeout caused
+    // connection errors that left connections in bad state. For now, rely on
+    // migration idempotency - Migrations.run() should retry on conflict.
+    // TODO: Implement proper distributed locking (Redis, Consul, or similar).
 
     try markPublicGlobalSkipsApplied(conn);
 
@@ -135,14 +137,14 @@ fn runMigrationsForSchema(io: std.Io, allocator: std.mem.Allocator, conn: *pg.Co
     // as-is: if the real migrator has already fully migrated this schema, we
     // can skip straight to setting search_path.
     //
-    // ISS-0090: also serialize the check-and-apply pass with a session-level
-    // advisory lock keyed by schema name, for the same reason as runMigrations
-    // above — concurrent test binaries calling TestHarness.init() otherwise
-    // race on this schema's non-idempotent inline CONSTRAINT/index DDL, and a
-    // failed racer's rolled-back transaction means the migration is retried
-    // (and re-raced) by every subsequent test run indefinitely.
-    try conn.exec("SELECT pg_advisory_lock(hashtext($1))", &.{schema});
-    defer conn.exec("SELECT pg_advisory_unlock(hashtext($1))", &.{schema}) catch {};
+    // ISS-0090: Concurrent test binaries calling TestHarness.init() race on
+    // schema-local non-idempotent inline CONSTRAINT/index DDL. Previously this
+    // was serialized with pg_advisory_lock(), but that could hang indefinitely
+    // if another process held the lock (especially with statement_timeout causing
+    // connection state issues).
+    //
+    // GH-402: For now, rely on migration idempotency and let Migrations.runForSchema()
+    // handle conflicts. If this causes issues, implement proper distributed locking.
 
     {
         var already_migrated = conn.query(

@@ -9,6 +9,16 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-03T04:02:53Z",
       "status": "PENDING"
+    },
+    {
+      "handoff_id": "1ac58ff9-8e62-4ce6-ae81-b5ee1c8d10db",
+      "file": "handoffs/ADHOC-gh402-advisory-lock-timeout-20260803/step-00-backend-dev-advisory-lock-fix.json",
+      "run_id": "ADHOC-gh402-advisory-lock-timeout-20260803",
+      "step": "00-adhoc",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-03T04:45:00Z",
+      "status": "PENDING"
     }
   ]
 }
