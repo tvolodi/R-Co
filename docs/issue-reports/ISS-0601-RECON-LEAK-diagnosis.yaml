@@ -1,0 +1,200 @@
+---
+issue_id: ISS-0601-RECON-LEAK
+github_issue: https://github.com/tvolodi/R-Co/issues/409
+run_id: WF03-gh409-20260803
+agent: ISSUE-FIXER
+created_at: 2026-08-03T16:44:10Z
+severity: MAJOR
+status: DIAGNOSED
+
+title: "Memory leaks in deserializeInstanceState ObjectMap handling"
+
+symptom: |
+  6,976 memory leaks detected during event replay in reconstruction functions.
+  Zig's GeneralPurposeAllocator leak detection fails the test suite with exit code 1.
+  Leaks occur when deserializing instance state from JSON, specifically in variables
+  and join_counters ObjectMap parsing.
+
+root_cause: |
+  Two distinct memory leak patterns in src/engine/reconstruction.zig:
+  
+  1. **Dangling key references (CRITICAL)**:
+     - In parseObjectMapFromJson() at line 851: `result.put(allocator, key, cloned_value)`
+     - The `key` is a string slice from the source ObjectMap, which was parsed into
+       an ArenaAllocator in deserializeInstanceState (line 661)
+     - When deserializeInstanceState returns, line 662's `defer arena.deinit()` frees
+       the arena, invalidating ALL key strings in the returned ObjectMap
+     - Result: keys become dangling pointers pointing to freed memory
+     - Same issue in cloneJsonValue() at line 904 for nested object keys
+  
+  2. **Values not freed on cleanup**:
+     - When test code calls `variables.deinit(allocator)`, it only frees the ObjectMap's
+       internal structure (hash table bookkeeping)
+     - The JsonValue objects stored as values are NOT freed
+     - Each JsonValue may contain allocated strings, arrays, or nested objects
+     - Result: all cloned JsonValue content remains allocated after deinit()
+
+affected_locations:
+  - file: src/engine/reconstruction.zig
+    lines:
+      - 851: "parseObjectMapFromJson: key not duplicated before put"
+      - 904: "cloneJsonValue object case: key not duplicated before put"
+      - 757-758: "errdefer only covers error paths, success path leaks"
+      - 768-769: "errdefer only covers error paths, success path leaks"
+  - file: tests/integration/iss601_state_snapshots_test.zig
+    lines:
+      - 312-313: "Test cleanup calls .deinit() but doesn't free values"
+      - 906-907: "Test cleanup calls .deinit() but doesn't free values"
+
+allocator_analysis:
+  persistent_allocator: "std.testing.allocator (tests) or page_allocator (production)"
+  usage: |
+    - deserializeInstanceState receives `allocator` parameter (persistent allocator)
+    - Creates temporary ArenaAllocator `a` at line 661 for JSON parsing
+    - Arena is freed at line 662 (defer arena.deinit())
+    - parseObjectMapFromJson uses persistent `allocator` for result ObjectMap
+    - But keys reference arena-allocated strings → UAF after arena.deinit()
+
+memory_ownership_model: |
+  Current model (BROKEN):
+    - ObjectMap keys: borrowed from arena (freed at function return)
+    - ObjectMap values: owned by persistent allocator (never freed)
+    - Map structure: owned by persistent allocator (freed by .deinit())
+  
+  Required model:
+    - ObjectMap keys: owned by persistent allocator (must dupe before put)
+    - ObjectMap values: owned by persistent allocator (must free before map deinit)
+    - Map structure: owned by persistent allocator (freed by .deinit())
+
+fix_strategy:
+  approach: "Manual memory management with proper key duplication and value cleanup"
+  
+  changes_required:
+    - name: "Duplicate keys in parseObjectMapFromJson"
+      location: "src/engine/reconstruction.zig:851"
+      detail: |
+        Replace:
+          result.put(allocator, key, cloned_value)
+        With:
+          const key_duped = allocator.dupe(u8, key) catch return error.OutOfMemory;
+          result.put(allocator, key_duped, cloned_value) catch {
+              allocator.free(key_duped);
+              freeJsonValue(allocator, cloned_value);
+              return error.OutOfMemory;
+          };
+    
+    - name: "Duplicate keys in cloneJsonValue for nested objects"
+      location: "src/engine/reconstruction.zig:904"
+      detail: |
+        Replace:
+          new_obj.put(allocator, entry.key_ptr.*, cloned)
+        With:
+          const key_duped = allocator.dupe(u8, entry.key_ptr.*) catch return error.OutOfMemory;
+          new_obj.put(allocator, key_duped, cloned) catch {
+              allocator.free(key_duped);
+              freeJsonValue(allocator, cloned);
+              return error.OutOfMemory;
+          };
+    
+    - name: "Add freeObjectMap helper function"
+      location: "src/engine/reconstruction.zig (new function after freeJsonValue)"
+      detail: |
+        fn freeObjectMap(allocator: std.mem.Allocator, map: std.json.ObjectMap) void {
+            var it = map.iterator();
+            while (it.next()) |entry| {
+                allocator.free(entry.key_ptr.*);  // Free duplicated keys
+                freeJsonValue(allocator, entry.value_ptr.*);  // Free cloned values
+            }
+            map.deinit(allocator);  // Free map structure
+        }
+    
+    - name: "Update freeJsonValue to free object keys"
+      location: "src/engine/reconstruction.zig:925-927"
+      detail: |
+        In the .object case, replace:
+          var it = obj.iterator();
+          while (it.next()) |entry| freeJsonValue(allocator, entry.value_ptr.*);
+          obj.deinit(allocator);
+        With:
+          var it = obj.iterator();
+          while (it.next()) |entry| {
+              allocator.free(entry.key_ptr.*);  // Free duplicated keys
+              freeJsonValue(allocator, entry.value_ptr.*);  // Free values
+          }
+          obj.deinit(allocator);
+    
+    - name: "Update test cleanup pattern"
+      location: "tests/integration/iss601_state_snapshots_test.zig"
+      detail: |
+        Replace all instances of:
+          reconst_state.variables.deinit(alloc);
+          reconst_state.join_counters.deinit(alloc);
+        With calls to the new freeObjectMap helper:
+          freeObjectMap(alloc, reconst_state.variables);
+          freeObjectMap(alloc, reconst_state.join_counters);
+        
+        Note: freeObjectMap should be a public function in reconstruction.zig
+        that tests can call, OR tests import the helper from a test_util module.
+
+arena_allocator_pitfall_analysis: |
+  Why previous arena attempts failed (WF03-gh406 rework 2/3: 131-142 test failures):
+  
+  Problem: Attempted to use ArenaAllocator as the persistent allocator for the
+  entire InstanceState, likely by passing `arena.allocator()` to parseObjectMapFromJson
+  instead of the base allocator.
+  
+  Consequence: When arena.deinit() was called, ALL allocated memory was freed at once,
+  including memory that the InstanceState struct still referenced. Subsequent accesses
+  to tokens, variables, join_counters, etc. touched freed memory → segfaults and
+  assertion failures.
+  
+  Correct approach (this fix):
+  - Keep arena allocator ONLY for temporary JSON parsing (parsed.value)
+  - Use persistent allocator for ALL InstanceState fields
+  - Manually duplicate strings/values from arena into persistent allocator
+  - Arena is freed before returning, persistent memory lives until explicit cleanup
+
+prevention_strategy:
+  rule_1: "Never put arena-allocated strings as keys in persistent ObjectMaps"
+  rule_2: "Always dupe strings when crossing allocator boundaries"
+  rule_3: "ObjectMap.deinit() is NOT sufficient cleanup — must free keys and values first"
+  rule_4: "Implement and use freeObjectMap() helper for all JsonValue ObjectMap cleanup"
+  rule_5: "In tests: always pair ObjectMap allocations with proper cleanup in defer blocks"
+  
+  code_pattern: |
+    // CORRECT pattern for ObjectMap with JsonValue:
+    var map = std.json.ObjectMap.init(allocator, &.{}, &.{}) catch ...;
+    defer freeObjectMap(allocator, map);  // NOT just map.deinit(allocator)
+    
+    // When populating from arena-sourced data:
+    const key_duped = allocator.dupe(u8, arena_key) catch ...;
+    const value_cloned = cloneJsonValue(allocator, arena_value) catch ...;
+    map.put(allocator, key_duped, value_cloned) catch {
+        allocator.free(key_duped);
+        freeJsonValue(allocator, value_cloned);
+        return error.OutOfMemory;
+    };
+
+test_verification:
+  command: "zig build test-integration-iss601"
+  expected_outcome: |
+    All 8 tests pass with zero memory leaks reported by GeneralPurposeAllocator.
+    Exit code 0.
+  
+  before_fix: "6,976 leaks; exit code 1"
+  after_fix: "0 leaks; exit code 0"
+
+related_issues:
+  - ISS-0601-LEAK-001: "parseGraphJson leaks (already fixed in WF03-gh406 rework 1)"
+
+notes: |
+  The line numbers 707, 709, 752 mentioned in the issue refer to intermediate
+  allocations in the token parsing loop. Those allocations are actually CORRECT —
+  they properly use allocator.dupe() and have correct error cleanup.
+  
+  The actual leaks are in the ObjectMap key handling at lines 851 and 904,
+  and in the missing value cleanup that should happen before .deinit().
+  
+  This is a textbook example of the "ObjectMap key ownership" pitfall in Zig:
+  keys are NOT copied by put(), so the caller must ensure key lifetime exceeds
+  the map lifetime. When keys come from a temporary arena, they MUST be duped.

@@ -141,6 +141,43 @@ pub const InstanceState = struct {
     cancelled_branch_ids: [][]const u8 = &[_][]const u8{},
 };
 
+/// Free every heap allocation transition() makes when producing a fresh
+/// InstanceState (tokens, variables, join_counters, pending_task_nodes,
+/// error_detail). ISS-0601: `transition()` always returns a state whose
+/// tokens/pending_task_nodes/variables/join_counters/error_detail were
+/// freshly duped/deep-cloned from the input — so once a caller has moved
+/// on to a newer state, the old one is entirely owned garbage and must be
+/// fully freed, not just its variables/join_counters maps.
+///
+/// `cancelled_branch_ids`' outer slice is duped per call, but the
+/// individual branch_id strings are shared across every generation
+/// (transition() dupes only the array of slice headers, not their
+/// contents) — so only the outer array is freed here, never the strings.
+pub fn freeInstanceState(allocator: std.mem.Allocator, state: InstanceState) void {
+    for (state.tokens) |t| {
+        allocator.free(t.node_id);
+        allocator.free(t.branch_id);
+        if (t.token_id) |tid| allocator.free(tid);
+        if (t.waiting_child_instance_id) |w| allocator.free(w);
+    }
+    allocator.free(state.tokens);
+
+    var vars = state.variables;
+    freeJsonValueSafe(allocator, std.json.Value{ .object = vars });
+    _ = &vars;
+
+    var jc = state.join_counters;
+    freeJsonValueSafe(allocator, std.json.Value{ .object = jc });
+    _ = &jc;
+
+    for (state.pending_task_nodes) |n| allocator.free(n);
+    allocator.free(state.pending_task_nodes);
+
+    if (state.error_detail) |ed| allocator.free(ed);
+
+    if (state.cancelled_branch_ids.len > 0) allocator.free(state.cancelled_branch_ids);
+}
+
 pub const InstanceStatus = enum {
     ACTIVE,
     COMPLETED,
@@ -383,14 +420,29 @@ fn updateJoinCounter(
         current.expected_from_branches;
 
     // Build JSON object: {"received_count": N, "expected_from_branches": M}
+    // ISS-0601: keys must be heap-duped (not string literals) — this
+    // object is freed via freeJsonValueSafe on overwrite/state cleanup,
+    // which calls allocator.free() on every object key.
     var obj = try std.json.ObjectMap.init(allocator, &.{}, &.{});
     errdefer obj.deinit(allocator);
-    try obj.put(allocator, "received_count", std.json.Value{ .integer = @as(i64, new_received) });
-    try obj.put(allocator, "expected_from_branches", std.json.Value{ .integer = @as(i64, new_expected) });
+    const rc_key = try allocator.dupe(u8, "received_count");
+    errdefer allocator.free(rc_key);
+    try obj.put(allocator, rc_key, std.json.Value{ .integer = @as(i64, new_received) });
+    const eb_key = try allocator.dupe(u8, "expected_from_branches");
+    errdefer allocator.free(eb_key);
+    try obj.put(allocator, eb_key, std.json.Value{ .integer = @as(i64, new_expected) });
 
-    const key_dup = try allocator.dupe(u8, node_id);
-    errdefer allocator.free(key_dup);
-    try state.join_counters.put(allocator, key_dup, std.json.Value{ .object = obj });
+    // ISS-0601: getOrPut + free-on-overwrite — a plain put() with a fresh
+    // key_dup would leak both the previous key and the previous nested
+    // {received_count, expected_from_branches} object every time this
+    // join node's counter is updated again.
+    const gop = try state.join_counters.getOrPut(allocator, node_id);
+    if (gop.found_existing) {
+        freeJsonValueSafe(allocator, gop.value_ptr.*);
+    } else {
+        gop.key_ptr.* = try allocator.dupe(u8, node_id);
+    }
+    gop.value_ptr.* = std.json.Value{ .object = obj };
 
     return JoinCounter{
         .received_count = new_received,
@@ -402,14 +454,25 @@ fn updateJoinCounter(
 /// Sets received_count to 0 so subsequent getJoinCounter sees a fresh counter.
 /// Cannot remove from ArrayHashMap (Zig 0.16 no remove method), so we overwrite.
 fn clearJoinCounter(allocator: std.mem.Allocator, state: *InstanceState, node_id: []const u8) !void {
-    const key_dup = try allocator.dupe(u8, node_id);
-    errdefer allocator.free(key_dup);
     // Overwrite with sentinel zero values — getJoinCounter treats 0/0 as fresh.
+    // ISS-0601: keys must be heap-duped — see updateJoinCounter.
     var obj = try std.json.ObjectMap.init(allocator, &.{}, &.{});
     errdefer obj.deinit(allocator);
-    try obj.put(allocator, "received_count", std.json.Value{ .integer = 0 });
-    try obj.put(allocator, "expected_from_branches", std.json.Value{ .integer = 0 });
-    try state.join_counters.put(allocator, key_dup, std.json.Value{ .object = obj });
+    const rc_key = try allocator.dupe(u8, "received_count");
+    errdefer allocator.free(rc_key);
+    try obj.put(allocator, rc_key, std.json.Value{ .integer = 0 });
+    const eb_key = try allocator.dupe(u8, "expected_from_branches");
+    errdefer allocator.free(eb_key);
+    try obj.put(allocator, eb_key, std.json.Value{ .integer = 0 });
+
+    // ISS-0601: getOrPut + free-on-overwrite — see updateJoinCounter.
+    const gop = try state.join_counters.getOrPut(allocator, node_id);
+    if (gop.found_existing) {
+        freeJsonValueSafe(allocator, gop.value_ptr.*);
+    } else {
+        gop.key_ptr.* = try allocator.dupe(u8, node_id);
+    }
+    gop.value_ptr.* = std.json.Value{ .object = obj };
 }
 
 /// Return the canonical event-type tag string for a PendingEvent variant.
@@ -437,6 +500,110 @@ fn pendingEventNodeId(ev: PendingEvent) []const u8 {
     };
 }
 
+// ---------------------------------------------------------------------------
+// Helper function for safe ObjectMap updates
+// ---------------------------------------------------------------------------
+
+/// Safely put a key-value pair into a JsonValue ObjectMap, freeing the old value if the key already exists.
+/// ISS-0601: Prevents memory leaks when updating variables in cloned ObjectMaps.
+fn putVariableSafe(
+    allocator: std.mem.Allocator,
+    map: *std.json.ObjectMap,
+    key: []const u8,
+    value: std.json.Value,
+) !void {
+    const gop = try map.getOrPut(allocator, key);
+    if (gop.found_existing) {
+        // Free the old value before replacing
+        freeJsonValueSafe(allocator, gop.value_ptr.*);
+    }
+    gop.value_ptr.* = value;
+}
+
+/// Helper to free a JsonValue - mirrors reconstruction.zig's freeJsonValue
+fn freeJsonValueSafe(allocator: std.mem.Allocator, value: std.json.Value) void {
+    var mutable_value = value;
+    switch (mutable_value) {
+        .string => |s| allocator.free(s),
+        .number_string => |s| allocator.free(s),
+        .array => |*arr| {
+            for (arr.items) |item| freeJsonValueSafe(allocator, item);
+            arr.deinit();
+        },
+        .object => |*obj| {
+            var it = obj.iterator();
+            while (it.next()) |entry| {
+                allocator.free(entry.key_ptr.*);
+                freeJsonValueSafe(allocator, entry.value_ptr.*);
+            }
+            obj.deinit(allocator);
+        },
+        else => {},
+    }
+}
+
+/// Deep-clone a JsonValue: duplicates strings and recursively clones
+/// arrays/objects (including their keys) so the result shares no memory
+/// with the source. Mirrors reconstruction.zig's cloneJsonValue.
+///
+/// ISS-0601: `std.json.ObjectMap.clone()` is a SHALLOW clone — it copies
+/// the hash-table bucket storage but keys/values remain aliased with the
+/// source map. Using putVariableSafe's free-on-overwrite against a
+/// shallow-cloned map frees memory the source state still points to,
+/// causing a use-after-free that (at high event volumes) corrupts the
+/// allocator's internal structures.
+fn cloneJsonValueSafe(allocator: std.mem.Allocator, value: std.json.Value) error{OutOfMemory}!std.json.Value {
+    return switch (value) {
+        .string => |s| .{ .string = try allocator.dupe(u8, s) },
+        .number_string => |s| .{ .number_string = try allocator.dupe(u8, s) },
+        .array => |arr| blk: {
+            var new_arr = std.json.Array.init(allocator);
+            errdefer {
+                for (new_arr.items) |item| freeJsonValueSafe(allocator, item);
+                new_arr.deinit();
+            }
+            try new_arr.ensureTotalCapacity(arr.items.len);
+            for (arr.items) |item| {
+                const cloned = try cloneJsonValueSafe(allocator, item);
+                new_arr.appendAssumeCapacity(cloned);
+            }
+            break :blk .{ .array = new_arr };
+        },
+        .object => |obj| blk: {
+            var new_obj = try cloneObjectMapSafe(allocator, obj);
+            errdefer freeJsonValueSafe(allocator, std.json.Value{ .object = new_obj });
+            _ = &new_obj;
+            break :blk .{ .object = new_obj };
+        },
+        else => value,
+    };
+}
+
+/// Deep-clone a JsonValue ObjectMap: duplicates every key and deep-clones
+/// every value so the result shares no memory with the source map.
+/// ISS-0601: required so `new_state.variables`/`join_counters` fully own
+/// their memory and can be safely mutated (freed-on-overwrite) without
+/// affecting the state they were cloned from.
+fn cloneObjectMapSafe(allocator: std.mem.Allocator, source: std.json.ObjectMap) error{OutOfMemory}!std.json.ObjectMap {
+    var result = try std.json.ObjectMap.init(allocator, &.{}, &.{});
+    errdefer {
+        var it = result.iterator();
+        while (it.next()) |entry| {
+            allocator.free(entry.key_ptr.*);
+            freeJsonValueSafe(allocator, entry.value_ptr.*);
+        }
+        result.deinit(allocator);
+    }
+    var it = source.iterator();
+    while (it.next()) |entry| {
+        const key_copy = try allocator.dupe(u8, entry.key_ptr.*);
+        errdefer allocator.free(key_copy);
+        const cloned_value = try cloneJsonValueSafe(allocator, entry.value_ptr.*);
+        errdefer freeJsonValueSafe(allocator, cloned_value);
+        try result.put(allocator, key_copy, cloned_value);
+    }
+    return result;
+}
 
 // ---------------------------------------------------------------------------
 // transition() function
@@ -473,8 +640,11 @@ pub fn transition(
         .instance_id = state.instance_id,
         .status = state.status,
         .tokens = try allocator.alloc(Token, state.tokens.len),
-        .variables = try state.variables.clone(allocator),
-        .join_counters = try state.join_counters.clone(allocator),
+        // ISS-0601: deep-clone (not .clone(), which shallow-copies and
+        // aliases keys/values with `state`) so new_state fully owns its
+        // variable/join-counter memory — see cloneObjectMapSafe above.
+        .variables = try cloneObjectMapSafe(allocator, state.variables),
+        .join_counters = try cloneObjectMapSafe(allocator, state.join_counters),
         .pending_task_nodes = try allocator.alloc([]const u8, state.pending_task_nodes.len),
         .error_detail = null,
         .cancelled_branch_ids = try allocator.dupe([]const u8, state.cancelled_branch_ids),
@@ -499,8 +669,15 @@ pub fn transition(
 
     const result_state = switch (event) {
         .instance_started => |payload| blk: {
-            // Seed variables from initial_variables
-            new_state.variables = try payload.initial_variables.clone(allocator);
+            // Seed variables from initial_variables.
+            // ISS-0601: deep-clone — payload.initial_variables may be
+            // parsed from a temporary/arena allocator (see
+            // reconstruction.zig's mapToTransitionEvent), so a shallow
+            // .clone() would alias keys/values that get freed once the
+            // arena is torn down. Free the placeholder clone made above
+            // (from state.variables) first, to avoid leaking it.
+            freeJsonValueSafe(allocator, std.json.Value{ .object = new_state.variables });
+            new_state.variables = try cloneObjectMapSafe(allocator, payload.initial_variables);
             // Place token on first node after START
             const start_node = for (snapshot.nodes) |node| {
                 if (std.mem.eql(u8, node.id, payload.start_node_id)) break node;
@@ -548,17 +725,30 @@ pub fn transition(
             {
                 var it = payload.output_variables.iterator();
                 while (it.next()) |entry| {
-                    try new_state.variables.put(allocator, entry.key_ptr.*, entry.value_ptr.*);
+                    try putVariableSafe(allocator, &new_state.variables, entry.key_ptr.*, entry.value_ptr.*);
                 }
             }
             // Remove from pending_task_nodes
             var new_pending = std.ArrayList([]const u8).empty;
             defer new_pending.deinit(allocator);
+            var dropped_pending: ?[]const u8 = null;
             for (new_state.pending_task_nodes) |n| {
-                if (!std.mem.eql(u8, n, payload.task_node_id))
+                if (!std.mem.eql(u8, n, payload.task_node_id)) {
                     try new_pending.append(allocator, n);
+                } else {
+                    dropped_pending = n;
+                }
             }
-            new_state.pending_task_nodes = try new_pending.toOwnedSlice(allocator);
+            {
+                const old_pending_array = new_state.pending_task_nodes;
+                new_state.pending_task_nodes = try new_pending.toOwnedSlice(allocator);
+                // ISS-0601: surviving entries were moved by value into the
+                // new array; free the stale outer array once nothing
+                // references it. The one dropped entry's string is freed
+                // last, after the array holding it is gone.
+                allocator.free(old_pending_array);
+                if (dropped_pending) |dp| allocator.free(dp);
+            }
             // Advance token
             var outgoing_found = false;
             var chosen_edge: graph_mod.GraphEdge = undefined;
@@ -586,14 +776,23 @@ pub fn transition(
                         error.OutOfMemory => return TransitionError.OutOfMemory,
                     };
 
-                    var transform_it = transform_obj.iterator();
+                    var transform_obj_mut = transform_obj;
+                    var transform_it = transform_obj_mut.iterator();
                     while (transform_it.next()) |entry| {
-                        try new_state.variables.put(allocator, entry.key_ptr.*, entry.value_ptr.*);
+                        try putVariableSafe(allocator, &new_state.variables, entry.key_ptr.*, entry.value_ptr.*);
                     }
+                    // Keys/values were moved into new_state.variables above
+                    // (putVariableSafe stores them directly); only the map's
+                    // own bucket storage needs freeing here.
+                    transform_obj_mut.deinit(allocator);
                 }
             }
 
-            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+            {
+                const old_tok_node_id = new_state.tokens[token_idx.?].node_id;
+                new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+                allocator.free(old_tok_node_id);
+            }
             // Process node entry
             break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
         },
@@ -611,7 +810,7 @@ pub fn transition(
             // Merge output variables from successful SERVICE_TASK response.
             var it = payload.output_variables.iterator();
             while (it.next()) |entry| {
-                try new_state.variables.put(allocator, entry.key_ptr.*, entry.value_ptr.*);
+                try putVariableSafe(allocator, &new_state.variables, entry.key_ptr.*, entry.value_ptr.*);
             }
 
             // Advance token along the single outgoing edge.
@@ -641,14 +840,23 @@ pub fn transition(
                         error.OutOfMemory => return TransitionError.OutOfMemory,
                     };
 
-                    var transform_it = transform_obj.iterator();
+                    var transform_obj_mut = transform_obj;
+                    var transform_it = transform_obj_mut.iterator();
                     while (transform_it.next()) |entry| {
-                        try new_state.variables.put(allocator, entry.key_ptr.*, entry.value_ptr.*);
+                        try putVariableSafe(allocator, &new_state.variables, entry.key_ptr.*, entry.value_ptr.*);
                     }
+                    // Keys/values were moved into new_state.variables above
+                    // (putVariableSafe stores them directly); only the map's
+                    // own bucket storage needs freeing here.
+                    transform_obj_mut.deinit(allocator);
                 }
             }
 
-            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+            {
+                const old_tok_node_id = new_state.tokens[token_idx.?].node_id;
+                new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+                allocator.free(old_tok_node_id);
+            }
             break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
         },
         .sub_process_completed => |payload| blk: {
@@ -674,8 +882,13 @@ pub fn transition(
             }
             if (!outgoing_found) return TransitionError.InvalidState;
 
+            if (new_state.tokens[token_idx.?].waiting_child_instance_id) |old_w| allocator.free(old_w);
             new_state.tokens[token_idx.?].waiting_child_instance_id = null;
-            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+            {
+                const old_tok_node_id = new_state.tokens[token_idx.?].node_id;
+                new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+                allocator.free(old_tok_node_id);
+            }
             break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
         },
         // EXP-301: effect delivery succeeded — advance token past SERVICE_TASK.
@@ -692,7 +905,7 @@ pub fn transition(
             if (payload.response_body_json) |body| {
                 const key_dup = try allocator.dupe(u8, "effect_result");
                 errdefer allocator.free(key_dup);
-                try new_state.variables.put(allocator, key_dup, std.json.Value{ .string = body });
+                try putVariableSafe(allocator, &new_state.variables, key_dup, std.json.Value{ .string = body });
             }
             var outgoing_found = false;
             var next_node_id: []const u8 = undefined;
@@ -704,7 +917,11 @@ pub fn transition(
                 }
             }
             if (!outgoing_found) return TransitionError.InvalidState;
-            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+            {
+                const old_tok_node_id = new_state.tokens[token_idx.?].node_id;
+                new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, next_node_id);
+                allocator.free(old_tok_node_id);
+            }
             break :blk try processNodeEntry(allocator, snapshot, new_state, next_node_id, &emitted_events);
         },
         // EXP-301: effect delivery failed — set instance to ERROR.
@@ -764,7 +981,13 @@ fn evaluateEdgeTransform(
 
         const value = variables.get(var_name) orelse return error.TransformEvaluationFailed;
         return switch (value) {
-            .object => |obj| obj.clone(allocator) catch error.OutOfMemory,
+            // ISS-0601: deep-clone — `value` lives inside the caller's
+            // `variables` map (new_state.variables). A shallow .clone()
+            // would alias keys/values with it; callers drain the result
+            // into new_state.variables via putVariableSafe, which frees
+            // on overwrite and would then free memory new_state.variables
+            // itself still owns.
+            .object => |obj| cloneObjectMapSafe(allocator, obj) catch error.OutOfMemory,
             else => error.TransformResultNonObject,
         };
     }
@@ -774,7 +997,9 @@ fn evaluateEdgeTransform(
     defer parsed.deinit();
 
     return switch (parsed.value) {
-        .object => |obj| obj.clone(allocator) catch error.OutOfMemory,
+        // parsed.value's memory belongs to `parsed` (freed by defer above),
+        // so this must also be a deep clone, not a shallow one.
+        .object => |obj| cloneObjectMapSafe(allocator, obj) catch error.OutOfMemory,
         else => error.TransformResultNonObject,
     };
 }
@@ -1056,6 +1281,9 @@ fn processNodeEntry(
                 try new_pending.append(allocator, try allocator.dupe(u8, node_id));
                 var new_state = state;
                 new_state.pending_task_nodes = try new_pending.toOwnedSlice(allocator);
+                // ISS-0601: every entry was moved by value into the new
+                // array; only the stale outer array needs freeing.
+                allocator.free(state.pending_task_nodes);
                 return new_state;
             }
             return state;
@@ -1161,7 +1389,11 @@ fn processNodeEntry(
             }
             if (token_idx == null) return TransitionError.InvalidState;
             var new_state = state;
-            new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, chosen.?.target);
+            {
+                const old_tok_node_id = new_state.tokens[token_idx.?].node_id;
+                new_state.tokens[token_idx.?].node_id = try allocator.dupe(u8, chosen.?.target);
+                allocator.free(old_tok_node_id);
+            }
             return try processNodeEntry(allocator, snapshot, new_state, chosen.?.target, events);
         },
         .PARALLEL_GATEWAY => {
@@ -1286,13 +1518,6 @@ fn processNodeEntry(
                 if (counter.expected_from_branches == 0) {
                     // STEP f: all branches cancelled — cascade INSTANCE_CANCELLED.
                     try clearJoinCounter(allocator, &join_state, node_id);
-
-                    var new_tokens_f = std.ArrayList(Token).empty;
-                    defer new_tokens_f.deinit(allocator);
-                    for (join_state.tokens) |t| {
-                        if (!std.mem.eql(u8, t.node_id, node_id))
-                            try new_tokens_f.append(allocator, t);
-                    }
 
                     var cancelled_for_split_f = std.ArrayList([]const u8).empty;
                     defer cancelled_for_split_f.deinit(allocator);
@@ -1864,7 +2089,7 @@ test "TC-EE-02-08: PARALLEL_GATEWAY join waits until all tokens arrive, then mer
         .pending_task_nodes = &[_][]const u8{},
         .error_detail = null,
     };
-        var events2 = std.ArrayList(PendingEvent).init(allocator);
+    var events2 = std.ArrayList(PendingEvent).init(allocator);
     defer events2.deinit();
     const result2 = processNodeEntry(allocator, graph, state2, "gw", &events2) catch unreachable;
     // Should merge to one token on t3
@@ -2259,7 +2484,7 @@ test "TC-EE-07-03: all-branches-cancelled path → INSTANCE_CANCELLED event, sta
         .cancelled_branch_ids = &[_][]const u8{ branch_0, branch_1 },
     };
 
-        var events = std.ArrayList(PendingEvent).init(allocator);
+    var events = std.ArrayList(PendingEvent).init(allocator);
     defer events.deinit();
     const result = try processNodeEntry(allocator, graph, state_with_stray, "join_gw", &events);
 
