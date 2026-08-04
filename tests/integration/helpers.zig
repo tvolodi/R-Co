@@ -328,27 +328,23 @@ const TestOwnerTagError = error{
 
 /// Per-process owner tag. Defined as a plain `[]const u8` so it can be passed
 /// directly to the `pg` driver as a parameter without any pointer casting.
-/// The lifetime of the underlying bytes is managed by `tag_repr_storage`
-/// below (heap-allocated, process-lifetime, never freed). All access goes
-/// through the validated helper chain (generateOwnerTag / validateOwnerTag /
-/// setTestApplicationName / killIdleConnections) so callers cannot mint a
-/// tag from arbitrary bytes.
+/// The first harness owns the allocated backing bytes and frees them during
+/// deinit; cached lookups are valid while that owner harness remains alive.
+/// All access goes through the validated helper chain (generateOwnerTag /
+/// validateOwnerTag / setTestApplicationName / killIdleConnections) so callers
+/// cannot mint a tag from arbitrary bytes.
 pub const Tag = []const u8;
 
 /// Cached per-process tag. The first generateOwnerTag() call in a process
 /// fills it; subsequent calls in the same process return the same value.
 /// Different processes have independent atomics, so concurrent test binaries
-/// generate distinct tags without coordination. The cached slice always
-/// points into `tag_repr_storage`, whose address is stable for the process
-/// lifetime. We cache a `bool` "ready" flag in the atomic because
-/// `std.atomic.Value` cannot wrap a `?[]const u8` (optional slices are not
-/// extern-compatible). All reads of the actual cached slice are guarded by
-/// `tag_repr_lock`.
+/// generate distinct tags without coordination. Access to the cached slice is
+/// guarded by `tag_repr_lock`; `cached_owner_tag` publishes readiness.
 var cached_owner_tag: std.atomic.Value(bool) = .init(false);
 
-/// Tag-representation storage. Each generated/validated tag is heap-allocated
-/// so the slice's address is stable for the process lifetime. The atomic
-/// Value caches the slice; the underlying bytes are never freed.
+/// Tag-representation storage. Ownership is transferred to the first
+/// TestHarness created in the process via `owns_tag_storage`; that harness
+/// clears the cache and frees the backing bytes during deinit.
 var tag_repr_storage: ?[]u8 = null;
 var tag_repr_lock: std.atomic.Value(bool) = .init(false);
 
@@ -686,9 +682,13 @@ pub const TestHarness = struct {
     /// ISS-0602 / GitHub #414: per-process owner tag stamped on this
     /// connection. killIdleConnections() uses this to scope the
     /// pg_terminate_backend broadcast to the caller's own backends. The
-    /// slice points into the process-lifetime `tag_repr_storage`; the
-    /// bytes are valid for the lifetime of the process.
+    /// slice points into `tag_repr_storage` while this harness is alive.
     tag: Tag,
+    /// Allocator that owns the generated tag backing storage. Only the first
+    /// harness that generated the process tag sets this flag; its deinit
+    /// clears the cache and releases the allocation.
+    tag_allocator: std.mem.Allocator,
+    owns_tag_storage: bool,
 
     /// ISS-0121 / GitHub #387: return a fresh 16-byte UUID v4 value sourced
     /// from the standard library CSPRNG. Generation is infallible and
@@ -752,9 +752,18 @@ pub const TestHarness = struct {
         // ISS-0602 / GitHub #414: stamp this connection with the per-process
         // owner tag so killIdleConnections() cannot terminate a sibling
         // process's idle connection on the shared bpm_test database.
+        const had_cached_tag = cached_owner_tag.load(.acquire);
         const tag = generateOwnerTag(allocator) catch |err| {
             std.debug.print("generateOwnerTag failed: {}\n", .{err});
             return err;
+        };
+        const owns_tag_storage = !had_cached_tag;
+        errdefer if (owns_tag_storage) {
+            while (tag_repr_lock.cmpxchgWeak(false, true, .acquire, .acquire) != null) {}
+            defer tag_repr_lock.store(false, .release);
+            if (tag_repr_storage) |storage| allocator.free(storage);
+            tag_repr_storage = null;
+            cached_owner_tag.store(false, .release);
         };
         setTestApplicationName(&conn, tag) catch |err| {
             std.debug.print("setTestApplicationName failed: {}\n", .{err});
@@ -883,10 +892,13 @@ pub const TestHarness = struct {
             .conn = conn,
             .allocator = allocator,
             .tag = tag,
+            .tag_allocator = allocator,
+            .owns_tag_storage = owns_tag_storage,
         };
     }
 
-    /// Roll back the open transaction and close the connection.
+    /// Roll back the open transaction, close the connection, and release the
+    /// process tag backing storage when this harness created it.
     /// Never commits — test isolation is guaranteed.
     pub fn deinit(self: *TestHarness) void {
         // ISS-0122: clean up audit rows with non-UTF-8 placeholder resource_ids from prior tests.
@@ -897,5 +909,15 @@ pub const TestHarness = struct {
         ) catch {};
         self.conn.rollback() catch {};
         self.conn.close();
+
+        if (self.owns_tag_storage) {
+            while (tag_repr_lock.cmpxchgWeak(false, true, .acquire, .acquire) != null) {}
+            defer tag_repr_lock.store(false, .release);
+            if (tag_repr_storage) |storage| self.tag_allocator.free(storage);
+            tag_repr_storage = null;
+            cached_owner_tag.store(false, .release);
+            self.tag = "";
+            self.owns_tag_storage = false;
+        }
     }
 };
