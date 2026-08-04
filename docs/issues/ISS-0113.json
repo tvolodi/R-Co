@@ -1,11 +1,11 @@
 {
   "id": "ISS-0113",
   "title": "Event-store idempotency fixtures contaminate shared integration state",
-  "status": "OPEN",
+  "status": "IN_PROGRESS",
   "severity": "MAJOR",
   "category": "integration-test-fixture-contamination",
-  "run_id": "WF03-gh364-20260801",
-  "handoff_id": null,
+  "run_id": "WF03-gh376-20260804",
+  "handoff_id": "193a90d3-3344-4a67-a6eb-ea2d1c6fac83",
   "affected_areas": [
     "tests/integration/iss203_idempotency_test.zig",
     "tests/integration/event_store_test.zig",

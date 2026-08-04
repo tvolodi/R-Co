@@ -1,0 +1,49 @@
+{
+  "handoff_id": "ff06591d-64ae-42e9-8749-669c136880f1",
+  "run_id": "WF03-gh376-20260804",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-04T03:54:07Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 1 \u2014 Root Cause Diagnosis",
+    "issue_id": "ISS-0113",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/376",
+    "related_handoff_ids": [
+      "7c3d5763-701f-42cd-ae07-8da2644c8c36",
+      "193a90d3-3344-4a67-a6eb-ea2d1c6fac83"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0113.json"
+    ]
+  },
+  "task": {
+    "description": "Perform root-cause diagnosis for ISS-0113 \u2014 Event-store idempotency fixtures contaminate shared integration state.\n\nGitHub issue #376 describes:\n- Symptom: Duplicate idempotency key violations (PostgreSQL 23505 on uq_event_idempotency)\n- Evidence: scratch/WF03-gh364-20260801-step03e/_integration_final.log lines 6798-8490 and 8717-13212\n- Affected tests: TC-ISS-203-01..05, TC-ES-03-01, TC-EE-08-04, TC-EE-10-04/05/06, TC-ISS-202-01, TC-EXT-01-INT-07\n- Root cause hypothesis: integration fixtures reuse deterministic event and idempotency identifiers across cases or binaries sharing one database\n\nYour task:\n1. Review the evidence files if available (check scratch/)\n2. Examine the affected test files to identify the fixture pattern causing collisions\n3. Search for prior similar issues (fn:search-issues) to find established resolution patterns\n4. Determine the root cause category per WF-03 failure category table\n5. Identify which test files need to be modified\n\nWrite a diagnosis report to docs/issue-reports/ISS-0113.yaml with:\n- root_cause: detailed explanation\n- failure_category: from WF-03 table\n- affected_files: list of test files to fix\n- resolution_strategy: high-level approach\n- prevention: how to avoid this in future tests\n\nReturn PASS with the diagnosis report in artifacts_out.",
+    "acceptance_criteria": [
+      "Root cause identified with supporting evidence",
+      "Failure category assigned",
+      "Affected files listed",
+      "Resolution strategy documented",
+      "Diagnosis report written to docs/issue-reports/ISS-0113.yaml"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause diagnosed: integration test fixtures reuse deterministic event_id and idempotency_key values via generateTestUuid(seed) with hardcoded seeds, causing PostgreSQL 23505 unique violations on uq_event_idempotency when multiple test binaries share the same test database. Cleanup failures due to FK ordering violations leave contaminated state. Category: D (test code error). Resolution: migrate to TestHarness.newUuid(), harden cleanup FK ordering, enforce via lint.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0113.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T03:54:53Z",
+  "completed_at": "2026-08-04T03:56:00Z"
+}

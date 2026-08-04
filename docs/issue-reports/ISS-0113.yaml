@@ -1,0 +1,193 @@
+---
+# ISS-0113 — Event-store idempotency fixtures contaminate shared integration state
+# WF-03 Step 1 Diagnosis Report
+# Created: 2026-08-04T03:56:00Z
+
+issue_id: ISS-0113
+github_issue: https://github.com/tvolodi/R-Co/issues/376
+run_id: WF03-gh376-20260804
+handoff_id: ff06591d-64ae-42e9-8749-669c136880f1
+created_at: 2026-08-04T03:56:00Z
+
+# -----------------------------------------------------------------------------
+# ROOT CAUSE ANALYSIS
+# -----------------------------------------------------------------------------
+
+root_cause: |
+  Integration test fixtures in event-store and instance tests reuse
+  deterministic event_id and idempotency_key values across test cases and
+  binaries that share the same PostgreSQL test database (BPM_TEST_DB_URL).
+  
+  The specific mechanism:
+  
+  1. Tests use `generateTestUuid(seed: u64)` with hardcoded seeds (e.g., seed 1,
+     seed 2) to produce "per-test" UUIDs, but the seeds are reused across
+     different test files that compile into separate binaries.
+  
+  2. When multiple test binaries run concurrently (zig build test-integration),
+     or even sequentially without proper cleanup, the same event_id and
+     idempotency_key values appear in multiple INSERT statements.
+  
+  3. PostgreSQL's uq_event_idempotency UNIQUE constraint (on events table)
+     rejects the duplicate, producing error 23505 (unique_violation).
+  
+  4. Test cleanup (via defer or explicit DELETE) is incomplete or fails due to
+     foreign-key dependencies (timers, tasks, events all reference instance_id
+     and instance_projections; events must be deleted before instances).
+  
+  5. Even when cleanup is present, FK ordering violations cause cleanup to fail
+     (e.g., attempting to delete instance_projections before deleting child
+     events), leaving contaminated state for subsequent tests.
+  
+  Evidence:
+  - tests/integration/iss203_idempotency_keys_test.zig uses
+    `generateTestUuid(seed)` with seeds 1-5 across its 5 test cases (TC-ISS-203-01
+    through TC-ISS-203-05).
+  - tests/integration/event_store_integration_test.zig and
+    tests/integration/instance_error_test.zig likely use similar patterns.
+  - Prior issue ISS-0121 (GitHub #387/#402) addressed hardcoded UUID literals
+    across 100+ integration test files with the same contamination pattern; this
+    issue is the event-store-specific manifestation that persisted after that fix.
+  - The cleanup helper `cleanupInstance()` in iss203_idempotency_keys_test.zig
+    deletes in FK order (timers → tasks → events → snapshots → projections) but
+    ISS-0125 (GitHub #391) shows that propagating SQL errors from child deletes
+    is required for visible diagnosis — earlier implementations may have swallowed
+    errors.
+
+failure_category: CATEGORY_D_test_code_error
+category_rationale: |
+  The source code (src/events/, src/engine/instance.zig) is correct. The defect
+  is in the test fixture generation pattern. Tests reuse deterministic identifiers
+  across binaries in a way that violates the shared-database integration model.
+  Per the WF-03 failure category table, this is a test implementation error, not
+  a logic error in the system under test.
+
+# -----------------------------------------------------------------------------
+# AFFECTED FILES
+# -----------------------------------------------------------------------------
+
+affected_files:
+  - tests/integration/iss203_idempotency_keys_test.zig  # TC-ISS-203-01..05
+  - tests/integration/event_store_integration_test.zig  # TC-ES-03-01
+  - tests/integration/instance_error_test.zig           # TC-EE-08-04, TC-EE-10-04/05/06
+  - tests/integration/iss202_merge_atomicity_test.zig   # TC-ISS-202-01
+  - tests/integration/ext01_service_task_test.zig       # TC-EXT-01-INT-07
+  - tests/integration/helpers.zig                       # May need cleanup improvements
+
+# -----------------------------------------------------------------------------
+# RESOLUTION STRATEGY
+# -----------------------------------------------------------------------------
+
+resolution_strategy: |
+  Three-part fix:
+  
+  1. **Migrate deterministic UUID generation to per-test randomness**
+     Replace `generateTestUuid(seed)` with `TestHarness.newUuid()` (the helper
+     added in ISS-0121 / PR #399) in all affected test files. This ensures each
+     test invocation generates truly unique event_id and idempotency_key values
+     even across concurrent binaries.
+  
+  2. **Harden cleanup ordering**
+     Verify that every affected test's cleanup logic deletes child rows before
+     parent rows in FK dependency order:
+       - timers (FK to instances)
+       - tasks (FK to instances)
+       - events (FK to instances, also uq_event_idempotency)
+       - instance_definition_snapshots (FK to instances)
+       - instance_projections (parent of FK chain)
+     
+     Ensure all DELETE statements propagate errors (no silent catch) per ISS-0125.
+  
+  3. **Enforce per-test UUID policy via lint**
+     Promote T010 (hardcoded UUID literals) from MAJOR to BLOCKER in
+     tools/lint_test_isolation.py for event-store-related test files to prevent
+     regression. Consider adding a T011 rule specifically for deterministic-seed
+     UUID generation patterns (e.g., flag `generateTestUuid(1)` as an anti-pattern).
+
+resolution_scope:
+  files_to_modify: 6
+  estimated_lines_changed: ~150
+  requires_schema_change: false
+  requires_migration: false
+
+# -----------------------------------------------------------------------------
+# PREVENTION MEASURES
+# -----------------------------------------------------------------------------
+
+prevention:
+  - title: Enforce TestHarness.newUuid() for all fixtures
+    description: |
+      Add a lint rule (T011) that flags local `generateTestUuid(seed)` functions
+      or any UUID generation using a hardcoded seed parameter. All per-test UUIDs
+      must use `TestHarness.newUuid()` or `std.crypto.random.bytes()`.
+  
+  - title: Document FK cleanup order in test guide
+    description: |
+      Update docs/guides/test_developer_guide.md with a canonical FK dependency
+      diagram for event-store-related tables and require all cleanup code to
+      follow that order. Include a code snippet showing the correct pattern.
+  
+  - title: Verify cleanup completeness on every test-integration run
+    description: |
+      Add a post-test-integration check (in build.zig or a wrapper script) that
+      queries for leaked rows (e.g., events where instance_id does not exist in
+      instance_projections) and fails the run if any are found. This catches
+      incomplete cleanup immediately rather than letting it contaminate
+      subsequent runs.
+
+# -----------------------------------------------------------------------------
+# RELATED ISSUES
+# -----------------------------------------------------------------------------
+
+related_issues:
+  - id: ISS-0121
+    title: Hardcoded UUID violations (T010) across 100+ integration test files
+    github_issue: https://github.com/tvolodi/R-Co/issues/387
+    resolution: TestHarness.newUuid() helper added; 114 literals migrated
+    relevance: |
+      Same root cause (deterministic identifiers in shared-DB tests) but focused
+      on general fixtures. ISS-0113 is the event-store-specific residual.
+  
+  - id: ISS-0125
+    title: Cleanup FK error propagation required for diagnosis
+    github_issue: https://github.com/tvolodi/R-Co/issues/391
+    resolution: fn cleanupInstance must propagate SQL errors, not swallow
+    relevance: |
+      Cleanup failures that leave contaminated state are a direct contributor to
+      ISS-0113. The fix ensures cleanup failures surface visibly instead of
+      letting subsequent tests fail on constraint violations.
+  
+  - id: ISS-0100
+    title: Integration test fixtures leak production-typed tenants
+    github_issue: https://github.com/tvolodi/R-Co/issues/357
+    resolution: Fixture normalization + cleanup scoping
+    relevance: |
+      Similar pattern of shared-DB state contamination from test fixtures. The
+      general lesson (per-test uniqueness + unconditional cleanup + visible
+      errors) applies here.
+
+# -----------------------------------------------------------------------------
+# ACCEPTANCE CRITERIA FOR FIX VERIFICATION
+# -----------------------------------------------------------------------------
+
+acceptance_criteria:
+  - All 14 affected test cases (TC-ISS-203-01..05, TC-ES-03-01, TC-EE-08-04,
+    TC-EE-10-04/05/06, TC-ISS-202-01, TC-EXT-01-INT-07) pass individually
+  - All 14 test cases pass in aggregate (zig build test-integration) with no
+    23505 errors
+  - No leaked event rows remain after test-integration completes
+    (SELECT count(*) FROM events WHERE instance_id NOT IN (SELECT instance_id FROM instance_projections) = 0)
+  - lint_test_isolation.py reports zero T010 findings in the affected files
+  - No `generateTestUuid(seed)` functions remain in any test file (except where
+    the seed is itself randomized per invocation)
+
+# -----------------------------------------------------------------------------
+# NEXT STEPS
+# -----------------------------------------------------------------------------
+
+next_action: Route to CODE-DESIGNER (Step 2)
+estimated_effort: |
+  Step 2 (CODE-DESIGNER): 30 minutes — produce fix design artefact
+  Step 3 (BACKEND-DEV): 2 hours — implement migration to TestHarness.newUuid() + cleanup hardening
+  Step 4 (TEST-DESIGNER): 30 minutes — verify no new test specs needed (existing tests sufficient)
+  Step 5 (TEST-RUNNER): 30 minutes — validate all 14 test cases pass

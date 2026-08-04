@@ -394,6 +394,36 @@
       "completed_at": "2026-08-03T22:05:59Z",
       "status": "COMPLETED",
       "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "7c3d5763-701f-42cd-ae07-8da2644c8c36",
+      "file": "handoffs/WF03-gh376-20260804/step-00-backend-dev.json",
+      "run_id": "WF03-gh376-20260804",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-04T03:50:27Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "193a90d3-3344-4a67-a6eb-ea2d1c6fac83",
+      "file": "handoffs/WF03-gh376-20260804/step-05-issue-fixer.json",
+      "run_id": "WF03-gh376-20260804",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-04T03:52:40Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "ff06591d-64ae-42e9-8749-669c136880f1",
+      "file": "handoffs/WF03-gh376-20260804/step-01-issue-fixer.json",
+      "run_id": "WF03-gh376-20260804",
+      "step": "01",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-04T03:54:07Z",
+      "status": "PENDING"
     }
   ]
 }
