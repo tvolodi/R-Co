@@ -730,6 +730,16 @@ pub const TestHarness = struct {
     /// Caller must call deinit() to roll back the transaction and close the
     /// connection.
     pub fn init(allocator: std.mem.Allocator) !TestHarness {
+        // ISS-0114 / GH-377: clear any thread-local tenant context residue
+        // from a prior test in this binary. Without this, a test that ran
+        // last with tenant_context.set(<uuid>) leaves the cache poisoned at
+        // SCHEMA (or LEGACY_RLS, depending on the prior test) for the next
+        // test, causing the very first pool.acquire() of the new test to
+        // route to the wrong schema. The subsequent set() below establishes
+        // the canonical default-tenant context; clear() first guarantees a
+        // fresh resolver cache for each TestHarness.init().
+        bpm.api_tenant_context.clear();
+
         // Read BPM_TEST_DB_URL using the Zig 0.16.0 cross-platform environ API.
         // On Windows Environ.Block = GlobalBlock (.global reads from the PEB).
         const env: std.process.Environ = .{ .block = .global };

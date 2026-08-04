@@ -154,6 +154,85 @@ pub fn schemaNameForTenant(tenant_id: []const u8, buf: *[80]u8) []const u8 {
     return buf[0..out];
 }
 
+/// Parse a storage_mode string returned from public.tenant.storage_mode.
+/// Returns null when the string is unrecognised (caller falls back to
+/// the tenant_schemas heuristic, then to .LEGACY_RLS).
+///
+/// Recognised values: "LEGACY_RLS", "SCHEMA".
+pub fn parseStorageMode(raw: []const u8) ?tenant_context_mod.StorageMode {
+    if (std.mem.eql(u8, raw, "LEGACY_RLS")) return .LEGACY_RLS;
+    if (std.mem.eql(u8, raw, "SCHEMA")) return .SCHEMA;
+    return null;
+}
+
+/// ISS-0114 / GH-377: resolve the storage_mode for `tenant_id` and cache it
+/// in tenant_context. Algorithm:
+///   1. SELECT storage_mode FROM public.tenant WHERE id = $1::uuid LIMIT 1.
+///   2. If exactly 1 row returned, parse storage_mode and cache it.
+///   3. If 0 rows OR the mode is unrecognised, SELECT 1 FROM
+///      public.tenant_schemas WHERE tenant_id = $1::uuid LIMIT 1.
+///      A row means the schema is provisioned — trust .SCHEMA.
+///   4. Otherwise (both queries 0 rows) — fall through to .LEGACY_RLS.
+///
+/// `tenant_id` must be the canonical 36-char UUID string.
+/// `conn` must be a checked-out pool connection.
+///
+/// Returns PoolError.QueryFailed on any underlying query failure; on
+/// query failure the resolver falls back to .LEGACY_RLS so callers do
+/// not block subsequent acquire() attempts.
+pub fn resolveAndCacheStorageMode(
+    conn: *Conn,
+    tenant_id: []const u8,
+) PoolError!void {
+    // Step 1: query public.tenant.storage_mode.
+    const row = conn.queryRow(
+        std.heap.page_allocator,
+        "SELECT storage_mode FROM public.tenant WHERE id = $1::uuid LIMIT 1",
+        &.{tenant_id},
+    ) catch {
+        // Query failure: degrade to LEGACY_RLS (defensive; matches prior
+        // behaviour so a transient DB blip does not block the request).
+        tenant_context_mod.setStorageMode(.LEGACY_RLS);
+        return;
+    };
+
+    if (row) |r| {
+        defer {
+            if (r[0]) |v| std.heap.page_allocator.free(v);
+            std.heap.page_allocator.free(r);
+        }
+        if (r[0]) |mode_str| {
+            if (parseStorageMode(mode_str)) |mode| {
+                tenant_context_mod.setStorageMode(mode);
+                return;
+            }
+        }
+    }
+
+    // Step 2: fallback to public.tenant_schemas (ISS-0114 / GH-377).
+    // When the tenant was provisioned but no public.tenant row exists, the
+    // schema-per-tenant path is the correct routing — trust it.
+    const schema_row = conn.queryRow(
+        std.heap.page_allocator,
+        "SELECT 1 FROM public.tenant_schemas WHERE tenant_id = $1::uuid LIMIT 1",
+        &.{tenant_id},
+    ) catch {
+        // Fallback query failure: stay on LEGACY_RLS.
+        tenant_context_mod.setStorageMode(.LEGACY_RLS);
+        return;
+    };
+
+    if (schema_row) |sr| {
+        defer std.heap.page_allocator.free(sr);
+        // tenant_schemas row present → SCHEMA mode is authoritative.
+        tenant_context_mod.setStorageMode(.SCHEMA);
+        return;
+    }
+
+    // Step 3: both queries returned 0 rows — fall back to LEGACY_RLS.
+    tenant_context_mod.setStorageMode(.LEGACY_RLS);
+}
+
 /// ISS-501: Storage-mode-aware connection routing.
 /// Replaces TNT-03's applyRequestTenantContext().
 /// Called unconditionally by Pool.acquire() after selecting the connection.
@@ -189,30 +268,7 @@ fn applyRequestStorageRouting(conn: *Conn) PoolError!void {
     // On first connection acquisition: query tenant for storage_mode,
     // cache it in tenant_context.  On subsequent acquisitions: use cached value.
     if (!tenant_context_mod.hasStorageMode()) {
-        resolveAndCacheStorageMode: {
-            const row = conn.queryRow(
-                std.heap.page_allocator,
-                "SELECT storage_mode FROM public.tenant WHERE id = $1::uuid LIMIT 1",
-                &.{tenant_id},
-            ) catch {
-                break :resolveAndCacheStorageMode;
-            };
-
-            if (row) |r| {
-                defer {
-                    if (r[0]) |v| std.heap.page_allocator.free(v);
-                    std.heap.page_allocator.free(r);
-                }
-                if (r[0]) |mode_str| {
-                    if (std.mem.eql(u8, mode_str, "SCHEMA")) {
-                        tenant_context_mod.setStorageMode(.SCHEMA);
-                        break :resolveAndCacheStorageMode;
-                    }
-                }
-            }
-            // Default: LEGACY_RLS (tenant not found, null mode, or any non-SCHEMA value).
-            tenant_context_mod.setStorageMode(.LEGACY_RLS);
-        }
+        try resolveAndCacheStorageMode(conn, tenant_id);
     }
 
     const mode = tenant_context_mod.getStorageMode();

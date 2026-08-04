@@ -493,6 +493,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .imports = &.{
             .{ .name = "pool", .module = pool_module },
+            .{ .name = "tenant_context", .module = tenant_context_mod },
         },
     });
 
@@ -1617,6 +1618,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .imports = &.{
             .{ .name = "pool", .module = pool_root_mod },
+            .{ .name = "tenant_context", .module = tenant_context_mod },
         },
     });
     const migrate_imports: []const std.Build.Module.Import = &.{

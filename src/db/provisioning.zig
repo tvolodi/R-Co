@@ -6,12 +6,19 @@
 //! tenant_schemas registry timestamp.
 //!
 //! Design artefact: src/design/spt-01-schema-per-tenant-provisioning.md
+//!
+//! ISS-0114 / GH-377: After bpm_provision_tenant_schema() succeeds, this
+//! function MUST additionally INSERT/UPDATE a public.tenant row with
+//! storage_mode='SCHEMA' so the routing layer (pool.zig::applyRequestStorageRouting)
+//! picks the SCHEMA branch on the very next pool.acquire() in this thread —
+//! without relying on the public.tenant_schemas heuristic fallback.
 const std = @import("std");
 const pool_mod = @import("pool");
 const Pool = pool_mod.Pool;
 const PoolError = pool_mod.PoolError;
 const migrations = @import("migrations.zig");
 const MigrationError = migrations.MigrationError;
+const tenant_context_mod = @import("tenant_context");
 
 // ---------------------------------------------------------------------------
 // Public error set
@@ -30,6 +37,11 @@ pub const ProvisionError = error{
     RegistryUpdateFailed,
     /// An unexpected DB query failure (idempotency check or other query).
     QueryFailed,
+    /// ISS-0114 / GH-377: The post-bpm_provision_tenant_schema INSERT
+    /// into public.tenant (storage_mode='SCHEMA') failed. Distinct from
+    /// SchemaCreationFailed so callers can distinguish provisioning from
+    /// promotion failures.
+    SchemaPromotionFailed,
 };
 
 // ---------------------------------------------------------------------------
@@ -126,18 +138,38 @@ pub fn provisionTenantSchema(
         ) catch return ProvisionError.RegistryUpdateFailed;
     }
 
-    // Step 6a: Set the tenant's storage_mode to SCHEMA so newly provisioned
-    // tenants use the schema-per-tenant path during SPT coexistence.
+    // Step 6a: ISS-0114 / GH-377 — authoritative promotion to SCHEMA storage_mode.
+    //
+    // After bpm_provision_tenant_schema() succeeds and the migration runner
+    // has finished, INSERT/UPDATE a public.tenant row with storage_mode='SCHEMA'
+    // for this tenant. This guarantees the next pool.acquire() in this thread
+    // receives the SCHEMA routing branch without relying on the heuristic
+    // public.tenant_schemas fallback in applyRequestStorageRouting().
+    //
+    // Idempotency: ON CONFLICT (id) DO UPDATE only fires when storage_mode is
+    // 'LEGACY_RLS' OR NULL, so re-running this for an already-SCHEMA tenant
+    // is a no-op. This matches the behaviour of migration 1135.
     {
         const conn = pool.acquire() catch |err| switch (err) {
             PoolError.ExhaustedPool => return ProvisionError.PoolExhausted,
-            else => return ProvisionError.RegistryUpdateFailed,
+            else => return ProvisionError.SchemaPromotionFailed,
         };
         defer pool.release(conn);
 
         conn.exec(
-            "UPDATE tenant SET storage_mode = 'SCHEMA' WHERE id = $1::uuid",
-            &.{tenant_id_str},
-        ) catch return ProvisionError.RegistryUpdateFailed;
+            \\INSERT INTO public.tenant (id, storage_mode) VALUES ($1::uuid, 'SCHEMA')
+            \\ON CONFLICT (id) DO UPDATE
+            \\  SET storage_mode = 'SCHEMA'
+            \\  WHERE public.tenant.storage_mode = 'LEGACY_RLS'
+            \\     OR public.tenant.storage_mode IS NULL
+        , &.{tenant_id_str}) catch return ProvisionError.SchemaPromotionFailed;
     }
+
+    // Step 6b: Prime the thread-local tenant_context so the very next
+    // pool.acquire() in this thread sees storage_mode_resolved=true and
+    // skips the resolver query. Without this, the first acquire() after
+    // provisioning re-runs the resolver, which on a slow DB or under
+    // contention can race against the migration runner's residual
+    // connection state.
+    tenant_context_mod.setStorageMode(.SCHEMA);
 }
