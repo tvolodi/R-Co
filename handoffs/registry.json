@@ -724,8 +724,10 @@
       "created_at": "2026-08-04T17:43:57Z",
       "status": "COMPLETED",
       "stage": "WF-03 Step 5",
-      "completed_at": "2026-08-04T18:00:03Z",
-      "result": "FAIL"
+      "started_at": "2026-08-04T18:05:30Z",
+      "completed_at": "2026-08-04T18:11:43Z",
+      "result": "FAIL",
+      "result_summary": "Step 6a slug defect FULLY RESOLVED at commit 9905927. 3 of 7 ISS-0114 TCs PASS (TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-05); 4 of 7 still fail on different non-ISS-0114 defects. Build Summary: 560/116 pass/fail (was 525/151 prior). No new regressions."
     }
   ]
 }
