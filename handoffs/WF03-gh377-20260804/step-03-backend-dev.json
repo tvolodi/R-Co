@@ -5,7 +5,7 @@
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-08-04T17:38:32Z",
-  "status": "IN_PROGRESS",
+  "status": "COMPLETED",
   "priority": "NORMAL",
   "context": {
     "stage": "WF-03 Step 3",
@@ -44,9 +44,18 @@
       "fn:run-integration-tests"
     ]
   },
-  "result": null,
+  "result": {
+    "status": "PASS",
+    "summary": "REWORK 1 fix: src/db/provisioning.zig Step 6a INSERT and migration 1135 now populate ALL 7 NOT NULL columns of public.tenant (id, slug, display_name, status, tenant_type, storage_mode, created_at, updated_at \u2014 last three have DB defaults but we set them explicitly for clarity). Pattern mirrors migration 031: slug = 'tenant-' || replace(id::text, '-', ''); display_name = 'Auto-provisioned tenant ' || substr(id::text, 1, 8); status='ACTIVE'; tenant_type='production'; storage_mode='SCHEMA'; created_at/updated_at=NOW(). ON CONFLICT (id) DO UPDATE only flips storage_mode='SCHEMA' when the existing row is still LEGACY_RLS or NULL \u2014 preserves an already-SCHEMA tenant (idempotent). Validated: zig build exit 0, zig build test exit 0, zig build migrate exit 0 (1135 applied at 2026-08-04 18:04:32Z), python tools/lint_sql_param_types.py exit 0 (0 BLOCKER/0 MAJOR/0 MINOR), no 'error set' warnings. Smoke-tested the Zig SQL pattern against the real PostgreSQL dev DB in a rolled-back transaction: INSERT returned rowcount=1 and the SELECT returned a fully-populated public.tenant row matching the expected schema. Committed as 9905927 on feature/WF03-gh377-20260804 and pushed to remote (c8c9044..9905927).",
+    "artifacts_out": [
+      "src/db/provisioning.zig",
+      "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql"
+    ],
+    "issues": [],
+    "next_action": "Route to TEST-RUNNER (Step 5 retry)"
+  },
   "rework_count": 1,
   "max_rework": 3,
   "started_at": "2026-08-04T17:38:47Z",
-  "completed_at": "2026-08-04T17:43:29Z"
+  "completed_at": "2026-08-04T18:05:39Z"
 }
