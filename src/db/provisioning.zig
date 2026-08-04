@@ -146,6 +146,13 @@ pub fn provisionTenantSchema(
     // receives the SCHEMA routing branch without relying on the heuristic
     // public.tenant_schemas fallback in applyRequestStorageRouting().
     //
+    // REWORK 1 (2026-08-04): The original INSERT only populated (id, storage_mode)
+    // which violated C23502 NOT NULL on slug, display_name, status, tenant_type,
+    // created_at, updated_at. public.tenant has 7 NOT NULL columns total (see
+    // information_schema.columns). The patch populates ALL of them with stable
+    // defaults derived from the tenant_id (slug, display_name) or with the
+    // schema default values (status, tenant_type, created_at, updated_at).
+    //
     // Idempotency: ON CONFLICT (id) DO UPDATE only fires when storage_mode is
     // 'LEGACY_RLS' OR NULL, so re-running this for an already-SCHEMA tenant
     // is a no-op. This matches the behaviour of migration 1135.
@@ -157,9 +164,28 @@ pub fn provisionTenantSchema(
         defer pool.release(conn);
 
         conn.exec(
-            \\INSERT INTO public.tenant (id, storage_mode) VALUES ($1::uuid, 'SCHEMA')
+            \\INSERT INTO public.tenant (
+            \\    id,
+            \\    slug,
+            \\    display_name,
+            \\    status,
+            \\    tenant_type,
+            \\    storage_mode,
+            \\    created_at,
+            \\    updated_at
+            \\) VALUES (
+            \\    $1::uuid,
+            \\    'tenant-' || replace($1::text, '-', ''),
+            \\    'Auto-provisioned tenant ' || substr($1::text, 1, 8),
+            \\    'ACTIVE',
+            \\    'production',
+            \\    'SCHEMA',
+            \\    NOW(),
+            \\    NOW()
+            \\)
             \\ON CONFLICT (id) DO UPDATE
-            \\  SET storage_mode = 'SCHEMA'
+            \\  SET storage_mode = 'SCHEMA',
+            \\      updated_at = NOW()
             \\  WHERE public.tenant.storage_mode = 'LEGACY_RLS'
             \\     OR public.tenant.storage_mode IS NULL
         , &.{tenant_id_str}) catch return ProvisionError.SchemaPromotionFailed;

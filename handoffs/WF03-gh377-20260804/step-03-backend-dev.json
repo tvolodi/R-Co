@@ -5,7 +5,7 @@
   "from_agent": "ORCH",
   "to_agent": "BACKEND-DEV",
   "created_at": "2026-08-04T17:38:32Z",
-  "status": "COMPLETED",
+  "status": "IN_PROGRESS",
   "priority": "NORMAL",
   "context": {
     "stage": "WF-03 Step 3",
@@ -22,7 +22,7 @@
     ]
   },
   "task": {
-    "description": "Implement the fix for ISS-0114 per the validated design at src/design/iss-0114-fix.md. Five changes required:\n\n1. src/db/pool.zig :: applyRequestStorageRouting \u2014 add resolveAndCacheStorageMode fallback: when SELECT storage_mode FROM public.tenant WHERE id=$1 returns 0 rows, query public.tenant_schemas for that tenant_id; if found, treat as SCHEMA mode. This is the resolver fallback heuristic that prevents sticky LEGACY_RLS routing for freshly-provisioned tenants.\n\n2. src/db/provisioning.zig :: provisionTenantSchema \u2014 after bpm_provision_tenant_schema succeeds, INSERT INTO public.tenant (id, storage_mode) VALUES ($1, 'SCHEMA') ON CONFLICT (id) DO UPDATE SET storage_mode='SCHEMA' WHERE public.tenant.storage_mode='LEGACY_RLS' OR public.tenant.storage_mode IS NULL. Then call tenant_context_mod.setStorageMode(.SCHEMA). New ProvisionError.SchemaPromotionFailed variant on INSERT failure.\n\n3. migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql \u2014 backfill migration: for every row in public.tenant_schemas that has no matching public.tenant row OR has storage_mode != 'SCHEMA', upsert with storage_mode='SCHEMA'. Idempotent.\n\n4. src/db/migrations.zig :: runForSchema \u2014 add SHOW search_path post-condition assertion after SET LOCAL; verify result includes tenant_<uuid>. If absent, return MigrationError.SchemaSetupFailed.\n\n5. tests/integration/setup.zig (or equivalent fixture file) \u2014 ensure tenant_context.clear() is invoked per-test so threadlocal state from a prior test does not leak into the next test's first pool checkout.\n\nFollow Zig conventions per docs/guides/backend_developer_guide.md. Use prepared statements only (no SQL string interpolation). Match signatures from the design's Public Interface section.",
+    "description": "Implement the fix for ISS-0114 per the validated design at src/design/iss-0114-fix.md. Five changes required:\n\n1. src/db/pool.zig :: applyRequestStorageRouting \u2014 add resolveAndCacheStorageMode fallback: when SELECT storage_mode FROM public.tenant WHERE id=$1 returns 0 rows, query public.tenant_schemas for that tenant_id; if found, treat as SCHEMA mode. This is the resolver fallback heuristic that prevents sticky LEGACY_RLS routing for freshly-provisioned tenants.\n\n2. src/db/provisioning.zig :: provisionTenantSchema \u2014 after bpm_provision_tenant_schema succeeds, INSERT INTO public.tenant (id, storage_mode) VALUES ($1, 'SCHEMA') ON CONFLICT (id) DO UPDATE SET storage_mode='SCHEMA' WHERE public.tenant.storage_mode='LEGACY_RLS' OR public.tenant.storage_mode IS NULL. Then call tenant_context_mod.setStorageMode(.SCHEMA). New ProvisionError.SchemaPromotionFailed variant on INSERT failure.\n\n3. migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql \u2014 backfill migration: for every row in public.tenant_schemas that has no matching public.tenant row OR has storage_mode != 'SCHEMA', upsert with storage_mode='SCHEMA'. Idempotent.\n\n4. src/db/migrations.zig :: runForSchema \u2014 add SHOW search_path post-condition assertion after SET LOCAL; verify result includes tenant_<uuid>. If absent, return MigrationError.SchemaSetupFailed.\n\n5. tests/integration/setup.zig (or equivalent fixture file) \u2014 ensure tenant_context.clear() is invoked per-test so threadlocal state from a prior test does not leak into the next test's first pool checkout.\n\nFollow Zig conventions per docs/guides/backend_developer_guide.md. Use prepared statements only (no SQL string interpolation). Match signatures from the design's Public Interface section.\n\nREWORK 1 (per TEST-RUNNER step 5 FAIL):\n- [BLOCKER] src/db/provisioning.zig Step 6a INSERT INTO public.tenant only sets id + storage_mode, but public.tenant has 7 NOT NULL columns (id, slug, display_name, status, created_at, updated_at, storage_mode, tenant_type). Insert fails with C23502 'null value in column slug' for every fresh tenant; this propagates as SchemaPromotionFailed and 107 downstream test failures.\n- [BLOCKER] migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql has the same defect: only id, storage_mode, created_at inserted. Will fail when applied against current schema.\n- [BLOCKER] TC-DB-03-01 fails with StoreError.InstanceNotFound \u2014 downstream of the above.\n- [MAJOR] lint_test_isolation.py reports 222 BLOCKER + 19 MAJOR on tests/integration \u2014 pre-existing baseline drift, NOT introduced by this fix. Per git blame, the violations originate at commit c4e66ca (2026-05-21). Scope note: do NOT block this fix on it, but the harness signal must be acknowledged.\n\nRequired fix:\n  Step 6a: INSERT INTO public.tenant (id, slug, display_name, status, tenant_type, storage_mode) VALUES ($1, $2, $3, 'ACTIVE', 'production', 'SCHEMA') ON CONFLICT (id) DO UPDATE SET storage_mode='SCHEMA' WHERE public.tenant.storage_mode='LEGACY_RLS' OR public.tenant.storage_mode IS NULL. Use a stable slug derived from the tenant_id (e.g. 'tenant-' || encode($1::bytea, 'hex')) or accept slug as a parameter.\n  Migration 1135 must match. Pass slug/display_name/tenant_type as either derived from tenant_id or via a (SELECT t.tenant_id, t.storage_mode FROM public.tenant_schemas t) subquery that pulls existing columns.\n  Look up the actual NOT NULL columns of public.tenant via information_schema.columns and read the schema thoroughly before patching.\n\nAfter fix, re-run zig build test + zig build migrate. Integration test verification belongs to TEST-RUNNER, NOT back to you \u2014 BACKEND-DEV stops at clean build + migrate.\n",
     "acceptance_criteria": [
       "zig build exits 0",
       "zig build test exits 0",
@@ -44,21 +44,8 @@
       "fn:run-integration-tests"
     ]
   },
-  "result": {
-    "status": "PASS",
-    "summary": "Implemented ISS-0114 / GH-377 tenant-schema routing fix in five coordinated changes per src/design/iss-0114-fix.md: (1) src/db/pool.zig :: resolveAndCacheStorageMode helper now falls back to public.tenant_schemas when public.tenant returns 0 rows, preventing sticky LEGACY_RLS routing for freshly-provisioned tenants; (2) src/db/provisioning.zig :: provisionTenantSchema now performs authoritative INSERT ON CONFLICT DO UPDATE into public.tenant (storage_mode='SCHEMA') with a new SchemaPromotionFailed error variant, and primes tenant_context via setStorageMode(.SCHEMA); (3) migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql backfills public.tenant from public.tenant_schemas in one idempotent statement; (4) src/db/migrations.zig :: runForSchema now executes SHOW search_path and asserts the tenant schema name is present, returning MigrationError.SchemaSetupFailed otherwise; (5) tests/integration/helpers.zig :: TestHarness.init clears any threadlocal tenant_context residue before each test runs. Also wired tenant_context as a build.zig dependency on both provisioning module instances (provisioning_mod_api08, provisioning_mod_migrate).",
-    "artifacts_out": [
-      "src/db/pool.zig",
-      "src/db/provisioning.zig",
-      "src/db/migrations.zig",
-      "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql",
-      "tests/integration/helpers.zig",
-      "build.zig"
-    ],
-    "issues": [],
-    "next_action": "Route to TEST-RUNNER (Step 5)"
-  },
-  "rework_count": 0,
+  "result": null,
+  "rework_count": 1,
   "max_rework": 3,
   "started_at": "2026-08-04T17:38:47Z",
   "completed_at": "2026-08-04T17:43:29Z"
