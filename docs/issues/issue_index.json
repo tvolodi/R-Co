@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "last_updated": "2026-08-03T21:19:11Z",
-  "next_issue_id": 128,
+  "last_updated": "2026-08-04T18:15:39Z",
+  "next_issue_id": 130,
   "issues": [
     {
       "id": "ISS-0205",
@@ -1176,7 +1176,7 @@
     {
       "id": "ISS-0114",
       "title": "Tenant schema and search_path state causes GH-359-class failures",
-      "status": "OPEN",
+      "status": "RESOLVED",
       "severity": "MAJOR",
       "category": "tenant-schema-isolation",
       "run_id": "WF03-gh364-20260801",
@@ -1189,7 +1189,7 @@
         "migrations/"
       ],
       "created_at": "2026-08-01T08:52:13Z",
-      "resolved_at": null,
+      "resolved_at": "2026-08-04T18:15:39Z",
       "github_issue": "https://github.com/tvolodi/R-Co/issues/377"
     },
     {
@@ -1446,6 +1446,52 @@
       "created_at": "2026-08-01T12:09:25Z",
       "resolved_at": null,
       "github_issue": "https://github.com/tvolodi/R-Co/issues/392"
+    },
+    {
+      "id": "ISS-0127",
+      "title": "pool.zig resolver falls through to LEGACY_RLS on tenant_schemas fallback for TC-TNT-03-01/03",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "tenant-routing / resolver-fallthrough-under-concurrent-pool-reuse",
+      "run_id": "WF03-gh377-20260804",
+      "handoff_id": null,
+      "affected_areas": [
+        "src/db/pool.zig::resolveAndCacheStorageMode",
+        "tests/integration/db/tenant/concurrent_search_path*.zig"
+      ],
+      "created_at": "2026-08-04T18:15:39Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/417"
+    },
+    {
+      "id": "ISS-0128",
+      "title": "event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01 store.append",
+      "status": "OPEN",
+      "severity": "BLOCKER",
+      "category": "event-store / instance-lookup-race-after-provision",
+      "run_id": "WF03-gh377-20260804",
+      "handoff_id": null,
+      "affected_areas": [
+        "src/event_store/store.zig"
+      ],
+      "created_at": "2026-08-04T18:15:39Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/418"
+    },
+    {
+      "id": "ISS-0129",
+      "title": "Migration 1135 DROP TRIGGER deadlock C40P01 on TC-TNT-01-01 re-provisioning",
+      "status": "OPEN",
+      "severity": "MAJOR",
+      "category": "migration / lock-contention-under-concurrent-DDL",
+      "run_id": "WF03-gh377-20260804",
+      "handoff_id": null,
+      "affected_areas": [
+        "migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql"
+      ],
+      "created_at": "2026-08-04T18:15:39Z",
+      "resolved_at": null,
+      "github_issue": "https://github.com/tvolodi/R-Co/issues/419"
     }
   ]
 }

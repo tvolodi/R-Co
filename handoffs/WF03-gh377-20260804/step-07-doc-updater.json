@@ -1,0 +1,72 @@
+{
+  "handoff_id": "e64f5d9b-6b40-4cbb-abd0-b1b5dc41208a",
+  "run_id": "WF03-gh377-20260804",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-04T18:14:52Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 7",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "1e33a003-45e4-466c-be03-fff5d10fe41e",
+      "5142a191-93fe-4045-88af-2da3134eade3",
+      "d851a76f-2c67-477c-8bcc-134ff71582c5",
+      "c080be91-6230-40ca-8365-46cd7873f07c"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml",
+      "tests/reports/report-2026-08-04-WF03-gh377.yaml",
+      "docs/issues/ISS-0114.json",
+      "docs/issues/issue_index.json",
+      "CHANGELOG.md",
+      "handoffs/WF03-gh377-20260804/step-03-backend-dev.json",
+      "handoffs/WF03-gh377-20260804/step-05-test-runner.json"
+    ]
+  },
+  "task": {
+    "description": "Update CHANGELOG.md and resolve ISS-0114.\n\nOUTCOME CONTEXT (from TEST-RUNNER step 5 retry, commit 0299c37):\n- The Step 6a INSERT INTO public.tenant slug/NOT-NULL defect IS FULLY RESOLVED (97 \u2192 0 occurrences).\n- Net test pass change: +35 passes / -35 fails, no regressions.\n- 3 of 7 affected TCs now PASS (TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-05).\n- 4 of 7 still FAIL but the defects are distinct from ISS-0114: D1 (resolver LEGACY_RLS fallthrough on TC-TNT-03-01/03), D2 (StoreError.InstanceNotFound on TC-DB-03-01), D3 (DROP TRIGGER C40P01 deadlock on TC-TNT-01-01).\n\nTASKS:\n\n1. Update CHANGELOG.md to record:\n   - [WF-03-gh377] ISS-0114 FIXED: tenant-schema routing resolver fallback (pool.zig), Step 6a authoritative public.tenant INSERT (provisioning.zig), backfill migration 1135 (postgres), SHOW search_path post-condition (migrations.zig), test-harness tenant_context.clear() reset. Net +35 passes. Remaining defects filed as ISS-0115/D1, ISS-0116/D2, ISS-0117/D3.\n\n2. Update docs/issues/ISS-0114.json to status RESOLVED with resolution narrative:\n   - root_cause: Step 6a INSERT INTO public.tenant SET (id, storage_mode) violating 7 NOT NULL columns (slug, display_name, status, tenant_type, created_at, updated_at) \u2014 C23502.\n   - resolution: Step 6a now sets all 8 columns. Migration 1135 matches. Resolver fallback in pool.zig unchanged.\n   - tests_passing: TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-05.\n   - follow_up: 3 distinct defects carried as separate ISS files (D1/D2/D3).\n   - related_run: WF03-gh377-20260804.\n\n3. File three follow-up issues via gh issue create (REQUIRED \u2014 see \u00a7\u00a7 No Issue Left Local-Only). Use sequential ISS numbers in docs/issues/. For each:\n   - create docs/issues/ISS-NNNN.json with summary/root_cause/acceptance_criteria/repro/status=OPEN\n   - gh issue create --title <title> --body \"<body>\" --label \"bug,integration,tenant-routing\"\n   - record github_issue URL in the JSON\n\n   ISS-0115 (D1): pool.zig resolver still falls through to LEGACY_RLS on TC-TNT-03-01 (search_path stays 'public' instead of tenant_<uuid>) and TC-TNT-03-03 (both conn_a/b stuck on 'public'). The tenant_schemas fallback in resolveAndCacheStorageMode does not trigger for these fixtures, or the storage_mode is set but SET LOCAL is not being honored per-conn under concurrent resets.\n\n   ISS-0116 (D2): TC-DB-03-01 fails with StoreError.InstanceNotFound at event_store/store.zig:337 on store.append. Downstream of tenants now provisioning successfully, exposes a deeper event-store idempotency issue.\n\n   ISS-0117 (D3): TC-TNT-01-01 fails with C40P01 deadlock on DROP TRIGGER during tenant re-provisioning. Migration 1135's DROP TRIGGER appears to race with another test's INSERT INTO public.tenant ON CONFLICT path.\n\n4. Run git add -A; git commit -m 'docs(WF03-gh377): resolve ISS-0114, file ISS-0115/0116/0117'; git push origin feature/WF03-gh377-20260804.\n\n5. Update handoff result, registry.json, orchestrator.log.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated with WF-03-gh377 entry",
+      "docs/issues/ISS-0114.json status=RESOLVED",
+      "docs/issues/ISS-0115.json created (D1)",
+      "docs/issues/ISS-0116.json created (D2)",
+      "docs/issues/ISS-0117.json created (D3)",
+      "gh issue create succeeded for all three new ISS files (verify via gh issue list --search)",
+      "Each new GitHub issue has the rco-sync-ref comment",
+      "All work committed and pushed to feature/WF03-gh377-20260804"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:resolve-issue",
+      "fn:register-issue",
+      "fn:file-github-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Resolved ISS-0114 (Tenant schema and search_path state, GitHub #377): updated CHANGELOG.md with full three-layer fix narrative under [Unreleased] — 2026-08-04; updated docs/issues/ISS-0114.json to status=RESOLVED with resolved_at=2026-08-04T18:15:39Z, root_cause (Step 6a C23502 cascade), resolution (Step 6a now populates all 8 columns + migration 1135 backfill + resolver fallback unchanged), tests_passing [TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-05], and follow_up_iss [ISS-0127, ISS-0128, ISS-0129]. Filed three follow-up issues on GitHub: #417 = ISS-0127 (D1 resolver fallthrough, BLOCKER), #418 = ISS-0128 (D2 StoreError.InstanceNotFound, BLOCKER), #419 = ISS-0129 (D3 migration 1135 DROP TRIGGER deadlock, MAJOR). All three local ISS files (ISS-0127/0128/0129) created with the same body structure as the GitHub issue, with rco-sync-ref comment verified at the top of each issue body. Updated docs/issues/issue_index.json: appended three new entries, marked ISS-0114 as RESOLVED, bumped next_issue_id 128→130, last_updated=2026-08-04T18:15:39Z. Note: the task spec listed ISS-0115/0116/0117, but those local numbers were already spoken for by WF03-gh364-20260801 (GitHub #378/379/380, distinct task-claim/DLQ/graph-validation clusters). Renumbered to ISS-0127/0128/0129 per the No Issue Left Local-Only collision-check protocol.",
+    "artifacts_out": [
+      "CHANGELOG.md",
+      "docs/issues/ISS-0114.json",
+      "docs/issues/ISS-0127.json",
+      "docs/issues/ISS-0128.json",
+      "docs/issues/ISS-0129.json",
+      "docs/issues/issue_index.json",
+      "GitHub issue #417 (ISS-0127, https://github.com/tvolodi/R-Co/issues/417)",
+      "GitHub issue #418 (ISS-0128, https://github.com/tvolodi/R-Co/issues/418)",
+      "GitHub issue #419 (ISS-0129, https://github.com/tvolodi/R-Co/issues/419)",
+      "handoffs/WF03-gh377-20260804/step-07-doc-updater.json",
+      "handoffs/registry.json",
+      "handoffs/orchestrator.log"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step Final: PR + merge)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T18:15:10Z",
+  "completed_at": "2026-08-04T18:15:39Z"
+}

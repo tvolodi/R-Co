@@ -1,0 +1,38 @@
+{
+  "iss_id": "ISS-0128",
+  "title": "event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01 store.append",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "event-store / instance-lookup-race-after-provision",
+  "reporter": "TEST-RUNNER (WF-03 gh377)",
+  "run_id": "WF03-gh377-20260804",
+  "handoff_id": null,
+  "affected_areas": [
+    "src/event_store/store.zig"
+  ],
+  "created_at": "2026-08-04T18:15:39Z",
+  "resolved_at": null,
+  "notes": "Follow-up D2 from the WF03-gh377-20260804 rework-1 retry: after successful tenant provisioning (ISS-0114 fixed), TC-DB-03-01 store.append fails with StoreError.InstanceNotFound at store.zig:337. The event instance was just provisioned but the store cannot locate it for append.",
+  "root_cause": "Likely a race between tenant schema visibility being committed and the event_store's lookup query. The previous C23502 cascade may have masked this; now that tenants provision correctly, the underlying assumption (schema visible to event_store.lookup) is violated.",
+  "repro_steps": [
+    "1. Run zig build migrate",
+    "2. zig build test-integration",
+    "3. TC-DB-03-01 fails: StoreError.InstanceNotFound"
+  ],
+  "candidate_resolution": "Add explicit commit barrier between tenant schema creation and event_store.lookup in the test flow; or change event_store.lookup to qualify the tenant schema explicitly (schema_name.table_name) rather than relying on the current connection's search_path. Verify idempotency invariant holds.",
+  "resolution": null,
+  "files_to_change": [
+    "src/event_store/store.zig",
+    "tests/integration/db_integration_test.zig"
+  ],
+  "acceptance_criteria": [
+    "TC-DB-03-01 passes",
+    "store.append idempotency invariant holds",
+    "No regression in already-passing event_store tests"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/418",
+  "prevention": [
+    "event_store.lookup must qualify its tenant schema explicitly; never rely on the connection's search_path at lookup time.",
+    "Test flows that combine tenant provisioning + event_store.append must explicitly observe the schema-creation commit before the first append."
+  ]
+}
