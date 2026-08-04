@@ -1,0 +1,53 @@
+{
+  "handoff_id": "41420000-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh414-20260804",
+  "step": "2",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-04T10:35:29Z",
+  "status": "COMPLETED",
+  "priority": "BLOCKER",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/414",
+    "issue_title": "Test isolation BLOCKER \u2014 killIdleConnections() terminates all idle DB connections",
+    "iss_id": "ISS-0602",
+    "branch_name": "feature/WF03-gh414-20260804",
+    "related_handoff_ids": [
+      "41400000-0000-0000-0000-000000000000",
+      "41405000-0000-0000-0000-000000000000",
+      "41410000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0602-diagnosis.yaml"
+    ]
+  },
+  "task": {
+    "description": "Step 2 \u2014 design artefact for the test isolation fix. Read the diagnosis in docs/issue-reports/ISS-0602-diagnosis.yaml first. Then produce a Type E prose design at src/design/iss0602_test_isolation.md covering:\n\n  1. Background \u2014 quote the current SQL from tests/integration/helpers.zig:322 and explain why it's too broad for the shared bpm_test database.\n\n  2. Architecture \u2014 two parts:\n     a. application_name tag \u2014 set on every test connection in TestHarness.init() to a per-process UUID prefixed with 'bpm-test-'. Mention the env-var fallback BPM_TEST_RUN_ID if available.\n     b. Scoped killIdleConnections() \u2014 filter pg_stat_activity by application_name LIKE 'bpm-test-%'.\n\n  3. Public function signatures + behaviour \u2014 list exactly what changes:\n     - TestHarness.init() must call a new private helper setTestApplicationName(conn) AFTER conn creation and BEFORE the migration runner.\n     - killIdleConnections(conn) \u2014 change SQL only, optional parameter for the prefix (default 'bpm-test-').\n     - GetTestApplicationName() const []const u8 \u2014 return the prefix used.\n\n  4. Error taxonomy \u2014 what happens if SET application_name fails (log error, fall back to 'bpm-test-unknown'?). What if the pid != pg_backend_pid() guard fails (should never happen, but log).\n\n  5. Dependencies \u2014 Zig std.posix.getrandom() (or std.rand) for UUID generation; pg.Conn for the SET; nothing else.\n\n  6. Test plan \u2014 tests/integration/iss0602_cross_test_isolation_test.zig must:\n     a. Open two TestHarness instances (different application_names).\n     b. Verify the application_name is set AND distinct on both.\n     c. Hold harness B's connection in 'idle in transaction'.\n     d. Call killIdleConnections() on harness A.\n     e. Assert harness B's connection is still alive (SELECT 1 succeeds).\n     f. Assert harness A's connection is also still alive (self exclusion).\n\n  7. Acceptance criteria \u2014 mirror the 4 AC items from issue #414 exactly:\n     a. killIdleConnections() no longer terminates other test processes' connections.\n     b. Concurrent zig build test-integration completes without administrator-command terminations.\n     c. Connection cleanup remains bounded.\n     d. Regression test proves one test process cannot terminate another.\n\n  8. Out-of-scope \u2014 explicitly NOT changing: real production connection pool, the dispatcher, pg_advisory_lock usage, any migration. ONLY tests/integration/helpers.zig and the new test file.\n\nUse the prose template per docs/guides/backend_developer_guide.md \u00a76. NO implementation code \u2014 only signatures, SQL strings, and behaviour descriptions. NO function bodies.\n\nREWORK 1 (per CODE-DESIGN-VALIDATOR issues ISS-0602-DESIGN-01..06):\n\n[BLOCKER-01] Fix the SQL \u2014 use a per-process OWNER TAG, not a LIKE prefix. Pattern: owner_tag = uid_<12-hex> from std.crypto.random; bind killIdleConnections() to the caller's exact tag via parameter (application_name = payload.id, NOT LIKE). The regression test must use DIFFERENT owner_tags for two harnesses; the predicate must NOT match another tag.\n\n[BLOCKER-02] The cross-process regression test MUST be in-scope, not deferred. Specify a real two-OS-process test (spawn two `zig build test-...` binaries in parallel via a test runner that uses std.ChildProcess, OR a bash-style harness that runs TestBinaryA and TestBinaryB as separate processes, asserts both connections survive the kill broadcast). Do NOT defer.\n\n[MAJOR-03] Specify ONE parameterized implementation: SET via SELECT set_config('application_name', payload.id, false) with the validated owner tag. Validate the tag matches [A-Za-z0-9_-]+ before passing to set_config (reject anything else with a typed error). NO SQL string interpolation of the tag value.\n\n[MAJOR-04] Remove ALL implementation code from the design. SQL strings (as fenced sql blocks showing the LITERAL text but NOT inline execution) are OK. Behavior descriptions are OK. NO Zig function bodies, NO allocPrint calls, NO doc-comment patches. Just signatures, literal SQL strings, error types, and behavior.\n\n[MAJOR-05] Specify the ownership-guard failure contract: if the killIdles-SQL kills 0 backends (or only the current backend), the call counts as a no-op. If the predicate accidentally matches OTHER owners, log a warning at the call site. Define a typed error or a designated log channel for this contract.\n\n[MAJOR-06] Add a data-flow diagram (ASCII or Mermaid) showing: process A TestHarness.create() -> conn SET application_name = owner_tag_A; process B TestHarness.create() -> conn SET application_name = owner_tag_B; process A killIdleConnections() -> SELECT pg_terminate_backend WHERE application_name = owner_tag_A AND pid != pg_backend_pid() -> only A's connections terminated; process B connections survive.\n\nProcess A and B share the same bpm_test database; their pg_stat_activity rows are intermixed; the LIKE approach was the bug. The exact-tag approach is the fix.\n\nThe design must be reworked in-place at src/design/iss0602_test_isolation.md.\n",
+    "acceptance_criteria": [
+      "src/design/iss0602_test_isolation.md exists with all 8 sections above",
+      "No implementation code in the design (only signatures, SQL strings, behaviour)",
+      "Public function signatures are listed for the new helpers and the changed killIdleConnections",
+      "Error taxonomy exists for both SET application_name failure and the pg_terminate_backend guard",
+      "Out-of-scope explicitly excludes production code paths",
+      "Run python tools/lint_design_artefact.py src/design/iss0602_test_isolation.md exits 0 (no BLOCKER/MAJOR)",
+      "Return next_action: 'Route to CODE-DESIGN-VALIDATOR (Step 2b hard gate)'"
+    ],
+    "functions_to_call": [
+      "fn:write-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design reworked REWORK 1 \u2014 per-process opaque owner tag (uid_<12hex>, std.crypto.random + std.posix.getrandom fallback, std.atomic.Value(?Tag) cache), parameterised SELECT set_config(application_name, \\, false), killIdleConnections filters by application_name = \\ (exact equality, NOT LIKE-prefix). Cross-process regression now in-scope as tests/integration/iss0602_cross_process_isolation_test.zig using std.process.Child to spawn two child binaries (TEST_ROLE=process_a / process_b). Ownership-guard failure contract specified: 0 rows terminated = no-op; defensive post-check for cross-owner rows = error.OwnerTagMismatch. Data-flow diagram split across 5 fenced blocks (each <= 40 lines). All Validator BLOCKER+MAJOR issues addressed. Lint: OK - 1 file(s) checked, no issues.",
+    "artifacts_out": [
+      "src/design/iss0602_test_isolation.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b hard gate)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-08-04T10:56:44Z",
+  "completed_at": "2026-08-04T05:57:47Z"
+}

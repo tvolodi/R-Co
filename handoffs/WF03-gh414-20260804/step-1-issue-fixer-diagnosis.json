@@ -1,0 +1,50 @@
+{
+  "handoff_id": "41410000-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh414-20260804",
+  "step": "1",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-04T10:35:29Z",
+  "status": "COMPLETED",
+  "priority": "BLOCKER",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/414",
+    "issue_title": "Test isolation BLOCKER \u2014 killIdleConnections() terminates all idle DB connections",
+    "iss_id": "ISS-0602",
+    "branch_name": "feature/WF03-gh414-20260804",
+    "related_handoff_ids": [
+      "41400000-0000-0000-0000-000000000000",
+      "41405000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0602.json"
+    ]
+  },
+  "task": {
+    "description": "Step 1 \u2014 root cause diagnosis. Read the failure context:\n  - Symptom: full integration suite fails non-deterministically with PostgreSQL connection termination errors: 'terminating connection due to administrator command' and 'error.ConnectionFailed'.\n  - Location: tests/integration/helpers.zig:322 killIdleConnections() runs 'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = ''idle in transaction'' AND pid != pg_backend_pid()' \u2014 this kills ALL idle-in-transaction connections on the server, not just the current test process's connections. Concurrent test binaries therefore terminate each other's idle connections.\n  - Acceptance criteria: (a) killIdleConnections() no longer terminates connections owned by other test processes; (b) concurrent zig build test-integration completes without administrator-command connection terminations; (c) connection cleanup remains bounded to the current test session or is replaced by a safe isolation mechanism; (d) regression test proves one test process cannot terminate another test process's idle connection.\n\nSearch the knowledge base first per fn:search-issues (look for any prior similar fix for cross-process isolation in tests/integration/helpers.zig). Then diagnose:\n  1. Identify the exact line and the exact SQL pattern that needs scoping.\n  2. Explain why the current WHERE clause is too broad (no filter on application_name OR pid=pg_backend_pid() OR datname filter \u2014 but the test uses ONE shared bpm_test database, so datname filter won't help; the right filter is on application_name OR pids belonging to the current test process).\n  3. Propose the scoping strategy: PostgreSQL allows filtering by application_name (set via connection option) OR by connection-client-IP-substring OR by pid IN (current-backend-subtree). The cleanest solution is to set application_name='bpm-test-<test-run-id>' on every test connection, then filter pg_terminate_backend to 'WHERE application_name LIKE ''bpm-test-%'' AND pid != pg_backend_pid()'. This is the recommended approach.\n  4. Note any callers of killIdleConnections \u2014 only resetTestData() calls it (line 347). Identify the application_name setting point (in TestHarness.init() or wherever the connection is opened).\n  5. Outline the regression test: spawn two concurrent test processes (or simulate with two TestHarness instances simulating different application_names), verify that process A's killIdleConnections() does not terminate process B's connection.\n\nWrite the diagnosis to docs/issue-reports/ISS-0602-diagnosis.yaml (YAML format per docs/agents/AGENT_SYSTEM.md).",
+    "acceptance_criteria": [
+      "docs/issue-reports/ISS-0602-diagnosis.yaml exists with: symptom, root_cause, affected_files (tests/integration/helpers.zig), proposed_fix (scope killIdleConnections by application_name), regression_test_plan (multi-process isolation test)",
+      "Diagnosis cites the exact line numbers (322, 347) and the current SQL",
+      "Diagnosis recommends application_name filtering as the primary strategy (rationale: doesn't require per-process DB, works across all harnesses, single shared DB preserved)",
+      "Return next_action: 'Route to CODE-DESIGNER (Step 2 design)'"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:diagnose"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Diagnosed killIdleConnections() cross-test isolation BLOCKER. tests/integration/helpers.zig:322 runs pg_terminate_backend against every idle-in-transaction connection on the shared bpm_test database. The WHERE clause filters only by state and pid != pg_backend_pid(); it has no application_name or pid-set scope. Concurrent test binaries terminate each other's idle connections. Proposed fix: set application_name='bpm-test-<per-process-uuid>' on every test connection in TestHarness.init() and scope killIdleConnections() to application_name LIKE 'bpm-test-%'. Add regression test tests/integration/iss0602_cross_test_isolation_test.zig that proves one harness cannot terminate another's idle connection.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0602-diagnosis.yaml"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2 design)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T10:38:30Z",
+  "completed_at": "2026-08-04T05:43:50Z"
+}

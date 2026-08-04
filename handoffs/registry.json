@@ -365,7 +365,7 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-03T21:25:52Z",
-      "status": "PENDING",
+      "status": "COMPLETED",
       "stage": "WF-03 Issue Resolving",
       "rework_count": 2,
       "completed_at": "2026-08-03T21:46:27Z"
@@ -515,6 +515,120 @@
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-04T05:17:47Z",
       "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "41400000-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-00-backend-dev.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "00",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-04T10:35:29Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "41405000-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-0.5-issue-fixer.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "0.5",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-04T10:35:29Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "41410000-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-1-issue-fixer-diagnosis.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "1",
+      "from_agent": "ORCH",
+      "to_agent": "ISSUE-FIXER",
+      "created_at": "2026-08-04T10:35:29Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "41420000-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-2-code-designer.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "2",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGNER",
+      "created_at": "2026-08-04T10:35:29Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "4142b000-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-2b-code-design-validator.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "2b",
+      "from_agent": "ORCH",
+      "to_agent": "CODE-DESIGN-VALIDATOR",
+      "created_at": "2026-08-04T10:35:29Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "41430000-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-3-backend-dev.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "3",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-04T10:35:29Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving",
+      "completed_at": "2026-08-04T09:25:35Z",
+      "result_status": "PASS"
+    },
+    {
+      "handoff_id": "41450000-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-5-test-runner.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "5",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-04T08:06:39Z",
+      "status": "SUPERSEDED",
+      "stage": "WF-03 Issue Resolving"
+    },
+    {
+      "handoff_id": "41450001-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-5-test-runner.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "5",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-04T09:07:39Z",
+      "status": "SUPERSEDED",
+      "stage": "WF-03 Issue Resolving (rework 1 retry)",
+      "completed_at": "2026-08-04T09:15:58Z",
+      "result_status": "FAIL"
+    },
+    {
+      "handoff_id": "41450002-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-5-test-runner.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "5",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-04T09:26:59Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving (rework 2 final)"
+    },
+    {
+      "handoff_id": "41470000-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-7-doc-updater.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "7",
+      "from_agent": "ORCH",
+      "to_agent": "DOC-UPDATER",
+      "created_at": "2026-08-04T09:28:45Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving - Final"
     }
   ]
 }

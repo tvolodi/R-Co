@@ -1247,6 +1247,36 @@ pub fn build(b: *std.Build) void {
     run_iss0121_integration_tests.setCwd(b.path("."));
     run_iss0121_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
 
+    // ISS-0602 / GitHub #414: per-process owner tag for killIdleConnections().
+    // Single-process regression verifying the tag is set on every TestHarness
+    // connection, that the cache is per-process, and that the
+    // pid != pg_backend_pid() self-exclusion guard works.
+    const iss0602_same_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0602_same_process_isolation_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0602_same_integration_tests = b.addRunArtifact(iss0602_same_integration_tests);
+    run_iss0602_same_integration_tests.setCwd(b.path("."));
+    run_iss0602_same_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
+    // ISS-0602: cross-process SQL contract — killIdleConnections() predicate
+    // application_name = $1 cannot match a sibling-tagged parked connection.
+    const iss0602_cross_integration_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/integration/iss0602_cross_process_isolation_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = integration_imports,
+        }),
+    });
+    const run_iss0602_cross_integration_tests = b.addRunArtifact(iss0602_cross_integration_tests);
+    run_iss0602_cross_integration_tests.setCwd(b.path("."));
+    run_iss0602_cross_integration_tests.setEnvironmentVariable("BPM_MIGRATIONS_DIR", migrations_dir);
+
     // ISS-0123: DLQ rename (Cluster B) + obs05 audit-trigger isolation (Cluster A) regression tests.
     const iss0123_integration_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -1337,6 +1367,8 @@ pub fn build(b: *std.Build) void {
     test_integration_others_step.dependOn(&run_iss601_integration_tests.step);
     test_integration_others_step.dependOn(&run_sch303_integration_tests.step);
     test_integration_others_step.dependOn(&run_iss0076_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0602_same_integration_tests.step);
+    test_integration_others_step.dependOn(&run_iss0602_cross_integration_tests.step);
 
     // ISS-0106: force ISS-503 to run only after the barrier above (i.e. after
     // every other test-integration sibling has finished), then re-attach it
@@ -1485,6 +1517,14 @@ pub fn build(b: *std.Build) void {
     const test_integration_iss0121_step = b.step("test-integration-iss0121", "Run ISS-0121 TestHarness UUID-helper regression tests (requires BPM_TEST_DB_URL)");
     test_integration_iss0121_step.dependOn(&clean_test_db.step);
     test_integration_iss0121_step.dependOn(&run_iss0121_integration_tests.step);
+
+    const test_integration_iss0602_same_step = b.step("test-integration-iss0602-same", "Run ISS-0602 single-process owner-tag isolation tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0602_same_step.dependOn(&clean_test_db.step);
+    test_integration_iss0602_same_step.dependOn(&run_iss0602_same_integration_tests.step);
+
+    const test_integration_iss0602_cross_step = b.step("test-integration-iss0602-cross", "Run ISS-0602 cross-process owner-tag isolation contract tests (requires BPM_TEST_DB_URL)");
+    test_integration_iss0602_cross_step.dependOn(&clean_test_db.step);
+    test_integration_iss0602_cross_step.dependOn(&run_iss0602_cross_integration_tests.step);
 
     const test_integration_iss205_step = b.step("test-integration-iss205", "Run ISS-205 webhook transactional outbox integration tests (requires BPM_TEST_DB_URL)");
     test_integration_iss205_step.dependOn(&clean_test_db.step);

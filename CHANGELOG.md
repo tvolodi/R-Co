@@ -6,6 +6,18 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0602** ([GitHub #414](https://github.com/tvolodi/R-Co/issues/414) — killIdleConnections() cross-process termination BLOCKER)
+- **Closed GitHub #414**: `killIdleConnections()` in `tests/integration/helpers.zig` no longer terminates idle connections owned by concurrent test binaries on the shared `bpm_test` database.
+- **Root cause**: the helper issued `pg_terminate_backend(pid)` against every `idle in transaction` connection in the database, with no scope to the calling process. Concurrent test binaries terminated each other's connections non-deterministically, causing `error.ConnectionFailed` / `terminating connection due to administrator command` failures across the integration suite.
+- **Fix**: every test connection now declares an `application_name` of the form `bpm-test-<owner-tag>` via `TestHarness.init()` → `setTestApplicationName()`. `killIdleConnections()` filters by `application_name = $1` (exact equality against the caller's owner tag), binding the tag as a parameter. SQL changed from unconditional broadcast to per-process scope.
+- **New helpers in `tests/integration/helpers.zig`**: `Tag` type, `generateOwnerTag()` (returns `uid_<12hex>`), `setTestApplicationName()`, defensive cross-owner verification before issuing `pg_terminate_backend`.
+- **Regression tests** (4, all PASS, zero leaks):
+  - `tests/integration/iss0602_cross_process_isolation_test.zig` — 3 tests covering same-process scope, cross-process isolation, and cross-process same-DB coexistence.
+  - `tests/integration/iss0602_same_process_isolation_test.zig` — 1 test covering single-process tag scoping.
+- **`build.zig`** — added `test-integration-iss0602-cross` and `test-integration-iss0602-same` targets.
+- **Verification**: `zig build test` exits 0; `zig build test-integration-iss0602-{cross,same}` exits 0 (4/4 PASS).
+- Branch: `feature/WF03-gh414-20260804`. Commits: `b8163cb` (initial), `5b52a46` (rework 1 — compile fix), `db5c2c7` (rework 2 — runtime/test logic + memory leak fix), `b8eae6f` (Step 5 PASS evidence). Test report: `tests/reports/report-20260804-WF03-gh414-final.yaml`.
+
 **ISS-0113** ([GitHub #376](https://github.com/tvolodi/R-Co/issues/376) — event-store idempotency fixture isolation, verification pending)
 - **Deterministic UUID collision mitigation**: removed deterministic-seed UUID generation from `tests/integration/iss203_idempotency_keys_test.zig` and `tests/integration/iss202_merge_atomicity_test.zig`; affected fixtures now use `TestHarness.newUuid()` so shared-database test runs do not reuse event and idempotency identifiers.
 - **Regression prevention**: added lint rule **T011** to `tools/lint_test_isolation.py`, which flags deterministic-seed UUID helper definitions and calls in integration tests.

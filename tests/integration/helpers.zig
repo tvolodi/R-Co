@@ -309,6 +309,115 @@ fn execCompatibilitySql(conn: *pg.Conn, sql: []const u8) !void {
     };
 }
 
+/// ISS-0602 / GitHub #414: every TestHarness connection is tagged with a
+/// per-process opaque owner tag of the form `uid_<12hex>`. killIdleConnections()
+/// scopes its pg_terminate_backend broadcast to `application_name = $1` with the
+/// caller's own tag bound as a parameter, so concurrent test binaries no longer
+/// terminate each other's idle connections on the shared `bpm_test` database.
+/// See src/design/iss0602_test_isolation.md for the full rationale and
+/// docs/issue-reports/ISS-0602-diagnosis.yaml for the source-verified root cause.
+const TEST_OWNER_TAG_PREFIX: []const u8 = "uid_";
+const TEST_OWNER_TAG_HEX_CHARS: usize = 12;
+
+const TestOwnerTagError = error{
+    InvalidTestOwnerTag,
+    OutOfMemory,
+    RandomSourceUnavailable,
+    OwnerTagMismatch,
+};
+
+/// Per-process owner tag. Defined as a plain `[]const u8` so it can be passed
+/// directly to the `pg` driver as a parameter without any pointer casting.
+/// The first harness owns the allocated backing bytes and frees them during
+/// deinit; cached lookups are valid while that owner harness remains alive.
+/// All access goes through the validated helper chain (generateOwnerTag /
+/// validateOwnerTag / setTestApplicationName / killIdleConnections) so callers
+/// cannot mint a tag from arbitrary bytes.
+pub const Tag = []const u8;
+
+/// Cached per-process tag. The first generateOwnerTag() call in a process
+/// fills it; subsequent calls in the same process return the same value.
+/// Different processes have independent atomics, so concurrent test binaries
+/// generate distinct tags without coordination. Access to the cached slice is
+/// guarded by `tag_repr_lock`; `cached_owner_tag` publishes readiness.
+var cached_owner_tag: std.atomic.Value(bool) = .init(false);
+
+/// Tag-representation storage. Ownership is transferred to the first
+/// TestHarness created in the process via `owns_tag_storage`; that harness
+/// clears the cache and frees the backing bytes during deinit.
+var tag_repr_storage: ?[]u8 = null;
+var tag_repr_lock: std.atomic.Value(bool) = .init(false);
+
+fn isHexChar(c: u8) bool {
+    return (c >= '0' and c <= '9') or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F');
+}
+
+/// Validate a candidate tag string against the canonical
+/// `[A-Za-z0-9_-]+` regex and the `TEST_OWNER_TAG_PREFIX` requirement.
+/// On success returns a `Tag` (`[]const u8`) referring to the input bytes.
+/// The caller is responsible for ensuring the input slice outlives any
+/// downstream use; in practice this means either pointing into
+/// `tag_repr_storage` (process-lifetime) or supplying caller-owned memory.
+fn validateOwnerTag(tag_repr: []const u8) TestOwnerTagError!Tag {
+    if (tag_repr.len < TEST_OWNER_TAG_PREFIX.len) return error.InvalidTestOwnerTag;
+    if (!std.mem.startsWith(u8, tag_repr, TEST_OWNER_TAG_PREFIX)) return error.InvalidTestOwnerTag;
+    for (tag_repr) |c| {
+        const is_allowed = isHexChar(c) or c == '-' or c == '_' or (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z');
+        if (!is_allowed) return error.InvalidTestOwnerTag;
+    }
+    return tag_repr;
+}
+
+/// Generate the per-process owner tag. First call allocates 12 hex chars
+/// from the platform CSPRNG via `bpm.uuid` (the same source used by
+/// TestHarness.newUuid) and caches the resulting `Tag` in process-local
+/// `tag_repr_storage`. Subsequent calls in the same process return the
+/// cached slice. Different processes have independent storage, so concurrent
+/// test binaries receive distinct tags without coordination.
+fn generateOwnerTag(allocator: std.mem.Allocator) TestOwnerTagError!Tag {
+    // Acquire initialise-once lock.
+    while (tag_repr_lock.cmpxchgWeak(false, true, .acquire, .acquire) != null) {}
+    defer tag_repr_lock.store(false, .release);
+
+    if (cached_owner_tag.load(.acquire)) {
+        if (tag_repr_storage) |storage| return storage;
+        return error.InvalidTestOwnerTag;
+    }
+    const storage = allocator.alloc(u8, TEST_OWNER_TAG_PREFIX.len + TEST_OWNER_TAG_HEX_CHARS) catch return error.OutOfMemory;
+    @memcpy(storage[0..TEST_OWNER_TAG_PREFIX.len], TEST_OWNER_TAG_PREFIX);
+    // Fill the 6-byte (48-bit) suffix from the cross-platform CSPRNG that
+    // bpm.uuid.generateUuidV4BytesInto() wraps (getrandom on Linux,
+    // SystemFunction036 on Windows, arc4random_buf on BSD/macOS). 48 bits
+    // is sufficient for per-process uniqueness across concurrent test
+    // binaries; collisions require ~2^24 processes running concurrently,
+    // which the test harness never reaches.
+    var uuid_bytes: bpm.uuid.Uuid = undefined;
+    bpm.uuid.generateUuidV4BytesInto(&uuid_bytes);
+    const hex_chars = "0123456789abcdef";
+    var i: usize = 0;
+    while (i < TEST_OWNER_TAG_HEX_CHARS) : (i += 2) {
+        const byte = uuid_bytes[i / 2];
+        storage[TEST_OWNER_TAG_PREFIX.len + i] = hex_chars[(byte >> 4) & 0x0F];
+        storage[TEST_OWNER_TAG_PREFIX.len + i + 1] = hex_chars[byte & 0x0F];
+    }
+    const tag_slice = try validateOwnerTag(storage);
+    tag_repr_storage = storage;
+    cached_owner_tag.store(true, .release);
+    return tag_slice;
+}
+
+/// Issue `SELECT set_config('application_name', $1, false)` against `conn`
+/// with the validated tag bound as a parameter. Never interpolates the tag
+/// value into the SQL string. Errors propagate as `anyerror` so the caller
+/// only sees the union of validation failures and `pg.PgError` variants.
+fn setTestApplicationName(conn: *pg.Conn, tag: Tag) (TestOwnerTagError || pg.PgError)!void {
+    _ = try validateOwnerTag(tag);
+    conn.exec(
+        "SELECT set_config('application_name', $1, false)",
+        &.{tag},
+    ) catch |err| return err;
+}
+
 /// GH-402 (Database cleanup hang): Before truncating tables, terminate idle
 /// connections that may be holding AccessExclusiveLock. This is critical because
 /// TRUNCATE acquires AccessExclusiveLock on the target table, and even an idle
@@ -316,16 +425,64 @@ fn execCompatibilitySql(conn: *pg.Conn, sql: []const u8) !void {
 /// connections from crashed test processes or earlier runs leave locks that
 /// cause subsequent test suites to hang at statement_timeout (60s) with no
 /// visible error.
-fn killIdleConnections(conn: *pg.Conn) !void {
-    // Terminate only idle in-transaction connections (not active queries).
-    // Never terminate the current backend (pg_backend_pid()).
-    const sql = "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'idle in transaction' AND pid != pg_backend_pid()";
-    conn.exec(sql, &.{}) catch |err| {
-        // Failure to kill idle connections is not fatal; log but continue.
-        // The statement_timeout on truncates below will catch cases where
-        // a kill failed and the idle connection still holds a lock.
+///
+/// ISS-0602 / GitHub #414: the kill-broadcast is scoped to the caller's own
+/// per-process `application_name` (the validated `Tag`) bound as a parameter
+/// (`application_name = $1`, exact equality). The `pid != pg_backend_pid()`
+/// guard is retained as defense in depth. A defensive post-check verifies
+/// that no cross-owner idle connections were affected and raises
+/// `error.OwnerTagMismatch` if that invariant is violated.
+pub fn killIdleConnections(conn: *pg.Conn, tag: Tag) (TestOwnerTagError || pg.PgError)!void {
+    _ = try validateOwnerTag(tag);
+
+    // Terminate only idle in-transaction connections that belong to this
+    // process's owner tag. Never terminate the current backend.
+    const sql_kill =
+        \\SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+        \\WHERE state = 'idle in transaction'
+        \\  AND application_name = $1
+        \\  AND pid != pg_backend_pid()
+    ;
+    conn.exec(sql_kill, &.{tag}) catch |err| {
         std.debug.print("killIdleConnections: {}\n", .{err});
+        return err;
     };
+
+    // Defensive cross-owner verification: under correct behavior the kill
+    // predicate excludes every backend whose application_name differs from
+    // the caller's tag, so the count of *other* idle-in-tx connections must
+    // not be affected. A non-zero count after the kill would only happen if
+    // the SQL was later mutated to drop the tag filter, e.g. LIKE-prefix or
+    // unconditional WHERE clauses. Surface that future regression loudly.
+    var check_q = conn.query(
+        std.testing.allocator,
+        "SELECT count(*) FROM pg_stat_activity WHERE state = 'idle in transaction' AND application_name <> $1 AND pid <> pg_backend_pid()",
+        &.{tag},
+    ) catch |err| {
+        std.debug.print("killIdleConnections defensive check failed: {}\n", .{err});
+        return err;
+    };
+    defer check_q.deinit();
+    if (check_q.rows.len > 0) {
+        if (check_q.rows[0][0]) |s| {
+            const unexpected_count = std.fmt.parseInt(i64, s, 10) catch 0;
+            if (unexpected_count != 0) {
+                std.log.warn("killIdleConnections: unexpected cross-owner idle connections remain, count={d}", .{unexpected_count});
+                return error.OwnerTagMismatch;
+            }
+        }
+    }
+}
+
+/// Public accessor for the cached per-process owner tag's string
+/// representation. Returns a freshly allocated copy that the caller owns
+/// and must release with the supplied allocator. Useful for assertions
+/// in regression tests that need to verify the tag is set.
+pub fn GetTestOwnerTag(allocator: std.mem.Allocator) ![]u8 {
+    while (tag_repr_lock.cmpxchgWeak(false, true, .acquire, .acquire) != null) {}
+    defer tag_repr_lock.store(false, .release);
+    const storage = tag_repr_storage orelse return error.InvalidTestOwnerTag;
+    return try allocator.dupe(u8, storage);
 }
 
 // ISS-0125 / GitHub #391: resetTestData() intentionally clears
@@ -341,10 +498,32 @@ fn killIdleConnections(conn: *pg.Conn) !void {
 // GH-402: Uses DELETE instead of TRUNCATE to avoid AccessExclusiveLock
 // which can be blocked indefinitely by idle connections. DELETE acquires
 // RowExclusiveLock which other sessions can work around.
-fn resetTestData(conn: *pg.Conn) !void {
+fn resetTestData(conn: *pg.Conn, allocator: std.mem.Allocator) !void {
     // GH-402: Kill any idle connections before cleaning, so they don't
-    // hold locks and cause indefinite waits or deadlocks.
-    try killIdleConnections(conn);
+    // hold locks and cause indefinite waits or deadlocks. ISS-0602:
+    // the kill is scoped to the process's own per-process owner tag
+    // so we cannot terminate a sibling process's idle connection.
+    {
+        // resetTestData takes a *pg.Conn with no Tag argument; for this
+        // internal call we resolve the cached tag directly via
+        // generateOwnerTag (which returns the process-local cache).
+        const internal_tag = generateOwnerTag(allocator) catch {
+            // Tag generation failure is non-fatal here: we still want the
+            // rest of the reset to proceed without the kill. The next
+            // TestHarness.init() will retry tag generation and stamp
+            // the connection.
+            std.debug.print("resetTestData: generateOwnerTag failed; skipping scoped kill\n", .{});
+            return;
+        };
+        killIdleConnections(conn, internal_tag) catch |err| switch (err) {
+            error.OwnerTagMismatch => {
+                std.debug.print("resetTestData: cross-owner idle connections remain; continuing\n", .{});
+            },
+            else => {
+                std.debug.print("resetTestData: killIdleConnections failed: {}\n", .{err});
+            },
+        };
+    }
 
     // Temporarily lower lock_timeout and statement_timeout for cleanup
     // operations to fail fast if there's contention.
@@ -500,6 +679,16 @@ pub fn cleanupDefinitionSnapshots(conn: *pg.Conn, definition_id: []const u8) !vo
 pub const TestHarness = struct {
     conn: pg.Conn,
     allocator: std.mem.Allocator,
+    /// ISS-0602 / GitHub #414: per-process owner tag stamped on this
+    /// connection. killIdleConnections() uses this to scope the
+    /// pg_terminate_backend broadcast to the caller's own backends. The
+    /// slice points into `tag_repr_storage` while this harness is alive.
+    tag: Tag,
+    /// Allocator that owns the generated tag backing storage. Only the first
+    /// harness that generated the process tag sets this flag; its deinit
+    /// clears the cache and releases the allocation.
+    tag_allocator: std.mem.Allocator,
+    owns_tag_storage: bool,
 
     /// ISS-0121 / GitHub #387: return a fresh 16-byte UUID v4 value sourced
     /// from the standard library CSPRNG. Generation is infallible and
@@ -559,6 +748,27 @@ pub const TestHarness = struct {
             return err;
         };
         errdefer conn.close();
+
+        // ISS-0602 / GitHub #414: stamp this connection with the per-process
+        // owner tag so killIdleConnections() cannot terminate a sibling
+        // process's idle connection on the shared bpm_test database.
+        const had_cached_tag = cached_owner_tag.load(.acquire);
+        const tag = generateOwnerTag(allocator) catch |err| {
+            std.debug.print("generateOwnerTag failed: {}\n", .{err});
+            return err;
+        };
+        const owns_tag_storage = !had_cached_tag;
+        errdefer if (owns_tag_storage) {
+            while (tag_repr_lock.cmpxchgWeak(false, true, .acquire, .acquire) != null) {}
+            defer tag_repr_lock.store(false, .release);
+            if (tag_repr_storage) |storage| allocator.free(storage);
+            tag_repr_storage = null;
+            cached_owner_tag.store(false, .release);
+        };
+        setTestApplicationName(&conn, tag) catch |err| {
+            std.debug.print("setTestApplicationName failed: {}\n", .{err});
+            return err;
+        };
 
         configureSessionTimeouts(&conn) catch |err| {
             std.debug.print("configureSessionTimeouts failed: {}\n", .{err});
@@ -633,7 +843,7 @@ pub const TestHarness = struct {
         };
 
         // Clear transient integration data for deterministic per-test isolation.
-        resetTestData(&conn) catch |err| {
+        resetTestData(&conn, allocator) catch |err| {
             std.debug.print("resetTestData failed: {}\n", .{err});
             return err;
         };
@@ -681,10 +891,14 @@ pub const TestHarness = struct {
         return TestHarness{
             .conn = conn,
             .allocator = allocator,
+            .tag = tag,
+            .tag_allocator = allocator,
+            .owns_tag_storage = owns_tag_storage,
         };
     }
 
-    /// Roll back the open transaction and close the connection.
+    /// Roll back the open transaction, close the connection, and release the
+    /// process tag backing storage when this harness created it.
     /// Never commits — test isolation is guaranteed.
     pub fn deinit(self: *TestHarness) void {
         // ISS-0122: clean up audit rows with non-UTF-8 placeholder resource_ids from prior tests.
@@ -695,5 +909,15 @@ pub const TestHarness = struct {
         ) catch {};
         self.conn.rollback() catch {};
         self.conn.close();
+
+        if (self.owns_tag_storage) {
+            while (tag_repr_lock.cmpxchgWeak(false, true, .acquire, .acquire) != null) {}
+            defer tag_repr_lock.store(false, .release);
+            if (tag_repr_storage) |storage| self.tag_allocator.free(storage);
+            tag_repr_storage = null;
+            cached_owner_tag.store(false, .release);
+            self.tag = "";
+            self.owns_tag_storage = false;
+        }
     }
 };

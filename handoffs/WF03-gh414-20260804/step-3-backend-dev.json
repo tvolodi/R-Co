@@ -1,0 +1,71 @@
+{
+  "handoff_id": "41430000-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh414-20260804",
+  "step": "3",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-04T10:35:29Z",
+  "status": "COMPLETED",
+  "priority": "BLOCKER",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/414",
+    "issue_title": "Test isolation BLOCKER \u2014 killIdleConnections() terminates all idle DB connections",
+    "iss_id": "ISS-0602",
+    "branch_name": "feature/WF03-gh414-20260804",
+    "related_handoff_ids": [
+      "41400000-0000-0000-0000-000000000000",
+      "41405000-0000-0000-0000-000000000000",
+      "41410000-0000-0000-0000-000000000000",
+      "41420000-0000-0000-0000-000000000000",
+      "4142b000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss0602_test_isolation.md"
+    ]
+  },
+  "task": {
+    "description": "Step 3 \u2014 implement the fix per the validated design at src/design/iss0602_test_isolation.md. Read the design first; it specifies the exact signatures, SQL strings, error types, and behaviour. Implement:\n\n  1. tests/integration/helpers.zig:\n     a. Add a file-private Tag type (opaque: struct {}.\n     b. Add TEST_OWNER_TAG_PREFIX = \"uid_\" pub const.\n     c. Add file-private generateOwnerTag(allocator) !Tag and validateOwnerTag([]const u8) !Tag.\n     d. Add file-private std.atomic.Value(?Tag) for the cached per-process tag (initialized once).\n     e. Add pub fn GetTestOwnerTag() []const u8 returning the tag's string representation (cached).\n     f. Add pub fn setTestApplicationName(conn: *pg.Conn) !void \u2014 calls SELECT set_config('application_name', $1, false) with the validated tag.\n     g. Modify killIdleConnections(conn: *pg.Conn) !void \u2014 change SQL to: SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'idle in transaction' AND application_name = $1 AND pid != pg_backend_pid(). Bind the tag as $1. After the kill, run a defensive check: SELECT count(*) FROM pg_stat_activity WHERE application_name = $1 AND pid != pg_backend_pid(); if 0 rows were killed AND the count is 0, log a debug no-op; if the count is greater than expected, log a warning.\n     h. In TestHarness.init(), call setTestApplicationName(conn) AFTER connect and BEFORE the migration runner. Pass the allocator.\n\n  2. tests/integration/iss0602_cross_process_isolation_test.zig (new file):\n     a. test 'iss0602: killIdleConnections does not terminate other processes' connections' \u2014 uses std.process.Child.fork and exec OR std.ChildProcess to spawn two child binaries with TEST_ROLE=process_a and TEST_ROLE=process_b env vars.\n     b. Each child opens its own TestHarness (gets its own per-process tag), holds a connection in 'idle in transaction', then waits for a signal.\n     c. Parent process: opens its own TestHarness, calls killIdleConnections(), asserts the children's connections survive by reading pg_stat_activity.\n     d. Clean up: kill children, deinit all harnesses.\n\n  3. ADD a single-process two-harness test variant for when std.process.Child isn't available: tests/integration/iss0602_same_process_isolation_test.zig. This test opens two TestHarness instances in the SAME process (each gets the SAME tag per the design), holds one in 'idle in transaction', calls killIdleConnections() on the other, verifies both survive \u2014 this is the safety net for the case where the cross-process test can't run.\n\n  4. Run validations:\n     zig build          (must exit 0)\n     zig build test     (must exit 0)\n     python tools/lint_sql_param_types.py src tests  (must exit 0)\n\n  5. Commit and push:\n     git add -A\n     git commit -m 'fix(WF03-gh414): scope killIdleConnections() by per-process owner tag (ISS-0602 / GH #414)'\n     git push origin feature/WF03-gh414-20260804\n\n  6. Return next_action: 'Route to TEST-RUNNER (Step 5)' on PASS.\n\nHard constraints (from design):\n  - NO SQL string interpolation of the tag value. The tag is always bound as $1.\n  - The tag must match [A-Za-z0-9_-]+ before binding; reject anything else with error.InvalidTestOwnerTag.\n  - The pid != pg_backend_pid() guard stays in the SQL.\n  - The defensive cross-owner check must be present.\n\nREWORK 1 (from TEST-RUNNER Step 5 FAIL):\n- [BLOCKER] ALL integration tests fail to compile (exit code 3) after b8163cb\n- Zig compiler does not display error message (exits silently with code 3)\n- Pre-flight checks passed \u2014 NOT an environment issue\n- Likely cause: helpers.zig modifications (opaque Tag type, function signatures)\n- MUST: Fix compilation errors before any test can run\n- Check: error set completeness, function signature mismatches, Zig 0.16.0 opaque type usage\n\n\nREWORK 2 (from TEST-RUNNER Step 5 retry FAIL):\nCompilation PASS, runtime tests run. Two issues found:\n\n[BLOCKER-1] TC-ISS-0602-cross-01 (iss0602_cross_process_isolation_test.zig:76)\n- Test parks sibling-tagged connection in idle in transaction\n- killIdleConnections defensive cross-owner check queries application_name <> \n- Finds the sibling the test just parked, returns error.OwnerTagMismatch\n- Fix: Test must ROLLBACK sibling's parked tx BEFORE calling killIdleConnections\n- OR: Defensive check must filter out our own test's parked connections\n- OR: Test must use a different state (idle, not idle in transaction)\n\n[MAJOR-1] Memory leak in generateOwnerTag (helpers.zig:390)\n- Allocates 16-byte buffer stored in file-scope tag_repr_storage\n- TestHarness.deinit() cannot free it (allocator not tracked)\n- DebugAllocator exits 1 even when assertions pass\n- Fix: Track storage allocator in TestHarness, free in deinit()\n- OR: Use arena allocator shared across TestHarness instances\n\nMUST: Fix both issues. SQL fix is VERIFIED WORKING.\n\n\nAlso: Open sub-issues for ISS-0602-A (BLOCKER-1 test logic) and ISS-0602-B (MAJOR-1 leak) per ISSUE-FIXER Step 0.5 protocol.\n",
+    "acceptance_criteria": [
+      "tests/integration/helpers.zig: Tag, generateOwnerTag, validateOwnerTag, GetTestOwnerTag, setTestApplicationName functions added",
+      "killIdleConnections() SQL is parameterized with application_name = $1 (NOT LIKE)",
+      "TestHarness.init() calls setTestApplicationName(conn) after connect",
+      "tests/integration/iss0602_cross_process_isolation_test.zig exists with two-child-binary spawn test",
+      "tests/integration/iss0602_same_process_isolation_test.zig exists with two-harness same-process test",
+      "zig build exits 0",
+      "zig build test exits 0",
+      "python tools/lint_sql_param_types.py src tests exits 0 with no BLOCKER/MAJOR",
+      "git commit and push to feature/WF03-gh414-20260804",
+      "Return next_action: 'Route to TEST-RUNNER (Step 5)'"
+    ],
+    "functions_to_call": [
+      "fn:implement-fix",
+      "fn:check-zig-build"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Rework 2 completed: fixed TC-ISS-0602-cross-01's contradictory parked-sibling setup and made TestHarness own and free the generated owner-tag allocation. Build, unit tests, SQL lint, migrations, and both focused ISS-0602 integration targets pass without DebugAllocator leaks. Commit db5c2c7148dd48fa5b1e983a70d44cbfd1636a05 pushed to origin/feature/WF03-gh414-20260804.",
+    "artifacts_out": [
+      "tests/integration/helpers.zig",
+      "tests/integration/iss0602_cross_process_isolation_test.zig",
+      "docs/issue-reports/WF03-gh414-20260804-step-3-backend-dev-INNER-REPORT.yaml"
+    ],
+    "issues": [],
+    "git_evidence": {
+      "branch_name": "feature/WF03-gh414-20260804",
+      "commit_sha_list": [
+        "db5c2c7148dd48fa5b1e983a70d44cbfd1636a05"
+      ],
+      "remote_branch": "origin/feature/WF03-gh414-20260804",
+      "push_status": "ok",
+      "pr_url": null,
+      "pr_create_error": null
+    },
+    "next_action": "Route to TEST-RUNNER (Step 5)"
+  },
+  "rework_count": 2,
+  "max_rework": 3,
+  "started_at": null,
+  "completed_at": "2026-08-04T09:25:35Z"
+}
