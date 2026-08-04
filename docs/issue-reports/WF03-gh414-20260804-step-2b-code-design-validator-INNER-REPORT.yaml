@@ -1,0 +1,110 @@
+# WF03-gh414-20260804 — Step 2b (CODE-DESIGN-VALIDATOR) Inner Report
+
+report_id: WF03-gh414-20260804-step-2b-code-design-validator
+agent_id: CODE-DESIGN-VALIDATOR
+run_id: WF03-gh414-20260804
+step: "2b"
+created_at: "2026-08-04T05:53:16Z"
+branch: feature/WF03-gh414-20260804
+summary: >-
+  Validated the Type E design at src/design/iss0602_test_isolation.md. The
+  mandatory lint passed, but the hard gate failed because the proposed
+  application_name predicate matches every bpm-test connection rather than
+  only connections owned by the caller, so the two-harness regression test
+  would terminate harness B instead of proving isolation. The design also
+  leaves security-sensitive SQL construction and the SET mechanism ambiguous,
+  and it contains implementation-level Zig/SQL snippets despite the Type E
+  prose-only requirement.
+files_created:
+  - docs/issue-reports/WF03-gh414-20260804-step-2b-code-design-validator-INNER-REPORT.yaml
+files_modified:
+  - handoffs/WF03-gh414-20260804/step-2b-code-design-validator.json
+  - handoffs/registry.json
+  - handoffs/orchestrator.log
+tests_run:
+  - name: lint_design_artefact
+    status: pass
+    detail: "python tools/lint_design_artefact.py src/design/iss0602_test_isolation.md — OK — 1 file(s) checked, no issues."
+issues_found:
+  - severity: BLOCKER
+    description: >-
+      The design's §Public interface changes scopes killIdleConnections to
+      application_name LIKE '<effective>%' while the default effective value is
+      GetTestApplicationName() == 'bpm-test-'. This matches harness B's distinct
+      bpm-test-<uuid-b> session, so harness A still terminates B. The test plan
+      contradicts PostgreSQL LIKE semantics when it says the filter matches B
+      but must not terminate it. Redesign must generate one stable owner tag per
+      OS test process, assign that same owner tag to every connection opened by
+      that process, and bind killIdleConnections to the caller's exact owner tag
+      (or an equivalently safe ownership predicate).
+  - severity: BLOCKER
+    description: >-
+      Acceptance criterion (b) requires concurrent test-integration execution,
+      but §Optional cross-process test explicitly defers the only real
+      cross-process regression. The two-harness same-process test cannot prove
+      separate processes do not terminate each other, particularly while each
+      harness currently receives a distinct UUID. The required regression must
+      launch or coordinate two independent test processes and assert neither
+      receives SQLSTATE 57P01/error.ConnectionFailed.
+  - severity: MAJOR
+    description: >-
+      The design leaves two security-sensitive implementation choices open:
+      §Public interface changes says SET application_name interpolation and
+      parameterized SELECT set_config are both acceptable, while §Implementation
+      notes leaves the choice to BACKEND-DEV; it likewise interpolates the
+      optional prefix into LIKE SQL. This violates implementation-without-
+      ambiguity and the prepared-statement rule. Specify one parameterized
+      set_config implementation and one bound predicate with validated values.
+  - severity: MAJOR
+    description: >-
+      The Type E artefact contains implementation code, including a fenced SQL
+      query in §Current structure, concrete std.fmt.allocPrint/conn.exec body
+      steps, exact Zig call-site statements, and a full Zig documentation-comment
+      patch. Type E validation permits signatures and behavior descriptions, not
+      function bodies or implementation patches.
+  - severity: MAJOR
+    description: >-
+      The error taxonomy does not define a concrete failure contract for the
+      pg_terminate_backend self/ownership guard. It says the pid guard 'should
+      never trip' and would be a no-op, but does not specify how an ownership
+      mismatch is detected, named, logged, or propagated. The corrected exact-
+      owner predicate needs an explicit guard behavior and error/logging contract.
+  - severity: MAJOR
+    description: >-
+      The mandatory completeness checklist requires a data-flow diagram. The
+      design has prose under §State transitions but no ASCII or Mermaid data-flow
+      diagram showing connection tagging, ownership selection, cleanup query,
+      and concurrent-process boundaries.
+  - severity: MINOR
+    description: >-
+      The function name GetTestApplicationName is capitalized unlike Zig's
+      lower-camel function convention. The requested signature is present, so
+      this is not independently gate-blocking, but rework should use a consistent
+      public API name if the issue contract permits it.
+next_steps:
+  - "Route to CODE-DESIGNER (Step 2) for rework."
+  - "Replace prefix-wide matching with exact per-process ownership scoping and add a real two-process regression design."
+blockers:
+  - "The proposed SQL still terminates other bpm-test processes."
+  - "The required concurrent cross-process regression is deferred."
+validation_completeness:
+  all_met: false
+  criteria:
+    - criterion: "Design lint exits 0 with no BLOCKER/MAJOR"
+      status: MET
+      evidence: "OK — 1 file(s) checked, no issues."
+    - criterion: "Design covers all four GitHub #414 acceptance criteria"
+      status: UNMET
+      evidence: "SQL uses application_name LIKE 'bpm-test-%'; real cross-process test is deferred."
+    - criterion: "No implementation code"
+      status: UNMET
+      evidence: "Fenced SQL and concrete Zig implementation snippets/patch are present."
+    - criterion: "All requested signatures listed"
+      status: MET
+      evidence: "TEST_APPLICATION_NAME_PREFIX, GetTestApplicationName, setTestApplicationName, and optional-prefix killIdleConnections are listed."
+    - criterion: "Error taxonomy covers SET failure and termination guard"
+      status: UNMET
+      evidence: "SET failure is covered; ownership/self-guard failure behavior is not concretely specified."
+    - criterion: "Dependencies limited to in-file imports"
+      status: MET
+      evidence: "Dependencies section reuses existing bpm.uuid, std.process, std.fmt, and pg surfaces; no new module is required."

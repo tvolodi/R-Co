@@ -1,0 +1,24 @@
+{
+  "id": "ISS-0602",
+  "title": "Test isolation BLOCKER — killIdleConnections() terminates all idle DB connections",
+  "status": "OPEN",
+  "severity": "BLOCKER",
+  "category": "test-isolation",
+  "run_id": "WF03-gh414-20260804",
+  "affected_areas": [
+    "tests/integration/helpers.zig",
+    "tests/integration/"
+  ],
+  "created_at": "2026-08-04T10:35:29Z",
+  "notes": "Full integration suite fails non-deterministically with PostgreSQL connection termination errors (terminating connection due to administrator command) and error.ConnectionFailed. killIdleConnections() in tests/integration/helpers.zig:322 runs pg_terminate_backend against every idle in-transaction connection for the shared bpm_test database. Concurrent test binaries terminate one another's idle connections. Discovered during WF03-gh376-20260804 Step 5 verification of ISS-0113. Reported in WF03-gh409-20260803 verification chain.",
+  "root_cause": "killIdleConnections() WHERE clause is too broad — it filters only by state and pid != pg_backend_pid(), with no scope to the current test process. The shared bpm_test database means tests across multiple processes all hit the same pg_stat_activity.",
+  "candidate_resolution": "Scope killIdleConnections() by application_name (set to 'bpm-test-<uuid>' on every test connection in TestHarness.init()). Filter: WHERE state = 'idle in transaction' AND application_name LIKE 'bpm-test-%' AND pid != pg_backend_pid(). Add regression test that spawns two harnesses with different application_names and verifies one cannot terminate the other.",
+  "resolution": null,
+  "files_to_change": [
+    "tests/integration/helpers.zig"
+  ],
+  "github_issue": "https://github.com/tvolodi/R-Co/issues/414",
+  "prevention": [
+    "Every test connection must declare an application_name prefix bpm-test-; every pg_terminate_backend / pg_cancel_backend in test code must filter by application_name; isolation safety is a code-review checklist item."
+  ]
+}

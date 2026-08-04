@@ -1,0 +1,282 @@
+issue_id: ISS-0602
+run_id: WF03-gh414-20260804
+step: 1
+agent: ISSUE-FIXER
+handoff_id: 41410000-0000-0000-0000-000000000000
+github_issue: https://github.com/tvolodi/R-Co/issues/414
+severity: BLOCKER
+category: test-isolation
+diagnosis_date: '2026-08-04T05:43:50Z'
+reported_at: '2026-08-04T05:43:50Z'
+
+summary: >-
+  Full integration suite fails non-deterministically with PostgreSQL connection
+  termination errors (SQLSTATE 57P01 'terminating connection due to administrator
+  command' and error.ConnectionFailed) when two or more test binaries run
+  concurrently against the shared bpm_test database. Root cause: killIdleConnections()
+  in tests/integration/helpers.zig runs an unscoped pg_terminate_backend against
+  every idle-in-transaction connection on the server. Concurrent test binaries
+  therefore terminate one another's idle connections. Proposed fix: set a unique
+  per-process application_name='bpm-test-<uuid>' on every test connection in
+  TestHarness.init(), and scope killIdleConnections() to application_name LIKE
+  'bpm-test-%'. Plus a regression test that proves one harness cannot kill
+  another's idle connection.
+
+symptom: |
+  Full integration suite fails non-deterministically with PostgreSQL connection
+  termination errors: 'terminating connection due to administrator command'
+  (SQLSTATE 57P01) and 'error.ConnectionFailed'. Concurrent test binaries
+  terminate each other's idle connections.
+
+  Observed failure modes:
+    - 'terminating connection due to administrator command' returned to a test
+      process that did not issue pg_terminate_backend itself.
+    - error.ConnectionFailed raised on the next query after the connection was
+      killed by a sibling process.
+    - Reset/delete calls in resetTestData() race against killIdleConnections()
+      from another process, leaving the harness in an indeterminate state.
+    - Non-determinism: a clean single-process run typically passes; the failure
+      appears only when the test suite is run with concurrency enabled (parallel
+      zig build test-integration, or default `zig build test-integration` which
+      underlies TestHarness as well).
+
+  Discovery path: encountered during WF03-gh376-20260804 Step 5 verification of
+  ISS-0113; traced back to the WF03-gh409-20260803 verification chain. Fixed at
+  the source this run.
+
+root_cause: |
+  killIdleConnections() in tests/integration/helpers.zig:322 runs:
+    SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+    WHERE state = 'idle in transaction' AND pid != pg_backend_pid()
+
+  The WHERE clause has no scope to the current test process. The bpm_test
+  database is shared across all test binaries, so pg_stat_activity contains
+  idle connections from ALL concurrent test processes. This becomes a chain
+  reaction: process A's killIdleConnections() terminates process B's idle
+  connection, then process B's killIdleConnections() (re-initiated) terminates
+  process A's idle connection, etc.
+
+  Three contributing factors compound the bug:
+    1. WHERE clause too broad (no application_name filter, no pid-set filter).
+    2. The shared bpm_test database means pg_stat_activity contains entries
+       from every concurrent test process (no DB-based scoping possible).
+    3. resetTestData() runs at the start of every TestHarness.init() →
+       killIdleConnections() runs at the start of every test that uses
+       TestHarness. With ~19+ test binaries all using the harness, every
+       test announces a kill-broadcast to the entire shared DB.
+
+  Why filters other than application_name are unsuitable:
+    - datname filter: same shared bpm_test database → no discrimination.
+    - client_addr filter: all harnesses connect via TCP localhost → same
+      client_addr (127.0.0.1).
+    - pid-set filter: requires enumerating every backend in the current test
+      process, which is not exposed through pg_stat_activity without ambiguity
+      (a child process could be fork()ed, though current test harness does not).
+    - application_name filter: set on every connection, partitionable by
+      process UUID, works across all harnesses, single shared DB preserved.
+
+affected_files:
+  - tests/integration/helpers.zig
+
+proposed_fix: |
+  Two-part fix (one file):
+
+  Part 1 — Tag every test connection with a unique application_name.
+
+    In TestHarness.init() at tests/integration/helpers.zig (~line 543), after
+    pg.Conn.connectUrl() and BEFORE configureSessionTimeouts(), add:
+
+      // ISS-0602: scope by application_name so concurrent test harnesses do
+      // not terminate each other's idle connections. Process UUID provides
+      // uniqueness per test binary; 'bpm-test-' prefix makes them easy to
+      // filter in pg_stat_activity and excludes any production or ad-hoc
+      // psql session.
+      const run_id = bpm.util.uuid4() catch blk: {
+          // Fallback: read BPM_TEST_RUN_ID from env if set, else use the
+          // process ID + a random suffix. Never block on UUID generation.
+          var buf: [64]u8 = undefined;
+          const pid = std.os.linux.getpid() catch 0;
+          const ts = std.time.timestamp();
+          const id_str = std.fmt.bufPrint(&buf, "bpm-test-pid{d}-{d}", .{
+              pid, ts,
+          }) catch "bpm-test-unknown";
+          break :blk try allocator.dupe(u8, id_str);
+      };
+      defer allocator.free(run_id);
+      const set_app = try std.fmt.allocPrint(allocator,
+          "SET application_name = '{s}'", .{run_id});
+      defer allocator.free(set_app);
+      try conn.exec(set_app, &.{});
+
+    Why SET application_name instead of connection-string option:
+      - pg.Conn.connectUrl() does not expose a parameter struct that maps
+        cleanly to a per-process application_name; SET after connect keeps
+        the change localized to the harness.
+      - SET persists for the lifetime of the connection; it survives BEGIN/
+        ROLLBACK and is reset on deinit() (conn.close()).
+      - The application_name is visible in pg_stat_activity.application_name
+        and is queryable with pg_stat_activity; no extra instrumentation
+        required.
+
+  Part 2 — Scope killIdleConnections() to bpm-test- prefixed connections.
+
+    Replace the SQL in tests/integration/helpers.zig:322 with:
+
+      const sql =
+        \\SELECT pg_terminate_backend(pid) FROM pg_stat_activity
+        \\WHERE state = 'idle in transaction'
+        \\  AND application_name LIKE 'bpm-test-%'
+        \\  AND pid != pg_backend_pid();
+
+    The application_name filter ensures only other test-binary connections
+    are killed. Production sessions (no application_name set) and ad-hoc
+    psql sessions are left untouched. The pid != pg_backend_pid() guard
+    remains as a defense-in-depth safety against any future harness that
+    opts out of the application_name prefix.
+
+  Part 3 — Optional belt-and-suspenders: remove killIdleConnections() from
+  resetTestData() and rely on the per-test transaction rollback for
+  isolation.
+
+    The current contract is "free stuck locks before DELETE". With
+    deleteTableBestEffort() using DELETE (not TRUNCATE), the lock type
+    is RowExclusiveLock which does not block other readers — so the
+    kill-broadcast is no longer the critical path for cleanup. If kept,
+    it should be wrapped in a comment explaining that it is now scoped
+    and safe under concurrency.
+
+  Part 4 — Regression test: tests/integration/iss0602_cross_test_isolation_test.zig
+
+    New test file asserting one harness cannot terminate another's
+    application_name. The test:
+      a. Spawns two TestHarness instances, each with its own application_name.
+      b. On harness B: BEGIN; runs a SELECT then leaves the connection
+         idle in transaction (does not commit, does not rollback).
+      c. On harness A: calls killIdleConnections().
+      d. On harness B: runs a SELECT; asserts it succeeds (NOT 'terminating
+         connection due to administrator command').
+      e. On harness A: runs a SELECT; asserts it succeeds (self excluded).
+      f. Cleanup: harness B rollback, then deinit both.
+
+    The regression test must run inside the same single-process test binary
+    (since TestHarness is in-process). Two harnesses in one process is
+    sufficient to prove the application_name filter works — but the test
+    ALSO proves the current bug because, without the fix, harness A's
+    killIdleConnections() would terminate harness B's idle connection (the
+    same application_name filter does not yet exist).
+
+regression_test_plan: |
+  tests/integration/iss0602_cross_test_isolation_test.zig (new file):
+
+    test "iss0602: killIdleConnections does not terminate other processes' connections" {
+      var h_a = try TestHarness.init(allocator);
+      defer h_a.deinit();
+      var h_b = try TestHarness.init(allocator);
+      defer h_b.deinit();
+
+      // Verify different application_names so we know the filter can
+      // distinguish them.
+      const app_a = try h_a.conn.query(allocator,
+        "SELECT current_setting('application_name')", &.{});
+      defer app_a.deinit();
+      const app_b = try h_b.conn.query(allocator,
+        "SELECT current_setting('application_name')", &.{});
+      defer app_b.deinit();
+      try std.testing.expect(std.mem.startsWith(u8, app_a.rows[0].get([]const u8, 0), "bpm-test-"));
+      try std.testing.expect(std.mem.startsWith(u8, app_b.rows[0].get([]const u8, 0), "bpm-test-"));
+      try std.testing.expect(!std.mem.eql(u8, app_a.rows[0].get([]const u8, 0),
+                                          app_b.rows[0].get([]const u8, 0)));
+
+      // Place harness B's connection in 'idle in transaction' state.
+      try h_b.conn.exec("BEGIN", &.{});
+      try h_b.conn.exec("SELECT 1", &.{});
+      // ROLLBACK on deinit (h_b's harness transaction is rolled back; the
+      // outer BEGIN here is a nested transaction control: harness->rollback
+      // handles it via the BEGIN it performed in init).
+
+      // Capture B's backend pid BEFORE killIdleConnections.
+      const pid_b_before = try h_b.conn.query(allocator,
+        "SELECT pg_backend_pid()", &.{});
+      defer pid_b_before.deinit();
+      const pid_b = pid_b_before.rows[0].get(i32, 0);
+
+      // Run killIdleConnections on harness A.
+      try killIdleConnections(&h_a.conn);
+
+      // Verify B's connection is still alive by issuing a query.
+      const alive = h_b.conn.query(allocator,
+        "SELECT 1 AS alive", &.{});
+      try alive;
+      defer alive.deinit();
+      try std.testing.expect(alive.rows.len == 1);
+
+      // Verify B's pid is unchanged.
+      const pid_b_after = try h_b.conn.query(allocator,
+        "SELECT pg_backend_pid()", &.{});
+      defer pid_b_after.deinit();
+      try std.testing.expectEqual(pid_b, pid_b_after.rows[0].get(i32, 0));
+    }
+
+  Also add a test that proves the bug existed: same test as above but
+  WITH the current unscoped SQL temporarily swapped back in. This is the
+  "control" half that makes the regression test fail-on-bug, pass-on-fix.
+  (Implemented by reusing the production SQL parameter in killIdleConnections
+  via a debug flag, or by exposing killIdleConnections() as a non-private
+  function for the test to call directly.)
+
+  Optional: a concurrency test that spawns two real OS processes (one
+  per test binary) with BPM_TEST_RUN_ID set to different values, runs
+  them in parallel, and verifies no error.ConnectionFailed. This is
+  heavier and may be deferred to a separate file.
+
+estimated_difficulty: 3
+integration_surface: low
+acceptance_verification:
+  - "`zig build test-integration` must complete without 57P01 or error.ConnectionFailed under concurrent test binary execution."
+  - "regression test in tests/integration/iss0602_cross_test_isolation_test.zig passes against the fixed code AND fails against the original code (rerun with the old SQL temporarily restored to prove the bug fix)."
+  - "Concurrently-run `zig build test-integration-iss205` and `zig build test-integration-iss401` (or any two ISS test binaries that exercise real DB activity) complete without 57P01."
+
+references:
+  - https://github.com/tvolodi/R-Co/issues/414
+  - docs/issues/ISS-0602.json
+  - tests/integration/helpers.zig (line 322, killIdleConnections body)
+  - tests/integration/helpers.zig (line 347, killIdleConnections call from resetTestData)
+  - tests/integration/helpers.zig (line 543, TestHarness.init)
+  - docs/issues/ISS-0113.json (integration verification deferred until ISS-0602)
+  - docs/issue-reports/WF03-gh376-20260804-step-07-doc-updater-INNER-REPORT.yaml
+    (recorded ISS-0602 as filed GitHub #414)
+
+issues_found:
+  - severity: BLOCKER
+    description: Cross-test isolation bug terminating connections across process boundaries.
+  - severity: MINOR
+    description: Doc comment on killIdleConnections() (line 314-319) references GH-402's
+      TRUNCATE motivation; should be updated to mention application_name scoping once
+      the fix lands, so a future reader understands why the WHERE clause is shaped
+      that way.
+  - severity: MINOR
+    description: test_infrastructure_guide.md §3 INV-TI-1 checklist should add a
+      cross-process isolation check (run two test binaries concurrently, confirm
+      no 57P01) to prevent future regressions.
+
+next_action: Route to CODE-DESIGNER (Step 2 design)
+next_agent: CODE-DESIGNER
+upstream_handoff_id: 41405000-0000-0000-0000-000000000000
+downstream_handoff_id: TBD
+
+verification_evidence:
+  - file: tests/integration/helpers.zig
+    lines: '319-329'
+    finding: killIdleConnections() runs pg_terminate_backend with no application_name filter.
+  - file: tests/integration/helpers.zig
+    lines: '347'
+    finding: killIdleConnections() is called from resetTestData() at the start of every
+      TestHarness.init().
+  - file: tests/integration/helpers.zig
+    lines: '543-665'
+    finding: TestHarness.init() opens one connection via pg.Conn.connectUrl() and
+      does NOT set application_name — no per-process tagging is performed.
+  - file: docs/issues/ISS-0602.json
+    finding: ISS-0602 registered locally with cross-link to GitHub #414.
+  - file: docs/issue-reports/WF03-gh376-20260804-step-07-doc-updater-INNER-REPORT.yaml
+    finding: ISS-0602 was filed as GitHub #414 during the WF03-gh376 verification chain.

@@ -1,0 +1,54 @@
+{
+  "handoff_id": "4142b000-0000-0000-0000-000000000000",
+  "run_id": "WF03-gh414-20260804",
+  "step": "2b",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGN-VALIDATOR",
+  "created_at": "2026-08-04T10:35:29Z",
+  "status": "COMPLETED",
+  "priority": "BLOCKER",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/414",
+    "issue_title": "Test isolation BLOCKER \u2014 killIdleConnections() terminates all idle DB connections",
+    "iss_id": "ISS-0602",
+    "branch_name": "feature/WF03-gh414-20260804",
+    "related_handoff_ids": [
+      "41400000-0000-0000-0000-000000000000",
+      "41405000-0000-0000-0000-000000000000",
+      "41410000-0000-0000-0000-000000000000",
+      "41420000-0000-0000-0000-000000000000"
+    ],
+    "artifacts_in": [
+      "src/design/iss0602_test_isolation.md"
+    ]
+  },
+  "task": {
+    "description": "Step 2b \u2014 HARD GATE validation. Review the design artefact src/design/iss0602_test_isolation.md before BACKEND-DEV can start implementing.\n\nSteps:\n  1. Read handoffs/WF03-gh414-20260804/step-2b-code-design-validator.json in full.\n  2. Read docs/issue-reports/ISS-0602-diagnosis.yaml (the upstream diagnosis).\n  3. Read the design at src/design/iss0602_test_isolation.md.\n  4. Run per-artefact checks:\n       python tools/lint_design_artefact.py src/design/iss0602_test_isolation.md\n     Must exit 0 with no BLOCKER/MAJOR.\n  5. Verify the 4 acceptance criteria from issue #414 are all covered in the design:\n       a. killIdleConnections() no longer terminates other test processes' connections \u2014 verify the SQL change AND application_name setter are both described.\n       b. Concurrent zig build test-integration completes without administrator-command terminations \u2014 verify the regression test exercises this scenario.\n       c. Connection cleanup remains bounded \u2014 verify the design does NOT delete killIdleConnections() (only scopes it).\n       d. A regression test proves one test process cannot terminate another \u2014 verify tests/integration/iss0602_cross_test_isolation_test.zig is described with two-harness setup.\n  6. Verify NO implementation code is present (only signatures, SQL strings, behaviour descriptions).\n  7. Verify all public function signatures are listed: setTestApplicationName, GetTestApplicationName, killIdleConnections (with optional prefix), TEST_APPLICATION_NAME_PREFIX constant.\n  8. Verify error taxonomy is documented for SET application_name failure and pg_terminate_backend guard.\n  9. Verify dependencies are limited to in-file imports (no new modules).\n  10. Verify the documents issue #414 acceptance criteria item-by-item.\n\nReturn PASS only when every check above is satisfied. ANY failure = FAIL with specific issues.",
+    "acceptance_criteria": [
+      "python tools/lint_design_artefact.py src/design/iss0602_test_isolation.md exits 0 with no BLOCKER/MAJOR",
+      "Design covers all 4 acceptance criteria from issue #414",
+      "No implementation code (only signatures, SQL strings, behaviour)",
+      "All public function signatures listed (setTestApplicationName, GetTestApplicationName, killIdleConnections with optional prefix, TEST_APPLICATION_NAME_PREFIX)",
+      "Error taxonomy exists for SET application_name failure and pid != pg_backend_pid() guard",
+      "Dependencies limited to in-file imports",
+      "Return next_action: 'Route to BACKEND-DEV (Step 3 implement fix)' on PASS"
+    ],
+    "functions_to_call": [
+      "fn:validate-design"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design reworked REWORK 1 \u2014 per-process opaque owner tag (uid_<12hex>, std.crypto.random + std.posix.getrandom fallback, std.atomic.Value(?Tag) cache), parameterised SELECT set_config('application_name', $1, false), killIdleConnections filters by application_name = $1 (exact equality, NOT LIKE-prefix). Cross-process regression now in-scope as tests/integration/iss0602_cross_process_isolation_test.zig using std.process.Child to spawn two child binaries. Ownership-guard failure contract specified: 0 rows terminated = no-op; defensive post-check for cross-owner rows = error.OwnerTagMismatch. 5-stage ASCII data-flow diagram. All 6 BLOCKER+MAJOR issues from the previous validation cycle addressed. Lint: OK - 1 file(s) checked, no issues.",
+    "artifacts_out": [
+      "src/design/iss0602_test_isolation.md"
+    ],
+    "issues": [],
+    "next_action": "Route to BACKEND-DEV (Step 3 implement fix)"
+  },
+  "rework_count": 1,
+  "max_rework": 2,
+  "started_at": "2026-08-04T11:11:03Z",
+  "completed_at": "2026-08-04T06:14:11Z"
+}
