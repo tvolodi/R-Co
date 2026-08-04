@@ -57,7 +57,7 @@ test "TC-ISS-0602-cross-01: killIdleConnections with caller tag does not termina
     try conn_b.exec("BEGIN", &.{});
     try conn_b.exec(
         "SELECT set_config('application_name', $1, false)",
-        .{sibling_tag},
+        &.{sibling_tag},
     );
     {
         var park = try conn_b.query(alloc, "SELECT 1 AS parked", &.{});
@@ -106,7 +106,7 @@ test "TC-ISS-0602-cross-02: defensive cross-owner count is zero under correct pr
         \\WHERE state = 'idle in transaction'
         \\  AND application_name <> $1
         \\  AND pid <> pg_backend_pid()
-    , .{tag});
+    , &.{tag});
     defer q.deinit();
     try testing.expect(q.rows.len > 0);
     const leftover = std.fmt.parseInt(i64, q.rows[0][0] orelse "0", 10) catch 0;

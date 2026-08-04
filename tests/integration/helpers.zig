@@ -326,21 +326,29 @@ const TestOwnerTagError = error{
     OwnerTagMismatch,
 };
 
-/// Per-process opaque owner tag. The opaque type ensures callers cannot
-/// confuse the tag with any other `[]const u8` and forces every use through
-/// the validated helper chain (generateOwnerTag / validateOwnerTag /
-/// setTestApplicationName / killIdleConnections).
-pub const Tag = opaque {};
+/// Per-process owner tag. Defined as a plain `[]const u8` so it can be passed
+/// directly to the `pg` driver as a parameter without any pointer casting.
+/// The lifetime of the underlying bytes is managed by `tag_repr_storage`
+/// below (heap-allocated, process-lifetime, never freed). All access goes
+/// through the validated helper chain (generateOwnerTag / validateOwnerTag /
+/// setTestApplicationName / killIdleConnections) so callers cannot mint a
+/// tag from arbitrary bytes.
+pub const Tag = []const u8;
 
 /// Cached per-process tag. The first generateOwnerTag() call in a process
 /// fills it; subsequent calls in the same process return the same value.
 /// Different processes have independent atomics, so concurrent test binaries
-/// generate distinct tags without coordination.
-var cached_owner_tag: std.atomic.Value(?*Tag) = .init(null);
+/// generate distinct tags without coordination. The cached slice always
+/// points into `tag_repr_storage`, whose address is stable for the process
+/// lifetime. We cache a `bool` "ready" flag in the atomic because
+/// `std.atomic.Value` cannot wrap a `?[]const u8` (optional slices are not
+/// extern-compatible). All reads of the actual cached slice are guarded by
+/// `tag_repr_lock`.
+var cached_owner_tag: std.atomic.Value(bool) = .init(false);
 
 /// Tag-representation storage. Each generated/validated tag is heap-allocated
 /// so the slice's address is stable for the process lifetime. The atomic
-/// Value caches the pointer; the underlying bytes are never freed.
+/// Value caches the slice; the underlying bytes are never freed.
 var tag_repr_storage: ?[]u8 = null;
 var tag_repr_lock: std.atomic.Value(bool) = .init(false);
 
@@ -350,62 +358,67 @@ fn isHexChar(c: u8) bool {
 
 /// Validate a candidate tag string against the canonical
 /// `[A-Za-z0-9_-]+` regex and the `TEST_OWNER_TAG_PREFIX` requirement.
-/// On success returns a `*Tag` whose string representation is the input
-/// slice (caller-supplied memory is referenced; the storage lifetime is
-/// managed by generateOwnerTag / validateOwnerTag callers).
-fn validateOwnerTag(tag_repr: []const u8) TestOwnerTagError!*Tag {
+/// On success returns a `Tag` (`[]const u8`) referring to the input bytes.
+/// The caller is responsible for ensuring the input slice outlives any
+/// downstream use; in practice this means either pointing into
+/// `tag_repr_storage` (process-lifetime) or supplying caller-owned memory.
+fn validateOwnerTag(tag_repr: []const u8) TestOwnerTagError!Tag {
     if (tag_repr.len < TEST_OWNER_TAG_PREFIX.len) return error.InvalidTestOwnerTag;
     if (!std.mem.startsWith(u8, tag_repr, TEST_OWNER_TAG_PREFIX)) return error.InvalidTestOwnerTag;
     for (tag_repr) |c| {
         const is_allowed = isHexChar(c) or c == '-' or c == '_' or (c >= 'A' and c <= 'Z') or (c >= 'a' and c <= 'z');
         if (!is_allowed) return error.InvalidTestOwnerTag;
     }
-    // Cast away const to match the opaque-pointer contract. The returned
-    // pointer is only used as an identity value (pointer-equality in
-    // setTestApplicationName / killIdleConnections lookups); the bytes
-    // themselves are never mutated through this pointer.
-    return @ptrCast(@constCast(tag_repr.ptr));
+    return tag_repr;
 }
 
 /// Generate the per-process owner tag. First call allocates 12 hex chars
-/// from std.crypto.random and caches the resulting `*Tag` in a process-local
-/// atomic. Subsequent calls in the same process return the cached pointer.
-/// Different processes have independent atomics, so concurrent test binaries
-/// receive distinct tags without coordination.
-fn generateOwnerTag(allocator: std.mem.Allocator) TestOwnerTagError!*Tag {
+/// from the platform CSPRNG via `bpm.uuid` (the same source used by
+/// TestHarness.newUuid) and caches the resulting `Tag` in process-local
+/// `tag_repr_storage`. Subsequent calls in the same process return the
+/// cached slice. Different processes have independent storage, so concurrent
+/// test binaries receive distinct tags without coordination.
+fn generateOwnerTag(allocator: std.mem.Allocator) TestOwnerTagError!Tag {
     // Acquire initialise-once lock.
     while (tag_repr_lock.cmpxchgWeak(false, true, .acquire, .acquire) != null) {}
     defer tag_repr_lock.store(false, .release);
 
-    if (cached_owner_tag.load(.acquire)) |cached| {
-        return cached;
+    if (cached_owner_tag.load(.acquire)) {
+        if (tag_repr_storage) |storage| return storage;
+        return error.InvalidTestOwnerTag;
     }
     const storage = allocator.alloc(u8, TEST_OWNER_TAG_PREFIX.len + TEST_OWNER_TAG_HEX_CHARS) catch return error.OutOfMemory;
     @memcpy(storage[0..TEST_OWNER_TAG_PREFIX.len], TEST_OWNER_TAG_PREFIX);
-    var bytes: [TEST_OWNER_TAG_HEX_CHARS / 2]u8 = undefined;
-    std.crypto.random.bytes(&bytes);
+    // Fill the 6-byte (48-bit) suffix from the cross-platform CSPRNG that
+    // bpm.uuid.generateUuidV4BytesInto() wraps (getrandom on Linux,
+    // SystemFunction036 on Windows, arc4random_buf on BSD/macOS). 48 bits
+    // is sufficient for per-process uniqueness across concurrent test
+    // binaries; collisions require ~2^24 processes running concurrently,
+    // which the test harness never reaches.
+    var uuid_bytes: bpm.uuid.Uuid = undefined;
+    bpm.uuid.generateUuidV4BytesInto(&uuid_bytes);
     const hex_chars = "0123456789abcdef";
     var i: usize = 0;
     while (i < TEST_OWNER_TAG_HEX_CHARS) : (i += 2) {
-        const byte = bytes[i / 2];
+        const byte = uuid_bytes[i / 2];
         storage[TEST_OWNER_TAG_PREFIX.len + i] = hex_chars[(byte >> 4) & 0x0F];
         storage[TEST_OWNER_TAG_PREFIX.len + i + 1] = hex_chars[byte & 0x0F];
     }
-    const tag_ptr = try validateOwnerTag(storage);
+    const tag_slice = try validateOwnerTag(storage);
     tag_repr_storage = storage;
-    cached_owner_tag.store(tag_ptr, .release);
-    return tag_ptr;
+    cached_owner_tag.store(true, .release);
+    return tag_slice;
 }
 
 /// Issue `SELECT set_config('application_name', $1, false)` against `conn`
 /// with the validated tag bound as a parameter. Never interpolates the tag
-/// value into the SQL string.
-fn setTestApplicationName(conn: *pg.Conn, payload: *const Tag) TestOwnerTagError!void {
-    const tag_repr: []const u8 = @ptrCast(payload);
-    try validateOwnerTag(tag_repr);
+/// value into the SQL string. Errors propagate as `anyerror` so the caller
+/// only sees the union of validation failures and `pg.PgError` variants.
+fn setTestApplicationName(conn: *pg.Conn, tag: Tag) (TestOwnerTagError || pg.PgError)!void {
+    _ = try validateOwnerTag(tag);
     conn.exec(
         "SELECT set_config('application_name', $1, false)",
-        .{tag_repr},
+        &.{tag},
     ) catch |err| return err;
 }
 
@@ -418,14 +431,13 @@ fn setTestApplicationName(conn: *pg.Conn, payload: *const Tag) TestOwnerTagError
 /// visible error.
 ///
 /// ISS-0602 / GitHub #414: the kill-broadcast is scoped to the caller's own
-/// per-process `application_name` (the opaque `*Tag`) bound as a parameter
+/// per-process `application_name` (the validated `Tag`) bound as a parameter
 /// (`application_name = $1`, exact equality). The `pid != pg_backend_pid()`
 /// guard is retained as defense in depth. A defensive post-check verifies
 /// that no cross-owner idle connections were affected and raises
 /// `error.OwnerTagMismatch` if that invariant is violated.
-pub fn killIdleConnections(conn: *pg.Conn, payload: *const Tag) TestOwnerTagError!void {
-    const tag_repr: []const u8 = @ptrCast(payload);
-    try validateOwnerTag(tag_repr);
+pub fn killIdleConnections(conn: *pg.Conn, tag: Tag) (TestOwnerTagError || pg.PgError)!void {
+    _ = try validateOwnerTag(tag);
 
     // Terminate only idle in-transaction connections that belong to this
     // process's owner tag. Never terminate the current backend.
@@ -435,7 +447,7 @@ pub fn killIdleConnections(conn: *pg.Conn, payload: *const Tag) TestOwnerTagErro
         \\  AND application_name = $1
         \\  AND pid != pg_backend_pid()
     ;
-    conn.exec(sql_kill, .{tag_repr}) catch |err| {
+    conn.exec(sql_kill, &.{tag}) catch |err| {
         std.debug.print("killIdleConnections: {}\n", .{err});
         return err;
     };
@@ -449,7 +461,7 @@ pub fn killIdleConnections(conn: *pg.Conn, payload: *const Tag) TestOwnerTagErro
     var check_q = conn.query(
         std.testing.allocator,
         "SELECT count(*) FROM pg_stat_activity WHERE state = 'idle in transaction' AND application_name <> $1 AND pid <> pg_backend_pid()",
-        .{tag_repr},
+        &.{tag},
     ) catch |err| {
         std.debug.print("killIdleConnections defensive check failed: {}\n", .{err});
         return err;
@@ -673,8 +685,10 @@ pub const TestHarness = struct {
     allocator: std.mem.Allocator,
     /// ISS-0602 / GitHub #414: per-process owner tag stamped on this
     /// connection. killIdleConnections() uses this to scope the
-    /// pg_terminate_backend broadcast to the caller's own backends.
-    tag: *const Tag,
+    /// pg_terminate_backend broadcast to the caller's own backends. The
+    /// slice points into the process-lifetime `tag_repr_storage`; the
+    /// bytes are valid for the lifetime of the process.
+    tag: Tag,
 
     /// ISS-0121 / GitHub #387: return a fresh 16-byte UUID v4 value sourced
     /// from the standard library CSPRNG. Generation is infallible and
