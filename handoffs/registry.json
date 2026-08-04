@@ -463,7 +463,37 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-04T04:10:05Z",
-      "status": "PENDING"
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "027ab652-aa29-4825-9647-bba804052682",
+      "file": "handoffs/WF03-gh376-20260804/step-05-test-runner.json",
+      "run_id": "WF03-gh376-20260804",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-04T04:15:36Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "999485b8-e987-4abb-9d9b-eea517c437cf",
+      "file": "handoffs/ADHOC-db-connection-pool-20260804/step-00-backend-dev-db-investigation.json",
+      "run_id": "ADHOC-db-connection-pool-20260804",
+      "step": "00-adhoc",
+      "from_agent": "ORCH",
+      "to_agent": "BACKEND-DEV",
+      "created_at": "2026-08-04T04:27:34Z",
+      "status": "COMPLETED"
+    },
+    {
+      "handoff_id": "5e0c0a83-3bdb-4299-88c8-895ed12c63f4",
+      "file": "handoffs/WF03-gh376-20260804/step-05-test-runner-retry.json",
+      "run_id": "WF03-gh376-20260804",
+      "step": "05",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-04T04:38:46Z",
+      "status": "COMPLETED"
     }
   ]
 }
