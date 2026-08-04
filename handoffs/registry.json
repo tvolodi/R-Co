@@ -579,8 +579,10 @@
       "from_agent": "ORCH",
       "to_agent": "BACKEND-DEV",
       "created_at": "2026-08-04T10:35:29Z",
-      "status": "IN_PROGRESS",
-      "stage": "WF-03 Issue Resolving"
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving",
+      "completed_at": "2026-08-04T09:25:35Z",
+      "result_status": "PASS"
     },
     {
       "handoff_id": "41450000-0000-0000-0000-000000000000",
