@@ -1,0 +1,52 @@
+{
+  "handoff_id": "eef200b1-5564-4a8c-a828-87ba3e83e09e",
+  "run_id": "WF03-gh377-20260804",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-04T18:20:31Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step Final",
+    "requirement_ids": [],
+    "related_handoff_ids": [
+      "1e33a003-45e4-466c-be03-fff5d10fe41e",
+      "5142a191-93fe-4045-88af-2da3134eade3",
+      "d851a76f-2c67-477c-8bcc-134ff71582c5",
+      "c080be91-6230-40ca-8365-46cd7873f07c",
+      "e64f5d9b-6b40-4cbb-abd0-b1b5dc41208a"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0114.json",
+      "docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml",
+      "tests/reports/report-2026-08-04-WF03-gh377.yaml",
+      "CHANGELOG.md"
+    ]
+  },
+  "task": {
+    "description": "Step Final \u2014 GitHub Branch Management (MANDATORY):\n\n1. Ensure clean working tree on feature/WF03-gh377-20260804:\n   git status --short (should be empty)\n   git branch --show-current (must output: feature/WF03-gh377-20260804)\n\n2. Fetch latest main: git fetch origin main\n\n3. Rebase onto main if any new commits appeared: git rebase origin/main. Resolve if conflicts (should be none for a fast-forward).\n\n4. Push final feature branch state: git push origin feature/WF03-gh377-20260804\n\n5. Create the PR:\n   gh pr create --base main --head feature/WF03-gh377-20260804 \\\n     --title 'fix(WF03-gh377): ISS-0114 \u2014 tenant-schema routing (pool resolver + Step 6a INSERT + migration 1135)' \\\n     --body $'Resolves #377 (ISS-0114).\n\nThree-layer fix:\n1. src/db/pool.zig \u2014 resolveAndCacheStorageMode fallback to public.tenant_schemas when public.tenant returns 0 rows.\n2. src/db/provisioning.zig \u2014 Step 6a authoritative INSERT INTO public.tenant with all 7 NOT NULL columns (fixes C23502 cascade).\n3. migrations/1135_iss0114_backfill_public_tenant_storage_mode.sql \u2014 idempotent backfill.\n\nPlus: src/db/migrations.zig SHOW search_path post-condition; tests/integration/helpers.zig tenant_context.clear() per-test reset.\n\nTest outcome: net +35 integration test passes, 0 regressions, 0 occurrences of `null value in column slug` (was 97), 3 of 7 ISS-0114-affected TCs now PASS.\n\nFollow-up issues filed:\n- #417 ISS-0127 D1: pool.zig resolver LEGACY_RLS fallthrough on TC-TNT-03-01/03 (BLOCKER)\n- #418 ISS-0128 D2: event_store/store.zig:337 StoreError.InstanceNotFound on TC-DB-03-01 (BLOCKER)\n- #419 ISS-0129 D3: migration 1135 DROP TRIGGER C40P01 deadlock on TC-TNT-01-01 (MAJOR)'\n\n6. Wait for CI to be green (gh pr checks --watch).\n\n7. Merge PR:\n   gh pr merge --squash --delete-branch\n\n8. Verify cleanup:\n   git fetch origin\n   git branch -r | grep feature/WF03-gh377 (should be empty)\n\n9. Return to main:\n   git checkout main\n   git pull --ff-only origin main\n   git branch --show-current  \u2192  must output: main\n   git log --oneline -1  \u2192  must show the squash-merge commit\n   git status  \u2192  must show clean working tree\n\n10. Update handoff file with: status=COMPLETED, result.status=PASS, result.summary, result.artifacts_out (PR number, merge SHA), completed_at=<current UTC>.\n\nUpdate handoffs/registry.json for this entry.\n",
+    "acceptance_criteria": [
+      "PR created against main on feature/WF03-gh377-20260804",
+      "PR checks green (or documented as not required)",
+      "PR merged via gh pr merge --squash --delete-branch",
+      "Remote feature branch deleted (gh pr merge cleanup verified)",
+      "Local repo on main with clean working tree",
+      "git log -1 shows the squash-merge commit",
+      "Handoff result includes PR number and merge SHA"
+    ],
+    "functions_to_call": [
+      "fn:check-clean-tree",
+      "fn:git-rebase",
+      "fn:git-push-feature",
+      "fn:git-create-pr",
+      "fn:git-merge",
+      "fn:git-verify-cleanup"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T18:20:49Z",
+  "completed_at": null
+}
