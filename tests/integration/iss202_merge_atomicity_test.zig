@@ -90,26 +90,6 @@ fn uuidToHexStr(allocator: std.mem.Allocator, uuid: [16]u8) ![]u8 {
     );
 }
 
-/// Generate a pseudo-random UUID for per-test isolation.
-fn generateTestUuid(seed: u64) [16]u8 {
-    var uuid: [16]u8 = undefined;
-    var hasher = std.hash.Fnv1a_64.init();
-    hasher.update(std.mem.asBytes(&seed));
-    const hash = hasher.final();
-
-    // Write 8 bytes of hash twice to fill 16 bytes
-    var i: usize = 0;
-    while (i < 8) : (i += 1) {
-        uuid[i] = @as(u8, @truncate(@as(u64, hash >> @as(u6, @intCast(i * 8))))) & 0xFF;
-        uuid[i + 8] = @as(u8, @truncate(@as(u64, hash >> @as(u6, @intCast(i * 8))))) & 0xFF;
-    }
-
-    // Set version 4 (random) and variant
-    uuid[6] = (uuid[6] & 0x0f) | 0x40;
-    uuid[8] = (uuid[8] & 0x3f) | 0x80;
-    return uuid;
-}
-
 /// Free heap-allocated fields of an Instance.
 fn freeInstance(allocator: std.mem.Allocator, inst: Instance) void {
     if (inst.correlation_key) |ck| allocator.free(ck);

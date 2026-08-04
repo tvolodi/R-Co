@@ -1,11 +1,11 @@
 {
   "id": "ISS-0113",
   "title": "Event-store idempotency fixtures contaminate shared integration state",
-  "status": "OPEN",
+  "status": "IN_PROGRESS",
   "severity": "MAJOR",
   "category": "integration-test-fixture-contamination",
-  "run_id": "WF03-gh364-20260801",
-  "handoff_id": null,
+  "run_id": "WF03-gh376-20260804",
+  "handoff_id": "193a90d3-3344-4a67-a6eb-ea2d1c6fac83",
   "affected_areas": [
     "tests/integration/iss203_idempotency_test.zig",
     "tests/integration/event_store_test.zig",
@@ -20,7 +20,30 @@
   "root_cause": "Initial hypothesis: integration fixtures reuse deterministic event and idempotency identifiers across cases or binaries sharing one database, while cleanup is incomplete or ordered before dependent rows are removed.",
   "candidate_resolution": "Generate per-test UUIDs/idempotency keys, isolate each fixture transaction or namespace, and make cleanup delete dependents before event-store rows while remaining unconditional after failures.",
   "resolution": null,
+  "resolution_progress": {
+    "state": "code_fix_applied_verification_pending",
+    "commits_applied": [
+      {
+        "sha": "195d08586db40b71f27edb5df10afaa2e8bad8d9",
+        "summary": "Replaced deterministic-seed UUID generation with TestHarness.newUuid() in event-store fixtures and added T011 to tools/lint_test_isolation.py."
+      },
+      {
+        "sha": "b645a84",
+        "summary": "Recorded Step 5 verification evidence showing build and unit checks passed while integration verification was blocked by cross-test connection termination."
+      }
+    ]
+  },
+  "verification_pending": {
+    "status": "BLOCKED",
+    "note": "ISS-0113 integration verification is deferred until the pre-existing test isolation BLOCKER is fixed: killIdleConnections() in tests/integration/helpers.zig:322 terminates all idle connections in the shared bpm_test database, including connections owned by concurrent test binaries.",
+    "blocker_github_issue": "https://github.com/tvolodi/R-Co/issues/414",
+    "evidence": "tests/reports/report-20260804-WF03-gh376-20260804-retry.yaml",
+    "required_follow_up": "Fix GitHub #414, then rerun WF03-gh376-20260804 Step 5 integration verification before resolving ISS-0113."
+  },
   "files_to_change": [],
   "github_issue": "https://github.com/tvolodi/R-Co/issues/376",
-  "prevention": []
+  "prevention": [
+    "T011 in tools/lint_test_isolation.py flags deterministic-seed UUID fixture helpers and calls.",
+    "Use TestHarness.newUuid() for event IDs and idempotency keys in shared-database integration tests."
+  ]
 }

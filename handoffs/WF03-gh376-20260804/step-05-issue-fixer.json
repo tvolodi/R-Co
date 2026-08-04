@@ -1,0 +1,46 @@
+{
+  "handoff_id": "193a90d3-3344-4a67-a6eb-ea2d1c6fac83",
+  "run_id": "WF03-gh376-20260804",
+  "step": "0.5",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-04T03:52:40Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 0.5 \u2014 Issue Registry",
+    "issue_id": "ISS-0113",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/376",
+    "related_handoff_ids": [
+      "7c3d5763-701f-42cd-ae07-8da2644c8c36"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Execute fn:search-issues to check whether ISS-0113 already exists in docs/issues/.\n\nIf NOT found:\n  - Execute fn:register-issue to create docs/issues/ISS-0113.json with:\n    - title: Event-store idempotency fixtures contaminate shared integration state\n    - status: OPEN\n    - severity: MAJOR\n    - category: test-isolation/idempotency-collision\n    - symptom: Repeated integration execution collides with event-store rows left by other cases. Duplicate idempotency keys abort the primary operation.\n    - root_cause: (to be determined in Step 1)\n    - affected_areas: Event-store and idempotency integration fixtures, Instance error integration fixtures, Service-task integration fixtures\n    - github_issue: https://github.com/tvolodi/R-Co/issues/376\n\n  - File the issue on GitHub via gh issue create (if not already filed).\n  - Write the resulting GitHub issue URL back to docs/issues/ISS-0113.json.\n\nIf FOUND:\n  - Execute fn:update-issue to set status=IN_PROGRESS.\n\nReturn PASS with the ISS file path in artifacts_out.",
+    "acceptance_criteria": [
+      "docs/issues/ISS-0113.json exists",
+      "ISS file has status OPEN or IN_PROGRESS",
+      "ISS file has github_issue field with URL",
+      "No duplicate ISS files created"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-issue",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0113 found in registry. Updated status to IN_PROGRESS, linked to current handoff (193a90d3), verified GitHub issue #376 is filed.",
+    "artifacts_out": [
+      "docs/issues/ISS-0113.json"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 1 \u2014 Diagnosis)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T03:53:05Z",
+  "completed_at": "2026-08-04T03:53:39Z"
+}

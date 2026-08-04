@@ -1,0 +1,50 @@
+{
+  "handoff_id": "999485b8-e987-4abb-9d9b-eea517c437cf",
+  "run_id": "ADHOC-db-connection-pool-20260804",
+  "step": "00-adhoc",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-04T04:27:34Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "ADHOC \u2014 Database Connection Pool Investigation",
+    "issue_id": "ADHOC",
+    "triggering_workflow": "WF03-gh376-20260804",
+    "related_handoff_ids": [
+      "027ab652-aa29-4825-9647-bba804052682"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Investigate and resolve database connection pool failures during integration test run.\n\nTEST-RUNNER reported:\n- PostgreSQL errors: tuple concurrently updated (XX000), terminating connection due to administrator command (57P01)\n- Zig runtime: error.Unexpected NTSTATUS=0xc000013b (LOCAL_DISCONNECT)\n- Integration tests hung after 180s with connection resets\n\nYour task:\n1. Check PostgreSQL max_connections configuration\n2. Review PostgreSQL logs for resource exhaustion\n3. Check for external processes terminating connections\n4. Verify database connection pool settings in src/db/pg.zig\n5. Consider whether test parallelism needs adjustment\n6. If needed, restart PostgreSQL (docker-compose restart db db_test)\n7. Verify: run a smoke test (zig build test-integration-iss203) to confirm connectivity is stable\n\nReturn PASS only when smoke test exits 0 without connection errors.\n\nDo NOT modify the ISS-0113 fix code \u2014 this is a pure infrastructure investigation.",
+    "acceptance_criteria": [
+      "PostgreSQL configuration reviewed",
+      "Connection pool settings verified",
+      "Database logs checked",
+      "Smoke test (zig build test-integration-iss203) exits 0",
+      "No connection reset errors during smoke test"
+    ],
+    "functions_to_call": []
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Database infrastructure is healthy. Connection failures caused by test isolation issue in killIdleConnections() which terminates ALL idle connections across all test processes. PostgreSQL verified: max_connections=250, current=6. Pool size=10. Restarted db_test.",
+    "artifacts_out": [
+      "scratch/db-connection-investigation-20260804.md"
+    ],
+    "issues": [
+      {
+        "severity": "MAJOR",
+        "description": "Test isolation violation: killIdleConnections() in tests/integration/helpers.zig:322 terminates ALL idle transactions causing cross-test failures",
+        "location": "tests/integration/helpers.zig:322",
+        "impact": "Parallel tests fail randomly with C57P01/LOCAL_DISCONNECT"
+      }
+    ],
+    "next_action": "Return to WF03-gh376-20260804 Step 5. Database healthy; test failures may recur due to isolation issue."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T04:27:59Z",
+  "completed_at": "2026-08-04T04:37:20Z"
+}

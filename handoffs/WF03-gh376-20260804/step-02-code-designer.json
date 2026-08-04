@@ -1,0 +1,50 @@
+{
+  "handoff_id": "2ecf5c7d-9f6d-4b4d-a096-e820fa026774",
+  "run_id": "WF03-gh376-20260804",
+  "step": "02",
+  "from_agent": "ORCH",
+  "to_agent": "CODE-DESIGNER",
+  "created_at": "2026-08-04T03:57:52Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 2 \u2014 Solution Design",
+    "issue_id": "ISS-0113",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/376",
+    "related_handoff_ids": [
+      "7c3d5763-701f-42cd-ae07-8da2644c8c36",
+      "193a90d3-3344-4a67-a6eb-ea2d1c6fac83",
+      "ff06591d-64ae-42e9-8749-669c136880f1"
+    ],
+    "artifacts_in": [
+      "docs/issue-reports/ISS-0113.yaml",
+      "docs/issues/ISS-0113.json"
+    ]
+  },
+  "task": {
+    "description": "Produce a fix design artefact for ISS-0113 \u2014 Event-store idempotency fixtures contaminate shared integration state.\n\nRoot cause (from Step 1 diagnosis):\n- Integration tests reuse deterministic event_id and idempotency_key values via hardcoded seeds\n- Different test binaries sharing the same database collide on these identifiers\n- PostgreSQL uq_event_idempotency constraint rejects duplicates (error 23505)\n- Cleanup fails due to FK ordering violations\n\nResolution strategy (three-part fix):\n1. Migrate to per-test randomness: Replace generateTestUuid(seed) with TestHarness.newUuid()\n2. Harden cleanup ordering: Ensure FK-ordered deletes\n3. Enforce via lint: Add T011 rule to flag deterministic-seed patterns\n\nYour task:\nProduce a Type E prose design artefact at src/design/iss-0113-fix.md that specifies:\n- For each affected test file (from diagnosis report), the exact changes needed:\n  - Which generateTestUuid(seed) calls to replace with TestHarness.newUuid()\n  - Cleanup ordering changes (if any)\n- New helper function signature for TestHarness.newUuid() in tests/integration/helpers.zig\n- Lint rule T011 specification for tools/lint_test_isolation.py\n- Verification approach (how to confirm the fix works)\n\nThe design must NOT contain implementation code \u2014 only function signatures, before/after patterns, and pseudocode.\n\nReturn PASS with the design artefact in artifacts_out.\n\nREWORK 1:\n- [MAJOR] Missing required Interface section. The lint tool requires one of: Public Interface, Interface, or API. Function signatures are scattered across sections 1.2 and 2.3 but must be consolidated in a dedicated interface section.",
+    "acceptance_criteria": [
+      "Design artefact created at src/design/iss-0113-fix.md",
+      "All affected files from diagnosis have fix specification",
+      "Helper function signature specified",
+      "Lint rule T011 specification included",
+      "No implementation code in the design"
+    ],
+    "functions_to_call": [
+      "fn:read-backend-conventions"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Design rework 1 completed: Added dedicated Public Interface section consolidating TestHarness.newUuid() and helpers.cleanupInstance() signatures.",
+    "artifacts_out": [
+      "src/design/iss-0113-fix.md"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGN-VALIDATOR (Step 2b)"
+  },
+  "rework_count": 1,
+  "max_rework": 3,
+  "started_at": "2026-08-04T04:05:51Z",
+  "completed_at": "2026-08-04T04:06:31Z"
+}

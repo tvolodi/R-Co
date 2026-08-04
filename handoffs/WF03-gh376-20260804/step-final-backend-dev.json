@@ -1,0 +1,49 @@
+{
+  "handoff_id": "dab2db90-6be2-4760-91bd-fcc8e7a597a0",
+  "run_id": "WF03-gh376-20260804",
+  "step": "final",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "created_at": "2026-08-04T05:17:47Z",
+  "status": "PENDING",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step Final - Git Merge (MANDATORY)",
+    "issue_id": "ISS-0113",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/376",
+    "related_handoff_ids": [
+      "7c3d5763-701f-42cd-ae07-8da2644c8c36",
+      "193a90d3-3344-4a67-a6eb-ea2d1c6fac83",
+      "ff06591d-64ae-42e9-8749-669c136880f1",
+      "2ecf5c7d-9f6d-4b4d-a096-e820fa026774",
+      "d0dcdb92-b408-4d53-aa83-905afc507417",
+      "20a2de92-ccd9-4857-acb3-28402c362417",
+      "027ab652-aa29-4825-9647-bba804052682",
+      "999485b8-e987-4abb-9d9b-eea517c437cf",
+      "5e0c0a83-3bdb-4299-88c8-895ed12c63f4",
+      "afe1726a-6271-4542-b532-37b903d69f61"
+    ],
+    "artifacts_in": []
+  },
+  "task": {
+    "description": "Execute fn:git-merge per docs/agents/protocols/GIT_MERGE.md.\n\nThis is the FINAL step of WF-03. Per ORCHESTRATOR.md section 8, this is a HARD GATE.\n\nSteps:\n1. Check branch status: git branch --show-current (must be feature/WF03-gh376-20260804)\n2. Fetch and rebase on origin/main: git fetch origin main && git rebase origin/main\n3. Resolve any conflicts if needed\n4. Push: git push origin feature/WF03-gh376-20260804\n5. Create PR via gh pr create with the prepared body\n6. Merge PR: gh pr merge --squash --delete-branch\n7. Verify cleanup: git fetch origin && git branch -r | grep feature/WF03-gh376-20260804 || echo Branch deleted\n8. Return to main: git checkout main && git pull --ff-only origin main\n9. Verify: git branch --show-current (must be main), git status (must be clean)\n\nResult MUST contain: branch_name, commit_sha_list, remote_branch, pr_url, push_status: ok, confirmation that local repo is on main with clean working tree.",
+    "pr_title": "fix(ISS-0113): Replace deterministic-seed UUIDs with TestHarness.newUuid()",
+    "pr_body": "Resolves #376.\n\nISS-0113 - Event-store idempotency fixtures contaminate shared integration state.\n\nChanges:\n- Removed generateTestUuid(seed) from iss203_idempotency_keys_test.zig and iss202_merge_atomicity_test.zig\n- Replaced with TestHarness.newUuid() (CSPRNG-based)\n- Added T011 lint rule to tools/lint_test_isolation.py\n- Updated CHANGELOG.md and docs/issues/ISS-0113.json\n\nNote: Verification deferred pending separate test isolation infrastructure fix (killIdleConnections BLOCKER - see #414).",
+    "acceptance_criteria": [
+      "PR created",
+      "PR merged via --squash --delete-branch",
+      "Branch deleted from GitHub",
+      "Local repo on main",
+      "Working tree clean",
+      "Result has all required fields including push_status: ok"
+    ],
+    "functions_to_call": [
+      "fn:git-merge"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T05:24:43Z",
+  "completed_at": null
+}

@@ -6,6 +6,12 @@ All notable changes to the BPM Platform are documented here.
 
 ### Fixed
 
+**ISS-0113** ([GitHub #376](https://github.com/tvolodi/R-Co/issues/376) — event-store idempotency fixture isolation, verification pending)
+- **Deterministic UUID collision mitigation**: removed deterministic-seed UUID generation from `tests/integration/iss203_idempotency_keys_test.zig` and `tests/integration/iss202_merge_atomicity_test.zig`; affected fixtures now use `TestHarness.newUuid()` so shared-database test runs do not reuse event and idempotency identifiers.
+- **Regression prevention**: added lint rule **T011** to `tools/lint_test_isolation.py`, which flags deterministic-seed UUID helper definitions and calls in integration tests.
+- **Applied commits**: implementation `195d08586db40b71f27edb5df10afaa2e8bad8d9`; Step 5 verification evidence `b645a84`.
+- **Verification deferred**: build and unit checks passed, but integration verification is pending because the pre-existing `killIdleConnections()` implementation terminates idle connections owned by concurrent test binaries. The infrastructure BLOCKER is tracked separately as [GitHub #414](https://github.com/tvolodi/R-Co/issues/414). ISS-0113 remains `IN_PROGRESS` until that blocker is fixed and the integration suite is rerun.
+
 **ISS-0112** (GitHub #375) — Fixed missing webhook_subscriptions.secret_ref and secret_key_id columns in SCHEMA-mode tenant schemas. Migration 1134 adds these columns to all tenant schemas, resolving EXT-02 webhook dispatch test failures. Root cause: GBL-128 only added columns to public schema (which was later dropped by GBL-073), and GBL-133 reconciliation missed per-tenant schemas.
 
 **ISS-0205** (GitHub #400 — webhook_deliveries.status case alignment)

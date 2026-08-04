@@ -1,0 +1,86 @@
+{
+  "handoff_id": "5e0c0a83-3bdb-4299-88c8-895ed12c63f4",
+  "run_id": "WF03-gh376-20260804",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "TEST-RUNNER",
+  "created_at": "2026-08-04T04:38:46Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 5 \u2014 Test Verification (retry after ADHOC)",
+    "issue_id": "ISS-0113",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/376",
+    "adhoc_run_id": "ADHOC-db-connection-pool-20260804",
+    "related_handoff_ids": [
+      "7c3d5763-701f-42cd-ae07-8da2644c8c36",
+      "193a90d3-3344-4a67-a6eb-ea2d1c6fac83",
+      "ff06591d-64ae-42e9-8749-669c136880f1",
+      "2ecf5c7d-9f6d-4b4d-a096-e820fa026774",
+      "d0dcdb92-b408-4d53-aa83-905afc507417",
+      "20a2de92-ccd9-4857-acb3-28402c362417",
+      "027ab652-aa29-4825-9647-bba804052682",
+      "999485b8-e987-4abb-9d9b-eea517c437cf"
+    ],
+    "artifacts_in": [
+      "src/design/iss-0113-fix.md",
+      "docs/issue-reports/ISS-0113.yaml",
+      "scratch/db-connection-investigation-20260804.md"
+    ]
+  },
+  "task": {
+    "description": "Retry test verification for ISS-0113 after ADHOC infrastructure investigation.\n\nADHOC findings:\n- Database infrastructure is healthy (max_connections 250, only 6 active)\n- Connection failures were due to pre-existing test isolation issue (killIdleConnections() in helpers.zig:322 kills ALL idle connections across the entire database)\n- db_test container restarted to clear stuck state\n\nYour task: Run the full test suite to verify ISS-0113 fix.\n\nPre-checks (mandatory): Infrastructure Health Checklist\n\nRun tests:\n1. zig build (must exit 0)\n2. zig build test (must exit 0)\n3. zig build test-integration (with BPM_TEST_DB_URL set)\n\nVerify that the previously failing tests now pass:\n- TC-ISS-203-01..05, TC-ES-03-01, TC-EE-08-04, TC-EE-10-04/05/06, TC-ISS-202-01, TC-EXT-01-INT-07\n\nNote: If connection failures occur again, they are pre-existing test isolation issues, not ISS-0113-related.\n\nWrite test report to tests/reports/report-<date>-WF03-gh376-20260804-retry.yaml.",
+    "acceptance_criteria": [
+      "zig build exits 0",
+      "zig build test exits 0",
+      "zig build test-integration exits 0 (or failures are documented as pre-existing)",
+      "No PostgreSQL 23505 violations on uq_event_idempotency",
+      "ISS-0113-targeted tests pass or failures are documented as unrelated",
+      "Test report written"
+    ],
+    "functions_to_call": [
+      "fn:check-infrastructure-health",
+      "fn:run-integration-tests"
+    ]
+  },
+  "result": {
+    "status": "FAIL",
+    "summary": "Integration tests failed due to pre-existing test isolation defect (killIdleConnections). ISS-0113 fix cannot be verified until test infrastructure is fixed. Pre-checks (services, infrastructure, benchmark), build, and unit tests all passed. Connection termination errors prevented integration test completion.",
+    "artifacts_out": [
+      "tests/reports/report-20260804-WF03-gh376-20260804-retry.yaml",
+      "scratch/test-integration-iss0113-retry.txt"
+    ],
+    "issues": [
+      {
+        "severity": "BLOCKER",
+        "category": "pre_existing_defect",
+        "title": "Test isolation defect - killIdleConnections() terminates all database connections",
+        "description": "helpers.zig:322 killIdleConnections() executes pg_terminate_backend on ALL idle connections to bpm_test database, not just the current test. This causes non-deterministic connection failures when tests run concurrently. Observed errors: POSTGRES ERROR terminating connection due to administrator command, error.ConnectionFailed. Prevents reliable integration test execution.",
+        "affected_components": [
+          "tests/integration/helpers.zig:322",
+          "entire integration test suite"
+        ],
+        "recommendation": "Refactor killIdleConnections() to only terminate current test connections (via application_name tracking or connection PID tracking), or serialize test execution."
+      },
+      {
+        "severity": "MINOR",
+        "category": "memory_management",
+        "title": "Memory leaks in transition.zig error paths",
+        "description": "DebugAllocator reports memory leaks in src/engine/transition.zig (cloneJsonValueSafe, processNodeEntry) during error scenarios. Observed in TC-EE-10-06.",
+        "affected_components": [
+          "src/engine/transition.zig:557",
+          "src/engine/transition.zig:1640",
+          "src/engine/transition.zig:1635"
+        ],
+        "recommendation": "Ensure proper memory cleanup in error paths."
+      }
+    ],
+    "next_action": "ORCH: Skip Step 6 (RELEASE-VALIDATOR). Create new WF-03 or ADHOC for test isolation defect (helpers.zig:322 killIdleConnections). After that fix completes and merges, retry WF03-gh376-20260804 Step 5. ISS-0113 (GitHub #376) remains unverified until test infrastructure is fixed.",
+    "iss_0113_status": "CANNOT_VERIFY",
+    "iss_0113_reason": "Test suite blocked by pre-existing BLOCKER defect. ISS-0113 fix (event-store idempotency isolation) cannot be verified until integration tests run to completion."
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T04:39:24Z",
+  "completed_at": "2026-08-04T05:05:02Z"
+}

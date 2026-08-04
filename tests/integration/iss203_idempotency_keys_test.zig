@@ -96,21 +96,7 @@ fn uuidToHexStr(allocator: std.mem.Allocator, uuid: [16]u8) ![]u8 {
     );
 }
 
-/// Generate a per-test UUID from a seed so tests are isolated.
-fn generateTestUuid(seed: u64) [16]u8 {
-    var uuid: [16]u8 = undefined;
-    var hasher = std.hash.Fnv1a_64.init();
-    hasher.update(std.mem.asBytes(&seed));
-    const h = hasher.final();
-    var i: usize = 0;
-    while (i < 8) : (i += 1) {
-        uuid[i] = @as(u8, @truncate(h >> @as(u6, @intCast(i * 8))));
-        uuid[i + 8] = @as(u8, @truncate(h >> @as(u6, @intCast(i * 8))));
-    }
-    uuid[6] = (uuid[6] & 0x0f) | 0x40; // version 4
-    uuid[8] = (uuid[8] & 0x3f) | 0x80; // variant 10xx
-    return uuid;
-}
+
 
 fn freeDefinition(allocator: std.mem.Allocator, d: Definition) void {
     allocator.free(d.name);
@@ -452,8 +438,8 @@ test "TC-ISS-203-03: client key passthrough — trigger event key stored as-is" 
 
     const def_id = try createAndActivateDefinition(allocator, &def_store, name, graph, h.newUuid());
 
-    // The test UUID seed is mixed with the test case ID so each test is isolated.
-    const test_uuid = generateTestUuid(0x203_03_CAFE_BABE);
+    // ISS-0113: use CSPRNG-based per-test UUID for isolation.
+    const test_uuid = h.newUuid();
     const test_uuid_hex = try uuidToHexStr(allocator, test_uuid);
     defer allocator.free(test_uuid_hex);
 
