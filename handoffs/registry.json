@@ -603,10 +603,21 @@
       "from_agent": "ORCH",
       "to_agent": "TEST-RUNNER",
       "created_at": "2026-08-04T09:07:39Z",
-      "status": "COMPLETED",
+      "status": "SUPERSEDED",
       "stage": "WF-03 Issue Resolving (rework 1 retry)",
       "completed_at": "2026-08-04T09:15:58Z",
       "result_status": "FAIL"
+    },
+    {
+      "handoff_id": "41450002-0000-0000-0000-000000000000",
+      "file": "handoffs/WF03-gh414-20260804/step-5-test-runner.json",
+      "run_id": "WF03-gh414-20260804",
+      "step": "5",
+      "from_agent": "ORCH",
+      "to_agent": "TEST-RUNNER",
+      "created_at": "2026-08-04T09:26:59Z",
+      "status": "COMPLETED",
+      "stage": "WF-03 Issue Resolving (rework 2 final)"
     }
   ]
 }
