@@ -5,6 +5,7 @@ lint_test_isolation.py — Enforce fixture-isolation rules for integration tests
 Anti-patterns this lint catches (see docs/anti-patterns.md):
 
   T010  Hardcoded UUID literal inside a test file (per-test UUIDs are mandatory).
+  T011  Deterministic-seed UUID generation (via local `generateTestUuid` or similar).
   T020  Module-level mutable `var` inside a test file (shared state across blocks).
   T030  `test "..."` block with allocations but no `defer` cleanup.
   T040  `error.SkipZigTest` on a MUST requirement test (heuristic: looks for
@@ -42,6 +43,10 @@ UUID_LITERAL = re.compile(
     r'"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"'
 )
 ALL_ZEROS_UUID = "00000000-0000-0000-0000-000000000000"
+# T011: deterministic-seed UUID generation pattern
+SEED_UUID_FUNC = re.compile(
+    r'fn\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*seed\s*:\s*u64\s*\)\s*\[\s*16\s*\]\s*u8'
+)
 MODULE_VAR = re.compile(r"^var\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*", re.MULTILINE)
 TEST_BLOCK = re.compile(r"""^test\s+"([^"]+)"\s*\{""", re.MULTILINE)
 SKIP_HINT = re.compile(r"\berror\.SkipZigTest\b")
@@ -166,6 +171,15 @@ def lint_file(path: Path, report: Report) -> None:
         report.issues.append(Issue(
             "BLOCKER", "T010", rel, line,
             f"hardcoded UUID `{val}` — generate per-test UUIDs instead",
+        ))
+
+    # T011: deterministic-seed UUID generation
+    for m in SEED_UUID_FUNC.finditer(text):
+        func_name = m.group(1)
+        line = find_line(text, m.start())
+        report.issues.append(Issue(
+            "BLOCKER", "T011", rel, line,
+            f"deterministic-seed UUID generation via `{func_name}(seed: u64)` is forbidden — use TestHarness.newUuid() instead",
         ))
 
     # T020: module-level `var` declarations (`const` is fine)
