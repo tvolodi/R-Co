@@ -58,15 +58,16 @@ root_cause:
   type: storage_mode-resolver-falls-back-to-legacy-rls
   location: src/db/pool.zig
   function: applyRequestStorageRouting
-  lines: '173-208'
+  lines: '168-228'           # function body; the resolver branch is 183-208,
+                             # the LEGACY_RLS branch is 218-228
   details: >-
     When applyRequestStorageRouting is called with a tenant_id for which
     no row exists in public.tenant, the resolveAndCacheStorageMode block
-    (approx lines 183-208) executes the SELECT and produces a null result
-    (no row). The default branch executes
+    (lines 183-208) executes the SELECT and produces a null result
+    (no row). The default branch (line 207) executes
     tenant_context_mod.setStorageMode(.LEGACY_RLS). From that point
     onward, the THREADLOCAL cache _storage_mode = .LEGACY_RLS is sticky
-    for the entire test thread. The LEGACY_RLS branch (line 218 approx)
+    for the entire test thread. The LEGACY_RLS branch (lines 218-228)
     then issues SET search_path TO public, ignoring the per-tenant schema
     name that schemaNameForTenant(tenant_id) would have produced.
   mechanism: >-

@@ -1,0 +1,67 @@
+{
+  "handoff_id": "67053652-55eb-4771-b9c8-e335c00bf6b5",
+  "run_id": "WF03-gh377-20260804",
+  "workflow_id": "WF-03",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "file": "handoffs/WF03-gh377-20260804/step-01-issue-fixer.json",
+  "created_at": "2026-08-04T10:21:40Z",
+  "started_at": "2026-08-04T10:21:40Z",
+  "completed_at": "2026-08-04T12:16:45Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 1 \u2014 Root Cause Diagnosis",
+    "issue_id": "ISS-0114",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/377",
+    "related_handoff_ids": [
+      "0def6af4-60b4-4256-9c99-4eacab5685f7",
+      "dba38f9c-1881-4af3-b765-41fed454dfef"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0114.json",
+      "scratch/WF03-gh364-20260801-step03e/_integration_final.log",
+      "tests/integration/tnt_schema_isolation_test.zig",
+      "tests/integration/db_integration_test.zig",
+      "src/db/pool.zig",
+      "src/db/provisioning.zig",
+      "src/db/migrations.zig",
+      "docs/issue-reports/ISS-0112-step-1-WF03-gh375-20260801.yaml"
+    ]
+  },
+  "task": {
+    "description": "Perform root-cause diagnosis for ISS-0114 \u2014 Tenant schema and search_path state causes GH-359-class failures.\n\nGitHub issue #377 describes:\n- Symptom: Tenant-isolation operations fail because the expected tenant table/schema is absent or because a checked-out connection remains on search_path='public'. Unqualified tenant-table queries then resolve to the wrong schema or fail outright.\n- Evidence: scratch/WF03-gh364-20260801-step03e/_integration_final.log lines 6384-6503, 8713-8728, and 38774-38872.\n- Affected tests: TC-TNT-01-01, TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05, TC-DB-03-01.\n- Root cause hypothesis (initial): tenant provisioning and connection checkout do not establish deterministic tenant schema/search_path state for every integration path, compounded by shared schema state previously tracked in GitHub #359.\n\nYour task:\n1. Read the evidence files (especially the UTF-16-encoded scratch/WF03-gh364-20260801-step03e/_integration_final.log, decode via UTF-16-LE).\n2. Examine the affected test files (tests/integration/tnt_schema_isolation_test.zig, tests/integration/db_integration_test.zig) and the affected source files (src/db/pool.zig, src/db/provisioning.zig, src/db/migrations.zig) to identify the fixture pattern causing collisions.\n3. Distinguish this cluster from ISS-0112 (public.schema_migrations drift, RESOLVED via WF03-gh375-20260804). ISS-0112 added column coverage via migration 1134_iss0112_add_secret_ref_to_tenant_schemas.sql; ISS-0114 is the per-connection search_path and per-tenant provisioning case.\n4. Determine the failure category (A, B, C, D, E, or F per the WF-03 table in docs/agents/workflows/WF-03_issue_resolving.md). Read this file before classifying.\n5. Identify which test files and source files need to be modified.\n\nWrite a diagnosis report to docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml (YAML, NOT JSON) with:\n- issue_id: ISS-0114\n- run_id: WF03-gh377-20260804\n- step: 1\n- agent: ISSUE-FIXER\n- handoff_id: <this handoff's id>\n- reported_at: <current UTC ISO8601>\n- summary: <one paragraph>\n- root_cause:\n    type: <category>\n    details: <detailed explanation with code references and evidence line numbers>\n- failure_category: <A-F>\n- affected_files: <list of files to fix, with line numbers and the exact code sections>\n- resolution_strategy: <high-level approach>\n- prevention: <how to avoid in future tests>\n- evidence: <list of evidence files with line ranges and findings>\n- clusters: <the seven test cases grouped by cause>\n- issues_found: <severity/description list>\n- next_steps: <ordered list of next actions>\n- blockers: <list of any blockers, otherwise empty>\n\nReturn PASS with the diagnosis report in artifacts_out.",
+    "acceptance_criteria": [
+      "Root cause identified with supporting evidence",
+      "Failure category assigned (A-F)",
+      "Affected files listed with line numbers",
+      "Resolution strategy documented",
+      "Diagnosis report written to docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml",
+      "ISS-0114.json updated with root_cause and notes from the diagnosis"
+    ],
+    "functions_to_call": [
+      "fn:search-issues",
+      "fn:register-inner-report"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause identified: storage_mode-resolver-falls-back-to-legacy-rls in src/db/pool.zig::applyRequestStorageRouting (lines 173-208). The resolver queries public.tenant.storage_mode for the resolved tenant_id; for freshly-provisioned tenants (random UUIDs created by integration tests) NO row exists in public.tenant, so the resolver falls through to the .LEGACY_RLS default branch and issues SET search_path TO public instead of SET search_path TO tenant_<uuid>,public. bpm_provision_tenant_schema() only inserts into public.tenant_schemas, NOT public.tenant — this is the asymmetry that causes the issue. The threadlocal storage_mode cache is sticky across the test thread. Failure category: B (primary, integration/DB error in pool routing) + F (secondary, #359-era baseline drift amplifiers). Distinct from ISS-0112 (RESOLVED, schema_migrations ledger drift); ISS-0114 lives at the pool-routing layer. Seven affected tests (TC-TNT-01-01, TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05, TC-DB-03-01) all trace back to this single routing defect. Three-layer resolution strategy: (a) defensive fallback heuristic in applyRequestStorageRouting (treat tenant_schemas row as SCHEMA even when public.tenant row absent); (b) provisionTenantSchema inserts public.tenant with storage_mode=SCHEMA idempotently; (c) one-shot backfill migration for existing tenant_schemas-only tenants. Plus regression tests per affected TC.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml",
+      "docs/issues/ISS-0114.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 2)",
+    "completed_at": "2026-08-04T12:16:45Z",
+    "commit": "2daec76",
+    "pushed": true,
+    "files_changed": [
+      "docs/issue-reports/ISS-0114-WF03-gh377-20260804.yaml (created)",
+      "docs/issues/ISS-0114.json (updated)"
+    ]
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}

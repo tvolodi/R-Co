@@ -1,0 +1,48 @@
+{
+  "handoff_id": "0def6af4-60b4-4256-9c99-4eacab5685f7",
+  "run_id": "WF03-gh377-20260804",
+  "workflow_id": "WF-03",
+  "step": "00",
+  "from_agent": "ORCH",
+  "to_agent": "BACKEND-DEV",
+  "file": "handoffs/WF03-gh377-20260804/step-00-backend-dev.json",
+  "created_at": "2026-08-04T10:14:41Z",
+  "started_at": "2026-08-04T10:15:16Z",
+  "completed_at": "2026-08-04T10:16:15Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Issue Resolving",
+    "issue_id": "ISS-0114",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/377",
+    "related_handoff_ids": [],
+    "artifacts_in": [],
+    "branch_name": "feature/WF03-gh377-20260804"
+  },
+  "task": {
+    "description": "Execute fn:git-setup per docs/agents/protocols/GIT_SETUP.md.\n\nCreate feature branch for WF-03 issue resolving run: ISS-0114 \u2014 Tenant schema and search_path state causes GH-359-class failures.\n\nGitHub issue #377 describes:\n- Symptom: Tenant-isolation operations fail because the expected tenant table/schema is absent or because a checked-out connection remains on search_path='public'. Unqualified tenant-table queries then resolve to the wrong schema or fail outright.\n- Evidence: scratch/WF03-gh364-20260801-step03e/_integration_final.log lines 6384-6503, 8713-8728, 38774-38872.\n- Failed tests: TC-TNT-01-01, TC-TNT-01-03, TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05, TC-DB-03-01.\n- Related issue: #359 (already RESOLVED for the public.tenant_schemas/schema_migrations shadow-table case via GBL-105); this is the follow-on per-tenant schema isolation case.\n- Local issue: docs/issues/ISS-0114.json (already registered by prior triage).\n\nFollow the GIT_SETUP protocol exactly. Do not modify any source files in this step.",
+    "acceptance_criteria": [
+      "git checkout main && git pull --ff-only exits 0",
+      "Feature branch feature/WF03-gh377-20260804 created",
+      "Branch pushed to origin",
+      "Result contains branch_name, base_commit_sha, push_status"
+    ],
+    "functions_to_call": [
+      "fn:git-setup"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "git-setup complete: feature branch feature/WF03-gh377-20260804 created from main (10ce8f49) and pushed to origin as coordination signal.",
+    "artifacts_out": [
+      "branch: feature/WF03-gh377-20260804"
+    ],
+    "issues": [],
+    "next_action": "Route to ISSUE-FIXER (Step 0.5)",
+    "branch_name": "feature/WF03-gh377-20260804",
+    "base_commit_sha": "10ce8f4975f3ce8d1ad12ec98e960de48d7c3f0e",
+    "push_status": "pushed; upstream tracking set (origin/feature/WF03-gh377-20260804)"
+  },
+  "rework_count": 0,
+  "max_rework": 3
+}
