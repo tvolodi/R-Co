@@ -1,0 +1,51 @@
+{
+  "handoff_id": "4a1c3d5e-7b9f-4e2a-8c6d-0f1e2a3b4c5f",
+  "run_id": "WF03-gh375-20260804",
+  "step": "01",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-04T02:47:52Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [
+      "TC-EXT-02"
+    ],
+    "related_handoff_ids": [
+      "4a1c3d5e-7b9f-4e2a-8c6d-0f1e2a3b4c5d",
+      "4a1c3d5e-7b9f-4e2a-8c6d-0f1e2a3b4c5e"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0112.json",
+      "migrations/GBL-128_exp501_secrets.sql",
+      "migrations/GBL-133_iss0112_schema_ledger_reconcile.sql"
+    ]
+  },
+  "task": {
+    "description": "Perform root cause diagnosis for ISS-0112 per WF-03 Step 1 protocol. Confirm that webhook_subscriptions.secret_ref column is missing in per-tenant schemas because:\n1. GBL-128_exp501_secrets.sql (lines 67-76) adds secret_ref only IF webhook_subscriptions exists in the schema it runs against\n2. GBL-128 is a GBL-prefixed migration, which runs ONLY against public schema per src/db/migrations.zig\n3. webhook_subscriptions was dropped from public by GBL-073\n4. Therefore GBL-128's IF check fails and secret_ref is never added\n5. GBL-133 attempts to fix this (lines 200-204) but only for public schema, not per-tenant schemas\n\nVerify this diagnosis by:\n- Checking which tenants have SCHEMA storage mode\n- Confirming secret_ref column is missing in their webhook_subscriptions tables\n- Confirming the column exists in public (or public.webhook_subscriptions doesn't exist)\n\nWrite diagnosis summary to docs/issue-reports/ISS-0112-diagnosis-20260804.yaml",
+    "acceptance_criteria": [
+      "Root cause confirmed via schema introspection",
+      "Diagnosis report written to docs/issue-reports/",
+      "Resolution strategy identified: create corrective migration to add secret_ref to per-tenant webhook_subscriptions tables",
+      "Failure scope quantified (how many tenants affected)"
+    ],
+    "functions_to_call": [
+      "fn:search-issues"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "Root cause diagnosis confirmed for ISS-0112. webhook_subscriptions.secret_ref is missing in 1 SCHEMA-mode tenant schema (tenant_default) because GBL-128 migration's conditional guard (IF to_regclass('webhook_subscriptions') IS NOT NULL) evaluates to FALSE in public schema (table dropped by GBL-073), and neither GBL-128 nor GBL-133 apply DDL to tenant schemas. Resolution strategy: create corrective migration to add secret_ref column to webhook_subscriptions in all SCHEMA-mode tenant schemas.",
+    "artifacts_out": [
+      "docs/issue-reports/ISS-0112-diagnosis-20260804.yaml",
+      "scratch/diagnose_iss0112.py"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (WF-03 Step 2)"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T02:48:16Z",
+  "completed_at": "2026-08-04T02:52:05Z"
+}

@@ -1,0 +1,63 @@
+{
+  "handoff_id": "4a1c3d5e-7b9f-4e2a-8c6d-0f1e2a3b4c5d",
+  "run_id": "WF03-gh375-20260804",
+  "step": "05",
+  "from_agent": "ORCH",
+  "to_agent": "ISSUE-FIXER",
+  "created_at": "2026-08-04T02:42:34Z",
+  "status": "COMPLETED",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03",
+    "requirement_ids": [
+      "TC-EXT-02",
+      "TC-TNT-01",
+      "TC-TNT-02",
+      "TC-TNT-03",
+      "TC-ISS-503",
+      "TC-ADP-02",
+      "TC-ADP-04a",
+      "TC-ADP-04b",
+      "TC-ADP-05",
+      "TC-ADP-06",
+      "TC-ADP-09",
+      "TC-ADP-10",
+      "TC-EXP-201",
+      "TC-EXP-202",
+      "TC-SVC-01",
+      "TC-SVC-04",
+      "TC-ENV-01",
+      "TC-ENV-02"
+    ],
+    "related_handoff_ids": [],
+    "artifacts_in": [
+      "docs/issues/ISS-0112.json"
+    ]
+  },
+  "task": {
+    "description": "Register/update issue ISS-0112 (GitHub #375) for schema drift where webhook_subscriptions.secret_ref column is missing in per-tenant schemas despite migration GBL-128 and GBL-133 existing. Root cause: GBL-128 only adds secret_ref to public.webhook_subscriptions, but that table was dropped from public by GBL-073. GBL-133 attempts to add it to public as well (lines 200-204) but never adds it to per-tenant schemas. Integration tests fail when accessing this column. Need a new migration to add secret_ref to webhook_subscriptions in all SCHEMA-mode tenant schemas.",
+    "acceptance_criteria": [
+      "ISS-0112.json file updated with current occurrence timestamp",
+      "Issue notes reflect the specific missing-column symptom and root cause",
+      "GitHub issue #375 is updated if new information is available",
+      "Issue status set to IN_PROGRESS"
+    ],
+    "functions_to_call": [
+      "fn:register-issue",
+      "fn:update-issue"
+    ]
+  },
+  "result": {
+    "status": "PASS",
+    "summary": "ISS-0112 (GitHub #375) updated with new occurrence entry. Root cause confirmed: GBL-128 and GBL-133 migrations only add secret_ref to public.webhook_subscriptions, but that table was dropped from public by GBL-073. Neither migration adds the column to SCHEMA-mode tenant schemas. Issue status changed to IN_PROGRESS. GitHub issue #375 updated with recurrence details and root cause analysis.",
+    "artifacts_out": [
+      "docs/issues/ISS-0112.json"
+    ],
+    "issues": [],
+    "next_action": "Route to CODE-DESIGNER (Step 1) for corrective migration design"
+  },
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T02:43:24Z",
+  "completed_at": "2026-08-04T02:44:35Z"
+}

@@ -1,0 +1,155 @@
+---
+# ISS-0112 Diagnosis Report
+# Generated: 2026-08-04T02:50:00Z
+# Run ID: WF03-gh375-20260804
+# Step: 01 (ISSUE-FIXER diagnosis)
+
+issue_id: ISS-0112
+title: "Migration/schema drift: webhook_subscriptions.secret_ref missing in SCHEMA-mode tenant schemas"
+diagnosis_date: 2026-08-04T02:50:00Z
+run_id: WF03-gh375-20260804
+severity: BLOCKER
+
+# Root Cause
+root_cause:
+  category: "migration-logic-error"
+  summary: |
+    GBL-128_exp501_secrets.sql (lines 67-76) attempts to add webhook_subscriptions.secret_ref
+    column conditionally using `IF to_regclass('webhook_subscriptions') IS NOT NULL`. However:
+    
+    1. GBL-128 is a GBL-prefixed migration → runs ONLY against public schema per src/db/migrations.zig
+    2. GBL-073 (GBL-112) dropped public.webhook_subscriptions at line 59
+    3. Therefore GBL-128's IF check evaluates to FALSE and secret_ref is never added to public
+    4. GBL-133_iss0112_schema_ledger_reconcile.sql (lines 200-204) attempts to fix this but
+       only adds the column to public.webhook_subscriptions (which doesn't exist)
+    5. Neither migration touches SCHEMA-mode tenant schemas (e.g., tenant_default)
+    6. Result: secret_ref column is missing from webhook_subscriptions in all SCHEMA-mode tenant schemas
+  
+  technical_details:
+    - GBL-128 guard condition: "IF to_regclass('webhook_subscriptions') IS NOT NULL"
+    - Guard evaluates against current schema (public) where table was already dropped
+    - GBL migrations have no mechanism to apply DDL to tenant schemas
+    - Schema-per-tenant (SPT) migrations for tenant schemas are separate from GBL migrations
+
+# Evidence
+evidence:
+  database_state:
+    public_schema:
+      webhook_subscriptions_exists: false
+      reason: "Dropped by GBL-073 (GBL-112_tnt01_drop_legacy_public_business_tables.sql:59)"
+    
+    schema_mode_tenants:
+      total_count: 1
+      affected_count: 1
+      tenants:
+        - id: "00000000-0000-0000-0000-000000000000"
+          slug: "default"
+          schema: "tenant_default"
+          webhook_subscriptions_exists: true
+          secret_ref_exists: false
+  
+  migration_records:
+    - version: "GBL-128_exp501_secrets.sql"
+      schema: "public"
+      applied_at: "2026-08-03T04:13:58.419379Z"
+      status: "Applied but conditional block skipped"
+    
+    - version: "GBL-133_iss0112_schema_ledger_reconcile.sql"
+      schema: "public"
+      applied_at: "2026-08-03T04:13:58.578335Z"
+      status: "Applied but only attempted fix on public schema"
+
+# Impact Assessment
+impact:
+  scope: "BLOCKER"
+  affected_components:
+    - "webhook_subscriptions table in SCHEMA-mode tenant schemas"
+    - "EXT-02 webhook dispatch functionality"
+    - "Integration tests that access webhook_subscriptions.secret_ref in tenant context"
+  
+  failure_symptoms:
+    - "PostgreSQL error: column 'secret_ref' does not exist"
+    - "ext02_webhook_dispatch_test.zig failures (10 test cases)"
+    - "Any code path that reads/writes webhook_subscriptions.secret_ref in SCHEMA tenant context"
+  
+  tenant_count_affected: 1
+  tenant_details:
+    - "Default tenant (id=00000000-0000-0000-0000-000000000000, schema=tenant_default)"
+
+# Resolution Strategy
+resolution_strategy:
+  approach: "Create corrective migration to add secret_ref to webhook_subscriptions in all SCHEMA-mode tenant schemas"
+  
+  implementation_steps:
+    - step: 1
+      description: "Create new migration file (e.g., migrations/NNN_iss0112_add_secret_ref_to_tenant_schemas.sql)"
+      details: |
+        Migration must:
+        - Query public.tenant WHERE storage_mode='SCHEMA'
+        - For each SCHEMA tenant, execute ALTER TABLE in their schema:
+          ALTER TABLE <tenant_schema>.webhook_subscriptions
+          ADD COLUMN IF NOT EXISTS secret_ref TEXT;
+        - Use idempotent ADD COLUMN IF NOT EXISTS to handle re-runs
+    
+    - step: 2
+      description: "Ensure migration is NOT GBL-prefixed (must run as regular numbered migration)"
+      details: |
+        Regular numbered migrations can use dynamic SQL to iterate over tenant schemas.
+        GBL-prefixed migrations are restricted to public schema only.
+    
+    - step: 3
+      description: "Test migration against current db_test state"
+      details: |
+        - Apply migration: zig build migrate
+        - Verify: psql query confirms secret_ref exists in tenant_default.webhook_subscriptions
+        - Run affected tests: zig build test-integration-ext02
+    
+    - step: 4
+      description: "Backfill secret_ref values per GBL-128 pattern"
+      details: |
+        For existing rows in tenant webhook_subscriptions tables:
+        UPDATE <tenant_schema>.webhook_subscriptions
+        SET secret_ref = COALESCE(secret_ref, 'sec://tenant/' || <tenant_slug> || '/webhook/subscription-' || id::text)
+        WHERE secret_ref IS NULL;
+
+  validation_criteria:
+    - "zig build migrate exits 0"
+    - "zig build test-integration-ext02 exits 0"
+    - "Query confirms secret_ref column exists in tenant_default.webhook_subscriptions"
+    - "Query confirms no NULL secret_ref values for existing subscription rows"
+
+# Files Referenced
+files_referenced:
+  migrations:
+    - "migrations/GBL-128_exp501_secrets.sql (lines 67-76)"
+    - "migrations/GBL-133_iss0112_schema_ledger_reconcile.sql (lines 200-204)"
+    - "migrations/GBL-112_tnt01_drop_legacy_public_business_tables.sql (line 59)"
+  
+  source_code:
+    - "src/db/migrations.zig (GBL vs regular migration runner logic)"
+  
+  tests:
+    - "tests/integration/ext02_webhook_dispatch_test.zig"
+
+# Prevention
+prevention_notes:
+  - "GBL migrations must not use to_regclass() guards on tables that may have been dropped from public"
+  - "When adding columns to multi-tenant tables, verify both public AND tenant schemas are updated"
+  - "SPT migration checklist: any DDL on tenant-scoped tables requires both GBL (if public still has the table) AND per-tenant iteration"
+  - "Consider migration linter rule: flag GBL migrations with to_regclass() checks on TNT-01 cleanup targets"
+
+# Next Steps
+next_steps:
+  - action: "Route to CODE-DESIGNER (Step 2)"
+    description: "Design corrective migration per resolution strategy above"
+  - action: "Route to BACKEND-DEV (Step 3)"
+    description: "Implement and test corrective migration"
+  - action: "Route to TEST-RUNNER (Step 5)"
+    description: "Verify ext02_webhook_dispatch_test.zig passes after fix"
+
+# Metadata
+metadata:
+  diagnosis_script: "scratch/diagnose_iss0112.py"
+  database_url: "postgres://bpm:bpm@localhost:5434/bpm_test"
+  executed_by: "ISSUE-FIXER"
+  handoff_id: "4a1c3d5e-7b9f-4e2a-8c6d-0f1e2a3b4c5f"
