@@ -1,4 +1,4 @@
-﻿---
+---
 report_id: WF03-gh376-20260804-step-07-doc-updater
 agent_id: DOC-UPDATER
 run_id: WF03-gh376-20260804
@@ -46,4 +46,3 @@ completeness:
     - criterion: All workflow artifacts committed
       status: PENDING_COMMIT
       evidence: Commit will be created before handoff completion
-
