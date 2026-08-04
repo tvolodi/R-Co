@@ -41,3 +41,9 @@ screenshots/
 *-screenshot.png
 *-screenshot.jpg
 *-screenshot.jpeg
+
+# ── Agent pipeline artifacts (workflow-scoped, not project artefacts) ─────────
+handoffs/
+docs/issue-reports/
+docs/issues/
+src/design/

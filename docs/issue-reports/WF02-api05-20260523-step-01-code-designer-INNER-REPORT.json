@@ -1,9 +1,0 @@
-{
-  "run_id": "WF02-api05-20260523",
-  "step": "01",
-  "agent": "CODE-DESIGNER",
-  "status": "PASS",
-  "summary": "Created src/design/api-05-history-endpoint.md covering all required design elements: HistoryParams and HistoryEvent/HistoryResponse structs, handleHistory handler signature, UNION ALL archived event inclusion strategy spanning events and events_archive tables, cursor-based pagination with H: prefixed base64url cursors, full error taxonomy (404/410/422/500/503), JSON request/response shapes, Mermaid data flow diagram, and open questions resolved. Follows the patterns established in api-03-instance-management.md and api-04-task-operations.md.",
-  "artifacts_out": ["src/design/api-05-history-endpoint.md"],
-  "issues": []
-}
