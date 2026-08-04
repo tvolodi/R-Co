@@ -1,0 +1,348 @@
+# ISS-0114 — Root-Cause Diagnosis Report
+# WF-03 Step 1 — Issue-Fixer
+# Issue: Tenant schema and search_path state causes GH-359-class failures
+# GitHub: https://github.com/tvolodi/R-Co/issues/377
+# Run:   WF03-gh377-20260804
+# Date:  2026-08-04
+
+issue_id: ISS-0114
+run_id: WF03-gh377-20260804
+step: 1
+agent: ISSUE-FIXER
+handoff_id: 67053652-55eb-4771-b9c8-e335c00bf6b5
+reported_at: '2026-08-04T10:30:00Z'
+severity: MAJOR
+category: B,F
+failure_categories:
+  primary: B
+  secondary: F
+
+# -----------------------------------------------------------------------------
+# Summary
+# -----------------------------------------------------------------------------
+summary: >-
+  Root cause is a routing bug in src/db/pool.zig::applyRequestStorageRouting
+  (line 173 approx). The storage_mode cache is resolved by querying
+  public.tenant.storage_mode for the current tenant_id. For tenants that
+  were JUST provisioned via bpm_provision_tenant_schema() — or for any tenant
+  whose ID was created by the integration test (random UUID) — NO row exists in
+  public.tenant. The resolver therefore falls through to the default
+  .LEGACY_RLS branch and issues SET search_path TO public instead of
+  SET search_path TO tenant_<uuid>,public. The result is that every test in
+  TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-03, TC-TNT-03-05 sees
+  search_path = 'public' and any unqualified business-table query
+  (SELECT COUNT(*) FROM events) either resolves to the public.events shadow
+  (if present) or fails with C42P01 (relation "events" does not exist).
+  Category F (shared db_test baseline drift, #359-derived) is a secondary
+  contributing factor that surfaces the C23505 unique-violation on
+  schema_migrations_schema_version_uq in some runs, but is NOT the dominant
+  cause for the seven TC-TNT-* / TC-DB-03-01 cases tracked under ISS-0114.
+
+# -----------------------------------------------------------------------------
+# Distinct from ISS-0112
+# -----------------------------------------------------------------------------
+distinct_from_iss0112: >-
+  ISS-0112 (WF03-gh375-20260804, RESOLVED) addressed the migration-ledger
+  drift in public.schema_migrations via migration 1134_iss0112_add_* and
+  target-call-site hardening. ISS-0114 is a per-connection search_path and
+  per-tenant provisioning routing defect. The two issues share the same
+  evidence surface (db_test contamination) but live at different layers:
+  ISS-0112 was a schema-baseline drift; ISS-0114 is a connection-routing
+  logic defect that materialises whenever the integration test creates a
+  brand-new tenant that has no row in public.tenant.
+
+# -----------------------------------------------------------------------------
+# Root cause
+# -----------------------------------------------------------------------------
+root_cause:
+  type: storage_mode-resolver-falls-back-to-legacy-rls
+  location: src/db/pool.zig
+  function: applyRequestStorageRouting
+  lines: '173-208'
+  details: >-
+    When applyRequestStorageRouting is called with a tenant_id for which
+    no row exists in public.tenant, the resolveAndCacheStorageMode block
+    (approx lines 183-208) executes the SELECT and produces a null result
+    (no row). The default branch executes
+    tenant_context_mod.setStorageMode(.LEGACY_RLS). From that point
+    onward, the THREADLOCAL cache _storage_mode = .LEGACY_RLS is sticky
+    for the entire test thread. The LEGACY_RLS branch (line 218 approx)
+    then issues SET search_path TO public, ignoring the per-tenant schema
+    name that schemaNameForTenant(tenant_id) would have produced.
+  mechanism: >-
+    1. Test calls bpm.api_tenant_context.set(tenant_id) for a freshly
+       minted UUID.
+    2. set(tenant_id) correctly clears _storage_mode_resolved = false.
+    3. Test calls pool.acquire().
+    4. acquire() invokes applyRequestStorageRouting(conn).
+    5. hasStorageMode() returns false, enters resolveAndCacheStorageMode.
+    6. Connection runs SELECT storage_mode FROM public.tenant WHERE
+       id = $1::uuid with the freshly-provisioned tenant_id.
+    7. The query returns 0 rows (provisioning only inserts into
+       public.tenant_schemas, NOT public.tenant).
+    8. Control flows to the bottom of the block and calls
+       tenant_context_mod.setStorageMode(.LEGACY_RLS).
+    9. The acquired connection SET search_path TO public executes.
+    10. The test SHOW search_path assertion reads public (not
+        tenant_<uuid>,public).
+    11. The test unqualified SELECT COUNT(*) FROM events resolves to
+        either the public.events shadow (often present from #359 leakage)
+        or fails with C42P01 relation does not exist.
+  why_previous_sessions_missed_it: >-
+    ISS-0112 fix addressed the schema_migrations ledger drift but did not
+    touch the pool-routing layer. The pool applyRequestStorageRouting was
+    introduced in the SPT-01 / ISS-501 work and was reviewed for the
+    SCHEMA branch (where public.tenant.storage_mode = 'SCHEMA' resolves
+    correctly). The fallback path (no row in public.tenant for a freshly
+    provisioned tenant) was considered acceptable because production tenants
+    always have a public.tenant row. Integration tests, however, generate
+    fresh UUIDs and never create a public.tenant row before checking
+    out connections, so they live in the fallback branch.
+  evidence_lines:
+    - file: src/db/pool.zig
+      lines: '173-208'
+      finding: >-
+        resolveAndCacheStorageMode defaults to LEGACY_RLS on null result.
+    - file: src/db/pool.zig
+      lines: '218-220'
+      finding: >-
+        LEGACY_RLS branch unconditionally sets search_path TO public.
+    - file: migrations/060_schema_per_tenant_bootstrap.sql
+      lines: '70-100'
+      finding: >-
+        bpm_provision_tenant_schema() inserts into public.tenant_schemas
+        but never into public.tenant.
+    - file: src/db/provisioning.zig
+      lines: '55-65'
+      finding: >-
+        provisionTenantSchema() executes idempotency check then
+        bpm_provision_tenant_schema() — no insert into public.tenant.
+    - file: scratch/WF03-gh364-20260801-step03e/_integration_final.log
+      lines: '6384-6503'
+      finding: >-
+        TC-TNT-02-02 reports expected search_path to contain tenant-uuid,
+        got public.
+    - file: scratch/WF03-gh364-20260801-step03e/_integration_final.log
+      lines: '8713-8728'
+      finding: >-
+        TC-TNT-01-03 cross-tenant isolation reports C42P01 relation events
+        does not exist on tenant-A.events insert.
+    - file: scratch/WF03-gh364-20260801-step03e/_integration_final.log
+      lines: '38774-38872'
+      finding: >-
+        TC-DB-03-01 reports C42P01 relation instance_projections does not
+        exist — the connection search_path is public but the table lives
+        in tenant_default.
+
+# -----------------------------------------------------------------------------
+# Affected tests and source files
+# -----------------------------------------------------------------------------
+affected_tests:
+  - id: TC-TNT-01-01
+    file: tests/integration/tnt_schema_isolation_test.zig
+    line: '191'
+    finding: >-
+      expects 21 business tables in tenant_<uuid> schema — fails when schema
+      is empty because the harness cannot create the tables inside the
+      correct schema context (rolling forward from #359 baseline drift
+      amplifies the failure mode).
+  - id: TC-TNT-01-03
+    file: tests/integration/tnt_schema_isolation_test.zig
+    line: '300'
+    finding: >-
+      cross-tenant isolation — fails with C42P01 because tenant_default.events
+      does not exist AND the test insert into tenant_a.events resolves to
+      public.events (which is also absent).
+  - id: TC-TNT-02-02
+    file: tests/integration/tnt_schema_isolation_test.zig
+    line: '525'
+    finding: >-
+      connection search_path after runForSchema — fails because
+      applyRequestStorageRouting falls back to LEGACY_RLS.
+  - id: TC-TNT-03-01
+    file: tests/integration/tnt_schema_isolation_test.zig
+    line: '868'
+    finding: >-
+      pool checkout for resolved tenant — fails because hasStorageMode()
+      returns true (sticky LEGACY_RLS) from a prior test in the same binary.
+  - id: TC-TNT-03-03
+    file: tests/integration/tnt_schema_isolation_test.zig
+    line: '969'
+    finding: >-
+      two concurrent connections for different tenants — both connections
+      end up with search_path=public because applyRequestStorageRouting
+      uses the threadlocal cache (which is shared across all connections
+      in the same thread).
+  - id: TC-TNT-03-05
+    file: tests/integration/tnt_schema_isolation_test.zig
+    line: '1075'
+    finding: >-
+      unqualified SELECT COUNT(*) FROM events on tenant connection — fails
+      because events is in tenant_<uuid> but search_path is public.
+  - id: TC-DB-03-01
+    file: tests/integration/db_integration_test.zig
+    line: '251'
+    finding: >-
+      store.append() commits events + instance_projections atomically —
+      fails because the TestHarness-init pool connection has search_path
+      public (correct for tenant_default work) but the test code does not
+      set tenant_context before acquiring, so storage_mode defaults to
+      LEGACY_RLS, then INSTANCE_PROJECTIONS resolves to
+      public.instance_projections (also absent after GBL-073) → C42P01.
+
+affected_source_files:
+  - file: src/db/pool.zig
+    function: applyRequestStorageRouting
+    lines: '173-260'
+    change: >-
+      Treat absence of public.tenant row as a signal that the tenant storage_mode
+      SHOULD be SCHEMA (rather than defaulting to LEGACY_RLS). The integration
+      tests and the bpm_provision_tenant_schema() flow both rely on the tenant
+      schema being present immediately after provisioning, even when no
+      public.tenant row exists yet. The fallback path should:
+        - If the tenant has a tenant_schemas row, trust SCHEMA mode.
+        - If the tenant has neither public.tenant NOR tenant_schemas row,
+          fall back to LEGACY_RLS (truly unknown tenant).
+      Also: explicitly accept the tenant freshly provisioned case by re-querying
+      storage_mode after detecting a tenant_schemas row and the absence of a
+      public.tenant row.
+  - file: src/db/pool.zig
+    function: schemaNameForTenant
+    lines: '130-160'
+    change: >-
+      No semantic change required. The function correctly derives
+      tenant_<uuid> for non-empty, non-all-zeros tenant IDs. The bug is
+      upstream — the routing layer never reaches the SCHEMA branch for
+      newly-provisioned tenants.
+  - file: src/db/provisioning.zig
+    function: provisionTenantSchema
+    lines: '44-145'
+    change: >-
+      Two changes work together:
+        1. After bpm_provision_tenant_schema() succeeds, INSERT a
+           public.tenant row with storage_mode=SCHEMA if one does not
+           already exist (idempotent ON CONFLICT DO NOTHING).
+        2. Ensure tenant_context_mod.setStorageMode(.SCHEMA) is called
+           BEFORE the function returns, so subsequent pool.acquire()s in
+           the same thread receive the correct routing mode.
+      This guarantees the integration test path (which immediately calls
+      pool.acquire() for the provisioned tenant) does not rely on the
+      heuristic fallback in applyRequestStorageRouting.
+  - file: src/db/migrations.zig
+    function: runForSchema
+    lines: '78-100'
+    change: >-
+      Reinforce the existing SET search_path TO <schema_name>,public
+      statement with a verification query (SHOW search_path) and return
+      MigrationError.SchemaSetupFailed if the post-condition is not met.
+      This guards against any future regression that causes
+      applyRequestStorageRouting LEGACY_RLS fallback to overwrite the
+      migration runner search_path.
+  - file: tests/integration/tnt_schema_isolation_test.zig
+    function: makePool
+    lines: '60-70'
+    change: >-
+      After Pool.init, explicitly call
+      bpm.api_tenant_context.set("00000000-0000-0000-0000-000000000000")
+      followed by bpm.api_tenant_context.clear() to reset the threadlocal
+      storage_mode cache. This prevents sticky state from prior test
+      contamination (the default all-zeros UUID lookup currently poisons
+      the cache for the rest of the test thread).
+
+# -----------------------------------------------------------------------------
+# Files to change (ordered for CODE-DESIGNER Step 2)
+# -----------------------------------------------------------------------------
+files_to_change:
+  - src/db/pool.zig
+  - src/db/provisioning.zig
+  - src/db/migrations.zig
+  - src/api/tenant_context.zig
+  - tests/integration/tnt_schema_isolation_test.zig
+  - tests/integration/db_integration_test.zig
+  - migrations/
+  - docs/issue-reports/ISS-0114-design-handoff.md
+
+# -----------------------------------------------------------------------------
+# Proposed resolution strategy
+# -----------------------------------------------------------------------------
+resolution_strategy:
+  summary: >-
+    Three-layer fix: (a) make applyRequestStorageRouting smarter about the
+    no-public.tenant-row case, (b) make provisionTenantSchema promote the
+    tenant to public.tenant with storage_mode=SCHEMA immediately on
+    provisioning, (c) add a regression migration that backfills existing
+    tenants (tenant_schemas row but no public.tenant row) and a regression
+    test per impacted TC.
+  approach:
+    step_1: >-
+      Fix the resolver fallback in src/db/pool.zig::applyRequestStorageRouting.
+      When SELECT storage_mode FROM public.tenant WHERE id = $1::uuid returns
+      0 rows, issue a follow-up SELECT 1 FROM public.tenant_schemas WHERE
+      tenant_id = $1::uuid and if THAT returns a row, treat the tenant as
+      SCHEMA-mode (because tenant_schemas row means the schema is provisioned).
+      Only fall back to LEGACY_RLS when both queries return 0 rows. This makes
+      the routing robust to integration test fixtures while preserving
+      production semantics.
+    step_2: >-
+      Promote provisionTenantSchema to insert a public.tenant row with
+      storage_mode=SCHEMA (idempotent) immediately after the SQL
+      bpm_provision_tenant_schema() call. This is the authoritative path;
+      the resolver change in step 1 is a defensive fallback.
+    step_3: >-
+      Add a migration that backfills public.tenant for all tenants that have
+      a tenant_schemas row but no public.tenant row, setting
+      storage_mode=SCHEMA. This handles the on-disk state with a one-shot
+      reconciliation so that even old integration databases (db_test from
+      #359 era) become consistent.
+    step_4: >-
+      Add explicit clear() calls in test fixture setup to avoid the
+      threadlocal storage_mode cache carrying state across tests in the same
+      binary. This is a defense-in-depth measure on top of step 1.
+    step_5: >-
+      Add SHOW search_path + expectation in runForSchema as a post-condition
+      assertion. Failing the migration early with SchemaSetupFailed is
+      preferable to letting the test discover the wrong search_path further
+      down the stack.
+  regression_tests:
+    - file: tests/integration/tnt_schema_isolation_test.zig
+      it: 'regression: ISS-0114 — provisionTenantSchema then pool.acquire sets tenant_<uuid> in search_path'
+      target: 'TC-TNT-02-02, TC-TNT-03-01, TC-TNT-03-05'
+    - file: tests/integration/tnt_schema_isolation_test.zig
+      it: 'regression: ISS-0114 — two concurrent connections for different tenants have independent search_paths'
+      target: 'TC-TNT-03-03'
+    - file: tests/integration/tnt_schema_isolation_test.zig
+      it: 'regression: ISS-0114 — cross-tenant isolation, fresh UUID with no public.tenant row'
+      target: 'TC-TNT-01-03'
+    - file: tests/integration/db_integration_test.zig
+      it: 'regression: ISS-0114 — store.append() atomic write with default-tenant context'
+      target: 'TC-DB-03-01'
+
+# -----------------------------------------------------------------------------
+# Requirements traceability
+# -----------------------------------------------------------------------------
+requirement_ids:
+  - TC-TNT-01
+  - TC-TNT-02
+  - TC-TNT-03
+  - TC-DB-03
+  - TC-ISS-503
+
+# -----------------------------------------------------------------------------
+# Acceptance criteria
+# -----------------------------------------------------------------------------
+acceptance_criteria:
+  - All 7 failing TC tests pass without modification of expected values.
+  - applyRequestStorageRouting no longer defaults to LEGACY_RLS when a tenant_schemas row exists.
+  - provisionTenantSchema inserts public.tenant with storage_mode=SCHEMA.
+  - Backfill migration reconciles existing tenant_schemas-only tenants.
+  - Regression tests added for each affected TC.
+  - No new violations in any other TC (especially TC-TNT-03-02, TC-TNT-03-04, TC-TNT-04-*).
+
+# -----------------------------------------------------------------------------
+# Next steps
+# -----------------------------------------------------------------------------
+next_action: >-
+  Route to CODE-DESIGNER (Step 2) — design the pool-routing fallback
+  heuristic, the idempotent public.tenant promotion, and the backfill
+  migration. Hand off ISS-0114.json with the root_cause and files_to_change
+  fields populated.
