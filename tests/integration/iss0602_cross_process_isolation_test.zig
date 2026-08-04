@@ -104,8 +104,7 @@ test "TC-ISS-0602-cross-02: defensive cross-owner count is zero under correct pr
     const tag = try GetTestOwnerTag(alloc);
     defer alloc.free(tag);
 
-    var q = try h.conn.query(
-        alloc,
+    var q = try h.conn.query(alloc,
         \\SELECT count(*) FROM pg_stat_activity
         \\WHERE state = 'idle in transaction'
         \\  AND application_name <> $1
