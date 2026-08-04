@@ -1,0 +1,51 @@
+{
+  "handoff_id": "afe1726a-6271-4542-b532-37b903d69f61",
+  "run_id": "WF03-gh376-20260804",
+  "step": "07",
+  "from_agent": "ORCH",
+  "to_agent": "DOC-UPDATER",
+  "created_at": "2026-08-04T05:06:11Z",
+  "status": "IN_PROGRESS",
+  "priority": "NORMAL",
+  "context": {
+    "stage": "WF-03 Step 7 \u2014 Documentation Update",
+    "issue_id": "ISS-0113",
+    "github_issue": "https://github.com/tvolodi/R-Co/issues/376",
+    "related_handoff_ids": [
+      "7c3d5763-701f-42cd-ae07-8da2644c8c36",
+      "193a90d3-3344-4a67-a6eb-ea2d1c6fac83",
+      "ff06591d-64ae-42e9-8749-669c136880f1",
+      "2ecf5c7d-9f6d-4b4d-a096-e820fa026774",
+      "d0dcdb92-b408-4d53-aa83-905afc507417",
+      "20a2de92-ccd9-4857-acb3-28402c362417",
+      "027ab652-aa29-4825-9647-bba804052682",
+      "999485b8-e987-4abb-9d9b-eea517c437cf",
+      "5e0c0a83-3bdb-4299-88c8-895ed12c63f4"
+    ],
+    "artifacts_in": [
+      "docs/issues/ISS-0113.json",
+      "docs/issue-reports/ISS-0113.yaml",
+      "src/design/iss-0113-fix.md",
+      "tests/reports/report-20260804-WF03-gh376-20260804-retry.yaml"
+    ]
+  },
+  "task": {
+    "description": "Update documentation for the ISS-0113 fix.\n\n1. Update CHANGELOG.md to note:\n   - ISS-0113 fix (deterministic UUID collision mitigation in test fixtures)\n   - T011 lint rule added to tools/lint_test_isolation.py\n   - Note: Verification deferred pending separate test isolation infrastructure fix\n\n2. Update docs/issues/ISS-0113.json:\n   - status: OPEN \u2192 IN_PROGRESS (code fix applied, verification pending)\n   - Add resolution_progress field with the commits applied\n   - Add verification_pending note referencing the test isolation BLOCKER\n\n3. File a NEW GitHub issue for the pre-existing test isolation BLOCKER (killIdleConnections() in helpers.zig:322):\n   - Title: Test isolation BLOCKER \u2014 killIdleConnections() terminates all idle DB connections\n   - Reference: Discovered during WF03-gh376-20260804 Step 5 verification\n   - Severity: BLOCKER\n   - Use gh issue create with rco-sync-ref tag\n\n4. Run python3 tools/reqctl.py to update any requirement status if needed\n\nReturn PASS when documentation is updated and new issue is filed.",
+    "acceptance_criteria": [
+      "CHANGELOG.md updated",
+      "docs/issues/ISS-0113.json status updated",
+      "New GitHub issue filed for test isolation BLOCKER",
+      "All workflow artifacts committed"
+    ],
+    "functions_to_call": [
+      "fn:update-changelog",
+      "fn:update-issue",
+      "fn:register-issue"
+    ]
+  },
+  "result": null,
+  "rework_count": 0,
+  "max_rework": 3,
+  "started_at": "2026-08-04T05:07:47Z",
+  "completed_at": null
+}
